@@ -6,7 +6,8 @@ export const SOLSTICE = Object.freeze({
   name: 'Solstice',
   callsign: 'SL-9 · SOLSTICE',
   sectorId: 'sector_ceres_belt',
-  // Anchored in the quiet northwest pocket of Ceres Belt, surrounded by metallic/crystalline asteroid drift.
+  // Anchored in the quiet south-west pocket of Ceres Belt (+z is north), surrounded by
+  // metallic/crystalline asteroid drift.
   anchor: Object.freeze({ x: -840, z: -760 }),
   coreRadius: 26,
   coreMass: 45000,

@@ -35,10 +35,12 @@ export const TRAVEL_PRESENTATION_CUE_IDS = Object.freeze([
   'travel.aftermath.contested',
 ]);
 
+// Keys are the live SECTOR_PALETTE_CLASSES fill values (post-Lacquer & Starlight unification);
+// any sector whose fill is not a class fill falls back to palette_core.
 const PALETTE_FILL_TAG = Object.freeze({
-  0x4ad8ff: 'palette_core',
-  0xffb13d: 'palette_belt',
-  0xffaa66: 'palette_fringe',
+  0xa3b4dd: 'palette_core',
+  0xbca58d: 'palette_belt',
+  0xbc91a6: 'palette_fringe',
   0x4ddc92: 'palette_anomaly',
 });
 

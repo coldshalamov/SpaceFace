@@ -1225,19 +1225,52 @@ function applySectorPopulationFlags(weights, sector) {
   return out;
 }
 
-function ensureServiceCraftRoles(roles, weights) {
+// A sector with authored rock is a sector somebody cuts. Field records exist in three shapes: the
+// authored def (`count`), the embodied runtime record (`asteroidIds`), and the live view (`rocks`).
+function sectorHasAuthoredRock(sec) {
+  return Array.isArray(sec && sec.fields) && sec.fields.some((f) => f && (
+    (f.count | 0) > 0
+    || (Array.isArray(f.asteroidIds) && f.asteroidIds.length > 0)
+    || (Array.isArray(f.rocks) && f.rocks.length > 0)
+  ));
+}
+
+function ensureServiceCraftRoles(roles, weights, sector = null) {
   if (!Array.isArray(roles) || !roles.length || !weights) return roles;
   const out = roles.slice();
-  const place = (role) => {
+  const placed = new Set();
+  const place = (role, force = false) => {
     if (!(weights[role] > 0) || out.includes(role)) return;
     for (let i = out.length - 1; i >= 0; i--) {
-      if (out[i] === 'patrol' || out[i] === 'escort') continue;
+      if (placed.has(i) || out[i] === 'patrol' || out[i] === 'escort' || out[i] === 'courier') continue;
       out[i] = role;
+      placed.add(i);
+      return;
+    }
+    // A packed draw leaves no civilian slot: a lawful hull beyond the first yields instead of
+    // growing the roster past the ambient cap. The pair outranks a third patrol in a sector
+    // whose economy is cutting rock; the lawful presence floor itself is never touched.
+    if (!force) return;
+    const lawfulFree = out.filter((r, i) => !placed.has(i) && (r === 'patrol' || r === 'escort')).length;
+    if (lawfulFree <= 1) return;
+    for (let i = out.length - 1; i >= 0; i--) {
+      if (placed.has(i) || (out[i] !== 'patrol' && out[i] !== 'escort')) continue;
+      out[i] = role;
+      placed.add(i);
       return;
     }
   };
   place('tanker');
   place('customs');
+  // A sector with declared extraction work also needs its extraction pair: the weighted draw can
+  // roll zero miners/ore_carriers (Helios did once the authored pocket cast consumed the mix),
+  // which silences the whole ore chain — nobody cuts, nobody collects. Same guarantee idiom as
+  // the service craft above, gated on the same condition that boosts their weights below.
+  const sec = sector || {};
+  if ((sec.industries && (sec.industries.mining || sec.industries.refinery)) || sectorHasAuthoredRock(sec)) {
+    place('miner', true);
+    place('ore_carrier', true);
+  }
   return out;
 }
 
@@ -1269,7 +1302,7 @@ export function trafficRoleMixForSector(sector, state = null) {
   //
   // Deliberately weaker than the explicit flag (x1.7 vs x2.5) and NOT applied on top of it: a
   // declared mining economy should still out-mine a core sector that merely happens to have rocks.
-  else if (Array.isArray(sec.fields) && sec.fields.some((f) => f && (f.count | 0) > 0)) {
+  else if (sectorHasAuthoredRock(sec)) {
     out.miner *= 1.7;
   }
   // Hostile/danger sectors: more suspicious raiders, fewer civilians.
@@ -1877,9 +1910,13 @@ export const traffic = {
     const roleWeights = trafficRoleMixForSector(sector, this.state);
     const roles = [];
     for (let i = 0; i < need; i++) roles.push(pickRole(roleWeights, () => this._rng()));
-    const pocketRoles = ensureServiceCraftRoles(ensurePocketRoleMix(roles, sector), roleWeights);
+    // Courier reservation runs on the drawn roles before service guarantees: an appended service
+    // hull is not a civilian slot the courier may rewrite, and service placement leaves the
+    // reserved courier alone.
+    const pocketRolesBase = ensurePocketRoleMix(roles, sector);
     const priorityService = priorityCourierServiceForSector(sectorId);
-    const priorityCourierSlot = reservePriorityCourierRole(pocketRoles, sectorId);
+    const priorityCourierSlot = reservePriorityCourierRole(pocketRolesBase, sectorId);
+    const pocketRoles = ensureServiceCraftRoles(pocketRolesBase, roleWeights, sector);
 
     // Pocket anchor: cluster the first freighters near the busiest station so sensor-range
     // density holds for the first-hour Helios play space (not scattered to far yards only).
@@ -1890,9 +1927,12 @@ export const traffic = {
       const role = pocketRoles[i] || 'hauler';
       const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
       const priorityCourier = !!priorityService && i === priorityCourierSlot;
+      // Slots a service guarantee rewrote anchor to the same pocket as the first wave — a far
+      // random berth leaves the ore barge a sector-length flight from the work it exists for.
+      const clustered = i < Math.min(4, need) || pocketRoles[i] !== pocketRolesBase[i];
       let station = priorityCourier
         ? (this._stationForPriorityCourier(stations, priorityService.stops[0]) || stations[0])
-        : (i < Math.min(4, need) && pocketStation)
+        : (clustered && pocketStation)
         ? pocketStation
         : (stations[Math.floor(this._rng() * stations.length)] || stations[0]);
       if (!this._leftoverStationOpenForTopUp(station, leftoverDisrupted)) {
@@ -1901,7 +1941,7 @@ export const traffic = {
       }
       // spawn near the station but offset so they don't overlap it
       const ang = this._rng() * Math.PI * 2;
-      const r = (i < Math.min(4, need))
+      const r = clustered
         ? (90 + this._rng() * (POCKET_CLUSTER_R * 0.45))
         : (140 + this._rng() * 120);
       const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
@@ -2429,6 +2469,12 @@ export const traffic = {
   _materializeAuthoredActivityCast(sector, pockets) {
     if (!sector || !Array.isArray(pockets) || pockets.length === 0) return 0;
     if (!this.helpers || !this.helpers.spawnEntity) return 0;
+    // The authored shift is durable world content: every slot mints a stable worldRecordId and is
+    // custodied by the registry's world/jobs owners across sector residency. A detached fork has
+    // no composed runtime to custody it — minting the shift there would additive-spawn a second
+    // full roster over the ambient records the fork is testing, and durable hulls no owner could
+    // capture. Ambient fill owns the enter in that context.
+    if (!this._registry) return 0;
     this._ensureState();
     const sectorId = sector.id;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
@@ -2603,7 +2649,12 @@ export const traffic = {
           && !(entity.data && (entity.data.jobId
             || entity.data.namedLaneContactId
             || entity.data.worldSiteTrafficHookId
-            || entity.data.claimTravelTrafficHookId)))
+            || entity.data.claimTravelTrafficHookId
+            // An authored activity slot (pocket cast, starter shift) already owns its hull —
+            // same exclusion convention as industryHaulerEligible.
+            || entity.data.activityActorSlotId
+            || entity.data.ceresActivityCast === true
+            || entity.data.authoredActivityCast === true)))
         .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
       // World-record rematerialization preserves the durable entity tag but rebuilds the transient
       // traffic record. Rebind that same ambient slot before looking for a new one; otherwise the
@@ -2729,7 +2780,10 @@ export const traffic = {
           && !(entity.data && (entity.data.jobId
             || entity.data.namedLaneContactId
             || entity.data.worldSiteTrafficHookId
-            || entity.data.claimTravelTrafficHookId)))
+            || entity.data.claimTravelTrafficHookId
+            || entity.data.activityActorSlotId
+            || entity.data.ceresActivityCast === true
+            || entity.data.authoredActivityCast === true)))
         .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
       const marked = this.state.traffic.freighters
         .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
@@ -4710,6 +4764,19 @@ export const traffic = {
       ent.data.activityActorSlotId = 'helios_starter_ore_carrier';
       syncEntityActivitySlotMembership(this.state && this.state.entityIndex, ent);
       requestActivityReclassify(this.state, ent);
+      // The collected lot must survive Continue, same custody precedent as a towed payload.
+      ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    }
+    // The starter cutter's slot id normally lands when npcJobs commissions it — a World Site or
+    // claim-travel hook runs first and would steal the shift's only hull. Reserve the slot here;
+    // the adoption path stamps the same id and isHeliosCuttingMiner already accepts the carrier.
+    if (sectorId === 'sector_helios_prime' && role === 'miner'
+      && !(this.state.entityList || []).some((other) => other !== ent && other.alive !== false
+        && other.data && other.data.activityActorSlotId === 'helios_starter_cutter')) {
+      ent.data = ent.data || {};
+      ent.data.activityActorSlotId = 'helios_starter_cutter';
+      syncEntityActivitySlotMembership(this.state && this.state.entityIndex, ent);
+      requestActivityReclassify(this.state, ent);
     }
     if (!ent.data) ent.data = {};
     ent.data.trafficRole = role;
@@ -4783,18 +4850,29 @@ export const traffic = {
       // NXI-165: a durable rebind restores data.ai (the captured ai record) but never the live
       // namedLaneContactId stamp — heal it from the record so the SAME worker keeps her name and
       // the "already have a live named contact" checks see her instead of re-picking the
-      // identity onto a second hull. A stale id with no authored contact is dropped.
+      // identity onto a second hull. A stale id with no authored contact is dropped. The heal
+      // also loses to a live holder: when the enter race twins her (a shelved row plus the
+      // fixture's re-mint both promote in one pass), the first stamp wins and the runner-up
+      // keeps only her durable ai id — never two live hulls wearing one contact's face.
       if (!d.namedLaneContactId && d.ai && typeof d.ai.namedLaneContactId === 'string'
         && d.ai.namedLaneContactId) {
         const contact = NAMED_LANE_CONTACTS.find((c) => c && c.id === d.ai.namedLaneContactId);
-        if (contact) this._stampNamedLaneContact(e, contact);
-        else delete d.ai.namedLaneContactId;
+        if (!contact) delete d.ai.namedLaneContactId;
+        else {
+          let held = false;
+          for (const other of this.state.entityList) {
+            if (!other || other === e || other.alive === false || other.type !== 'ship') continue;
+            if (other.data && other.data.namedLaneContactId === contact.id) { held = true; break; }
+          }
+          if (!held) this._stampNamedLaneContact(e, contact);
+        }
       }
       if (tracked.has(e.id)) return;
       if (sectorId === 'sector_helios_prime' && d.trafficRole === 'ore_carrier') {
         d.activityActorSlotId = 'helios_starter_ore_carrier';
         syncEntityActivitySlotMembership(this.state && this.state.entityIndex, e);
         requestActivityReclassify(this.state, e);
+        e.flags = Object.assign({}, e.flags, { persistent: true });
       }
       // Ensure durable stamps survive even if rematerialize omitted a field.
       if (!e.homeSectorId && !d.homeSectorId) {
@@ -4977,6 +5055,47 @@ export const traffic = {
       rec.farActorId = null;
       return;
     }
+    this._readoptPromotedTraffic(p);
+  },
+
+  /**
+   * A traffic hull can promote from the far table with no roster record at all: a boot-time
+   * enter shelves her before the enter's roster rebuilds finish, and a rebuild that keeps
+   * only live entities drops her row. The lean far row keeps data.ai (so the NXI-165 contact
+   * id and the express itinerary survive) but not the live contact stamps, and no stepper
+   * owns a recordless hull — she promotes anonymous and parked. Re-adoption through the same
+   * path a save takes restores the record (motion/freight) and the express route; the contact
+   * identity is re-stamped AFTER adoption so the callsign wins the scanner label back,
+   * matching the fixture's stamp order (durable → route → contact).
+   */
+  _readoptPromotedTraffic(p) {
+    if (!p || p.trafficRole == null) return;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (!sectorId) return;
+    const ent = this.state.entities && this.state.entities.get(p.id);
+    if (!ent || ent.alive === false || ent.isPlayer || ent.type !== 'ship') return;
+    const d = ent.data || (ent.data = {});
+    if (d.trafficRole !== p.trafficRole) return;
+    const home = ent.homeSectorId || d.homeSectorId || d.sectorId;
+    if (home && home !== sectorId) return;
+    // Slot-owned cast hulls recover through their own materializer, never generic adoption.
+    if (d.activityActorSlotId || d.ceresActivityCast || d.authoredActivityCast) return;
+    this._adoptRematerializedTraffic(sectorId, this._sectorStations());
+    const contactId = d.ai && typeof d.ai.namedLaneContactId === 'string'
+      ? d.ai.namedLaneContactId : null;
+    if (!contactId) return;
+    const contact = NAMED_LANE_CONTACTS.find((c) => c && c.id === contactId);
+    if (!contact) { delete d.ai.namedLaneContactId; return; }
+    // Only one live hull may wear a contact's face — the fixture's own guard. The enter race
+    // can twin her: a shelved row persists across a sector round trip, the fixture re-mints a
+    // fresh courier pocket-side, and both rows promote in one approach pass. The first
+    // re-stamp wins; the second stays anonymous (her durable ai id kept for a later heal when
+    // the holder dies) instead of doubling the named presence on one lane.
+    for (const other of this.state.entityList) {
+      if (!other || other === ent || other.alive === false || other.type !== 'ship') continue;
+      if (other.data && other.data.namedLaneContactId === contactId) return;
+    }
+    this._stampNamedLaneContact(ent, contact);
   },
 
   _pruneDead() {

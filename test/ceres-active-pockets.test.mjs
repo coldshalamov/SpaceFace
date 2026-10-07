@@ -535,11 +535,18 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   //                 Long Berth yard tug (0c6f0ea1a) now stays live and collidable here
   // The two deltas cancel in total/collidable/colliders (the shelved ship's 24-primitive skin is
   // replaced one-for-one by the tug's measured hull skin), so only byType moves.
+  // Census re-pinned 2026-10-06 (solid-dressing adjudication) — delta traced to authored work:
+  //   collidable 14 → 16, colliders 236 → 284   309deb2f7 — landmark POIs take measured-skin
+  //                 bodies: poi_driller's place_dead_hulk GLB and poi_claim_rookery's
+  //                 place_asteroid_rock_a skin are visible structures, so they collide.
+  //                 The activity object slots do NOT: each re-points an ambient prop the
+  //                 belt-dressing loop was going to draw regardless, so the slot entity
+  //                 stays a ghost (collides:false below) and adds no collider cost.
   assert.deepEqual(first.census, {
     total: 39,
     byType: { asteroid: 6, fauna: 12, fx: 13, ship: 1, station: 6, wreck: 1 },
-    collidable: 14,
-    colliders: 236,
+    collidable: 16,
+    colliders: 284,
     opticCells: 0,
     opticResidentCells: 42,
   }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');

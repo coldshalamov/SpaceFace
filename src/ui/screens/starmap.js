@@ -1433,7 +1433,7 @@ export const starmapScreen = {
         <div class="sm-section-title">Faction influence</div>
         ${influenceHtml}
         <div class="sm-kv"><span>Contest margin</span><b>${pct(signal.contestMargin)}</b></div>
-        <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.influence))}. Low margin raises conflict tension; the factions system remains the territory owner.</div>
+        <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.influence))}. Low margin raises conflict tension. It does not change who owns the sector.</div>
       </div>
 
       <div class="sm-section">

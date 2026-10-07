@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import * as flightV3Module from '../src/systems/flightV3.js';
-import { ORBIT_ASSIST_TUNING_V1 } from '../src/core/flight/orbitAssist.js';
+import {
+  ORBIT_ASSIST_TUNING_V1,
+  ORBIT_SWING_TRACK_MARGIN,
+  orbitSwingThrottleScale,
+} from '../src/core/flight/orbitAssist.js';
 import * as masslineLab from '../scripts/lib/masslineControlLab.mjs';
 import { createGameState } from '../src/core/gameState.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
@@ -305,6 +309,84 @@ test('a loaded line does not change ordinary manual yaw authority', () => {
   assert.equal(step(loaded), step(baseline));
   assert.equal(loaded.player._flightFrame.orbitAssist.active, false,
     'turn without forward remains raw manual yaw even while tethered');
+});
+
+test('swing coordination leaves trackable orbits at full throttle', () => {
+  // Starter-ish hull on the default rope at cruise: the swing fits inside yaw authority.
+  const scale = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 70, tangentialSpeed: 129 },
+    129,
+  );
+  assert.equal(scale, 1);
+});
+
+test('swing coordination holds the swing at the trackable rate', () => {
+  // Same hull reeled to 30 WU: 129 WU/s of swing needs 4.3 rad/s of yaw the hull lacks.
+  const trackable = 2.65 * 30 * ORBIT_SWING_TRACK_MARGIN;
+  const scale = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 30, tangentialSpeed: 129 },
+    129,
+  );
+  assert.ok(Math.abs(scale - trackable / 129) < 1e-12);
+  assert.ok(scale < 1 && scale > 0);
+});
+
+test('swing coordination caps demand before the swing outruns the nose', () => {
+  // Still accelerating (live swing small) but the commanded cruise already outruns tracking.
+  const trackable = 2.65 * 30 * ORBIT_SWING_TRACK_MARGIN;
+  const scale = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 30, tangentialSpeed: 10 },
+    200,
+  );
+  assert.ok(Math.abs(scale - trackable / 200) < 1e-12);
+});
+
+test('swing coordination reads swing magnitude and fails open', () => {
+  const against = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 30, tangentialSpeed: -129 },
+    0,
+  );
+  const withGrain = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 30, tangentialSpeed: 129 },
+    0,
+  );
+  assert.equal(against, withGrain);
+  assert.equal(orbitSwingThrottleScale({ maxYawRate: 2.65, radius: 0, tangentialSpeed: 129 }, 129), 1);
+  assert.equal(orbitSwingThrottleScale({ maxYawRate: 0, radius: 30, tangentialSpeed: 129 }, 129), 1);
+  assert.equal(orbitSwingThrottleScale(null, 129), 1);
+});
+
+test('Flight V3 shapes forward thrust while the orbit outruns yaw authority', () => {
+  // Same ship, same speed, same chord — only the rope differs. The long rope tracks; the short
+  // rope's swing needs far more yaw than any hull carries, so the coordinator must hold thrust
+  // back to keep the nose on the tangent.
+  const trackable = makeFlightHarness();
+  const saturated = makeFlightHarness();
+  trackable.player.vel = { x: 0, z: 150 };
+  saturated.player.vel = { x: 0, z: 150 };
+  saturated.anchor.pos = { x: 90, z: 0 };
+  saturated.state.player.tether.restLength = 30;
+  const forwardForce = (harness) => {
+    const system = Object.create(flightV3Module.flightV3);
+    system.init({ state: harness.state, bus: harness.bus });
+    system.update(DT, harness.state);
+    const command = consumePhysicsCommand(harness.player);
+    const force = command.control.force;
+    return force.x * Math.cos(harness.player.rot) + force.z * Math.sin(harness.player.rot);
+  };
+  const trackableForce = forwardForce(trackable);
+  const saturatedForce = forwardForce(saturated);
+  const trackableFrame = trackable.player._flightFrame.orbitAssist;
+  const saturatedFrame = saturated.player._flightFrame.orbitAssist;
+  assert.equal(trackableFrame.active, true);
+  assert.equal(trackableFrame.swingThrottleScale, 1,
+    'a trackable orbit keeps full thrust: byte-identical behavior');
+  assert.equal(saturatedFrame.active, true);
+  assert.ok(saturatedFrame.swingThrottleScale < 1 && saturatedFrame.swingThrottleScale > 0,
+    `an untrackable swing must shed thrust, got ${saturatedFrame.swingThrottleScale}`);
+  assert.equal(saturatedFrame.saturated, true);
+  assert.ok(saturatedForce < trackableForce,
+    `the scale must reach the physics command: ${saturatedForce} vs ${trackableForce}`);
 });
 
 test('the production forward-plus-turn controller passes the deterministic orbit matrix', async () => {

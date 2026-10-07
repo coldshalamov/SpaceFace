@@ -29,7 +29,7 @@ function priority(f) {
   if (['recovered', 'sold', 'law', 'remedy'].includes(f.stage)) return 100;
   if (['ace', 'rescue', 'wanted'].includes(f.stage)) return 80;
   if (['aftermath', 'binding', 'salvage'].includes(f.stage)) return 70;
-  if (f.stage === 'kill') return f.actor.player ? 65 : 20;
+  if (f.stage === 'kill') return (f.actor.player || (f.subject && f.subject.player)) ? 65 : 20;
   return 40;
 }
 function due(at, now, cooldown) { return at === null || now - at >= cooldown; }

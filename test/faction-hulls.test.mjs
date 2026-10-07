@@ -61,6 +61,8 @@ const BASELINE_ENEMY_BODY = Object.freeze({
   field_anchor_controller: 'wholeships/ashline_lode.glb',
   mirrorjaw_foreman: 'wholeships/ashline_lode.glb',
   forge_regent: 'wholeships/ashline_lode.glb',
+  brood_queen: 'wholeships/ashline_dart.glb',
+  brood_tendril: 'wholeships/ashline_dart.glb',
 });
 const BASELINE_TRAFFIC_BODY = Object.freeze({
   courier: 'wholeships/helios_lark.glb',

@@ -107,13 +107,14 @@ test('a two-body contact and an NPC-only chain stay silent', () => {
   assert.equal(triggers.length, 2,
     `${VISION}: a two-body hit does not get the extra dip`);
 
-  // An NPC-caused chain reaching a third body earns nothing — the joke belongs to the player.
+  // An NPC-caused chain earns nothing — the joke belongs to the player, and ordinary
+  // non-player contacts never stall the camera at all (eb1869826's deliberate gate).
   host._onCollisionConsequence(consequence('r3', 'x', 'a', 50, 'npc-7'));
   runFrames(host, 20);
   host._onCollisionConsequence(consequence('r3', 'x', 'b', 60, 'npc-7'));
   runFrames(host, 20);
-  assert.equal(triggers.length, 4,
-    `${VISION}: NPC-only collisions never earn the chain beat`);
+  assert.equal(triggers.length, 2,
+    `${VISION}: NPC-only collisions stay silent — no chain beat, no contact dip`);
 });
 
 test('a second chain later earns its own beat; a stale chain earns nothing', () => {

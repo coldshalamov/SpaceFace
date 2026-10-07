@@ -6,6 +6,7 @@ import {
   stepHudGLagSpring,
   calculateHudGLagTarget,
   calculateGLocIntensity,
+  isSustainedMaxRateTurn,
 } from '../src/ui/hud.js';
 import { createBus } from '../src/core/eventBus.js';
 
@@ -305,6 +306,9 @@ function mountTestFixture(options = {}) {
     vel: { x: 0, z: 0 },
     angle: 0,
     angVel: 0,
+    // Derived yaw ceiling copied onto every real ship entity (ships.js copyDerivedOntoEntity);
+    // ~3.0 rad/s is the mid fleet hull. The G-LOC gate reads this, not an absolute yaw number.
+    turnRate: 3.0,
     hull: 100,
     hullMax: 100,
     shield: 60,
@@ -461,6 +465,25 @@ test('calculateGLocIntensity activates only after 0.6s sustained high-G and ramp
   assert.equal(calculateGLocIntensity(0.59), 0, 'sub-0.6s turns must not trigger tunnel vision');
   assert.ok(calculateGLocIntensity(0.8) > 0.1 && calculateGLocIntensity(0.8) < 0.3, '0.8s must yield subtle vignette');
   assert.equal(calculateGLocIntensity(1.8), 1.0, '1.8s sustained turn reaches full vignette intensity');
+});
+
+test('isSustainedMaxRateTurn reads the hull own ceiling, not an absolute yaw number', () => {
+  // Hauler: ceiling 1.1 rad/s — 1.05 rad/s is a cornering hold and must read as max-rate.
+  // The old absolute gate (2.2) refused it, so heavies could never G-LOC.
+  assert.equal(isSustainedMaxRateTurn(1.05, 1.1, false), true, 'near-ceiling heavy turn is max-rate');
+
+  // Scout: ceiling 3.5 rad/s — 2.3 rad/s is an ordinary turn, not a max-rate one.
+  // The old absolute gate fired here, tunnel-visioning scouts mid-cruise.
+  assert.equal(isSustainedMaxRateTurn(2.3, 3.5, false), false, 'ordinary scout turn is not max-rate');
+
+  // Boosting lowers the bar to 48% of ceiling (today's 1.4/2.2 ratio).
+  assert.equal(isSustainedMaxRateTurn(2.3, 3.5, true), true, 'boost lowers the fraction bar');
+
+  // A missing/zero/NaN ceiling fails closed — an unknown hull never fakes the read.
+  assert.equal(isSustainedMaxRateTurn(3.0, undefined, false), false, 'missing ceiling fails closed');
+  assert.equal(isSustainedMaxRateTurn(3.0, 0, false), false, 'zero ceiling fails closed');
+  assert.equal(isSustainedMaxRateTurn(3.0, NaN, false), false, 'NaN ceiling fails closed');
+  assert.equal(isSustainedMaxRateTurn(NaN, 3.0, false), false, 'NaN yaw fails closed');
 });
 
 // ---------------------------------------------------------------------------
@@ -695,6 +718,39 @@ test('sustained max-rate drift turns build peripheral vignette tunnel vision', (
       fx.step(1 / 60);
     }
     assert.equal(fx.hud.getGLocVignetteOpacity(), 0, 'recovering from high-G turn snaps vision clear');
+  } finally {
+    fx.restore();
+  }
+});
+
+test('G-LOC vignette fires on a heavy hull turning near its own low ceiling', () => {
+  const fx = mountTestFixture();
+  try {
+    // Hauler: derived ceiling 1.1 rad/s, sustained 1.05 rad/s cornering hold. The old absolute
+    // gate (2.2 rad/s) refused this, so heavies could never earn the vignette.
+    fx.player.turnRate = 1.1;
+    fx.player.angVel = 1.05;
+    for (let i = 0; i < 70; i++) {
+      fx.step(1 / 60);
+    }
+    const heavyVignette = fx.hud.getGLocVignetteOpacity();
+    assert.ok(heavyVignette > 0.1, `near-ceiling heavy turn must build tunnel vision, got opacity ${heavyVignette}`);
+  } finally {
+    fx.restore();
+  }
+});
+
+test('G-LOC vignette stays dark on a scout cruising through ordinary turns', () => {
+  const fx = mountTestFixture();
+  try {
+    // Scout: derived ceiling 3.5 rad/s, sustained 2.3 rad/s. The old absolute gate fired here,
+    // tunnel-visioning the player during ordinary steering.
+    fx.player.turnRate = 3.5;
+    fx.player.angVel = 2.3;
+    for (let i = 0; i < 70; i++) {
+      fx.step(1 / 60);
+    }
+    assert.equal(fx.hud.getGLocVignetteOpacity(), 0, 'ordinary scout turn must not trigger tunnel vision');
   } finally {
     fx.restore();
   }

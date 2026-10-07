@@ -25,6 +25,7 @@ import { SECTORS, dangerTier } from '../data/sectors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { FACTION_META } from '../data/factions.js';
 import { getSectorWayOfLife } from '../data/sectorWayOfLife.js';
+import { ALL_KILL_MACHINE_BY_ID } from '../data/environmentalMachinery.js';
 
 // dangerTier 0..5 → one-word security read (0 = safest). Pure display language.
 export const SECURITY_TIER_LABELS = ['secure', 'patrolled', 'contested', 'dangerous', 'lawless', 'lethal'];
@@ -221,7 +222,9 @@ export const sectorPostcard = {
     line(card.name, 'font-size:17px;font-weight:600;letter-spacing:0.06em');
     line(card.wayOfLife, 'opacity:0.92');
     if (card.signatureToy && card.signatureToy !== 'explicitly none') {
-      line(card.signatureToy.replace(/_/g, ' '), 'opacity:0.8');
+      // The way-of-life row carries the machine's stable id; the card shows its mouth name.
+      const toy = ALL_KILL_MACHINE_BY_ID[card.signatureToy];
+      line((toy && toy.mouth && toy.mouth.name) || card.signatureToy.replace(/_/g, ' '), 'opacity:0.8');
     }
     line([card.faction, card.securityTier && card.securityTier.toUpperCase()].filter(Boolean).join(' · '));
     if (card.hazards && card.hazards.length) {

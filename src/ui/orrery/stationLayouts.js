@@ -203,6 +203,15 @@ ${S} .sxb-ops .sx-dock__group--nav { gap:0 clamp(28px, 2.2vw, 44px) !important; 
   ${S} .sxb-ops .sx-tile__label { letter-spacing:.16em !important; }
   ${S} .sxb-ops .of-facility-rail { max-width:64vw !important; }
 }
+@media (max-width:900px) {
+  /* the crown's vital row is nowrap at berth width — once the berth stacks single-column the
+     crown only has the panel's width, and the row's overhang walks its leftmost dials (Hull,
+     Repair, Insure) off the left edge of the glass or clips them inside the crown (D112, and
+     the same collision at 701–900 — REV-D112). Let the readings wrap, anchored left where the
+     player's eye starts. */
+  ${S} .sxb-vitals { flex-wrap:wrap !important; justify-content:flex-start !important; gap:8px 10px !important; }
+  ${S} .sxb-vital { width:auto !important; min-width:96px !important; }
+}
 ${S} .sxb-ops .sx-tile { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;
   color:rgb(${BONE} / .58) !important; padding:6px 2px !important; }
 ${S} .sxb-ops .sx-tile::before, ${S} .sxb-ops .sx-tile::after { display:none !important; }

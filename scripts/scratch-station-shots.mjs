@@ -21,7 +21,7 @@ const isPortFree = (port) => new Promise((resolve) => {
 const findFreePort = async (start) => { for (let p = start; p < start + 80; p++) if (await isPortFree(p)) return p; throw new Error('no port'); };
 
 const port = await findFreePort(8200);
-const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+const child = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },  cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
 const url = `http://127.0.0.1:${port}/`;
 for (let i = 0; i < 80; i++) { try { const r = await fetch(url); if (r.ok) break; } catch (_) {} await new Promise((r) => setTimeout(r, 250)); }
 

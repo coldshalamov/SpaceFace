@@ -228,11 +228,22 @@ export function controlSections(state) {
       ['Massline dedicated reel in', 'reelIn'],
       ['Massline dedicated pay out', 'reelOut'],
       ['Deploy anchor Mass Seed (toward aim; locks on arrival, then latch it)', 'deployMassSeed'],
-      ['Deploy attractive Well (at aim; pulls light bodies & shots — heavy ships shrug)', 'deployWell'],
+      ['Deploy Well (at aim; pulls light bodies and shots — heavy ships shrug)', 'deployWell'],
       ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
-      ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
+      ['Toggle Clearing Cone (forward gravitic snowplow)', 'toggleClearingCone'],
       ['Gyre Snare (hold to beam a mass basin ahead; the first body to reach its heart is tethered in orbit — nearby mass absorbs in, katamari-style; release to bowl the clump)', 'gyreSnare'],
-      ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
+      ['Skim collector (open a scoop sheet; harvest by grazing a planet band)', 'toggleSkimCollector'],
+      // The keyboard sheet is COMPLETE: every live rebindable flight verb gets a row, same as the
+      // pad sheet. These seven shipped bound (scanPulse KeyC is the scanner verb the first-hour
+      // seam beat orders: "Pulse the scanner.") but were listed only on the pad sheet — a keyboard
+      // pilot who opened Help at the scanner moment found no answer anywhere.
+      ['Scanner pulse (reveals contacts and bright seams)', 'scanPulse'],
+      ['World Site beam (selected target)', 'siteBeam'],
+      ['Cruise drive (charge/drop)', 'cruise'],
+      ['Bullet time (hold)', 'bulletTime'],
+      ['Cloak toggle', 'cloak'],
+      ['Deploy nav beacon (open space)', 'deployBeacon'],
+      ['Jettison cargo lot', 'jettisonLot'],
       ['Drop bomb (releases at ship velocity; payload from the bomb bay)', 'dropBomb'],
       ['Cycle bomb-bay payload', 'cycleBomb'],
       ['Throw impulse charge (sticks where it lands; detonate later)', 'chargeThrow'],
@@ -270,7 +281,7 @@ export function controlSections(state) {
       ['Open local map', null, 'Map button'],
       ['Open mission log', null, 'Log button'],
       ['Open star-map', null, 'Star button'],
-      ['Pause / Help route', null, 'Pause button -> Help / Controls'],
+      ['Pause / Help route', null, 'Pause button → Help / Controls'],
     ]],
   ];
 }
@@ -283,12 +294,12 @@ function keyLabel(state, action, def) {
 const TABS = ['Controls', 'Loops', 'Ships', 'Commodities', 'Ores', 'Factions'];
 
 const GAMEPLAY_LOOPS = [
-  ['Dock and choose work', `${BINDINGS.dock.label} near a station -> Missions or Bar -> Accept + Track -> Undock`, 'Contracts become Mission Log entries and tracked nav markers; rewards fund ship upgrades and supplies.'],
-  ['Trade for upgrades', 'Market -> buy cheap cargo -> Best Trades Set Nav -> sell high', 'Cargo space turns into credits; credits buy hulls, modules, repairs, and fuel.'],
-  ['Mine into economy', 'Asteroid field -> mine ore -> sell at mining/refinery markets or manufacture', 'Mining rewards cargo space and mining slots; refined goods feed modules and hull production.'],
-  ['Refit for a job', 'Shipyard for hull role -> Outfitting for modules -> Services before launch', 'Hull choice sets capacity and slots; modules decide whether the ship fights, hauls, mines, scans, or survives.'],
-  ['Recover from losses', 'Services -> Hull Insurance -> launch; normal death returns to a station with cargo loss and 3s shields', 'Ironman is final: Run Over shows loss cause and sortie stats. Saves avoid death/respawn limbo, but Save/F5 before quitting.'],
-  ['Track objectives', `Mission Log (${BINDINGS.missionLog.label}) -> Track Nav -> HUD marker / local map (${BINDINGS.localmap.label}) / star-map (${BINDINGS.starmap.label})`, 'The log is the active objective home when you forget what the current flight is for.'],
+  ['Dock and choose work', `${BINDINGS.dock.label} near a station → Missions or Bar → Accept + Track → Undock`, 'Contracts become Mission Log entries and tracked nav markers; rewards fund ship upgrades and supplies.'],
+  ['Trade for upgrades', 'Market → buy cheap cargo → Best Trades Set Nav → sell high', 'Cargo space turns into credits; credits buy hulls, modules, repairs, and fuel.'],
+  ['Mine into economy', 'Asteroid field → mine ore → sell at mining/refinery markets or manufacture', 'Mining rewards cargo space and mining slots; refined goods feed modules and hull production.'],
+  ['Refit for a job', 'Shipyard for hull role → Outfitting for modules → Services before launch', 'Hull choice sets capacity and slots; modules decide whether the ship fights, hauls, mines, scans, or survives.'],
+  ['Recover from losses', 'Services → Hull Insurance → launch; normal death returns to a station with cargo loss and 3s shields', 'Ironman is final: Run Over shows loss cause and sortie stats. Saves avoid death/respawn limbo, but Save/F5 before quitting.'],
+  ['Track objectives', `Mission Log (${BINDINGS.missionLog.label}) → Track Nav → HUD marker / local map (${BINDINGS.localmap.label}) / star-map (${BINDINGS.starmap.label})`, 'The log is the active objective home when you forget what the current flight is for.'],
 ];
 
 // ------------------------------------------------------------------------------------------------

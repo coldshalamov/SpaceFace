@@ -422,10 +422,16 @@ export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'opt
     data: entity.data && typeof entity.data === 'object' ? { ...entity.data } : {},
   };
   const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
+  // The demote removes before the field row claims the id, so the removal path sees a
+  // recyclable id and drops the player's lock — re-arm it on the row that still resolves
+  // (the reserved claim needs the body gone first, so a reorder cannot fix this).
+  const wasTargeted = !!(state.player && state.player.targetId === id);
   if (remove) remove(id, { immediate: true, reason: String(reason || 'optic-shelve') });
   else entity.alive = false;
   snapshot.data.opticShelveReason = String(reason || 'optic-shelve');
-  return insertAsteroidFieldRock(state, snapshot);
+  const row = insertAsteroidFieldRock(state, snapshot);
+  if (wasTargeted && row && row.id === id) state.player.targetId = id;
+  return row;
 }
 
 function opticTableRadii(state, player) {

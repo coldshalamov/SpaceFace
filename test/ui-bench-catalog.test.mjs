@@ -34,7 +34,7 @@ test('backdrop stills exist and the bench page mounts every screen the catalog n
   const page = readFileSync(path.join(ROOT, 'tools', 'ui-bench.js'), 'utf8');
   const screens = new Set(UI_BENCH_SHOTS.map((shot) => shot.screen));
   for (const screen of screens) {
-    const mounted = screen === 'flight' || screen === 'crucibleHud'
+    const mounted = screen === 'flight' || screen === 'crucibleHud' || screen === 'mobileFlight'
       ? page.includes(`=== '${screen}'`) || page.includes(`'${screen}'`)
       : new RegExp(`\\n\\s+${screen}:\\s*\\(\\)`).test(page);
     assert.equal(mounted, true, `tools/ui-bench.js has no loader for ${screen}`);

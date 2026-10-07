@@ -1535,7 +1535,9 @@ export const encounterDirector = {
    * The director supplies stable provenance and a canonical world point; lawSecurity alone decides
    * jurisdiction/witnesses, and heat alone consumes an accepted receipt. */
   reportFreightTheft(live, record, pod, entity) {
-    if (!live || !record || !pod || !entity || record.terminal
+    // a side record is already terminal (its ledger closed at the death spill) but its pods are
+    // still lawful freight in the world — a theft off a second stamped hauler reports the same
+    if (!live || !record || !pod || !entity || (record.terminal && !record.sideCustody)
       || record.lawTheftIncidentReceiptId
       || record.legalOwnerKind !== 'civilian'
       || typeof record.legalOwnerStableId !== 'string' || !record.legalOwnerStableId
@@ -1574,6 +1576,10 @@ export const encounterDirector = {
 
   persistOpenFreightCustody(live, record) {
     const dir = ensureDirectorState(this.state);
+    // A second custody-stamped hauler's record is runtime-transient (encounterScripts mints it
+    // sideCustody): enqueuing it would evict a real envelope under the save cap and a restore
+    // would rebuild it into the raid's selected slot.
+    if (record && record.sideCustody === true) return false;
     if (!record || record.terminal) return this.clearOpenFreightCustody(record && record.custodyId);
     const envelope = buildPersistedFreightCustodyEnvelope(live, record, this.now());
     if (!envelope) return false;
@@ -4391,7 +4397,19 @@ function encounterScriptFor(liveOrShape) {
 
 function encounterAdmissionMinimum(item, shape) {
   if (item && item.data && item.data.ceresActivityAmbush === true) return 0;
-  if (item && item.predation && item.predation.enabled === true) return 3;
+  if (item && item.predation && item.predation.enabled === true) {
+    // The premise floor is compositional (PQ-047 residual): every authored manifest carrier plus
+    // the readable PD curtain anchor and one offensive raider must fit, or the fired plan spawns
+    // without an offensive raider and fails predation composition on the spot. The historical
+    // single-carrier floor of 3 is the lower bound.
+    const ships = Array.isArray(item.ships) ? item.ships : [];
+    const carrierRole = String(item.predation.carrierRole || 'hauler');
+    const carriers = ships.filter((ship) => ship && ship.role === carrierRole).length;
+    // an all-carrier roster has no chair for the offensive raider the plan requires — refuse the
+    // admission outright (a floor it can never meet) rather than fire and abort into a cooldown
+    if (carriers >= ships.length - 1) return ships.length + 1;
+    return Math.max(3, Math.min(ships.length, carriers + 2));
+  }
   if (item && item.variantKind === 'distress_genuine') return 2;
   if (item && Array.isArray(item.ships) && item.ships.length > 0) return 1;
   // Named hunters assemble their roster inside the script from durable captain state.

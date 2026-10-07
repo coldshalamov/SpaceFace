@@ -24,7 +24,8 @@ export const CERES_WRECK_CATHEDRAL_COURSE_POS = Object.freeze({
 });
 
 // PQ-018.cathedral-chase-read — proxy-clear framing corridor from the 440 WU safe approach to the
-// north-broadside hold. The fixed-heading chase camera looks south, so only the hull's north face
+// south-broadside hold (the hold is the −z side; player compass: +z is north). The fixed-heading
+// chase camera looks north, so only the hull's south face
 // can fill its frame; from the hold the upper-row envelope covers >=25% of the D=144 frame.
 // Autopilot still targets coursePos; this corridor is the keep-clear path and activation target.
 // Small hulls (r<=16) keep 20 WU; every roster hull keeps positive clearance.

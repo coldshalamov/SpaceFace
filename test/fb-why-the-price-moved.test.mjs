@@ -34,3 +34,21 @@ test('seed 4242 records one starved line and clears it when the price falls', ()
   assert.equal(down, null);
   assert.equal(starvedNeedLine(state, 'station_ceres', 'cmdty_ore'), null);
 });
+
+test('the starved line names the good and the berth, never their ids', async () => {
+  const { COMMODITIES } = await import('../src/data/commodities.js');
+  const id = COMMODITIES[0].id;
+  const state = { worldNews: null, meta: { seed: 4242 } };
+  const line = noteDemandShift(state, {
+    stationId: 'station_helios',
+    stationType: 'refinery',
+    stationTier: 1,
+    commodityId: id,
+    from: 10,
+    to: 40,
+    market: { [id]: { stock: 1, baseEq: 100 } },
+  });
+  assert.ok(line, 'a starved refinery produces a line');
+  assert.doesNotMatch(line.text, /cmdty_|station_/, 'raw ids must not reach the player');
+  assert.match(line.text, new RegExp(COMMODITIES[0].name));
+});

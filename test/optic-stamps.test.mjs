@@ -107,8 +107,10 @@ function bootWorld(seed = 4242) {
 test('both new stamps bind to real fight zones in sectors that are not Ceres', () => {
   // The Io bolthole shelter (focus-and-shelter row) joined the registry after this
   // fixture: it binds its own sector and is exercised by optic-focus-shelter.test.mjs.
-  assert.equal(OPTIC_STRUCTURES.length, 4);
-  assert.equal(new Set(OPTIC_STRUCTURES.map((s) => s.id)).size, 4);
+  // The Pallas knot and Ashfall redoubt (the next more-stamps row) joined after
+  // that: they bind their own sectors and are exercised by optic-more-stamps.test.mjs.
+  assert.equal(OPTIC_STRUCTURES.length, 6);
+  assert.equal(new Set(OPTIC_STRUCTURES.map((s) => s.id)).size, 6);
 
   const sites = [
     { id: SKER_GATEMOUTH_WICK_ID, zoneType: 'ambush_lane' },

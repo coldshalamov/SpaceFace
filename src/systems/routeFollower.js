@@ -582,6 +582,10 @@ export const routeFollower = {
       label,
       reason: `Route leg ${executor.legIndex + 1}/${executor.legs.length}`,
       pos,
+      // The leg owns the transition into its destination sector — stamping it lets the
+      // sector-enter retire report a truthful 'arrived' instead of 'lost-target' on the
+      // burn the leg itself earned.
+      targetSectorId: leg.toSectorId,
     };
     nav.autopilot = {
       active: true,
@@ -628,6 +632,7 @@ export const routeFollower = {
       if (routeTarget) {
         autopilot.target = null;
         autopilot.targetEntityId = null;
+        autopilot.stable = null;
         autopilot.label = '';
         autopilot.initialDistance = null;
       }
@@ -749,7 +754,7 @@ export const routeFollower = {
     this.interrupt(`gate-${reason}`, { detail: reason });
   },
 
-  _onSectorEnter({ sectorId, enterEpoch }) {
+  _onSectorEnter({ sectorId, enterEpoch, noTeleport, continuous }) {
     const nav = this.state && this.state.nav;
     const executor = nav && nav.executor;
     if (!nav || !sectorId) return;
@@ -760,7 +765,14 @@ export const routeFollower = {
     if (enterEpoch != null && this.state.world
         && this.state.world.enterSerial != null && enterEpoch !== this.state.world.enterSerial) return;
 
-    this._retireArrivedGateWaypoint(sectorId);
+    // A continuous corridor membership flip (noTeleport — free-flight Voronoi crossing) is
+    // bookkeeping only: the ship keeps its global pose and every nav fix still names a real,
+    // reachable place in the shared global_v1 frame. Only a teleporting enter — a gate jump,
+    // a drive jump, a cross-sector recovery — can strand a course aimed back at the departed
+    // region (review: the frame premise matters — nav coordinates are global, not local).
+    // world.enterSector always stamps both flags on its emits (continuous implies noTeleport);
+    // honoring either keeps a foreign continuous producer from retiring a still-valid course.
+    if (noTeleport !== true && continuous !== true) this._retireArrivedGateWaypoint(sectorId);
 
     // The chart's adjacent-sector primary action is intentionally "Set Course & Jump": it starts
     // the public world jump before the player has engaged a route executor. `ui:setCourse` still
@@ -803,30 +815,57 @@ export const routeFollower = {
 
   _retireArrivedGateWaypoint(sectorId) {
     const nav = this.state && this.state.nav;
-    const waypoint = nav && nav.waypoint;
-    if (!waypoint || waypoint.targetSectorId !== sectorId) return false;
-
-    // Only the autopilot paired with this exact gate fix is ours to release. A foreign/local target
-    // that replaced it between jump request and arrival remains untouched.
+    if (!nav) return false;
+    const waypoint = nav.waypoint;
     const autopilot = nav.autopilot;
-    const ownsAutopilot = !!(autopilot && sameXZ(autopilot.target, waypoint.pos));
-    nav.waypoint = null;
-    this._emit('nav:waypoint', null);
-    if (ownsAutopilot) {
+
+    // Called only on teleporting enters. Nav fixes are global_v1 coordinates, so they always
+    // name a real place — but after the ship teleports, an armed fix aimed back at the departed
+    // region is no longer the player's intent: whether the ship arrived on the waypoint's own
+    // gate or left some other way (a drive jump, a cross-sector recovery), the stale course
+    // retires. The waypoint proves ownership of the arrival (targetSectorId); the autopilot is
+    // released whenever it was still burning — missions can overwrite nav.waypoint mid-burn and
+    // leave an unpaired autopilot aimed at the same departed region.
+    const ownsArrival = !!(waypoint && waypoint.targetSectorId === sectorId);
+    const ownsAutopilot = !!(waypoint && autopilot && sameXZ(autopilot.target, waypoint.pos));
+    let retired = false;
+    if (waypoint) {
+      nav.waypoint = null;
+      this._emit('nav:waypoint', null);
+      retired = true;
+    }
+    if (autopilot && autopilot.active === true) {
       autopilot.active = false;
-      autopilot.status = 'arrived';
+      autopilot.status = ownsArrival && ownsAutopilot ? 'arrived' : 'lost-target';
       autopilot.target = null;
       autopilot.targetEntityId = null;
+      // The stamped bind retires with the id — a lingering stamp is inert only while every
+      // reader gates on active, so drop it with the bind it proves (review).
+      autopilot.stable = null;
       autopilot.label = '';
       autopilot.initialDistance = null;
+      // stopAutopilot parity (flightV3): the brake latches and avoidance scratch are
+      // latent-only while readers gate on active, but a stale set is a trap for a later
+      // in-place re-arm — clear them the same way the flight owner does (review).
+      autopilot.brakeSettled = false;
+      autopilot.brakeHold = false;
+      autopilot._avoidanceSide = 0;
+      autopilot._avoidanceTargetEntityId = '';
+      autopilot._avoidanceTargetX = null;
+      autopilot._avoidanceTargetZ = null;
+      if (this.state.input) {
+        this.state.input.autopilot = false;
+        if (this.state.input.actions) this.state.input.actions.brake = false;
+      }
       this._emittingAutopilot = true;
       try {
         this._emit('nav:autopilot', autopilot);
       } finally {
         this._emittingAutopilot = false;
       }
+      retired = true;
     }
-    return true;
+    return retired;
   },
 
   _onCombatHit(payload) {

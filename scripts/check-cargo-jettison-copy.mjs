@@ -15,12 +15,12 @@ assert.match(
 );
 assert.match(
   source,
-  /const name = cargoDisplayName\(commodityId\);[\s\S]*Jettisoned \$\{dumped\}x \$\{name\}/,
+  /const name = cargoDisplayName\(commodityId\);[\s\S]*Jettisoned \$\{dumped\}[x×] \$\{name\}/,
   'cargo jettison toast must use authored commodity names rather than raw cargo ids',
 );
 assert.doesNotMatch(
   source,
-  /Jettisoned \$\{dumped\}x \$\{commodityId\.replace\('cmdty_'/,
+  /Jettisoned \$\{dumped\}[x×] \$\{commodityId\.replace\('cmdty_'/,
   'cargo jettison toast must not leak raw cmdty_* ids through simple string replacement',
 );
 assert.match(

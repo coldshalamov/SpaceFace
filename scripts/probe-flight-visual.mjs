@@ -76,7 +76,7 @@ async function runViewportProbe(browser, viewport, runIndex) {
   const step = createProbeStepLogger(viewport, runIndex);
   step('new-page');
   const page = await browser.newPage({ viewport, deviceScaleFactor: viewport.deviceScaleFactor, isMobile: !!viewport.isMobile });
-  const pageIssues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
+  const pageIssues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true, ignoreProbeWarnings: true });
 
   try {
   await page.addInitScript(() => {
@@ -892,7 +892,7 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
   });

@@ -113,7 +113,8 @@ test('flying retain wakes on mining pin fact', () => {
   const state = makeWorld();
   for (let i = 0; i < 6; i++) flyStep(state);
   const rock = state.rocks[3];
-  state.player.data.miningTargetId = rock.id;
+  // The real writer is mining.js _setLockTargetId → state.player.miningTargetId (D173).
+  state.player.miningTargetId = rock.id;
   flyStep(state);
   const pins = (rock.activity && rock.activity.pins) || [];
   assert.ok(

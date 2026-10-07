@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR,
   MAX_RECORDS_PER_SECTOR,
   RECORD_KIND,
   RETENTION_CLASS,
+  bindEntityToRecord,
   captureEntityRecord,
   createEmptyRecordsBag,
   deserializeRecordsBag,
@@ -89,6 +91,7 @@ test('world retention classes normalize legacy records and fail closed on perman
     upsertRecord(bag, worldRecord(`tombstone_${i}`, {
       alive: false,
       outcome: 'destroyed',
+      named: true, // player-authored outcome: protected, never ambient
       lastSeenTick: i,
     }));
   }
@@ -100,6 +103,175 @@ test('world retention classes normalize legacy records and fail closed on perman
   const job = normalizeRecord(worldRecord('job_actor', { jobId: 'job-1' }));
   assert.equal(named.retentionClass, RETENTION_CLASS.PERMANENT);
   assert.equal(job.retentionClass, RETENTION_CLASS.PERMANENT);
+});
+
+test('ambient kill tombstones bound per sector while authored and recipe deaths stay permanent', () => {
+  const build = () => {
+    const bag = createEmptyRecordsBag();
+    // 30 ambient kills: a plain dead NPC whose only identity is the spawn machinery's
+    // positional mint ('<hint>:<seq>:<qx>:<qz>') is memorial only, and the oldest leave.
+    for (let i = 0; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
+      upsertRecord(bag, worldRecord(`ambient_dead_${i}`, {
+        alive: false,
+        outcome: 'destroyed',
+        identityKey: `kill:npc_wasp:${i}:104:-80`,
+        lastSeenTick: i,
+        lastObservedT: i,
+      }));
+    }
+    // Authored and load-bearing tombstones are older than every ambient kill and must survive.
+    // The authored-key case carries NO protective marker at all: its slot identity is the
+    // anti-respawn latch the materialize gates consult, so eviction would resurrect the dead.
+    upsertRecord(bag, worldRecord('authored_dead_named', {
+      alive: false, outcome: 'destroyed', named: true, lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('authored_dead_mission', {
+      alive: false, outcome: 'destroyed', missionId: 'mission-9', lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('authored_dead_wreck', {
+      alive: false, outcome: 'destroyed', kind: RECORD_KIND.WRECK, lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('recipe_dead', {
+      alive: false, outcome: 'destroyed', recordSource: 'sector_embodiment', lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('boss_dead', {
+      alive: false, outcome: 'defeated', isBoss: true, lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('authored_dead_slot', {
+      alive: false, outcome: 'destroyed',
+      identityKey: 'ceres_cinder_service_hauler', lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('authored_dead_claim', {
+      alive: false, outcome: 'destroyed',
+      identityKey: 'claim-depot:asteroid_x:3', lastSeenTick: -1,
+    }));
+    return bag;
+  };
+  const first = build();
+  const second = build();
+  assert.equal(Object.keys(first.byId).length, MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 7);
+  for (const id of ['authored_dead_named', 'authored_dead_mission', 'authored_dead_wreck',
+    'recipe_dead', 'boss_dead', 'authored_dead_slot', 'authored_dead_claim']) {
+    assert.ok(first.byId[id], `${id} must survive ambient-tombstone pressure`);
+  }
+  for (let i = 0; i < 6; i++) assert.equal(first.byId[`ambient_dead_${i}`], undefined,
+    'oldest ambient tombstones retire first');
+  for (let i = 6; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
+    assert.ok(first.byId[`ambient_dead_${i}`], `ambient_dead_${i} is inside the remembered window`);
+  }
+  assert.ok(first.retentionReceipts.some((receipt) => receipt.event === 'world_records_tombstone_cap'
+    && receipt.retiredRecordIds.includes('ambient_dead_0')), 'the eviction writes a bounded receipt');
+  assert.equal(first.retentionReport.sectors.sector_test.retiredTombstones, 1,
+    'the report describes the most recent cap transaction — one ambient tombstone per upsert');
+  assert.deepEqual(Object.keys(first.byId).sort(), Object.keys(second.byId).sort(),
+    'the bound is deterministic');
+});
+
+test('capture lands the semantic spawn key on the record even when a wr_* id is stamped', () => {
+  // REV-F1: the ambient bound reads record.identityKey — production tombstones are minted on
+  // entities that carry BOTH d.worldRecordId (wr_*) and the positional mint d.identityKey.
+  // The wr_* id must stay the join key while the mint lands as the classifier, or the bound
+  // can never engage on the population it exists to bound.
+  const mint = 'kill:npc_wasp:3:104:-80';
+  const captured = captureEntityRecord({
+    type: 'ship',
+    alive: false,
+    pos: { x: 104, z: -80 },
+    homeSectorId: 'sector_test',
+    data: {
+      worldRecordId: 'wr_npc_ambient_kill',
+      identityKey: mint,
+      durable: true,
+      outcome: 'destroyed',
+      durableReason: 'kill',
+      enemyTypeId: 'npc_wasp',
+    },
+  }, { sectorId: 'sector_test', seed: 1, tick: 10, simTime: 10, identityKey: mint });
+  assert.equal(captured.recordId, 'wr_npc_ambient_kill', 'the stamped id stays the join key');
+  assert.equal(captured.identityKey, mint, 'the positional mint lands as the classifier');
+  const bag = createEmptyRecordsBag();
+  upsertRecord(bag, captured);
+  const tombstone = { ...captured, alive: false, outcome: 'destroyed' };
+  upsertRecord(bag, tombstone);
+  assert.equal(bag.byId.wr_npc_ambient_kill.alive, false);
+
+  // The unstamped fallback shape (kind:type:qx:qz:tag) stays positional too.
+  const fallback = captureEntityRecord({
+    type: 'ship',
+    alive: true,
+    pos: { x: 104, z: -80 },
+    homeSectorId: 'sector_test',
+    data: { durable: true, enemyTypeId: 'npc_wasp' },
+  }, { sectorId: 'sector_test', seed: 1, tick: 10, simTime: 10 });
+  assert.match(fallback.identityKey, /:-?\d+:-?\d+:[^:]*$/,
+    'an unstamped durable body still derives a positional identity');
+
+  // An entity stamped with only a wr_* id and no semantic key keeps wr_* as its identity —
+  // protected, matching the conservative read for legacy shapes.
+  const wrOnly = captureEntityRecord({
+    type: 'ship',
+    alive: true,
+    pos: { x: 1, z: 2 },
+    homeSectorId: 'sector_test',
+    data: { worldRecordId: 'wr_legacy_only', durable: true, enemyTypeId: 'npc_wasp' },
+  }, { sectorId: 'sector_test', seed: 1, tick: 10, simTime: 10 });
+  assert.equal(wrOnly.identityKey, 'wr_legacy_only',
+    'a bare stamped id falls through to itself rather than a fresh positional mint');
+});
+
+test('a legacy kill-stamped tombstone with no identity stays protected', () => {
+  // REV-F2: durableReason 'kill' alone cannot tell a legacy ambient kill apart from an
+  // authored anti-respawn latch that predates the identityKey field. Identity-less
+  // tombstones are never ambient-evictable.
+  const bag = createEmptyRecordsBag();
+  for (let i = 0; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 4; i++) {
+    upsertRecord(bag, worldRecord(`ambient_${i}`, {
+      alive: false, outcome: 'destroyed',
+      identityKey: `kill:npc_wasp:${i}:104:-80`, lastSeenTick: i, lastObservedT: i,
+    }));
+  }
+  upsertRecord(bag, worldRecord('legacy_authored_latch', {
+    alive: false, outcome: 'destroyed', durableReason: 'kill', lastSeenTick: -1,
+  }));
+  assert.ok(bag.byId.legacy_authored_latch,
+    'an identity-less kill-stamped tombstone survives ambient pressure');
+});
+
+test('a restored bag over both caps retires tombstones and recents in one honest report', () => {
+  const build = () => {
+    const raw = {};
+    for (let i = 0; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
+      raw[`amb_${i}`] = worldRecord(`amb_${i}`, {
+        alive: false, outcome: 'destroyed',
+        identityKey: `kill:npc_wasp:${i}:104:-80`, lastSeenTick: i, lastObservedT: i,
+      });
+    }
+    for (let i = 0; i < 50; i++) {
+      raw[`live_${i}`] = worldRecord(`live_${i}`, { lastSeenTick: 100 + i, lastObservedT: 100 + i });
+    }
+    return deserializeRecordsBag({ byId: raw });
+  };
+  const first = build();
+  const second = build();
+  const retiredTombstones = MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6
+    - MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR;
+  const retiredRecent = (MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 50) - MAX_RECORDS_PER_SECTOR;
+  const report = first.retentionReport.sectors.sector_test;
+  assert.equal(Object.keys(first.byId).length, MAX_RECORDS_PER_SECTOR);
+  assert.equal(report.retiredTombstones, retiredTombstones,
+    'one transaction reports the tombstone lane it ran');
+  assert.equal(report.retiredRecent, retiredRecent,
+    'the same transaction reports the shared-cap lane without erasing the tombstone count');
+  assert.ok(first.retentionReceipts.some((receipt) => receipt.event === 'world_records_tombstone_cap'
+    && receipt.retiredRecordIds.includes('amb_0')), 'the tombstone receipt is bounded');
+  assert.ok(first.retentionReceipts.some((receipt) => receipt.event === 'world_records_cap'),
+    'the shared-cap receipt follows in the same normalize');
+  for (let i = 0; i < retiredTombstones; i++) assert.equal(first.byId[`amb_${i}`], undefined);
+  for (let i = retiredTombstones; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
+    assert.ok(first.byId[`amb_${i}`], `amb_${i} is inside the tombstone window`);
+  }
+  assert.deepEqual(Object.keys(first.byId).sort(), Object.keys(second.byId).sort(),
+    'the combined transaction is deterministic');
 });
 
 test('recent memory cap retires deterministically while aggregate and permanent records remain', () => {
@@ -257,10 +429,11 @@ test('restore normalization enforces world/resource caps and emits honest receip
   for (let i = 0; i < 60; i++) worldPermanent[`restored_dead_${i}`] = worldRecord(`restored_dead_${i}`, {
     alive: false,
     outcome: 'destroyed',
+    named: true, // player-authored outcome: protected, never ambient
   });
   const normalizedPermanent = deserializeRecordsBag({ byId: worldPermanent });
   assert.equal(Object.keys(normalizedPermanent.byId).length, 60,
-    'restored tombstones fail closed instead of being silently evicted');
+    'restored protected tombstones fail closed instead of being silently evicted');
   assert.equal(normalizedPermanent.retentionReport.sectors.sector_test.protectedOverflow, 12);
   assert.ok(normalizedPermanent.retentionReceipts.some((receipt) => receipt.protectedOverflow === 12));
 
@@ -335,4 +508,23 @@ test('retention protection is monotonic across downgrade attempts', () => {
   for (const id of ['latched_tether', 'latched_displaced', 'latched_depleted', 'latched_destroyed']) {
     assert.equal(isReclaimableResourceBody(resources.byId[id]), false);
   }
+});
+
+
+test('bindEntityToRecord restores the semantic spawn identity on rematerialized hosts', () => {
+  // A record rebound onto a fresh entity must carry identityKey forward — otherwise a
+  // later kill falls back to the stable wr_* id and mints an over-protected tombstone.
+  const entity = { id: 7, type: 'ship', data: {} };
+  bindEntityToRecord(entity, {
+    recordId: 'wr_rebound',
+    identityKey: 'kill:npc_wasp:3:104:-80',
+    homeSectorId: 'sector_test',
+    kind: RECORD_KIND.NPC,
+  });
+  assert.equal(entity.data.worldRecordId, 'wr_rebound');
+  assert.equal(entity.data.identityKey, 'kill:npc_wasp:3:104:-80');
+  // Records without a semantic identity leave the field unset rather than fabricate one.
+  const legacy = { id: 8, type: 'ship', data: {} };
+  bindEntityToRecord(legacy, { recordId: 'wr_legacy', kind: RECORD_KIND.NPC });
+  assert.equal(legacy.data.identityKey, undefined);
 });

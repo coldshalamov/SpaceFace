@@ -20,6 +20,8 @@ import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { CANONICAL_PORTRAITS, PORTRAIT_ASSET_ROOT } from '../../data/portraits.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
+import { lossesFor } from '../../systems/lossLedger.js';
+import { discoveryKnowledge } from '../sim/discoveryKnowledge.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from '../shipLedgerPanel.js';
@@ -277,6 +279,67 @@ function countEncounteredGraffiti(story = {}) {
   return count;
 }
 
+function surveyedLossId(entry) {
+  const id = entry && typeof entry.id === 'string' ? entry.id : '';
+  return id.startsWith('survey:') ? id.slice('survey:'.length) : '';
+}
+
+/** The name the ledger filed for this hull. A coordinate is not a name. */
+function ledgerDisplayTitle(loss) {
+  if (!loss || typeof loss !== 'object') return '';
+  for (const value of [loss.victimCallsign, loss.victimName, loss.title]) {
+    if (typeof value !== 'string') continue;
+    const clean = value.replace(/\s+/g, ' ').trim();
+    if (clean) return clean;
+  }
+  return '';
+}
+
+function titleForSurveyedLoss(state, entry) {
+  const lossId = surveyedLossId(entry);
+  if (!lossId) return '';
+  const inSector = entry && entry.sectorId ? lossesFor(state, entry.sectorId) : [];
+  let loss = inSector.find((row) => row && row.lossId === lossId) || null;
+  if (!loss) {
+    const all = state && state.lossLedger && Array.isArray(state.lossLedger.entries)
+      ? state.lossLedger.entries : [];
+    loss = all.find((row) => row && row.lossId === lossId) || null;
+  }
+  return ledgerDisplayTitle(loss);
+}
+
+export function surveyedLossCodexLine(state) {
+  const titles = [];
+  let count = 0;
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (!entry || entry.tier !== 'survey') continue;
+    count += 1;
+    const title = titleForSurveyedLoss(state, entry);
+    if (title) titles.push(title);
+  }
+  if (count <= 0) return '';
+  const named = titles.length ? ': ' + titles.join(', ') : '';
+  if (count === 1) return 'One loss identified' + named;
+  return count + ' losses identified' + named;
+}
+
+/** Discoveries survey sentence. Counts only — never a place. */
+export function confirmedRumorCodexLine(state) {
+  let count = 0;
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (entry && entry.tier === 'resolved' && entry.source === 'frontierRumor') count += 1;
+  }
+  if (count <= 0) return '';
+  if (count === 1) return 'One rumor confirmed';
+  return count + ' rumors confirmed';
+}
+
+export function surveyStatusBody(state) {
+  const base = 'Fly close to unresolved signals and triangulate them to chart the frontier.';
+  const extra = [surveyedLossCodexLine(state), confirmedRumorCodexLine(state)].filter(Boolean);
+  return extra.length ? base + ' ' + extra.join('. ') + '.' : base;
+}
+
 export function codexProgressSummary(story = {}, state = null) {
   const beat = storyBeatIndex(story);
   let commsTotal = COLD_START.length;
@@ -303,12 +366,17 @@ export function codexProgressSummary(story = {}, state = null) {
   ];
   if (state) {
     const gal = galaxyExplorationSummary(state);
-    items.push({ key: 'Survey', value: gal.overallPercent + '% (' + gal.foundPois + '/' + gal.totalPois + ' sites)' });
+    const surveyed = surveyedLossCodexLine(state);
+    const confirmed = confirmedRumorCodexLine(state);
+    const surveyValue = gal.overallPercent + '% (' + gal.foundPois + '/' + gal.totalPois + ' sites)'
+      + (surveyed ? ' · ' + surveyed : '')
+      + (confirmed ? ' · ' + confirmed : '');
+    items.push({ key: 'Survey', value: surveyValue });
   }
   return {
     beat,
     phase,
-    note: 'Locked counts mean future entries are intentionally hidden until story progress, encounter flags, or conditional signal triggers reveal them.',
+    note: 'Locked entries are hidden on purpose until you reach them in the story.',
     items,
   };
 }
@@ -1382,7 +1450,7 @@ export const codexScreen = {
       sub: gal.overallPercent + '% · ' + gal.foundPois + '/' + gal.totalPois + ' sites',
       title: 'Galaxy Cartography & Survey Status',
       meta: 'Survey',
-      body: 'Fly close to unresolved signatures or perform deep triangulations to expand known frontier cartography.',
+      body: surveyStatusBody(state),
     });
     survey.article.setAttribute('aria-label', 'Survey and cartography summary');
     const heroes = el('div', 'k-words k-words--row');
@@ -1875,7 +1943,7 @@ export const codexScreen = {
       });
       const sectionLabel = label + ' (' + visible.length + '/' + entries.length + ')';
       if (!visible.length) {
-        this._section(sectionLabel, [], key === 'traps' ? '— no conditional signals encountered yet —' : '— nothing encountered yet —');
+        this._section(sectionLabel, [], key === 'traps' ? '— none found yet —' : '— nothing encountered yet —');
         continue;
       }
       this._section(sectionLabel, visible.map((c) => makeEntry({

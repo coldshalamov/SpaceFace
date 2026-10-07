@@ -7,6 +7,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import { UNIQUE_WRECKS, uniqueWreckById } from '../src/data/uniqueWrecks.js';
 import { FLAVOR_SOURCE_BY_REF } from '../src/data/flavor/index.generated.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
+import { TETHYS_BLACK_MARKET_DISCOVERY, TETHYS_BLACK_MARKET_RUN } from '../src/data/frontierRumors.js';
 import { missionReceiptFor, missions } from '../src/systems/missions.js';
 import { RUMOR_EVENT_BY_CHANNEL, uniqueWrecks } from '../src/systems/uniqueWrecks.js';
 import { missionCommandBrief, objectiveText } from '../src/ui/screens/missionLog.js';
@@ -1188,6 +1189,18 @@ test('every compiled stage uses the normal standing ladder before any credit, ca
     const threshold = missionData.missionMinRepForRisk(offer.riskTier);
     const state = baseState({ seed: 921 });
     state.factions[offer.factionId] = { rep: threshold - 1 };
+    // The berth gate is a world precondition beside the offer's standing ladder: the fixture's
+    // pilot has already earned the same access the live berth requires (repGated berths are
+    // covered by the rep-500 factions; the closed Den needs the delivered entrance run).
+    state.world.frontierRumors = {
+      byId: {
+        [TETHYS_BLACK_MARKET_DISCOVERY.rumorId]: {
+          phase: 'contacted',
+          contactId: TETHYS_BLACK_MARKET_DISCOVERY.contactId,
+          entranceRun: { runId: TETHYS_BLACK_MARKET_RUN.runId, phase: 'delivered' },
+        },
+      },
+    };
     state.missions.boards[offer.stationId] = { refreshEpoch: offer.cause.startEpoch, slots: [offer] };
     const bus = new Bus();
     const missionSystem = { ...missions };

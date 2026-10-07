@@ -5,6 +5,7 @@ import { createLoadingProgressModel } from '../loadingProgressModel.js';
 export function bootRingWorkerRuntime(makeModel) {
   const model = makeModel();
   let canvas, ctx, scale = 1, timer = null, running = false, reduced = false;
+  let fontReady = false, cellW = 0;
   let frames = 0, lastReport = 0, epoch = 0, lastDrawAt = -Infinity;
   const marks = new Set();
   // Cadence: the main thread forwards its vsync-aligned rAF as 'frame' beats, so the
@@ -12,6 +13,39 @@ export function bootRingWorkerRuntime(makeModel) {
   // stepping. The internal timer is only a safety net for throttled/occluded hosts.
   const beatInterval = () => reduced ? 240 : 14;
   const netInterval = () => reduced ? 250 : 100;
+  // The reading is the interface's thin numeral: Archivo 300 once the face has loaded here (a worker does not
+  // inherit the page's fonts), the system face until then. Digits sit in fixed cells so 63.9 -> 64.0 never shivers.
+  function drawNumeral(text) {
+    const family = fontReady ? '"Archivo", system-ui, sans-serif' : 'system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.font = `300 28px ${family}`;
+    if (!cellW) cellW = (ctx.measureText('0') || {}).width || 17;
+    const pctFont = `400 16px ${family}`;
+    const advance = (ch) => ch === '.' ? cellW * .5 : ch === '%' ? cellW * .95 : cellW;
+    let total = 0;
+    for (const ch of text) total += advance(ch);
+    let x = 88 - total / 2;
+    for (const ch of text) {
+      const pct = ch === '%';
+      ctx.font = pct ? pctFont : `300 28px ${family}`;
+      ctx.fillStyle = pct ? 'rgba(223,238,255,.55)' : '#dfeeff';
+      const w = advance(ch);
+      // centre each glyph in its own cell (the narrow ones too), so the dot and percent sign sit true
+      const gw = (ctx.measureText(ch) || {}).width || w;
+      ctx.fillText(ch, x + (w - gw) / 2, 198);
+      x += w;
+    }
+  }
+  function loadFace(url) {
+    try {
+      if (!url || typeof FontFace !== 'function' || typeof self === 'undefined' || !self.fonts) return;
+      const face = new FontFace('Archivo', `url(${url})`, { weight: '100 900', stretch: '62% 125%' });
+      face.load().then(() => {
+        self.fonts.add(face); fontReady = true; cellW = 0;
+        if (ctx) draw();
+      }).catch(() => { /* the system face stays: decoration never blocks boot */ });
+    } catch (_) { /* same */ }
+  }
   function draw() {
     if (!ctx) return;
     const t = performance.now();
@@ -37,8 +71,7 @@ export function bootRingWorkerRuntime(makeModel) {
       ctx.beginPath(); ctx.moveTo(88 + 57 * Math.cos(a), 88 + 57 * Math.sin(a));
       ctx.lineTo(88 + 69 * Math.cos(a), 88 + 69 * Math.sin(a)); ctx.stroke();
     }
-    ctx.fillStyle = '#b8dcff'; ctx.textAlign = 'center';
-    ctx.font = '500 15px system-ui, sans-serif'; ctx.fillText(model.format(), 88, 195);
+    drawNumeral(model.format());
     frames++;
     if (t - lastReport > 240) {
       lastReport = t;
@@ -68,6 +101,7 @@ export function bootRingWorkerRuntime(makeModel) {
         canvas.addEventListener?.('contextlost', () => { stop(); postMessage({ type: 'failed' }); });
         model.report(data.stage || { id: 'boot-modules', progress: 0 }, performance.now());
         reduced = data.reduced === true; model.setReduced(reduced);
+        loadFace(data.fontUrl);
         draw(); postMessage({ type: 'ready' }); run();
       } else if (data.type === 'stage') {
         if (data.reset) { marks.clear(); epoch = data.epoch ?? epoch + 1; }
@@ -87,7 +121,7 @@ export function bootRingWorkerRuntime(makeModel) {
   };
 }
 
-export function createBootRingWorker(canvas, { stage, reduced, onReady, onSample, onFailure } = {}) {
+export function createBootRingWorker(canvas, { stage, reduced, fontUrl, onReady, onSample, onFailure } = {}) {
   if (typeof globalThis.Worker !== 'function' || typeof canvas?.transferControlToOffscreen !== 'function') return null;
   let worker = null, url = null, deadline = null, disposed = false;
   function revoke() { if (url) URL.revokeObjectURL(url); url = null; }
@@ -109,7 +143,7 @@ export function createBootRingWorker(canvas, { stage, reduced, onReady, onSample
       else if (data.type === 'failed') fail(data.message);
     };
     const offscreen = canvas.transferControlToOffscreen();
-    worker.postMessage({ type: 'init', canvas: offscreen, stage, reduced,
+    worker.postMessage({ type: 'init', canvas: offscreen, stage, reduced, fontUrl,
       dpr: Math.min(2, globalThis.devicePixelRatio || 1) }, [offscreen]);
     deadline = setTimeout(() => fail('worker handshake timeout'), 2000);
     return { post(data) { if (!disposed) worker.postMessage(data); }, destroy: dispose };

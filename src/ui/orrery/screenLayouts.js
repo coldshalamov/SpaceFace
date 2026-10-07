@@ -13,8 +13,8 @@ export const ORRERY_SCREEN_CSS = `
   position:relative; overflow:hidden; filter:drop-shadow(0 2px 14px rgb(0 0 0 / .55)); }
 .of-title.orr-title .dp-logotype::after { content:""; position:absolute; inset:0; pointer-events:none;
   background:linear-gradient(100deg, transparent 38%, rgb(255 240 210 / .95) 50%, transparent 62%);
-  transform:translateX(-130%); animation:orr-mark-sweep 11s ease-in-out 1.4s infinite; }
-@keyframes orr-mark-sweep { 0% { transform:translateX(-130%); } 20%, 100% { transform:translateX(130%); } }
+  background-size:300% 100%; background-position:130% 0; animation:orr-mark-sweep 11s ease-in-out 1.4s infinite; }
+@keyframes orr-mark-sweep { 0% { background-position:130% 0; } 20%, 100% { background-position:-30% 0; } }
 html.sf-reduce-motion .of-title.orr-title .dp-logotype::after { animation:none; display:none; }
 .of-title.orr-title .dp-title__rule { display:none; }
 /* the name stands on the emblem: above the dial, each letter cut clear of the rings by a halo of dark */

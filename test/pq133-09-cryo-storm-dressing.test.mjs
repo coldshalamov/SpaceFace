@@ -205,7 +205,7 @@ test('cryo install builds the quadrant frame, both props, plates and the shutter
   assert.equal(names.filter((n) => n === 'law_pylon').length, 0,
     'zero-strength occupancy markers never grow pylons');
 
-  // Corner posts sit at the authored quadrant corners — cryoQuadrantKey: north = +z.
+  // Corner posts sit on the cryo keys. nw/ne are +z, player north, the top of the flight view.
   const frame = room.parts.find((p) => p.root.name === 'cryo_frame').root;
   const postAt = (k) => frame.children.find((c) => c.name === `cryo_post_${k}`);
   const R = 420 * 0.5;

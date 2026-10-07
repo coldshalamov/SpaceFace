@@ -23,7 +23,7 @@ import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg, hasGlyph } from './glyphs.js';
-import { wantedReasonText } from './wantedReason.js';
+import { wantedAlertText, wantedReasonText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
 import { SHIPS } from '../data/ships.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
@@ -186,6 +186,14 @@ export function calculateHudGLagTarget(player, dt, lastVel, isBoosting = false) 
 export function calculateGLocIntensity(sustainedTime) {
   if (!Number.isFinite(sustainedTime) || sustainedTime <= 0.6) return 0;
   return Math.min(1.0, (sustainedTime - 0.6) / 1.2);
+}
+
+// Max-rate = turning at >=75% of the hull's OWN derived yaw ceiling (the old absolute 2.2 rad/s bar
+// was ~75% of the mid fleet hull's ~2.9 rad/s ceiling); boost lowers the bar to 48% of ceiling,
+// today's 1.4/2.2 ratio. A missing/zero ceiling fails closed — an unknown hull never fakes the read.
+export function isSustainedMaxRateTurn(turnRate, turnCeiling, isBoosting = false) {
+  if (!Number.isFinite(turnRate) || !Number.isFinite(turnCeiling) || turnCeiling <= 0) return false;
+  return turnRate > turnCeiling * (isBoosting ? 0.48 : 0.75);
 }
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
@@ -1714,7 +1722,7 @@ export function createHud(ctx, alerts) {
   // same trick the feed above uses, and it keeps every listener those modules installed.
   const commsTape = document.createElement('div');
   commsTape.className = 'sf-commtape';
-  commsTape.innerHTML = '<span class="sf-commtape__band">BAND</span>'
+  commsTape.innerHTML = '<span class="sf-commtape__band">RADIO</span>'
     + '<span id="news-ticker" class="sf-commtape__news" hidden></span>'
     + '<span class="sf-commtape__slots"></span>';
   const newsTickerHost = commsTape.querySelector('#news-ticker');
@@ -3815,7 +3823,7 @@ export function createHud(ctx, alerts) {
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         const ok = await confirm({
           title: 'Confirm Jettison',
-          body: `Are you sure you want to jettison ${dumpQty}x ${name}? This action is permanent.${sealed > 0 ? ` (${sealed} units are sealed for a contract and stay aboard.)` : ''}`,
+          body: `Are you sure you want to jettison ${dumpQty}× ${name}? This action is permanent.${sealed > 0 ? ` (${sealed} units are sealed for a contract and stay aboard.)` : ''}`,
           confirmLabel: 'Jettison',
           danger: true
         });
@@ -3939,7 +3947,7 @@ export function createHud(ctx, alerts) {
           rowsHtml += `
             <div class="sf-ledger-row">
               <div class="sf-ledger-left">
-                <span class="sf-ledger-title"><span class="sf-ledger-side ${sideClass}">${sideText}</span> ${qty}x ${name}</span>
+                <span class="sf-ledger-title"><span class="sf-ledger-side ${sideClass}">${sideText}</span> ${qty}× ${name}</span>
                 <span class="sf-ledger-station">${stn} (${age})</span>
               </div>
               <div class="sf-ledger-right">
@@ -4120,7 +4128,7 @@ export function createHud(ctx, alerts) {
       const dumped = cargoSys.jettison(commodityId, qty || 1);
       if (dumped > 0) {
         const name = cargoDisplayName(commodityId);
-        ctx.bus.emit('toast', { text: `Jettisoned ${dumped}x ${name}`, kind: 'warn', ttl: 2 });
+        ctx.bus.emit('toast', { text: `Jettisoned ${dumped}× ${name}`, kind: 'warn', ttl: 2 });
       }
     }
   });
@@ -4241,14 +4249,13 @@ export function createHud(ctx, alerts) {
     ctx.bus.on('heat:changed', (p) => {
       const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
       const wanted = v >= 0.15;
-      const tier = v >= 0.6 ? 'HIGH' : v >= 0.35 ? 'MODERATE' : 'LOW';
       const reason = wantedReasonText(p, state.player);
       if (wanted && !wantedActive) {
-        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED · LAW ENFORCEMENT ACTIVE' + reason, ttl: Infinity });
+        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, false), ttl: Infinity });
         wantedActive = true;
       } else if (wanted && wantedActive) {
         // refresh the text to show the new tier (raise dedups by key but updates text/sev)
-        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED (' + tier + ') · HUNTERS INBOUND' + reason, ttl: Infinity });
+        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, true), ttl: Infinity });
       } else if (!wanted && wantedActive) {
         alerts.clear('wanted');
         wantedActive = false;
@@ -4805,7 +4812,7 @@ export function createHud(ctx, alerts) {
     const scannedWreck = c.isWreck && wreckScanned(e);
     const data = e.data || {};
     const name = data.callsign || data.name || data.trafficRole || data.role || e.role
-      || (c.isWreck ? 'Derelict' : 'Ship');
+      || (c.isWreck ? ((scannedWreck && data.scanLabel) || 'Derelict') : 'Ship');
 
     // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
     // + weak-point callout (GDD 2.0 §7.4).
@@ -5366,7 +5373,7 @@ export function createHud(ctx, alerts) {
         angVel = p.angularVelocity;
       }
       const turnRate = Math.abs(angVel);
-      const isMaxRateTurn = (turnRate > 2.2) || (turnRate > 1.4 && isBoosting);
+      const isMaxRateTurn = isSustainedMaxRateTurn(turnRate, p.turnRate, isBoosting);
       if (isMaxRateTurn) {
         gLocSustainedTime += frameDt;
       } else {

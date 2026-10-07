@@ -448,10 +448,41 @@ export function createAsteroidMotionTracker() {
     if (rec) rec.chargeT0 = -1;
   }
 
+  // Shockwave sweep pass (src/combat/shockwaveSweep.js): the blast wave's front just
+  // overtook this rock. The receipt already carries the graded shove (level, deltaV,
+  // push direction, deterministic lever bias) — translate it into the same lever-arm
+  // body language a solver impact produces: contact shudder along the push axis, spin
+  // tilted by the wave's oblique arrival. Render-only; the sim delivered the real Δv.
+  function onShockwavePass(payload) {
+    if (!payload || payload.targetId == null) return;
+    const rec = asteroidStates.get(payload.targetId);
+    if (!rec) return;
+    const dv = Math.min(40, Number(payload.deltaV) || 0);
+    const pushX = Number(payload.dirX) || 0;
+    const pushZ = Number(payload.dirZ) || 0;
+    const tumble = payload.level === 'tumble';
+    rec.wobbleMag = Math.min(0.3, rec.wobbleMag + (tumble ? 0.1 + dv * 0.008 : 0.045));
+    if (!(pushX || pushZ)) return;
+    const kick = Math.min(3.2, (tumble ? 0.6 : 0.25) + dv * 0.22);
+    rec.shoveVelX += pushX * kick;
+    rec.shoveVelZ += pushZ * kick;
+    const lever = Number(payload.lever) || 0;
+    // spinYaw already carries the sim's ω ∝ 1/R inertia law, and the tumble advance
+    // multiplies every spin axis by the size factor again (big rocks carry spin slowly)
+    // — pre-divide the yaw or a large rock under-answers the same wave ~5x vs a solver
+    // hit. The lever axes are flat dv terms with no inertia law of their own: they keep
+    // the size scaling so a big rock's pitch/roll stays heavy.
+    const sizeFactor = resolveAsteroidSizeFactor(rec.radius) || 1;
+    rec.spinY += (Number(payload.spinYaw) || 0) / sizeFactor;
+    rec.spinX += lever * dv * 0.012;
+    rec.spinZ -= lever * dv * 0.012;
+  }
+
   function bindEvents(bus) {
     if (!bus || typeof bus.on !== 'function') return;
     busSubscribers.push(bus.on('combat:damage', onDamage, { presentation: true }));
     busSubscribers.push(bus.on('physics:impact', onImpact, { presentation: true }));
+    busSubscribers.push(bus.on('combat:shockwavePass', onShockwavePass, { presentation: true }));
     // `mining:beamContact` is never emitted by the sim — the live beam lifecycle pair is
     // mining:start / mining:stop (src/systems/mining.js). Keep combat:beamStop as a failsafe.
     busSubscribers.push(bus.on('mining:start', onMiningContact));

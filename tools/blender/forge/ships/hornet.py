@@ -16,6 +16,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 import ANI_37  # noqa: E402
 
 SHIP_ID = 'hornet'
+# Hardpoint sockets (SFQ-B172): the modeled hardware carries the stations. The twin cannon pods
+# and the twin close-coupled nozzles each get their own socket, so fire, plume and wake resolve
+# to the barrel muzzles and bell faces. The centerline defaults (SOCKET_Weapon_Front,
+# SOCKET_Engine_Main, SOCKET_Trail_Main) are deliberately absent — this hull models no centerline
+# gun or drive — and the runtime must not plant generic ones on an integrated body.
+SOCKETS = {
+    'SOCKET_Weapon_Port': (-1.05, 4.15, 0.0), 'SOCKET_Weapon_Starboard': (-1.05, -4.15, 0.0),
+    'SOCKET_Engine_Port': (-5.2, 0.5, 0.04), 'SOCKET_Engine_Starboard': (-5.2, -0.5, 0.04),
+    'SOCKET_Trail_Port': (-5.45, 0.5, 0.04), 'SOCKET_Trail_Starboard': (-5.45, -0.5, 0.04),
+}
 COLORS = {
     'paint': '#d6951a',    # yellow jacket, deep amber (pure yellow reads as a toy)
     'paint2': '#2a2d33',   # graphite
@@ -70,6 +80,14 @@ def studs(pts, parts, size=0.07, proud=0.035):
 def build():
     F.reset_scene()
     s = F.Ship(SHIP_ID, COLORS)
+    s.socket_names = [
+        # Standard stations this hull keeps at their default stations (no authored hardware
+        # relocates them). The centerline hardware defaults are omitted on purpose: see SOCKETS.
+        'SOCKET_Camera_Focus', 'SOCKET_Cargo_Ventral', 'SOCKET_Mining_Front',
+        'SOCKET_RCS_Port', 'SOCKET_RCS_Starboard', 'SOCKET_Tether_Massline', 'SOCKET_Utility_Dorsal',
+    ] + list(SOCKETS)
+    for name, pos in SOCKETS.items():
+        s.socket(name, pos)
 
     # Fuselage: sensor nose -> cockpit bulge -> engine block. Belly graphite.
     F.loft(s, 'Fuselage', [

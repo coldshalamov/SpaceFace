@@ -14,6 +14,10 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SHOT = '.devshots/perf/mission-log-map-handoff.jpg';
+// Same starvation allowance class as check-bar-mission-readiness: the loaded headless host
+// brick-walls frames for hundreds of ms and serial shader compiles stall the module graph, so
+// navigation/boot waits budget wall-clock, not gameplay behavior.
+const HEAVY_TIMEOUT_MS = 90000;
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -23,12 +27,12 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page);
+  const issues = collectPageIssues(page, { playerStoreMounted: false });
 
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: HEAVY_TIMEOUT_MS });
   // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
   // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
   // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms
@@ -36,14 +40,14 @@ try {
   // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: HEAVY_TIMEOUT_MS, polling: 250 });
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Mission Log Map Runtime', seed: 47 }));
   await page.waitForFunction(() => {
     const sf = window.SF;
     const state = sf && sf.state;
     const player = state && state.entities && state.entities.get(state.playerId);
     return !!(state && state.mode === 'flight' && player && player.alive);
-  }, null, { timeout: 45000 });
+  }, null, { timeout: HEAVY_TIMEOUT_MS, polling: 250 });
 
   const report = await page.evaluate(async () => {
     const sf = window.SF;
@@ -59,6 +63,9 @@ try {
       sf.state.missions.active = [mission];
       sf.state.ui.trackedMissionId = mission.id;
       sf.state.nav.waypoint = waypoint;
+      // The staged tutorial owns the single command row while onboarding is live —
+      // this probe models a post-tutorial pilot so the tracked contract owns its rec.
+      if (sf.state.onboarding) { sf.state.onboarding.active = false; sf.state.onboarding.finished = true; }
       if (sm.closeAll) sm.closeAll();
       sm.pushScreen('missionLog');
       if (sm.syncVisibility) sm.syncVisibility();
@@ -86,7 +93,11 @@ try {
       reason: 'Deliver runtime provisions to Tethys Junction',
     });
     const starButton = log && log.querySelector('.sf-mlog-btn-map[data-screen-id="galaxyMap"][data-map-focus="galaxy"]');
-    const recStarButton = log && log.querySelector('.sf-mlog-rec-map[data-screen-id="galaxyMap"][data-map-focus="galaxy"]');
+    // 87e5cea34 (Mission Log r3): a tracked contract already hangs on the stage, so its
+    // recommendation collapses to the minimal "Now" line keyed by mission id — the map handoff
+    // lives on the card (.sf-mlog-btn-map), not a second button in the rec row.
+    const recNowStar = log && log.querySelector('.sf-mlog-rec-item.is-now[data-mid="mission_runtime_star"]');
+    const recItemHtml = log && (log.querySelector('.sf-mlog-rec-item') || {}).outerHTML || null;
     const starText = visibleText('[data-screen="missionLog"]');
     if (starButton) starButton.click();
     await new Promise((resolve) => setTimeout(resolve, 120));
@@ -148,19 +159,45 @@ try {
       pos: { x: 240, z: -80 },
     });
     const localButton = log && log.querySelector('.sf-mlog-btn-map[data-screen-id="galaxyMap"][data-map-focus="local"]');
-    const recLocalButton = log && log.querySelector('.sf-mlog-rec-map[data-screen-id="galaxyMap"][data-map-focus="local"]');
+    const recNowLocal = log && log.querySelector('.sf-mlog-rec-item.is-now[data-mid="mission_runtime_local"]');
     const localText = visibleText('[data-screen="missionLog"]');
     if (localButton) localButton.click();
     await new Promise((resolve) => setTimeout(resolve, 160));
     const localTop = sm.top && sm.top();
     const localDef = sm.getActiveScreenDef && sm.getActiveScreenDef();
     const localLevel = localDef && typeof localDef._activeLevel === 'function' ? localDef._activeLevel() : null;
+    // Capture the map's geometry eagerly here — the Path-B block below re-pushes missionLog,
+    // which hides the map again before the report object is assembled.
     const galaxyMap = document.getElementById('sf-galaxymap');
+    const galaxyMapWidth = galaxyMap ? galaxyMap.getBoundingClientRect().width : 0;
     const galaxyMapText = (galaxyMap?.textContent || '').replace(/\s+/g, ' ').trim();
+
+    // Path-B pin: a non-tracked recommendation (the trade route) still renders the full rec
+    // row with its own chart handoff — the collapse applies only to a tracked contract.
+    sf.state.missions.active = [];
+    sf.state.ui.trackedMissionId = null;
+    if (sf.state.onboarding) { sf.state.onboarding.active = false; sf.state.onboarding.finished = true; }
+    sf.state.nav.waypoint = {
+      kind: 'trade',
+      stationId: 'station_tethys',
+      sectorId: 'sector_tethys_junction',
+      sectorName: 'Tethys Junction',
+      commodityId: 'cmdty_ore_iron',
+      label: 'Tethys trade lane',
+    };
+    if (sm.closeAll) sm.closeAll();
+    sm.pushScreen('missionLog');
+    if (sm.syncVisibility) sm.syncVisibility();
+    await new Promise((resolve) => setTimeout(resolve, 160));
+    const tradeLog = document.querySelector('[data-screen="missionLog"]');
+    const recMapButton = tradeLog && tradeLog.querySelector('.sf-mlog-rec-map[data-screen-id="galaxyMap"]');
 
     return {
       starButton: !!starButton,
-      recStarButton: !!recStarButton,
+      recNowStar: !!recNowStar,
+      recItemHtml,
+      recNowLocal: !!recNowLocal,
+      recMapButton: !!recMapButton,
       starText,
       starTop,
       starLevel,
@@ -169,18 +206,20 @@ try {
       starLocalTop,
       starLocalLevel,
       localButton: !!localButton,
-      recLocalButton: !!recLocalButton,
       localText,
       localTop,
       localLevel,
-      galaxyMapVisible: !!(galaxyMap && galaxyMap.getBoundingClientRect().width > 400),
+      galaxyMapVisible: galaxyMapWidth > 400,
       galaxyMapText,
     };
   });
 
   assert.ok(!report.error, report.error || 'mission log runtime error');
   assert.equal(report.starButton, true, 'off-sector tracked mission should render a Star Map button');
-  assert.equal(report.recStarButton, true, 'tracked recommendation should render a Star Map button');
+  assert.equal(report.recNowStar, true,
+    'a tracked contract on the stage should collapse its recommendation to the Now row; rec=' + (report.recItemHtml || 'none'));
+  assert.equal(report.recMapButton, true,
+    'a non-tracked recommendation (trade route) should still render the rec-level chart handoff');
   assert.match(report.starText, /STAR MAP/i, 'off-sector Mission Log text should include the Star Map handoff');
   assert.equal(report.starTop, 'galaxyMap', 'clicking the off-sector handoff should open the unified galaxyMap');
   assert.equal(report.starLevel, 'galaxy', 'off-sector handoff should open galaxyMap at GALAXY focus');
@@ -190,7 +229,8 @@ try {
   assert.equal(report.starLocalTop, 'galaxyMap', 'clicking the Star Map local objective handoff should open galaxyMap');
   assert.equal(report.starLocalLevel, 'local', 'legacy starmap Local Map CTA should open galaxyMap at LOCAL focus');
   assert.equal(report.localButton, true, 'same-sector tracked mission should render a Local Map button');
-  assert.equal(report.recLocalButton, true, 'tracked recommendation should render a Local Map button');
+  assert.equal(report.recNowLocal, true,
+    'the same-sector tracked contract should also collapse its recommendation to the Now row');
   assert.match(report.localText, /LOCAL MAP/i, 'same-sector Mission Log text should include the Local Map handoff');
   assert.equal(report.localTop, 'galaxyMap', 'clicking the same-sector handoff should open the unified galaxyMap');
   assert.equal(report.localLevel, 'local', 'same-sector handoff should open galaxyMap at LOCAL focus');
@@ -210,10 +250,14 @@ try {
 async function startFreshServer() {
   const port = await findFreePort(8190);
   const url = `http://127.0.0.1:${port}/`;
+  // SPACEFACE_PLAYER_STORE_DIR='' is the designed explicit unmount — a probe must not write
+  // autosaves into the machine's real player save drawer. The unmounted route 404s fast and
+  // the client takes its localStorage fallback, so no store request can stall under load.
   const child = spawn(process.execPath, ['server.js', String(port)], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
   });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };

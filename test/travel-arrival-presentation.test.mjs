@@ -49,7 +49,7 @@ test('both arrival cues are part of the shipped travel vocabulary', () => {
 
 test('entering a sector emits the oriented landing and the identity beat for the player hull, on the arrival heading', () => {
   const { host, cues, player } = orchestratorHost();
-  host._onTravelSectorEnter({ sectorId: 'sector_ceres_belt', continuous: true, entryPoint: { x: 0, z: 0, heading: 0 }, sector: { palette: { fill: 0xffb13d } }, firstVisit: true });
+  host._onTravelSectorEnter({ sectorId: 'sector_ceres_belt', continuous: true, entryPoint: { x: 0, z: 0, heading: 0 }, sector: { palette: { fill: 0xbca58d } }, firstVisit: true });
   const ids = cues.map((c) => c.id);
   assert.deepEqual(ids, ['travel.arrival.oriented', 'travel.arrival.sector_identity']);
   for (const cue of cues) {

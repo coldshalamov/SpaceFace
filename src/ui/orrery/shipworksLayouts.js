@@ -221,7 +221,6 @@ ${W} .sx-sw-hero .k-hero__n { font-family:var(--dp-face-display, "Archivo") !imp
   text-transform:none !important; text-shadow:none !important; }
 ${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 ${W} .sx-sw-hero[data-band='condition'] { display:none !important; }
-${W} .sx-sw-bar.sx-sw-bar--topSpeed { display:none !important; }
 ${W} .sx-sw-ghost { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) .k-hero__n { color:var(--dp-hand-hot, #ffd98c) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) { outline:none !important; }
@@ -980,6 +979,55 @@ ${W} .sx-sw__explode.is-empty .sx-sw__module-ink { color:rgb(206 202 192); }
 ${W} .sx-sw__explode.is-empty .sx-sw__module-ink * { stroke-dasharray:2 2.2; }
 ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:650; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650;
   letter-spacing:.12em; fill:rgb(236 232 222); paint-order:stroke; stroke:rgb(4 6 9 / .94); stroke-width:4px; stroke-linejoin:round; opacity:var(--explode-out, 1); }
+
+/* a berth under ~700px cannot host the pinned composition: the readouts column pinned over the
+   stage and the verb rack fixed under the dial both need a wide stage — at phone widths they print
+   on each other and reach off the frame (D112). Stack the instrument instead: the stage keeps a
+   hero share, the readouts flow beneath it in document order, and the verb rack wraps on its own
+   row. (The seatVerbs/seatSaleStats pins hand the seat back to these rules once the stage is too
+   narrow to hold them — inline !important beats the sheet, so the bail lives in the JS.) */
+@media (max-width:899px) {
+  /* the stacked berth gives the panel a scrolling column and its rows size to content — but
+     the jig's every child is absolute, so the min-height:0 flex seat collapses the stage to
+     nothing and the slot callouts all pile at the origin (REV-D112: 701–899, worst at a short
+     window where the crown leaves the panel ~150px). Give the stage the same floor the
+     jig-less rules carry (orbital 380px); the panel scrolls the instrument whole. */
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { min-height:380px !important; }
+}
+@media (max-width:700px) {
+  ${W}.orr-sw--jig .sx-sw__main { overflow:auto !important; }
+  /* the For Sale readouts pin absolute at left:258px in EVERY jig state (jig-less included),
+     so the buying column joins the stack at phone widths whatever the hull mode */
+  /* static would work for the stack, but the stats' ::before shade pool resolves its containing
+     block against the nearest positioned ancestor — relative keeps the pool stats-sized instead
+     of splashing a whole-tab glow (review). */
+  ${W}.orr-sw--jig .sx-sw__stats, ${W}.sx-sw--buying .sx-sw__stats { position:relative !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
+    transform:none !important; width:auto !important; max-width:none !important; max-height:none !important; }
+  ${W}.orr-sw--jig .sx-sw-verbs, ${W}:not(.orr-sw--jig) .sx-sw-verbs { position:static !important; width:auto !important; max-width:100% !important;
+    flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
+  /* at phone height the stack keeps the smaller floor — equal specificity to the ≤899 jig
+     floor above and later in the sheet, so 240px still wins here */
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage, ${W} .sx-sw__main > .sx-sw__stage { min-height:240px !important; }
+  /* the crest keeps its place on the hero, but the voice's full run cannot share a 240px stage
+     with the slot callouts: bound it where the markers stand clear and let the rest scroll */
+  ${W} .sx-sw__nameplate { padding-right:0 !important; max-width:min(64%, 300px) !important; }
+  ${W} .sx-sw__nameplate .sx-sw__blurb { max-height:72px !important; overflow:hidden auto !important; pointer-events:auto !important;
+    font-size:12px !important; line-height:1.45 !important; }
+}
+
+/* the seat bail's own fallback — NOT media-gated. seatVerbs/seatSaleStats measure the STAGE and
+   bail whenever it cannot host the pinned composition, which happens at any window width (a
+   mid-width berth's rail + side plate can starve the stage below the phone stack's trigger).
+   When they hand the seat back these rules do what the ≤700 block does: readouts in flow
+   under the stage, verbs wrapped on their own row (REV-D112). */
+/* relative, not static, for the same reason as the ≤700 reset: in-flow AND keeps the ::before
+   shade pool's containing block stats-sized (review). */
+${W} .sx-sw__stats.sx-sw__stats--unseated { position:relative !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
+  transform:none !important; width:auto !important; max-width:none !important; max-height:none !important; }
+${W} .sx-sw-verbs.sx-sw-verbs--unseated { position:static !important; width:auto !important; max-width:100% !important;
+  flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
+${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw__stats--unseated),
+${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) { overflow:auto !important; }
 
 `;
 

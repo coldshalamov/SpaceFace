@@ -108,7 +108,12 @@ test('roster drift after the journal wipes still rebuilds the table', () => {
     playerId: 1,
     entities: new Map(),
     entityIndex: {
-      version: 0,
+      __spacefaceEntityIndexV1: true,
+      ready: true,
+      // The drift signal is the per-lane counter, not the global version — shipLike is the
+      // lane the combat table reads (COMBAT_TABLE_LANES), bumped on every append/remove.
+      laneVersions: { shipLike: 0 },
+      laneEpoch: 0,
       shipLike: [
         { id: 1, alive: true, isPlayer: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 6, team: 0 },
       ],
@@ -123,7 +128,7 @@ test('roster drift after the journal wipes still rebuilds the table', () => {
   // A spawn landed mid-tick; by the next pack the MEMBERSHIP mark is wiped.
   state.entityIndex.shipLike.push(newcomer);
   state.entities.set(7, newcomer);
-  state.entityIndex.version++;
+  state.entityIndex.laneVersions.shipLike++;
   state.tick = 21;
   beginDirtyTick(state, 21);
   markDirty(state, 1, DIRTY.POSE);
@@ -133,15 +138,18 @@ test('roster drift after the journal wipes still rebuilds the table', () => {
   // Removal with no marks at all still rebuilds on the version bump alone.
   state.entityIndex.shipLike.pop();
   state.entities.delete(7);
-  state.entityIndex.version++;
+  state.entityIndex.laneVersions.shipLike++;
   state.tick = 22;
   beginDirtyTick(state, 22);
   const shrunk = packCombatTable(state);
   assert.equal(shrunk.count, 1);
-  // A swapped index object at the SAME version is still drift (save restore).
+  // A swapped index object at the SAME lane version is still drift (save restore).
   const ghost = { id: 8, alive: true, pos: { x: 3, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 2, team: 1 };
   state.entityIndex = {
-    version: 2,
+    __spacefaceEntityIndexV1: true,
+    ready: true,
+    laneVersions: { shipLike: 2 },
+    laneEpoch: 0,
     shipLike: [state.entities.get(1), ghost],
     projectiles: [],
     wrecks: [],
@@ -349,7 +357,11 @@ test('packed-ORM family keys drop compile-source concatenation', () => {
   assert.match(renderer, /drainAfterPresentCompile/);
   assert.match(renderer, /installProgramBinaryCache/);
   assert.match(renderer, /pickNextContactCompileSubject/);
-  assert.doesNotMatch(renderer, /requestDecodeRunwayPromote\(state, this\._simHelpers\)/);
+  // cf9d2fe9b re-admitted the decode-runway promote under a !recook guard for approach
+  // admissions — pin the guarded form so the recook path still cannot reach it.
+  assert.match(renderer, /if \(!recook && this\._simHelpers\) requestDecodeRunwayPromote\(state, this\._simHelpers\)/);
+  // Exactly one call site — the guarded one above; a second unguarded promote fails the count.
+  assert.equal((renderer.match(/requestDecodeRunwayPromote\(state, this\._simHelpers\)/g) || []).length, 1);
 });
 
 test('NEAR owner slice resumes leftover work in stable id order', () => {
@@ -451,8 +463,9 @@ test('hitch compile waits for leftover sim and sleeping islands skip extra WASM'
   // and a cap-skipped or sub-slice frame never feeds the compile drain.
   assert.match(runner, /!skipPresentation && !capSkip && remainMs >= 2[\s\S]*?_drainCompileArg\.leftoverMs = remainMs;/);
   assert.doesNotMatch(runner, /drainAfterPresentCompile\(diagnostics\.lastLeftoverMs\)/);
-  // Arrival slices now drain through the bus's emit-slice budget rather than a bespoke call.
-  assert.match(runner, /sliceBus\.drainEmitSlice\(SECTOR_ENTER_DRAIN_BUDGET\)/);
+  // Arrival slices now drain through the bus's emit-slice budget rather than a bespoke call —
+  // the call grew a maxMs arg (the same drain, also time-bounded): pin the budget, allow the ms cap.
+  assert.match(runner, /sliceBus\.drainEmitSlice\(SECTOR_ENTER_DRAIN_BUDGET/);
   const owner = fs.readFileSync(path.join(ROOT, 'src/core/sg02DynamicBodyOwner.js'), 'utf8');
   // Ledger D78 close, 2026-09-27: the sleeping-island CPU skip this pin awaited IS LANDED —
   // `_sleepingRecordSkipsCpu` guards the commandless step-through (the vm patch's mechanism,

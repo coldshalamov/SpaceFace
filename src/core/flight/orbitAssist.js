@@ -17,6 +17,33 @@ export const ORBIT_ASSIST_STRENGTH = Object.freeze({
   off: 0,
 });
 
+/**
+ * Swing/yaw coordination margin. The yaw helper below is exact only while the hull can turn as
+ * fast as the line swings: past maxYawRate the nose lags the tangent while the pilot keeps
+ * thrusting, which reads as uncontrolled circling (short ropes, boost, and fast ships all reach
+ * it in ordinary play). The input owner answers by holding the swing at this fraction of the
+ * trackable rate, so the residual yaw authority keeps trimming the nose onto the tangent and the
+ * requested rate stays the exact inverse-radius feed-forward instead of a saturated peg.
+ */
+export const ORBIT_SWING_TRACK_MARGIN = 0.9;
+
+/**
+ * Throttle scale that keeps a tethered orbit trackable. Pure: 1 whenever the swing the pilot
+ * demands (or already flies) fits inside yaw authority at this radius, falling toward 0 as it
+ * outruns the nose. The yaw helper itself stays yaw-only; the input owner multiplies forward
+ * throttle by this, which slows both thrust and the governed cap until the nose can track again.
+ */
+export function orbitSwingThrottleScale(telemetry, commandedSpeed) {
+  const t = telemetry || {};
+  const trackable = positive(t.maxYawRate, 0) * positive(t.radius, 0) * ORBIT_SWING_TRACK_MARGIN;
+  const demand = Math.max(
+    Math.abs(finite(t.tangentialSpeed)),
+    Math.max(0, finite(commandedSpeed)),
+  );
+  if (!(trackable > 1e-6) || !(demand > trackable)) return 1;
+  return clamp(trackable / demand, 0, 1);
+}
+
 export function stepAnchorRelativeOrbitAssist(options = {}) {
   const input = { ...(options.input || {}) };
   const strength = normalizeStrength(options.strength);

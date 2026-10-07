@@ -78,9 +78,15 @@ function validateReport(report) {
 
   const visibleTracks = trackedShips.filter((track) => Number(track.inViewFrames) > 0);
   if (!visibleTracks.length) failures.push('expected at least one on-screen tracked ship');
+  // A track only counts frames where the ship rendered or projected on glass — authored traffic
+  // hulls legitimately transit the renderable bubble mid-window (residency unmounts and remounts
+  // them off-camera), so presence cannot be demanded for the whole window. The gate bounds
+  // evidence sufficiency: enough observed frames to trust the no-churn verdict, at least half
+  // the inspected span. Flicker/pop-out stay caught by the per-frame asserts on every seen frame.
+  const trackFloor = Math.min(MIN_INSPECTED_FRAMES, Math.ceil(stability.inspectedFrameCount * 0.5));
   for (const track of visibleTracks) {
-    if (Number(track.framesSeen) < MIN_INSPECTED_FRAMES) {
-      failures.push(`visible track ${track.id || 'unknown'} only recorded ${track.framesSeen} frames`);
+    if (Number(track.framesSeen) < trackFloor) {
+      failures.push(`visible track ${track.id || 'unknown'} only recorded ${track.framesSeen} frames (floor ${trackFloor})`);
     }
     if (Number(track.missingMeshFrames) > 0) {
       failures.push(`visible track ${track.id || 'unknown'} had ${track.missingMeshFrames} missing-mesh frames`);

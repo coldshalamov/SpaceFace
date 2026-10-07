@@ -89,9 +89,18 @@ function testTrickCatalog() {
     'ram-plate',
     'decoy-clone',
     'emergency-jump-spool',
-  ], 'catalog contains the seven spec tricks in stable order');
+    'wake-mines',
+    'pd-curtain',
+    'sensor-ghost',
+  ], 'catalog contains the ten authored tricks in stable order');
 
-  const verbKinds = new Set();
+  // The catalog's one-verb contract is singular, not unique: wake-mines/pd-curtain/sensor-ghost
+  // are heavier variants of shipped families (mine_drop, pd_screen, decoy_clone). The pin is
+  // that every trick runs an already-shipped verb — no trick may mint a new physics subsystem.
+  const SHIPPED_VERB_KINDS = new Set([
+    'tether_cut', 'mine_drop', 'phase_jam', 'shield_turtle',
+    'ram_plate', 'decoy_clone', 'emergency_jump', 'pd_screen',
+  ]);
   for (const id of HUNTER_TRICK_IDS) {
     const trick = HUNTER_TRICKS[id];
     assert.equal(trick.id, id, `${id} is keyed by id`);
@@ -103,10 +112,10 @@ function testTrickCatalog() {
     assert.equal(Object.keys(trick.verb).length, 2, `${id} verb mapping stays singular`);
     assert.equal(typeof trick.verb.kind, 'string', `${id} verb has a kind`);
     assert.equal(typeof trick.verb.event, 'string', `${id} verb has an event`);
-    verbKinds.add(trick.verb.kind);
+    assert.ok(SHIPPED_VERB_KINDS.has(trick.verb.kind),
+      `${id} verb kind must be an already-shipped gameplay verb, got '${trick.verb.kind}'`);
   }
-  assert.equal(verbKinds.size, HUNTER_TRICK_IDS.length, 'each trick maps to its own existing verb kind');
-  ok('hunter trick catalog has telegraphs and one existing verb per trick');
+  ok('hunter trick catalog has telegraphs and one shipped verb per trick');
 }
 
 function testEmergencyJumpTelegraphsBeforeActivation() {
@@ -118,8 +127,11 @@ function testEmergencyJumpTelegraphsBeforeActivation() {
   assert.equal(first.phase, 'telegraphing', 'first update starts telegraph before activation');
   assert.equal(t.events.telegraphs.length, 1, 'one trick telegraph event emitted');
   assert.equal(t.events.activations.length, 0, 'no activation happens during the counter window');
-  assert.equal(t.events.voiceLines.length, 1, 'one telegraph bark sent through voice helper');
-  assert.match(t.events.voiceLines[0].text, /jump spool/i, 'telegraph bark names the trick');
+  // The quarry talks back now (distress + cargo-dump barks share the voice helper) — the trick
+  // contract is one *trick* telegraph bark, not a silent window.
+  const trickBarks = t.events.voiceLines.filter((line) => line && line.kind === 'bounty_hunter_trick');
+  assert.equal(trickBarks.length, 1, 'one telegraph bark sent through voice helper');
+  assert.match(trickBarks[0].text, /jump spool/i, 'telegraph bark names the trick');
 
   const beforeJump = hunter.pos && { x: hunter.pos.x, z: hunter.pos.z };
   t.state.simTime += Math.max(first.counterWindowS - 0.1, 0.01);

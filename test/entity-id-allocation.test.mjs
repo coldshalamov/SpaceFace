@@ -9,7 +9,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { allocateEntityId } from '../src/core/entity.js';
-import { createSimulation } from '../src/core/sim.js';
+import { createSimulation, SIM_DT } from '../src/core/sim.js';
+import { demoteOpticAsteroidToField } from '../src/world/asteroidField.js';
 
 function bareState(overrides = {}) {
   return {
@@ -134,4 +135,92 @@ test('the maximum safe id itself is still a valid final allocation', () => {
     'the top of the safe range is allocatable');
   assert.throws(() => allocateEntityId(state), TypeError,
     'the counter lands past the safe range and the next allocation fails closed');
+});
+
+test('a recycled id cannot inherit the player target lock', () => {
+  const sim = createSimulation({ seed: 7, systems: [] });
+  try {
+    const npc = sim.spawn({ type: 'ship', pos: { x: 30, z: 0 } });
+    const npcId = npc.id;
+    sim.state.player.targetId = npcId;
+
+    npc.alive = false;
+    sim.step(SIM_DT);
+
+    assert.equal(sim.state.entities.get(npcId), undefined);
+    assert.ok(sim.state.freeIds.includes(npcId), 'the id re-enters the pool');
+    assert.equal(sim.state.player.targetId, null,
+      'the lock must drop before the id can address a different entity');
+
+    const heir = sim.spawn({ type: 'ship', pos: { x: 31, z: 0 } });
+    assert.equal(heir.id, npcId, 'the pool hands the id to the next spawn');
+    assert.equal(sim.state.player.targetId, null,
+      'the new occupant must not inherit the stale lock');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('the batch corpse path drops the lock the same way', () => {
+  const sim = createSimulation({ seed: 8, systems: [] });
+  try {
+    const a = sim.spawn({ type: 'ship', pos: { x: 30, z: 0 } });
+    const b = sim.spawn({ type: 'ship', pos: { x: 40, z: 0 } });
+    sim.state.player.targetId = b.id;
+
+    a.alive = false;
+    b.alive = false;
+    sim.step(SIM_DT);
+
+    assert.equal(sim.state.entities.get(b.id), undefined);
+    assert.ok(sim.state.freeIds.includes(b.id));
+    assert.equal(sim.state.player.targetId, null);
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('a ledger-held removal keeps the lock — the shelved row still resolves', () => {
+  const sim = createSimulation({ seed: 9, systems: [] });
+  try {
+    const npc = sim.spawn({ type: 'ship', pos: { x: 30, z: 0 } });
+    const npcId = npc.id;
+    sim.state.player.targetId = npcId;
+    sim.state.world.farActors = { byId: new Map([[npcId, { id: npcId, alive: true }]]) };
+
+    npc.alive = false;
+    sim.step(SIM_DT);
+
+    assert.equal(sim.state.entities.get(npcId), undefined);
+    assert.ok(!sim.state.freeIds.includes(npcId), 'the ledger still owns the id');
+    assert.equal(sim.state.player.targetId, npcId,
+      'a shelved target keeps its lock — the presentation resolver still finds the row');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('an optic-asteroid demote keeps the lock — the field row re-claims the same id', () => {
+  // demoteOpticAsteroidToField removes the body before the row can take its id (the reserved
+  // claim requires entities.get(id) gone first), so the removal path sees a recyclable id
+  // and drops the lock — the demote re-arms it on the row that still resolves.
+  const sim = createSimulation({ seed: 10, systems: [] });
+  try {
+    const rock = sim.spawn({
+      type: 'asteroid', pos: { x: 60, z: 0 }, radius: 8,
+      data: { opticMaterial: 'sf_ice' },
+    });
+    const rockId = rock.id;
+    sim.state.player.targetId = rockId;
+
+    const row = demoteOpticAsteroidToField(sim.state, rock, sim.helpers);
+    assert.ok(row && row.id === rockId, 'the field row keeps the shelved id');
+    assert.equal(sim.state.entities.get(rockId), undefined, 'the live body is gone');
+    assert.ok(sim.state.world.asteroidField.byId.has(rockId), 'the ledger holds the id');
+    assert.equal(sim.state.player.targetId, rockId,
+      'a shelved lock keeps its target — the row still resolves it');
+    assert.ok(!sim.state.freeIds.includes(rockId), 'the id never entered the pool');
+  } finally {
+    sim.dispose();
+  }
 });

@@ -2343,8 +2343,10 @@ export const asteroidSites = {
       const units = Number.isFinite(sealed.receipt.quantity)
         ? sealed.receipt.quantity
         : storeTotal(pod.cargo);
+      const returnedU = Number(sealed.receipt.returned) || 0;
       const credited = Number.isFinite(sealed.receipt.credited) ? sealed.receipt.credited : 0;
-      this._ledger(site, 'good', `Courier delivered ${units}u to ${pod.stationName} — ${credited} cr banked.`);
+      this._ledger(site, 'good', `Courier delivered ${units}u to ${pod.stationName} — ${credited} cr banked.`
+        + (returnedU > 0 ? ` ${returnedU}u unlisted there rode back to the buffer.` : ''));
       this.bus.emit('site:courierDelivered', {
         siteId: site.id,
         stationId: pod.stationId,
@@ -2381,12 +2383,17 @@ export const asteroidSites = {
       site.saleReceipts[intentId] = { fingerprint: `lost:${intentId}`, receipt };
       return { ok: true, duplicate: false, receipt };
     }
+    // Sale and freight must agree unit for unit: only goods the destination market actually
+    // lists can be sold there and land there (INF-econ critic round). A good with no listing
+    // banks nothing — it rides back to the launch buffer below, the lot's previous owner.
+    const { traded, returned } = this._podSaleSplit(pod);
+    const soldUnits = storeTotal(traded);
     let rawGross = 0;
-    for (const goodId of Object.keys(pod.cargo || {}).sort()) {
-      rawGross += pod.cargo[goodId] * this._salePrice(pod.stationId, goodId);
+    for (const goodId of Object.keys(traded).sort()) {
+      rawGross += traded[goodId] * this._salePrice(pod.stationId, goodId);
     }
     const realisedTotal = Math.round(rawGross * SITE_BALANCE.podSalvageMult);
-    const realisedPrice = units > 0 ? realisedTotal / units : 0;
+    const realisedPrice = soldUnits > 0 ? realisedTotal / soldUnits : 0;
     const operatingCost = Math.max(0, Math.round(rawGross) - realisedTotal);
     const have = shipmentQty(site, '_pod');
     if (have < units) addToShipment(site, '_pod', units - have, 9999);
@@ -2402,18 +2409,75 @@ export const asteroidSites = {
     const result = commitShipmentSale(site, plan, () => this._creditPassive(realisedTotal));
     if (result && result.ok && result.receipt) {
       result.receipt.destination = pod.stationName || pod.stationId || null;
+      result.receipt.quantity = soldUnits; // what the sale actually sold; custody debited the whole pod
       result.receipt.realisedPrice = realisedPrice;
       result.receipt.realisedTotal = realisedTotal;
       result.receipt.operatingCost = operatingCost;
       result.receipt.loss = 0;
+      result.receipt.returned = storeTotal(returned);
       result.receipt.credited = result.receipt.credited | 0;
       if (!result.duplicate) {
+        // The goods land where the sale claims to sell — before the stats row so a reader of the
+        // receipt already finds the intake committed. Duplicate seals re-land nothing.
+        this._landPodFreight(pod, traded);
+        if (storeTotal(returned) > 0) refundSitePodCargo(site, returned);
         site.stats.grossCr += realisedTotal;
-        site.stats.exportedU += units;
+        site.stats.exportedU += soldUnits;
         site.stats.creditedCr += result.receipt.credited;
       }
     }
     return result;
+  },
+
+  /**
+   * Split the pod's goods into what the destination market lists (sellable, landable) and what
+   * it does not (banked at the basePrice fallback while the freight bounces 'untraded' — the
+   * residual teleport this path exists to end). Strictly read-only over the economy's markets.
+   * With no destination ("the freight lane") or no economy in the harness there is no market to
+   * disagree with, so every good rides as it always has.
+   */
+  _podSaleSplit(pod) {
+    const traded = {};
+    const returned = {};
+    const econ = this._registry && this._registry.get ? this._registry.get('economy') : null;
+    const markets = econ && econ.state && econ.state.economy && econ.state.economy.markets;
+    const market = pod && pod.stationId && markets ? markets[pod.stationId] : null;
+    for (const goodId of Object.keys((pod && pod.cargo) || {}).sort()) {
+      const qty = Math.floor(Number(pod.cargo[goodId]) || 0);
+      if (qty <= 0) continue;
+      if (!market || market[goodId]) traded[goodId] = qty;
+      else returned[goodId] = qty;
+    }
+    return { traded, returned };
+  },
+
+  /**
+   * The courier handoff is a REAL delivery (INF-econ, WF-06): each SOLD good lands in the
+   * destination market through the canonical freight fact (cargo:delivered → economy
+   * applyFreightDelivery — deduped by receiptId, stock write, shortageRelieved cue). The sale
+   * above was priced at the pre-intake quote; the NEXT pod prices against the market this one
+   * fed, so sustained site output moves the price it sells at instead of minting credits
+   * against a market that never saw a unit. No station ("sold to the freight lane") has no
+   * market to feed and lands nothing. Lost pods never reach here.
+   * @param {object} traded the pod's sold goods only — unlisted goods are not sold here and
+   *   ride back to the launch buffer instead (see _podSaleSplit).
+   */
+  _landPodFreight(pod, traded) {
+    // A stable receiptId is what makes the intake deduped rather than replayable. Restored pods
+    // carry one — the save-repair path assigns a synthetic intentId to old-save pods — so they
+    // land and dedupe exactly like live launches; only a malformed in-memory pod lacks one, and
+    // a handoff that cannot be receipted must not write stock either. Land nothing.
+    if (!pod || !pod.stationId || typeof pod.intentId !== 'string' || !pod.intentId) return;
+    for (const goodId of Object.keys(traded || {}).sort()) {
+      const qty = Math.floor(Number(traded[goodId]) || 0);
+      if (qty <= 0) continue;
+      this.bus.emit('cargo:delivered', {
+        commodityId: goodId,
+        qty,
+        stationId: pod.stationId,
+        receiptId: `${pod.intentId}:${goodId}`,
+      });
+    }
   },
 
   _salePrice(stationId, goodId) {

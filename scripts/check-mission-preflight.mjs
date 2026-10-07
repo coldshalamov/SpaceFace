@@ -269,16 +269,29 @@ assert.ok(highRiskIntel.chips.some((chip) => chip.kind === 'bad' && chip.text ==
   'route intel should render the modeled danger as a scannable risk chip');
 assert.match(highRiskIntel.warning || '', /refuel, repair/,
   'route intel should translate high danger into prep guidance instead of a hidden penalty');
+// SF-REFUSAL-VOICE: Sker Bazaar's berth is Reach repGated (floor +1) — a pilot without the
+// standing earns a berth blocker, which correctly outranks the route-risk caution this case
+// exists to pin. The fixture carries the earned standing so the berth admits.
 const highRiskPreflight = missionPreflight(makeOffer({
   id: 'sker_run',
   destStationId: 'station_sker',
   destSectorId: 'sector_sker_haven',
   distance: 3500,
-}), makeState(8));
+}), { ...makeState(8), factions: { faction_reach: { rep: 2 } } });
 assert.equal(missionBoardReadiness(highRiskPreflight).state, 'caution',
   'high route risk should downgrade mission board readiness to a check state, not a blocker');
 assert.match(highRiskPreflight.warning || '', /Hostile route risk/,
   'high route risk should explain exactly why the player should check prep');
+// …and the refusal itself stays pinned: without the standing the dock-settled contract is
+// unearnable, so preflight must block it rather than let the dossier offer an impossible accept.
+const deniedBerth = missionPreflight(makeOffer({
+  id: 'sker_run',
+  destStationId: 'station_sker',
+  destSectorId: 'sector_sker_haven',
+  distance: 3500,
+}), makeState(8));
+assert.match(deniedBerth.blocker || '', /Sker Bazaar refuses this berth.*standing/i,
+  'a rep-gated destination berth must surface as a blocker, not a caution');
 
 const deadlinePacing = missionTimePacing(makeOffer({
   deadline_s: 420,

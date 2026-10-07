@@ -115,6 +115,7 @@ const CORE_SECTOR_ANCHORS = {
   sector_vesta_forge: {
     stations: [
       { id: 'station_forge', pos: { x: -480, z: 720 }, archetypeGlb: 'place_station_fab', landmark: true },
+      { id: 'station_vesta_outlying_yard', pos: { x: -820, z: 280 }, archetypeGlb: 'place_station_fab' },
       { id: 'station_depot3', pos: { x: 1120, z: -560 }, archetypeGlb: 'place_station_mining' },
     ],
     gates: [

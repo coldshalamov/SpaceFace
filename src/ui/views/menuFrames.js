@@ -78,10 +78,8 @@ export function createPauseFrame(root, { titleText = 'Paused' } = {}) {
 
   const head = el('header', 'dp-frame__head');
   const title = el('div', 'dp-title');
-  const eyebrow = el('p', 'dp-title__eyebrow');
-  eyebrow.dataset.role = 'pause-eyebrow';
-  eyebrow.textContent = 'Flight held';
-  title.append(eyebrow, el('h1', 'dp-title__name', titleText), Object.assign(
+  // No eyebrow: "Flight held" over "Paused" said the same thing twice.
+  title.append(el('h1', 'dp-title__name', titleText), Object.assign(
     el('div', 'dp-title__rule'), { ariaHidden: 'true' },
   ));
   head.appendChild(title);

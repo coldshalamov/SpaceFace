@@ -52,6 +52,11 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
       // estuary is distant atmosphere around them, held below the lit machinery — dimmed and
       // desaturated ~a third so the sky sits behind the opening frame instead of inside it.
       paintedSky: { plate: 'helios-amber-estuary', strength: 0.14, parallax: 0.003, saturation: 1.0 },
+      // §22.5 C6 — the sector's baked sky backdrop (vm-drop/sector-skies). It substitutes the
+      // procedural composite base under everything: the paintedSky accent plate, the star
+      // associations and the bodies still draw over it. `sky` is the deep-field mood named by
+      // background.structure.recipeId; resolveBackgroundSky clamps the fields.
+      sky: { plate: 'sky-helios-orbital-void', strength: 1.0, parallax: 0.002 },
       intensity: 0.55,
       nebulaOpacity: 0.0,
       structure: {
@@ -108,6 +113,8 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
       // companion upper-left and an explicit protected void over the lower-left play corridor.
       // It is authored art, not a wash — the bake refuses to ship over its composition budget.
       paintedSky: { plate: 'core-lantern-shelf', strength: 0.10, parallax: 0.0032, saturation: 0.70 },
+      // Baked core sky under the Lantern shelf accent (vm-drop/sector-skies).
+      sky: { plate: 'sky-core-trade-constellation', strength: 1.0, parallax: 0.002 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'core_trade_constellation',
@@ -141,6 +148,8 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
       // The ochre shoal answers this region's own recipe: one warm mass broken into pieces by dark
       // lanes, sitting clear of the amber stellar river the star formation already draws overhead.
       paintedSky: { plate: 'belt-ochre-shoal', strength: 0.10, parallax: 0.0034, saturation: 0.68 },
+      // Baked belt sky under the ochre-shoal accent (vm-drop/sector-skies).
+      sky: { plate: 'sky-belt-broken-dust-lane', strength: 1.0, parallax: 0.002 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'belt_broken_dust_lane',
@@ -179,7 +188,11 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
       // Deliberately NO painted plate. The fringe's identity is the tidal filament and the blue
       // flocculent spiral against empty sky; giving every region a plate would make the feature a
       // uniform veil, which is the thing it exists to avoid. A region with no plate loads nothing.
+      // The `sky` base is a different layer from the accent plates: the fringe's own baked tidal
+      // filament IS the backdrop, so "no accent plate" stays true while the region still shows its
+      // authored sky (vm-drop/sector-skies).
       paintedSky: null,
+      sky: { plate: 'sky-fringe-tidal-filament', strength: 1.0, parallax: 0.002 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'fringe_tidal_filament',
@@ -227,6 +240,8 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
       // Still not a wash: the cold halo is two shell arcs and one knot, with a second protected
       // void over the right half so the live wormhole owns that patch of sky uncontested.
       paintedSky: { plate: 'anomaly-cold-halo', strength: 0.09, parallax: 0.0030, saturation: 0.72 },
+      // Baked anomaly sky under the cold-halo accent (vm-drop/sector-skies).
+      sky: { plate: 'sky-anomaly-electromagnetic-scar', strength: 1.0, parallax: 0.002 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'anomaly_electromagnetic_scar',
@@ -269,6 +284,10 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
       intensity: 0.30,
       nebulaOpacity: 0.0,
       paintedSky: null,
+      // The galaxy plate is Tethys's alone (§22.5 C6 row law): `sky-galactic-spur` is the single
+      // galaxy-allowed image in the drop, and `galaxyPlate` marks this profile as the one carrying
+      // it — the tabletop identity keeps reading `galaxy`, not `painted_plate`.
+      sky: { plate: 'sky-galactic-spur', strength: 1.0, parallax: 0.002 },
       structure: {
         ...DEFAULT_STRUCTURE,
         recipeId: 'galactic_spur',
@@ -474,6 +493,26 @@ export function resolveBackgroundPaintedSky(profile) {
     // 1 keeps the baked plate's authored color; <1 desaturates it toward its own luminance so the
     // far sky sits behind play instead of competing with hull paint.
     saturation: finiteClamped(source.saturation, 1, 0, 1),
+  });
+}
+
+/**
+ * The region's baked sky backdrop (§22.5 C6, vm-drop/sector-skies), or null for a region that
+ * keeps the procedural void base. `plate` names a `sky-*` entry in src/render/deepSkyPlates.js;
+ * the renderer's second bounded residency loads it and the composite substitutes it for the
+ * procedural base UNDER the paintedSky accent plate and the live star/body draws.
+ *
+ * Unlike the accent-plate strength clamp, `strength` here may reach 1.0: the backdrop replaces
+ * the composite base rather than tinting it, and the drop's bake keeps the image at ~0.013-0.017
+ * mean luminance so action still reads brighter than the sky.
+ */
+export function resolveBackgroundSky(profile) {
+  const source = profile && profile.background && profile.background.sky;
+  if (!source || typeof source.plate !== 'string' || !source.plate) return null;
+  return deepFreeze({
+    plate: source.plate,
+    strength: finiteClamped(source.strength, 1.0, 0, 1),
+    parallax: finiteClamped(source.parallax, 0.002, 0, 0.02),
   });
 }
 

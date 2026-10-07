@@ -127,7 +127,7 @@ assert.match(codexSource, /return commUnlocked\(c, s, beat, key\)/,
   'Codex Comms tab should share the same visibility helper as the status strip');
 assert.match(codexSource, /Codex Unlock Status/,
   'Codex must render a visible unlock-status strip');
-assert.match(codexSource, /Locked counts mean future entries are intentionally hidden/,
+assert.match(codexSource, /Locked entries are hidden on purpose/,
   'Codex status copy must explain that hidden entries are intentionally gated');
 assert.match(codexSource, /this\._renderStatus\(ctx\);[\s\S]*switch \(this\._activeTab\)/,
   'Codex status should render before the active tab entries');

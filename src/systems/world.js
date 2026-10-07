@@ -22,14 +22,17 @@
 //   gate tolls and never writes credits/cargo/rep directly. Radiation is environmental damage
 //   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
 //   vitals order and may kill.
+import { playerBearingLetter } from '../core/playerCompass.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
+import { stationMinRepFor } from '../data/dockDeny.js';
 import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
 import { KETTLE_LINE } from '../data/kettleLine.js';
+import { FACTION_BERTHS } from '../data/factionBerths.js'; // CR-BERTH-1 faction berths
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
   frontierRumorOffer,
@@ -105,7 +108,6 @@ import {
 } from '../data/sectorActivityPockets.js';
 import {
   ASHFALL_BURN_SURGE_PERIOD_S,
-  KILL_MACHINE_SECTOR_ID,
   METRONOME_SECTOR_ID,
   PALLAS_REEF_SECTOR_ID,
   apertureHazardZones,
@@ -166,6 +168,7 @@ import {
 import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
+import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
 import {
   dropAsteroidFieldSector,
   insertAsteroidFieldRock,
@@ -314,7 +317,7 @@ function laneDangerPhrase(danger) {
 // flip: once, mid-transit.
 const MEMBERSHIP_SWITCH_FRACTION = 0.35;
 const MEMBERSHIP_MIN_PENETRATION_WU = 2500;
-const MEMBERSHIP_DWELL_S = 8;
+export const MEMBERSHIP_DWELL_S = 8;
 
 // Jump-drive tiers (design 05). Resolved from the equipped module; defaults to T1.
 const DRIVE_TIERS = {
@@ -333,12 +336,9 @@ for (const sector of SECTORS) {
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
-// Screen-space compass for scan text (XZ plane: +x = East, +z = South).
-const COMPASS_POINTS = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+// Screen-space compass for scan text. Player north is +z, screen up (playerCompass.js).
 function compassLabel(dx, dz) {
-  const tau = Math.PI * 2;
-  const angle = ((Math.atan2(dz, dx) % tau) + tau) % tau;
-  return COMPASS_POINTS[Math.round(angle / (Math.PI / 4)) % 8];
+  return playerBearingLetter(dx, dz);
 }
 
 /** Squared distance from a global pose to a sector's galactic origin (membership hysteresis). */
@@ -1498,14 +1498,24 @@ export const world = {
       if (!bandHull && !(source && poiMustStayLiveActor(source, slot))) continue;
       const pos = { x: row.pos.x, z: row.pos.z };
       dropDressingRow(this.state, row.id);
+      // A row stamped solid by the dressing plan carries its measured body on the row
+      // (collides + collisionProxy on data) — the promoted entity must keep it, or a
+      // landmark that collided on cold-FULL ghosts on the dominant REDUCED→FULL arrive.
+      // Activity slots stay ghosts per the PQ-020 contract even if an old row carried
+      // a pre-fix stamp.
+      const keepsSolidBody = !slot && row.collides === true;
       const ent = this.helpers.spawnEntity({
         type: 'fx',
         factionId: (source && source.factionId) || null,
         pos,
         radius: row.radius,
         mass: 0,
-        collides: !!(source && source.collides),
-        ...(bandHull ? { physicsBody: false } : {}),
+        collides: keepsSolidBody || !!(source && source.collides),
+        ...(bandHull
+          ? { physicsBody: false }
+          : (keepsSolidBody
+            ? { physicsBody: { dynamic: false, material: 'prop' }, collisionMask: Masks.STATION }
+            : {})),
         ttl: Infinity,
         data,
       });
@@ -1861,8 +1871,9 @@ export const world = {
   /**
    * Reconcile the latest bounded sector recipe snapshot into durable records.
    * Existing records are never overwritten (preserves damage/destroyed outcomes). Stale active
-   * generated recipes retire once their live body is gone; destroyed tombstones stay under the
-   * existing MAX_RECORDS_PER_SECTOR bound so an old outcome cannot be re-rolled.
+   * generated recipes retire once their live body is gone; destroyed recipe tombstones are
+   * exempt from the ambient-tombstone bound (recordSource 'sector_embodiment'), so an old
+   * outcome cannot be re-rolled.
    * The intent/stale/insert phases yield at the same 8-row cadence the records loop uses, so a
    * deferred FULL neighbor no longer pays an unyielded O(intents + records) pass inside a
    * generator that exists to be chunked; the sync wrapper drains inline with identical output.
@@ -2424,9 +2435,7 @@ export const world = {
           contested: !!st.contested, repGated: !!st.repGated,
           // The authored repGated flag means positive standing, not merely "not attack-on-sight".
           // An explicit minRep remains available for stations with a stricter local contract.
-          ...(Number.isFinite(st.minRep)
-            ? { minRep: st.minRep }
-            : (st.repGated ? { minRep: 1 } : {})),
+          ...(Number.isFinite(stationMinRepFor(st)) ? { minRep: stationMinRepFor(st) } : {}),
           sectorId: sector.id,
           homeSectorId: sector.id,
           archetypeGlb: st.archetypeGlb || null,
@@ -2861,7 +2870,8 @@ export const world = {
       // re-derive the body radius so the skin scale equals the drawn scale exactly
       // (solidDressing.js). An explicit `collides: false` is a no-presence contract (PQ-020
       // transit pins) and outranks the landmark default; plain markers stay ghosts.
-      const solidPlan = (poi.collides !== false && (poi.landmark || poi.collides === true))
+      const solidPlan = (!activityObjectSlotId
+          && poi.collides !== false && (poi.landmark || poi.collides === true))
         ? stampSolidDressing(poiData, {
           radius: visualRadius,
           placeTargetRadius: Number(poiData.placeTargetRadius) || 0,
@@ -3037,10 +3047,14 @@ export const world = {
       if (oneOff.sectorId !== sector.id) continue;
       const anchorPos = this._oneOffAnchorPos(sector, oneOff.anchor);
       if (!anchorPos) continue;
-      const pos = {
+      // Anchor rows are sector-local; entities and dressing rows live galactic-global
+      // (D176: without the hop every non-origin sector's one-offs spawned local-as-global,
+      // stranded beside the Helios origin instead of beside their named anchor).
+      const localPos = {
         x: anchorPos.x + oneOff.offsetLocal.x,
         z: anchorPos.z + oneOff.offsetLocal.z,
       };
+      const pos = this._toGlobal(localPos, sector.id);
       let ent = null;
       if (oneOff.physicalBody) {
         const identityKey = `worldOneOff:${oneOff.id}`;
@@ -3053,6 +3067,23 @@ export const world = {
         if (durable && (durable.outcome === 'destroyed' || durable.alive === false)) continue;
         ent = findLiveRecordEntity(this.state, recordId);
         if (ent) {
+          // Pre-D176 materializations parked the body at local-as-global coords — only
+          // possible where the sector's galactic origin is non-zero. A body still parked in
+          // the buggy spot's neighbourhood was never moved by the player (drift bumps count
+          // as stranded too — the 20 WU window covers knock-loose jitter without yanking
+          // back a wreck somebody actually hauled off); re-seat it at the anchor. The
+          // physics owner resyncs its body from the pos write (noInterp).
+          const sectorOrigin = this._sectorOrigin(sector.id);
+          if (sectorOrigin && (sectorOrigin.x !== 0 || sectorOrigin.z !== 0) && ent.pos) {
+            const bdx = ent.pos.x - localPos.x, bdz = ent.pos.z - localPos.z;
+            if (bdx * bdx + bdz * bdz < 400) {
+              ent.pos.x = pos.x;
+              ent.pos.z = pos.z;
+              if (ent.prevPos && typeof ent.prevPos.copy === 'function') ent.prevPos.copy(ent.pos);
+              if (ent.vel) { ent.vel.x = 0; ent.vel.y = 0; ent.vel.z = 0; }
+              ent.flags = Object.assign({}, ent.flags, { noInterp: true });
+            }
+          }
           this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
         } else if (farActorHoldsWorldRecord(this.state, recordId)) {
           // A shelved far row already owns this record's body. Minting a second copy here
@@ -3116,6 +3147,7 @@ export const world = {
     }
     this._spawnHeliosRopeCache(sector, active);
     this._spawnKettleLinePayoff(sector, active);
+    this._spawnFactionBerths(sector, active);
   },
 
   _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
@@ -3252,6 +3284,141 @@ export const world = {
     if (!active || !sector || worldBag.currentSectorId !== KETTLE_LINE.sectorId) return false;
     this._spawnKettleLinePayoff(sector, active);
     return true;
+  },
+
+  // CR-BERTH-1 — the faction berth: an address and a memory (src/data/factionBerths.js). The
+  // crib is the rented apron's furniture and always stands on the pad; the consigned hulk only
+  // appears once factionPresence has written `serviceReceipts[berth.receiptKey]` off a
+  // redeem_rights payout at the berth station. The hulk is a real durable body (worldRecords
+  // stableRecordId, masslineTetherable), not a dressing row — the wreck your claim paid out on
+  // can be hauled back off the line between visits, and a player-terminal outcome tombstones
+  // the record so it never respawns. Positions are authored sector-local against the berth's
+  // station anchor and converted through _toGlobal, like the station/POI/field spawners.
+  _spawnFactionBerths(sector, active) {
+    if (!sector || !active) return;
+    const receipts = this.state && this.state.factionPresence
+      && this.state.factionPresence.serviceReceipts;
+    for (const berth of FACTION_BERTHS) {
+      if (berth.sectorId !== sector.id) continue;
+      const anchorPos = this._oneOffAnchorPos(sector, berth.anchor);
+      if (!anchorPos) continue;
+      const apron = this._toGlobal({
+        x: anchorPos.x + berth.offsetLocal.x,
+        z: anchorPos.z + berth.offsetLocal.z,
+      }, sector.id);
+      for (const prop of berth.crib || []) {
+        this._spawnPlaceProp(active, sector, prop.placeId, {
+          x: apron.x + prop.dx,
+          z: apron.z + prop.dz,
+        }, { rot: prop.rot, name: berth.name, radius: prop.radius, berthId: berth.id });
+      }
+      const hulk = berth.hulk;
+      if (!hulk) continue;
+      const receipt = receipts && receipts[berth.receiptKey];
+      if (!receipt) continue;
+      const identityKey = `factionBerth:${berth.id}`;
+      const seed = (this.state.meta && this.state.meta.seed) || 1;
+      const recordId = stableRecordId(seed, sector.id, RECORD_KIND.WRECK, identityKey);
+      const records = ensureWorldRecords(this.state.world);
+      const durable = records.byId[recordId];
+      // A hulk already destroyed or carried off to a far actor stays gone — the tombstone is
+      // the berth's memory, not a fresh copy on every visit.
+      if (durable && (durable.outcome === 'destroyed' || durable.alive === false)) continue;
+      let ent = findLiveRecordEntity(this.state, recordId);
+      if (ent) {
+        this._decorateBerthConsign(ent, berth, sector, recordId, identityKey);
+      } else if (farActorHoldsWorldRecord(this.state, recordId)) {
+        continue;
+      } else {
+        const pos = {
+          x: apron.x + (Number.isFinite(hulk.dx) ? hulk.dx : 0),
+          z: apron.z + (Number.isFinite(hulk.dz) ? hulk.dz : 0),
+        };
+        const mass = Math.max(1, Number(hulk.mass) || 1);
+        ent = this.helpers.spawnEntity({
+          type: 'wreck',
+          pos,
+          vel: { x: 0, z: 0 },
+          rot: Number.isFinite(hulk.rot) ? hulk.rot : 0,
+          angVel: Number.isFinite(hulk.spin) ? hulk.spin : 0,
+          radius: Math.max(1, Number(hulk.radius) || 1),
+          mass,
+          hull: 1000,
+          hullMax: 1000,
+          collides: true,
+          physicsBody: { radius: Math.max(1, Number(hulk.radius) || 1), mass },
+          flags: { noInterp: true },
+          data: {
+            placeId: hulk.placeId,
+            placeScale: 1,
+            name: hulk.name || berth.name,
+            wreckClass: hulk.wreckClass || 'consigned_hulk',
+            berthConsign: {
+              berthId: berth.id,
+              receiptKey: berth.receiptKey,
+              stationId: berth.stationId,
+            },
+            berthId: berth.id,
+            worldRecordId: recordId,
+            identityKey,
+            homeSectorId: sector.id,
+            sectorId: sector.id,
+            visualRadius: Math.max(1, Number(hulk.radius) || 1),
+            placeRadius: Math.max(1, Number(hulk.radius) || 1),
+            masslineTetherable: true,
+          },
+        });
+        if (ent) this._decorateBerthConsign(ent, berth, sector, recordId, identityKey);
+      }
+      if (ent) active.dressing.push({
+        id: ent.id, placeId: hulk.placeId, pos: { x: ent.pos.x, z: ent.pos.z },
+        paletteClass: paletteClassForSector(sector),
+      });
+    }
+  },
+
+  // Same job as _decoratePhysicalOneOff: the dress sheet for a berth-consign hull, applied on
+  // spawn AND on the worldRecords reuse path so a body rematerialized by another consumer gets
+  // re-stamped rather than orphaned under its old kind.
+  _decorateBerthConsign(ent, berth, sector, recordId, identityKey) {
+    if (!ent) return ent;
+    const hulk = berth.hulk;
+    const radius = Math.max(1, Number(hulk.radius) || 1);
+    const mass = Math.max(1, Number(hulk.mass) || 1);
+    ent.type = 'wreck';
+    if (ent.collides !== true) bumpCollidesFlipEpoch();
+    ent.collides = true;
+    // The reuse path can revive an entity appended collides:false — re-key the collision
+    // slice or its hull physically collides while broadphase/splinter lanes see nothing.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
+    // Same hazard on the type lanes: the reused body was appended under a different type,
+    // so without this re-key it never reaches wrecks/mineables readers (or vice versa).
+    syncEntityTypeLaneMembership(this.state && this.state.entityIndex, ent);
+    ent.radius = radius;
+    ent.mass = mass;
+    ent.physicsBody = { ...(ent.physicsBody && typeof ent.physicsBody === 'object' ? ent.physicsBody : {}),
+      radius, mass };
+    ent.data = Object.assign({}, ent.data, {
+      placeId: hulk.placeId,
+      placeScale: 1,
+      name: hulk.name || berth.name,
+      wreckClass: hulk.wreckClass || 'consigned_hulk',
+      berthConsign: {
+        berthId: berth.id,
+        receiptKey: berth.receiptKey,
+        stationId: berth.stationId,
+      },
+      berthId: berth.id,
+      worldRecordId: recordId,
+      identityKey,
+      homeSectorId: sector.id,
+      sectorId: sector.id,
+      visualRadius: radius,
+      placeRadius: radius,
+      masslineTetherable: true,
+    });
+    this._stampHomeSector(ent, sector.id);
+    return ent;
   },
 
   _trackOneOffSpin(active, entityId, spin) {
@@ -3518,7 +3685,7 @@ export const world = {
       : null;
     let propRot = Number.isFinite(options.rot) ? options.rot : 0;
     if (options.arranger && !activityObjectSlotId && !options.worldOneOff
-        && !options.everydaySpaceKit && !options.wreckAftermath) {
+        && !options.everydaySpaceKit && !options.wreckAftermath && !options.berthId) {
       const arranged = options.arranger.placeProp(placeId, pos, radius, propRot);
       // Keep the original admission decision: a rejected baseline prop stays rejected, and an
       // accepted prop never disappears because a new candidate crosses a runtime POI exclusion.
@@ -3544,11 +3711,16 @@ export const world = {
       ...(options.everydaySpaceKit === true ? { everydaySpaceKit: true } : {}),
       ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
       ...(options.worldOneOff === true ? { worldOneOff: true } : {}),
+      ...(typeof options.berthId === 'string' && options.berthId.length > 0
+        ? { berthId: options.berthId } : {}),
     };
     // What the player sees is what the ship hits: census-backed places at or above the
     // craft-scale floor take a fixed measured-skin body (solidDressing.js). The skin's world
     // scale tracks the same radius the renderer draws at, so collider == visible model.
-    const solidPlan = stampSolidDressing(data, { radius });
+    // An activity object slot is the exception: it re-points an ambient prop the dressing
+    // loop was going to draw anyway, and the PQ-020 contract holds it free of collider
+    // cost — the same placeId spawned unclaimed keeps its measured body.
+    const solidPlan = activityObjectSlotId ? null : stampSolidDressing(data, { radius });
     const spec = {
       pos,
       rot: propRot,
@@ -3609,7 +3781,7 @@ export const world = {
     if (!sector) return;
     const existing = new Set((active.hazards || []).map((row) => row && row.id).filter(Boolean));
     const extra = [];
-    if (sector.id === KILL_MACHINE_SECTOR_ID) extra.push(...killMachineHazardZones());
+    extra.push(...killMachineHazardZones(sector.id));
     if (sector.id === PALLAS_REEF_SECTOR_ID) extra.push(pallasReefHazardZone());
     extra.push(...weatherHazardZones(sector.id));
     extra.push(...apertureHazardZones(sector.id));
@@ -3618,6 +3790,7 @@ export const world = {
     if (sector.id === METRONOME_SECTOR_ID) extra.push(metronomeHazardZone());
     for (const zone of extra) {
       if (existing.has(zone.id)) continue;
+      existing.add(zone.id);
       const center = this._toGlobal(zone.center, sector.id);
       active.hazards.push({
         id: zone.id,
@@ -4049,7 +4222,7 @@ export const world = {
     const price = surveyDataPrice(sector);
     const credits = (this.state.player && this.state.player.credits) | 0;
     if (credits < price) {
-      this.bus.emit('toast', { text: `Survey data costs ${price.toLocaleString('en-US')} CR`, kind: 'warn', ttl: 3 });
+      this.bus.emit('toast', { text: `Survey data costs ${price.toLocaleString('en-US')} cr`, kind: 'warn', ttl: 3 });
       return false;
     }
 
@@ -4094,7 +4267,7 @@ export const world = {
     if (charge) {
       const credits = Math.max(0, Math.floor(Number(this.state.player && this.state.player.credits) || 0));
       if (credits < offer.price) {
-        this.bus.emit('toast', { text: `Rumor card costs ${offer.price.toLocaleString('en-US')} CR`, kind: 'warn', ttl: 3 });
+        this.bus.emit('toast', { text: `Rumor card costs ${offer.price.toLocaleString('en-US')} cr`, kind: 'warn', ttl: 3 });
         return false;
       }
       this.bus.emit('economy:chargeCredits', { amount: offer.price, reason: `frontier-rumor:${offer.id}` });
@@ -5328,15 +5501,31 @@ export const world = {
         reason: payload.reason || label,
         pos,
       };
+      let stableTarget = null;
       if (targetEntityId != null) {
-        this.state.nav.waypoint.targetEntityId = targetEntityId;
-        // INF-056: the course aimed at a live body, so bind the presentation id too — flight
-        // (resolveAutopilotTarget) re-resolves the entity every tick, and with the bind every
-        // instrument resolves the same moving position through the canonical resolver. Dead or
-        // despawned targets bind nothing; the authored pos stays the fail-closed place. The save
-        // whitelist drops the field, so a loaded waypoint falls back to pos the same way.
-        const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, targetEntityId);
-        if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
+        // Dead or despawned targets bind nothing: writing the bare id without its stamp would
+        // leave an unprovable bind that a recycled occupant later inherits — the authored pos
+        // stays the fail-closed place instead. presentationEntityId already refused the same
+        // dead bind two lines above; the id write now agrees with it (review).
+        const bound = liveEntityById(this.state, targetEntityId);
+        // SF-244: the armed course outlives the commit instant and the core recycles entity
+        // ids — stamp what the id meant so a later holder resolves closed (autopilot falls
+        // back to the fix) instead of redirecting the burn onto an unrelated body. A live but
+        // uncapturable entity binds nothing: the waypoint must not keep a bare recyclable id
+        // the autopilot already refused (review).
+        if (bound) {
+          stableTarget = captureEntitySelection(bound);
+          if (stableTarget) {
+            this.state.nav.waypoint.targetEntityId = targetEntityId;
+            this.state.nav.waypoint.stable = stableTarget;
+            // INF-056: the course aimed at a live body, so bind the presentation id too — flight
+            // (resolveAutopilotTarget) re-resolves the entity every tick, and with the bind every
+            // instrument resolves the same moving position through the canonical resolver. The
+            // save whitelist drops the field, so a loaded waypoint falls back to pos the same way.
+            const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, targetEntityId);
+            if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
+          }
+        }
       }
       // A physical gate is a local position with an inter-sector completion condition. Preserve the
       // destination identity so navigation can retire the old-sector marker only after authoritative
@@ -5345,11 +5534,12 @@ export const world = {
       this.state.nav.autopilot = {
         active: payload.autopilot !== false,
         target: pos,
-        targetEntityId,
+        targetEntityId: stableTarget ? targetEntityId : null,
         label,
         arrivalRadius,
         status: 'armed',
       };
+      if (stableTarget) this.state.nav.autopilot.stable = stableTarget;
       this.bus.emit('nav:waypoint', this.state.nav.waypoint);
       this.bus.emit('nav:autopilot', this.state.nav.autopilot);
       return this.state.nav.autopilot;
@@ -5883,8 +6073,8 @@ export const world = {
     this.bus.emit('toast', {
       text: charge.ok === false
         ? `Towed to ${quote.stationName}`
-        : `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)}cr`
-          + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)}cr on the note` : ''),
+        : `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)} cr`
+          + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)} cr on the note` : ''),
       kind: charge.debtCr > 0 ? 'warn' : 'success',
       ttl: 4,
     });

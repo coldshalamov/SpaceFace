@@ -639,8 +639,10 @@ export const COND = { hasContraband, inHighSecurity, sectorDwellS, inSector, noA
 // Named characters who call the player BECAUSE an observable world/mission fact holds —
 // recognition and local stakes, not lore radio. The story system polls this catalog (same shape
 // as COMMS.traps) and voices through the one-voice arbiter: while a higher-priority voice holds
-// the floor the interruption queues behind it, and is dropped unspoken if it goes stale. Each
-// entry fires at most once per save (seenComms). cond(state) must be a pure read of state.
+// the floor the interruption queues behind it. The arbiter may stale-drop a queued line, but the
+// story system only marks a line HEARD when the arbiter surfaces it — an interrupted-then-dropped
+// interrupt re-fires on a later poll while its fact still holds, so each entry is heard at most
+// once per save (seenComms on voice:surface). cond(state) must be a pure read of state.
 // Senders are characters who already speak in COMMS above — no invented roster.
 export const CHARACTER_INTERRUPTS = Object.freeze([
   {

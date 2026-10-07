@@ -100,6 +100,22 @@ test('seed 4242: clicking the "?" sets course to the ping, not the rock under it
   assert.equal(pickClickTarget([ping, dock], ping.sx + 14, ping.sy).targetEntityId, 'dock-1');
 });
 
+test('seed 4242: mark math is projection-agnostic — a non-uniform affine closure lands verbatim', () => {
+  // A different projection shape (uneven scales, offsets, a sign flip): the builder must bake in
+  // no assumption about the screen mapping — every screen position is exactly the closure's answer.
+  const ax = (x) => x * 0.37 - 120;
+  const az = (z) => -z * 0.53 + 88;
+  const state = seedState();
+  const marks = pingOverlayMarks(state, ax, az);
+  assert.equal(marks.length, 2);
+  assert.deepEqual(
+    marks.map((m) => [m.x, m.y]),
+    [[ax(1800), az(-700)], [ax(-420), az(260)]],
+    'mark coordinates are the closure outputs, not a baked divide',
+  );
+  assert.deepEqual(marks[0].target.pos, { x: 1800, z: -700 }, 'world pos stays the scanner-owned coordinate');
+});
+
 test('degenerate state fails closed: no bucket, empty bucket, headless ping', () => {
   assert.deepEqual(pingOverlayMarks(null, wx, wz), []);
   assert.deepEqual(pingOverlayMarks({ world: { currentSectorId: 'helios' } }, wx, wz), []);

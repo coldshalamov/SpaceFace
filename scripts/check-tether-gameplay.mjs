@@ -5,6 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { core } from '../src/core/coreSystem.js';
 import { physics } from '../src/core/physics.js';
+import { defaultMass } from '../src/core/physicsAuthority.js';
 import { SIM_DT } from '../src/core/sim.js';
 import { makeEvidenceSpindleSpec } from '../src/data/scenarios/47aLiveScene.js';
 import { actions } from '../src/systems/actions.js';
@@ -71,7 +72,10 @@ async function assertGameplaySlingshot() {
   initializeSystems(harness);
   await ensureSg02Ready(runtime, state);
   assert.equal(readPhysicsMass(runtime, player.id), player.mass, 'player Rapier mass should come from the ship def mass');
-  assert.equal(readPhysicsMass(runtime, asteroid.id), asteroid.mass, 'asteroid Rapier mass should come from entity mass');
+  // Asteroid body mass is authored substance — rock density × radius³ via defaultMass —
+  // not entity.mass (which stays on the mining/hull books and is deliberately bypassed for
+  // asteroid/wreck/pod/payload/prop in ensurePhysicsBodySpec).
+  assert.equal(readPhysicsMass(runtime, asteroid.id), defaultMass(asteroid), 'asteroid Rapier mass should come from the rock-density model');
   assert(Math.abs(distanceBetween(player, asteroid) - START_DISTANCE) < 1e-6, 'scenario should spawn player and asteroid 200 wu apart');
 
   const targetSpeed = player.maxSpeed * 0.8;

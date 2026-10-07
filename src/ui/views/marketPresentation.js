@@ -399,18 +399,24 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
       const travel = hasTravel ? Math.max(0, Math.round(Number(saleQuote.travelCost))) : 0;
       const operating = hasOperating ? Math.max(0, Math.round(Number(saleQuote.operatingCost))) : 0;
       const net = gross - travel - operating;
-      return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${net}" data-sale-gross="${gross}" data-sale-travel="${travel}" data-sale-operating="${operating}" data-sale-net="${net}">Contemplated sale · ${fmt(q)} u after slippage ${fmt(gross)} cr · travel ${fmt(travel)} cr · operating ${fmt(operating)} cr · net ${fmt(net)} cr${partial}</p>`;
+      const attrs = `data-sale-line data-sale-qty="${q}" data-sale-credits="${net}" data-sale-gross="${gross}" data-sale-travel="${travel}" data-sale-operating="${operating}" data-sale-net="${net}"`;
+      // A cost that is zero is not a cost: the line only itemises what actually comes off the sale.
+      if (!travel && !operating) {
+        return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} u → ${fmt(gross)} cr${partial}</p>`;
+      }
+      const costs = (travel ? ` − ${fmt(travel)} cr travel` : '') + (operating ? ` − ${fmt(operating)} cr operating` : '');
+      return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} u → ${fmt(gross)} cr after slippage${costs} = ${fmt(net)} cr net${partial}</p>`;
     }
-    return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${gross}">Contemplated sale · ${fmt(q)} × ${fmt(avg)} cr = ${fmt(gross)} cr${partial}</p>`;
+    return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${gross}">If sold: ${fmt(q)} × ${fmt(avg)} cr = ${fmt(gross)} cr${partial}</p>`;
   }
   const unit = Number(sell);
   if (!Number.isFinite(unit)) return '';
   const credits = Math.round(unit * qty);
-  return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${qty}" data-sale-credits="${credits}">Contemplated sale · ${fmt(qty)} × ${fmt(unit)} cr = ${fmt(credits)} cr</p>`;
+  return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${qty}" data-sale-credits="${credits}">If sold: ${fmt(qty)} × ${fmt(unit)} cr = ${fmt(credits)} cr</p>`;
 }
 
 function chartKeyHtml(hasForecast, origins, statedRate) {
-  const modelled = origins && origins.modelled ? '<span data-modelled>Modelled past</span>' : '';
+  const modelled = origins && origins.modelled ? '<span data-modelled>Estimated</span>' : '';
   const observed = origins && origins.observed ? '<span data-observed>Observed</span>' : '';
   const rate = Number.isFinite(statedRate)
     ? `<span data-stated-rate="${statedRate}">${Math.round(statedRate * 100)}%</span>`
@@ -446,7 +452,7 @@ function readoutsHtml({ buy, sell, avg, demandWord }) {
   return `<dl class="sx-mkt-readouts">${item('Buy', 'buy', `${fmt(buy)} cr`, 'you pay')}${item('Sell', 'sell', `${fmt(sell)} cr`, 'station pays')}${item('Galactic average', 'avg', `${fmt(avg)} cr`)}${item('Demand', 'demand', demandWord)}${item('Margin', 'margin', `${fmt(Math.max(0, (Number(buy) || 0) - (Number(sell) || 0)))} cr`, 'buy \u2212 sell')}</dl>`;
 }
 
-export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', quoteAge = '', quoteSource = '', survey = null, saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType }) {
+export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', quoteAge = '', quoteSource = '', survey = null, saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType, cause = null }) {
   const legalText = ({ legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' })[legal] || String(legal);
   const chainHtml = supplyChainHtml(presentSupplyChain({ producedBy, consumedBy, stationType }));
   const forecastPts = forecastSamples(forecast);
@@ -463,6 +469,7 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
     <p class="k-sentence sx-mkt-essay" id="sx-market-driver-summary">${escapeHtml(driversSummary)}</p>
     ${chainHtml}
     ${coneReadoutHtml({ regime, quoteAge, quoteSource, survey })}
+    ${cause && cause.text ? `<p class="k-sentence sx-mkt-cause"${cause.eventId ? ` data-cause-event="${escapeHtml(cause.eventId)}"` : ''}>${escapeHtml(cause.text)}</p>` : ''}
     ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name, { forecast: forecastPts, now, buy, sell })}
     ${chartKeyHtml(forecastPts.length > 0, origins, statedRate)}
     ${readoutsHtml({ buy, sell, avg, demandWord })}

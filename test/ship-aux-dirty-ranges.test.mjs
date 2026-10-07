@@ -61,13 +61,13 @@ function createShipFixture(id) {
 }
 
 function poolAttributes(pool) {
+  // Enumerate the owners' tracked bindings rather than a fixed attribute list — a new
+  // instanced attribute (instanceHit*, etc.) must still be drained and acknowledged here,
+  // exactly as the real driver does for every published upload.
+  const cap = (name) => name.charAt(0).toUpperCase() + name.slice(1);
   return [
-    ['shieldMatrix', pool.shield.mesh.instanceMatrix],
-    ['shieldColor', pool.shield.mesh.instanceColor],
-    ['shieldFlash', pool.shield.mesh.geometry.getAttribute('instanceFlash')],
-    ['shieldBase', pool.shield.mesh.geometry.getAttribute('instanceBase')],
-    ['navMatrix', pool.nav.mesh.instanceMatrix],
-    ['navColor', pool.nav.mesh.instanceColor],
+    ...pool.shield.dynamicBufferOwner.bindings.map((binding) => [`shield${cap(binding.name)}`, binding.attribute]),
+    ...pool.nav.dynamicBufferOwner.bindings.map((binding) => [`nav${cap(binding.name)}`, binding.attribute]),
   ];
 }
 
@@ -148,6 +148,10 @@ test('ship auxiliary pools publish active prefixes and retain exactly two owners
     shieldColor: [{ start: 0, count: 2 * 3 }],
     shieldFlash: [{ start: 0, count: 2 }],
     shieldBase: [{ start: 0, count: 2 }],
+    shieldHit0: [],
+    shieldHit1: [],
+    shieldHit2: [],
+    shieldHit3: [],
     navMatrix: [{ start: 0, count: 4 * 16 }],
     navColor: [{ start: 0, count: 4 * 3 }],
   });
@@ -171,10 +175,13 @@ test('ship auxiliary pools publish active prefixes and retain exactly two owners
   syncShipAuxPools(pool, fixtures.map(({ entity }) => entity), meshes);
   const fullAttributes = poolAttributes(pool);
   const full = publish(coordinator, scene, camera, fullAttributes);
-  for (const [name, attribute] of fullAttributes) {
-    assert.deepEqual(full[name], [{ start: 0, count: attribute.array.length }],
-      `${name} obeys the existing diagnostic full-span control`);
-  }
+  // The diagnostic force-full control upgrades bindings that carry pending writes to a
+  // whole-array span; clean bindings (the unchanged hit slots) publish nothing.
+  const fullExpected = Object.fromEntries(fullAttributes.map(([name, attribute]) => [
+    name,
+    name.startsWith('shieldHit') ? [] : [{ start: 0, count: attribute.array.length }],
+  ]));
+  assert.deepEqual(full, fullExpected);
   coordinator.getDiagnostics().setProbeForceFullUploads(false);
   const fullRequested = sumRequested(pool) - fullRequestedBefore;
   const fullLogical = sumLogical(pool) - fullLogicalBefore;

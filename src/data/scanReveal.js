@@ -168,6 +168,28 @@ export function buildWreckScanReveal(entity, state, options = {}) {
     const today = Math.floor(now / daySeconds);
     reveal.daysAgo = Number.isFinite(loss.simDay) ? Math.max(0, today - loss.simDay) : null;
   }
+  // A battle-aftermath wreck carries its own record where a ledger derelict carries a loss:
+  // the victim it was, the shooter the black box named at record time (the bare killerId may
+  // have recycled since), and the kill stamp. Same identified+ disclosure tier either way —
+  // contact still sees a hulk. An attributed encounter cause outranks the bare shooter name,
+  // matching the marker's own aftermath line. data.aftermath is the full marker clone — it
+  // survives even where a foreign tag replaced data.provenance on an older save.
+  const markerRecord = data.aftermath && data.aftermath.victimLabel ? data.aftermath
+    : (provenance && provenance.victimLabel ? provenance : null);
+  if (!loss && markerRecord) {
+    const cause = data.causeContract || (data.aftermath && data.aftermath.cause) || null;
+    const zone = markerRecord.zoneName || 'open space';
+    reveal.story = cause && cause.actor
+      ? `${markerRecord.victimLabel} destroyed in ${zone}; evidence links ${cause.actor} to ${cause.motiveId}.`
+      : `${markerRecord.victimLabel} destroyed in ${zone}; black box lists killer ${markerRecord.killerLabel || 'an unidentified killer'}.`;
+    // killedAt 0 means a pre-stamp legacy marker — the whole sim age is not its age.
+    const killedAt = Number.isFinite(data.killedAt) && data.killedAt > 0 ? data.killedAt
+      : (markerRecord && Number.isFinite(markerRecord.t) && markerRecord.t > 0 ? markerRecord.t : null);
+    if (killedAt != null) {
+      const today = Math.floor(now / 600);
+      reveal.daysAgo = Math.max(0, today - Math.floor(killedAt / 600));
+    }
+  }
   if (quality === 'deep') {
     reveal.salvageHint = wreckSalvageHintForEntity(entity);
     reveal.cold = wreckPoolLots(entity).length === 0;

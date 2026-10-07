@@ -5,10 +5,11 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, copyFileSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { fileRecord, glbMetrics, verifyAssetReceipt } from '../scripts/lib/graphics-asset-receipts.mjs';
 
-const ROOT = 'C:/sf-agents/fable-receipts-cov';
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const SRC_GLB = 'assets/ships/parts/hulls/hull_starter.glb';
 const REL_GLB = 'assets/ships/release/parts/hulls/hull_starter.glb';
 

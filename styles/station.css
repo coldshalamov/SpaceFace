@@ -851,6 +851,11 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   }
   #screens .sx-berth .sxb-berth.dp-frame__head > :is(.sxb-crown, .so-command-trigger) { justify-self: start; }
   #screens .sx-berth .sxb-crown, #screens .sx-berth .sxb-crown .sxb-purse { align-items: flex-start; justify-content: flex-start; }
+  /* The last-gauge hang exists for the one-row strip inside a crown column: stacked, the last
+     gauge sits at the left edge, so its verb flows under the card like every other gauge's. */
+  #screens .sx-berth .sxb-crown .sxb-vitals > .sxb-vital:last-child .sxb-vital__acts {
+    position: static; width: auto; justify-content: flex-start;
+  }
 }
 
 #screens .sx-berth .sxb-vital__acts .k-word,

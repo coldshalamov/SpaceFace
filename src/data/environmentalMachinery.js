@@ -166,6 +166,9 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_vesta_forge: 'vesta',
   sector_tethys_junction: 'tethys',
   sector_veil_nebula: 'veil',
+  sector_charon_expanse: 'charon',
+  sector_io_reach: 'io',
+  sector_ashfall_reach: 'ashfall',
 });
 
 function buildKillMachine({
@@ -297,8 +300,9 @@ export const KILL_MACHINE_BY_ID = Object.freeze(Object.fromEntries(
 ));
 
 // F13 — one cracker in the Helios starter claim. Same shove-into-an-anvil law as the
-// Ceres mouths. It faces south, out of the rock cluster, so it does not hunt the pilot
-// who is mining the middle. The jaw mesh is place_crusher_module, spawned by the adapter.
+// Ceres mouths. It stands on the −z side of the rock cluster and faces south (player
+// compass: +z is north, screen up; rot −π/2 aims the mouth at −z), out of the cluster, so it does not hunt
+// the pilot who is mining the middle. The jaw mesh is place_crusher_module, spawned by the adapter.
 export const STARTER_FIELD_SECTOR_ID = 'sector_helios_prime';
 export const STARTER_FIELD_ID = 'f_helios_starter';
 export const STARTER_FIELD_MACHINE = buildKillMachine({
@@ -326,7 +330,8 @@ export const STARTER_FIELD_MACHINE = buildKillMachine({
   }],
 });
 
-// CR-FEED — one scrap baler in Sker Haven's open water, south-south-east of the Bazaar, outside
+// CR-FEED — one scrap baler in Sker Haven's open water, south of the Bazaar (player
+// compass: +z is north, screen up; the site is −z of station_sker), outside
 // every authored zone and clear of the gate-camp, the Press-Gang seams, and the Skerris Throne.
 // Where the Ceres and Helios mouths drive a directional cone or sheet down a lane, the baler is
 // a compactor: its intake is a WELL centred
@@ -341,7 +346,7 @@ export const SKER_SCRAP_BALER = buildKillMachine({
   sectorId: SKER_SCRAP_BALER_SECTOR_ID,
   // Nudged 180 WU west of the original (-200,-1400) site: alien-ecology cycle 2 appended
   // zone_sker_red_snow (center 400,-1800 r=780) and zone_sker_harvest_deep after the baler
-  // was sited, and the old spot sat 59 WU inside Red Snow's rim. Still south-south-east of the
+  // was sited, and the old spot sat 59 WU inside Red Snow's rim. Still south of the
   // Bazaar, still in open water — >=120 WU clear of every station, gate, zone, field,
   // hazard, and POI in the sector.
   localPos: { x: -350, z: -1300 },
@@ -401,12 +406,13 @@ export const RIFT_FISSURE_CRACKER = buildKillMachine({
 //   vesta_shear_jaws   two opposed sheets converging on one bar  (the only converging machine)
 //   tethys_weigh_clamp one reversed cone feeding a plate behind  (the only machine that kills behind its face)
 //   veil_cold_draw     one off-centre well dragging across a plate (the only off-centre gather, and the only nebula)
+//   charon_tailings_sweep one sheet lying ACROSS the haul road  (the only machine that drags you along your own road)
 //
 // Same shared law as every other mouth: warning registers the volume at strength 0, surge is the
 // bite, calm is the safe window. None of these is a damage aura.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
 
-// VESTA FORGE - the foundry shear. A double shear stands on the south approach to the works: two
+// VESTA FORGE - the foundry shear. A double shear stands on the south-east approach to the works: two
 // slag rams close from both ends onto one shear bar at the throat. Its rot runs along the inbound
 // leg from the Helios gate so the jaws close ACROSS a ship crossing the approach, which is the
 // whole read: not a mouth you fly into, a pair of jaws that meet where you are.
@@ -416,7 +422,7 @@ export const VESTA_SHEAR_JAWS = buildKillMachine({
   hazardType: 'debris',
   placeId: 'place_ore_sorter',
   sectorId: VESTA_SHEAR_SECTOR_ID,
-  // South approach to the works: clear of both stations (975 WU to Depot Three), both belts
+  // South-east approach to the works (player compass, +z north): clear of both stations (975 WU to Depot Three), both belts
   // (946 WU off the radiation volume, 1388 off the storm lane), the ore winnow at f_vesta_3, the
   // dead freighter, and the runaway ladle on the foundry apron.
   localPos: { x: 250, z: -1000 },
@@ -500,7 +506,9 @@ export const VEIL_COLD_DRAW = buildKillMachine({
   localPos: { x: -900, z: -2200 },
   rot: 1.15,
   phaseOffsetS: 14,
-  hazardRadius: 130,
+  // The disc must cover the off-centre well's real reach: across 56 + radius 128 = 184 WU
+  // from the machine origin - a hull inside gather force must be inside the warning disc.
+  hazardRadius: 190,
   anvil: { radius: 22, mass: 9000, along: 0, across: 0 },
   mouth: { name: 'Cold Draw', radius: 20 },
   fields: [{
@@ -516,8 +524,142 @@ export const VEIL_COLD_DRAW = buildKillMachine({
   }],
 });
 
+// CHARON EXPANSE - the tailings sweep. The Abandoned Mining Colony ran a dragline that
+// swept spoil off the working apron into a tailings berm parked on the haul road itself,
+// and the drive still cycles on the dead colony's clock. The sheet lies ACROSS the road:
+// a body holding the lane inside the sweep band is dragged along its own course into the
+// berm - no mouth to fly into, no jaws closing in - the only machine in the census whose
+// pull runs parallel to the direction you were already travelling.
+export const CHARON_SWEEP_SECTOR_ID = 'sector_charon_expanse';
+export const CHARON_TAILINGS_SWEEP = buildKillMachine({
+  id: 'charon_tailings_sweep',
+  hazardType: 'debris',
+  placeId: 'place_conveyor_truss',
+  sectorId: CHARON_SWEEP_SECTOR_ID,
+  // Mid-lane on the Expanse Refinery -> colony haul road, clear of the refinery (1147 WU),
+  // all three Charon fields (401 WU past f_charon_1's rim), both hazard discs (183/292 WU
+  // off their rims), the colony apron (1401 WU), the nursery, and every gate (3587+ WU).
+  // (Routine haulers never fly this road - one station, no station-to-station convoys; the
+  // lane is real for colony-claim sling traffic and the player's own mining runs.)
+  localPos: { x: 205, z: 287 },
+  // The sweep axis is perpendicular to the road bearing (~126 deg), so the sheet's
+  // squeeze runs along the road - toward the berm the dead dragline parked on it.
+  rot: 0.63,
+  phaseOffsetS: 16,
+  hazardRadius: 130,
+  anvil: { radius: 24, mass: 13000, along: 0, across: 0 },
+  mouth: { name: 'Tailings Dragline', radius: 20 },
+  fields: [{
+    // One sheet spanning the road (170 WU across, centred on the berm) covering 110 WU of
+    // road length - the sweep band. Surge drags lane traffic to the centreline, onto the berm.
+    idSuffix: 'sweep',
+    kind: 'sheet',
+    strength: 720,
+    radius: 170,
+    halfWidth: 55,
+    falloff: 1.0,
+    along: -85,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
+// IO REACH - the bell ringer. Scavengers nesting in the Concord Vigilant's engine bells rigged
+// the largest drive bell as a collection throat (poi_cruiser, "the Wreck Cathedral"). Two stages
+// nobody else runs: a channel sheet down the stern corridor squeezes drifting salvage into single
+// file, and a clapper well ON the anvil in the bell mouth grips whatever the line delivers. The
+// Sker baler's well is also on-anvil - the ringer's claim is the separation: the only machine
+// that herds with one field and holds with another, so the kill point answers to the grip alone.
+// Sited aft of the hulk, clear of station_reach (1937 WU), station_io_merc (3103 WU), both Io
+// field clusters (f_io_2 rim +198, f_io_1 2025), every gate and POI (>40).
+export const IO_BELL_SECTOR_ID = 'sector_io_reach';
+
+export const IO_BELL_RINGER = buildKillMachine({
+  id: 'io_bell_ringer',
+  hazardType: 'debris',
+  placeId: 'place_aftermath_deb_ore_freighter_drive_bell',
+  sectorId: IO_BELL_SECTOR_ID,
+  localPos: { x: -1450, z: -854 },
+  rot: -1.96,
+  phaseOffsetS: 18,
+  hazardRadius: 185,
+  anvil: { radius: 22, mass: 12000, along: 135, across: 0 },
+  mouth: { name: 'Bell Ringer', radius: 18 },
+  fields: [
+    {
+      // The nave: a channel sheet down the corridor axis. Its lateral squeeze herds drifting
+      // salvage onto the centreline - the salvage line a pilot reads as the ringer's telegraph.
+      idSuffix: 'nave',
+      kind: 'sheet',
+      strength: 380,
+      radius: 120,
+      halfWidth: 55,
+      falloff: 1.0,
+      along: 0,
+      across: 0,
+      dirAlong: 1,
+    },
+    {
+      // The clapper: a well centred ON the anvil inside the bell mouth, overlapping the nave's
+      // tail (along 90-120) so a lined-up body slides off the centreline into the grip.
+      idSuffix: 'clapper',
+      kind: 'well',
+      strength: 640,
+      radius: 45,
+      falloff: 0.6,
+      along: 135,
+      across: 0,
+    },
+  ],
+});
+
+// ASHFALL REACH - the claim scarecrow. The Vael do not fence a claim; they keep it hollow.
+// A pole-rig inside the sector's authored debris field (the 400/300 disc) runs the one
+// repulsor in the census: every surge throws loose mass outward, and what the push carries
+// past the rim coasts out of the field's reach - a working scatter of pods and light rock
+// a pilot can pick over on the calm tick. Every other machine gathers toward a kill point;
+// the scarecrow's rig IS the point being kept clear - sprint for the heart on calm, or
+// ride the surge outward, the only force in Ashfall that throws you out of the Roaming
+// Burn's path instead of into a pocket.
+// Sited inside the authored debris disc (136 WU off its heart, so the mouth disc stays
+// nested inside it), 1302 WU from station_ashcache, 308 WU clear of f_ash_1's rim in the
+// shove's path, clear of f_ash_2's rim (1660), every gate and anchor POI (nearest 807:
+// poi_boss). The rig stands on the Converted Yards' south-west footprint (504 WU off its
+// heart, inside the zone), and the disc's rim brushes the slag yard's west edge - the same
+// debris language, so the overlap reads as one field.
+export const ASHFALL_SCARECROW_SECTOR_ID = 'sector_ashfall_reach';
+
+export const ASHFALL_CLAIM_SCARECROW = buildKillMachine({
+  id: 'ashfall_claim_scarecrow',
+  hazardType: 'debris',
+  placeId: 'place_extraction_mast',
+  sectorId: ASHFALL_SCARECROW_SECTOR_ID,
+  localPos: { x: 480, z: 410 },
+  rot: 0,
+  phaseOffsetS: 20,
+  // The mouth disc covers the whole field reach (radius below) - the map never understates
+  // where the shove can bite.
+  hazardRadius: 260,
+  // The rig pole itself is the anvil: the repulsor's heart is the guarded claim anchor.
+  // A body at centre still satisfies the census law (pointInsideKillMachine admits it) -
+  // inside the field, shoved away from it.
+  anvil: { radius: 20, mass: 11000, along: 0, across: 0 },
+  mouth: { name: 'Claim Scarecrow', radius: 16 },
+  fields: [{
+    // The only repulsor-kind field in the census: radial push away from the rig, so the
+    // claim stays hollow and the rim collects what the sweep throws out.
+    idSuffix: 'shove',
+    kind: 'repulsor',
+    strength: 560,
+    radius: 260,
+    falloff: 1.0,
+    along: 0,
+    across: 0,
+  }],
+});
+
 // Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, the Sker
-// baler, the Rift fissure cracker, and the CR-FEED trio. Per-sector slices come from
+// baler, the Rift fissure cracker, and the CR-FEED machines. Per-sector slices come from
 // killMachinesForSector; this is the census the runtime uses to retire fields and anvils when a
 // sector deactivates or a machine is absent.
 export const ALL_KILL_MACHINES = Object.freeze([
@@ -528,6 +670,9 @@ export const ALL_KILL_MACHINES = Object.freeze([
   VESTA_SHEAR_JAWS,
   TETHYS_WEIGH_CLAMP,
   VEIL_COLD_DRAW,
+  CHARON_TAILINGS_SWEEP,
+  IO_BELL_RINGER,
+  ASHFALL_CLAIM_SCARECROW,
 ]);
 
 // The full census by stable id — Ceres trio plus the starter/baler/rift/CR-FEED machines.
@@ -545,6 +690,9 @@ export function killMachinesForSector(sectorId) {
   if (sectorId === VESTA_SHEAR_SECTOR_ID) return Object.freeze([VESTA_SHEAR_JAWS]);
   if (sectorId === TETHYS_WEIGH_SECTOR_ID) return Object.freeze([TETHYS_WEIGH_CLAMP]);
   if (sectorId === VEIL_COLD_SECTOR_ID) return Object.freeze([VEIL_COLD_DRAW]);
+  if (sectorId === CHARON_SWEEP_SECTOR_ID) return Object.freeze([CHARON_TAILINGS_SWEEP]);
+  if (sectorId === IO_BELL_SECTOR_ID) return Object.freeze([IO_BELL_RINGER]);
+  if (sectorId === ASHFALL_SCARECROW_SECTOR_ID) return Object.freeze([ASHFALL_CLAIM_SCARECROW]);
   return Object.freeze([]);
 }
 
@@ -625,8 +773,9 @@ export function pointInsideKillMachine(machine, point) {
   return false;
 }
 
-export function killMachineHazardZones() {
-  return KILL_MACHINES.map((machine) => Object.freeze({
+export function killMachineHazardZones(sectorId) {
+  // No default: a missing/unknown id must fail closed to [], never silently serve Ceres.
+  return killMachinesForSector(sectorId).map((machine) => Object.freeze({
     id: machine.id,
     type: machine.hazardType,
     center: machine.localPos,
@@ -759,7 +908,7 @@ export const VESTA_ORE_WINNOW = Object.freeze({
   fieldId: 'f_vesta_3',
   localPos: freezeVec(120, 980),
   globalPos: WINNOW_POS,
-  // East is clear of the foundry and of the storm sheet to the south-east.
+  // East is clear of the foundry (west of the throat) and of the storm sheet to the south-east.
   dir: freezeVec(1, 0),
   cycle: Object.freeze({ gatherS: 5, warningS: 2, dischargeS: 3, calmS: 6 }),
   fields: Object.freeze([

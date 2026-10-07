@@ -280,6 +280,32 @@ export const GROWTH_LAYOUT_CSS = `
       white-space:normal; max-width:min(360px,46vw); overflow:visible;
     }
     html:not([data-locale="en-US"]) #hud .sf-objectives { white-space:normal; overflow:visible; }
+
+    /* D136 — surfaces whose own sheets pin one-line copy inside fixed boxes, or bleed a designed
+       decoration past the box the copy lives in. Each selector copies the surface's own rule
+       (including the ORRERY sheets' doubled classes and !important) and adds the locale guard, so
+       it wins exactly where the authored rule would otherwise clip a grown string. The :not(.sf-l10n-x)
+       tail breaks exact-specificity ties against same-!important rules without matching anything.
+       English keeps the authored form; an expanded locale wraps, or its designed bleed lands inside. */
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-settings.orr-settings .sf-tabbar .sf-tab { white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab { white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart.orr-chart :is(.gm-tab, .gm-layer-btn, .gm-frame-btn, .gm-ins-btn, .gm-rail-sum, .gm-stamp):not(.sf-l10n-x) { white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart .gm-layer-name { white-space:normal !important; overflow-wrap:anywhere; min-width:0; }
+    html:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart .gm-scale-buttons.k-words { flex-wrap:wrap !important; width:auto !important; max-width:100% !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-codex.orr-archive.orr-archive .cx-index { grid-template-columns:minmax(0, 100%) !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-codex.orr-archive.orr-archive .cx-index__list { flex-wrap:wrap !important; justify-content:flex-end; max-width:100%; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-codex.orr-archive.orr-archive .cx-index__w { overflow-wrap:anywhere !important; min-width:0 !important; max-width:100% !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog :is(.orr-mdial__trace-read, .orr-mdial__clock-read) { left:-1px !important; right:-1px !important; white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route::before { right:-1px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog :is(.ml-route__from, .ml-route__to) { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover .sf-go-st,
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover .orr-tape__read { white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover .sf-go-tape::before { right:-1px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload .orr-film__list > .k-row.sf-slot { padding-inline:8px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help :is(.orr-hrig__st, .orr-hreg__row, .orr-help__close.sf-back.k-word) { padding-inline-end:3px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help .orr-hrig__verb { white-space:normal !important; overflow-wrap:anywhere; min-width:0 !important; max-width:160px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help .orr-hkey { white-space:normal !important; overflow-wrap:anywhere; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help .orr-help__close-word { min-width:0 !important; overflow-wrap:anywhere; }
   `;
 
 function injectOverflowStyle(doc, locale) {

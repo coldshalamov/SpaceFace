@@ -65,6 +65,9 @@ export function collectPageIssues(page, options = {}) {
       type: 'error',
       text: `Request failed ${request.url()}${failure && failure.errorText ? `: ${failure.errorText}` : ''}`,
       at: new Date().toISOString(),
+      // The method lets checks excuse only the boot store GET probe — a deadline abort the
+      // client handles by design — while an aborted PUT mirror stays fail-closed.
+      method: request.method(),
     };
     if (expectedNavigation && isNavigationCancelledRequest(failure)) {
       ignoredIssues.push({
@@ -82,6 +85,8 @@ export function collectPageIssues(page, options = {}) {
     }
     // Store-less test servers deliberately leave this optional backend unmounted.
     // Its client deadline falls back to localStorage; keep real-store failures visible.
+    // This suppresses ANY aborted request to the route — GET or PUT. Callers that need the
+    // GET-only excuse must check issue.method themselves (the station-tab check does).
     if (options.playerStoreMounted === false && isNavigationCancelledRequest(failure)
       && new URL(request.url()).pathname === '/__spaceface_player_store') {
       ignoredIssues.push({ ...issue, absentPlayerStore: true });

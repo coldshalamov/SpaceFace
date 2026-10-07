@@ -324,9 +324,8 @@ export function createFloatingText(ctx) {
     bus.emit('toast', { text: 'MARKET ALERT: ' + cmdtyName + ' ' + typeLabel + ' at ' + stationName, kind, ttl: 5 });
   });
 
-  bus.on('economy:eventEnded', (p) => {
-    bus.emit('toast', { text: 'Market event ended', kind: 'info', ttl: 3 });
-  });
+  // No receipt when a market event ends: the payload carries only an id, so the line could not say
+  // which commodity or station it meant. The start alert above is the one that names them.
 
   // Session boundary (SF-283): pooled floats live when a save loads or a new run starts were
   // minted by the pre-save session — retire them rather than letting them finish their drift

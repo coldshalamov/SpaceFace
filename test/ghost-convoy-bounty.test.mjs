@@ -37,7 +37,12 @@ function makeBus() {
   };
 }
 
-function makeState() {
+const SECTOR_NAMES = {
+  [SECTOR_ID]: 'Helios Prime',
+  sector_sker_haven: 'Sker Haven',
+};
+
+function makeState(sectorId = SECTOR_ID) {
   return {
     meta: { seed: 0x9ea7 },
     simTime: 1800,
@@ -49,10 +54,10 @@ function makeState() {
     story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
     missions: { boards: {}, active: [], completedLog: [], receipts: [], nextId: 1, config: null },
     world: {
-      currentSectorId: SECTOR_ID,
+      currentSectorId: sectorId,
       activeSector: {},
       sectors: {
-        [SECTOR_ID]: { id: SECTOR_ID, name: 'Helios Prime', owner: 'faction_scn' },
+        [sectorId]: { id: sectorId, name: SECTOR_NAMES[sectorId] || sectorId, owner: 'faction_scn' },
       },
     },
     // The reach-pressure lane signal lossLedger's ghost-convoy detector reads.
@@ -60,7 +65,7 @@ function makeState() {
       sectors: {},
       field: {
         nodes: {
-          [SECTOR_ID]: {
+          [sectorId]: {
             danger: 0.75,
             pricePressure: 0,
             influence: { faction_scn: 1 },
@@ -117,12 +122,12 @@ function makeWorld(state = makeState()) {
   return { state, bus, voice, spawnedSpecs, ledger, missionSystem };
 }
 
-function driveLaneLosses(state, bus, count = 3) {
+function driveLaneLosses(state, bus, count = 3, sectorId = SECTOR_ID) {
   for (let i = 0; i < count; i++) {
     bus.emit('automation:assetLost', {
       kind: 'trader',
       id: `trader_${i}`,
-      sectorId: SECTOR_ID,
+      sectorId,
       value: 400,
       shipDefId: 'ship_mule',
     });
@@ -229,6 +234,33 @@ test('ghost convoy rumor mints a station-addressed lane bounty the board accepts
   assert.ok(fired[laneKey].resolvedAt != null, 'the lane memory records the resolution');
 
   world.ledger.destroy();
+});
+
+test('a gated desk cannot sell the bounty — the rumor stays addressless news', () => {
+  // station_sker is the only desk in its sector and repGates to Reach standing. At rep 0 the
+  // rumor must not name a berth the pilot cannot dock at — the line stays news, no row posts.
+  // The lane's `fired` latch is spent either way: a gated-sector lane never re-posts, which
+  // keeps the raider-nest intel without promising a berth that stayed shut.
+  const gated = makeWorld(makeState('sector_sker_haven'));
+  driveLaneLosses(gated.state, gated.bus, 3, 'sector_sker_haven');
+  const rumor = gated.voice.calls.find((cue) => cue.kind === 'ghostConvoy');
+  assert.ok(rumor, 'the rumor still speaks as news');
+  assert.doesNotMatch(rumor.text, /posted a bounty/, 'no desk names itself behind a locked gate');
+  assert.equal(gated.bus.emitted.filter((e) => e.name === 'mission:offered').length, 0,
+    'no bounty boards at a desk the pilot cannot reach');
+
+  // Reach standing opens the Bazaar: the same lane then sells the bounty through the real desk.
+  const open = makeWorld(makeState('sector_sker_haven'));
+  open.state.factions = { faction_reach: { rep: 5 } };
+  driveLaneLosses(open.state, open.bus, 3, 'sector_sker_haven');
+  const posted = open.bus.emitted.filter((e) => e.name === 'mission:offered');
+  assert.equal(posted.length, 1, 'the lane sells through Sker once standing admits the berth');
+  assert.equal(posted[0].payload.stationId, 'station_sker');
+  const openLine = open.voice.calls.find((cue) => cue.kind === 'ghostConvoy');
+  assert.match(openLine.text, /Sker Bazaar posted a bounty/);
+
+  gated.ledger.destroy();
+  open.ledger.destroy();
 });
 
 test('ghost rumor does not refire for the same lane, and other lanes stay silent', () => {

@@ -26,6 +26,7 @@ import {
 import { ENDING_IDS, endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
+import { missionNextActionRow } from '../sim/missionNextAction.js';
 import { BINDINGS } from '../bindings.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import {
@@ -479,7 +480,7 @@ export function continueRecap(state) {
   return { objective, location, risk };
 }
 
-function nextStepText(m) {
+function nextStepText(m, state) {
   const p = m.params || {};
   const dest = m.destStationId ? destStationName(m.destStationId) : 'the tracked marker';
   const wreckName = p.wreckName || 'the marked wreck';
@@ -508,18 +509,46 @@ function nextStepText(m) {
     const choice = titleCaseWords(p.wreckChoiceId || 'wreck outcome');
     return `Next: confirm ${choice} for ${wreckName}; this is a disposition receipt, not a freight handoff.`;
   }
+  // SF-246: the shared sim row knows the phase the static type-switch cannot see — a held
+  // contract term, a wiped-out hunt, a hold short of the manifest, a berth a sector away.
+  // Set-piece lanes above keep their authored lines; every other phase falls to the switch.
+  const next = state ? missionNextActionRow(state, m) : null;
+  if (next) {
+    if (next.phase === 'blocked') {
+      const clause = next.blockedClauses[0] || {};
+      return `Next: ${clause.pendingText || clause.label || 'settle the held contract term'}`;
+    }
+    if (next.phase === 'target_lost') {
+      return 'Next: no marked target remains — report the hunt to settle the contract.';
+    }
+    if (next.phase === 'acquire' && next.action) {
+      const short = Math.max(0, Number(next.action.qty) || 0);
+      const name = cmdtyName(next.action.commodityId);
+      const partial = next.carry && next.carry.partialSettlement;
+      return partial && partial.deliverQty > 0
+        ? `Next: ${short} ${name} short — load the rest, or settle ${partial.deliverQty} at ${dest} for ${partial.payCr} cr.`
+        : `Next: ${short} ${name} short — load the rest before ${dest}.`;
+    }
+    if (next.phase === 'travel' && next.destination && next.destination.sectorId) {
+      const sector = SECTOR_BY_ID.get(next.destination.sectorId);
+      const sectorName = sector && sector.name ? sector.name : 'the destination sector';
+      return `Next: travel to ${sectorName} — ${dest} is another sector over.`;
+    }
+  }
   switch (m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':
-      return 'Next: follow tracked nav to ' + dest + ', dock, and complete the handoff.';
+      return m.destStationId
+        ? 'Next: follow tracked nav to ' + dest + ', dock, and hand over the cargo.'
+        : 'Next: follow tracked nav, dock, and hand over the cargo.';
     case 'bulk_trade':
-      return 'Next: buy or carry ' + cmdtyName(p.cmdtyId) + ', then sell into the tracked destination market.';
+      return 'Next: buy or carry ' + cmdtyName(p.cmdtyId) + ', then sell at the destination market.';
     case 'mining_quota':
-      return 'Next: mine ' + cmdtyName(p.cmdtyId) + ' in an asteroid field, keep cargo space open, then follow the tracker.';
+      return 'Next: mine ' + cmdtyName(p.cmdtyId) + ' in an asteroid field and keep cargo space free.';
     case 'salvage_retrieval':
       return 'Next: recover the marked cargo, keep enough hold space, and deliver it to ' + dest + '.';
     case 'bounty_hunt':
-      return 'Next: follow tracked nav, engage the target, then check this log for completion.';
+      return 'Next: follow tracked nav and take down the target.';
     case 'patrol_clear':
       return 'Next: follow tracked nav and clear hostiles until the progress bar fills.';
     case 'escort':
@@ -531,7 +560,7 @@ function nextStepText(m) {
     case 'smuggling_run':
       return 'Next: deliver quietly to ' + dest + '; avoid scans and keep an escape route.';
     default:
-      return 'Next: track this mission, undock, and follow the nav/objective marker.';
+      return 'Next: track this mission, undock, and follow the objective marker.';
   }
 }
 
@@ -871,7 +900,7 @@ export function missionCommandBrief(m, state) {
   return Object.freeze({
     what: objectiveText(m),
     where: destLabel(m),
-    how: stripNextPrefix(nextStepText(m)),
+    how: stripNextPrefix(nextStepText(m, state)),
     why: missionPurposeText(m),
     reward: term('Pays', 'close cleanly'),
     risk: [term('Risk', 'R0 / route pending'), stake ? stake.text : 'no collateral'].join(' · '),
@@ -1826,7 +1855,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       tone: 'primary',
       label: 'TRACKED',
       title: missionTitle(tracked),
-      body: stripNextPrefix(nextStepText(tracked)),
+      body: stripNextPrefix(nextStepText(tracked, state)),
       meta: missionProgressLabel(tracked),
       brief,
       missionId: tracked.id,
@@ -2903,7 +2932,7 @@ export const missionLogScreen = {
       rollTo(digits, Math.round(frac * 100));
     }
     card.appendChild(el('h2', 'k-display k-t-title', titleText));
-    if (!isTracked) card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-next', stripNextPrefix(nextStepText(m))));
+    if (!isTracked) card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-next', stripNextPrefix(nextStepText(m, state))));
     else card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-obj', objectiveText(m)));
 
     const reward = Math.max(0, Number(m.reward_cr) || 0);

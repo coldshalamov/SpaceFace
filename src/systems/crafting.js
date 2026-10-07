@@ -381,7 +381,7 @@ export const crafting = {
       // isBusy() would report active:true and contradict the active:false receipt update()
       // sends after marking it done (consumers see a same-tick on+off pair).
       this.bus.emit('craft:complete', { bpId: bp.id, productId: out.id, kind: out.kind, qty: out.qty });
-      this.bus.emit('toast', { text: '✓ Fabrication complete: ' + bp.name, kind: 'good', ttl: 3.5 });
+      this.bus.emit('toast', { text: 'Fabrication complete: ' + bp.name, kind: 'good', ttl: 3.5 });
     }
     return true;
   },

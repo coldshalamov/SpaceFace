@@ -3,6 +3,8 @@
 // the Undock tile's READY/CHECK/RISK summary, the Departure Check chips, and the 3-step
 // Getting Started handoff. Live consumers import this module directly.
 import { COMMODITIES } from '../../data/commodities.js';
+import { projectCargoCustody } from '../sim/custodyProjection.js';
+import { heatClearSecondsForLevel, heatLevelFor, isPlayerWanted } from '../../systems/heat.js';
 import { prettyType } from './stationHubFormatters.js';
 import { stationTabLabel } from './stationHubModel.js';
 import { activeMissionCount } from './stationMissionModel.js';
@@ -139,13 +141,27 @@ function departureCargoChip(state) {
   const free = Math.max(0, cap - safeUsed);
   const freeFrac = free / cap;
   const kind = free <= 0.1 ? 'bad' : (freeFrac < 0.18 ? 'warn' : 'ok');
+  const sealed = sealedHoldLine(state);
   return {
     kind,
     label: 'Hold',
-    text: fmtDepartUnits(free) + 'u free',
+    text: fmtDepartUnits(free) + 'u free' + (sealed ? ' · ' + sealed : ''),
     targetTab: 'market',
     actionLabel: kind === 'ok' ? 'Open Market to review cargo' : 'Open Market to sell cargo',
   };
+}
+
+/** Sealed contract freight, from the custody projection. Empty when the whole hold is yours. */
+export function sealedHoldLine(state) {
+  const projection = projectCargoCustody(state);
+  const parts = [];
+  for (const lot of projection.lots) {
+    if (!lot || lot.custody !== 'hold' || !(lot.qty > lot.sellableQty)) continue;
+    const commodity = COMMODITY_BY_ID.get(lot.commodityId);
+    const name = (commodity && commodity.name) || 'freight';
+    parts.push(`${lot.sellableQty} of ${lot.qty} ${name} yours to sell`);
+  }
+  return parts.join('; ');
 }
 
 function departureFuelChip(state) {
@@ -158,9 +174,23 @@ function departureFuelChip(state) {
   return {
     kind,
     label: 'Fuel',
-    text: fmtPercent(frac),
+    text: fmtPercent(frac) + ' · ' + fmtDepartUnits(current) + ' of ' + fmtDepartUnits(max),
     targetTab: 'services',
     actionLabel: kind === 'ok' ? 'Open Services to review launch supplies' : 'Open Services to refuel',
+  };
+}
+
+function departureHeatChip(state) {
+  const heat = Number(state && state.player && state.player.heat);
+  if (!isPlayerWanted({ player: { heat } })) return null;
+  const clearS = heatClearSecondsForLevel(heatLevelFor(heat));
+  const clock = clearS > 0 ? ` · clears in ${Math.ceil(clearS)}s` : '';
+  return {
+    kind: 'bad',
+    label: 'Heat',
+    text: 'WANTED' + clock,
+    targetTab: 'services',
+    actionLabel: 'Open Services before you undock wanted',
   };
 }
 
@@ -172,7 +202,7 @@ function departureHullChip(state) {
   return {
     kind,
     label: 'Hull',
-    text: fmtPercent(frac),
+    text: fmtPercent(frac) + ' · ' + fmtDepartUnits(ship.hull || 0) + ' of ' + fmtDepartUnits(ship.hullMax),
     targetTab: 'services',
     actionLabel: kind === 'ok' ? 'Open Services to review ship readiness' : 'Open Services to repair hull',
   };
@@ -206,6 +236,7 @@ export function departureReadinessChips(state) {
     departureMissionChip(state),
     departureCargoChip(state),
     departureFuelChip(state),
+    departureHeatChip(state),
     departureHullChip(state),
     departureYardChip(state),
   ].filter(Boolean);
@@ -291,10 +322,10 @@ export function firstDockHandoffSteps(state = {}) {
         ? 'Cargo sold — hold is ready'
         : (hasCargo ? 'Sell what you hauled' : 'Open your hold'),
       text: marketDone
-        ? 'Credits banked and space free for the next run.'
+        ? 'Credits banked, hold clear for the next run.'
         : (hasCargo
-            ? 'Opens Market → Selling. Sell what is in your hold at the station price, then free capacity for new cargo.'
-            : 'Opens Hold. Nothing to sell yet — check Market prices or undock to mine.'),
+            ? 'Sell it at the Market, then refill the hold.'
+            : 'Hold is empty. Check Market prices or undock to mine.'),
       kind: marketDone ? 'ok' : 'warn',
       done: marketDone,
       targetTab: hasCargo ? 'market' : 'hold',
@@ -306,9 +337,9 @@ export function firstDockHandoffSteps(state = {}) {
       title: missionDone ? 'Job on the board' : 'Take one easy job',
       text: missionDone
         ? (activeJobs === 1
-            ? 'Opens Missions. One active job — Accept+Track already feeds nav.'
-            : 'Opens Missions. ' + activeJobs + ' jobs active; track the one you want next.')
-        : 'Opens Missions. Accept a nearby low-risk contract; Track puts the route on your nav.',
+            ? 'One job active and already on your nav.'
+            : activeJobs + ' jobs active. Track the one you want next.')
+        : 'Accept a nearby, low-risk contract. Track puts it on your nav.',
       kind: missionDone ? 'ok' : 'warn',
       done: missionDone,
       targetTab: 'missions',
@@ -318,9 +349,8 @@ export function firstDockHandoffSteps(state = {}) {
       label: 'Launch',
       title: departure.state === 'ready' ? 'Safe to undock' : 'Fix launch risks',
       text: departure.state === 'ready'
-        ? 'Opens Services / Departure. Fuel, hull, and tracked work look good — undock when ready.'
-        : 'Opens ' + stationTabLabel(firstDockDepartureTarget(departureChips))
-          + '. ' + departure.status + ' — repair, refuel, or resolve the red departure chip before undock.',
+        ? 'Fuel, hull and job all look good.'
+        : departure.status + ' — fix it in ' + stationTabLabel(firstDockDepartureTarget(departureChips)) + ' before you undock.',
       kind: departure.state === 'risk' ? 'bad' : (departure.state === 'check' ? 'warn' : 'ok'),
       done: departure.state === 'ready' && missionDone,
       targetTab: firstDockDepartureTarget(departureChips),

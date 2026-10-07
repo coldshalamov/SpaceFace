@@ -374,3 +374,46 @@ test('racing the crew on the same work record pays the consequence once and laps
   assert.equal(bloomCount(r), 0, 'the bloom never replays after restore');
   assert.equal(torchToastCount(r), 0, 'the beat never replays after restore');
 });
+
+// ── Proof 4: arm-path hardening — no work record, no claim; a vanished record never ────────
+//    leaves the cutters circling forever.
+test('a missing or vanished world-site record never arms the claim — or lapses it cleanly mid-beat', () => {
+  const h = bootGame();
+  h.world.enterSector(CHARON);
+  const g = siteGlobal(CHARON, ALIEN_SITES[NURSERY_SITE].center);
+
+  // No record, no claim: with the world-site record absent, closing on the site arms nothing.
+  const record = h.state.sites.worldById[NURSERY_WORLD_SITE];
+  assert.ok(record, 'the ordinary route materialized the work record');
+  delete h.state.sites.worldById[NURSERY_WORLD_SITE];
+  h.player.pos.x = g.x + 500; h.player.pos.z = g.z;
+  tick(h, 6);
+  const crew0 = crewRecord(h);
+  assert.equal(crew0 ? crew0.state : null, null, 'a missing work record never arms the beat');
+  assert.equal(cuttersOf(h).length, 0, 'no cutters materialize onto a missing record');
+
+  // The record returns (the producer's ordinary re-materialization): the approach arms.
+  h.state.sites.worldById[NURSERY_WORLD_SITE] = record;
+  tick(h, 4);
+  const crew = crewRecord(h);
+  assert.equal(crew.state, 'working', 'the claim arms once the record exists again');
+  assert.equal(cuttersOf(h).length, NURSERY_CLAIM_CREW.crewSize, 'the crew stands off the barge');
+
+  // The record vanishes mid-beat: the torches refuse 'site-missing' and the crew breaks
+  // off within a few ticks — the cutters never circle a dead record forever.
+  delete h.state.sites.worldById[NURSERY_WORLD_SITE];
+  tick(h, 1);
+  assert.equal(crew.state, 'lapsed', 'a vanished record lapses the claim promptly');
+  assert.ok(h.events.some((e) => e.type === 'comms:log' && /beat the torches/.test(e.payload.text)),
+    'the lapse narrates itself');
+  assert.equal(bloomCount(h), 0, 'a lapsed claim never pays the consequence');
+  tick(h, 8);
+  assert.equal(cuttersOf(h).length, 0, 'the lapsed cutters leave instead of circling');
+  assert.equal(crew.badBatches >= 3, true, 'the refusal run is on the persisted record');
+
+  // Restore the record and confirm the world is still clean: the lapsed claim is terminal.
+  h.state.sites.worldById[NURSERY_WORLD_SITE] = record;
+  tick(h, 4);
+  assert.equal(crew.state, 'lapsed', 'a lapsed claim stays terminal');
+  assert.equal(cuttersOf(h).length, 0, 'no respawn after a refusal lapse');
+});

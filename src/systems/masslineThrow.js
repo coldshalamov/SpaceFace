@@ -16,6 +16,7 @@
 // state.massline2.throw subtree (outside the sim-snapshot whitelist and the save schema) and cuts
 // the attachment through the same service tetherGameplay uses. The cut itself adds no free speed.
 import { massline2Flag } from '../data/featureFlags.js';
+import { captureEntitySelection, resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
 import { fieldsRelevantAlongCorridor, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { fieldBodyProfile, fieldEntityIsPrimed, fieldVelocityTermApplies } from './fields.js';
@@ -361,9 +362,27 @@ export const masslineThrow = {
 
     const releaseTarget = runtime.releaseTarget;
     if (!releaseTarget) return null;
-    if (releaseTarget.targetId != null) {
-      const entity = state.entities && state.entities.get ? state.entities.get(releaseTarget.targetId) : null;
+    if (releaseTarget.targetId != null || releaseTarget.stable) {
+      // A stamped bind re-proves its target every tick: the stable identity follows a
+      // re-materialized body across sector re-entry and resolves closed on recycle — never
+      // redirecting the release onto the unrelated body that now holds the slot. The bare id
+      // remains the path for seeds that carry no stamp.
+      const entity = releaseTarget.stable
+        ? resolveEntitySelection(state, releaseTarget.stable)
+        : (state.entities && state.entities.get ? state.entities.get(releaseTarget.targetId) : null);
       if (!validReleaseEntity(entity, player.id, payload.id)) {
+        // A closed waypoint bind keeps the recorded fix as a point aim — the same fail-closed
+        // place the seed and _resolveSelfAim fall back to — rather than dropping the throw.
+        const waypoint = releaseTarget.source === 'waypoint' && state.nav ? state.nav.waypoint : null;
+        if (waypoint && waypoint.pos && Number.isFinite(waypoint.pos.x) && Number.isFinite(waypoint.pos.z)) {
+          runtime.releaseTarget = pointReleaseTarget(
+            'waypoint', 'waypoint', waypoint.pos.x, waypoint.pos.z, positive(waypoint.arrivalRadius, 12),
+          );
+          return {
+            entity: null,
+            target: { pos: runtime.releaseTarget.pos, vel: ZERO_VELOCITY, radius: runtime.releaseTarget.radius },
+          };
+        }
         runtime.releaseTarget = null;
         return null;
       }
@@ -460,15 +479,19 @@ export const masslineThrow = {
     }
     const waypoint = state.nav && state.nav.waypoint;
     if (!waypoint) return null;
-    if (waypoint.targetEntityId != null) {
-      const entity = state.entities.get(waypoint.targetEntityId);
-      if (entity && entity.alive !== false && entity.pos) {
-        return {
-          targetId: entity.id,
-          kind: 'waypoint',
-          target: { pos: entity.pos, vel: entity.vel || { x: 0, z: 0 }, radius: entity.radius },
-        };
-      }
+    // The stable stamp is the authority for which entity the waypoint id meant: a durable
+    // selection follows the re-materialized body across sector re-entry, and a transient one
+    // resolves closed on recycle — never redirecting the throw onto the unrelated body that
+    // now holds the slot. The bare id remains the path for waypoints that predate the stamp.
+    const waypointEntity = waypoint.stable
+      ? resolveEntitySelection(state, waypoint.stable)
+      : (waypoint.targetEntityId != null ? state.entities.get(waypoint.targetEntityId) : null);
+    if (waypointEntity && waypointEntity.alive !== false && waypointEntity.pos) {
+      return {
+        targetId: waypointEntity.id,
+        kind: 'waypoint',
+        target: { pos: waypointEntity.pos, vel: waypointEntity.vel || { x: 0, z: 0 }, radius: waypointEntity.radius },
+      };
     }
     if (!waypoint.pos || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return null;
     return {
@@ -772,17 +795,29 @@ function seedReleaseTarget(state, player, payload) {
   if (selectedId != null && selectedId !== payload.id && selectedId !== player.id) {
     const selected = state.entities && state.entities.get ? state.entities.get(selectedId) : null;
     if (validReleaseEntity(selected, player.id, payload.id)) {
-      return entityReleaseTarget(selected.id, 'selection');
+      const target = entityReleaseTarget(selected.id, 'selection');
+      // The scrubber never walks this record — stamp the bind at seed so _resolveThrowAim
+      // re-proves it and a despawn+recycle mid-swing cannot redirect the release (review).
+      const stable = captureEntitySelection(selected);
+      if (stable) target.stable = stable;
+      return target;
     }
   }
 
   const waypoint = state.nav && state.nav.waypoint;
   if (!waypoint) return null;
-  if (waypoint.targetEntityId != null) {
-    const entity = state.entities && state.entities.get ? state.entities.get(waypoint.targetEntityId) : null;
-    if (validReleaseEntity(entity, player.id, payload.id)) {
-      return entityReleaseTarget(entity.id, 'waypoint', 'waypoint');
-    }
+  // Same stamp contract as _resolveSelfAim: a stable bind follows the re-materialized body and
+  // resolves closed on recycle; the bare id only serves unstamped waypoints. The stamp rides the
+  // seeded record so _resolveThrowAim re-proves it every tick — a post-seed swap cannot strand
+  // the throw onto the slot's new occupant.
+  const waypointEntity = waypoint.stable
+    ? resolveEntitySelection(state, waypoint.stable)
+    : (waypoint.targetEntityId != null && state.entities && state.entities.get
+      ? state.entities.get(waypoint.targetEntityId) : null);
+  if (validReleaseEntity(waypointEntity, player.id, payload.id)) {
+    const target = entityReleaseTarget(waypointEntity.id, 'waypoint', 'waypoint');
+    if (waypoint.stable) target.stable = waypoint.stable;
+    return target;
   }
   if (!waypoint.pos || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return null;
   return pointReleaseTarget(

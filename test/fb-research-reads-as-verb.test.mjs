@@ -13,9 +13,9 @@ import {
 } from '../src/data/techVerbLadder.js';
 import { techNodeReading } from '../src/ui/screens/techTree.js';
 
-test('all 32 research nodes read as a verb', () => {
-  assert.equal(TECH_NODES.length, 32, 'the authored tree holds 32 nodes');
-  assert.equal(TECH_VERB_LADDER.length, 32);
+test('every research node reads as a verb', () => {
+  assert.equal(TECH_NODES.length, 35, 'the authored tree holds 35 nodes');
+  assert.equal(TECH_VERB_LADDER.length, 35);
   for (const node of TECH_NODES) {
     const verb = verbForNodeId(node.id);
     assert.equal(typeof verb, 'string', `${node.id} has a verb`);
@@ -24,9 +24,9 @@ test('all 32 research nodes read as a verb', () => {
   }
 });
 
-test('strict classification is 32 verb / 0 stat-only', () => {
+test('strict classification is 35 verb / 0 stat-only', () => {
   const counts = countVerbVsStatOnly(TECH_NODES, 'strict');
-  assert.equal(counts.verb, 32);
+  assert.equal(counts.verb, 35);
   assert.equal(counts.statOnly, 0);
   assert.deepEqual(counts.statOnlyIds, []);
   assert.deepEqual([...STRICT_STAT_ONLY_IDS], []);

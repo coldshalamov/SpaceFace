@@ -54,7 +54,7 @@ async function ensureLocalServer() {
     return null;
   }
   console.log(`[probe] Starting local server on port ${PORT}...`);
-  const srv = spawn('node', ['server.js', String(PORT)], { cwd: ROOT, stdio: 'ignore', detached: false });
+  const srv = spawn('node', ['server.js', String(PORT)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, cwd: ROOT, stdio: 'ignore', detached: false });
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500));
     if (await isServerRunning(PORT)) { console.log('[probe] Server is up.'); return srv; }

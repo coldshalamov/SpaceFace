@@ -136,7 +136,14 @@ for (const quest of QUESTS) {
     const station = SECTORS.find((sector) => sector.id === quest.sectorId)
       .stations.find((station) => station.id === quest.stationId);
     assert.ok(station, `board station ${quest.stationId} must exist`);
-    assert.ok(station.services.includes('missions'), 'the board station must post missions');
+    // A filing is a board row, not an advertised desk: the post either runs contracts or is an
+    // authored fuel-less outpost whose chart note warns before the dock (Sedna's rim post —
+    // 'missions' there would also route salvage/pod/loss-filing trips to a station that cannot
+    // fuel them, the trap station-work-needs-fuel pins shut).
+    assert.ok(
+      station.services.includes('missions') || /fuel/i.test(station.chartNote || ''),
+      `${quest.stationId} runs a contracts desk or carries the authored fuel-less warning`,
+    );
     assert.ok(quest.artifact.id && quest.artifact.title && quest.artifact.body);
   });
 

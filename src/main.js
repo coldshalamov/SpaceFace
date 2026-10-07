@@ -143,7 +143,8 @@ async function boot() {
       isEntityJournaled: entityIsJournaled,
     });
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
-    const failurePresenter = createRuntimeFailurePresenter({ document });
+    // SFQ-B228: the same instance showBootError uses — one pane owner over #boot-overlay.
+    const failurePresenter = bootRecoveryPresenter();
     bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
       label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
     const contract = await contractPromise;
@@ -171,7 +172,7 @@ async function boot() {
       onProgress({ completed, total }) {
         bus.emit('game:loadingProgress', {
           id: 'boot-systems', progress: .20 + .72 * (total ? completed / total : 1), ceiling: .94,
-          label: 'Initializing flight systems', detail: `${completed} of ${total} systems initialized`,
+          label: 'Starting flight systems', detail: `${completed} of ${total} online`,
         });
       },
     });
@@ -382,7 +383,7 @@ async function boot() {
     // on hide it also stops and destroys the boot artwork's worker/WebGL2 context, which
     // otherwise kept rendering into the hidden canvas for the rest of the session.
     bus.emit('game:loadingProgress', { id: 'boot-menu', progress: .96, ceiling: .997,
-      label: 'Opening the command deck', detail: 'Flight systems initialized' });
+      label: 'Opening the command deck', detail: 'All systems online' });
     await nextPaint();
     loadingPresenter.hide();
 
@@ -967,7 +968,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'authored-library',
       progress: 0.25,
       label: 'Loading the ships',
-      detail: 'Bringing the saved sector back with its ships intact',
+      detail: 'Hulls, stations and traffic',
       transition: 'continue',
     });
     // Paint the stage boundary before the wait's synchronous prefix — the loader's easing
@@ -1026,7 +1027,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'render-pipelines',
       progress: 0.78,
       label: 'Preparing the visuals',
-      detail: 'Warming up so the opening runs smooth',
+      detail: 'Warming the renderer so the first minute runs smooth',
       transition: 'continue',
     });
     // Single-frame breath: the gpu-resources boundary below still pays the full
@@ -1046,7 +1047,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'gpu-resources',
       progress: 0.9,
       label: 'Preparing the opening route',
-      detail: 'Loading the opening stretch smoothly',
+      detail: 'Loading the first stretch of space',
       transition: 'continue',
     });
     await nextPaintSliced();
@@ -1125,7 +1126,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'entering-flight',
       progress: 0.96,
       label: 'Handing over flight control',
-      detail: 'Final checks before handover',
+      detail: 'Final checks',
       transition: 'continue',
     });
     runTransitionGuard.commit(transitionToken, () => {
@@ -1262,7 +1263,7 @@ async function waitForInitialAuthoredVisualsWithRetry(state, timeoutMs, isCurren
       id: 'authored-visuals',
       progress: 0.5,
       label: 'Building the opening scene',
-      detail: 'Still placing ships and stations — giving it another moment',
+      detail: 'Still placing ships and stations. Almost there.',
       transition,
     });
   }
@@ -1465,12 +1466,20 @@ function resetRunState(state, opts = {}) {
 // dump a raw stack into the overlay — a cause, but no exit: a dead screen. The recovery pane
 // owner (runtimeFailurePresenter) renders instead: named cause + Retry, saves untouched.
 // The raw stack stays the fallback (and always reaches the console for devtools).
-let bootFailurePresenter = null;
+// One presenter instance is shared by both dead-end classes — boot()'s flight-interrupted
+// path and this boot-error path — because two instances over #boot-overlay would stack
+// capture-phase keydown listeners and orphan the first instance's destroy path.
+let bootFailurePresenterInstance = null;
+function bootRecoveryPresenter() {
+  if (!bootFailurePresenterInstance) {
+    bootFailurePresenterInstance = createRuntimeFailurePresenter({ document });
+  }
+  return bootFailurePresenterInstance;
+}
 function showBootError(err) {
   console.error('[boot]', err);
   try {
-    if (!bootFailurePresenter) bootFailurePresenter = createRuntimeFailurePresenter({ document });
-    if (bootFailurePresenter.show(describeBootFailure(err))) return;
+    if (bootRecoveryPresenter().show(describeBootFailure(err))) return;
   } catch (paneError) {
     console.error('[boot] recovery pane failed; falling back to raw boot error', paneError);
   }

@@ -144,13 +144,17 @@ export function dockDenyReason(station, factionMeta) {
   if (station.underConstruction === true || station.commissioned === false) return deny('under_construction');
   if (station.quarantine === true || station.quarantined === true) return deny('quarantine');
 
-  // 3. Hostility. Explicit flag, or numeric rep below the station's minimum.
+  // 3. Hostility. Explicit flag, or numeric rep below the station's resolved minimum —
+  // the same floor the entity stamp and every picker apply (explicit minRep wins,
+  // repGated means positive standing), so a repGated record without a stamped minRep
+  // is read honestly rather than admitted.
   if (station.hostile === true) return deny('hostile_rep');
   {
     let rep = null;
     if (factionMeta && typeof factionMeta === 'object' && Number.isFinite(factionMeta.rep)) rep = factionMeta.rep;
     else if (Number.isFinite(station.playerRep)) rep = station.playerRep;
-    if (rep != null && Number.isFinite(station.minRep) && rep < station.minRep) return deny('hostile_rep');
+    const floor = stationMinRepFor(station);
+    if (rep != null && Number.isFinite(floor) && rep < floor) return deny('hostile_rep');
   }
 
   // 4. Access restrictions.
@@ -161,4 +165,19 @@ export function dockDenyReason(station, factionMeta) {
   return null;
 }
 
-export default { DOCK_DENY_REASONS, dockDenyReason };
+/**
+ * The standing floor a raw station RECORD imposes — the same contract the live entity
+ * carries in `data.minRep`. An explicit `minRep` wins (a berth that vets below zero,
+ * e.g. the Mercenary Outpost's -30); otherwise `repGated` means positive standing (1);
+ * otherwise there is no floor (-Infinity — every pilot docks). Any picker that names a
+ * dock before the entity exists (contract destinations, filing desks, rescue handoffs)
+ * filters with this instead of reading the flag pair by hand.
+ *
+ * @param {object} st  station record from SECTORS (may be sparse)
+ * @returns {number}   minimum faction standing that still docks; -Infinity when ungated
+ */
+export function stationMinRepFor(st) {
+  return Number.isFinite(st && st.minRep) ? st.minRep : (st && st.repGated ? 1 : -Infinity);
+}
+
+export default { DOCK_DENY_REASONS, dockDenyReason, stationMinRepFor };

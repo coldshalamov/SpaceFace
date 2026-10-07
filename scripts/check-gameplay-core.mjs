@@ -467,7 +467,7 @@ function checkDrillInputAcceptsLiveTetherStandard() {
     && event.payload.attachmentId === 'att_live_tether'
     && event.payload.asteroidId === 2),
     'B drill input should accept the live tether_standard attachment id');
-  assert(!events.some((event) => event.type === 'toast' && /No massline link/.test(event.payload && event.payload.text)),
+  assert(!events.some((event) => event.type === 'toast' && /No massline link/i.test(event.payload && event.payload.text)),
     'B drill input must not reject a visible live tether_standard massline');
 }
 checkDrillInputAcceptsLiveTetherStandard();

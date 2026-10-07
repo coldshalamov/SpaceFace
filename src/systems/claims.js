@@ -447,7 +447,7 @@ export const claims = {
     };
     this.state.claims.bodies.push(body);
     this._applyPoiLabel(body);
-    this.bus.emit('toast', { text: '✓ Claimed: ' + body.name + ' (' + body.slots + ' module slots)', kind: 'good', ttl: 4 });
+    this.bus.emit('toast', { text: 'Claimed ' + body.name + ' · ' + body.slots + ' module slots', kind: 'good', ttl: 4 });
     this.bus.emit('claim:claimed', { body });
     this.bus.emit('audio:cue', { id: 'confirm' });
     return true;
@@ -531,7 +531,7 @@ export const claims = {
         kind: 'good', ttl: 5,
       });
     } else {
-      this.bus.emit('toast', { text: '✓ Built: ' + mod.name + ' on ' + body.name, kind: 'good', ttl: 3.5 });
+      this.bus.emit('toast', { text: 'Built ' + mod.name + ' on ' + body.name, kind: 'good', ttl: 3.5 });
     }
     this.bus.emit('claim:moduleBuilt', { bodyId, modId });
     this.bus.emit('audio:cue', { id: 'confirm' });
@@ -576,7 +576,7 @@ export const claims = {
     this._emitDeploymentOnce(body, def);
     this.bus.emit('claim:specialized', { bodyId: body.id, specId: def.id });
     this.bus.emit('toast', {
-      text: '✓ ' + def.short + ' online — ' + def.playerVerb,
+      text: def.short + ' online — ' + def.playerVerb,
       kind: 'good', ttl: 5,
     });
     this.bus.emit('audio:cue', { id: 'confirm' });
@@ -1614,6 +1614,7 @@ export const claims = {
     });
     this.bus.emit('claim:defenseWarning', {
       bodyId: body.id,
+      bodyName: body.name,
       defenseId,
       encounterId: defense.encounterId,
       sectorId: body.sectorId,
@@ -2230,7 +2231,7 @@ export const claims = {
     state.claims.legacyMigration = receipt;
     if (receipt.migrated > 0) {
       this.bus.emit('claims:migrated', { migrated: receipt.migrated, kept: receipt.kept });
-      this.bus.emit('toast', { text: '✓ ' + receipt.migrated + ' outpost' + (receipt.migrated === 1 ? '' : 's') + ' re-chartered as claim operations', kind: 'good', ttl: 5 });
+      this.bus.emit('toast', { text: receipt.migrated + ' outpost' + (receipt.migrated === 1 ? '' : 's') + ' re-chartered as claim' + (receipt.migrated === 1 ? '' : 's'), kind: 'good', ttl: 5 });
     }
   },
 

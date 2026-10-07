@@ -29,13 +29,13 @@ export function factionPresenceServiceRows(state, stationId) {
     const rows = [];
     if (stored.services.includes('yard')) rows.push({
         id: 'pitborn_yard', label: 'Pitborn Yard',
-        desc: 'Route to the existing Shipyard chassis and repair surface.',
+        desc: 'Open the Shipyard for hulls and repairs.',
         available, disabledReason: available ? '' : `Requires Pitborn reputation ${stored.requiredRep}`,
         targetTab: 'shipyard',
       });
     if (stored.services.includes('fence')) rows.push({
         id: 'pitborn_fence', label: 'Pitborn Fence',
-        desc: 'Route to the existing Market and black-market trade surface.',
+        desc: 'Open the Market, black market included.',
         available, disabledReason: available ? '' : `Requires Pitborn reputation ${stored.requiredRep}`,
         targetTab: 'market',
       });

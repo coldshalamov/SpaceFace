@@ -4,8 +4,10 @@
 // an approximate global_v1 search circle. World owns purchased/resolved records; bar and map code
 // consume the pure offer/read helpers here.
 
+import { playerBearingLetter } from '../core/playerCompass.js';
 import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+import { DOCK_DENY_REASONS, dockDenyReason, stationMinRepFor } from './dockDeny.js';
 import { SECTORS } from './sectors.js';
 
 export const FRONTIER_RUMOR_DAY_SECONDS = 600;
@@ -28,22 +30,27 @@ export const AUTHORED_DOCK_RUMORS = Object.freeze({
   // stranger docks, asks for rumors, and gets a direction she can fly, not a mission.
   station_smuggler: 'Somebody paid the Den to lose a hull. A stripped freighter bow is still being dragged into the fog east of here, on a salvage clamp that never sleeps. Find her before the nebula does — or Massline her back out and ruin the cleaner\'s month.',
   station_sker: 'Off the bazaar approach the Reach keeps an impound shelf: everything they ever seized, welded to a rack and sorted by insult. Seized pods, a cargo rack, one customs pylon nobody admits to taking. The shelf itself is heavy enough to Massline, if you have the nerve.',
-  station_veil: 'The researchers welded a memorial to a comms mast out in the fog, north-west of the storm\u2019s heart, so the surge could ring it like a bell. It rings. Ask anyone here about the Surge Shrine and they will point into the murk.',
+  station_veil: 'The researchers welded a memorial to a comms mast out in the fog, south of the storm\u2019s heart, so the surge could ring it like a bell. It rings. Ask anyone here about the Surge Shrine and they will point into the murk.',
   station_ashcache: 'Ask Kurtz what he counts and he will tell you without looking up: the dead liner on the debris floor. Nothing else out here has moved in eleven years, so the locals named the count after her ledger.',
   station_nyx_march: 'Past the market, on the open march floor, a jump ring sits welded into a memorial and never once spun. The locals call it the False Gate. Pilots leave fuel pellets on the rim and nobody says why.',
-  station_hyperion_cut: 'East of the refinery a drill platform died mid-bite on a seamed rock. The crusher still holds the grip, the mast still holds the bite. The crews call it the Half-Cut and steer wide.',
+  station_hyperion_cut: 'South-east of the refinery a drill platform died mid-bite on a seamed rock. The crusher still holds the grip, the mast still holds the bite. The crews call it the Half-Cut and steer wide.',
   station_kepler_scar: 'On the irradiated floor there is a pirate sensor mast still standing inside a ring of dead corvettes. Whatever that battle was about, the mast won. They call it the Unbroken and nobody salvages the ring.',
   station_orcus_shadow: 'Debris pins itself in a slow ring out on the anomaly\'s rim — a tide nobody put there and nobody can stop. A transponder gate marks where to watch it turn. The regulars just call it the Tide.',
-  station_rhea_cinder: 'North-east of the claim a slurry tank tipped mid-pour and the pour just stopped — stream, spill, tank and all, sitting there in the dark. The tank is ropeable. It is heavier than it looks.',
+  station_rhea_cinder: 'South-east of the claim a slurry tank tipped mid-pour and the pour just stopped — stream, spill, tank and all, sitting there in the dark. The tank is ropeable. It is heavier than it looks.',
   station_haumea_rift: 'A worklight is still burning on the fissure lip, and the extraction mast is still seated in the seam. The shift left mid-bite and the fissure kept the tools. We call it the Seam-Light.',
   station_eris_margin: 'Inside the west fog, dead habitat pods hang on an old tether line like laundry — crews call it the Drift Choir. The line is older than the writs. Nobody reels it in, but the last pod would come off easy.',
-  station_phoebe_echo: 'South-west of here a comms array still repeats her last transmission on a channel the network retired years ago. The nav buoy beside her answers anyway. It is the most reliable signal in the Reach.',
-  station_nereid: 'East of the market a tanker coupling sits mid-dock with nothing docked — freight platform, hull rack, handshake still out. The tanker that was supposed to take it broke up a decade ago.',
-  station_proteus: 'South-east of here, in the well, a stash rack sits parked in a dead boatbay\'s shadow. First crew through named it the Double Take. Second crew agreed and left it there.',
+  station_phoebe_echo: 'North-west of here a comms array still repeats her last transmission on a channel the network retired years ago. The nav buoy beside her answers anyway. It is the most reliable signal in the Reach.',
+  station_nereid: 'North-east of the market a tanker coupling sits mid-dock with nothing docked — freight platform, hull rack, handshake still out. The tanker that was supposed to take it broke up a decade ago.',
+  station_proteus: 'North-east of here, in the well, a stash rack sits parked in a dead boatbay\'s shadow. First crew through named it the Double Take. Second crew agreed and left it there.',
   station_triton: 'Pilots leave offerings on the anomaly\'s rim — pods, tally plates, the occasional whistle. They call it the Watcher\'s Tithe. Take one if you like. Nobody does.',
   station_eunomia: 'Beside the old ledger there is a freight platform still holding a container addressed to a crew that died two contracts ago. Delivered, signed, never collected. The note stays pinned.',
   station_sedna: 'Out near the cadence there is a lane pin that points at nothing — a survey marker for a route the dark never let anyone finish. It still points the way.',
   station_dione_customs: 'Between the gate and the market there is a bulk container neither crew will carry — customs tagged it, the lane crew tagged it back, and now it has two liens and no manifest. It is ropeable. Officially, so are you.',
+  // CR-BERTH-1 — the Pitborn consignment line. The bar lead names the strip-line's real
+  // address (the breaking-apron south-east of the foundry, off the Helios inbound leg) and
+  // sells the loop: redeem claim rights at the yard desk and the wreck your paper covered
+  // parks on their line a visit later — still hull, still ropeable.
+  station_forge: 'The Pitborn rent a breaking-apron off the foundry, south-east toward the Helios inbound leg — they call it the Consignment Line. Sell them claim rights at the yard desk and the wreck your paper covered turns up parked on their strip a visit later, already under the cutters. What is parked is still hull, and the Massline never once read a receipt.',
   // Trade-signature lead (station trade personalities): heard at the dear end of the cell run.
   // The claim crews burn fuel cells by mid-shift; Ceres Refinery's crackers over-run the belt.
   // Names two real stations — buy at the glut, dock back here and sell into the shortage.
@@ -81,6 +88,56 @@ export function tethysBlackMarketRun(state) {
 export function hasTethysBlackMarketAccess(state) {
   const run = tethysBlackMarketRun(state);
   return run?.runId === TETHYS_BLACK_MARKET_RUN.runId && run.phase === 'delivered';
+}
+
+/**
+ * The full berth-admission contract for a station RECORD (or a derived info record —
+ * either carries id + the resolved floor): every structural refusal `dockDenyReason`
+ * reads on a record must hold false, standing must clear the dock gate's own minimum,
+ * AND every dynamic access rule must hold. Today the only dynamic rule is the
+ * Smuggler's Den entrance run — world.js stamps `dockDeny: 'private'` on that berth
+ * until the parcel lands, so any picker that names a dock from catalog data must make
+ * the same read or it writes a contract the world cannot settle. The record-level
+ * flags mirror the live gate's so a future authored `private`/`quarantine` record is
+ * refused here before the entity ever spawns.
+ *
+ * @param {object} st    station record or station-info record
+ * @param {number} rep   pilot standing with the station's resolved faction
+ * @param {object} state live game state (may be null; treats access as unearned)
+ */
+export function stationBerthAdmits(st, rep, state) {
+  return !!st
+    && !(typeof st.dockDeny === 'string' && DOCK_DENY_REASONS.includes(st.dockDeny))
+    && st.abandoned !== true
+    && st.underConstruction !== true && st.commissioned !== false
+    && st.quarantine !== true && st.quarantined !== true
+    && st.hostile !== true
+    && st.militaryOnly !== true
+    && st.private !== true && st.public !== false
+    && !(st.id === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state))
+    && !(Number.isFinite(rep) && rep < stationMinRepFor(st));
+}
+
+/**
+ * WHY a berth refuses, structured for the surfaces that must answer in words (the accept
+ * gate's toast, the dossier's blocker): `standing` carries the resolved floor so the caller
+ * can name the number; `structural` carries the authored denial voice `dockDenyReason`
+ * already speaks at the dock — a quarantined hold says quarantine, a military berth says
+ * uniforms, not "does not take this freight"; `closed` is the record-clean refusal the
+ * reason oracle cannot see (the Den's entrance-run door). Returns null when the berth
+ * admits — the same predicate, so a caller cannot show a refusal the world would not issue.
+ *
+ * @param {object} st    station record or station-info record
+ * @param {number} rep   pilot standing with the station's resolved faction
+ * @param {object} state live game state (may be null; treats access as unearned)
+ * @returns {{kind:'standing', floor:number}|{kind:'structural', reason:string, text:string}|{kind:'closed'}|null}
+ */
+export function stationBerthRefusal(st, rep, state) {
+  if (stationBerthAdmits(st, rep, state)) return null;
+  const deny = dockDenyReason(st, { rep });
+  const floor = stationMinRepFor(st);
+  if (deny && deny.reason === 'hostile_rep' && Number.isFinite(rep) && rep < floor) return { kind: 'standing', floor };
+  return deny ? { kind: 'structural', reason: deny.reason, text: deny.text } : { kind: 'closed' };
 }
 
 function normalizeEntranceRun(value) {
@@ -230,9 +287,8 @@ function candidateStillUnknown(state, candidate) {
 }
 
 function octantFor(point) {
-  const angle = Math.atan2(-finite(point && point.z), finite(point && point.x));
-  const names = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'];
-  return names[(Math.round(angle / (Math.PI / 4)) + 8) % 8];
+  // Player compass: +z is north, same function as the scan line and the chart.
+  return playerBearingLetter(finite(point && point.x), finite(point && point.z));
 }
 
 function offerCopy(candidate, radius) {

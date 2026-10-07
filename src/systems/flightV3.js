@@ -25,7 +25,7 @@ import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propuls
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry, computeSweptHullAdvisory, SWEPT_HULL_DEFAULTS } from '../core/flight/flightTelemetry.js';
-import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+import { orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // FB-001: the authored pursuit-slot chase assist. Pure module; flightV3 is its only caller and
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
@@ -40,6 +40,7 @@ import {
   resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -333,6 +334,7 @@ export const flightV3 = {
 
     const body = bodySnapshotInto(entity, profile, _stepBody);
     let orbitAssist = null;
+    let orbitSwingScale = 1;
     let pursuitSlot = null;
     if (isPlayer) {
       const anchor = tether && tether.targetId != null && state.entities
@@ -354,7 +356,20 @@ export const flightV3 = {
           && state.settings.gameplay.orbitAssistStrength,
         controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
       });
-      if (orbitAssist.active) input = orbitAssist.input;
+      if (orbitAssist.active) {
+        input = orbitAssist.input;
+        // Swing/yaw coordination: the yaw helper is exact only while the nose can turn as fast
+        // as the line swings. Past that (short rope, boost, fast hull) an unthrottled orbit pegs
+        // yaw at the envelope while the nose lags 100°+ behind the tangent — uncontrolled
+        // circling. Holding forward thrust at the trackable swing keeps the requested rate the
+        // exact inverse-radius feed-forward. Unsaturated orbits read scale 1: untouched.
+        orbitSwingScale = orbitSwingThrottleScale(
+          orbitAssist.telemetry, commandedTranslationSpeed(input, profile),
+        );
+        if (orbitSwingScale < 1 && input.throttle > 0) {
+          input = { ...input, throttle: input.throttle * orbitSwingScale };
+        }
+      }
       // FB-001: the pursuit-slot assist, reachable as an opt-in assisted-flight option beside
       // the orbit assist. Strict gate (setting must be exactly true; default off keeps every
       // golden and the default feel untouched), a held lock on a moving target, and manual
@@ -412,7 +427,7 @@ export const flightV3 = {
       frame.autopursuit = null;
       frame.autopilot = autopilot && autopilot.active ? autopilot.telemetry : null;
       frame.orbitAssist = orbitAssist
-        ? { active: orbitAssist.active, ...orbitAssist.telemetry }
+        ? { active: orbitAssist.active, ...orbitAssist.telemetry, swingThrottleScale: orbitSwingScale }
         : { active: false, reason: 'unavailable' };
       // FB-001: published-state telemetry for the opt-in pursuit-slot assist (instrument and
       // tests read this; nothing consumes it to steer). Mirrors the orbitAssist row above.
@@ -1022,6 +1037,21 @@ const _diagBody = { pos: null, vel: null, rot: 0, angVel: 0, mass: 1, inertia: 1
 const _diagControl = { telemetry: null };
 const _diagArgs = { body: null, profile: null, control: _diagControl };
 
+/**
+ * Translation speed the current input packet drives toward: the assisted governor's
+ * commandFraction × combatSpeed (× boost), mirrored from the propulsion kernel so the orbit
+ * swing coordinator caps demand against the same ceiling the kernel will actually hold.
+ */
+function commandedTranslationSpeed(input, profile) {
+  const fraction = clamp(
+    Math.hypot(Math.max(0, finite(input && input.throttle)), finite(input && input.strafe)), 0, 1,
+  );
+  const governed = positive(profile && profile.combatSpeed, 0);
+  if (!(fraction > 0) || !(governed > 0)) return 0;
+  const boostMult = input && input.boost ? positive(profile && profile.boostSpeedMult, 1.55) : 1;
+  return fraction * governed * boostMult;
+}
+
 function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG02_INPUT_DT, out = null) {
   const boost = !!raw.boost;
   const previousBoost = !!runtime.previousBoost;
@@ -1336,6 +1366,10 @@ function stopAutopilot(host, state, reason) {
   clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;
   autopilot.status = reason || 'idle';
+  // Retire the stamped bind with the burn: it is inert only while readers gate on active, and
+  // a stale stamp on the object is a trap for any future in-place re-arm (review).
+  autopilot.targetEntityId = null;
+  autopilot.stable = null;
   if (state && state.input) {
     state.input.autopilot = false;
     if (state.input.actions) state.input.actions.brake = false;
@@ -1357,14 +1391,19 @@ export function resolveAutopilotTarget(state, autopilot) {
   if (!state || !autopilot) return null;
   const id = autopilot.targetEntityId;
   let entity = null;
-  if (id != null && state.entities && typeof state.entities.get === 'function') {
+  if (autopilot.stable) {
+    // SF-244: the course owner stamped what the bind meant at arm time — a recycled id
+    // resolves closed and the burn falls back to the fix, never onto the new holder.
+    entity = resolveEntitySelection(state, autopilot.stable);
+  } else if (id != null && state.entities && typeof state.entities.get === 'function') {
     entity = state.entities.get(id);
     if (!entity && typeof id === 'string') {
       const numeric = Number(id);
       if (Number.isFinite(numeric)) entity = state.entities.get(numeric);
     }
   }
-  if (entity && entity.alive !== false && entity.pos) {
+  if (entity && entity.alive !== false && entity.pos
+      && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
     // PQ-008 stations with truthful collision geometry dock at an authored berth, not at the
     // legacy center-radius ring. A station waypoint still identifies the live entity, but default
     // flight resolves its terminal point into the manifest-owned corridor. Its terminal radius is

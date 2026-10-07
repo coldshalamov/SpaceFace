@@ -2,6 +2,8 @@
 // Pure builders plus one registrar. Economy and claims stay the writers.
 
 import { starvedIndustryNeedFor } from '../systems/economy.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { SECTORS } from '../data/sectors.js';
 import {
   CONFLICT_REACTION_SURFACES,
   selectConflictReaction,
@@ -108,6 +110,17 @@ export function dayBoundaryCard(state, payload) {
   };
 }
 
+// Display names for the shortage line. An id that does not resolve is printed as given rather than
+// hidden, so a fixture or a mod commodity still reads as something.
+let nameTables = null;
+function displayNameFor(kind, id) {
+  if (!nameTables) {
+    nameTables = { commodity: new Map(COMMODITIES.map((c) => [c.id, c.name])), station: new Map() };
+    for (const sec of SECTORS) for (const st of (sec.stations || [])) nameTables.station.set(st.id, st.name);
+  }
+  return nameTables[kind].get(id) || String(id);
+}
+
 export function noteDemandShift(state, payload) {
   if (!payload || !payload.stationId || !payload.commodityId) return null;
   const bag = ensureWorldNews(state);
@@ -121,7 +134,7 @@ export function noteDemandShift(state, payload) {
   const market = payload.market || null;
   const need = starvedIndustryNeedFor(payload.stationType, payload.stationTier, market);
   if (!need) return null;
-  const line = `${payload.commodityId} is starved at ${payload.stationId}.`;
+  const line = `${displayNameFor('commodity', payload.commodityId)} is starved at ${displayNameFor('station', payload.stationId)}.`;
   bag.starved[key] = line;
   return {
     text: line,
@@ -167,7 +180,7 @@ export function registerWorldBeats(on, state) {
   on('claim:defenseWarning', (payload) => {
     if (!payload || !payload.bodyId) return null;
     return publish(cite(
-      `${payload.attackerName || 'Raiders'} are counting down on ${payload.bodyId}.`,
+      `${payload.attackerName || 'Raiders'} are counting down on ${payload.bodyName || payload.bodyId}.`,
       'claim_warning',
       `claim:defenseWarning:${payload.bodyId}:${payload.defenseId || 'defense'}`,
     ));

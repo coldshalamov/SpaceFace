@@ -17,7 +17,7 @@
 // no deploy; it is always on while fitted.
 //
 // Deploy trigger: the player presses the countermeasure keybind (default X, remappable); AI ships
-// auto-deploy when a missile is locked onto them or within a close threshold. Effects are timed
+// auto-deploy when a live inbound missile targets them. Effects are timed
 // (durationS) and cooldown-gated (cooldownS) — NOT consumable ammo, keeping the equipment loop simple.
 //
 // A refused press is never a silent drop: _tryDeploy emits countermeasure:denied {kind, reason,
@@ -312,8 +312,8 @@ export const countermeasures = {
       if (player) this._tryDeploy(player);
     }
 
-    // 3. AI auto-deploy: ships with a countermeasure deploy when a missile is locked onto them or
-    //    closing fast. Cheap check — only ships that HAVE a countermeasure run the threat scan.
+    // 3. AI auto-deploy: ships with a countermeasure deploy when a live inbound missile is on
+    //    them. Cheap check — only ships that HAVE a countermeasure run the threat scan.
     for (const e of countermeasureShipCandidates(state)) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const eq = equippedCountermeasure(e.data && e.data.fittings);
@@ -477,8 +477,9 @@ export const countermeasures = {
       this._denyDeploy(e, cfg.kind, 'cooldown', cm.cooldownT);
       return false; // not ready
     }
-    // Chaff and ECM answer an incoming lock or missile. A decoy buoy is bait you place
-    // before anyone has a lock, so that case is not this refusal.
+    // Chaff and ECM answer a live seeker in the air — the thing the lineage anchors on.
+    // A building lock with nothing flying is refused as no_lock (a deploy there answered
+    // nothing); a decoy buoy is bait you place before anyone fires, so it is not this refusal.
     if (cfg.kind !== 'decoy') {
       ensureCountermeasureRuntime(this);
       if (!this._missileThreat(e, this.state)) {
@@ -560,8 +561,11 @@ export const countermeasures = {
     this.bus.emit('audio:cue', { id: 'ui_deny' });
   },
 
-  // Cheap threat check for AI auto-deploy: is any live missile targeting this ship, or is any ship
-  // building a lock on it? Returns true if a countermeasure is warranted.
+  // Cheap live-seeker check for BOTH deploy gates (player accept + AI auto-deploy pre-gate):
+  // is any live missile targeting this ship inside the threat radius? A bare building lock is
+  // not a threat — a deploy's lineage anchors on the round in the air (selectLockLineage), so
+  // accepting on lock progress alone spent stock + cooldown on a puff that answered nothing.
+  // The honest refusal for that case is the 'no_lock' deny.
   _missileThreat(e, state) {
     const projectiles = projectilesNear(state, e.pos, 900, this._projectileScratch);
     if (projectiles === this._projectileScratch) this._diag.threatSpatialQueries++;
@@ -574,12 +578,6 @@ export const countermeasures = {
         const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
         if (dx * dx + dz * dz < 900 * 900) return true;
       }
-    }
-    // Someone locking onto this ship?
-    for (const other of countermeasureShipCandidates(state)) {
-      if (other.type !== 'ship' || !other.alive || other.id === e.id) continue;
-      const oc = other.data && other.data.combat;
-      if (oc && oc.lockTarget === e.id && (oc.lockProgress || 0) > 0.5) return true;
     }
     return false;
   },
@@ -653,8 +651,14 @@ export function selectLockLineage(state, deployer) {
   // nothing, so the missile that triggered it flew straight through the countermeasure.
   // Anchor the lineage on the live round itself — the same construction the loose-round branch
   // always used, extended to owned rounds.
+  // Code-unit ordering, not localeCompare: the anchor pick is a determinism-sensitive sim
+  // choice and must not drift with the host's ICU locale (the held-lock tiebreak above is
+  // already a plain string <).
   const anchor = inbound.loose.concat(inbound.ownedList)
-    .sort((a, b) => String(a.id).localeCompare(String(b.id)))[0];
+    .sort((a, b) => {
+      const x = String(a.id), y = String(b.id);
+      return x < y ? -1 : x > y ? 1 : 0;
+    })[0];
   if (!anchor) return null;
   const data = anchor.data || {};
   return {
@@ -693,12 +697,8 @@ function breakOneLockLineage(state, deployer, breakPct) {
     if (!other || other.id !== lineage.shooterId) continue;
     const oc = other.data && other.data.combat;
     if (!other.alive || !oc || oc.lockTarget !== deployer.id) return { lineage, brokeLock: false };
-    oc.lockBroken = {
-      shooterId: other.id,
-      targetId: deployer.id,
-      generation: lineage.generation,
-      targetGeneration: lineage.targetGeneration,
-    };
+    // (The old `oc.lockBroken` receipt write lived here — repo-wide grep found no reader, so
+    // the break is carried entirely by the progress/suppression/perception mutations below.)
     oc.lockTargetGeneration = lineage.targetGeneration;
     const nextProgress = Math.max(0, (oc.lockProgress || 0) * (1 - breakPct));
     if (nextProgress <= 0) {

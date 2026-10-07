@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fcbafdf6787f21936c613a126a9368217debc4438a35731c21e17c73228e0bd0",
+  "contentHash": "5da51aa82ecda53fa088e4c082adb689269c9cf58f73e1ddd9fecf085f25c260",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -4336,7 +4336,7 @@
     },
     "sourceManifest": {
       "bytes": 219794,
-      "sha256": "81b413c425531af63fa3f895c51f5be4ba86bec2c3ece4040a0acf26b71ab54f",
+      "sha256": "80f3f090c9d9dd27f218d7fa14f6703b7efc4b3398f6376312758f99914bbe73",
       "uri": "pilots.json"
     }
   },
@@ -6036,7 +6036,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_skerris_throne.glb"
   },
-  "runtimeHash": "24b9283db3c739633f6d0a62cea4744c9afc7d2b2fa5c76d58d6b6bff0989fdf",
+  "runtimeHash": "1ee0ab66eb8e658540057ec1f31ca735c353f40bbf0610c244b9ad01a050f327",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

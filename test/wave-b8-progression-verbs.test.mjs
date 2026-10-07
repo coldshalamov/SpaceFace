@@ -79,7 +79,7 @@ export const TEN_VERB_PROGRESSION_PURCHASES = Object.freeze([
     itemId: 'mod_drone_bay_l',
     verbKey: 'droneBay',
     verbLabel: 'Autonomous combat/repair drone bay',
-    price: 9000,
+    price: 17700, // rebalanced from 9000 by the 2026-10-04 research verb-curve packet (16ea66e8c)
   },
   {
     hour: 9,

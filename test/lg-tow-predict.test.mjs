@@ -1,10 +1,9 @@
 // Row 278 LG-TOW-PREDICT — the fit screen predicts tow class before you pay (M2).
 //
-// The vision sentence: a player predicts a build's handling before paying and is right
-// within 20 %. `handlingProfileForShip().predictions` must name the tow class off the
-// SAME derived block the bars read, through the SAME tow law the capability sentence
-// uses — one law, two readers, so the prediction can never drift from the verb.
-// Fixed seed 4242: hull choice is deterministic on this tree.
+// Done when: the predicted hull, towed on the player flight kernel, lands within 20%
+// of the under-way bar on seed 4242, and the fit screen names that hull with the
+// same article the capability chip uses. The kernel step is the measurement. Rebuilding
+// towClassMassFor from the published accel is not a tow.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,15 +11,60 @@ import assert from 'node:assert/strict';
 import { getDerivedStats } from '../src/systems/ships.js';
 import {
   CAPABILITY_LAW,
-  driveForceFor,
-  heaviestHullWithin,
+  shipCapabilityVerbs,
   towClassMassFor,
+  withArticle,
 } from '../src/systems/shipCapabilities.js';
 import { handlingProfileForShip } from '../src/ui/panels/handlingProfile.js';
+import { handlingBandModel, towSentence } from '../src/ui/ship/shipBandModels.js';
+import { SHIPS } from '../src/data/ships.js';
+import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
+import { createPropulsionRuntime, stepPropulsion } from '../src/core/flight/propulsionKernel.js';
 
-const SEED_NOTE = 'seed 4242: fixed roster, deterministic heaviest-hull pick';
+const SEED = 4242;
+const DT = 1 / 60;
+const WINDOW_S = CAPABILITY_LAW.towUnderWaySeconds;
+const TARGET_SPEED = CAPABILITY_LAW.towUnderWaySpeed;
 
-test('predictions carry tow class off the live tow law (' + SEED_NOTE + ')', () => {
+/** Independent of underwayTowSpeed: a 1.5 s assisted hold, speed kept, force shared with the load. */
+function towSpeedAtWindow(tugId, loadMass) {
+  const derived = getDerivedStats(tugId, [], null);
+  const self = derived.operationalMass || derived.mass || 0;
+  const entity = { id: 'pilot', isPlayer: true, mass: self, data: { derived } };
+  const state = { playerId: 'pilot', seed: SEED };
+  assert.equal(state.seed, SEED);
+  const profile = resolvePropulsionProfile(entity, state);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  let runtime = createPropulsionRuntime(profile);
+  let speed = 0;
+  const ticks = Math.max(1, Math.round(WINDOW_S / DT));
+  const coupled = self + loadMass;
+  for (let i = 0; i < ticks; i += 1) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: DT,
+      body,
+      input: { throttle: 1, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed += (Number(step.force.x) || 0) / coupled * DT;
+    if (speed < 0) speed = 0;
+  }
+  return speed;
+}
+
+test('predictions carry tow class off the live tow law (seed 4242)', () => {
   const profile = handlingProfileForShip('ship_kestrel', { fittings: [] });
   const derived = getDerivedStats('ship_kestrel', [], null);
   const expected = towClassMassFor(derived);
@@ -28,58 +72,53 @@ test('predictions carry tow class off the live tow law (' + SEED_NOTE + ')', () 
   assert.equal(profile.predictions.towClassMassT, Math.round(expected * 1000) / 1000);
 });
 
-test('predictions name the heaviest towable roster hull', () => {
-  const profile = handlingProfileForShip('ship_kestrel', { fittings: [] });
-  const expected = heaviestHullWithin(profile.predictions.towClassMassT);
-  assert.equal(profile.predictions.towableHullId, expected ? expected.id : null);
-  assert.ok(profile.predictions.towableHullName, 'a hull name is named, not a tonnage');
+test('the crest uses an before a vowel hull', () => {
+  assert.equal(towSentence({ towableHullName: 'Atlas' }), 'Can tow an Atlas.');
+  assert.equal(towSentence({ towableHullName: 'Ironback' }), 'Can tow an Ironback.');
+  assert.equal(towSentence({ towableHullName: 'Hawser' }), 'Can tow a Hawser.');
+  assert.equal(towSentence({ towableHullName: '' }), '');
+  assert.equal(towSentence({ towCoversRoster: true }), 'Can tow anything on the roster.');
 });
 
-test('tow prediction moves with the fit (drive up, mass up moves it)', () => {
-  const bare = handlingProfileForShip('ship_drifter', { fittings: [] });
-  const derived = getDerivedStats('ship_drifter', [], null);
-  assert.equal(bare.predictions.towClassMassT, Math.round(towClassMassFor(derived) * 1000) / 1000);
-  assert.ok(bare.predictions.towClassMassT >= 0, 'never negative, never NaN');
-});
-
-test('prediction matches the live tow law recomputed from raw profile numbers', () => {
-  // Independent recompute: drive force = accel x mass from the derived propulsion
-  // profile itself, minus self mass, over the live under-way bar — not a second
-  // call to the same helper. Within 20 % is the M2 bar; exact match is expected.
-  const underWayAccel = CAPABILITY_LAW.towUnderWaySpeed / CAPABILITY_LAW.towUnderWaySeconds;
-  for (const shipId of ['ship_kestrel', 'ship_drifter', 'ship_mule']) {
-    const profile = handlingProfileForShip(shipId, { fittings: [] });
-    const derived = getDerivedStats(shipId, [], null);
-    const propulsion = derived.propulsion || {};
-    const accel = propulsion.mainAccel || propulsion.maxAccel
-      || propulsion.rcsForwardAccel || propulsion.fieldAccel || 0;
-    const self = derived.operationalMass || derived.mass || 0;
-    const force = accel * self;
-    const expected = force > 0 && self > 0 ? Math.max(0, force / underWayAccel - self) : 0;
-    const predicted = profile.predictions.towClassMassT;
-    const denom = Math.max(expected, 1);
-    assert.ok(Math.abs(predicted - expected) / denom <= 0.2,
-      `${shipId}: predicted ${predicted}t vs live-law ${expected.toFixed(1)}t`);
+test('seed 4242: a 1.5 s tow of the named hull lands within 20% of 60 WU/s', () => {
+  let vowelCrest = false;
+  const heaviest = SHIPS.reduce((best, ship) => (ship.mass > best.mass ? ship : best));
+  for (const ship of SHIPS) {
+    const derived = getDerivedStats(ship.id, [], null);
+    const model = handlingBandModel({ shipId: ship.id, fittings: [] });
+    const name = model.profile.predictions.towableHullName;
+    const named = SHIPS.find((row) => row.id === model.profile.predictions.towableHullId);
+    const expectedSentence = name
+      ? `Can tow ${withArticle(name)}.`
+      : (model.profile.predictions.towCoversRoster ? 'Can tow anything on the roster.' : '');
+    assert.equal(model.towSentence, expectedSentence, ship.id);
+    if (expectedSentence) {
+      assert.ok(model.crestSentence.startsWith(expectedSentence), model.crestSentence);
+    }
+    const verbs = shipCapabilityVerbs({ derived });
+    if (name) {
+      assert.equal(verbs.tow.verb, `Can tow ${withArticle(name)}`);
+      assert.equal(verbs.tow.hullId, named.id);
+      const speed = towSpeedAtWindow(ship.id, named.mass);
+      const err = Math.abs(speed - TARGET_SPEED) / TARGET_SPEED;
+      assert.ok(
+        err <= 0.2,
+        `${ship.id} towing ${named.id}: ${speed.toFixed(1)} WU/s after ${WINDOW_S} s vs ${TARGET_SPEED} (${(err * 100).toFixed(1)}%)`,
+      );
+      if (/^[AEIOU]/i.test(name)) {
+        vowelCrest = true;
+        assert.match(model.towSentence, /^Can tow an /);
+      }
+    } else if (model.profile.predictions.towCoversRoster) {
+      assert.equal(verbs.tow.verb, 'Can tow anything on the roster');
+      const speed = towSpeedAtWindow(ship.id, heaviest.mass);
+      assert.ok(
+        speed >= TARGET_SPEED * 0.8,
+        `${ship.id} says any hull is under way, but ${heaviest.id} made ${speed.toFixed(1)} WU/s in ${WINDOW_S} s`,
+      );
+    }
   }
-});
-
-test('live tow: the named hull couples under way on seed 4242 (' + SEED_NOTE + ')', () => {
-  // Row 278 done-when: predicted tow class matches a LIVE tow of that hull within
-  // 20 %. Run the real tow owner — the same force-over-coupled-mass arithmetic the
-  // game tows with — on the named towable hull: the tug's drive force must put the
-  // tug plus the named hull under way at the live bar, within the row tolerance.
-  const underWayAccel = CAPABILITY_LAW.towUnderWaySpeed / CAPABILITY_LAW.towUnderWaySeconds;
-  const profile = handlingProfileForShip('ship_drifter', { fittings: [] });
-  const namedId = profile.predictions.towableHullId;
-  assert.ok(namedId, 'the fit screen names a towable hull on seed 4242');
-  const tug = getDerivedStats('ship_drifter', [], null);
-  const load = getDerivedStats(namedId, [], null);
-  const coupledMass = (tug.operationalMass || tug.mass || 0)
-    + (load.operationalMass || load.mass || 0);
-  const achieved = driveForceFor(tug) / coupledMass;
-  const denom = Math.max(underWayAccel, 1e-9);
-  assert.ok(
-    Math.abs(achieved - underWayAccel) / denom <= 0.2,
-    `live tow of ${namedId}: coupled ${achieved.toFixed(2)} WU/s^2 vs bar ${underWayAccel.toFixed(2)}`,
-  );
+  assert.equal(vowelCrest, true, 'a live fit names a vowel hull, so the article is on the screen');
+  const hitch = handlingBandModel({ shipId: 'ship_kestrel', fittings: [] });
+  assert.ok(hitch.profile.predictions.towableHullName, 'seed 4242 hitch names a hull');
 });

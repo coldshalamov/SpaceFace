@@ -79,6 +79,10 @@ export const DEEP_FIELD_FRAGMENT = /* glsl */`
   uniform float uPaintedSkyStrength;
   uniform vec2 uPaintedSkyOffset;
   uniform vec2 uPaintedSkyScale;
+  uniform sampler2D uSkyBase;
+  uniform float uSkyBaseStrength;
+  uniform vec2 uSkyBaseOffset;
+  uniform vec2 uSkyBaseScale;
   uniform vec2 uRepeat0, uRepeat1, uRepeat2;
   uniform vec2 uOffset0, uOffset1, uOffset2;
   uniform vec3 uGroupOrigin, uDepths;
@@ -112,6 +116,12 @@ export const DEEP_FIELD_FRAGMENT = /* glsl */`
         color = mix(color, l1.rgb * uTintA * 1.15, nebulaAlpha);
         color += l2.rgb * uTintB * wispsAlpha;
       }
+    }
+    // §22.5 C6 — same law as LAYER_COMPOSITE_FRAG: the baked sector sky substitutes the
+    // procedural composite base, under the paintedSky accent and the live draws.
+    if (uSkyBaseStrength > 0.0) {
+      vec2 baseUv = (vSkyUv - 0.5) * uSkyBaseScale + 0.5 + uSkyBaseOffset;
+      color = mix(color, texture2D(uSkyBase, baseUv).rgb, uSkyBaseStrength);
     }
     if (uPaintedSkyStrength > 0.0) {
       vec2 skyUv = (vSkyUv - 0.5) * uPaintedSkyScale + 0.5 + uPaintedSkyOffset;

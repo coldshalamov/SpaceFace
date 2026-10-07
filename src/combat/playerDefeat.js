@@ -9,9 +9,9 @@ import { SECTORS } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
-import { formatNumber, resolveNumberLocale } from '../ui/numberFormat.js';
+import { formatNumber, resolveNumberLocale } from '../core/numberFormat.js';
 import { INSURANCE_DEFAULTS } from '../systems/economy.js';
-import { RANGE_RAIL_ROWS, rangeRungIndex, sentenceCase } from '../ui/screens/range.js';
+import { RANGE_RAIL_ROWS, rangeRungIndex, sentenceCase } from '../data/rangeRails.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const FACTION_BY_ID = new Map(FACTION_META.map((entry) => [entry.id, entry]));
@@ -40,7 +40,7 @@ function pct(value, max) {
   return max > 0 ? Math.max(0, Math.min(100, Math.round((Number(value) || 0) / max * 100))) : 0;
 }
 
-// PRO-03: locale resolution now lives in one place (src/ui/numberFormat.js) so the death summary
+// PRO-03: locale resolution now lives in one place (src/core/numberFormat.js) so the death summary
 // and the HUD read the SAME separators. This module's private copies are kept as thin wrappers
 // because its callers pass an already-resolved locale tag and the shared helper's signature is
 // (value, state, options).

@@ -20,13 +20,13 @@ import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
-import { createStopScale, createStopArc, createTurntable } from '../orrery/stopDial.js';
+import { createStopScale } from '../orrery/stopDial.js';
 import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { dpMark, injectDeckplate } from '../deckplate/index.js';
-import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+import { capPins, platePins, channelPins }
   from '../kit/computedMaterial.js';
 
 // PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
@@ -36,7 +36,7 @@ const SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
 const FITTABLE_BY_ID = new Map();
 for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
 const DIFFICULTIES = [
-  ['casual', 'Casual', 'Much softer combat for learning and QA.'],
+  ['casual', 'Casual', 'Much softer combat. Learn the ropes.'],
   ['standard', 'Standard', 'Softer hits on you; slightly easier kills.'],
   ['veteran', 'Veteran', 'Full combat baseline. No damage padding.'],
   ['ironman', 'Ironman', 'Veteran combat. Death ends the run.'],
@@ -416,6 +416,12 @@ export const newGameScreen = {
     if (refs && refs.unsubStartFailed) {
       try { refs.unsubStartFailed(); } catch (e) {}
     }
+    // a remount without a dispose (screen swap, error recovery) would leave the last mount's
+    // instruments observing detached DOM — release them first, the way dispose() does (REV-D136b.3)
+    for (const key of ['_diffDial', '_starterDial', '_hullRing', 'hull']) {
+      if (this[key] && typeof this[key].dispose === 'function') { try { this[key].dispose(); } catch (e) {} }
+      this[key] = null;
+    }
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen');
     rootEl.dataset.kReady = '0';
@@ -516,9 +522,10 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
-    // ORRERY: difficulty is a four-stop scale with the amber index.
-    // difficulty as a four-stop dial with the Hand (ORRERY 6); it fills the form column with an instrument
-    if (ORRERY) this._diffDial = createStopArc({ row: diffWords, width: 340, radius: 116, span: 144, overshoot: 0 });
+    // ORRERY: difficulty is a four-stop scale with the amber index, stood on end — the form
+    // column is narrower than four grown names on one line, so the ruler stacks a station per
+    // line and every word keeps the column's whole width (D136).
+    if (ORRERY) this._diffDial = createStopScale({ row: diffWords, width: 340, axis: 'y' });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -544,12 +551,24 @@ export const newGameScreen = {
         target.focus();
       }
     });
+    // The scale stands on end, so the stations take Up/Down along their own line — the roving's
+    // Left/Right still answers too (REV-D136b.1). The edges walk out the way the dial reads: Up
+    // off the first station climbs back to the starter words, Down off the last falls to the seed.
     diffWords.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey) return;
-      const target = liveWordIn(starterWords);
-      if (!target) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      const all = [...diffWords.querySelectorAll('.k-word')];
+      const i = all.indexOf(e.target);
+      if (i < 0) return;
+      const next = all[i + (e.key === 'ArrowDown' ? 1 : -1)];
       e.preventDefault();
-      target.focus();
+      if (next) { next.focus(); cue('move'); return; }
+      if (e.key === 'ArrowUp') {
+        const target = liveWordIn(starterWords);
+        if (target) target.focus();
+      } else {
+        seed.focus();
+      }
     });
     // Once focus leaves the starter row, park every word's Tab stop again — the row's roving
     // focusin marks the entered word tabbable, and the six-stop launch traversal must stay
@@ -996,6 +1015,7 @@ export const newGameScreen = {
   refresh() {},
   dispose() {
     if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
+    if (this._diffDial) { this._diffDial.dispose(); this._diffDial = null; }
     if (this._starterDial) { this._starterDial.dispose(); this._starterDial = null; }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (this._hullRing) { this._hullRing.dispose(); this._hullRing = null; }

@@ -150,10 +150,11 @@ function testEmitOnlyOfferNamesCommodityAndCause() {
   assert.ok(offer.summary.includes(fuelName), `summary names the commodity: "${offer.summary}"`);
   assert.equal(offer.cause.tag, 'route_scarcity', 'machine-traceable cause = the enumerated driver tag');
   // Economy Pulse: the fuel run is OUTBOUND relief — it loads here and delivers to the
-  // distressed neighbor seeded by the fixture (sector_helios_prime, id-sorted first station),
-  // not to the docked station.
+  // distressed neighbor seeded by the fixture (sector_helios_prime), not to the docked
+  // station. SF-CONTRACT-DEST-TRUTH (612c7a440): the berth is the first authored station the
+  // pilot can actually dock at — the production _dockableStations pick — never id-sorted.
   const HELIOS = SECTORS.find((s) => s.id === 'sector_helios_prime');
-  const neighborTarget = [...HELIOS.stations].sort((a, b) => a.id.localeCompare(b.id))[0].id;
+  const neighborTarget = sys._dockableStations(HELIOS)[0].id;
   assert.equal(offer.destStationId, neighborTarget, 'the fuel run delivers to the distressed neighbor');
   assert.equal(offer.id, `eco_${STATION.id}_0`, 'stable station-epoch offer id');
   assert.equal(voice.calls.length, 1, 'one news line per offer');

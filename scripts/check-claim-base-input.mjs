@@ -149,8 +149,8 @@ function checkRegistrationRaceDoesNotLie() {
   assert.equal(event.propagationStopped, true, 'base registration race should not also reach gameplay input');
   assert.deepEqual(h.pushes, [], 'unregistered base screen should not be pushed');
   assert.equal(h.state.ui.pendingClaimBodyId, 'claim_existing', 'base target should stay primed while screen registration catches up');
-  assert.equal(h.events.some((event) => event.name === 'toast' && /initializing/i.test(event.payload.text)), true,
-    'registration race should tell the player the base interface is initializing');
+  assert.equal(h.events.some((event) => event.name === 'toast' && /still loading/i.test(event.payload.text)), true,
+    'registration race should tell the player the base screen is still loading');
   assertNoComingSoon(h.events);
   h.input.dispose();
 }

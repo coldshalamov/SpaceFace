@@ -316,6 +316,7 @@ Current save version: `14`
 | `$.player.miningBeam.dps` | number | 18 |
 | `$.player.miningBeam.range` | number | 220 |
 | `$.player.miningBeam.tierId` | string | beam_mk1 |
+| `$.player.miningTargetId` | null | null |
 | `$.player.moduleInventory` | array | length 0 |
 | `$.player.ownedShips` | array | length 1 |
 | `$.player.ownedShips[]` | object | {} |

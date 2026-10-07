@@ -29,6 +29,7 @@ export const NEW_GAME = {
     'mod_mining_laser_s',   // mining slot S (starter laser, price 0)
     'mod_engine_ion_m',     // engine slot M
     'mod_shield_booster_s', // shield slot S
+    'mod_drill_amp',        // utility slot S — the hitch's cut; the other two hulls do not carry it
   ],
 
   // Starting cargo.

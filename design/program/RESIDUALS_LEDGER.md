@@ -151,9 +151,8 @@ only an unrun headed capture or a refused percentage are in §F.
 | `roadmap/receipts/PQ-137-07-REPORT.md` §What this does not do | Straight radial pull (tug of war) regime not integrable at 60 Hz | physics/feel follow-up |
 | `roadmap/receipts/PQ-137-10-smoke-REPORT.md` §What this does not claim | B2/B3/B4/B5/B6-damage/B8/B11 still OPEN in the contract | massline contract lane |
 | `roadmap/receipts/PQ-150.01-REPORT.md` §gaps 2–4 | Double speaker, unmeasured berth cost, no headed/playtest | `PQ-207.00`–`.03` |
-| `roadmap/receipts/PQ-178.01-REPORT.md` §Follow-up | `47a-bigger-boat.beat.json` five `sling_in` clauses + `BEAT-STANDARD.md:78` stale | docs/worldbuilding fix — narrow, unowned |
 | `roadmap/receipts/PQ-180-00-REPORT.md` §What this does not claim | Nine UI surfaces never open under the probe | UI reachability lane (`PQ-180 .00`) |
-| `roadmap/receipts/PQ-195.01-REPORT.md` §Residuals | Legacy custom backend `maskOf(fx)=0` broadphase-invisible; arrestor overlap | physics follow-up, contract holds on default route |
+| `roadmap/receipts/PQ-195.01-REPORT.md` §Residuals | Arrestor overlap at the field boundary (visual leaf) | PICTURE lane; the `maskOf(fx)=0` broadphase-invisibility half landed 2026-10-04 (c98bbb9d4, `test/physics-legacy-custom-mask.test.mjs` 4/4, default-route invariance pinned) |
 | `roadmap/receipts/CHECK-ALL-REPAIR-ROUND2-2026-09-18.md` §Residuals | `check:all:smoke` 22/27; 5 reds are foreign defects/host load | filed here; owners fix in their lanes |
 | `roadmap/receipts/PQ-135-0*-REPORT.md` (umbrella) | `test/motion-lab-scenarios.test.mjs` red at fresh-root and HEAD (M1 stop ordering, M6 scissors, M8 morph abort, two mutation levers); never green in-tree; `squadRecipe` still stamped only by the lab (`cohortRecipe` live opt-in landed `ac870970d` — three Reach fodder squads + both swarm-screen reinforcement packages now stamp it on the ordinary spawn path) | kinematics/AI leaf — the scissors rail aims at a stale point while the target moves; PQ-135 stays open on the lab reds + striker fire-window admission + GPU chase-cam review, not a player-visible defect yet |
 
@@ -164,7 +163,7 @@ lost. Rows whose terminal action was "pathspec commit" or "receipt written" are 
 
 | `NOW.md` row | Named next action |
 |---|---|
-| Onboarding vertical: thesis-first first hour | fix far-field body sleep for scripted input, then re-run fixed-seed metrics twice |
+| Onboarding vertical: thesis-first first hour | cross-session (separate process) replay stability of the swing/raid tow outcome: in-process determinism is now pinned green (`test/onboarding-stranger-replay-stability.test.mjs`, 2c3f22391 — identical code+seed gives identical victims/times/phases in-process); the receipt's cross-session claim is the open half |
 | PQ-033.02 min-spec floors and soak | Electron host evidence; median-frame/hitch floors remain host-load-limited |
 | PQ-194 packet refit + S2 embark | S2 frame composition + twelve prototypes (P03/P04/P16) |
 | Finish-game fleet / next-20 dispatch pipeline | Chromium walks timed out (GPU); headed stills residual |

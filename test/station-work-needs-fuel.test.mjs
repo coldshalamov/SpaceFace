@@ -67,16 +67,16 @@ test('the authored fuel-less outposts keep their fiction, and say so on the char
 
 test('the fix is exactly two stations, not a blanket service grant', () => {
   // Every station that repairs a hull is NOT given fuel - that would erase the frontier. Only
-  // three yards now repair without fuelling, and each is honest: two are the authored fuel-less
-  // outposts whose chart note says so, and the third (Forge Foundry) shares its sector with the
-  // Refuel Depot, which is the designed foundry/depot split.
+  // four yards now repair without fuelling, and each is honest: two are the authored fuel-less
+  // outposts whose chart note says so, and the Vesta pair (Forge Foundry and its Outlying Yard)
+  // shares a sector with the Refuel Depot, which is the designed foundry/depot split.
   const repairWithoutRefuel = allStations
     .filter(({ station }) => offers(station, 'repair') && !offers(station, 'refuel'))
     .map(({ sector, station }) => ({ sector, station }));
 
   assert.deepEqual(repairWithoutRefuel.map(({ station }) => station.id).sort(),
-    ['station_eunomia', 'station_forge', 'station_sedna'],
-    'only the two charted outposts and the Vesta foundry repair without fuelling');
+    ['station_eunomia', 'station_forge', 'station_sedna', 'station_vesta_outlying_yard'],
+    'only the two charted outposts and the Vesta foundry pair repair without fuelling');
 
   for (const { sector, station } of repairWithoutRefuel) {
     const sectorPumps = stationsOf(sector).filter((s) => offers(s, 'refuel'));

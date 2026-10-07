@@ -28,6 +28,12 @@ import {
 import { isSurvivalRunLive } from '../systems/adventureMigration.js';
 import { ensureWorldNews, registerWorldBeats } from './worldNewsBeats.js';
 
+// A headline names the place, not its id. An id that does not resolve is printed as given.
+function sectorDisplayName(id) {
+  const sector = SECTORS.find((row) => row && row.id === id);
+  return (sector && sector.name) || String(id);
+}
+
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME_BY_ID = new Map();
 for (const sector of SECTORS) {
@@ -502,7 +508,7 @@ export function createMarketNews(ctx) {
     const here = state.world && state.world.currentSectorId;
     if (here && p.sectorId !== here) return;
     const eventId = `miner-relocated:${p.sectorId}:${Number(p.simTime) || state.simTime || 0}`;
-    commitHeadline(`Miners in ${p.sectorId} moved to a new seam.`, {
+    commitHeadline(`Miners in ${sectorDisplayName(p.sectorId)} moved to a new seam.`, {
       kind: 'miner_relocated',
       sectorId: p.sectorId,
       eventId,

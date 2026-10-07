@@ -121,6 +121,8 @@ const CSS = `
 .orr-speeddial .orr-cluster__speedfoot { display:flex; justify-content:center; white-space:nowrap; }
 .orr-speeddial .orr-label, .orr-speeddial__lab { text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 3px rgb(3 4 7 / .85), 0 0 9px rgb(3 4 7 / .6); }
 .orr-speeddial__lab { position:absolute; transform:translate(-50%, -50%); white-space:nowrap; display:flex; gap:5px; align-items:baseline; }
+/* a pool of shade under each figure, so it reads over a bright world (the shadow alone measured 2.75:1 over a lit structure) */
+.orr-speeddial__lab::before { content:""; position:absolute; inset:-9px -14px; z-index:-1; pointer-events:none; background:radial-gradient(closest-side, rgb(3 4 7 / .78), rgb(3 4 7 / .5) 60%, rgb(3 4 7 / 0)); }
 .orr-speeddial__lab b { font-family:var(--dp-face-numeral); font-weight:520; letter-spacing:.02em; color:var(--dp-ink, #e8e2d4); }
 /* a floor-sized label no longer fits inside the ring once the Cluster scales down: the unit alone names the figure */
 @media (max-width: 1700px) { .orr-speeddial__word { display:none; } }
@@ -272,7 +274,8 @@ export function createSpeedDial() {
   const numeral = el('b', 'orr-numeral', '0');
   const foot = el('div', 'orr-cluster__speedfoot');
   const unit = el('span', 'orr-label');
-  unit.append(el('span', 'orr-speeddial__word', 'Speed · '), 'wu/s');
+  unit.appendChild(el('span', 'orr-speeddial__word', 'Speed · '));
+  unit.appendChild(el('span', null, 'wu/s')); // an element, not a bare string: the HUD test shims' append() takes nodes only
   foot.appendChild(unit);
   read.append(numeral, foot);
   root.appendChild(read);

@@ -90,6 +90,69 @@ test('isMasslineLatchedPickup identifies Massline-latched pickups across authori
   delete chip.data.salvagePool;
 });
 
+test('isMasslineLatchedPickup refuses a recycled id the generation stamp disproves', () => {
+  const state = createGameState(123);
+  const player = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 5,
+  };
+  state.entities.set(player.id, player);
+  state.playerId = player.id;
+
+  // Occupant B holds id 10 now; the rope was stamped while occupant A held it.
+  const chip = {
+    id: 10,
+    type: 'pickup',
+    alive: true,
+    pos: { x: 10, z: 0 },
+    vel: { x: 0, z: 0 },
+    data: { kind: CREDIT_CHIP_KIND, amount: 250 },
+    occupantGeneration: 'gen-B',
+  };
+
+  state.combat = state.combat || {};
+  state.combat.attachments = {
+    byId: {
+      att1: {
+        id: 'att1',
+        ownerId: player.id,
+        targetId: chip.id,
+        targetGeneration: 'gen-A',
+        state: 'active',
+      },
+    },
+  };
+  // The recorded generation names occupant A; the live occupant is B — a recycled id must not
+  // make the new body read as tether-bound before the authority sweeps the stale rope.
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+
+  // The same record still binds the occupant it was stamped against.
+  chip.occupantGeneration = 'gen-A';
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+
+  // The tether mirror validates through its own attachment record.
+  chip.occupantGeneration = 'gen-B';
+  state.player.tether = { active: true, targetId: chip.id, attachmentId: 'att1' };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+  chip.occupantGeneration = 'gen-A';
+  assert.equal(isMasslineLatchedPickup(state, player, chip), true);
+
+  // Dead-alias reads stay dead: attachedId/targetEntityId/bodyBId have no writers — a fixture
+  // that fakes them must not pretend to arm the predicate.
+  chip.occupantGeneration = 'gen-B';
+  state.player.tether = { active: true, attachedId: chip.id, targetEntityId: chip.id };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+  state.combat.attachments.byId.att1 = {
+    id: 'att1', ownerId: player.id, attachedId: chip.id, bodyBId: chip.id,
+    targetEntityId: chip.id, state: 'active',
+  };
+  assert.equal(isMasslineLatchedPickup(state, player, chip), false);
+});
+
 test('mining _updatePickups skips Massline-latched pickup while vacuuming unlatched pickup', () => {
   const state = createGameState(456);
   const bus = createBus();

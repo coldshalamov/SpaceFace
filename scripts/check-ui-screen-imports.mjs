@@ -363,7 +363,7 @@ if (!helpSrc.includes("['Touch (phone / tablet)'")
   || !helpSrc.includes("['Open local map', null, 'Map button'")
   || !helpSrc.includes("['Open mission log', null, 'Log button'")
   || !helpSrc.includes("['Open star-map', null, 'Star button'")
-  || !helpSrc.includes("['Pause / Help route', null, 'Pause button -> Help / Controls'")) {
+  || !helpSrc.includes("['Pause / Help route', null, 'Pause button → Help / Controls'")) {
   console.log('FAIL helpScreen - touch controls must document Dock/Map/Log/Star/Pause on-screen buttons');
   fail++;
 } else {
@@ -452,7 +452,7 @@ if (!onboardingHudAttentionImport
   }
 }
 if (!helpSrc.includes("['Recover from losses'")
-  || !helpSrc.includes('Services -> Hull Insurance -> launch')
+  || !helpSrc.includes('Services → Hull Insurance → launch')
   || !helpSrc.includes('normal death returns to a station with cargo loss and 3s shields')
   || !helpSrc.includes('Ironman is final: Run Over shows loss cause and sortie stats')
   || !helpSrc.includes('Saves avoid death/respawn limbo')

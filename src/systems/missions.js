@@ -42,7 +42,8 @@
 //
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import {
-  MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES,
+  MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES, DOCK_SETTLED_TYPES,
+  CONTRACT_DESK_SERVICES, hasContractsDesk,
   PHYSICAL_MISSION_TYPES,
   PHYSICAL_MISSION_VARIANTS,
   physicalMissionVariantFor,
@@ -66,6 +67,7 @@ import {
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
   STORY_BRANCH_INTRO_TAG,
+  MISSION_TYPE_PHYSICAL_VERB,
   SET_PIECE_MISSIONS,
   WRECK_BOUND_SET_PIECE_OBJECTIVES,
   offerMixWeight,
@@ -78,6 +80,8 @@ import {
   setPieceFollowOnOffer,
 } from '../data/sandboxSetPieceFollowOns.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
+import { stationMinRepFor } from '../data/dockDeny.js';
+import { stationBerthAdmits, stationBerthRefusal } from '../data/frontierRumors.js';
 import {
   SPLIT_MANIFEST_TYPE,
   QUIET_BERTH_TYPE,
@@ -126,6 +130,7 @@ import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { attachClauses, attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
+import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
 import { attachTrap, seedHeliosOfferTrap } from './moralTrap.js';
 // A1 "passengers are people": the passenger corpora (names, why-lines, riding beats) are data;
 // this system mints the per-offer identity and speaks the beats on the existing comms seams.
@@ -169,6 +174,11 @@ import { actionById as salvageActionById } from '../data/salvageActions.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
+import {
+  activeOwnedShip,
+  nextStarterStep,
+  shipCarriesModule,
+} from '../data/starterJobs.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
@@ -259,10 +269,17 @@ const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 
 // station id → mission-board identity resolved from the SECTORS graph. Physical `type` remains
 // the economy/render contract; optional missionProfile/boardAnchorType only shape posted work.
+// A contracts desk is the advertised board: the missions counter or a black-market counter —
+// exactly the services the hub labels "contracts here". Procedural board rolls only exist
+// where one is advertised; earned/authored rows post regardless (see ensureBoard).
+const DESK_SERVICES = CONTRACT_DESK_SERVICES;
+
 const STATION_INFO = new Map();
 const SECTOR_BY_ID = new Map();
 for (const sec of SECTORS) {
   SECTOR_BY_ID.set(sec.id, sec);
+  const sectorHasRefuel = (sec.stations || [])
+    .some((s) => Array.isArray(s.services) && s.services.includes('refuel'));
   for (const st of sec.stations || []) {
     STATION_INFO.set(st.id, {
       id: st.id, name: st.name, type: st.type, size: st.size || 'M',
@@ -270,6 +287,20 @@ for (const sec of SECTORS) {
       boardAnchorType: st.boardAnchorType || null,
       factionId: st.factionId || sec.factionId, sectorId: sec.id,
       sectorTier: sec.tier, security: sec.security,
+      // A station that DECLARES services with no contracts desk, in a sector with no pump,
+      // rolls no procedural work — the authored fuel-less outpost fiction. A station that
+      // declares nothing keeps legacy behavior (fixture/stub stations roll normally).
+      desklessOutpost: Array.isArray(st.services) && st.services.length > 0
+        && !hasContractsDesk(st.services) && !sectorHasRefuel,
+      // Destination pickers read the real gates: a 'scan' service is a customs sweep (smuggling
+      // can't route there), repGated means positive standing docks, and an explicit minRep
+      // binds the same way the dock gate resolves it (world.js station record).
+      services: Array.isArray(st.services) ? st.services.slice() : [],
+      repGated: st.repGated === true,
+      minRep: stationMinRepFor(st),
+      // The unfiltered record for the berth oracles — dockDenyReason reads flags
+      // (quarantine, private, military, abandoned) this view deliberately does not copy.
+      record: st,
     });
   }
 }
@@ -289,6 +320,13 @@ function stationInfoFor(state, stationId) {
             boardAnchorType: st.boardAnchorType || null,
             factionId: st.factionId || sec.factionId, sectorId: sec.id,
             sectorTier: sec.tier, security: sec.security,
+            desklessOutpost: Array.isArray(st.services) && st.services.length > 0
+              && !hasContractsDesk(st.services)
+              && !(sec.stations || []).some((s) => Array.isArray(s.services) && s.services.includes('refuel')),
+            services: Array.isArray(st.services) ? st.services.slice() : [],
+            repGated: st.repGated === true,
+            minRep: stationMinRepFor(st),
+            record: st,
           };
         }
       }
@@ -323,6 +361,8 @@ const BULK_HAUL_TYPE = 'bulk_haul';
 const BULK_HAUL_MIN_MASS_U = 25;
 const BULK_HAUL_PAY_MULT = 0.8;
 const BULK_HAUL_FEE = 0.06;
+// DOCK_SETTLED_TYPES lives in data/missions.js — the type taxonomy shared by this
+// accept gate and the dossier preflight.
 const PHYSICAL_TYPE_SET = new Set([
   ...PHYSICAL_MISSION_TYPES,
   AUTHORED_SET_PIECE_TYPE,
@@ -1853,8 +1893,9 @@ export const missions = {
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
       const shortageChanged = this._syncShortageOffers(board);
+      const starterChanged = this._syncStarterJobOffer(info, board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || authoredChanged || megaHeistChanged || capitalChanged || shortageChanged) {
+        || counterweightChanged || yardChanged || authoredChanged || megaHeistChanged || capitalChanged || shortageChanged || starterChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -1896,16 +1937,20 @@ export const missions = {
     // Wreck-communicator contracts are discovery progress, not an epoch reroll: the player found
     // the signal, so the row survives refresh until it is accepted. Stable point-derived ids
     // keep the ingest dedupe honest; settle receipts still block a completed offer's replay.
+    // No slice cap: salvage._offerFromPoint is one-shot (point.offered), so a dropped row can
+    // never re-emit — capping retention deletes authored discovery work for the save.
     const retainedSalvageOffers = previousSlots.filter((offer) => (
       offer && offer.source === 'salvage'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
-    )).slice(0, 4);
-    // Ecology site offers are one-shot per visit — keep them through epoch refresh so the
-    // contract the site emitted survives the trip back to dock.
+    ));
+    // Ecology site offers are emitted once and then offersEmitted stays set forever — they
+    // cannot re-emit, so retention is the only place the contract lives. No slice cap: a
+    // multi-desk site (Ashfall Reach carries nine authored rows, Charon seven) posts them all
+    // to one station, and any cap silently deletes the excess authored work (D132).
     const retainedEcologyOffers = previousSlots.filter((offer) => (
       offer && offer.source === 'ecology'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
-    )).slice(0, 4);
+    ));
     // B7 follow-ons are the contract the set piece just became. A refresh must not
     // eat them before the player can take the salvage, the escape, or the tow.
     const retainedSetPieceFollowOns = previousSlots.filter((offer) => (
@@ -1957,7 +2002,10 @@ export const missions = {
         ...retainedSetPieceOffers,
         ...retainedPoiOffers,
         ...retainedLandmarkOffers,
-        ...this._generateOffers(info, epoch),
+        // A deskless outpost in a fuel-less sector rolls no procedural work — "few questions"
+        // is the fiction and a generated desk you cannot leave is the trap the fuel contract
+        // names. Earned and authored rows still post: a filed reading is not desk work.
+        ...(info.desklessOutpost ? [] : this._generateOffers(info, epoch)),
         // Retained at the very END, after generation, for the same reason `_syncHeistOffer` appends.
         // `_generateOffers` puts the B4 branch-intro contract at the head of what it returns, and
         // check:mission-standing-ladder asserts a branch station leads with that tagged intro both
@@ -1977,7 +2025,7 @@ export const missions = {
         ...retainedSetPieceFollowOns,
       ],
     };
-    this._guaranteeRecoveryOffer(info, board, epoch);
+    if (!info.desklessOutpost) this._guaranteeRecoveryOffer(info, board, epoch);
     state.missions.boards[stationId] = board;
     this._syncEmbodiedStoryOffer(info, board, epoch);
     this._syncSetPieceOpeningOffers(info, board, epoch);
@@ -2861,9 +2909,50 @@ export const missions = {
       const trapIdx = offers.findIndex((o) => o && !o.storyTag && !o.source
         && (o.type === 'cargo_delivery' || o.type === 'passenger_transport'));
       if (trapIdx >= 0) offers[trapIdx] = seedHeliosOfferTrap(offers[trapIdx]);
+      this._injectStarterJob(info, offers, S);
     }
     this._markFeaturedOffer(offers, info, epoch);
     return offers;
+  },
+
+  /** The starter hull's next opening job, pinned at the head of the Helios board. */
+  _injectStarterJob(info, offers, cap) {
+    const ship = activeOwnedShip(this.state);
+    const next = ship && nextStarterStep(this.state, ship.defId);
+    if (!next) return;
+    const already = offers.some((offer) => offer && offer.params
+      && offer.params.starterJobId === next.job.id
+      && offer.params.starterStep === next.step.step);
+    if (already) return;
+    const offer = this._rollOffer(next.step.type, info, () => 0.2, 0, 90, { attachConditions: false });
+    if (!offer) return;
+    offer.id = `starter-${next.job.id}-${next.step.step}`;
+    offer.title = next.step.title;
+    offer.reward_cr = next.step.rewardCr;
+    offer.collateral_cr = 0;
+    offer.riskTier = 0;
+    offer.source = 'starterJob';
+    offer.params = offer.params || {};
+    offer.params.starterJobId = next.job.id;
+    offer.params.starterStep = next.step.step;
+    offer.params.requiredModule = next.job.requiredModule;
+    if (next.step.cmdtyId) {
+      offer.params.cmdtyId = next.step.cmdtyId;
+      offer.params.qty = next.step.qty;
+    }
+    offer.destStationId = info.id;
+    offer.destSectorId = info.sectorId;
+    offers.unshift(offer);
+    if (offers.length > cap) offers.length = cap;
+  },
+
+  /** Keep the starter's next opening step on a board that has not rolled its epoch yet.
+   *  Completing step 1 must not wait out the refresh clock before step 2 is posted. */
+  _syncStarterJobOffer(info, board) {
+    if (!info || info.id !== 'station_helios' || !board || !Array.isArray(board.slots)) return false;
+    const before = board.slots.length;
+    this._injectStarterJob(info, board.slots, before + 1);
+    return board.slots.length !== before;
   },
 
   /** Real-calendar day bucket for the featured mark — the only wall-clock read on the missions
@@ -2984,6 +3073,11 @@ export const missions = {
 
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
     const params = this._rollParams(typeId, info, dest, riskTier, rng);
+    // LG-SPINE-HEADLINES — the live intro/chain types name the physical verb they ask the
+    // player to perform, the same field the authored set-piece types stamp inline.
+    if (!params.physicalVerb && MISSION_TYPE_PHYSICAL_VERB[typeId]) {
+      params.physicalVerb = MISSION_TYPE_PHYSICAL_VERB[typeId];
+    }
 
     // The writ wall names a person at a place: generated single-mark bounties carry a
     // deterministic storyTarget (seeded by offer id — never an rng draw, so every other rolled
@@ -3234,8 +3328,12 @@ export const missions = {
     // A race posts on its own course — the board's sector IS the destination.
     if (typeId === 'mining_quota' || typeId === 'race') return info;
     // Prefer a discovered/known station; fall back to any in the catalog within a few hops.
+    // Two real gates ride the station record: 'scan' is a customs sweep (a smuggling run can't
+    // target it), and a repGated berth refuses a pilot below positive standing — routing either
+    // of those contracts to it writes a contract the world cannot settle.
     const candidates = ALL_STATIONS.filter((s) => s.id !== info.id
-      && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan')));
+      && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan'))
+      && stationBerthAdmits(s.record || s, this._repOf(s.factionId), this.state));
     if (!candidates.length) return info;
     // Bias toward same-or-adjacent sectors for fair timers (fairness note: nearer for slow ships).
     const sec = SECTOR_BY_ID.get(info.sectorId);
@@ -3246,7 +3344,8 @@ export const missions = {
   },
 
   _pickBulkHaulDestination(info, rng) {
-    const refineries = ALL_STATIONS.filter((s) => s.type === 'refinery' || s.services && s.services.includes('refine'));
+    const refineries = ALL_STATIONS.filter((s) => (s.type === 'refinery' || s.services && s.services.includes('refine'))
+      && stationBerthAdmits(s.record || s, this._repOf(s.factionId), this.state));
     if (!refineries.length) return info;
     const same = refineries.filter((s) => s.sectorId === info.sectorId);
     if (same.length) return same[Math.floor(rng() * same.length)];
@@ -3577,8 +3676,8 @@ export const missions = {
       ? Number(state.player.credits) : 0;
     if (acceptCostCr > 0 && availableCredits < acceptCostCr) {
       const text = upfrontCostCr > 0
-        ? `Need ${acceptCostCr}cr for deposit and service fees`
-        : `Need ${collateralCr}cr collateral`;
+        ? `Need ${acceptCostCr} cr for deposit and service fees`
+        : `Need ${collateralCr} cr collateral`;
       this.bus.emit('toast', { text, kind: 'error', ttl: 3 });
       return false;
     }
@@ -3841,6 +3940,10 @@ export const missions = {
   },
 
   _acceptPreflight(offer) {
+    const requiredModule = offer && offer.params && offer.params.requiredModule;
+    if (requiredModule && !shipCarriesModule(activeOwnedShip(this.state), requiredModule)) {
+      return { ok: false, reason: 'This job needs the fit you woke up in' };
+    }
     // The Tethys launcher holds exactly one schedule. A second launcher contract accepted while one
     // is live would be denied at schedule time and fail as `unresolved_absent` — refuse it up front,
     // in words, instead.
@@ -3861,6 +3964,25 @@ export const missions = {
         return {
           ok: false,
           reason: `${factionShortName(offer.factionId)} standing ${signedRep(minRep)} required`,
+        };
+      }
+    }
+    // The board gate checks the issuer's standing; the berth gate checks the destination's.
+    // An authored offer can name a berth the world refuses (a repGated fence, the closed Den):
+    // when the contract can only settle by docking there, accepting it writes a contract that
+    // can never settle — refuse at the board, in words.
+    if (offer && offer.destStationId && DOCK_SETTLED_TYPES.has(offer.type)) {
+      const destInfo = stationInfoFor(this.state, offer.destStationId);
+      const refusal = destInfo
+        && stationBerthRefusal(destInfo.record || destInfo, this._repOf(destInfo.factionId), this.state);
+      if (refusal) {
+        return {
+          ok: false,
+          reason: refusal.kind === 'standing'
+            ? `${destInfo.name} refuses this berth — ${factionShortName(destInfo.factionId)} standing ${signedRep(refusal.floor)} required`
+            : refusal.kind === 'structural'
+              ? `${destInfo.name} refuses this berth — ${refusal.text}`
+              : `${destInfo.name} does not take this freight yet`,
         };
       }
     }
@@ -4200,6 +4322,15 @@ export const missions = {
 
   _setNavWaypoint(waypoint) {
     this.state.nav = this.state.nav || {};
+    // Stamp the durable bind at the single write seam: every mission waypoint literal above
+    // carries a bare targetEntityId, and a recycled slot would redirect throw aim, tether
+    // acquisition, and chart commits onto the new occupant. Writers that already stamped
+    // their bind keep it.
+    if (waypoint && waypoint.targetEntityId != null && !waypoint.stable) {
+      const entity = liveEntityById(this.state, waypoint.targetEntityId);
+      const stable = entity ? captureEntitySelection(entity) : null;
+      if (stable) waypoint = { ...waypoint, stable };
+    }
     const same = sameNavWaypoint(this.state.nav.waypoint, waypoint);
     if (!same) {
       this.state.nav.waypoint = waypoint || null;
@@ -4941,6 +5072,13 @@ export const missions = {
       }
       if (m.status !== 'active' || m.type !== 'mining_quota') continue;
       if (m.params.cmdtyId !== p.commodityId) continue;
+      // A starter cut pays only while its tool is fitted. The Hitch contract is a rich-core
+      // hold (Drill Amp) plus the mining laser. Iron mined without that fit does not count.
+      if (m.params.starterJobId) {
+        const ship = activeOwnedShip(this.state);
+        if (!shipCarriesModule(ship, m.params.requiredModule)) continue;
+        if (!shipCarriesModule(ship, 'mod_mining_laser_s')) continue;
+      }
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + (p.qty || 0));
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
@@ -5052,6 +5190,13 @@ export const missions = {
    */
   _settleBountyTargetKill(m, i, p) {
     if (!Array.isArray(m.targetEntityIds) || !m.targetEntityIds.includes(p.id)) return;
+    if (m.params && m.params.requiredModule === 'mod_ram_plate') {
+      if (!shipCarriesModule(activeOwnedShip(this.state), 'mod_ram_plate')) return;
+      const weapon = p.weaponId || p.tag
+        || (p.presentation && p.presentation.weaponId)
+        || (p.provenance && p.provenance.weaponId);
+      if (weapon !== 'mod_ram_plate' && weapon !== 'ram_plate') return;
+    }
     if (m.storyTag === CONTRACT_47A_B2_TAG) {
       this._resolveContract47aB2(m, i, 'force', p.id);
       return;
@@ -5084,7 +5229,8 @@ export const missions = {
       if (!byPlayer) {
         const gone = (id) => {
           const e = this.state.entities && this.state.entities.get(id);
-          return !e || e.alive === false;
+          if (!e || e.alive === false) return true;
+          return !!(p.entity && id === p.entityId && e !== p.entity);
         };
         if (bountyTargetLost(m, p.entityId, gone)) this._failMission(m, i, 'target_lost');
         else if (externalTargetLoss(m, p.entityId, gone)) this._settleExternalTargetLoss(m, i, p);
@@ -5109,7 +5255,8 @@ export const missions = {
       if (missionObservesClauseEvent(m, 'entity:killed')) continue;
       const gone = (id) => {
         const e = this.state.entities && this.state.entities.get(id);
-        return !e || e.alive === false;
+        if (!e || e.alive === false) return true;
+        return !!(p.entity && id === p.id && e !== p.entity);
       };
       if (bountyTargetLost(m, p.id, gone)) {
         this._failMission(m, i, 'target_lost');
@@ -6971,6 +7118,14 @@ export const missions = {
       return this._tryCompleteAuthored(m, index, 'latch_dock', role, this._playerLatchedTo(m, role));
     }
     if (m.type === 'tow_recovery') {
+      if (m.params && m.params.requiredModule === 'mod_winch_hd') {
+        if (!shipCarriesModule(activeOwnedShip(this.state), 'mod_winch_hd')) return false;
+        const winched = this._playerLatchedTo(m, PHYSICAL_ROLE.SLAG_CORE);
+        if (winched && this._entityNearDestBerth(winched, m)) {
+          return this._completePhysical(m, index, 'tow_in');
+        }
+        return false;
+      }
       const core = this._playerLatchedTo(m, PHYSICAL_ROLE.SLAG_CORE);
       const storyDock = m.storyTag === CONTRACT_47A_B3_TAG;
       if (core) {
@@ -7216,9 +7371,10 @@ export const missions = {
       const m = this.state.missions.active[i];
       if (!m || m.status !== 'active' || !PHYSICAL_TYPE_SET.has(m.type)) continue;
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.id)) continue;
-      // The destroy payload carries the victim row itself; the entity map may already have
-      // dropped it by the time this listener runs.
-      const victim = this.state.entities.get(p.id) || (p && p.entity) || null;
+      // The destroy payload carries the victim row itself. If that id was already recycled,
+      // the map row is a different occupant — the loss belongs to the corpse, not the heir.
+      const mapped = this.state.entities && this.state.entities.get(p.id);
+      const victim = (p.entity && mapped !== p.entity) ? p.entity : (mapped || p.entity || null);
       const role = physicalRoleOf(victim);
       if ((m.type === 'tow_recovery' || (m.type === AUTHORED_SET_PIECE_TYPE && role === PHYSICAL_ROLE.SLAG_CORE))
         && role === PHYSICAL_ROLE.SLAG_CORE) {
@@ -7986,6 +8142,11 @@ export const missions = {
         rewardCr: settledRewardCr,
       });
     }
+    if (m.params && m.params.starterJobId) {
+      const bag = state.missions.starterJobStep || (state.missions.starterJobStep = {});
+      const step = Math.max(0, Math.floor(Number(m.params.starterStep) || 0));
+      if (step > (bag[m.params.starterJobId] || 0)) bag[m.params.starterJobId] = step;
+    }
     if (settledRewardCr > 0) {
       this.bus.emit('economy:grantCredits', { amount: settledRewardCr, reason: `mission:${m.id}` });
     }
@@ -8073,7 +8234,7 @@ export const missions = {
     this._emitMissionDebrief(m, 'completed', null, { rewardCr: displayRewardCr });
     const completionText = isZeroPayLandmarkMission(m, displayRewardCr)
       ? `Mission complete: ${m.title} — field record filed; no credits issued.`
-      : `Mission complete: ${m.title} +${displayRewardCr}cr`;
+      : `Mission complete: ${m.title} +${displayRewardCr} cr`;
     this.bus.emit('toast', { text: completionText, kind: 'success', ttl: 4 });
     this._cleanupTargets(m);
     // Keep the settled chain visible while ensureBoard refreshes the destination board. Otherwise
@@ -10933,6 +11094,7 @@ export const missions = {
       missionType: m.type,
       branch: story.branch,
       chainProgress: nextProgress,
+      physicalVerb: m.params && m.params.physicalVerb || null,
     }, this.state.simTime || 0);
     if (!observed || !observed.ok) return;
     story.chainProgress = nextProgress;
@@ -10978,6 +11140,7 @@ export const missions = {
       factionId: inst.factionId,
       branch,
       storyBranch: branch,
+      physicalVerb: inst.params && inst.params.physicalVerb || null,
     }, this.state.simTime || 0);
     if (!observed || !observed.ok || !isBeatStepsComplete(this.state, 4)) return;
     inst.storyTag = STORY_BRANCH_INTRO_TAG;
@@ -11322,6 +11485,8 @@ export const missions = {
     this._navRefreshT = 0;
     this._lastWaypointRouteKey = null;
     this._lastWaypointRouteAt = 0;
+    // Session latch — the dock:undocked clear never runs across a quit-while-docked New Game.
+    this._lastDockedStation = null;
     const tutorialOwnsOpening = this._tutorialOwnsOpening();
     if (!tutorialOwnsOpening) {
       this._refreshNavigation({ forceStory: true, silent: true });
@@ -11375,6 +11540,9 @@ export const missions = {
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
+    if (m.starterJobStep && Object.keys(m.starterJobStep).length) {
+      serialized.starterJobStep = { ...m.starterJobStep };
+    }
     const setPieceSettlements = normalizeSetPieceSettlements(m.setPieceSettlements, m.receipts);
     if (Object.keys(setPieceSettlements).length) serialized.setPieceSettlements = setPieceSettlements;
     // PB-MIS-E: the retired yard-contract ledger. Preserves absence like setPieceSettlements —
@@ -11414,6 +11582,11 @@ export const missions = {
       state.missions.yardContracts = { ...data.yardContracts };
     } else {
       delete state.missions.yardContracts;
+    }
+    if (data.starterJobStep && typeof data.starterJobStep === 'object' && !Array.isArray(data.starterJobStep)) {
+      state.missions.starterJobStep = { ...data.starterJobStep };
+    } else {
+      delete state.missions.starterJobStep;
     }
     state.missions.nextId = data.nextId || 1;
     state.missions.config = data.config || MISSION_TUNING;

@@ -23,7 +23,10 @@ const CSS = `
    and with every child absolute that is 0 x 0. So the host states its size and stretches outright. */
 .orr-arcrail-host { position:absolute !important; inset:0 !important; margin:0 !important; padding:0 !important;
   width:100% !important; height:100% !important; max-width:none !important; max-height:none !important;
-  place-self:stretch !important; display:block !important; grid-area:auto !important; pointer-events:none; z-index:1; }
+  place-self:stretch !important; display:block !important; grid-area:auto !important; pointer-events:none; z-index:1;
+  /* The glow bed is drawn wider than the host on purpose; clip at the host edge so the bleed stays
+     visual only — overflow:clip also keeps the pseudo-locale clip gate honest about text (D136). */
+  overflow:clip; }
 .orr-arcrail-host > .orr-arcrail__list { position:absolute !important; inset:0; display:block !important; margin:0; padding:0; }
 .orr-arcrail-host > .orr-arcrail__list > li { position:absolute; margin:0; width:max-content; max-width:46vw; pointer-events:auto; }
 .orr-arcrail-host > .orr-arcrail__list > li[role="presentation"] { display:none; }
@@ -42,7 +45,9 @@ const CSS = `
   text-shadow:0 1px 0 rgb(0 0 0 / .55), 0 0 16px rgb(0 0 0 / .45) !important;
   transform-origin:0 50%; transition:color .16s linear, transform .24s var(--dp-ease-out, ease-out), text-shadow .16s linear; }
 .orr-arcrail-host .dp-lit__item[data-awake] {
-  color:rgb(246 241 230) !important; transform:scale(1.06);
+  /* the step grows toward the dial, not past the verb's own seat — a right-anchored scale keeps
+     the li's scrollWidth honest for the localization clip gate (D136) */
+  color:rgb(246 241 230) !important; transform-origin:100% 50%; transform:scale(1.06);
   text-shadow:0 0 1px rgb(255 226 178 / .55), 0 0 9px rgb(255 217 140 / .2), 0 1px 0 rgb(0 0 0 / .6) !important; }
 .orr-arcrail-host .dp-lit__item[aria-disabled="true"], .orr-arcrail-host .dp-lit__item:disabled {
   color:rgb(232 226 212 / .34) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5) !important; }
@@ -154,7 +159,11 @@ html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__rule { stroke-da
   .orr-svg .orr-arcrail__rule { stroke:CanvasText !important; stroke-width:2px; }
 }
 html.sf-reduce-motion .orr-arcrail__trail { display:none; }
-.orr-arcrail { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+/* the dial's own layer is clipped to the host: the glow pool and emblem are sized to reach past
+   the verbs (that reach is the design), but they are decoration — their spill past the screen edge
+   must not inflate the host's scrollWidth (D136). The verb list is a sibling, not a child of this
+   root, so a real over-long row still propagates to the host and the clip check still catches it. */
+.orr-arcrail { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:hidden; }
 .orr-arcrail__layer { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
 .orr-arcrail__emblem { position:absolute; border-radius:50%; pointer-events:none; opacity:.17;
   background:center / contain no-repeat; transform-origin:50% 50%;
@@ -228,6 +237,58 @@ export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps 
   const step = n > 1 ? spread / units : 0;
   const anchors = angles.map((a) => { const [x, y] = polar(pivot.x, pivot.y, ri, a); return { a, x, y }; });
   return { W, H, re, ri, pivot, step, angles, anchors };
+}
+
+/**
+ * Width pass for the grouped dial (D136): a grouped row seats head + verbs on one line from its
+ * anchor; when the measured line would run past the host's right edge the row splits into
+ * consecutive rows sharing the group head, each within the runway. An arc carries at most nine
+ * stops (ORRERY 3.2), so a row is split only while the dial still has stops to give — a row that
+ * cannot fit whole stays whole (it clips, as before; a tenth stop is worse).
+ * Pure: pass it the rows list and the first-pass geometry; it answers the seated list.
+ */
+// the largest a head legend can draw — stacked and one-line both cap here; the width split plans
+// against it so a carried measured width can never be scaled by a stale (smaller) last-pass size
+const HEAD_MAX = 26;
+
+export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 18, headWidth = null) {
+  const maxAnchorX = geo && geo.anchors && geo.anchors.length
+    ? Math.max(...geo.anchors.map((a) => a.x)) : 0;
+  const runway = W - maxAnchorX - 24;
+  if (!(runway > 0)) return all;
+  // head legend estimate before it is mounted: the seat pass measures getComputedTextLength at
+  // the resolved head size (~1.0 em per cap once the .28 em tracking is counted), and a prior
+  // build carries that measured width back in — the estimate is the first pass's fallback, so a
+  // head of wide caps can never be under-planned into a clip it was judged to clear (REV-D136b.2).
+  // headText answers the word the legend will draw (a carried localization); the English key
+  // is the fallback, so a first pass still plans against something real.
+  const headW = (g) => {
+    // a carried measurement arrives per-em (the legend's own caps, whatever locale wrote them);
+    // scale it by the size this pass is planning, else a stacked flip plans with a stale px
+    const measuredEm = typeof headWidth === 'function' ? headWidth(g) : null;
+    if (measuredEm > 0) return measuredEm * Math.max(18, headSizeGuess);
+    return String((typeof headText === 'function' && headText(g)) || g).length * Math.max(18, headSizeGuess);
+  };
+  const lineW = (g, items) => 30 + headW(g) + items.reduce((s, li) => s + (li && li.offsetWidth || 120) + 22, -22);
+  const spareStops = Math.max(0, 9 - all.length);
+  let spent = 0;
+  const out = [];
+  for (const row of all) {
+    if (!row.group || row.items.length < 2 || lineW(row.group, row.items) <= runway) { out.push(row); continue; }
+    // plan the row's minimal split: greedily pack verbs onto lines that each fit the runway
+    const chunks = [];
+    let cur = [];
+    for (const li of row.items) {
+      const next = cur.concat(li);
+      if (cur.length && lineW(row.group, next) > runway) { chunks.push(cur); cur = [li]; }
+      else cur = next;
+    }
+    if (cur.length) chunks.push(cur);
+    if (chunks.length - 1 > spareStops - spent) { out.push(row); continue; }
+    spent += chunks.length - 1;
+    for (const items of chunks) out.push({ group: row.group, items });
+  }
+  return out.length === all.length ? all : out;
 }
 
 // The dial's face, drawn in its own line language instead of a raster emblem: orbits at three tiers
@@ -315,6 +376,25 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   // never claim one another's id.
   let heads = [];
   let headSize = 20;
+  // A head is re-engraved every build from its English group key, but the localization bridge's
+  // rewrite lives on the legend node this build throws away: carry the rendered word forward so
+  // the measure — and the verbs seated behind it — answers the text the player reads (D136).
+  // Keyed by the locale tag so a mid-session locale switch falls back to the source instead of
+  // pinning the last locale's word.
+  const headTextByGroup = new Map();
+  // …and the legend's measured width beside it: the tracked capitals' advance (~1.0 em at .28 em
+  // spacing) is what the split plans against — a char-count estimate alone under-plans an all-wide
+  // head past the runway margin (REV-D136b.2)
+  const headWidthByGroup = new Map();
+  let headTextLocale = '';
+  // the list the last build actually seated: after a width split a group's continuation rows are
+  // stops of their own, so every interaction that indexes rows (hover, keys, heads, rest) must
+  // read this — rows() would merge the chunks back and point the Hand one stop early (REV-D136.1)
+  let seatedRows = [];
+  // the awake ink's overhang below its layout box, carried across builds — the wake can be
+  // pending (no [data-awake] node to measure) for a whole swing, and the ceiling below must not
+  // go to zero for the verb about to take the weight (REV-D169.1)
+  let lastAwakeDrop = 0;
   const ruleRest = `orr-rule-rest-${++ruleSeq}`;
   const ruleLit = `orr-rule-lit-${ruleSeq}`;
 
@@ -398,12 +478,43 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   function build() {
     const W = host.clientWidth || doc.documentElement.clientWidth;
     const H = host.clientHeight || doc.documentElement.clientHeight;
-    const all = rows();
+    let all = rows();
+    // a re-seat inside the arrival window would replay the head/rule entrances on the new nodes —
+    // the entrance is a first-open gesture, not a relayout one. Strip the class once heads have
+    // painted: a relayout exists because the seat was wrong, so verbs snapping to the corrected
+    // seat beats heads re-fading over and over (REV)
+    if (heads.length && host.classList.contains('orr-arcrail-host--arriving')) host.classList.remove('orr-arcrail-host--arriving');
+    // harvest the words the last build's heads actually render before this pass re-engraves them
+    const localeTag = (doc.documentElement && doc.documentElement.getAttribute('data-locale')) || '';
+    if (localeTag !== headTextLocale) { headTextByGroup.clear(); headWidthByGroup.clear(); headTextLocale = localeTag; }
+    if (grouped) for (const h of heads) {
+      const t = h && h.node && typeof h.node.querySelector === 'function' ? h.node.querySelector('.orr-arcrail__legend') : null;
+      if (t && h.group != null) headTextByGroup.set(h.group, t.textContent);
+      // per-em, not px: a carried width measured at last pass's head size would under- or
+      // over-plan the split whenever stacked flips the size (REV: store the em ratio, the
+      // split re-scales it by the size it is planning)
+      if (h.group != null && h.w > 0) headWidthByGroup.set(h.group, h.w / (h.size > 0 ? h.size : 1));
+    }
     // clustered: every verb its own tick, a wider gap where its group changes, the group's name
     // engraved on the rim beside its cluster
     const gaps = [];
     if (clustered) all.forEach((row, i) => { if (i > 0 && (row.items[0].dataset.group || '') !== (all[i - 1].items[0].dataset.group || '')) gaps.push(i); });
     geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps, place });
+    // A grouped row's verbs run one line right of its anchor; a longer localization can run the
+    // line past the host's right edge, where the tail verbs clip (D136). Measure each row's seated
+    // width and split the overruns into consecutive rows that share the head name — the dial
+    // simply carries one more stop per split, the way a chapter continues over the page.
+    if (grouped) {
+      // plan at HEAD_MAX, not `headSize`: the size resolves later in this same pass, so the value
+      // in scope here is the LAST pass's — a grow-transition build would under-plan the head term
+      // and keep a row whole whose real head runs it past the runway (REV-D169.2)
+      const seated = splitGroupedRowsForWidth(all, W, geo, (g) => headTextByGroup.get(g), HEAD_MAX, (g) => headWidthByGroup.get(g));
+      if (seated !== all) {
+        all = seated;
+        geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps, place });
+      }
+    }
+    seatedRows = all;
     layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
     layer.textContent = '';
     const { pivot, re, ri, angles } = geo;
@@ -561,20 +672,69 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         const b = li.querySelector('button') || li;
         return Math.max(m, b.offsetHeight || 40);
       }, 0);
-      // where a row's own paint ends, if it is seated with a lift: anchor + lift + half its box
-      const bottomOf = (i, lift) => geo.anchors[i].y + lift + boxOf(all[i]) / 2;
+      // where a row's own paint ends, if it is seated with a lift: anchor + lift + half its box,
+      // plus whatever ink the layout box cannot see — the lamp key's heavier primary glyphs and
+      // the awake weight reach below offsetHeight, and a ceiling measured off the box alone let a
+      // stacked head's cap climb into the row above (D169). The painted rect only exists once a
+      // pass has seated the list, so the estimate carries the first build; the rebuilds converge.
+      const hostRect = host.getBoundingClientRect();
+      const inkRange = typeof doc.createRange === 'function' ? doc.createRange() : null;
+      // the overhang the AWAKE verb carries below its box — any verb can take the wake next, so a
+      // ceiling plans every sleeping verb as if it were already the awake one
+      let awakeDrop = 0;
+      const awakeEl = list.querySelector('[data-awake]');
+      if (awakeEl && inkRange) {
+        try {
+          inkRange.selectNodeContents(awakeEl);
+          const tr = inkRange.getBoundingClientRect();
+          const br = awakeEl.getBoundingClientRect();
+          if (tr.height > 0 && br.height > 0) awakeDrop = Math.max(0, tr.bottom - br.bottom);
+        } catch (_) {}
+      }
+      // a pending wake sits sleeping-weight for the whole swing — including the mount pass and
+      // every early convergence relayout — so no element carries the heavy ink to measure and the
+      // bound goes under truth for exactly the verb the overhang exists for. Carry the last
+      // measured drop: it belongs to the awake weight, not to whichever verb holds it (REV-D169.1)
+      if (awakeDrop > 0) lastAwakeDrop = awakeDrop;
+      awakeDrop = Math.max(awakeDrop, lastAwakeDrop);
+      const bottomOf = (i) => {
+        // measured under the STACKED seat — the only form where this row's ink bounds the head
+        // below it: in that form every verb sits VERB_LIFT under its tick. A rect from the
+        // previous pass is paint at that pass's seat; the element moves rigidly, so its ink
+        // rides the same delta its top is about to take, and the bound stays exact for the
+        // seat this pass is deciding (REV: cancel the stale anchor, don't re-read it).
+        let bottom = geo.anchors[i].y + VERB_LIFT + boxOf(all[i]) / 2;
+        for (const li of all[i].items) {
+          if (!li.style.top) continue;
+          const b = li.querySelector('button') || li;
+          const br = b.getBoundingClientRect();
+          if (!(br.height > 0)) continue;
+          const drift = geo.anchors[i].y + VERB_LIFT - (b.offsetHeight || 0) / 2 - parseFloat(li.style.top);
+          let painted = br.bottom - hostRect.top;
+          if (inkRange) {
+            try {
+              inkRange.selectNodeContents(b);
+              const tr = inkRange.getBoundingClientRect();
+              if (tr.height > 0) painted = Math.max(painted, tr.bottom - hostRect.top);
+            } catch (_) {}
+          }
+          if (!b.hasAttribute('data-awake')) painted += awakeDrop;
+          bottom = Math.max(bottom, painted + drift);
+        }
+        return bottom;
+      };
       // the tallest head every row can carry: its cap must clear the row above, and its baseline
       // sits 7 px above its own tick
       const room = all.reduce((m, row, k) => {
         if (k === 0 || !row.group) return m;
-        const above = bottomOf(k - 1, all[k - 1].group ? VERB_LIFT : 0);
+        const above = bottomOf(k - 1);
         return Math.min(m, (geo.anchors[k].y - 7 - above - HEAD_AIR) / CAP);
       }, Infinity);
       stacked = room >= 13;
       headSize = stacked
-        ? Math.min(26, room)
+        ? Math.min(HEAD_MAX, room)
         // one line: the head shares its row, so only the row's own height bounds it
-        : clamp(pitch * 0.52, 13, 26);
+        : clamp(pitch * 0.52, 13, HEAD_MAX);
       host.style.setProperty('--orr-head', `${headSize.toFixed(1)}px`);
       host.style.setProperty('--orr-verb', `${mid.toFixed(1)}px`);
       host.style.setProperty('--orr-verb-low', `${low.toFixed(1)}px`);
@@ -597,12 +757,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         // the row, so it is seated on the row's centre like a verb, and only its size separates them.
         const hy = stacked ? y - 7 : y + headSize * 0.35;
         const legend = svg('text', { x: (x + 8).toFixed(1), y: hy.toFixed(1), class: 'orr-arcrail__legend' });
-        legend.textContent = String(row.group).toUpperCase();
+        legend.textContent = headTextByGroup.get(row.group) ?? String(row.group).toUpperCase();
         head.appendChild(legend);
         layer.appendChild(head);
         try { headW = legend.getComputedTextLength() || 0; } catch (_) { headW = 0; }
-        if (!(headW > 0)) headW = String(row.group).length * headSize * 0.86;
-        record = { node: head, row: i, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
+        if (!(headW > 0)) headW = String(legend.textContent).length * headSize * 0.86;
+        record = { node: head, row: i, group: row.group, w: headW, size: headSize, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
         // stacked: the verbs are listed one step IN, on their own line under the head. one line: they
         // follow the head along the row, the rule's short bridge between.
         cursor = stacked ? x + 20 : x + 30 + headW;
@@ -667,6 +827,16 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     }
     paintHand(handSpring.value);
     lightTick(handIndex);
+    // a width split re-indexes the rows beneath the Hand: re-stop it on the awake verb's own row,
+    // not the degree it last swung to (REV-D136b.7). The re-deal can keep the same index while
+    // moving its angle, so the same-index guard would leave the needle on a stale degree — with
+    // instant:true pointAt re-sets regardless (REV: it moves the ANGLE, not only the index).
+    // A mid-swing build has no awake verb yet; its pending target owns the aim instead.
+    const reStop = awakeButton || pendingWake;
+    if (grouped && reStop) {
+      const ai = indexOf(reStop);
+      if (ai >= 0) pointAt(ai, { instant: true });
+    }
   }
 
   function lightTick(index) {
@@ -726,7 +896,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     return list.querySelector('.dp-lit__item--primary') || null;
   };
 
-  const indexOf = (node) => rows().findIndex((row) => row.items.some((li) => li.contains(node)));
+  const indexOf = (node) => seatedRows.findIndex((row) => row.items.some((li) => li.contains(node)));
   // ── the CATEGORY is a control ────────────────────────────────────────────────────────────
   // A head (its name, its rule, the air between) is its own target on a grouped dial. Reaching for
   // a category lifts its whole run of verbs, swings the Hand to its stop and focuses that row's
@@ -735,7 +905,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   const rowButtons = (row) => row.items.map((li) => li.querySelector('button') || li);
   const headOf = (node) => (node && typeof node.closest === 'function' ? node.closest('.orr-arcrail__head') : null);
   const liftRow = (index) => {
-    for (const row of rows()) for (const li of row.items) {
+    for (const row of seatedRows) for (const li of row.items) {
       if (index >= 0 && li.dataset.row === String(index)) li.setAttribute('data-head-hover', '');
       else li.removeAttribute('data-head-hover');
     }
@@ -744,7 +914,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const head = headOf(e.target);
     if (!head) return;
     const i = Number(head.getAttribute('data-row'));
-    const row = rows()[i];
+    const row = seatedRows[i];
     if (!row) return;
     liftRow(i);
     const first = rowButtons(row)[0];
@@ -763,14 +933,14 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   const onHeadDown = (e) => {
     const head = headOf(e.target);
     if (!head) return;
-    const row = rows()[Number(head.getAttribute('data-row'))];
+    const row = seatedRows[Number(head.getAttribute('data-row'))];
     const first = row && rowButtons(row)[0];
     if (!first) return;
     e.preventDefault();
     if (doc.activeElement !== first) { try { first.focus({ preventScroll: true }); } catch (_) { first.focus(); } }
   };
   const restIndex = () => {
-    const all = rows();
+    const all = seatedRows;
     const current = all.findIndex((row) => row.items.some((li) => li.querySelector('[aria-current="true"], .dp-lit__item--primary')));
     return current >= 0 ? current : 0;
   };
@@ -799,7 +969,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   const onKey = (e) => {
     if (!grouped || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
     const active = doc.activeElement;
-    const all = rows();
+    const all = seatedRows;
     const ri0 = active ? indexOf(active) : -1;
     if (ri0 < 0) return;
     const buttons = rowButtons;
@@ -887,7 +1057,9 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   host.addEventListener('pointerover', onOver);
   host.addEventListener('focusin', onFocus);
   host.addEventListener('pointerleave', onLeave);
-  host.addEventListener('focusout', () => setTimeout(onLeave, 0));
+  let focusOutTimer = 0;
+  const onFocusOut = () => { focusOutTimer = setTimeout(onLeave, 0); };
+  host.addEventListener('focusout', onFocusOut);
   if (grouped && typeof layer.addEventListener === 'function') {
     // the heads hear the pointer on the layer they are drawn in, so a category is a target
     layer.addEventListener('pointerover', onHeadOver);
@@ -907,11 +1079,27 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   const relayout = () => { if (root.isConnected) { build(); paintHand(handSpring.value); } };
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(relayout));
   if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(relayout, () => {});
+  // A grouped row's seat depends on each verb's measured width, and the DOM localization bridge
+  // rewrites those words on a microtask after mount (D136): a row seated in English overruns its
+  // host the moment its words widen. Re-seat the dial in the same checkpoint the text changes —
+  // characterData/childList only, so the seat writes themselves (left/top, data-row) cannot loop.
+  let textObserver = null;
+  if (grouped && typeof MutationObserver === 'function') {
+    textObserver = new MutationObserver(() => { if (root.isConnected) relayout(); });
+    textObserver.observe(list, { characterData: true, childList: true, subtree: true });
+    // the head legends live on the svg layer, not in the list: a rewritten legend widens the
+    // head, and the row's verbs must re-seat behind it. characterData only — build() repaints
+    // the layer itself, so watching its childList would re-seat on every repaint forever.
+    textObserver.observe(layer, { characterData: true, subtree: true });
+  }
   const arrivalTimer = setTimeout(() => {
     root.classList.remove('is-arriving');
     // the heads, their rules and the verbs' rise are a first-open arrival: they must never replay
     // when the rail re-seats itself on a resize or a late font
     host.classList.remove('orr-arcrail-host--arriving');
+    // every build so far measured painted bounds through the arrival's translateY — one clean
+    // pass now that the rise has settled, or a head stays under-sized for the whole session
+    if (root.isConnected) relayout();
   }, 1500);
 
   return {
@@ -922,8 +1110,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     get geometry() { return geo; },
     dispose() {
       clearTimeout(arrivalTimer);
+      clearTimeout(focusOutTimer);
       handSpring.stop();
       if (ro) ro.disconnect();
+      if (textObserver) textObserver.disconnect();
       if (freeTarget) {
         freeTarget.removeEventListener('pointermove', onFreeMove);
         freeTarget.removeEventListener('pointerleave', onFreeLeave);
@@ -937,9 +1127,14 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       host.removeEventListener('pointerover', onOver);
       host.removeEventListener('focusin', onFocus);
       host.removeEventListener('pointerleave', onLeave);
+      host.removeEventListener('focusout', onFocusOut);
+      host.style.removeProperty('--orr-head');
+      host.style.removeProperty('--orr-verb');
+      host.style.removeProperty('--orr-verb-low');
       root.remove();
       wake(null);
       heads = [];
+      seatedRows = [];
       host.classList.remove('orr-arcrail-host', 'orr-arcrail-host--dense', 'orr-arcrail-host--grouped',
         'orr-arcrail-host--stacked', 'orr-arcrail-host--arriving');
       if (frame && home && host.parentNode === frame) home.insertBefore(host, homeNext);

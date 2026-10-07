@@ -39,7 +39,7 @@ try {
     viewport: { width: 1920, height: 1080 },
     deviceScaleFactor: 1,
   });
-  const issues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
+  const issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true, ignoreProbeWarnings: true });
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
@@ -1071,7 +1071,7 @@ async function waitForBootOverlayGone(page) {
 async function startFreshServer() {
   const port = await findFreePort(8280);
   const url = `http://127.0.0.1:${port}/`;
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,

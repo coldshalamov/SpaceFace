@@ -689,7 +689,20 @@ export async function loadAuthoredPart(url, options = {}) {
     return (wrapDecodeClass ? () => wrapDecodeClass(() => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))
       : () => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))();
   }
-  assertSourceRouteAdmitted(url);
+  try {
+    assertSourceRouteAdmitted(url);
+  } catch (error) {
+    // Fail closed, but on the load contract: a released part with no package resolves null like
+    // every other authored failure instead of rejecting. The recorded failure is what
+    // getAuthoredAssetDiagnostic and invalidateFailedAuthoredAssets expose — a thrown refusal
+    // left both empty, so the boundary died undiagnosed and unreachable by the retry sweep, and
+    // a rejecting loadPart abandoned the whole serial plan decode in loadPlanIntoLibrary.
+    if (!runtime.retiring) {
+      runtime.failures.set(cacheKey, error);
+      if (!optional) warnOnce(cacheKey, error.message);
+    }
+    return null;
+  }
   const residency = getAssetResidency(renderer);
   const residencyOwner = options.residencyOwner || runtime.defaultResidencyOwner;
   // An ownerless warm decode has no boundary lifecycle to release its pin — a non-soft role on

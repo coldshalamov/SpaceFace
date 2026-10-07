@@ -706,7 +706,7 @@ if (failures.length) {
 async function startFreshServer() {
   const port = await findFreePort(8230);
   const url = `http://127.0.0.1:${port}/`;
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, 
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
   });
   let output = '';

@@ -66,7 +66,7 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page, { includeWarnings: false });
+  const issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: false });
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
@@ -118,7 +118,7 @@ console.log(`  receipt: ${repoRel(ROOT, path.join(ARTIFACT_ROOT, 'route-receipt.
 async function startFreshServer() {
   const port = await findFreePort(8260);
   const url = `http://127.0.0.1:${port}/`;
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
   });
   let output = '';

@@ -10,6 +10,7 @@ import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { modelTruthMountFractions, modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
+import { factionBerthById } from '../data/factionBerths.js';
 import { placeDrawScaleFromRow } from '../data/modelTruthMounts.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SWARM_ROSTER, SWARM_BOSS_ROTATION, bossPackagesFor } from '../data/swarmMode.js';
@@ -5582,8 +5583,12 @@ function placeFileForEntity(entity) {
     // placement flags admit them — otherwise they spawn as permanently invisible markers.
     // Stations are excluded: their own type-total fallback below owns station bodies, and a
     // landmark station must never resolve as a dressing prop.
+    // CR-BERTH-1: a faction-berth piece (crib row or consigned hulk) is a deliberately authored
+    // placement the same way — admit it on a berthId that resolves to a real authored berth row,
+    // not a bare truthy key (job payloads stamp unrelated berth ids on their own data).
     const authoredSetPiece = entity.type !== 'station'
-      && (data.worldOneOff === true || data.landmark === true || data.poi === true);
+      && (data.worldOneOff === true || data.landmark === true || data.poi === true
+        || (data.berthId != null && !!factionBerthById(data.berthId)));
     if (data.everydaySpaceKit === true || authoredSetPiece) {
       const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
       if (kitFile) return kitFile;
@@ -10338,7 +10343,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   if (!bindings.navLights.length) {
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
-  ensureStandardSockets(hull);
+  ensureStandardSockets(hull, hullRecord);
   attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
@@ -15768,11 +15773,16 @@ function getFallbackNavLightGeometry() {
   return fallbackNavLightGeometry;
 }
 
-function ensureStandardSockets(hull) {
+function ensureStandardSockets(hull, hullRecord) {
   const found = new Set();
   hull.traverse((object) => {
     if (object.userData && object.userData.spacefaceSocket) found.add(object.name);
   });
+  // SFQ-B172: an integrated forge hull models its own hardware. A weapon/engine/trail station
+  // its body omits is an authored fact (twin pod guns, close-coupled twin drives), not a missing
+  // default — fabricating a generic centerline one would pin muzzle, plume and wake anchors to a
+  // point off the modeled hardware. Kit hulls still get every default station.
+  const integrated = hullIntegratesHardpoints(hullRecord);
   const sockets = [
     ['SOCKET_Weapon_Front', [0.84, 0.0, 0], 'weapon', [1, 0, 0]],
     ['SOCKET_Mining_Front', [0.82, -0.08, 0], 'mining', [1, 0, 0]],
@@ -15783,7 +15793,9 @@ function ensureStandardSockets(hull) {
     ['SOCKET_Camera_Focus', [0.08, 0.08, 0], 'camera', [1, 0, 0]],
   ];
   for (const [name, position, role, forward] of sockets) {
-    if (!found.has(name)) kit.addSocket(hull, name, position, role, forward);
+    if (found.has(name)) continue;
+    if (integrated && (name === 'SOCKET_Weapon_Front' || name === 'SOCKET_Engine_Main' || name === 'SOCKET_Trail_Main')) continue;
+    kit.addSocket(hull, name, position, role, forward);
   }
 }
 

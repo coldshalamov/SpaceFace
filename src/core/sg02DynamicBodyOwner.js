@@ -128,6 +128,14 @@ const CONTACT_MATERIALS = PHYSICS_MATERIALS;
 // untouched — the clamp bites solver contact response alone.
 const MAX_CONTACT_DV = 40;       // wu/s of contact-sourced linear delta-v per tick
 const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick (debris/rocks)
+// Post-step pose sanity: every authorized motion source (commands, queued impulses, attachment
+// springs) mutates the body BEFORE _captureExpectedKinematics, so expected.x/z is the complete
+// no-contact prediction. A concentric-contact narrow-phase detonation resolves ~10^6 units of
+// phantom penetration in one step — orders past any legitimate separation (deep overlap resolves
+// single-digit-to-tens of WU) — while producing no contact receipt for the dv-budget repair to
+// trip on (measured: a customs hull flung to -1.27 MWU at seed 8008, and the starter cutter to
+// -0.45 MWU mid-approach). The dv clamps bound the fling velocity; this bound restores the pose.
+const SANE_MAX_SOLVER_POSE_JUMP = 128; // WU — a solver may never move a body this far in one step
 const CRAFT_CONTACT_YAW_EPS = 0.05;     // leftover contact spin; above damping/solver noise
 const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit tether clamp
 const MAX_OWNER_SUBSTEPS = 64;
@@ -1330,6 +1338,7 @@ export class Sg02DynamicBodyOwner {
   _readPostStepKinematics(rec) {
     rec._postStepReadTick = this.tick;
     const post = rec.postStep || (rec.postStep = {
+      p: { x: 0, y: 0, z: 0 },
       v: { x: 0, y: 0, z: 0 },
       w: { x: 0, y: 0, z: 0 },
       q: { x: 0, y: 0, z: 0, w: 1 },
@@ -1338,6 +1347,11 @@ export class Sg02DynamicBodyOwner {
       wDirty: false,
       qDirty: false,
     });
+    const p = rec.body.translation();
+    const pp = post.p || (post.p = { x: 0, y: 0, z: 0 });
+    pp.x = p.x;
+    pp.y = p.y;
+    pp.z = p.z;
     const v = rec.body.linvel();
     const w = rec.body.angvel();
     post.v.x = v.x;
@@ -1639,9 +1653,50 @@ export class Sg02DynamicBodyOwner {
   // Powered craft keep their helm: contact may shove them off a rock, but leftover contact
   // yaw is stripped so the nose stays on the pilot/AI heading. Combat/Massline torque is
   // already inside expected.wy, so authored tumbles still spin.
+  // Restores the no-contact predicted pose when world.step left the body past the impossible
+  // bound (SANE_MAX_SOLVER_POSE_JUMP). Runs before both give branches: the receiptless
+  // detonation fails their dv-budget gate ("not involved" → Infinity), so without this a hull
+  // teleported by the degenerate narrow phase kept the fling pose while its velocity was
+  // clamped — stranding it megameters out on a slow drive home. The repair restores the pose
+  // only; the ordinary dv clamps below still bound whatever velocity the detonation left.
+  // Endpoints of a live ImpulseJoint are exempt: a legacy rope's joint corrects inside
+  // world.step — real in-step work the prediction never claimed — and rewinding it every tick
+  // would hold a stretched pair in place while its velocity stays.
+  _repairSolverPoseJump(rec, e) {
+    if (!rec.body || typeof rec.body.translation !== 'function') return;
+    if (this.attachments && this.attachments.size > 0 && this._endpointOfStepJoint(rec)) return;
+    const post = rec.postStep;
+    const pose = (post && post.p && rec._postStepReadTick === this.tick)
+      ? post.p : rec.body.translation();
+    const px = Number(pose && pose.x);
+    const pz = Number(pose && pose.z);
+    if (!Number.isFinite(e.x) || !Number.isFinite(e.z)) return;
+    const jx = Number.isFinite(px) ? px - e.x : SANE_MAX_SOLVER_POSE_JUMP * 2;
+    const jz = Number.isFinite(pz) ? pz - e.z : SANE_MAX_SOLVER_POSE_JUMP * 2;
+    if (jx * jx + jz * jz <= SANE_MAX_SOLVER_POSE_JUMP * SANE_MAX_SOLVER_POSE_JUMP) return;
+    _vecWriteScratch.x = e.x;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = e.z;
+    rec.body.setTranslation(_vecWriteScratch, true);
+    rec._bodyPoseX = Math.fround(e.x);
+    rec._bodyPoseZ = Math.fround(e.z);
+  }
+
+  // True when a live impulse joint solves this record inside world.step — the one motion source
+  // the pre-step expected capture cannot own. Manual springs and frame couplers land before the
+  // capture; a legacy rope's ImpulseJoint is the only in-step solver the game runs.
+  _endpointOfStepJoint(rec) {
+    for (const attachment of this.attachments.values()) {
+      if (!attachment.contactJoint) continue;
+      if (attachment.owner === rec || attachment.target === rec) return true;
+    }
+    return false;
+  }
+
   _applyStructuralGive(rec) {
     const e = rec.expected;
     if (!e) return;
+    this._repairSolverPoseJump(rec, e);
     if (rec.entity && rec.entity.isPlayer === true) {
       this._applyPlayerStructuralGive(rec);
       return;
@@ -2162,7 +2217,18 @@ export class Sg02DynamicBodyOwner {
       }
       const existing = byB.get(b.entity.id);
       const impulse = Math.min((existing && existing.impulse || 0) + boundedImpulse, cap);
-      const normal = normalizePlanarDirection(direction);
+      // SFQ-B183 — the receipt normal is published oriented aId→bId, the same convention the
+      // custom backend's contactNormalInto already guarantees (and that hullScars.js and feel.js
+      // document: "the solver pushes body b along +normal"). Rapier's maxForceDirection follows
+      // the event's own collider order, which is unrelated to the sorted pair, so without this
+      // re-orientation the sign is a solver-internal artifact and no consumer may sign a throw
+      // against it. nAB (computed above from the pair kinematics) is the positional a→b axis;
+      // the flip keeps the solver's true normal direction and fixes only which half it names.
+      // A degenerate axis (co-located kinematics) stays unflipped — nothing honest to sign.
+      const rawNormal = normalizePlanarDirection(direction);
+      const normal = rawNormal.x * nABx + rawNormal.z * nABz < 0
+        ? { x: -rawNormal.x, z: -rawNormal.z }
+        : rawNormal;
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
       const receipt = {
         schemaVersion: 1,

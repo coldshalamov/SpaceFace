@@ -8,6 +8,7 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 import { buildSetPieceMissionOffers } from '../src/systems/setPieceMissionOffers.js';
 import { missions } from '../src/systems/missions.js';
 import { uniqueWrecks } from '../src/systems/uniqueWrecks.js';
+import { TETHYS_BLACK_MARKET_DISCOVERY, TETHYS_BLACK_MARKET_RUN } from '../src/data/frontierRumors.js';
 
 const AUDIT_STAGE_BUDGET_S = 1800;
 const MODELED_CRUISE_SPEED = 150;
@@ -384,6 +385,58 @@ function driveOrdinaryObjective(state, missionSystem, bus, mission) {
     return elapsed;
   }
   if (mission.type === 'escort') return driveEscort(state, missionSystem, bus, mission);
+  if (mission.params && mission.params.setPieceObjective === 'choir_long_night') {
+    // The long night is a live-salvage verdict: scan fixes the bearing and schedules the
+    // gentle reactor complication, the recovery itself reaches 'decision', and the mission
+    // completes on the native decisionReady — the same chain a pilot flies.
+    const record = state.player.uniqueWrecks
+      && state.player.uniqueWrecks.bearings[mission.params.wreckId];
+    assert.ok(record, 'choir_long_night: the chain acceptance minted the bearing');
+    advanceClock(state, missionSystem, MODELED_SCAN_S);
+    elapsed += MODELED_SCAN_S;
+    bus.emit('scan:pulse', { pos: { ...record.exactPos }, source: 'modeled-native-wreck-scan' });
+    assert.equal(record.phase, 'fixed',
+      'choir_long_night: the scan fixes the bearing and schedules the reactor');
+    assert.ok(record.reactorDueAt != null,
+      'choir_long_night: the gentle reactor complication is scheduled');
+    advanceClock(state, missionSystem, MODELED_DOCK_S);
+    elapsed += MODELED_DOCK_S;
+    const hull = [...(state.entityList || [])].find((entity) => entity
+      && entity.alive !== false && entity.data && entity.data.uniqueWreckId === mission.params.wreckId);
+    assert.ok(hull, 'choir_long_night: the fixed bearing materialized the wreck hull');
+    bus.emit('salvage:completed', {
+      wreckId: hull.id,
+      loot: {},
+      source: 'modeled-native-wreck-salvage',
+    });
+    return elapsed;
+  }
+  if (mission.params && mission.params.setPieceObjective === 'choir_what_remains') {
+    // The third visit is physical: the pilot files the named disposition through the real
+    // choice event, then the per-tick return drive settles the stage inside the changed site.
+    const record = state.player.uniqueWrecks
+      && state.player.uniqueWrecks.bearings[mission.params.wreckId];
+    assert.ok(record, 'choir_what_remains: the chain carries the durable bearing');
+    bus.emit('uniqueWreck:choose', {
+      wreckId: mission.params.wreckId,
+      choiceId: mission.params.wreckChoiceId,
+    });
+    assert.equal(record.phase, 'salvaged', 'choir_what_remains: the choice files the outcome');
+    assert.equal(mission.params.outcomeFiled, true,
+      'choir_what_remains: the filed outcome is latched on the stage');
+    const site = record.fixedPos || record.exactPos;
+    assert.ok(site, 'choir_what_remains: the recovered site has a fixed position');
+    if (state.world.currentSectorId !== mission.destSectorId) {
+      state.world.currentSectorId = mission.destSectorId;
+      bus.emit('sector:enter', { sectorId: mission.destSectorId, continuous: true });
+    }
+    const player = state.entities.get(state.playerId);
+    player.pos.x = site.x;
+    player.pos.z = site.z;
+    advanceClock(state, missionSystem, MODELED_DOCK_S);
+    elapsed += MODELED_DOCK_S;
+    return elapsed;
+  }
   if (['cargo_delivery', 'passenger_transport', 'salvage_retrieval', 'smuggling_run'].includes(mission.type)) {
     ensureStation(state, mission.destStationId, mission.distance);
     advanceClock(state, missionSystem, MODELED_DOCK_S);
@@ -399,6 +452,19 @@ function selectedOffer(offers, branchId) {
   const selected = offers.find((offer) => offer.cause && offer.cause.branchId === branchId);
   assert.ok(selected, `authored branch ${branchId} is posted on the normal board`);
   return selected;
+}
+
+// The Smuggler's Den berth admits only a pilot whose entrance run was delivered — a real
+// authored prerequisite, not test plumbing. A stage delivering there is audited from the
+// state the world demands: access earned, then the contract must still settle natively.
+function modelEarnedDenAccess(state, offer) {
+  if (offer.destStationId !== TETHYS_BLACK_MARKET_RUN.stationId) return;
+  const rumors = state.world.frontierRumors || (state.world.frontierRumors = { byId: {}, list: [] });
+  const record = rumors.byId[TETHYS_BLACK_MARKET_DISCOVERY.rumorId]
+    || (rumors.byId[TETHYS_BLACK_MARKET_DISCOVERY.rumorId] = {});
+  record.phase = 'contacted';
+  record.contactId = TETHYS_BLACK_MARKET_DISCOVERY.contactId;
+  record.entranceRun = { runId: TETHYS_BLACK_MARKET_RUN.runId, phase: 'delivered' };
 }
 
 async function auditRoute(archetypeId, branchId, seed, startEpoch) {
@@ -441,6 +507,7 @@ async function auditRoute(archetypeId, branchId, seed, startEpoch) {
       `${archetypeId}/${branchId}/${offer.cause.stageId}: board approach keeps the posting reachable`);
     advanceClock(state, missionSystem, MODELED_CHOICE_S);
     const acceptEventStart = bus.log.length;
+    modelEarnedDenAccess(state, offer);
     bus.emit('ui:acceptMission', { missionId: offer.id });
     const objectiveStartS = state.simTime;
     const boardAccepted = bus.log.slice(acceptEventStart).some((entry) => (

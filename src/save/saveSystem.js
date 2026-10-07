@@ -4326,6 +4326,8 @@ export const save = {
           reason: 'load_failed',
           rollback: rollbackAttempt ? 'failed' : 'not_needed',
           error: restoreErrorMessage(err),
+          // SFQ-B228: the damaged save region, when the restore walk could name one.
+          ...(err && err.region ? { region: err.region } : null),
         });
       }
       return null;
@@ -4349,6 +4351,8 @@ export const save = {
         reason: 'load_failed',
         rollback: rollbackError ? 'failed' : 'restored',
         error: restoreErrorMessage(err),
+        // SFQ-B228: the damaged save region, when the restore walk could name one.
+        ...(err && err.region ? { region: err.region } : null),
         // INF-091: a failed Continue-load still names the dead newer slot it resolved past.
         ...(options.skippedNewer ? { skippedNewer: options.skippedNewer } : null),
       };
@@ -5489,10 +5493,21 @@ export const save = {
     }
   },
 
+  // SFQ-B228: the restore walk is the only place that knows which region's data refused to
+  // come back, so a throwing deserialize is annotated with `.region` before it propagates.
+  // The load still fails closed exactly as before — the annotation only upgrades the
+  // recovery receipt's cause from a raw internal string to 'damaged <region> data'
+  // (uiRoot saveErrorText). Never swallowed here.
   _callDeserialize(name, data) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserialize === 'function') {
-      sys.deserialize(data);
+      try {
+        sys.deserialize(data);
+      } catch (err) {
+        const error = (err instanceof Error) ? err : new Error(String(err));
+        error.region = name;
+        throw error;
+      }
     }
   },
 
@@ -5501,7 +5516,13 @@ export const save = {
   *_callDeserializeChunked(name, data) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserializeChunked === 'function') {
-      yield* sys.deserializeChunked.call(sys, data);
+      try {
+        yield* sys.deserializeChunked.call(sys, data);
+      } catch (err) {
+        const error = (err instanceof Error) ? err : new Error(String(err));
+        error.region = name;
+        throw error;
+      }
       return;
     }
     this._callDeserialize(name, data);
@@ -6684,6 +6705,7 @@ function sanitizeNavWaypoint(waypoint) {
   for (const field of [
     'kind', 'missionId', 'missionType', 'stationId', 'sectorId', 'sectorName',
     'label', 'reason', 'mapLabel', 'markerId', 'markerKind', 'commodityId',
+    'targetSectorId',
   ]) {
     const value = navString(waypoint[field]);
     if (value) out[field] = value;
@@ -6740,6 +6762,18 @@ function navWithStableEntityIdentity(state) {
   const nav = clonePlain(state?.nav || {});
   for (const target of [nav.waypoint, nav.autopilot]) {
     if (!target || typeof target !== 'object') continue;
+    // The stamped bind is the truth — it was proven at arm time and re-proven every tick.
+    // Reading the durable id off the stamp keeps the save honest after the bound body
+    // rematerializes: targetEntityId can still name a dead slot, or worse a recycled occupant
+    // whose record would persist a wrong-body bind (review).
+    const stableKey = navString(target.stable && target.stable.key);
+    if (stableKey && stableKey.startsWith('record:')) {
+      const recordId = navString(stableKey.slice('record:'.length));
+      if (recordId) {
+        target.targetWorldRecordId = recordId;
+        continue;
+      }
+    }
     const runtimeId = navEntityId(target.targetEntityId);
     if (!runtimeId) continue;
     let entity = state?.entities?.get?.(target.targetEntityId) || null;

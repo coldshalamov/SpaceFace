@@ -547,9 +547,13 @@ export function meetingDiamondHidden(throwState, state) {
 export function resolveThrowMarkWorldPoint(throwState, state) {
   if (!throwState || !state || !state.entities || typeof state.entities.get !== 'function') return null;
   const releaseTarget = throwState.releaseTarget;
-  const targetId = releaseTarget && releaseTarget.targetId != null
-    ? releaseTarget.targetId
-    : throwState.aimTargetId;
+  // aimTargetId is the per-tick resolved holder; releaseTarget.targetId is the seed-time id and
+  // only trustworthy while the bind carries no stable stamp — a stamped-but-unresolved bind means
+  // the slot recycled, and its new occupant must not inherit the meeting diamond (the file's own
+  // throwCollateralSpots already prefers the resolved id).
+  const targetId = throwState.aimTargetId != null
+    ? throwState.aimTargetId
+    : (releaseTarget && !releaseTarget.stable ? releaseTarget.targetId : null);
   if (targetId != null) {
     const entity = state.entities.get(targetId);
     if (entity && entity.alive !== false && entity.pos
@@ -1858,9 +1862,15 @@ export const masslineHud = {
       : 0;
     const now = finite(state && state.simTime);
     const prev = this._lineLoad || null;
-    const trend = prev && now > prev.t ? (shown - prev.strain) / Math.max(1e-3, now - prev.t) : 0;
+    // The trend is computed from the DISPLAYED estimate; the stored field keeps that name so a
+    // future editor cannot quietly re-point it at the physical strain.
+    const trend = prev && now > prev.t ? (shown - prev.shown) / Math.max(1e-3, now - prev.t) : 0;
     const warned = resolveLineLoadWarning(shown, trend, !!(prev && prev.warned));
-    this._lineLoad = { strain: shown, t: now, warned };
+    this._lineLoad = { shown, t: now, warned };
+    // Fail closed on the break clause: automaticBreakAllowed is the authority's canonical answer
+    // (tetherGameplay mirror — absent/false means load telemetry is informational, never a break
+    // alarm), so an endpoint that can never auto-break gets the load-only wording.
+    const breakAlarm = !!(tether && tether.automaticBreakAllowed === true);
     const share = resolveTetherShareHud(state && state.player && state.player.remoteMassline);
     const showStrain = (active && shown > 0.02) || !!share;
     setStyle(dom.strainPill, 'display', showStrain ? 'flex' : 'none');
@@ -1875,7 +1885,9 @@ export const masslineHud = {
       setAttr(dom.strainPill, 'aria-label', share
         ? `Load split ${share.text}`
         : warned
-          ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
+          ? (breakAlarm
+            ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
+            : `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn`)
           : `Massline line load ${Math.round(clamp01(shown) * 100)} percent`);
     } else if (prev && prev.warned) {
       setClass(dom.strainPill, 'ml2-warn', false);

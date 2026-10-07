@@ -1,6 +1,13 @@
 <!-- LIFETIME: STABLE -->
 # Finish the game
 
+**Owner update, 2026-10-04:** debugging and polish are first-class production work.
+[`build_map.md` §1.8](../../build_map.md#18-production-maturity-debugging-and-polish)
+defines the maturity priority, workflow coverage, repair loop and bounded completion condition.
+Use it through the existing finish lanes: fix broken ordinary play before expanding features,
+including areas marked `done`. Current ORRERY direction and quiet-host rules supersede this
+file's older art-direction and capture wording. The owner need not enumerate or diagnose bugs.
+
 This is the operating law when the job is: make SpaceFace look and act finished. Not “close the
 next queue leaf.” Not a review campaign.
 

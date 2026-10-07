@@ -28,6 +28,7 @@ import { SECTORS } from '../data/sectors.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { quoteMissionEconomics, affordableContractQuantity, economicRiskTier } from '../economy/economyMissionTerms.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { FACTION_META } from '../data/factions.js';
 import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
@@ -228,6 +229,19 @@ export const economyContracts = {
     return isStationEpochEvaluated(own, stationId, ep);
   },
 
+  _repOf(factionId) {
+    const rec = factionId && this.state.factions ? this.state.factions[factionId] : null;
+    return rec ? (rec.rep || 0) : 0;
+  },
+
+  /** Sector stations in authored order, minus any berth the pilot's standing can't dock at.
+      Authored order keeps [0] the sector's primary berth and keeps the ungated surplus draw
+      identical to the pre-gate stream — the gating is the only behavioral delta. */
+  _dockableStations(sec) {
+    return (sec && sec.stations || [])
+      .filter((st) => stationBerthAdmits(st, this._repOf(st.factionId || sec.factionId), this.state));
+  },
+
   /**
    * True when missions already owns this offer — either still listed on the station board or
    * already accepted into the active list. A taken-into-active offer is a delivered offer:
@@ -365,7 +379,7 @@ export const economyContracts = {
       for (const id of [...(SECTOR_BY_ID.get(info.sectorId)?.neighbors || [])].sort()) {
         const signal = sectorSignalFor(state, id);
         const candidate = signal ? selectEconContract(signal) : null;
-        const target = (SECTOR_BY_ID.get(id)?.stations || []).slice().sort((a,b) => a.id.localeCompare(b.id))[0];
+        const target = this._dockableStations(SECTOR_BY_ID.get(id))[0];
         if (!candidate || !reliefKeys.has(candidate.template.key) || !target) continue;
         if (!reliefDestination || signal.pricePressure > local.pricePressure) {
           selected = candidate; local = signal;
@@ -409,9 +423,13 @@ export const economyContracts = {
       for (const nId of ((sector && sector.neighbors) || []).slice().sort()) {
         const nSig = sectorSignalFor(state, nId);
         const nSec = SECTOR_BY_ID.get(nId);
-        if (!nSig || !nSec || !(nSec.stations || []).length) continue;
+        if (!nSig || !nSec) continue;
+        // A berth that refuses the pilot can't take the surplus — a gated-only
+        // sector is skipped, not inherited as an unreachable destination.
+        const stations = this._dockableStations(nSec);
+        if (!stations.length) continue;
         if (!bestNeighbor || nSig.pricePressure > bestNeighbor.pressure) {
-          bestNeighbor = { sectorId: nId, pressure: nSig.pricePressure, stations: nSec.stations };
+          bestNeighbor = { sectorId: nId, pressure: nSig.pricePressure, stations };
         }
       }
       if (bestNeighbor) {
@@ -511,6 +529,9 @@ export const economyContracts = {
       for (const st of (sec.stations || [])) {
         if (seen.has(st.id)) continue;
         seen.add(st.id);
+        // A yard whose berth refuses the pilot can't take the freight — its
+        // shortage is real but the contract could never settle there.
+        if (!stationBerthAdmits(st, this._repOf(st.factionId || sec.factionId), this.state)) continue;
         const need = starvedIndustryNeedFor(st.type, sec.tier || 0, markets[st.id]);
         if (need) out.push({ need, stationId: st.id, sectorId: sec.id });
       }

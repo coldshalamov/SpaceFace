@@ -3800,20 +3800,6 @@
       "contractNodeCount": 75
     },
     {
-      "id": "wholeship_hornet_scn_interdictor",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/hornet_scn_interdictor.glb",
-      "release": "assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb",
-      "sourceSha256": "c7d322f1459ae81aee7758c51753bff169a85fa83567cefe2618fd691e4b8b02",
-      "releaseSha256": "54ca1ae25fe91f66206e57463894015d385c1c4ed7549c2db787b45d2ac9f728",
-      "sourceBytes": 1584748,
-      "releaseBytes": 762992,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 228,
-      "contractNodeCount": 74
-    },
-    {
       "id": "wholeship_wasp_quiet_ghost",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/wasp_quiet_ghost.glb",
@@ -3870,20 +3856,6 @@
       "contractNodeCount": 31
     },
     {
-      "id": "wholeship_hornet_production_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/hornet_production_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
-      "sourceSha256": "602c73827c0d729c87d264f729c6f7f7642f53d0f8bcee0898cfc9710d8c37ec",
-      "releaseSha256": "f9de7cb955ac2dbc150feaac72a72f76f349c49daba3bccb78bdcb846903e392",
-      "sourceBytes": 1167784,
-      "releaseBytes": 582448,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 89,
-      "contractNodeCount": 36
-    },
-    {
       "id": "wholeship_leviathan_production_v1",
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/leviathan_production_v1.glb",
@@ -3896,34 +3868,6 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 87,
       "contractNodeCount": 34
-    },
-    {
-      "id": "wholeship_hornet_production_v1_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/hornet_production_v1_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb",
-      "sourceSha256": "a4c6ab70cc67fcff6264feae4a8935ca988e527a565b317ec7ba26a70a48b728",
-      "releaseSha256": "3478d512e2074ca7d69c97bd63c5fb672be514a42ef106864373d045c9c02b90",
-      "sourceBytes": 553596,
-      "releaseBytes": 435672,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 88,
-      "contractNodeCount": 34
-    },
-    {
-      "id": "wholeship_hornet_production_v1_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/hornet_production_v1_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb",
-      "sourceSha256": "edab62efa84a237a596b602637d6d71fdb677b2e7818b234ef36460f67e1ac04",
-      "releaseSha256": "db92f624e1113ddcbbcbcc9dafb8ac0b061e61309fa212bb57987edd51d09bba",
-      "sourceBytes": 363336,
-      "releaseBytes": 372856,
-      "textures": 6,
-      "ktx2Textures": 6,
-      "meshoptBufferViews": 64,
-      "contractNodeCount": 28
     },
     {
       "id": "wholeship_leviathan_production_v1_lod1",
@@ -4778,6 +4722,62 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 494,
       "contractNodeCount": 155
+    },
+    {
+      "id": "wholeship_hornet_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/hornet_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
+      "sourceSha256": "2ba4631ed577d0e49c5d145746400e81bc5880696dd47a7c1522038f667e4879",
+      "releaseSha256": "6cc580e212c5eb8fdc0f2f6fa8783daf2dce6ec849bec33ccfb6f539a3f51c68",
+      "sourceBytes": 1167952,
+      "releaseBytes": 582604,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 89,
+      "contractNodeCount": 37
+    },
+    {
+      "id": "wholeship_hornet_scn_interdictor",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/hornet_scn_interdictor.glb",
+      "release": "assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb",
+      "sourceSha256": "ac758e5dddf12f47e4c6dd9ed472651dfbd28080434f381e13e7721dc63baefe",
+      "releaseSha256": "5bafb81449eda81f1bbbd1ad67ea19f6cbc341aa7cd8ecd8a75600b58a704ce6",
+      "sourceBytes": 1584780,
+      "releaseBytes": 763136,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 228,
+      "contractNodeCount": 75
+    },
+    {
+      "id": "wholeship_hornet_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/hornet_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb",
+      "sourceSha256": "a1eeb8ab74fcd32e2b3129205a58a26db27ed96f77be0f64740dde922b255e2c",
+      "releaseSha256": "ab46199c8368a8e91be1657ec7cfee359cef9b21ea2ad3ea7f9b302e6e810d4e",
+      "sourceBytes": 553768,
+      "releaseBytes": 435848,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 88,
+      "contractNodeCount": 35
+    },
+    {
+      "id": "wholeship_hornet_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/hornet_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb",
+      "sourceSha256": "f87a17a18f099df4c3eadc95e6851861d9e801f34a591651bb6941a6c5170cc8",
+      "releaseSha256": "050663b626b1259d0756cd8241979ac72be0a06ac9f624cc2ac4bfd29f644109",
+      "sourceBytes": 363508,
+      "releaseBytes": 373020,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 64,
+      "contractNodeCount": 29
     }
   ]
 }

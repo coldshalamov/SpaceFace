@@ -60,7 +60,7 @@ export function mountBootRing(document, overlay) {
   const fill = element(document, 'circle', { ...attrs, class: 'boot-ring__fill' });
   const marks = element(document, 'g', { class: 'boot-ring__marks' });
   const head = element(document, 'circle', { r: 2.2, cx: 88, cy: 24, class: 'boot-ring__head' });
-  const percent = element(document, 'text', { x: 88, y: 195, class: 'boot-ring__percent', 'text-anchor': 'middle' });
+  const percent = element(document, 'text', { x: 88, y: 198, class: 'boot-ring__percent', 'text-anchor': 'middle' });
   percent.textContent = '0.0%';
   live.append(bloom, fill, marks, head, percent);
   svg.append(emblem, grad, filigree, track, live);
@@ -167,7 +167,9 @@ export function mountBootRing(document, overlay) {
   mounted.set(overlay, api);
   updateMotion(); model.report(stage, clock()); paint(clock());
   if (!contrastQuery?.matches) {
-    worker = createBootRingWorker(canvas, { stage, reduced: motion,
+    let fontUrl;
+    try { fontUrl = new URL('styles/fonts/archivo-var-latin-standard-normal.woff2', document.baseURI).href; } catch { /* probes */ }
+    worker = createBootRingWorker(canvas, { stage, reduced: motion, fontUrl,
       onReady() {
         if (disposed) return;
         workerReady = true; shell.classList.add('boot-instrument--worker'); resolveReady(true);

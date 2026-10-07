@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { createSimulation } from '../src/core/sim.js';
 import { AUTHORED_SET_PIECES } from '../src/data/missions.js';
 import { setPieceFollowOnBody, setPieceFollowOnOffer } from '../src/data/sandboxSetPieceFollowOns.js';
+import { TETHYS_BLACK_MARKET_DISCOVERY, TETHYS_BLACK_MARKET_RUN } from '../src/data/frontierRumors.js';
 import { missions } from '../src/systems/missions.js';
 
 const EXPECTED = Object.freeze({
@@ -27,6 +28,18 @@ function boot(seed) {
     type: 'ship', team: 0, pos: { x: 0, z: 0 }, hull: 200, hullMax: 200, radius: 8,
   });
   state.playerId = player.id;
+  // The berth gate is a world precondition beside each offer's own terms: this pilot has
+  // already run the Pallas entrance parcel, so the Den's private door admits the heist
+  // escape the same way the live berth would.
+  state.world.frontierRumors = {
+    byId: {
+      [TETHYS_BLACK_MARKET_DISCOVERY.rumorId]: {
+        phase: 'contacted',
+        contactId: TETHYS_BLACK_MARKET_DISCOVERY.contactId,
+        entranceRun: { runId: TETHYS_BLACK_MARKET_RUN.runId, phase: 'delivered' },
+      },
+    },
+  };
   const failed = [];
   sim.bus.on('mission:failed', (payload) => failed.push(payload));
   return { sim, state, failed, missionsSys: sim.registry.get('missions') };

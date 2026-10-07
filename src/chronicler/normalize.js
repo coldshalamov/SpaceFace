@@ -87,6 +87,22 @@ export function normalizeFact(event, p, state) {
       f.dedupe = `kill:${JSON.stringify([id(victim), id(p.killId) || f.externalId || tick])}`;
       break;
     }
+    case 'player:death': {
+      // Your own hull's loss: the victim seat is the player's, the actor is whoever the defeat
+      // receipt names (combat receipt, world.js hazard payload with no killer, or null). The
+      // narrative killLine already speaks this shape — "X destroyed your ship in Y" — and the
+      // death receipt's own cause sentence rides in details as the citation, never invented.
+      f.stage = 'kill';
+      f.actor = identity(state, p.killerId, p.attacker);
+      f.subject = identity(state, state.playerId, null, false, 'your ship');
+      f.provides = [ref('death', id(state.playerId) || 'player')];
+      // details stay inside the closed persistence vocabulary; the receipt's own cause sentence
+      // rides `reason` as the citation, never invented.
+      f.details = { cause: 'generic', playerCaused: false, surface: null, victimClass: 'ship',
+        factionLawful: false, pos: point(p.pos), reason: text(p.cause, '', 120) };
+      f.dedupe = `kill:${JSON.stringify([id(state.playerId) || 'player', tick, text(p.cause, '', 48)])}`;
+      break;
+    }
     case 'aftermathWreck:recorded':
     case 'loot:manifestPayload': {
       const marker = event === 'aftermathWreck:recorded';
