@@ -133,7 +133,9 @@ const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
 // target's armorFlat once per packet; a beam emits one packet per tick, so at 60 Hz a 60-dps beam
 // lands 1-damage packets and flat 1 erases all of them. armorFlatScale = dt / beamArmorPacketS makes
 // the beam pay the flat once per window. null = master behaviour (full flat on every tick).
-export const WEAPON_BALANCE_LAB = { beamArmorPacketS: null };
+// beamVent: trip the forced vent the tick a beam pegs (master: the clamp + next-tick dissipation
+// meant a beam never vented). PR #232 ships beamArmorPacketS 0.25 + beamVent true.
+export const WEAPON_BALANCE_LAB = { beamArmorPacketS: null, beamVent: false };
 const WEAPON_BALANCE_LAB_DEFAULTS = Object.freeze({ ...WEAPON_BALANCE_LAB });
 export function setWeaponBalanceLab(overrides = {}) {
   Object.assign(WEAPON_BALANCE_LAB, WEAPON_BALANCE_LAB_DEFAULTS, overrides || {});
@@ -1181,7 +1183,10 @@ export const weapons = {
     }
     capLeft -= energyCost * dt;
     w._heat = (w._heat || 0) + heatPerSec * dt;
-    if (w._heat >= heatMax) w._heat = heatMax;
+    if (w._heat >= heatMax) {
+      w._heat = heatMax;
+      if (WEAPON_BALANCE_LAB.beamVent) this._beginVent(e, state, w);
+    }
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
     const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);

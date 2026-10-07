@@ -481,11 +481,11 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here, 2026-10-07 00:06 ET):** #3 flight turn authority SHIPPED as PR #231
-(`lab2b/flight-turn`, not merged; see 10.4). Kestrel cruise W+turn went from 0.33 to 0.58 of max yaw (222 → 128 wu),
-boost from 0.21 to 0.375 (543 → 305 wu, no decay), and Q/E+W+yaw now turns with the yaw key. `legacyFloor` keeps
-every hull at or above master. #5 shipped as PR #230 (10.3) and #4 as PR #229 (10.2). Next: #6 weapon balance
-(TTK/heat), then #8, #7, #9, #10.
+**Status (restart from here, 2026-10-07 00:36 ET):** #6 weapon balance SHIPPED as PR #232
+(`lab2b/beam-armor`, not merged; see 10.5): Beam Laser M paid flat armor every tick and never vented. It now pays
+flat armor once per 0.25 s and trips the vent; 9/16 -> 16/16 dummy kills, duty 1.00 -> 0.77, all other weapon rows
+bit-identical. Every other weapon proved fine (numbers in 10.5). Earlier: #3 PR #231 (10.4), #5 PR #230 (10.3),
+#4 PR #229 (10.2). Next: #8 target selection/lock, then #7, #9, #10.
 
 ### 10.1 #4 NPC evasion + engagement spacing
 
@@ -773,4 +773,65 @@ identical to the lab candidate.
 - `test/lg-turn-radius.test.mjs` pins their in-game turn line as empty (radius 0), so this looks
   authored rather than a bug. Still, a sail or pulse barge that cannot be steered by W+turn at all is
   worth a feel review with Robin.
+
+### 10.5 #6 weapon balance (TTK + heat): shipped as PR #232 (`lab2b/beam-armor`)
+
+**Bench.** `node scripts/lab/run.mjs ttk --scenarios pulse_laser_s|reaver_pirate|dummy` (module
+`scripts/lab/benches/ttk.mjs`). Scenario id `<weapon>|<enemy>|dummy|live`. S weapons on the Hitch (+ ion engine,
+shield booster), M weapons on the Drifter's forward M hardpoint; one weapon fitted, shooter invulnerable, pinned at the
+origin, nose yawed onto the target with A/D, fire from tick 20. `dummy`: enemy re-pinned at 150 wu every tick (perfect
+hits, 60 s cap). `live`: real SG-06 AI at 220 wu, 8 npc-bench types × 3 seeds. Enemy at `levelRange[0]`. Metrics:
+eHP (shield+armorHp+hull), TTK from first shot, rounds/s, vents, duty (1 - vent-locked share), heat peak, dmg/hit,
+dps. Sweep: `scripts/lab/sweeps/ttkSweep6.mjs baseline|probe|verify --workers 6` (560 jobs, ~1.6 min; resumable
+JSONL in `results/ttk-2b/`). Tables: `node design/program/lab/results/ttk-2b/tab.mjs <dir> <phase> dummy|live`;
+A/B: `cmp.mjs <dirA with baseline.*> <dirB with verify.*>`.
+
+**Baseline (dummy TTK s, master).** Starter Pulse S vs the `enemies.js` contract (dmg 8, perfect hits; measured
+*with* the vent): wasp 3.0 (~3 ✓), reaver 10.1 (8–10, at the edge), corsair 17.7 at its minimum L4 (~15, +18%; live
+22.9), bruiser 31.8 (killable ✓). Pulse S duty 0.72 (vent rhythm, 4.2 rounds/s vs rof 5.5) — inside the 60–80% band.
+Field anchor (L5, 866 eHP) is 54 HP short at the 60 s cap with Pulse S — mid-game specialist, not immune.
+M guns: Pulse M / Heavy AC M / Bank Stream M ~12–21 s on a bruiser, plasma 6.3, railgun 11.4, missiles 10.6.
+Railgun and missile misses vs mule/customs/patrol/mine-layer/PD-screen/field-anchor are point-defense intercepts
+(hits/shots 4/31 etc.), the designed counter. Concussion S/M, RCS disruptor are momentum/disable verbs (authored
+7–22 dps) — slow kills by design. Flak S: 9.7 dps on a bruiser (PD role).
+
+**Defect 1 — beam vs flat armor.** Beam Laser M: 46 dps on a wasp (flat 0), 6.8 on a reaver (flat 1), 1.9 on a
+bruiser (flat 3); 7 of 16 types not killed in 60 s. Cause: `damage.js` subtracts `armorFlat` per packet and a beam
+sends one ~1-damage packet per tick (`combat._applyBeamDamage`). Same class of defect `planetRuntime` already batches
+around. Fix: beam packets carry `armorFlatScale = dt / BEAM_ARMOR_PACKET_S`. Window probe (dummy TTK s):
+
+| window | reaver | corsair | bruiser | warden | field_anchor |
+|---|---|---|---|---|---|
+| master (per tick) | 29.3 | -- | -- | -- | -- |
+| 0.1 s | 5.0 | 12.2 | 21.1 | 25.3 | 32.6 |
+| 0.18 s (= Pulse S cadence) | 4.7 | 10.5 | 16.1 | 19.3 | 24.8 |
+| **0.25 s (shipped)** | 4.6 | 10.1 | 14.9 | 17.9 | 23.1 |
+| 0.5 s | 4.5 | 9.5 | 13.6 | 16.4 | 21.1 |
+| no flat at all | 4.4 | 9.1 | 12.6 | 15.2 | 19.4 |
+
+0.25 s = the beam reads to armor like a 4-rps gun (flat 3 costs 12 of 60 dps, ~20%, similar to what flat costs Pulse M).
+
+**Defect 2 — beam never vented.** `_serviceBeam` clamps heat at heatMax; `_tickWeapons` dissipates before its vent
+check, so a clamped beam was always just under heatMax when checked: 0 vents, duty 1.00, 60 ray-ticks/s forever.
+Fix: `_beginVent` on peg (the projectile paths already do). Beam duty 0.77 (2 vents/kill), Dreadnought heavy beam
+vents too (pegs ~3.7 s). Legacy 47-A profile has the vent off: unchanged.
+
+**Verify (production checkout, master d9619d568 vs PR #232, same harness).** 529/560 rows bit-identical (live rows
+included); all 31 changed rows are Beam Laser M. Beam dummy kills 9/16 -> 16/16; live 15/24 -> 19/24 (corsair 0/3 ->
+1/3, quiet ghost 0/3 both — stationary bench pilot, beam range 240 lets them kite; 563/2424 ray-ticks on the corsair).
+Beam dps reaver 6.8 -> 31.4, bruiser 1.9 -> 25.6. Lab seam (`setWeaponBalanceLab({beamArmorPacketS:0.25,
+beamVent:true})`) reproduces the PR rows 40/40. Tests: `test/beam-armor-flat.test.mjs` 5/5 (all fail on master);
+359 related test files 2931 tests, the same 26 pre-existing failures as master (by name). Results:
+`results/ttk-2b/verify-prod/{master,armor-only,pr232}`.
+
+The lab baseline on this branch differs from the master checkout in live rows for every weapon (lab branch base
+drift, not noise: master-vs-PR on one checkout is bit-identical outside the beam). Use `verify-prod/master` as the
+reference.
+
+**Candidates for Robin (not changed):**
+- Corsair TTK with the starter is 17.7 s dummy / 22.9 s live vs the ~15 s contract (+18%). Lever: corsair hull/shield
+  or Pulse S heat (`heatDissip` 12). Reaver at 10.1 sits on the 8–10 edge.
+- After both fixes the tier-3 beam is slower than tier-2 Pulse M / Heavy AC M on heavy armor (bruiser 21.8 vs 12.4 s);
+  its edge is hitscan. Levers: `heatPerSec` 55, `heatDissip` 22, `range` 240 in `src/data/weapons.js`.
+- Pulse M, plasma, railgun, missile, EMP carry no heat fields at all (duty 1.00) — authored, but they never meet the vent.
 
