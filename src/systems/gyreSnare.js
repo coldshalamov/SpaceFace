@@ -87,6 +87,8 @@ function freshRuntime() {
     launchWindup: 0,       // ticks of the pre-burst coil (anticipation) still owed
     launchCarry: 0,        // aft-velocity the coil left on the ball — repaid inside the burst
                            // so authored launchSpeed is the FINAL flight speed, not the impulse sum
+    launchSpeedEff: 0,     // wu/s — launchSpeed after the throw-mass penalty; computed on the
+                           // first burst tick (ballMass is frozen by then), reset in _finishLaunch
     launchDir: { x: 1, z: 0 },
     launchedId: null,      // the ball in flight (TTL/telemetry only — it is a free body)
     ballId: null,          // survives LAUNCH→OFF until the thrown clump despawns (mirror track)
@@ -1022,6 +1024,7 @@ export const gyreSnare = {
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
+    rt.launchSpeedEff = 0; // recomputed on the first burst tick from the frozen ballMass
     rt.basinSpots.length = 0;
     rt.ballMass = rt.clumpMass;
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
@@ -1109,8 +1112,8 @@ export const gyreSnare = {
     rt.clumpRadius = 0;
     rt.members.length = 0;
     rt.launchWindup = 0;
-    rt.launchCarry = 0; // consumed by the burst — the one launch-ledger field that
-                      // would otherwise outlive its phase
+    rt.launchCarry = 0;   // consumed by the burst — the launch ledger dies with its phase
+    rt.launchSpeedEff = 0;
     // The beam ended in a THROW, not a release or a tear — a previous lash's 'strained'
     // must not dress a clean bowl's close ramp as a slip.
     rt.dropReason = 'launched';
@@ -1496,6 +1499,13 @@ export const gyreSnare = {
           // First coil tick: the pad rides a low rumble through the draw — the
           // slingshot pull-back is the feel-rich part, and silence undersold it.
           this.bus.emit(GYRE_EVENTS.windup, { tick: state.tick });
+          // The draw gets a thin rising shimmer too — felt on the pad and seen in
+          // the maw, it was the one beat of the throw with no voice at all.
+          this.bus.emit('audio:cue', {
+            id: 'gyre_snare_windup',
+            position: { x: core.pos.x, z: core.pos.z },
+            gain: 0.5,
+          });
         }
         // The coil draw-back is absolute 13 wu — ~20% of a capped 60 wu katamari's
         // silhouette, where the bow nearly vanishes. Scale with the payload so a big
@@ -1520,17 +1530,21 @@ export const gyreSnare = {
       } else if (core && core.alive !== false && rt.launchLeft > 0) {
         const mass = entityMass(core);
         if (rt.launchLeft === D.launchTicks) {
-          // The coil's residual AFT-velocity is repaid by the burst — launchSpeed is a
-          // FLOOR on launch-direction flight speed: an aft-moving ball still lands at
-          // authored pace (a heavy draw can't undercook the read), while forward
-          // residual — e.g. the ship translating into the throw — keeps riding. Δv
-          // floor semantics, not a hard cap: a moving ship bowls hotter.
+          // The coil's residual AFT-velocity is repaid by the burst — the effective
+          // launch speed is a FLOOR on launch-direction flight speed: an aft-moving
+          // ball still lands at pace (a heavy draw can't undercook the read), while
+          // forward residual — e.g. the ship translating into the throw — keeps
+          // riding. Δv floor semantics, not a hard cap: a moving ship bowls hotter.
           const fwd = finite(core.vel && core.vel.x) * rt.launchDir.x
             + finite(core.vel && core.vel.z) * rt.launchDir.z;
           rt.launchCarry = Math.max(0, -fwd);
+          // The floor itself sags with throw mass: a capped moon bowls ~22% slower
+          // than a pebble — heavy reads heavy in the ARC, not just growl/recoil.
+          rt.launchSpeedEff = D.launchSpeed
+            * (1 - D.launchMassPenalty * Math.min(1, rt.ballMass / D.maxClumpMass));
         }
-        // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = launchSpeed.
-        const j = ((D.launchSpeed + rt.launchCarry) * mass) / D.launchTicks;
+        // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = vEff.
+        const j = ((rt.launchSpeedEff + rt.launchCarry) * mass) / D.launchTicks;
         queuePhysicsImpulse(core, {
           x: rt.launchDir.x * j, y: 0, z: rt.launchDir.z * j,
         }, this._evidence(state.tick));

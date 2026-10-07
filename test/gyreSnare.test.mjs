@@ -2077,3 +2077,30 @@ test('an aft-moving ship still bowls exactly launchSpeed — the burst repays co
     `aft residual repaid — ball lands at authored pace (vx=${core.vel.x})`);
   t.cleanup();
 });
+
+test('the coil sings — gyre_snare_windup cues on the first windup tick', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t); // stamps launch; the coil begins next tick
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // first coil tick
+  assert.ok(t.events.some((e) => e.name === 'audio:cue' && e.p && e.p.id === 'gyre_snare_windup'),
+    'the draw has a voice — shimmer emitted with the coil');
+  t.cleanup();
+});
+
+test('launch speed sags with throw mass — a heavy katamari bowls slower', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 1800, 20); // 75% of cap — the floor sags ~16.5%
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 4; i++) t.sim.step();
+  const expected = T.launchSpeed * (1 - T.launchMassPenalty * Math.min(1, 1800 / T.maxClumpMass));
+  const v = speed(core);
+  assert.ok(Math.abs(v - expected) < 30,
+    `heavy ball bowls at ~${expected.toFixed(0)} wu/s, got ${v.toFixed(1)}`);
+  assert.ok(v < T.launchSpeed - 30, 'the mass penalty is real — below authored speed');
+  t.cleanup();
+});

@@ -103,7 +103,9 @@ export const GYRE_SNARE = Object.freeze({
   maxAbsorbRecords: 28,      // member ledger bound for the VFX lumps
   basinSpotMax: 8,         // published pull-glow positions per tick (bodies actually being dragged)
   // ── Launch ────────────────────────────────────────────────────────────────────────
-  launchSpeed: 520,          // wu/s — release Δv along the nose (mass-independent); the bowl visibly outruns a boosting player (~1.9x boost)
+  launchSpeed: 520,          // wu/s — release Δv floor along the nose before the mass penalty; the bowl visibly outruns a boosting player (~1.9x boost)
+  launchMassPenalty: 0.22,   // fraction of launchSpeed a capped clump sheds — heavy reads heavy
+                             // in the arc itself (a 2400 t moon bowls ~22% slower than a pebble)
   launchTicks: 5,            // ticks the launch impulse is spread over (slingshot feel)
   launchWindupTicks: 6,      // ~100 ms coil before the burst — the slingshot needs a beat
                            // of anticipation, not just mechanical ticks

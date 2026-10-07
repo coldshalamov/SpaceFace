@@ -136,6 +136,15 @@ export const gyreHud = {
         const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t` : `GYRE — BALL AWAY · ${mass}t`) : 'GYRE — BALL AWAY';
         return { text: label + ballTxt, cls: 'gyre-ball' };
       }
+      // No primary, but secondaries are still streaking (one retires before the rest) —
+      // the pill shouldn't go dark while balls fly. balls[] is ttlS-sorted: [0] dies first.
+      const bs = g && g.balls;
+      if (bs && bs.length) {
+        const warnS = GYRE_SNARE.ballTtlWarnS;
+        const n = Math.ceil((bs[0].ttlS || 0));
+        const sTxt = bs[0].ttlS > 0 && bs[0].ttlS < warnS ? ` · ${Math.min(warnS - 1, Math.max(1, n))}s` : '';
+        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sTxt}`, cls: 'gyre-ball' };
+      }
       return { text: '', cls: '' };
     }
     if (g.phase === 'launching') {

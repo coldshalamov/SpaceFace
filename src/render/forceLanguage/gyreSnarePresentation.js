@@ -493,6 +493,40 @@ export class GyreSnarePresentation {
     slot.mesh.visible = true;
   }
 
+  // A pub.balls entry → trail spec for _drawTrail (dir from live velocity; a ball
+  // resting at spawn is a degenerate — arrow it +X rather than NaN the rotation).
+  _ballTrailSpec(b, alpha) {
+    if (!b || !Number.isFinite(b.x) || !Number.isFinite(b.z)) return null;
+    const vl = Math.hypot(finite(b.vx), finite(b.vz));
+    return {
+      x: b.x, z: b.z,
+      dx: vl > 1e-3 ? finite(b.vx) / vl : 1,
+      dz: vl > 1e-3 ? finite(b.vz) / vl : 0,
+      r: finite(b.r, 8), ttl01: b.ttl01, mass: b.mass, alpha,
+    };
+  }
+
+  // Shared streak painter — one flat quad trailing a flying ball along its travel.
+  // spec {x,z,dx,dz,r,ttl01,mass,alpha,wind} or null → the slot hides.
+  // ttl01 drives the last-~1.1 s expiry fade so the ribbon telegraphs the grave;
+  // wind gathers the streak during the coil; massFade reads the throw at range.
+  _drawTrail(mesh, mat, spec, flashCalm) {
+    if (!spec) {
+      if (mesh.visible) mesh.visible = false;
+      return;
+    }
+    const lp = this.toLocal(spec.x, spec.z, this._ballPt);
+    const trailLen = Math.max(30, spec.r * 3.2);
+    mesh.position.set(lp.x - spec.dx * trailLen * 0.5, 0.55, lp.z - spec.dz * trailLen * 0.5);
+    mesh.rotation.y = Math.atan2(-spec.dz, spec.dx);
+    mesh.scale.set(trailLen, 1, Math.max(3, spec.r * 1.15));
+    const ttl01 = Math.max(0, Math.min(1, finite(spec.ttl01, 1)));
+    const massFade = 0.65 + 0.5 * Math.min(1, finite(spec.mass) / GYRE_SNARE.maxClumpMass);
+    mat.uniforms.uAlpha.value = spec.alpha * massFade * flashCalm
+      * (1 - (spec.wind || 0)) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.12));
+    mesh.visible = true;
+  }
+
   update(dt, state = {}) {
     if (this.disposed) return;
     const mirror = state.gyreSnare;
@@ -779,8 +813,14 @@ export class GyreSnarePresentation {
         this._clump.visible = false;
       }
       this._lastBall = null;
-      this._trail.visible = false;
-      this._trail2.visible = false;
+      // No held clump and no primary: the two streak slots still serve the
+      // soonest-dying secondaries instead of every surviving ball flying bare
+      // (pub.balls is ttlS-sorted — [0] dies first).
+      {
+        const _bs = Array.isArray(mirror.balls) ? mirror.balls : [];
+        this._drawTrail(this._trail, this._trailMat, this._ballTrailSpec(_bs[0], 0.3), flashCalm);
+        this._drawTrail(this._trail2, this._trail2Mat, this._ballTrailSpec(_bs[1], 0.22), flashCalm);
+      }
       this._grip.visible = false;
       this._halo.visible = false;
       if (phase === 'off' && this._ballId == null && !this._closing && this._deathT <= 0) this._clearLumps();
@@ -814,55 +854,35 @@ export class GyreSnarePresentation {
         this._clump.position.x += (Math.sin(this.time * 47) * 0.7 + Math.sin(this.time * 31 + 1.7) * 0.3) * tremble * 1.4;
         this._clump.position.z += Math.cos(this.time * 41 + 0.6) * tremble * 1.1;
       }
-      if (mirror.launchedId != null && mirror.ballPos) {
-        // Flight ribbon: stretched flat quad hanging off the ball's tail along launchDir —
-        // anchored at the BALL's own position, not p (cx is the held core while holding,
-        // so a re-snag mid-flight would steal the streak onto a stale heading).
-        const bp = this.toLocal(mirror.ballPos.x, mirror.ballPos.z, this._ballPt);
-        const dir = mirror.launchDir;
-        const dl = Math.hypot(finite(dir && dir.x, 1), finite(dir && dir.z, 0)) || 1;
-        const dx = finite(dir && dir.x, 1) / dl, dz = finite(dir && dir.z, 0) / dl;
-        const ballR = finite(mirror.ballClumpRadius, this._clumpRadius);
-        const trailLen = Math.max(30, ballR * 3.2);
-        this._trail.position.set(bp.x - dx * trailLen * 0.5, 0.55, bp.z - dz * trailLen * 0.5);
-        this._trail.rotation.y = Math.atan2(-dz, dx);
-        this._trail.scale.set(trailLen, 1, Math.max(3, ballR * 1.15));
-        // Expiry fade: the streak dims through its last ~1.1 s so the ribbon telegraphs
-        // the grave before the burst takes it (ttl01 stays 1 while despawnAt is unset).
-        const ttl01 = Math.max(0, Math.min(1, finite(mirror.ballTtl01, 1)));
-        // No streak during the coil — the ribbon gathers as the wind-up releases.
-        const wind = finite(mirror.launchWindup01);
-        // Mass reads at range: a capped katamari streaks heavier than a pebble — the
-        // alpha rides the frozen throw mass the way the launch cue grades its growl.
-        const massFade = 0.65 + 0.5 * Math.min(1, finite(mirror.ballMass) / GYRE_SNARE.maxClumpMass);
-        this._trailMat.uniforms.uAlpha.value = 0.3 * massFade * flashCalm * (1 - wind) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.12));
-        this._trail.visible = true;
-      } else if (this._trail.visible) {
-        this._trail.visible = false;
-      }
-
-      // Second streak slot: the soonest-dying secondary ball gets its own ribbon —
-      // a second bowl was invisible for its whole flight until the grave burst.
-      // Skips the entry that IS the primary (ballId is watched too — don't double-draw).
-      const b2 = mirror.balls && mirror.balls.length
-        ? (mirror.balls.find((b) => b && b.id !== mirror.launchedId) || null) : null;
-      if (b2 && Number.isFinite(b2.x) && Number.isFinite(b2.z)) {
-        const bp2 = this.toLocal(b2.x, b2.z, this._ballPt);
-        const vl = Math.hypot(finite(b2.vx), finite(b2.vz));
-        const dx2 = vl > 1e-3 ? finite(b2.vx) / vl : 1;
-        const dz2 = vl > 1e-3 ? finite(b2.vz) / vl : 0;
-        const ballR2 = finite(b2.r, 8);
-        const trailLen2 = Math.max(30, ballR2 * 3.2);
-        this._trail2.position.set(bp2.x - dx2 * trailLen2 * 0.5, 0.55, bp2.z - dz2 * trailLen2 * 0.5);
-        this._trail2.rotation.y = Math.atan2(-dz2, dx2);
-        this._trail2.scale.set(trailLen2, 1, Math.max(3, ballR2 * 1.15));
-        const ttlB = Math.max(0, Math.min(1, finite(b2.ttl01, 1)));
-        const massFade2 = 0.65 + 0.5 * Math.min(1, finite(b2.mass) / GYRE_SNARE.maxClumpMass);
-        // Slightly dimmer than the primary's streak — it's the older flight.
-        this._trail2Mat.uniforms.uAlpha.value = 0.22 * massFade2 * flashCalm * (0.3 + 0.7 * Math.min(1, ttlB / 0.12));
-        this._trail2.visible = true;
-      } else if (this._trail2.visible) {
-        this._trail2.visible = false;
+      // Flight ribbons: two stretched flat quads behind flying balls. The PRIMARY
+      // rides the frozen launchDir + the coil gate (its streak gathers while the
+      // wind-up holds it); once it retires the slot hands its ribbon to the
+      // soonest-dying secondary instead of going dark while balls still streak
+      // (pub.balls is ttlS-sorted — [0] dies first). Anchored at each ball's own
+      // position, not p — a re-snag mid-flight must not steal a stale heading.
+      {
+        const _balls = Array.isArray(mirror.balls) ? mirror.balls : [];
+        let _t1 = null; let _t1id = null;
+        if (mirror.launchedId != null && mirror.ballPos) {
+          const dir = mirror.launchDir;
+          const dl = Math.hypot(finite(dir && dir.x, 1), finite(dir && dir.z, 0)) || 1;
+          _t1 = {
+            x: mirror.ballPos.x, z: mirror.ballPos.z,
+            dx: finite(dir && dir.x, 1) / dl, dz: finite(dir && dir.z, 0) / dl,
+            r: finite(mirror.ballClumpRadius, this._clumpRadius),
+            ttl01: mirror.ballTtl01, mass: mirror.ballMass,
+            alpha: 0.3, wind: finite(mirror.launchWindup01),
+          };
+          _t1id = mirror.launchedId;
+        } else {
+          _t1 = this._ballTrailSpec(_balls[0], 0.3);
+          _t1id = _t1 ? _balls[0].id : null;
+        }
+        this._drawTrail(this._trail, this._trailMat, _t1, flashCalm);
+        // Slot two serves the soonest-dying ball not already drawn — a second
+        // bowl was invisible for its whole flight until the grave burst.
+        const _b2 = _balls.find((b) => b && b.id !== _t1id) || null;
+        this._drawTrail(this._trail2, this._trail2Mat, this._ballTrailSpec(_b2, 0.22), flashCalm);
       }
 
       // Grip-spoke: while the clump is held, draw the faint tether maw→clump so the

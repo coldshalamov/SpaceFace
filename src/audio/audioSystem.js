@@ -1539,7 +1539,7 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   gyre_snare_strain: 'sfx_gyre_strain', gyre_snare_ball_death: 'sfx_gyre_ball_death',
   gyre_snare_drop: 'sfx_gyre_drop', gyre_snare_off: 'sfx_gyre_off',
   gyre_snare_full: 'sfx_gyre_full',
-  gyre_snare_fuse_low: 'sfx_gyre_fuse_low',
+  gyre_snare_fuse_low: 'sfx_gyre_fuse_low', gyre_snare_windup: 'sfx_gyre_windup',
   // Rung-10 threat warning (massline.threat / massline.counter_tether.* presentation cues): the
   // low growl authored beside the other massline recipes — a live line under load, not a break.
   'presentation.massline.threat': 'sfx_massline_threat',

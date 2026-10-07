@@ -3083,6 +3083,18 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.18, sustain: 0.35, release: 1.4 },
     filterType: 'bandpass', filterFreq: 720, filterQ: 0.9,
   },
+  // Windup: the ~120 ms coil's voice — a thin rising glass draw for the slingshot's
+  // pull-back, shorter and reedier than the strain rise so the two never collide.
+  {
+    id: 'sfx_gyre_windup',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 430, freqSweep: [430, 960], sweepTimeS: 0.11,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.15 },
+    filterType: 'bandpass', filterFreq: 1250, filterQ: 1.7,
+    pitchRange: [0.96, 1.05],
+  },
   // Ball death: the clump's quiet grave — a muffled glass shatter for a ball expiring in
   // open space (impacts already sing through collision audio; this covers the silent TTL).
   // A bright clink leads the dust poof so it reads as breaking glass, not a cough.
