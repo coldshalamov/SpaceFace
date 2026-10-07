@@ -3115,6 +3115,17 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 900, filterQ: 1.1,
     lfoRate: 0.9, lfoDepth: 0.12,
   },
+  // Ball rumble: the thrown clump's flight voice — a low bandpassed groan tracking the
+  // body so the destructive arc reads at range until the grave burst. Envelope rides
+  // the thrown mass.
+  {
+    id: 'sfx_field_loop_gyre_ball',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'sine',
+    baseFreq: 82, freqSweep: [82, 96], sweepTimeS: 3.2,
+    gainEnvelope: { attack: 0.15, sustain: 1.0, release: 0.5, peak: 0.24 },
+    filterType: 'bandpass', filterFreq: 260, filterQ: 1.0,
+    lfoRate: 0.7, lfoDepth: 0.15,
+  },
   // Beam wake: a soft rising glass shimmer as the cone ignites — lighter than the snag bite
   // (which is the grip landing). The lash switching on, not the catch.
   {

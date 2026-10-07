@@ -217,6 +217,17 @@ export class GyreSnarePresentation {
     this._cone.frustumCulled = false;       // scaled per frame; bounding sphere lies
     this._beam.add(this._cone);
 
+    // Glass body under the additive rim: pure glow sells "light" but reads flat — a
+    // whisper of normal-blend surface gives the cone a physical skin the rim sits on.
+    this._bodyMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(glass), transparent: true, opacity: 0,
+      depthWrite: false, side: THREE.DoubleSide,
+    });
+    this._coneBody = new THREE.Mesh(coneGeo, this._bodyMat);
+    this._coneBody.rotation.z = -Math.PI / 2;
+    this._coneBody.frustumCulled = false;
+    this._beam.add(this._coneBody);
+
     // Maw ring — torus encircling the beam mouth, normal along +X.
     this._mawMat = new THREE.MeshBasicMaterial({
       color: hot, transparent: true, opacity: 0.55,
@@ -283,17 +294,34 @@ export class GyreSnarePresentation {
     // flight reads at range (the whoosh dies ~2 s in; the grave burst only fires at 9 s).
     const trailGeo = new THREE.PlaneGeometry(1, 1);
     trailGeo.rotateX(-Math.PI / 2);   // bake flat-on-plane so rotation.y aims cleanly
-    this._trailMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(glass), transparent: true, opacity: 0,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    this._trailMat = new THREE.ShaderMaterial({
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: 'varying vec2 vUv; uniform vec3 uCol; uniform float uAlpha; void main(){ float a = pow(vUv.x, 1.6) * uAlpha; gl_FragColor = vec4(uCol, a); }',
+      uniforms: { uCol: { value: new THREE.Color(glass) }, uAlpha: { value: 0 } },
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
     this._trail = new THREE.Mesh(trailGeo, this._trailMat);
     this._trail.visible = false;
     this._trail.frustumCulled = false;
     scene.add(this._trail);
 
+    // Grip-spoke: a faint tether from the maw ring to the orbiting clump so the ball
+    // visibly circles a held point, not bare space. Opacity rides strain — the tether
+    // tightens as the clump nears the slip point.
+    const gripGeo = new THREE.PlaneGeometry(1, 1);
+    gripGeo.rotateX(-Math.PI / 2);
+    this._gripMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(glass), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    this._grip = new THREE.Mesh(gripGeo, this._gripMat);
+    this._grip.visible = false;
+    this._grip.frustumCulled = false;
+    scene.add(this._grip);
+
     this._nose = { x: 0, z: 0 };
     this._mawPt = { x: 0, z: 0 };
+    this._ballPt = { x: 0, z: 0 };
   }
 
   _lumpMaterial(type) {
@@ -388,13 +416,22 @@ export class GyreSnarePresentation {
       const nL = this.toLocal(nx, nz, this._nose);
       const mL = this.toLocal(mx, mz, this._mawPt);
       const dx = mL.x - nL.x, dz = mL.z - nL.z;
-      const len = Math.max(1, Math.hypot(dx, dz));
+      let len = Math.max(1, Math.hypot(dx, dz));
       const endR = Math.max(0.5, finite(mirror.endRadius, len * 0.25));
+      if (phase === 'launching' && mirror.launchedId != null && mirror.ballPos) {
+        // The lash follows through: as the clump exits, the maw chases its tail along
+        // the beam axis so launch reads as one motion instead of a hard cut to OFF.
+        const inv = 1 / Math.max(1e-6, Math.hypot(dx, dz));
+        const bL = this.toLocal(finite(mirror.ballPos.x), finite(mirror.ballPos.z), this._ballPt);
+        const axial = (bL.x - nL.x) * dx * inv + (bL.z - nL.z) * dz * inv;
+        if (axial > len) len = axial;
+      }
 
       this._beam.visible = true;
       this._beam.position.set(nL.x, 0.6, nL.z);
       this._beam.rotation.y = -Math.atan2(dz, dx);
       this._cone.scale.set(endR, len, endR);
+      this._coneBody.scale.set(endR * 0.97, len, endR * 0.97);
       this._maw.position.set(len, 0, 0);
       this._maw.scale.setScalar(endR); // uniform — the torus circle spans local X and Y
       this._disc.position.set(len + 1.5, 0, 0);
@@ -414,6 +451,9 @@ export class GyreSnarePresentation {
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
       this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm * wakeEase;
+      // The normal-blend skin sits under the additive glass at a whisper — just enough
+      // for the cone to occlude background glow and read as a surface, not a hologram.
+      this._bodyMat.opacity = 0.07 * flashCalm * wakeEase * (holding ? 1.2 : 0.8);
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
       // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
       this._coneMat.uniforms.uPulse.value = Math.max(
@@ -460,6 +500,7 @@ export class GyreSnarePresentation {
       }
       this._lastBall = null;
       this._trail.visible = false;
+      this._grip.visible = false;
       if (phase === 'off' && this._ballId == null) this._clearLumps();
     } else {
       const p = this.toLocal(cx, cz, this._nose);
@@ -484,10 +525,30 @@ export class GyreSnarePresentation {
         this._trail.position.set(p.x - dx * trailLen * 0.5, 0.55, p.z - dz * trailLen * 0.5);
         this._trail.rotation.y = Math.atan2(-dz, dx);
         this._trail.scale.set(trailLen, 1, Math.max(3, this._clumpRadius * 1.15));
-        this._trailMat.opacity = 0.3 * flashCalm;
+        // Expiry fade: the streak dims through its last ~1.1 s so the ribbon telegraphs
+        // the grave before the burst takes it (ttl01 stays 1 while despawnAt is unset).
+        const ttl01 = Math.max(0, Math.min(1, finite(mirror.ballTtl01, 1)));
+        this._trailMat.uniforms.uAlpha.value = 0.3 * flashCalm * (0.3 + 0.7 * Math.min(1, ttl01 / 0.12));
         this._trail.visible = true;
       } else if (this._trail.visible) {
         this._trail.visible = false;
+      }
+
+      // Grip-spoke: while the clump is held, draw the faint tether maw→clump so the
+      // orbiting mass visibly rides a held point; strain visibly tightens the line.
+      if (phase === 'holding') {
+        const gL = this.toLocal(cx, cz, this._ballPt);
+        const mL2 = this.toLocal(finite(mirror.maw && mirror.maw.x), finite(mirror.maw && mirror.maw.z), this._mawPt);
+        const gx = gL.x - mL2.x, gz = gL.z - mL2.z;
+        const gd = Math.max(1, Math.hypot(gx, gz));
+        this._grip.position.set(mL2.x + gx * 0.5, 0.55, mL2.z + gz * 0.5);
+        this._grip.rotation.y = Math.atan2(-gz, gx);
+        this._grip.scale.set(gd, 1, 2.2);
+        const strain = clamp01(finite(mirror.strain01));
+        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2) * flashCalm;
+        this._grip.visible = true;
+      } else if (this._grip.visible) {
+        this._grip.visible = false;
       }
 
       const members = mirror.members;
@@ -542,8 +603,10 @@ export class GyreSnarePresentation {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    this.scene.remove(this._beam, this._clump, this._trail);
+    this.scene.remove(this._beam, this._clump, this._trail, this._grip);
     this._trail.geometry.dispose(); this._trailMat.dispose();
+    this._grip.geometry.dispose(); this._gripMat.dispose();
+    this._bodyMat.dispose();
     for (const b of this._bursts) this.scene.remove(b.mesh);
     this._cone.geometry.dispose();
     this._maw.geometry.dispose();

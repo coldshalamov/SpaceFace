@@ -64,7 +64,10 @@ export function isFieldLoopKey(key) {
 export function collectFieldLoopSpecs(state, out = []) {
   out.length = 0;
   const active = state && state.fields && state.fields.active;
-  if (!Array.isArray(active) || !active.length) return out;
+  // The early-out covers the field-record scan only — the Gyre Snare spec below must
+  // still evaluate on an empty belt, or the beam hum is silent until another field
+  // loop happens to be running.
+  if (Array.isArray(active) && active.length) {
   const entities = state.entities;
   const player = playerPos(state);
   const px = player ? player.x : 0;
@@ -95,6 +98,7 @@ export function collectFieldLoopSpecs(state, out = []) {
     });
     if (out.length >= FIELD_LOOP_CAP) break;
   }
+  }
   // The Gyre Snare lash isn't a field record, but it owns the same sustained-voice
   // contract: a live beam gets one quiet glassy loop anchored on the maw, envelope
   // riding strain01 so the hum tightens as the clump nears the slip point.
@@ -119,6 +123,24 @@ export function collectFieldLoopSpecs(state, out = []) {
         position: pos,
       });
     }
+  }
+  // A launched ball keeps its own voice after the beam closes: a low rumble tracked to
+  // the flying entity, so the arc reads at range for its whole TTL and dies with the
+  // body (the grave burst covers the death moment itself).
+  if (gyre && gyre.launchedId != null && gyre.ballPos && Number.isFinite(gyre.ballPos.x)
+      && out.length < FIELD_LOOP_CAP) {
+    const mass = Number.isFinite(gyre.ballMass) ? gyre.ballMass : 0;
+    out.push({
+      key: FIELD_LOOP_PREFIX + 'gyreBall',
+      fieldId: -2,
+      kind: 'gyreBall',
+      recipeId: 'sfx_field_loop_gyre_ball',
+      gain: 0.24,
+      trackId: gyre.launchedId,
+      envelope: Math.min(1, 0.5 + mass / 2400),
+      phase: 'active',
+      position: gyre.ballPos,
+    });
   }
   return out;
 }

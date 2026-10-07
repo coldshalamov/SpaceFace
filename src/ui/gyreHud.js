@@ -88,7 +88,8 @@ export const gyreHud = {
           return { text: `GYRE — BOWL ${this._bowlMass}t`, cls: 'gyre-launched' };
         }
         const mass = Math.round(g.ballMass || 0);
-        return { text: mass > 0 ? `GYRE — BALL AWAY ${mass}t` : 'GYRE — BALL AWAY', cls: 'gyre-ball' };
+        const count = (g.absorbs || 0) + 1;
+        return { text: mass > 0 ? `GYRE — BALL AWAY ×${count} · ${mass}t` : 'GYRE — BALL AWAY', cls: 'gyre-ball' };
       }
       return { text: '', cls: '' };
     }
@@ -104,7 +105,7 @@ export const gyreHud = {
       if (s > 0.4) this._strainOn = true;
       else if (s < 0.25) this._strainOn = false;
       if (this._strainOn) {
-        return { text: `GYRE — STRAIN ${mass}t`, cls: 'gyre-strain' };
+        return { text: `GYRE — STRAIN ×${count} · ${mass}t`, cls: 'gyre-strain' };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
       const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;

@@ -78,7 +78,11 @@ export const GYRE_SNARE = Object.freeze({
   ballTtlS: 9,               // s — the bowling ball despawns after this flight window
   launchImpactScaleBase: 1.6,// damage scale floor on a launched ball
   launchImpactScalePerMass: 90, // +1 impactDamageScale per this many tons of clump mass
-  launchImpactScaleMax: 8,   // impulseKernel clamps physicsBody.impactDamageScale to [0,8]
+  launchImpactScaleMax: 8,   // impulseKernel clamps physicsBody.impactDamageScale to [0,8] —
+                           // saturates at ~576t while maxClumpMass is 2400t. Deliberate: the
+                           // multiplier caps so a ball can't out-punch its size class, but the
+                           // real-body mass keeps scaling, so a capped ball still bowls through
+                           // formations with ~4x the momentum of a mid one.
   launchProvenanceHoldS: 9.5, // kill-credit window covers the whole ballTtlS flight + a beat
   // ── Resource cost ─────────────────────────────────────────────────────────────────
   capActivateMin: 10,        // cap needed to open the beam

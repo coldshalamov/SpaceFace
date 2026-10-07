@@ -58,7 +58,10 @@ function entityMass(e) {
 }
 
 function entityRadius(e) {
-  const r = Number(e && (e.radius || (e.physicsBody && e.physicsBody.radius)));
+  // Prefer the collider radius: the absorb trigger rests just outside rapier contact,
+  // so keying on the visual would grind a fat-collider/thin-skin body against the
+  // clump's surface without ever crossing the absorb distance.
+  const r = Number(e && ((e.physicsBody && e.physicsBody.radius) || e.radius));
   return Number.isFinite(r) && r > 0 ? r : 4;
 }
 
@@ -271,11 +274,16 @@ export const gyreSnare = {
 
   // ── phases ─────────────────────────────────────────────────────────────────────
 
-  /** Beam pull: everything loose in the basin/wedge gets dragged toward the maw. */
-  _pullPass(dt, state, player, maw, nose) {
+  /** Beam pull: everything loose in the basin/wedge gets dragged toward the maw.
+   * `owned` (hold phase): { core, r } — the suck lane already owns the annulus within
+   * `r` of the clump; bodies inside it are skipped here so the two pull lanes never
+   * stack impulses on one entity past the authored pullMaxAccel ceiling. */
+  _pullPass(dt, state, player, maw, nose, owned) {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
     if (!queryRadius) return;
+    const ownedCore = owned && owned.core && owned.core.pos ? owned.core : null;
+    const ownedR2 = ownedCore && owned.r > 0 ? owned.r * owned.r : 0;
     const reach = D.mawDist + D.basinRadius + D.queryReachWu;
     const cands = queryRadius(player.pos, reach, this._scratch);
     const tan = Math.tan(D.coneHalfAngleRad);
@@ -319,6 +327,14 @@ export const gyreSnare = {
       }
       if (!inBasin && !inWedge) continue;
       if (PULL_SKIP_TYPES.has(e.type)) continue;
+      // While the clump is held, the suck lane owns the annulus around the core —
+      // without this skip a body inside both volumes eats basin+suck impulses same tick
+      // (each clamped per queue, summing past the authored pullMaxAccel ceiling).
+      if (ownedCore && e.id !== ownedCore.id) {
+        const sdx = e.pos.x - ownedCore.pos.x;
+        const sdz = e.pos.z - ownedCore.pos.z;
+        if (sdx * sdx + sdz * sdz <= ownedR2) continue;
+      }
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never pulled back
       // The held core is owned by the orbit spring — a basin grab on it fights the slot and
       // makes the ball chatter instead of floating loose.
@@ -393,7 +409,13 @@ export const gyreSnare = {
     rt.clumpMass = rt.coreBaseMass;
     rt.clumpRadius = entityRadius(best);
     rt.totalAbsorbed = 0; // new clump ledger — the HUD count restarts with the core
-    rt.orbitSeed = (best.id * 0.37) % (Math.PI * 2);
+    // Orbit seed must be finite for ANY id shape — spawnEntity passes spec.id through
+    // verbatim and world data carries string ids ('poi_pwreck'); `id * 0.37` on a string
+    // is NaN, which poisoned the orbit slot and silently zeroed every hold impulse.
+    const idStr = String(best.id);
+    let seedHash = 0;
+    for (let i = 0; i < idStr.length; i++) seedHash = (seedHash * 31 + idStr.charCodeAt(i)) | 0;
+    rt.orbitSeed = ((seedHash >>> 0) % 6283) * 0.001; // stable 0..2π per entity, any id type
     best.data = best.data || {};
     best.data.gyreCore = true;
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(best);
@@ -403,6 +425,7 @@ export const gyreSnare = {
         tick: state.tick,
       });
       this.bus.emit('audio:cue', { id: 'gyre_snare_snag' });
+      this.bus.emit('camera:shake', { amount: 0.12 });
     }
     return true;
   },
@@ -447,8 +470,14 @@ export const gyreSnare = {
     // The beam keeps sweeping the basin into the ball: bodies near the maw get a pull
     // retargeted onto the CORE (the clump is what "increases gravity" now).
     this._suckPass(dt, state, player, core, rt);
-    // Keep the wedge pull alive so the cone keeps feeding material into the ball.
-    this._pullPass(dt, state, player, maw, nose);
+    // Keep the wedge pull alive so the cone keeps feeding material into the ball —
+    // outside the suck's annulus, which the core's own lane already owns.
+    this._pullPass(dt, state, player, maw, nose, {
+      core,
+      // r:0 when the clump is capped — the suck lane is disabled then, so the basin
+      // lane owns the annulus again rather than leaving a dead zone around the ball.
+      r: rt.clumpMass < D.maxClumpMass ? rt.clumpRadius + D.suckBandWidth : 0,
+    });
   },
 
   /** Drag absorbables onto the clump and merge the ones that touch. */
@@ -606,7 +635,14 @@ export const gyreSnare = {
         speed: D.launchSpeed, dir: { x: dir.x, z: dir.z }, members: rt.members.length,
         tick: state.tick,
       });
-      this.bus.emit('audio:cue', { id: 'gyre_snare_launch' });
+      this.bus.emit('audio:cue', {
+        id: 'gyre_snare_launch',
+        position: { x: core.pos.x, z: core.pos.z },
+      });
+      // The throw is the weapon's biggest kinetic beat — a mass-scaled kick sells it in
+      // the body, not just the ears/hands. Player-scoped (own weapon at the nose): no
+      // position, full strength like player-hit/drill shakes.
+      this.bus.emit('camera:shake', { amount: 0.3 + 0.25 * Math.min(1, rt.clumpMass / D.maxClumpMass) });
     }
   },
 
@@ -634,7 +670,7 @@ export const gyreSnare = {
       coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, launchDir: { x: 1, z: 0 },
-      members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0,
+      members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
     });
     pub.phase = rt.phase;
     // Track a live bowling ball even in OFF: launchedId stays published until the entity is
@@ -654,6 +690,18 @@ export const gyreSnare = {
           && this.bus) {
           this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: pub.ballPos.x, z: pub.ballPos.z } });
         }
+        // Hand-back: a live adopted body keeps nothing of ours. Leaving gyreLaunched
+        // pins permanent pull/snag/suck immunity on it, and impactDamageScale (up to
+        // 8×) leaves a weapon-grade sleeper collider in the world — strip both.
+        if (ball && ball.alive !== false && ball.data && ball.data.gyreLaunched) {
+          delete ball.data.gyreLaunched;
+          if (ball.physicsBody) {
+            delete ball.physicsBody.impactDamageScale;
+            const rev = Number(ball.physicsBody.revision);
+            ball.physicsBody.revision = (Number.isFinite(rev) ? Math.max(0, Math.trunc(rev)) : 0) + 1;
+          }
+          if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(ball);
+        }
         rt.ballId = null;
         rt.ballMass = 0;
         rt.ballMembers = null;
@@ -661,8 +709,11 @@ export const gyreSnare = {
         rt.ballAbsorbs = 0;
       } else {
         pub.ballPos.x = ball.pos.x; pub.ballPos.z = ball.pos.z;
+        pub.ballTtl01 = ball.data.despawnAt != null && Number.isFinite(state.simTime)
+          ? Math.max(0, Math.min(1, (ball.data.despawnAt - state.simTime) / D.ballTtlS)) : 1;
       }
     }
+    if (rt.ballId == null) pub.ballTtl01 = 1;
     pub.launchedId = rt.ballId;
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {

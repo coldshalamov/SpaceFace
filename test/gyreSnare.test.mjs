@@ -579,10 +579,14 @@ test('maxClumpMass clamps the union and a capped clump stops eating AND pulling'
   // early-return + continue) — collision nudges make contact velocity unreadable,
   // so pin survival + the mass ceiling instead.
   const mergeDist = (rt.clumpRadius + 2) * T.absorbOverlap;
-  const contact = rock(t.sim, core.pos.x + mergeDist * 0.9, core.pos.z, 4, 2);
+  // -x side: a refused meal can ricochet off the capped ball's collider at speed —
+  // keep the deflection heading away from the band probe so the domino can't reach it.
+  const contact = rock(t.sim, core.pos.x - mergeDist * 0.9, core.pos.z, 4, 2);
   // And a follower outside the basin but inside the suck band as the core orbits near:
   // at cap the suck lane skips it, so basin can't reach it and nothing should move it.
-  const bandMeal = rock(t.sim, T.mawDist + T.basinRadius + 4, 0, 4, 2);
+  // z-offset off the nose line: a strained capped clump can strain-bowl dead ahead,
+  // and a probe on the launch corridor would get plowed by the thrown ball itself.
+  const bandMeal = rock(t.sim, T.mawDist + T.basinRadius + 4, 50, 4, 2);
   for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(contact.alive, true, 'a capped clump cannot absorb another meal');
   assert.equal(bandMeal.alive, true);
@@ -718,5 +722,67 @@ test('a projectile in the basin gets pulled toward the maw but can never core', 
   assert.equal(shot.alive, true, 'a shot can never be absorbed');
   assert.ok(shot.vel.x > -35 || Math.abs(speed(shot) - sx0) > 3,
     'the basin visibly tugs the shot (vx -40 -> ' + shot.vel.x.toFixed(1) + ')');
+  t.cleanup();
+});
+
+// -- overlap lanes: the suck annulus is single-owner while the clump is held --
+test('a body inside the suck annulus eats one pull lane, not two (basin+suck cap)', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'core held before placing the overlap probe');
+  // The probe sits inside the suck band of the held core AND inside the basin — the
+  // exact volume where _pullPass and _suckPass used to stack impulses on one body.
+  const probe = rock(t.sim, core.pos.x + 20, core.pos.z, 6, 4);
+  const calls = [];
+  const orig = t.sys._queueAccel;
+  t.sys._queueAccel = function (e, ax, az, m, dt, s) {
+    if (e === probe) calls.push({ ax, az });
+    return orig.call(this, e, ax, az, m, dt, s);
+  };
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.sys._queueAccel = orig;
+  assert.ok(probe.alive, 'probe survived the window (outside the absorb skin)');
+  assert.ok(calls.length > 0, 'a pull lane reached the probe');
+  assert.ok(calls.length <= 8, `expected <= 1 impulse per tick, got ${calls.length} across 8 ticks`);
+  t.cleanup();
+});
+
+// -- id-shape safety: a string-id entity can still be cored and held --
+test('a string-id body cores and holds — the orbit seed never goes NaN', async () => {
+  const t = await bootPhysics();
+  // spawnEntity normalizes spec.id to an int; world-adjacent loaders (or any future path
+  // that inserts via makeEntity directly) can still land a string id in the live map.
+  // Simulate that shape: numeric-id entity spawned properly, then re-keyed.
+  const e = rock(t.sim, T.mawDist, 0, 6, 4, 'wreck');
+  const numId = e.id;
+  e.id = 'wreck_site_cathedral';
+  t.state.entities.delete(numId);
+  t.state.entities.set(e.id, e);
+  hold(t);
+  for (let i = 0; i < 45; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, 'wreck_site_cathedral', 'string-id body cores the clump');
+  assert.ok(Number.isFinite(t.sys._rt.orbitSeed), 'orbit seed stays finite for any id shape');
+  const d = dist(e, t.player);
+  assert.ok(d < T.mawDist + 80, `the hold actually grips it — a NaN seed left it free-floating (d=${d.toFixed(1)})`);
+  t.cleanup();
+});
+
+// -- adoption hand-back: the retired ball keeps none of the weapon's marks --
+test('an adopted ball is stripped of gyreLaunched and its sleeper impactDamageScale', async () => {
+  const t = await bootPhysics();
+  const ball = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step();
+  assert.equal(t.sys._rt.ballId, ball.id);
+  assert.equal(ball.data.gyreLaunched, true);
+  assert.ok(ball.physicsBody.impactDamageScale != null, 'launch stamped the weapon scale');
+  delete ball.data.despawnAt; // adoption — the body now belongs to another system
+  t.sim.step();
+  assert.equal(t.sys._rt.ballId, null);
+  assert.equal(ball.data.gyreLaunched, undefined, 'adopted body is pull/snag-able again');
+  assert.equal(ball.physicsBody.impactDamageScale, undefined, 'no 8x sleeper collider left behind');
   t.cleanup();
 });
