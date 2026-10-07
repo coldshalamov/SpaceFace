@@ -236,6 +236,20 @@ export function installFleetLook(SF) {
     const built = await build(opts);
     if (!built.root.parent) holder.add(built.root);
     built.root.rotation.y = (opts.yaw || 0) * Math.PI / 180;
+    // A/B bench: scale one material factor across the shot (env / emissive / colour) and
+    // optionally hide the scene environment, so a blowout can be traced to one term.
+    if (opts.ab) {
+      const ab = opts.ab;
+      built.root.traverse((o) => {
+        for (const m of (Array.isArray(o.material) ? o.material : o.material ? [o.material] : [])) {
+          if (Number.isFinite(ab.env) && 'envMapIntensity' in m) m.envMapIntensity *= ab.env;
+          if (Number.isFinite(ab.emissive) && 'emissiveIntensity' in m) m.emissiveIntensity *= ab.emissive;
+          if (Number.isFinite(ab.color) && m.color) m.color.multiplyScalar(ab.color);
+        }
+      });
+      if (ab.noEnvironment) { opts._env = scene.environment; scene.environment = null; }
+      if (ab.noBackground) { opts._bg = scene.background; scene.background = null; }
+    }
     holder.updateMatrixWorld(true);
     let ok = true;
     if (opts.defId) ok = await waitForAuthored(renderer, scene, cam, built.root);
@@ -267,6 +281,8 @@ export function installFleetLook(SF) {
     const url = renderer.domElement.toDataURL('image/png');
     lastPose = pose;
     cam.position.copy(savedCamPos);
+    if (opts.ab?.noEnvironment) scene.environment = opts._env;
+    if (opts.ab?.noBackground) scene.background = opts._bg;
     return {
       url, ok, radius,
       size: box.getSize(new THREE.Vector3()).toArray(),
