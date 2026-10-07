@@ -372,6 +372,43 @@ test('PresentationJournal coalesces cross-tick transforms while the prior record
   assert.equal(journal.getWriteSequence(), 2);
 });
 
+test('PresentationJournal coalesced refresh walks only same-entity records', () => {
+  const journal = createPresentationJournal(16);
+  const shipA = entity(1, { x: 1 });
+  const shipB = entity(2, { x: 50 });
+  journal.recordSpawn(1, shipA);
+  journal.recordSpawn(1, shipB);
+
+  shipA.pos.x = 2;
+  const transformA = journal.recordTransform(2, shipA);
+  shipB.pos.x = 51;
+  const transformB = journal.recordTransform(2, shipB);
+  shipA.presentationVisualRevision = 3;
+  const visualA = journal.recordVisual(2, shipA);
+
+  // A's next transform coalesces; A's later retained visual must refresh to the
+  // same tick/revision/pose while B's record stays untouched.
+  shipA.pos.x = 9;
+  shipA.rot = 0.75;
+  assert.equal(journal.recordTransform(3, shipA), transformA);
+
+  const refreshedTransform = readRecord(journal, transformA);
+  const refreshedVisual = readRecord(journal, visualA);
+  const untouchedB = readRecord(journal, transformB);
+  assert.equal(refreshedTransform.tick, 3);
+  assert.equal(refreshedTransform.x, 9);
+  assert.equal(refreshedTransform.rot, 0.75);
+  assert.equal(refreshedVisual.tick, 3);
+  assert.equal(refreshedVisual.x, 9);
+  assert.equal(refreshedVisual.rot, 0.75);
+  assert.equal(refreshedVisual.revision, refreshedTransform.revision);
+  assert.equal(untouchedB.tick, 2);
+  assert.equal(untouchedB.x, 51);
+  // The refresh visited A's transform + visual only — B's interleaved record
+  // is no longer paid for on every coalesced write.
+  assert.equal(journal.getDiagnostics().refreshScanCount, 2);
+});
+
 test('PresentationJournal cross-tick coalesce microbench stays under append-heavy baseline', () => {
   const journal = createPresentationJournal(4096);
   const entities = [];
@@ -392,5 +429,8 @@ test('PresentationJournal cross-tick coalesce microbench stays under append-heav
   // One transform per entity retained (cross-tick coalesce), not ticks*entities.
   assert.equal(diag.transformCount, entities.length);
   assert.ok(diag.transformCoalesceCount >= entities.length * (ticks - 1));
+  // Each coalesced refresh walks the entity's own retained chain — one record
+  // here — not the interleaved window (previously ~entities² slot visits).
+  assert.equal(diag.refreshScanCount, diag.transformCoalesceCount + diag.visualCoalesceCount);
   assert.equal(journal.getPendingCount(), entities.length + entities.length); // spawns + transforms
 });

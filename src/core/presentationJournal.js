@@ -148,6 +148,9 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   let revisions = new Uint32Array(initialEntityCapacity + 1);
   let lastTransformSequence = new Float64Array(initialEntityCapacity + 1);
   let lastVisualSequence = new Float64Array(initialEntityCapacity + 1);
+  // Newest appended record per entity, any kind — the tail of the forward
+  // same-entity chain threaded through slot.nextEntitySeq at append time.
+  let lastAnySequence = new Float64Array(initialEntityCapacity + 1);
   let highestEntityId = 0;
 
   let read = 0;
@@ -193,6 +196,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   let visualCount = 0;
   let transformCoalesceCount = 0;
   let visualCoalesceCount = 0;
+  let refreshScanCount = 0;
   let discardCount = 0;
   let overflowCount = 0;
   let suppressedCount = 0;
@@ -221,16 +225,19 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     const nextRevisions = new Uint32Array(nextSize);
     const nextTransforms = new Float64Array(nextSize);
     const nextVisuals = new Float64Array(nextSize);
+    const nextAny = new Float64Array(nextSize);
     nextGenerations.set(generations);
     nextActive.set(activeGenerations);
     nextRevisions.set(revisions);
     nextTransforms.set(lastTransformSequence);
     nextVisuals.set(lastVisualSequence);
+    nextAny.set(lastAnySequence);
     generations = nextGenerations;
     activeGenerations = nextActive;
     revisions = nextRevisions;
     lastTransformSequence = nextTransforms;
     lastVisualSequence = nextVisuals;
+    lastAnySequence = nextAny;
   }
 
   function ensureEntityId(source) {
@@ -303,19 +310,24 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function refreshCoalescedRecords(startSequence, tick, entityId, generation, revision, source) {
-    const newestSequence = count > 0
-      ? records[(write - 1 + size) % size].sequence
-      : 0;
-    for (let sequence = startSequence; sequence <= newestSequence; sequence++) {
+    // Walk the same-entity chain append() threads through slot.nextEntitySeq
+    // instead of scanning every interleaved slot through the window's newest —
+    // the flat scan made dense mixed-kind ticks pay O(entities) slot visits per
+    // coalesced write (D130 journal-append leg). A hop that fails retention or
+    // identity is a stale/drained link: chain ends.
+    for (let sequence = startSequence; sequence !== 0;) {
       const slot = retainedSlot(sequence);
       if (!slot || slot.entityId !== entityId
-        || slot.generation !== generation) continue;
+        || slot.generation !== generation) return;
       // Coalesced writes (same-tick or cross-tick while retained) can precede another kind for
       // the same entity. Refresh later retained records too so sequence-order consumers never
       // observe a revision, tick, or scalar snapshot moving backwards.
       if (slot.tick < tick) slot.tick = tick;
       slot.revision = revision;
       fillPose(slot, source);
+      refreshScanCount++;
+      const next = slot.nextEntitySeq;
+      sequence = Number.isSafeInteger(next) && next > sequence ? next : 0;
     }
   }
 
@@ -329,6 +341,18 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     slot.generation = generation;
     slot.revision = revision;
     fillPose(slot, source);
+    // Thread the forward same-entity link: the entity's previous retained record
+    // (when still retained) points here, and this record is the new chain tail.
+    // Writer-private — the field stays off the exported record shape.
+    slot.nextEntitySeq = 0;
+    if (entityId > 0) {
+      const previous = lastAnySequence[entityId];
+      if (previous !== 0) {
+        const previousSlot = retainedSlot(previous);
+        if (previousSlot) previousSlot.nextEntitySeq = writeSequence;
+      }
+      lastAnySequence[entityId] = writeSequence;
+    }
     write = (write + 1) % size;
     count++;
     lastRecordTick = tick;
@@ -398,6 +422,9 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     activeGenerations[entityId] = 0;
     lastTransformSequence[entityId] = 0;
     lastVisualSequence[entityId] = 0;
+    // The destroy record closes the chain: the next generation must not link
+    // forward from a slot whose refresh predicate would reject it anyway.
+    lastAnySequence[entityId] = 0;
     destroyCount++;
     return sequence;
   }
@@ -699,6 +726,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     revisions = new Uint32Array(0);
     lastTransformSequence = new Float64Array(0);
     lastVisualSequence = new Float64Array(0);
+    lastAnySequence = new Float64Array(0);
     highestEntityId = 0;
     lastRecordTick = -1;
     rebuildRequired = false;
@@ -756,6 +784,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
         visualCount,
         transformCoalesceCount,
         visualCoalesceCount,
+        refreshScanCount,
         discardCount,
         overflowCount,
         suppressedCount,
