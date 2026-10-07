@@ -27,6 +27,14 @@ import { clearSwingTraceReleasePaint, paintSwingTraceRelease } from '../render/m
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
+// Tuning-lab seam (lab/tuning-phase1 only). Empty = byte-identical master behaviour.
+export const MASSLINE_THROW_LAB = {};
+export function setMasslineThrowLab(cfg = {}) {
+  for (const k of Object.keys(MASSLINE_THROW_LAB)) delete MASSLINE_THROW_LAB[k];
+  Object.assign(MASSLINE_THROW_LAB, cfg || {});
+  return MASSLINE_THROW_LAB;
+}
+const labSnapWindowMs = () => (MASSLINE_THROW_LAB.snapWindowMs != null ? MASSLINE_THROW_LAB.snapWindowMs : SNAP_WINDOW_MS);
 const CURSOR_AIM_GRACE = 48;        // wu of surface miss that still soft-snaps the throw aim
 const SLING_RELEASE_SPEED_FRACTION = 0; // compatibility export: no free release energy
 const SLING_MIN_EXIT_SPEED = 25;    // "genuinely moving" bar (mirrors SNAP_CATCH_MIN_SPEED)
@@ -262,9 +270,14 @@ export const masslineThrow = {
     }
     if (!pressed) return;
     if (onNow) { this._executeThrow(state, player, payload, aim, solution, 'snap'); return; }
-    if (window.reliable && window.enterS > 0 && window.enterS <= SNAP_WINDOW_MS / 1000) {
+    if (window.reliable && window.enterS > 0 && window.enterS <= labSnapWindowMs() / 1000) {
+      // Lab seam deadlineFromEnter: the queue must outlive the window it accepted the press for
+      // (master: floor(90 ms) = 5 ticks while a window entering at 5.4 ticks is accepted).
+      const labDeadline = MASSLINE_THROW_LAB.deadlineFromEnter
+        ? state.tick + Math.ceil(window.enterS * 60 - 1e-6) + (MASSLINE_THROW_LAB.deadlineSlackTicks != null ? MASSLINE_THROW_LAB.deadlineSlackTicks : 1)
+        : state.tick + Math.floor(labSnapWindowMs() / 1000 * 60);
       this._pendingSnap = { identity, attachmentId: tether.attachmentId,
-        deadlineTick: state.tick + Math.floor(SNAP_WINDOW_MS / 1000 * 60) };
+        deadlineTick: labDeadline };
       runtime.armed = true;
       return;
     }

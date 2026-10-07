@@ -12,6 +12,7 @@ const BENCHES = {
   tether: () => import('./benches/tetherSpin.mjs'),
   aim: () => import('./benches/autoAim.mjs'),
   npc: () => import('./benches/npcEvasion.mjs'),
+  sling: () => import('./benches/slingThrow.mjs'),
 };
 
 function parseArgs(argv) {
