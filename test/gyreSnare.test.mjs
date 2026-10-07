@@ -1020,3 +1020,20 @@ test('a body carrying a finite ttl is freed on snag — the lash holds mass in s
   release(t);
   t.cleanup();
 });
+
+// -- coverage: a press during the launch burst re-opens the beam after OFF lands --
+test('a mid-launch key press is a fresh edge — the beam re-opens, not eaten', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → LAUNCH begins
+  assert.equal(t.sys._rt.phase, 'launching');
+  t.state.input.actions.gyreSnare = true; // re-press inside the ~5-tick burst
+  t.sim.step(); // edge fires while LAUNCH — must not beam mid-burst, but not be eaten
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'beaming', 'the held key re-opened the beam after launch settled');
+  release(t);
+  t.cleanup();
+});

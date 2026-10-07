@@ -105,6 +105,11 @@ export function collectFieldLoopSpecs(state, out = []) {
   const gyre = state && state.gyreSnare;
   if (gyre && gyre.phase && gyre.phase !== 'off' && out.length < FIELD_LOOP_CAP) {
     const strain = Number.isFinite(gyre.strain01) ? gyre.strain01 : 0;
+    // Katamari escalation arc: the loop's envelope (which also drives its pitch — a
+    // winding field spins up) rides clump mass, so the hum swells and sharpens as
+    // the ball grows instead of mass staying ear-invisible until the FULL chime.
+    const massFrac = Number.isFinite(gyre.clumpMass) && Number.isFinite(gyre.maxClumpMass) && gyre.maxClumpMass > 0
+      ? Math.min(1, gyre.clumpMass / gyre.maxClumpMass) : 0;
     const pos = gyre.maw && Number.isFinite(gyre.maw.x) ? gyre.maw : null;
     if (pos) {
       out.push({
@@ -118,7 +123,7 @@ export function collectFieldLoopSpecs(state, out = []) {
         // so a 90° turn would leave the hum in the wrong ear. A nose-mounted lash hums
         // centered on the hull — honest, and it dies with the player like any track.
         trackId: state.playerId,
-        envelope: Math.min(1, 0.35 + 0.65 * strain),
+        envelope: Math.min(1, 0.35 + 0.65 * strain + 0.22 * massFrac),
         phase: 'active',
         position: pos,
       });

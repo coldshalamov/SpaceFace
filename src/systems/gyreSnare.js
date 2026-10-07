@@ -722,6 +722,10 @@ export const gyreSnare = {
   _finishLaunch(state) {
     const rt = this._rt;
     rt.phase = PHASE.OFF;
+    // A press during the ~5-tick launch burst is a real edge, not held-through-launch
+    // (launch only starts on release): if the key is held when OFF lands, clear the
+    // latch so next tick's rising edge re-opens the beam instead of eating the press.
+    if (this._held(state)) rt.wasHeld = false;
     rt.coreId = null;
     rt.clumpMass = 0;
     rt.clumpRadius = 0;

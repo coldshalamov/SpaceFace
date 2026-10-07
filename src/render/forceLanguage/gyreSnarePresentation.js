@@ -34,6 +34,7 @@ const CONE_VERT = /* glsl */`
 uniform float uTime;
 uniform float uPulse;
 uniform float uCalm;      // 0 = reduced motion: silhouette stays, ripple displacement off
+uniform float uStrain;    // 0..1 — clump strain: adds a high-frequency shiver to the glass
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -42,7 +43,10 @@ void main() {
   vec3 p = position;
   float ang = atan(p.z, p.x);
   float ripple = sin(uv.y * 26.0 - uTime * 9.0 + ang * 4.0)
-               + 0.55 * sin(uv.y * 47.0 - uTime * 15.0 - ang * 2.0);
+               + 0.55 * sin(uv.y * 47.0 - uTime * 15.0 - ang * 2.0)
+               // strain tremble: a high-frequency shiver layered on the metronome
+               // waves — under load the GLASS itself reads stressed, not just brighter.
+               + uStrain * 0.6 * sin(uv.y * 140.0 - uTime * 60.0 + ang * 6.0);
   float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * uCalm;
   vec2 radial = p.xz;
   float rl = max(length(radial), 1e-4);
@@ -186,6 +190,7 @@ export class GyreSnarePresentation {
     this._beamWasOn = false;
     this._closing = false;   // close-ramp: non-launch ends ease the glass out over ~250 ms
     this._closeT = 0;
+    this._closeK = 0;        // last k*k of the ramp — the clump group shrinks on it
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
     this._moteKick = 0;      // absorb gulp: the mote spiral's own clock surges for a beat
     this._moteT = 0;         // spiral uTime accumulator — decoupled so a gulp doesn't rewind motes
@@ -203,7 +208,7 @@ export class GyreSnarePresentation {
     this._coneMat = new THREE.ShaderMaterial({
       vertexShader: CONE_VERT, fragmentShader: CONE_FRAG,
       uniforms: {
-        uTime: { value: 0 }, uPulse: { value: 0 }, uCalm: { value: 1 },
+        uTime: { value: 0 }, uPulse: { value: 0 }, uCalm: { value: 1 }, uStrain: { value: 0 },
         uColGlass: { value: new THREE.Color(glass) },
         uColHot: { value: new THREE.Color(hot) },
         uAlpha: { value: 0.55 },
@@ -406,8 +411,10 @@ export class GyreSnarePresentation {
   }
 
   _fireBurst(x, z, r, calm = 1) {
+    // Steal the MOST-decayed slot, not slot 0 — a full pool mid-expansion would
+    // otherwise always cut the same ring.
     let slot = this._bursts[0];
-    for (const b of this._bursts) if (b.t >= 1) { slot = b; break; }
+    for (const b of this._bursts) if (b.t > slot.t) slot = b;
     slot.t = 0;
     slot.r = r;
     // The two brightest flashes in the vocabulary respect reduced-flash like
@@ -488,13 +495,14 @@ export class GyreSnarePresentation {
       this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm * wakeEase;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
       // for the cone to occlude background glow and read as a surface, not a hologram.
-      this._bodyMat.opacity = 0.07 * flashCalm * wakeEase * (holding ? 1.2 : 0.8);
+      this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * (holding ? 1.2 : 0.8);
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
       // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
       this._coneMat.uniforms.uPulse.value = Math.max(
         this._coneMat.uniforms.uPulse.value * Math.exp(-dt * 6.3),
         strain * 0.7,
       );
+      this._coneMat.uniforms.uStrain.value = strain * calm;
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
@@ -510,12 +518,11 @@ export class GyreSnarePresentation {
       const net = Math.min(3, finite(mirror.basinCount, 0));
       this._discMat.uniforms.uTime.value = this.time;
       this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12) + this._discKick * 0.5) * flashCalm;
-      this._spiral.visible = calm !== 0;
-      // The maw "gulps": each absorb surges the motes' private clock so they visibly
-      // accelerate into the mouth for a beat instead of holding their metronome rate.
-      // Feed surge: material already inside the cone stirs the funnel before the
-      // gulp lands — the spiral accelerates with the net count, not just on contact.
-      this._moteT += dt * (1 + this._moteKick * 1.8 + net * 0.45);
+      // Reduced-motion keeps a STATIC mote scatter instead of hiding the funnel
+      // outright — the frozen motes still read "matter is being pulled" where
+      // visible=false left the cone with no suction signifier at all.
+      this._spiral.visible = true;
+      if (calm !== 0) this._moteT += dt * (1 + this._moteKick * 1.8 + net * 0.45);
       this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = len;
       this._spiralMat.uniforms.uRad.value = endR;
@@ -527,21 +534,23 @@ export class GyreSnarePresentation {
         this._closeT += dt;
         const k = Math.max(0, 1 - this._closeT / 0.25);
         const kk = k * k;
-        this._moteT += dt; // motes keep spiraling while they die
+        if (calm !== 0) this._moteT += dt; // motes keep spiraling while they die (frozen under reduced-motion, same as live)
         this._spiralMat.uniforms.uTime.value = this._moteT;
         this._coneMat.uniforms.uTime.value = this.time;
         this._coneMat.uniforms.uAlpha.value = 0.42 * kk * flashCalm;
         this._coneMat.uniforms.uPulse.value *= Math.exp(-dt * 9);
+        this._coneMat.uniforms.uStrain.value *= Math.exp(-dt * 9); // tremble dies with the ramp
         // flashCalm rides every close-ramp alpha too — a reduced-flash user shouldn't
         // get a brighter 250 ms tail than those elements ever show while live.
-        this._bodyMat.opacity = 0.07 * kk * flashCalm;
+        this._bodyMat.opacity = 0.1 * kk * flashCalm;
         this._mawMat.opacity = 0.55 * kk * flashCalm;
         this._discMat.uniforms.uAlpha.value = 0.55 * kk * flashCalm;
         this._closeK = kk; // the clump block below shrinks the freed ball on the same ramp
-        this._spiral.visible = calm !== 0;
+        this._spiral.visible = true; // static scatter under reduced-motion too
         if (k <= 0) { this._closing = false; this._beam.visible = false; this._spiral.visible = false; }
       } else if (this._beam.visible) {
         this._beam.visible = false;
+        this._spiral.visible = false; // spiral now stays visible through closing — hide it on the rare non-ramp off
         this._closeK = 0;
       }
     }
@@ -589,9 +598,9 @@ export class GyreSnarePresentation {
       const p = this.toLocal(cx, cz, this._nose);
       this._clump.visible = true;
       this._clump.position.set(p.x, 0.6, p.z);
-      this._clump.scale.setScalar(1); // clear any close-ramp shrink before the squash-pop below
       // Feed squash-pop: each absorb compresses the clump ~12% for ~120 ms — "mass
-      // landed" reads on the payload, not just the mouth flash.
+      // landed" reads on the payload, not just the mouth flash. (The assignment also
+      // clears any cancelled close-ramp shrink — a fresh cx means the ramp died.)
       this._clump.scale.setScalar(1 - 0.12 * this._clumpKick);
       this._clumpSpin += dt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
