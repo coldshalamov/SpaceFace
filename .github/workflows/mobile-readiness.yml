@@ -40,6 +40,7 @@ jobs:
             assets/ui
             assets/background
             assets/ships/release
+            assets/ships/motions
             assets/portraits
             assets/audio
             assets/fx/thruster
