@@ -184,6 +184,8 @@ export class GyreSnarePresentation {
     this._wakeRamp = 1;      // 0→1 over ~150 ms on the OFF→beam edge — the glass "opens" with the shimmer
     this._beamWasOn = false;
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
+    this._moteKick = 0;      // absorb gulp: the mote spiral's own clock surges for a beat
+    this._moteT = 0;         // spiral uTime accumulator — decoupled so a gulp doesn't rewind motes
 
     // The authored palette in src/data/gyreSnare.js is the single source of truth —
     // hex literals here drifted from it once already (maw disc vs palette.maw).
@@ -277,6 +279,19 @@ export class GyreSnarePresentation {
       this._bursts.push({ mesh: m, t: 1, r: 1 });
     }
 
+    // ── bowling-ball streak: a fading additive ribbon trailing the thrown clump so its
+    // flight reads at range (the whoosh dies ~2 s in; the grave burst only fires at 9 s).
+    const trailGeo = new THREE.PlaneGeometry(1, 1);
+    trailGeo.rotateX(-Math.PI / 2);   // bake flat-on-plane so rotation.y aims cleanly
+    this._trailMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(glass), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    this._trail = new THREE.Mesh(trailGeo, this._trailMat);
+    this._trail.visible = false;
+    this._trail.frustumCulled = false;
+    scene.add(this._trail);
+
     this._nose = { x: 0, z: 0 };
     this._mawPt = { x: 0, z: 0 };
   }
@@ -318,6 +333,11 @@ export class GyreSnarePresentation {
       ((i * 0.61803398875) % 1 - 0.5) * r * 1.1,
       finite(member.nz, 0) * spread,
     );
+    // Loose-rubble drift: each lump bobs in place around its spawn seat so the clump
+    // reads as levitating debris in zero-G, not a rigid flywheel.
+    (slot.basePos || (slot.basePos = new THREE.Vector3())).copy(m.position);
+    slot.bobPhase = i * 2.39;
+    slot.bobRate = 1.15 + ((i * 0.61803398875) % 1) * 0.9;
     m.rotation.set(i * 1.7, i * 2.3, i * 0.9);
     m.visible = true;
   }
@@ -403,16 +423,20 @@ export class GyreSnarePresentation {
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
-      if (absorbsNow > this._absorbSeen) { this._discKick = 1; this._clumpKick = 1; }
+      if (absorbsNow > this._absorbSeen) { this._discKick = 1; this._clumpKick = 1; this._moteKick = 1; }
       if (absorbsNow < this._absorbSeen) this._absorbSeen = 0; // new clump ledger
       this._absorbSeen = absorbsNow;
       this._discKick *= Math.exp(-dt * 4.2);
       this._clumpKick *= Math.exp(-dt * 6);
+      this._moteKick *= Math.exp(-dt * 5);
       this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * flashCalm);
       this._discMat.uniforms.uTime.value = this.time;
       this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55) + this._discKick * 0.5) * flashCalm;
       this._spiral.visible = calm !== 0;
-      this._spiralMat.uniforms.uTime.value = this.time;
+      // The maw "gulps": each absorb surges the motes' private clock so they visibly
+      // accelerate into the mouth for a beat instead of holding their metronome rate.
+      this._moteT += dt * (1 + this._moteKick * 1.8);
+      this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = len;
       this._spiralMat.uniforms.uRad.value = endR;
     } else {
@@ -435,6 +459,7 @@ export class GyreSnarePresentation {
         this._fireBurst(this._lastBall.x, this._lastBall.z, Math.max(6, this._lastBall.r * 1.6));
       }
       this._lastBall = null;
+      this._trail.visible = false;
       if (phase === 'off' && this._ballId == null) this._clearLumps();
     } else {
       const p = this.toLocal(cx, cz, this._nose);
@@ -451,6 +476,18 @@ export class GyreSnarePresentation {
       if (mirror.launchedId != null) {
         const lb = this._lastBall || (this._lastBall = { x: 0, z: 0, r: 0 });
         lb.x = cx; lb.z = cz; lb.r = this._clumpRadius;
+        // Flight ribbon: stretched flat quad hanging off the ball's tail along launchDir.
+        const dir = mirror.launchDir;
+        const dl = Math.hypot(finite(dir && dir.x, 1), finite(dir && dir.z, 0)) || 1;
+        const dx = finite(dir && dir.x, 1) / dl, dz = finite(dir && dir.z, 0) / dl;
+        const trailLen = Math.max(30, this._clumpRadius * 3.2);
+        this._trail.position.set(p.x - dx * trailLen * 0.5, 0.55, p.z - dz * trailLen * 0.5);
+        this._trail.rotation.y = Math.atan2(-dz, dx);
+        this._trail.scale.set(trailLen, 1, Math.max(3, this._clumpRadius * 1.15));
+        this._trailMat.opacity = 0.3 * flashCalm;
+        this._trail.visible = true;
+      } else if (this._trail.visible) {
+        this._trail.visible = false;
       }
 
       const members = mirror.members;
@@ -465,6 +502,14 @@ export class GyreSnarePresentation {
         if (!l.used) continue;
         const g = Math.min(1, Math.max(0, (this.time - l.spawnT) / 0.15));
         l.mesh.scale.setScalar(l.baseScale * (0.2 + 0.8 * g));
+        // Zero-G rubble: a quiet per-lump bob (±15% of its own size, plus a hair of
+        // lateral sway) keeps each chunk reading as debris in loose formation rather
+        // than part of a rigid wheel. Frozen under reduced-motion like the spiral.
+        if (l.basePos) {
+          const bob = Math.sin(this.time * l.bobRate + l.bobPhase) * l.baseScale * 0.15 * calm;
+          const sway = Math.sin(this.time * l.bobRate * 0.63 + l.bobPhase * 2.1) * l.baseScale * 0.06 * calm;
+          l.mesh.position.set(l.basePos.x + sway, l.basePos.y + bob, l.basePos.z - sway * 0.7);
+        }
       }
     }
     if (mirror.launchedId == null) this._ballId = null;
@@ -497,7 +542,8 @@ export class GyreSnarePresentation {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    this.scene.remove(this._beam, this._clump);
+    this.scene.remove(this._beam, this._clump, this._trail);
+    this._trail.geometry.dispose(); this._trailMat.dispose();
     for (const b of this._bursts) this.scene.remove(b.mesh);
     this._cone.geometry.dispose();
     this._maw.geometry.dispose();

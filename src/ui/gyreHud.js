@@ -51,6 +51,8 @@ export const gyreHud = {
     this._visible = false;
     this._laneSeat = '';
     this._strainOn = false; // hysteresis: enter at 0.40, exit at 0.25 — no boundary flapping
+    this._bowlUntil = -1;   // simTime deadline — the BOWL read holds ~0.4 s past the 5-tick burst
+    this._bowlMass = 0;
   },
 
   destroy() {
@@ -67,7 +69,7 @@ export const gyreHud = {
     if (!dom) return;
     if (state.mode !== 'flight' || (state.ui && state.ui.docked)) { this._hide(dom); return; }
     const g = state.gyreSnare || null;
-    const { text, cls } = this._resolve(g);
+    const { text, cls } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
     if (!text) { this._hide(dom); return; }
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const seat = claimBottomLaneSeat('gyre', LANE_PRIORITY.active, FIELD_LANE_BASE, now);
@@ -76,17 +78,24 @@ export const gyreHud = {
     this._applyLaneSeat(dom.pill, seat.bottom);
   },
 
-  _resolve(g) {
+  _resolve(g, now) {
     if (!g || !g.phase || g.phase === 'off') {
       // A thrown clump still on the map deserves a quiet "it's yours" dot for its short flight.
       if (g && g.launchedId != null) {
+        // The launch beat lands first: BOWL survives ~0.4 s past the burst ticks before
+        // the pill flips to BALL AWAY.
+        if (now < this._bowlUntil) {
+          return { text: `GYRE — BOWL ${this._bowlMass}t`, cls: 'gyre-launched' };
+        }
         const mass = Math.round(g.ballMass || 0);
         return { text: mass > 0 ? `GYRE — BALL AWAY ${mass}t` : 'GYRE — BALL AWAY', cls: 'gyre-ball' };
       }
       return { text: '', cls: '' };
     }
     if (g.phase === 'launching') {
-      return { text: `GYRE — BOWL ${Math.round(g.clumpMass || 0)}t`, cls: 'gyre-launched' };
+      this._bowlUntil = now + 0.4;
+      this._bowlMass = Math.round(g.clumpMass || 0);
+      return { text: `GYRE — BOWL ${this._bowlMass}t`, cls: 'gyre-launched' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;

@@ -54,7 +54,7 @@ export const GYRE_SNARE = Object.freeze({
   orbitRate: 0.85,           // rad/s — the loose zero-G revolve
   orbitWobbleRad: 0.22,      // rad — deterministic wander layered on the orbit angle
   orbitWobbleRate: 0.37,     // rad/s
-  orbitLiftRad: 6,           // wu — extra radial breathing (clump bobs toward/away from maw)
+  orbitLiftRad: 3.5,         // wu — extra radial breathing (clump bobs toward/away from maw); kept under half of orbitRadiusMin so a small core's bob can't swallow its revolve
   orbitLiftRate: 0.53,       // rad/s
   holdSpringK: 26,           // 1/s² — spring toward the orbit slot
   holdDamping: 7.5,          // 1/s — damping vs the ship's frame velocity (tracks, doesn't lag)
@@ -73,7 +73,7 @@ export const GYRE_SNARE = Object.freeze({
   maxClumpMass: 2400,        // t — mass cap (a hard ceiling so a ball can't out-scale a capital)
   maxAbsorbRecords: 28,      // member ledger bound for the VFX lumps
   // ── Launch ────────────────────────────────────────────────────────────────────────
-  launchSpeed: 360,          // wu/s — release Δv along the nose (mass-independent)
+  launchSpeed: 520,          // wu/s — release Δv along the nose (mass-independent); the bowl visibly outruns a boosting player (~1.9x boost)
   launchTicks: 5,            // ticks the launch impulse is spread over (slingshot feel)
   ballTtlS: 9,               // s — the bowling ball despawns after this flight window
   launchImpactScaleBase: 1.6,// damage scale floor on a launched ball
