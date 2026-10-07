@@ -8,6 +8,7 @@
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
+import { peekPhysicsControl } from '../core/physicsAuthority.js';
 import {
   modelTruthBoltRadius,
   modelTruthFlashOrigin,
@@ -1368,7 +1369,9 @@ export const weapons = {
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
       let fixedAim = mountGate ? mountGate.angle : (aimAngle != null ? aimAngle : e.rot);
       if (!mountGate && forceTarget && forceTarget.pos) {
-        fixedAim = this._leadAngle(e, forceTarget, mountProjSpeed);
+        fixedAim = WEAPONS_AIM_LAB.muzzle && isPlayer
+          ? this._arcadeMountAngle(e, w, forceTarget, mountProjSpeed)
+          : this._leadAngle(e, forceTarget, mountProjSpeed);
       }
       // G trades manual barrel alignment for independent dodging. Use the same physical shot
       // model, but no cone clamp or random aim error on this explicit hostile solution.
@@ -1376,7 +1379,7 @@ export const weapons = {
         ? (mountGate ? fixedAim : this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed))
         // Pilot means keyboard flight plus independent mouse fire. Keep the physical muzzle,
         // projectile travel and spread; only the obsolete nose-cone restriction is removed.
-        : pilotAim ? fixedAim + (def.spreadDeg ? this._spread(def.spreadDeg) : 0)
+        : pilotAim ? fixedAim + (def.spreadDeg && !(WEAPONS_AIM_LAB.noSpread && isPlayer) ? this._spread(def.spreadDeg) : 0)
           : this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
     }
 
@@ -1948,6 +1951,9 @@ export const weapons = {
   // Delegates to the module-level `solveLeadAngle` so the exact same solver feeds the player HUD lead
   // pip (via src/ai/gunnery.js) — one solver, never two (a second would drift from the sim and lie).
   _leadAngle(shooter, tgt, projSpeed) {
+    if (WEAPONS_AIM_LAB.law === 'accel' && shooter && (shooter.isPlayer || shooter.id === this.state?.playerId)) {
+      return solveAccelLeadAngle(shooter, tgt, projSpeed);
+    }
     return solveLeadAngle(shooter, tgt, projSpeed);
   },
 
@@ -2057,6 +2063,57 @@ function liveVectorMineList(state) {
 // the returned angle points at the target's WORLD future position because spawned bullets travel on
 // that world-space line (aimTrueProjectileVelocity). Returning the relative-frame angle here made a
 // strafing player's rounds lead in the opposite direction and miss moving targets by whole hulls.
+/**
+ * Tuning-lab seam (design/program/lab/TUNING_LAB.md). Defaults leave the shipped aim untouched.
+ *   law: 'accel'  player lead uses the target's commanded acceleration this tick (oracle: the
+ *                 force its own flight step just wrote), integrated with its speed cap
+ *   muzzle        non-G player fixed mounts solve from the real muzzle (G already does)
+ *   noSpread      player rounds carry no random spread (isolates aim error from dispersion)
+ */
+export const WEAPONS_AIM_LAB = { law: null, muzzle: false, noSpread: false };
+const WEAPONS_AIM_LAB_DEFAULTS = Object.freeze({ ...WEAPONS_AIM_LAB });
+export function setWeaponsAimLab(overrides = {}) {
+  Object.assign(WEAPONS_AIM_LAB, WEAPONS_AIM_LAB_DEFAULTS, overrides || {});
+  return WEAPONS_AIM_LAB;
+}
+
+/** Straight-shot lead on a target predicted from its commanded acceleration (aim-true launch). */
+export function solveAccelLeadAngle(shooter, tgt, projSpeed) {
+  const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
+  const sv = (shooter && shooter.vel) || { x: 0, z: 0 };
+  const control = peekPhysicsControl(tgt);
+  const mass = Math.max(1e-6, Number(tgt && tgt.physicsBody && tgt.physicsBody.mass) || Number(tgt && tgt.mass) || 1);
+  const ax = control && control.force ? (Number(control.force.x) || 0) / mass : 0;
+  const az = control && control.force ? (Number(control.force.z) || 0) / mass : 0;
+  const vmax = control && Number.isFinite(control.maxSpeed) && control.maxSpeed > 0 ? control.maxSpeed : Infinity;
+  const ps = Math.max(1, Number.isFinite(projSpeed) ? projSpeed : 1);
+  if (!Number.isFinite(projSpeed)) return Math.atan2(tgt.pos.z - sp.z, tgt.pos.x - sp.x);
+  const predict = (t, out) => {
+    // Integrate at the sim step so the speed cap bends the path the way the solver would.
+    const h = 1 / 60;
+    let x = tgt.pos.x, z = tgt.pos.z, vx = tgt.vel.x, vz = tgt.vel.z;
+    let left = t;
+    while (left > 1e-9) {
+      const dt = Math.min(h, left);
+      vx += ax * dt; vz += az * dt;
+      const s = Math.hypot(vx, vz);
+      if (s > vmax && s > Math.hypot(tgt.vel.x, tgt.vel.z)) { const k = Math.max(vmax, Math.hypot(tgt.vel.x, tgt.vel.z)) / s; vx *= k; vz *= k; }
+      x += vx * dt; z += vz * dt; left -= dt;
+    }
+    out.x = x; out.z = z;
+    return out;
+  };
+  const p = { x: 0, z: 0 };
+  let t = Math.hypot(tgt.pos.x - sp.x, tgt.pos.z - sp.z) / ps;
+  for (let i = 0; i < 6; i++) {
+    predict(t, p);
+    const rx = p.x - sp.x - sv.x * t, rz = p.z - sp.z - sv.z * t;
+    t = Math.hypot(rx, rz) / ps;
+  }
+  predict(t, p);
+  return Math.atan2(p.z - sp.z, p.x - sp.x);
+}
+
 export function solveLeadAngle(shooter, tgt, projSpeed) {
   const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
   const sv = (shooter && shooter.vel) || { x: 0, z: 0 };

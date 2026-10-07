@@ -1,0 +1,703 @@
+{
+ "schema": "spaceface.tuningLab.result.v1",
+ "bench": "aim",
+ "bundle": "focused",
+ "seeds": [
+  1,
+  2,
+  3
+ ],
+ "scenarios": [
+  "wasp-cruise-160",
+  "wasp-boost-160",
+  "mule-flee-boost",
+  "wasp-joust-railgun-400",
+  "dart-hold-200",
+  "wasp-cruise-autocannon",
+  "wasp-hold-autocannon-230",
+  "wasp-boostweave-160"
+ ],
+ "variants": [
+  "oracle-accel",
+  "no-spread"
+ ],
+ "wallMs": 39377,
+ "node": "v20.19.2",
+ "generatedAt": "2026-10-07T01:41:58.451Z",
+ "summary": [
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-cruise-160",
+   "seeds": 3,
+   "fired": 33,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 4.0684,
+   "tgtSpd": 40.0751,
+   "tgtAccP95": 361.9635,
+   "rangeP50": 312.1487,
+   "dodgeable": 74.2857,
+   "dodgeWuP50": 18.4085,
+   "cvMissP95": 21.574,
+   "cvHit": 73.254
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-boost-160",
+   "seeds": 3,
+   "fired": 95,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 4.6746,
+   "tgtSpd": 147.2139,
+   "tgtAccP95": 348.234,
+   "rangeP50": 266.2219,
+   "dodgeable": 10.3175,
+   "dodgeWuP50": 2.0399,
+   "cvMissP95": 48.2102,
+   "cvHit": 89.2064
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "mule-flee-boost",
+   "seeds": 3,
+   "fired": 130,
+   "hit": 87.6923,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 12.3077,
+   "missP50": 22.3476,
+   "aimErrP50": 1.1725,
+   "tgtSpd": 18.48,
+   "tgtAccP95": 184.4797,
+   "rangeP50": 187.0136,
+   "dodgeable": 23.088,
+   "dodgeWuP50": 2.4603,
+   "cvMissP95": 9.7713,
+   "cvHit": 100
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-joust-railgun-400",
+   "seeds": 3,
+   "fired": 87,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 2.1928,
+   "tgtSpd": 20.607,
+   "tgtAccP95": 270.6077,
+   "rangeP50": 348.0738,
+   "dodgeable": 13.0622,
+   "dodgeWuP50": 3.0311,
+   "cvMissP95": 22.4725,
+   "cvHit": 91.4903
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "dart-hold-200",
+   "seeds": 3,
+   "fired": 137,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 2.5977,
+   "tgtSpd": 22.9589,
+   "tgtAccP95": 240.3905,
+   "rangeP50": 117.8247,
+   "dodgeable": 32.4328,
+   "dodgeWuP50": 9.5489,
+   "cvMissP95": 10.8953,
+   "cvHit": 96.3936
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-cruise-autocannon",
+   "seeds": 3,
+   "fired": 13,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 6.1675,
+   "tgtSpd": 38.2711,
+   "tgtAccP95": 339.8115,
+   "rangeP50": 320.4526,
+   "dodgeable": 78.5714,
+   "dodgeWuP50": 50.3213,
+   "cvMissP95": 32.2323,
+   "cvHit": 61.9048
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-hold-autocannon-230",
+   "seeds": 3,
+   "fired": 57,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 3.8711,
+   "tgtSpd": 32.4124,
+   "tgtAccP95": 332.5417,
+   "rangeP50": 169.1561,
+   "dodgeable": 35.3905,
+   "dodgeWuP50": 8.402,
+   "cvMissP95": 13.2874,
+   "cvHit": 92.4603
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-boostweave-160",
+   "seeds": 3,
+   "fired": 34,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 2.5179,
+   "tgtSpd": 16.8338,
+   "tgtAccP95": 332.6549,
+   "rangeP50": 363.7157,
+   "dodgeable": 11.9048,
+   "dodgeWuP50": 6.4614,
+   "cvMissP95": 38.8475,
+   "cvHit": 95.2381
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-cruise-160",
+   "seeds": 3,
+   "fired": 40,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 3.3693,
+   "tgtSpd": 30.4242,
+   "tgtAccP95": 338.2919,
+   "rangeP50": 290.1363,
+   "dodgeable": 77.0833,
+   "dodgeWuP50": 17.9323,
+   "cvMissP95": 10.7529,
+   "cvHit": 95.1389
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-boost-160",
+   "seeds": 3,
+   "fired": 86,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 6.2699,
+   "tgtSpd": 156.4386,
+   "tgtAccP95": 406.7687,
+   "rangeP50": 335.8747,
+   "dodgeable": 8.9583,
+   "dodgeWuP50": 2.1478,
+   "cvMissP95": 58.9372,
+   "cvHit": 85
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "mule-flee-boost",
+   "seeds": 3,
+   "fired": 133,
+   "hit": 87.9699,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 12.0301,
+   "missP50": 68.9863,
+   "aimErrP50": 0.6403,
+   "tgtSpd": 21.4564,
+   "tgtAccP95": 189.8052,
+   "rangeP50": 187.3076,
+   "dodgeable": 22.5758,
+   "dodgeWuP50": 2.4738,
+   "cvMissP95": 10.027,
+   "cvHit": 99.2424
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-joust-railgun-400",
+   "seeds": 3,
+   "fired": 82,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 0.7602,
+   "tgtSpd": 26.8775,
+   "tgtAccP95": 283.0603,
+   "rangeP50": 361.1111,
+   "dodgeable": 16.8395,
+   "dodgeWuP50": 3.1519,
+   "cvMissP95": 28.8018,
+   "cvHit": 93.9506
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "dart-hold-200",
+   "seeds": 3,
+   "fired": 124,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 2.9155,
+   "tgtSpd": 31.078,
+   "tgtAccP95": 257.9983,
+   "rangeP50": 129.3404,
+   "dodgeable": 36.1158,
+   "dodgeWuP50": 8.3019,
+   "cvMissP95": 10.3242,
+   "cvHit": 100
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-cruise-autocannon",
+   "seeds": 3,
+   "fired": 21,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 3.6822,
+   "tgtSpd": 35.6959,
+   "tgtAccP95": 347.2681,
+   "rangeP50": 304.6955,
+   "dodgeable": 84.8677,
+   "dodgeWuP50": 18.5976,
+   "cvMissP95": 23.7651,
+   "cvHit": 93.3333
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-hold-autocannon-230",
+   "seeds": 3,
+   "fired": 92,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 2.0121,
+   "tgtSpd": 29.1002,
+   "tgtAccP95": 305.7668,
+   "rangeP50": 122.9424,
+   "dodgeable": 8.7008,
+   "dodgeWuP50": 6.9462,
+   "cvMissP95": 10.4191,
+   "cvHit": 100
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-boostweave-160",
+   "seeds": 3,
+   "fired": 41,
+   "hit": 100,
+   "maneuver": 0,
+   "aimOff": 0,
+   "lead": 0,
+   "occl": 0,
+   "oor": 0,
+   "graze": 0,
+   "contact": 0,
+   "pd": 0,
+   "missP50": 0,
+   "aimErrP50": 2.766,
+   "tgtSpd": 15.1026,
+   "tgtAccP95": 315.2159,
+   "rangeP50": 361.0665,
+   "dodgeable": 14.1457,
+   "dodgeWuP50": 6.5201,
+   "cvMissP95": 9.0691,
+   "cvHit": 100
+  }
+ ],
+ "runDigests": [
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-cruise-160",
+   "seed": 1,
+   "digest": "86cd5bf8145676eb"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-cruise-160",
+   "seed": 2,
+   "digest": "b43c03706281f99d"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-cruise-160",
+   "seed": 3,
+   "digest": "9915ef33f1f2c04a"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-boost-160",
+   "seed": 1,
+   "digest": "d40fa5e854e9cab4"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-boost-160",
+   "seed": 2,
+   "digest": "78375f2b11e5e562"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-boost-160",
+   "seed": 3,
+   "digest": "a87777cf28fc6a75"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "mule-flee-boost",
+   "seed": 1,
+   "digest": "aed5ee6943058959"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "mule-flee-boost",
+   "seed": 2,
+   "digest": "6f3db23fc90f4d20"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "mule-flee-boost",
+   "seed": 3,
+   "digest": "84dc029f053b8062"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-joust-railgun-400",
+   "seed": 1,
+   "digest": "12a2169e6b4b98ba"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-joust-railgun-400",
+   "seed": 2,
+   "digest": "8aa3420abb5c6a6c"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-joust-railgun-400",
+   "seed": 3,
+   "digest": "aa029887c2c55f23"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "dart-hold-200",
+   "seed": 1,
+   "digest": "f2719ef04b6fd64e"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "dart-hold-200",
+   "seed": 2,
+   "digest": "6098f3ef46eea94e"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "dart-hold-200",
+   "seed": 3,
+   "digest": "901061a9ae53d9af"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-cruise-autocannon",
+   "seed": 1,
+   "digest": "fce07d152cf86708"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-cruise-autocannon",
+   "seed": 2,
+   "digest": "ffc373b9bf0a0f81"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-cruise-autocannon",
+   "seed": 3,
+   "digest": "84b87c0184cb62c3"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-hold-autocannon-230",
+   "seed": 1,
+   "digest": "52249b5e083f5178"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-hold-autocannon-230",
+   "seed": 2,
+   "digest": "b59f12b5315ac2b1"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-hold-autocannon-230",
+   "seed": 3,
+   "digest": "449f4e31d8331883"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-boostweave-160",
+   "seed": 1,
+   "digest": "477d9b562209b33e"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-boostweave-160",
+   "seed": 2,
+   "digest": "84c61adc1b7726f0"
+  },
+  {
+   "variant": "oracle-accel",
+   "scenario": "wasp-boostweave-160",
+   "seed": 3,
+   "digest": "eb19460a257e73df"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-cruise-160",
+   "seed": 1,
+   "digest": "3960a75cb89501c2"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-cruise-160",
+   "seed": 2,
+   "digest": "970201b66837ad86"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-cruise-160",
+   "seed": 3,
+   "digest": "0ac6c5c0a39f1ed3"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-boost-160",
+   "seed": 1,
+   "digest": "734ddbcbbadb8f50"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-boost-160",
+   "seed": 2,
+   "digest": "5993d5b49ddd06cf"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-boost-160",
+   "seed": 3,
+   "digest": "9e26fd6f5dafa10f"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "mule-flee-boost",
+   "seed": 1,
+   "digest": "66fb02b519918adc"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "mule-flee-boost",
+   "seed": 2,
+   "digest": "7726ab2a0138c452"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "mule-flee-boost",
+   "seed": 3,
+   "digest": "4d6b45675c1cfd55"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-joust-railgun-400",
+   "seed": 1,
+   "digest": "966029ced2ada7c0"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-joust-railgun-400",
+   "seed": 2,
+   "digest": "d0c348b942cb3c05"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-joust-railgun-400",
+   "seed": 3,
+   "digest": "4ad6c62872b4433b"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "dart-hold-200",
+   "seed": 1,
+   "digest": "d5029fc74578f144"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "dart-hold-200",
+   "seed": 2,
+   "digest": "fd740c0b1a719c90"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "dart-hold-200",
+   "seed": 3,
+   "digest": "53118bfbad6c7032"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-cruise-autocannon",
+   "seed": 1,
+   "digest": "073a0bd634a63e29"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-cruise-autocannon",
+   "seed": 2,
+   "digest": "376f739edb92584d"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-cruise-autocannon",
+   "seed": 3,
+   "digest": "4f23f111503341d6"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-hold-autocannon-230",
+   "seed": 1,
+   "digest": "5d0a81c3f45cb3d1"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-hold-autocannon-230",
+   "seed": 2,
+   "digest": "64950df1ea0416bc"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-hold-autocannon-230",
+   "seed": 3,
+   "digest": "23927f1ea9623332"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-boostweave-160",
+   "seed": 1,
+   "digest": "438ccdbd3ef5f880"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-boostweave-160",
+   "seed": 2,
+   "digest": "9ff25f99dfe7adb8"
+  },
+  {
+   "variant": "no-spread",
+   "scenario": "wasp-boostweave-160",
+   "seed": 3,
+   "digest": "8c73c51d1044afb3"
+  }
+ ]
+}

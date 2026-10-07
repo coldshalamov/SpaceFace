@@ -28,6 +28,33 @@ export const ORBIT_ASSIST_STRENGTH = Object.freeze({
 export const ORBIT_SWING_TRACK_MARGIN = 0.9;
 
 /**
+ * Tuning-lab seam (design/program/lab/TUNING_LAB.md). Every field defaults to "off/unchanged", so
+ * with no override the assist is byte-identical to orbitAssist.tuning.v1. Only the headless lab
+ * (scripts/lab/) writes it; nothing in the shipped game does.
+ *   margin          swing/yaw track margin (default ORBIT_SWING_TRACK_MARGIN)
+ *   alignTimeS      heading-capture time constant (default tangentAlignTimeS)
+ *   comFrame        measure trackable swing in the pair's centre-of-mass frame (the governor caps
+ *                   WORLD speed; on a light anchor the line turns faster than world speed implies)
+ *   forwardCommit   never take the "shortest" capture backwards against a fast orbit in the held
+ *                   direction (a nose >180 deg behind wraps to "ahead" and turns the wrong way)
+ *   thrustGate      scale forward throttle by max(0, cos(headingError)) so a lagging nose never
+ *                   brakes the orbit it is chasing
+ *   lineLockYaw     let the hull's yaw cap rise to the line's rate while the assist owns yaw
+ *   tangentDash     a dash on a live, assisted line goes along the held tangent, not the nose
+ *   dashSpeedCap    'track': a line dash may only lift the swing to the trackable rate;
+ *                   'boost': only to the boosted speed cap (null = uncapped, shipped)
+ */
+export const ORBIT_ASSIST_LAB = {
+  margin: null, alignTimeS: null, comFrame: false, forwardCommit: false, thrustGate: false,
+  lineLockYaw: false, lineLockMargin: 1.1, tangentDash: false, dashSpeedCap: null,
+};
+const ORBIT_ASSIST_LAB_DEFAULTS = Object.freeze({ ...ORBIT_ASSIST_LAB });
+export function setOrbitAssistLab(overrides = {}) {
+  Object.assign(ORBIT_ASSIST_LAB, ORBIT_ASSIST_LAB_DEFAULTS, overrides || {});
+  return ORBIT_ASSIST_LAB;
+}
+
+/**
  * Throttle scale that keeps a tethered orbit trackable. Pure: 1 whenever the swing the pilot
  * demands (or already flies) fits inside yaw authority at this radius, falling toward 0 as it
  * outruns the nose. The yaw helper itself stays yaw-only; the input owner multiplies forward
@@ -35,9 +62,15 @@ export const ORBIT_SWING_TRACK_MARGIN = 0.9;
  */
 export function orbitSwingThrottleScale(telemetry, commandedSpeed) {
   const t = telemetry || {};
-  const trackable = positive(t.maxYawRate, 0) * positive(t.radius, 0) * ORBIT_SWING_TRACK_MARGIN;
+  // lineLockYaw (lab): the nose can follow any swing, so there is nothing to hold back.
+  if (ORBIT_ASSIST_LAB.lineLockYaw) return 1;
+  const margin = ORBIT_ASSIST_LAB.margin != null ? ORBIT_ASSIST_LAB.margin : ORBIT_SWING_TRACK_MARGIN;
+  // comFrame (lab): the governor caps the hull's WORLD speed, which on a movable anchor is only
+  // armShare of the line-relative swing. Compare like with like.
+  const share = ORBIT_ASSIST_LAB.comFrame ? clamp(positive(t.armShare, 1), 0.05, 1) : 1;
+  const trackable = positive(t.maxYawRate, 0) * positive(t.radius, 0) * margin * share;
   const demand = Math.max(
-    Math.abs(finite(t.tangentialSpeed)),
+    Math.abs(finite(t.tangentialSpeed)) * share,
     Math.max(0, finite(commandedSpeed)),
   );
   if (!(trackable > 1e-6) || !(demand > trackable)) return 1;
@@ -95,17 +128,42 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   // tangent, then it falls to zero and leaves the exact inverse-radius feed-forward term. A
   // separate heading-correction cap starved that swing and made the orbit read under-speed.
   const desiredHeading = Math.atan2(tangentZ, tangentX);
-  const headingError = wrapAngle(desiredHeading - finite(host.rot));
-  const alignmentYawRate = headingError
-    / (ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS / strengthScale);
-  const maxYawRate = positive(options.profile && options.profile.maxYawRate, 1);
+  const lab = ORBIT_ASSIST_LAB;
+  let headingError = wrapAngle(desiredHeading - finite(host.rot));
+  const hullMaxYawRate = positive(options.profile && options.profile.maxYawRate, 1);
+  let committed = false;
+  if (lab.forwardCommit && Math.sign(orbitalYawRate) === selectedDirection
+    && Math.abs(orbitalYawRate) > 0.25 * hullMaxYawRate
+    && headingError * selectedDirection < -Math.PI / 2) {
+    // A nose that has fallen more than half a turn behind a fast orbit reads as "ahead" after the
+    // wrap; keep chasing in the orbit direction instead of reversing through the long way round.
+    headingError += 2 * Math.PI * selectedDirection;
+    committed = true;
+  }
+  const alignTimeS = lab.alignTimeS != null ? lab.alignTimeS : ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS;
+  const alignmentYawRate = headingError / (alignTimeS / strengthScale);
+  let maxYawRate = hullMaxYawRate;
+  let maxYawRateOverride = null;
+  if (lab.lineLockYaw && Math.abs(orbitalYawRate) * lab.lineLockMargin > hullMaxYawRate) {
+    maxYawRateOverride = Math.abs(orbitalYawRate) * lab.lineLockMargin;
+    maxYawRate = maxYawRateOverride;
+  }
   const rawDesiredYawRate = orbitalYawRate + alignmentYawRate;
   const desiredYawRate = clamp(rawDesiredYawRate, -maxYawRate, maxYawRate);
   const turn = desiredYawRate / maxYawRate;
+  const anchorMass = positive(anchor.mass, positive(anchor.physicsBody && anchor.physicsBody.mass, 0));
+  const hostMass = positive(host.mass, 1);
+  const armShare = anchorMass > 0 ? anchorMass / (anchorMass + hostMass) : 1;
+  const outInput = { ...input, turn };
+  let thrustGate = 1;
+  if (lab.thrustGate && finite(outInput.throttle) > 0) {
+    thrustGate = Math.max(0, Math.cos(headingError));
+    outInput.throttle = finite(outInput.throttle) * thrustGate;
+  }
 
   return {
     active: true,
-    input: { ...input, turn },
+    input: outInput,
     telemetry: {
       tuning: ORBIT_ASSIST_TUNING_V1.id,
       strength,
@@ -127,6 +185,10 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       desiredYawRate,
       turnIntent: turn,
       saturated: desiredYawRate !== rawDesiredYawRate,
+      armShare,
+      headingCommitted: committed,
+      thrustGate,
+      maxYawRateOverride,
       reason: String(options.tether.phase || 'slack') === 'slack' ? 'line-slack' : 'engaged',
     },
   };

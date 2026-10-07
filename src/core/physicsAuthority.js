@@ -64,6 +64,11 @@ export function writePhysicsControl(entity, control = {}) {
 }
 
 /** Queue a world-space linear impulse. The physics owner applies it on its next tick. */
+/** Read-only view of the last control written for `entity` this tick (tuning-lab oracle aim). */
+export function peekPhysicsControl(entity) {
+  return (entity && CONTROL_RECORDS.get(entity)) || null;
+}
+
 export function queuePhysicsImpulse(entity, impulse, evidence = null) {
   if (!entity || typeof entity !== 'object') return false;
   const command = commandFor(entity);

@@ -25,7 +25,7 @@ import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propuls
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry, computeSweptHullAdvisory, SWEPT_HULL_DEFAULTS } from '../core/flight/flightTelemetry.js';
-import { orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+import { ORBIT_ASSIST_LAB, orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // FB-001: the authored pursuit-slot chase assist. Pure module; flightV3 is its only caller and
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
@@ -358,6 +358,13 @@ export const flightV3 = {
       });
       if (orbitAssist.active) {
         input = orbitAssist.input;
+        // Tuning-lab seam (ORBIT_ASSIST_LAB.lineLockYaw, off in the shipped game): the line lends
+        // the hull the yaw rate it needs to keep the nose on the tangent.
+        if (orbitAssist.telemetry.maxYawRateOverride) {
+          const ratio = orbitAssist.telemetry.maxYawRateOverride / positive(profile.maxYawRate, 1);
+          profile = { ...profile, maxYawRate: orbitAssist.telemetry.maxYawRateOverride,
+            yawAccel: positive(profile.yawAccel, 8) * ratio, yawBrake: positive(profile.yawBrake, positive(profile.yawAccel, 8) * 1.4) * ratio };
+        }
         // Swing/yaw coordination: the yaw helper is exact only while the nose can turn as fast
         // as the line swings. Past that (short rope, boost, fast hull) an unthrottled orbit pegs
         // yaw at the envelope while the nose lags 100°+ behind the tangent — uncontrolled
@@ -638,7 +645,32 @@ export const flightV3 = {
     // cooldown: the verb changes where the dash goes, not whether it fires.
     const derived = e.data && e.data.derived;
     const tether = state && state.player && state.player.tether;
-    if (derived && derived.swingDrive && tether && tether.active && tether.targetId != null) {
+    const assistFrame = e._flightFrame && e._flightFrame.orbitAssist;
+    if (ORBIT_ASSIST_LAB.tangentDash && !(derived && derived.swingDrive) && tether && tether.active
+      && assistFrame && assistFrame.active && assistFrame.selectedDirection) {
+      // Tuning-lab seam (off in the shipped game): an assisted orbit's dash goes along the held
+      // tangent, so the press adds swing instead of a radial yank off a lagging nose.
+      const anchor = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(tether.targetId) : null;
+      const rx = anchor && anchor.pos ? e.pos.x - anchor.pos.x : 0;
+      const rz = anchor && anchor.pos ? e.pos.z - anchor.pos.z : 0;
+      const rLen = Math.hypot(rx, rz);
+      if (rLen > 1) {
+        const sel = Math.sign(assistFrame.selectedDirection);
+        dirX = (-rz / rLen) * sel;
+        dirZ = (rx / rLen) * sel;
+        if (ORBIT_ASSIST_LAB.dashSpeedCap) {
+          const vt = finite(e.vel && e.vel.x) * dirX + finite(e.vel && e.vel.z) * dirZ;
+          const profile = resolvePropulsionProfile(e, state);
+          const cap = ORBIT_ASSIST_LAB.dashSpeedCap === 'track'
+            ? positive(assistFrame.maxYawRate, 0) * rLen
+              * (ORBIT_ASSIST_LAB.margin != null ? ORBIT_ASSIST_LAB.margin : 0.9)
+              * clamp(positive(assistFrame.armShare, 1), 0.05, 1)
+            : positive(profile.combatSpeed, 150) * positive(profile.boostSpeedMult, 1.55);
+          imp = Math.min(imp, Math.max(0, cap - vt));
+        }
+      }
+    } else if (derived && derived.swingDrive && tether && tether.active && tether.targetId != null) {
       const anchor = state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(tether.targetId) : null;
       const rx = anchor && anchor.pos ? e.pos.x - anchor.pos.x : 0;
