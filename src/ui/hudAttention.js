@@ -352,7 +352,7 @@ export function resolveFirstUseEntityId(state, payload = {}) {
 export function receiptLaneRect(layout) {
   if (!layout || !layout.action || !layout.viewport) return null;
   const action = layout.action;
-  const width = Math.min(action.width, 360);
+  const width = Math.min(action.width, 320);
   const height = 44;
   // The command-deck readout band (.sf-cluster: bottom:92px + ~55px tall) sits directly above the
   // action row. A lane anchored to action.y lands inside that band, which is where receipts and

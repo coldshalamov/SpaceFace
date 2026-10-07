@@ -11,14 +11,15 @@ import {
 
 const STYLE_ID = 'sf-orrery-flightpreview-style';
 const CSS = `
-.orr-flightpreview { position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden; font-family:var(--dp-face-read, "Instrument Sans"); }
+.orr-flightpreview { position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden; font-family:var(--dp-face-read, "Instrument Sans"); --orr-cluster-scale:.85; }
 .orr-flightpreview__place { position:absolute; left:40px; top:34px; }
 .orr-flightpreview__tape { position:absolute; left:50%; top:26px; transform:translateX(-50%); }
 .orr-flightpreview__toasts { position:absolute; right:32px; top:168px; }
 .orr-flightpreview__cluster { position:absolute; left:18px; bottom:24px; }
 .orr-flightpreview__place { left:40px; }
-@media (max-width:1700px) { .orr-flightpreview { --orr-cluster-scale:.82; } .orr-radar, .orr-tape { zoom:.86; } }
+@media (max-width:1700px) { .orr-flightpreview { --orr-cluster-scale:.7; } .orr-radar, .orr-tape { zoom:.86; } }
 @media (max-width:1400px) { .orr-flightpreview__cluster { left:8px; } }
+@media (max-width:1300px) { .orr-flightpreview { --orr-cluster-scale:.6; } }
 .orr-flightpreview__radar { position:absolute; right:30px; bottom:18px; }
 /* a low vignette only where instruments sit, so they read over bright nebula without any box */
 .orr-flightpreview::before { content:""; position:absolute; inset:0; pointer-events:none;

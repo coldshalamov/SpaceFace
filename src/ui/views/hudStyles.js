@@ -39,7 +39,7 @@ export function injectHudCss() {
      stragglers) sits ABOVE the schematic + vitals (.sf-bars). Compositor-cheap: no shadow/transition. */
   .sf-leftstack { position:absolute; left:calc(22px + var(--sf-safe-inset-x, 0px)); bottom:22px; display:flex; flex-direction:column;
     gap:12px; align-items:flex-start; max-width:340px; }
-  .sf-leftcontext { display:flex; flex-direction:column; gap:8px; align-items:flex-start; max-width:300px; }
+  .sf-leftcontext { display:flex; flex-direction:column; gap:8px; align-items:flex-start; max-width:272px; }
   .sf-leftcontext:empty { display:none; }   /* collapses when every contextual readout is hidden */
   .sf-bars { position:relative; display:flex; flex-direction:column;
     gap:10px; align-items:flex-start; }
@@ -173,9 +173,9 @@ export function injectHudCss() {
   .sf-rightdock { position:absolute; right:calc(22px + var(--sf-safe-inset-x, 0px)); bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;
     contain:layout paint style; }
   .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; contain:layout paint style; }
-  .sf-radar { position:relative; width:var(--sf-radar-size, 220px); height:var(--sf-radar-size, 220px); border-radius:50%; overflow:hidden; cursor:pointer;
+  .sf-radar { position:relative; width:var(--sf-radar-size, 188px); height:var(--sf-radar-size, 188px); border-radius:50%; overflow:hidden; cursor:pointer;
     contain:layout paint style; }
-  .sf-radar--expanded { width:340px !important; height:340px !important; }
+  .sf-radar--expanded { width:290px !important; height:290px !important; }
   /* Canvas is centered so compact/expanded size changes stay anchored on the player marker. */
   .sf-radar canvas { display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
   .sf-radar-objective-key { width:100%; text-align:center; color:var(--hud-amber);
@@ -216,7 +216,7 @@ export function injectHudCss() {
   .sf-target__weak { margin-top:4px; font-size:var(--k-fs-data); color:var(--hud-amber); }
 
   /* ===== objective tracker — chromeless lines, relocated into the bottom-left column (§3) ===== */
-  .sf-objectives { position:relative; display:flex; flex-direction:column; gap:6px; align-items:flex-start; max-width:300px;
+  .sf-objectives { position:relative; display:flex; flex-direction:column; gap:6px; align-items:flex-start; max-width:272px;
     contain:layout paint style; }
   .sf-obj { display:flex; align-items:center; gap:7px; font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-paper); padding:2px 6px; }
   .sf-obj__dot { width:6px; height:6px; transform:rotate(45deg); background:var(--hud-cyan); flex:0 0 auto; }
@@ -257,7 +257,7 @@ export function injectHudCss() {
 
   /* ===== receipts (HUD layer; not website cards) ===== */
   #hud #toasts, #toasts.sf-receipts { z-index:11; pointer-events:none; }
-  .sf-toast { display:flex; align-items:center; gap:6px; width:100%; max-width:360px; padding:2px 0;
+  .sf-toast { display:flex; align-items:center; gap:6px; width:100%; max-width:320px; padding:2px 0;
     background:none; border:none; color:var(--hud-paper, var(--ink)); font-size:var(--k-fs-data);
     pointer-events:auto; cursor:pointer; transform:none; opacity:0; transition:opacity .16s ease; }
   body.ui-modal-open .sf-toast { pointer-events:none; cursor:default; }
@@ -283,7 +283,7 @@ export function injectHudCss() {
   /* The pinned stack sits above the transient receipts in the same lane. Thin lines, no box:
      a pin is a reading, not a card. Kind word is the small label, label is the entity, detail is
      the live number. */
-  .sf-watchlist { width:100%; max-width:360px; margin-bottom:4px; }
+  .sf-watchlist { width:100%; max-width:320px; margin-bottom:4px; }
   .sf-watchline { display:flex; align-items:baseline; gap:8px; padding:1px 0;
     color:var(--hud-paper, var(--ink)); font-size:var(--k-fs-data); pointer-events:none; }
   .sf-watchline__kind { flex:none; width:52px; font-family:var(--hud-data);
@@ -768,7 +768,7 @@ export function injectHudCss() {
   }
 
   /* ===== HUD mission tracker — chromeless, with an edge marker; relocated into the bottom-left column ===== */
-  .sf-mission-tracker { position:relative; width:320px; max-width:calc(100vw - 32px);
+  .sf-mission-tracker { position:relative; width:290px; max-width:calc(100vw - 32px);
     padding:10px 12px; border-left:1px solid var(--k-hair); pointer-events:none; contain:layout paint style; }
   .sf-mt-title { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-amber);
     margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1102,8 +1102,8 @@ export function injectHudCss() {
      decides the column, and --sf-radar-size is pinned to radar.js COMPACT_SIZE by
      test/j07-hud-contract.test.mjs so the canvas can never drift from its dial again. */
   #hud {
-    --sf-dock-w:220px;
-    --sf-radar-size:220px;
+    --sf-dock-w:188px;
+    --sf-radar-size:188px;
     --sf-brk-col:var(--hud-cyan);
   }
   .sf-rightdock { right:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:12px; width:var(--sf-dock-w); align-items:stretch; gap:9px; }
@@ -1278,8 +1278,8 @@ export function injectHudCss() {
        The canvas is always drawn at COMPACT_SIZE, so any breakpoint that narrows the dial MUST
        scale the canvas with it or the drawing is clipped by the dial's overflow:hidden. Pinned by
        test/j07-hud-contract.test.mjs, which caught exactly that when this rule was first written. */
-    #hud { --sf-dock-w:200px; --sf-radar-size:200px; }
-    .sf-radar canvas { width:200px !important; height:200px !important; }
+    #hud { --sf-dock-w:172px; --sf-radar-size:172px; }
+    .sf-radar canvas { width:172px !important; height:172px !important; }
     .sf-rightdock { right:calc(10px + var(--sf-safe-inset-x, 0px)); bottom:72px; }
     .sf-overview-row__name { max-width:none; }
     .sf-command-deck { bottom:8px; width:min(360px, calc(100vw - 24px)); min-width:0; }
@@ -1806,23 +1806,23 @@ export function injectHudCss() {
 
   .sf-rightdock { contain:layout style; }
   .sf-radar-wrap.sf-kit-radar {
-    --sf-kit-radar-rim:28px;
+    --sf-kit-radar-rim:24px;
     position:relative;
-    width:calc(var(--sf-radar-size, 220px) + var(--sf-kit-radar-rim) * 2);
-    min-height:calc(var(--sf-radar-size, 220px) + var(--sf-kit-radar-rim) * 2);
+    width:calc(var(--sf-radar-size, 188px) + var(--sf-kit-radar-rim) * 2);
+    min-height:calc(var(--sf-radar-size, 188px) + var(--sf-kit-radar-rim) * 2);
     padding:0; contain:layout style; background:none;
   }
   .sf-kit-radar__bezel,
   .sf-kit-radar__face,
   .sf-kit-radar__n { position:absolute; pointer-events:none; }
   .sf-kit-radar__bezel {
-    left:50%; top:0; width:100%; height:calc(var(--sf-radar-size, 220px) + var(--sf-kit-radar-rim) * 2);
+    left:50%; top:0; width:100%; height:calc(var(--sf-radar-size, 188px) + var(--sf-kit-radar-rim) * 2);
     transform:translateX(-50%);
     background:none center / contain no-repeat;
     z-index:0;
   }
   .sf-kit-radar__face {
-    left:50%; top:var(--sf-kit-radar-rim); width:var(--sf-radar-size, 220px); height:var(--sf-radar-size, 220px);
+    left:50%; top:var(--sf-kit-radar-rim); width:var(--sf-radar-size, 188px); height:var(--sf-radar-size, 188px);
     transform:translateX(-50%); border-radius:50%;
     background:none center / contain no-repeat;
     z-index:1;
@@ -1844,11 +1844,11 @@ export function injectHudCss() {
     z-index:3;
   }
   .sf-radar-wrap.sf-kit-radar.sf-radar-wrap--expanded {
-    --sf-kit-radar-rim:40px;
-    width:420px; min-height:420px;
+    --sf-kit-radar-rim:34px;
+    width:358px; min-height:358px;
   }
-  .sf-radar-wrap.sf-kit-radar.sf-radar-wrap--expanded .sf-kit-radar__bezel { height:420px; }
-  .sf-radar-wrap.sf-kit-radar.sf-radar-wrap--expanded .sf-kit-radar__face { width:340px; height:340px; }
+  .sf-radar-wrap.sf-kit-radar.sf-radar-wrap--expanded .sf-kit-radar__bezel { height:358px; }
+  .sf-radar-wrap.sf-kit-radar.sf-radar-wrap--expanded .sf-kit-radar__face { width:290px; height:290px; }
 
   @media (max-width:760px), (max-height:620px) {
     .sf-bars { grid-template-rows:auto 64px repeat(3, 28px); }
@@ -1966,27 +1966,27 @@ export function injectHudCss() {
   .sf-bars .sf-bar.sf-kit-bar, .sf-kit-bar { min-width:0; }
   .sf-kit-seg { flex:1 1 0; min-width:0; max-width:12px; background-size:contain; }
 
-  /* The kit radar is a 220 px face inside a 28 px machined rim, so its box is 276 px — but the dock
-     column it lives in was still the pre-kit 220 px, and the wrap is left-aligned in it. Measured on
+  /* The kit radar is a 188 px face inside a 24 px machined rim, so its box is 236 px — but the dock
+     column it lives in was still the pre-kit 188 px, and the wrap is left-aligned in it. Measured on
      the default route: the bezel's right edge landed at 1964 in a 1920 viewport, so the dial was cut
      off by the screen edge at every default size. The column owns the width (J07), so the column is
      what moves; --sf-radar-size stays pinned to radar.js COMPACT_SIZE. */
-  #hud { --sf-dock-w:276px; }
+  #hud { --sf-dock-w:236px; }
   /* Small viewports. The instrument keeps its whole box — bezel, window, needle pivot — and only
      the factor moves, so nothing can come apart. The reserve the left column has to clear comes
      down with it. These replace the retired 1180/760 breakpoints that resized the bezel alone. */
   @media (max-width:900px), (max-height:650px) {
-    #hud { --sf-dock-w:256px; }
+    #hud { --sf-dock-w:220px; }
     .sf-kit-gauge { --sf-gauge-compact:0.72; }
     .sf-command-deck { max-width:calc(240px * var(--k-s, 1)); }
     .sf-leftstack { bottom:min(calc(18px + 290px * var(--k-s, 1)), 34vh); }
   }
   @media (max-width:760px), (max-height:620px) {
-    /* --sf-radar-size is still 200 here: the (max-width:900px) block above declares it and wins on
-       source order, so the wrap is 200 + 2x18. Measured at 800x600 before this line, the dial hung
+    /* --sf-radar-size is still 172 here: the (max-width:900px) block above declares it and wins on
+       source order, so the wrap is 172 + 2x16. Measured at 800x600 before this line, the dial hung
        58px past the right edge. */
-    .sf-radar-wrap.sf-kit-radar { --sf-kit-radar-rim:18px; }
-    #hud { --sf-dock-w:236px; }
+    .sf-radar-wrap.sf-kit-radar { --sf-kit-radar-rim:16px; }
+    #hud { --sf-dock-w:204px; }
     .sf-kit-gauge { --sf-gauge-compact:0.6; }
     .sf-command-deck { max-width:calc(210px * var(--k-s, 1)); }
     .sf-leftstack { bottom:min(calc(20px + 245px * var(--k-s, 1)), 36vh); }
@@ -2640,7 +2640,7 @@ export function injectHudCss() {
   /* the comms strip: ONE glass panel, top-left; it disappears when every section is hidden */
   #hud > .sf-leftcontext {
     position:absolute; left:calc(14px * var(--k-s, 1) + var(--sf-safe-inset-x, 0px)); top:calc(18px * var(--k-s, 1));
-    width:calc(292px * clamp(.9, var(--k-s, 1), 1.15)); max-width:calc(100vw - 28px);
+    width:calc(262px * clamp(.9, var(--k-s, 1), 1.15)); max-width:calc(100vw - 28px);
     display:flex; flex-direction:column; gap:0; box-sizing:border-box; pointer-events:auto;
     box-shadow:var(--dp-glass-depth);
     padding:4px 0;
@@ -2652,7 +2652,7 @@ export function injectHudCss() {
     background:none !important; background-image:none !important; box-shadow:none !important;
     border:0 !important; border-radius:0 !important; margin:0 !important; max-width:none !important;
   }
-  #hud > .sf-leftcontext > * { padding:8px 12px !important; }
+  #hud > .sf-leftcontext > * { padding:7px 10px !important; }
   #hud > .sf-leftcontext > * + * { border-top:1px solid rgb(255 255 255 / .045) !important; box-shadow:none !important; }
   #hud > .sf-leftcontext #sf-onboarding .sf-ob-card { padding:0 !important; }
   #hud > .sf-leftcontext > .sf-mission-tracker { border-left:0 !important; position:relative; padding-left:18px !important; }
@@ -2768,7 +2768,7 @@ export function injectHudCss() {
      lighting never grows the column into the comms strip. */
   #hud .sf-cluster-chassis .sf-vtape:not(.sf-vtape--on) { display:none; }
   @media (max-width:1759px) {
-    #hud .sf-cluster-chassis .sf-vtape { position:absolute; left:calc(100% + 12px); bottom:calc(120px * var(--k-s, 1)); width:min(300px, 36vw); margin:0; }
+    #hud .sf-cluster-chassis .sf-vtape { position:absolute; left:calc(100% + 12px); bottom:calc(120px * var(--k-s, 1)); width:min(264px, 32vw); margin:0; }
   }
   /* contextual chips (cargo, credits, class) surface as nameplate rows under the weapon plate,
      in the same legend voice - never a loose caption in amber display type */
