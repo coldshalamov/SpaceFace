@@ -2050,6 +2050,16 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
     // The corpse must still be detached: a boundary re-mounted between the destroyed event and
     // this drain belongs to a new owner — disposing its tree would strip live prepared work.
     if (m && m.parent != null) {
+      // A corpse abandoned mid-teardown keeps a partially-torn subtree — the
+      // parked iterator already cleared castShadow prefixes, released owner
+      // slots, and fired disposer hooks on visited nodes. Flag it so the
+      // remount's next checked policy sync re-arms the torn prefix (the
+      // dirtySeq memo would otherwise skip it — teardown wrote flags without
+      // bumping the generation).
+      const abandonedIter = owner._despawnDisposeIter;
+      if (abandonedIter && abandonedIter._corpse === m && m.userData) {
+        m.userData.sfDespawnPartialTeardown = true;
+      }
       owner._despawnDisposeIter = null;
       owner._despawnDisposeHead += 1;
       drained += 1;
@@ -21249,6 +21259,10 @@ export const render = {
     const ud = mesh.userData || (mesh.userData = {});
     if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true) return;
     ud.sfHiddenFreezeQueued = true;
+    // Queue age feeds the drain's flap dwell: a mint must only fire after the
+    // root stays culled across the whole dwell window, or a first-cycle
+    // cull->show flap pays the mint+restore pair for ~zero compose savings.
+    ud.sfHiddenFreezeQueuedSeq = this._viewSyncSeq || 0;
     if (!this._pendingHiddenFreeze) this._pendingHiddenFreeze = [];
     this._pendingHiddenFreeze.push(mesh);
   },
@@ -21280,11 +21294,16 @@ export const render = {
       // would pay ~4 subtree visits minting+restoring a freeze that saves ~1
       // compose-visit per hidden frame — defer the mint, never drop the entry.
       const lastShow = ud.sfHiddenFreezeLastShowSeq;
-      if (lastShow != null && viewSeq - lastShow < HIDDEN_FREEZE_FLAP_DWELL) {
+      // The dwell spans queue age as well as last-show: a freshly-queued entry
+      // stays deferred until it has spent the full window culled — the first
+      // cull->show cycle of a flap used to mint the same pass it queued.
+      const dwellBase = Math.max(lastShow || 0, ud.sfHiddenFreezeQueuedSeq || 0);
+      if (viewSeq - dwellBase < HIDDEN_FREEZE_FLAP_DWELL) {
         pending[w++] = mesh;
         continue;
       }
       delete ud.sfHiddenFreezeQueued;
+      delete ud.sfHiddenFreezeQueuedSeq;
       // A row re-shown, detached, or restored mid-queue drops out instead of
       // minting a freeze on a subtree that is live again.
       if (ud.sfHiddenFrozen === true || mesh.matrixAutoUpdate !== true
@@ -21519,6 +21538,7 @@ export const render = {
     // unminted freeze stamp drops with the row so a pooled reuse can't inherit it.
     if (mesh && mesh.userData) {
       delete mesh.userData.sfHiddenFreezeQueued;
+      delete mesh.userData.sfHiddenFreezeQueuedSeq;
       delete mesh.userData.sfHiddenFreezeLastShowSeq;
       delete mesh.userData.sfHiddenUnfreezeQueued;
       // A mesh recycling out of a despawn-noted corpse must not carry the
@@ -25931,6 +25951,13 @@ export const render = {
    * syncs never pay the signature walk.
    */
   _syncShadowCasterPolicyChecked(root, lodLevel, entity, extra = null) {
+    // A remounted mid-teardown despawn corpse carries partially-written
+    // castShadow flags (disposeObjectNode clears them per visited node) that
+    // the dirtySeq early-outs below would wrongly skip — force one re-traverse.
+    if (root && root.userData && root.userData.sfDespawnPartialTeardown === true) {
+      delete root.userData.sfDespawnPartialTeardown;
+      invalidateShadowCasterPolicy(root);
+    }
     const opts = this._shadowPolicyOptions(entity, root);
     // A packaged mount passes syncScope=addedSubtree: the flag traverse and the
     // unstaged collect cover only the new subtree (the rest of the root carries

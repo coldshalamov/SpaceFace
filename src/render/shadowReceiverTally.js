@@ -70,7 +70,17 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
     // if the walk recorded its own measurement unconditionally.
     if (notedWalk) {
       notedWalk.seq += 1;
-      notedWalk.visits.set(object, notedWalk.seq);
+      // lastPopped is the finished-subtree probe for noteRemoved — the check
+      // must see the true latest pop, so it stays unconditional (a lone ref
+      // write, unlike the Map entry F2's arm gate exists to skip).
+      notedWalk.lastPopped = object;
+      // visits has subscribers only while a note or detached root can name a
+      // popped node — gate the per-pop Map write so a clean walk pays zero
+      // churn. A lazy miss errs over-count: unvisited roots skip the -delta
+      // write entirely and add-notes re-stamp, both conservative-on.
+      if (notedWalk.notes.size > 0 || notedWalk.detached.size > 0) {
+        notedWalk.visits.set(object, notedWalk.seq);
+      }
     }
     const children = object.children;
     if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
@@ -95,9 +105,10 @@ export function createShadowReceiverTally() {
   // attribute a root to) — over-counting errs conservative-on, matching the
   // tally's boolean consumers. This converges `dirty` in ONE walk under
   // sustained note storms instead of discarding bounded slices forever.
-  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0, detached: new Set() };
+  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0, detached: new Set(), lastPopped: null };
   const resetNotedWalk = () => {
     notedWalk.seq = 0;
+    notedWalk.lastPopped = null;
     notedWalk.visits.clear();
     // A re-minted walk re-measures every node post-mutation: notes pending from
     // an earlier walk are now absorbed iff the fresh walk visits the root at
@@ -111,10 +122,22 @@ export function createShadowReceiverTally() {
   };
   const clearNotedWalk = () => {
     notedWalk.seq = 0;
+    notedWalk.lastPopped = null;
     notedWalk.visits.clear();
     notedWalk.notes.clear();
     notedWalk.loose = 0;
     notedWalk.detached.clear();
+  };
+  // DFS pops a subtree contiguously, so a -delta retraction is exact only once
+  // the walk has left the root's subtree entirely: lastPopped still inside it
+  // means only a prefix was measured and retracting the full delta would
+  // under-count below truth. Skipping the note leaves the measured prefix in
+  // the served count — over-count errs conservative-on, the legal direction.
+  const notedWalkRootFinished = (root) => {
+    for (let p = notedWalk.lastPopped; p; p = p.parent) {
+      if (p === root) return false;
+    }
+    return true;
   };
 
   return {
@@ -156,14 +179,20 @@ export function createShadowReceiverTally() {
           notedWalk.notes.delete(root);
         } else if (note) {
           // The prior note was already folded into the walk's measurement
-          // (visits stamped it): the removal must retract exactly the
-          // receivers the walk measured, not net against the absorbed add.
-          note.delta = -delta;
-          note.seq = notedWalk.seq;
-        } else if (notedWalk.visits.get(root) !== undefined) {
+          // (visits stamped it): the removal retracts exactly the receivers
+          // the walk measured — but only once the subtree is fully counted.
+          // A mid-descent removal keeps the absorbed add so the walked prefix
+          // serves conservative-on instead of under-counting by the suffix.
+          if (notedWalkRootFinished(root)) {
+            note.delta = -delta;
+            note.seq = notedWalk.seq;
+          }
+        } else if (notedWalk.visits.get(root) !== undefined
+            && notedWalkRootFinished(root)) {
           // Only retract a root the walk already measured — an unvisited root
-          // is excluded from `walked` by the detached-skip alone, and stamping
-          // a -δ note here would under-count below the true total.
+          // is excluded from `walked` by the detached-skip alone, and a root
+          // mid-descent holds just a prefix: stamping -delta either way would
+          // under-count below the true total.
           notedWalk.notes.set(root, { delta: -delta, seq: notedWalk.seq });
         }
       }
