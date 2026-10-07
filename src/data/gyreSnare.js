@@ -68,7 +68,9 @@ export const GYRE_SNARE = Object.freeze({
   suckBandWidth: 88,         // wu — core sucks absorbables within core.radius + this
   suckAccel: 680,            // wu/s² — pull toward the core inside the suck band
   suckDamping: 1.1,          // 1/s — frame-damping on inbound mass so it settles, not orbits
-  absorbOverlap: 1.15,       // contact = (clumpRadius + memberRadius) * this — just past skin touch
+  absorbEpsilonWu: 4,      // contact = clumpRadius + memberRadius + this — just past skin
+                           // touch at a FIXED margin: a 1.15x factor scaled with the ball
+                           // and a capped clump ate things ~10 wu before resting contact
   absorbCueMinGapS: 0.08,    // s — min gap between absorb glass ticks so a dense belt feed
                            // doesn't stack identical cues into noise (events stay per-body)
   maxClumpRadius: 60,        // wu — volumetric union clamps here; mass keeps growing regardless

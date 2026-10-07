@@ -26,6 +26,7 @@ import {
   queuePhysicsImpulse,
   queuePhysicsTorqueImpulse,
   syncDerivedPhysicsMass,
+  isDynamicPhysicsBodyEntity,
 } from '../core/physicsAuthority.js';
 import {
   recordImpulseProvenance,
@@ -66,7 +67,10 @@ function entityRadius(e) {
 }
 
 function isDynamic(e) {
-  return !!(e && e.physicsBody && e.physicsBody.dynamic !== false && e.collides !== false);
+  // isDynamicPhysicsBodyEntity is the shared substance convention — record-less bodies
+  // count as dynamic (SG-02 materializes the record in a tick), matching every other
+  // pull lane in the tree. The local collides guard stays on top of it.
+  return !!(e && e.collides !== false && isDynamicPhysicsBodyEntity(e));
 }
 
 function freshRuntime() {
@@ -432,6 +436,10 @@ export const gyreSnare = {
     rt.orbitSeed = ((seedHash >>> 0) % 6283) * 0.001; // stable 0..2π per entity, any id type
     best.data = best.data || {};
     best.data.gyreCore = true;
+    // A timed body (timedWreckOrAsteroidDeadline) cored mid-hold would die at its own
+    // deadline → core_lost evaporates the whole clump, members included. The lash
+    // holds mass in stasis — the deadline clears on snag and launch stamps its own TTL.
+    delete best.data.despawnAt;
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(best);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.snagged, {
@@ -481,7 +489,13 @@ export const gyreSnare = {
     // A lazy tumble — steer the spin toward a small target ω so it settles into
     // floating-rubble drift instead of winding up open-loop on a long hold.
     const spinErr = D.tumbleTargetRadS - finite(core.angVel);
-    queuePhysicsTorqueImpulse(core, { x: 0, y: mass * spinErr * D.tumbleTorqueK * dt, z: 0 }, this._evidence(state.tick));
+    // Torque budgets inertia, not mass: Δω needs inertiaY·spinErr (~0.4·m·r²) — at a
+    // capped r=60 ball a mass-sized impulse lands at ~1/1440 of intent and the servo
+    // silently dies exactly when the big ball needs it. Fall back to the same
+    // approximation syncDerivedPhysicsMass writes when the authored record is absent.
+    const inertia = finite(core.physicsBody && core.physicsBody.inertiaY)
+      || mass * rt.clumpRadius * rt.clumpRadius * 0.4;
+    queuePhysicsTorqueImpulse(core, { x: 0, y: inertia * spinErr * D.tumbleTorqueK * dt, z: 0 }, this._evidence(state.tick));
 
     // The beam keeps sweeping the basin into the ball: bodies near the maw get a pull
     // retargeted onto the CORE (the clump is what "increases gravity" now).
@@ -525,7 +539,10 @@ export const gyreSnare = {
         // too: _pullPass's owned-skip is type-agnostic, so this lane is the ONLY pull
         // a mine/projectile gets inside the annulus. (Inside the skin, rapier contact
         // does the real work; the tug just keeps the gravity story unbroken.)
-        if (dist > 1e-4) {
+        // CAP-GAITED: at full mass owned.r=0 hands the annulus back to the basin lane —
+        // an ungated tug would stack basin-courtesy + suck-tug on the same body, pulled
+        // toward two different anchors at ~2x the intended ceiling.
+        if (dist > 1e-4 && rt.clumpMass < D.maxClumpMass) {
           const tug = D.suckAccel * D.nonAbsorbablePull * couplingScale(this._profile(e));
           this._queueAccel(e, (dx / dist) * tug, (dz / dist) * tug, entityMass(e), dt, state);
         }
@@ -534,7 +551,10 @@ export const gyreSnare = {
       // Surface contact → merge into the ball (mass union; radius by volume, capped). The
       // meal sticks the moment its skin crosses the clump's — katamari stick-on-touch, not a
       // nested overlap, so a fast spiral can't orbit forever inside the band.
-      if (dist <= (rt.clumpRadius + er) * D.absorbOverlap) {
+      // Fixed epsilon, not a multiplier: a 1.15x factor scales with the ball — a capped
+      // 60 wu clump would eat a 6 wu rock ~10 wu before resting contact (vacuum-at-
+      // range). A flat +4 wu beats permanent sub-skin orbit without the overreach.
+      if (dist <= rt.clumpRadius + er + D.absorbEpsilonWu) {
         this._absorb(state, rt, core, e, dx, dz, dist);
         continue;
       }

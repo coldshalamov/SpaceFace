@@ -578,7 +578,7 @@ test('maxClumpMass clamps the union and a capped clump stops eating AND pulling'
   // At cap a follower touching the clump skin is refused the merge (the _absorb
   // early-return + continue) — collision nudges make contact velocity unreadable,
   // so pin survival + the mass ceiling instead.
-  const mergeDist = (rt.clumpRadius + 2) * T.absorbOverlap;
+  const mergeDist = rt.clumpRadius + 2 + T.absorbEpsilonWu;
   // -x side: a refused meal can ricochet off the capped ball's collider at speed —
   // keep the deflection heading away from the band probe so the domino can't reach it.
   const contact = rock(t.sim, core.pos.x - mergeDist * 0.9, core.pos.z, 4, 2);
@@ -880,5 +880,124 @@ test('a held core tracks a fast-translating ship without slipping the beam', asy
   assert.notEqual(t.sys._rt.phase, 'off', 'the lash never dropped mid-chase');
   const d = dist(core, t.player);
   assert.ok(d < T.holdBreakDist, `core stays inside break distance (d=${d.toFixed(1)} < ${T.holdBreakDist})`);
+  t.cleanup();
+});
+
+// -- coverage: destroy() mid-hold sweeps residue (same-state reload path) --
+test('destroy() mid-hold sweeps the core mark — no immortal pull-immunity', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'core held before the same-state reload');
+  assert.equal(core.data.gyreCore, true);
+  t.sys.destroy();
+  assert.equal(core.data.gyreCore, undefined, 'destroy swept the residue flag');
+  t.sys.init({ state: t.state, bus: t.bus, helpers: t.helpers, registry: t.sim.registry });
+  hold(t);
+  for (let i = 0; i < 25; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'the swept body cores cleanly post-reload');
+  t.cleanup();
+});
+
+// -- coverage: drop reasons in BEAM — cap_dry, player_lost, not_flight --
+test('a dry capacitor drops the open beam as cap_dry, a lost player as player_lost', async () => {
+  const t = await bootPhysics();
+  t.player.cap = T.capActivateMin + 0.1; // wakes, then drains below zero on its own
+  hold(t);
+  for (let i = 0; i < 200 && t.sys._rt.phase !== 'off'; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'cap_dry'), 'cap_dry reason landed');
+  t.cleanup();
+
+  const t2 = await bootPhysics();
+  hold(t2);
+  assert.equal(t2.sys._rt.phase, 'beaming');
+  t2.state.input.actions.gyreSnare = false;
+  t2.player.alive = false; // pilot dies mid-BEAM — not a release
+  t2.sim.step();
+  assert.ok(t2.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'player_lost'),
+    'beam lost without a pilot reports player_lost, not released');
+  t2.cleanup();
+});
+
+// -- coverage: at cap, a non-absorbable in the annulus eats ONE lane, not two --
+test('a capped clump gives non-absorbables exactly one pull lane', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id);
+  // Saturate directly: a 1500t meal then a second under the skin crosses the 2400t cap.
+  rock(t.sim, core.pos.x + 8, core.pos.z, 1500, 6);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  rock(t.sim, core.pos.x + 4, core.pos.z, 1500, 6);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.ok(t.sys._rt.clumpMass >= T.maxClumpMass, `clump saturated (got ${t.sys._rt.clumpMass})`);
+  // A mine inside annulus∩basin: at cap the suck lane must not stack on the basin tug.
+  const mine = rock(t.sim, core.pos.x + 20, core.pos.z, 6, 4, 'mine');
+  const calls = [];
+  const orig = t.sys._queueAccel;
+  t.sys._queueAccel = function (e, ax, az, m, dt, s) {
+    if (e === mine) calls.push({ ax, az });
+    return orig.call(this, e, ax, az, m, dt, s);
+  };
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.sys._queueAccel = orig;
+  assert.ok(calls.length > 0, 'a lane still reaches the mine (basin owns it at cap)');
+  assert.ok(calls.length <= 8, `single lane at cap — got ${calls.length} impulses over 8 ticks`);
+  t.cleanup();
+});
+
+// -- coverage: the strain latch fires once per excursion and re-arms at 0.25 --
+test('strain cue latches once above 0.4 and re-arms below 0.25', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id);
+  // Strain measures distance to the MAW (player+mawDist along the nose), not the
+  // ship: pin the core at mawDist+520 so strain = (520-320)/320 = 0.625 > 0.4 while
+  // staying under the 640 wu break — a long excursion without a drop.
+  for (let i = 0; i < 10; i++) {
+    core.pos.x = t.player.pos.x + T.mawDist + 520; core.pos.z = t.player.pos.z;
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  const strains = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain');
+  assert.equal(strains.length, 1, `strain voice latched once during the excursion (got ${strains.length})`);
+  t.cleanup();
+});
+
+// -- coverage: basinCount skips persistent/exempt bodies inside the cone --
+test('basinCount counts cone material but skips persistent and marked bodies', async () => {
+  const t = await bootPhysics();
+  // All three ride the wedge (between nose apex and maw plane, outside the 86 wu
+  // snag basin) — nothing cores the clump, so basinCount is the only feed.
+  const open = rock(t.sim, T.mawDist - 100, 6, 6, 4);
+  const locked = rock(t.sim, T.mawDist - 95, -8, 6, 4);
+  locked.flags = { persistent: true }; // a quest object in the cone is NOT catchable mass
+  const marked = rock(t.sim, T.mawDist - 105, 4, 6, 4);
+  marked.data.gyreLaunched = true; // a thrown ball crossing the cone isn't counted either
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.state.gyreSnare.basinCount, 1, `only free mass counts (got ${t.state.gyreSnare.basinCount})`);
+  release(t);
+  t.cleanup();
+});
+
+// -- coverage: a save-loaded ball keeps its marks and lives out its deadline --
+test('a ball tracked through a load boundary keeps gyreLaunched and its deadline', async () => {
+  const t = await bootPhysics();
+  const ball = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step();
+  assert.equal(t.sys._rt.ballId, ball.id);
+  const dl = ball.data.despawnAt;
+  assert.ok(dl != null, 'launch stamped a deadline');
+  t.bus.emit('save:loaded', {}); // boundary: beam drops, flying ball is kept as world mass
+  t.sim.step();
+  assert.equal(ball.data.gyreLaunched, true, 'launched mark survives the boundary');
+  assert.equal(ball.data.despawnAt, dl, 'deadline intact — it despawns on schedule');
   t.cleanup();
 });
