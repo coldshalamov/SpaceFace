@@ -119,6 +119,10 @@ export const gyreHud = {
     const fuseS = g.fuseS || 0;
     const fuseTxt = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
       ? ` · ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.ceil(fuseS)))}s` : '';
+    const tow = g.towCount || 0;
+    const heavy = g.tooHeavyCount || 0;
+    const handlingTxt = (tow > 0 ? ` · TOWING ×${tow}` : '')
+      + (heavy > 0 ? ` · TOO HEAVY ×${heavy}` : '');
     if (!g.phase || g.phase === 'off') {
       // A thrown clump still on the map deserves a quiet "it's yours" dot for its short flight.
       if (g && g.launchedId != null) {
@@ -161,7 +165,7 @@ export const gyreHud = {
       // Funnel still feeding while held: "+N" keeps katamari anticipation legible —
       // basinCount publishes through HOLD, so the ball's next meal is named.
       const net = g.basinCount || 0;
-      const tail = net > 0 ? ` +${net}` : '';
+      const tail = (net > 0 ? ` +${net}` : '') + handlingTxt;
       // Mass-scaled cap drain makes the fuse legible BEFORE the dry auto-bowl: under ~8 s
       // of burn the readout appends the countdown and the top fuse bar drains with it.
       const fuse = fuseS;
@@ -180,12 +184,14 @@ export const gyreHud = {
     // non-absorbables (loot it drags but never eats) gets its own word: TOWING ×N —
     // the "why won't it snag?" read instead of silence.
     const net = g.basinCount || 0;
-    const tow = g.towCount || 0;
     if (net > 0) {
-      return { text: `GYRE — ×${net} IN NET${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
     }
     if (tow > 0) {
-      return { text: `GYRE — TOWING ×${tow}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+    }
+    if (heavy > 0) {
+      return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
     }
     return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
   },

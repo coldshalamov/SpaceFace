@@ -73,6 +73,32 @@ function isDynamic(e) {
   return !!(e && e.collides !== false && isDynamicPhysicsBodyEntity(e));
 }
 
+// Read current custody/content at the destructive boundary. A former claim alone
+// does not protect empty scrap; live cargo, a quest hook, or a durable world body does.
+function hasProtectedContent(e) {
+  if (e.flags && (e.flags.persistent || e.flags.missionPinned)) return true;
+  const data = e.data || {};
+  if (data.persistent || data.persistenceOwner || data.missionPinned
+    || data.missionTargetSlot != null || data.worldRecordId != null
+    || data.worldRecordSlotId != null || data.wreckMissionId != null
+    || data.isCommunicator === true) return true;
+  if (data.salvagePool && Object.values(data.salvagePool).some((qty) => Number(qty) > 0)) return true;
+  if (Array.isArray(data.loot) && data.loot.some((lot) => lot && Number(lot.qty ?? lot.amount ?? 1) > 0)) return true;
+  if (Array.isArray(data.cargoManifest?.lines)
+    && data.cargoManifest.lines.some((line) => line && Number(line.qty) > 0)) return true;
+  const freight = data.freightCustodyPod;
+  return !!(freight && Number(freight.qty) > 0 && (!freight.status || freight.status === 'live'));
+}
+
+function ingestionReason(e, remainingMass = D.maxClumpMass) {
+  if (!e || e.alive === false || !ABSORBABLE.has(e.type) || !isDynamic(e)
+    || e.physicsBody === false || e.physicsBody?.material === 'sensor'
+    || e.data?.gyreCore || e.data?.gyreLaunched) return 'unavailable';
+  if (hasProtectedContent(e)) return 'protected';
+  if (entityMass(e) > remainingMass || entityRadius(e) > D.maxClumpRadius) return 'too-heavy';
+  return null;
+}
+
 function freshRuntime() {
   return {
     phase: PHASE.OFF,
@@ -109,6 +135,7 @@ function freshRuntime() {
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
     basinSpots: [],        // bounded {x,z,r,k} of bodies actually being dragged — the victim-side pull glow
     towCount: 0,           // non-absorbable bodies under tow this tick — loot the beam drags but never eats
+    tooHeavyCount: 0,      // whole bodies that cannot fit; never promise them as the next meal
     holdLag: 0,            // wu — core's distance off its orbit slot: the spring's residual error,
                            // a mild second-order tension read for ordinary dragging (strained only
                            // trips past holdStrainDist — lag shades the glass before that)
@@ -200,6 +227,7 @@ export const gyreSnare = {
     rt.basinCount = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    rt.tooHeavyCount = 0;
     rt.holdLag = 0; // dead-state hygiene — the lag read is HOLD-only but resets like the rest
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
@@ -595,11 +623,15 @@ export const gyreSnare = {
         const sdz = e.pos.z - ownedCore.pos.z;
         if (sdx * sdx + sdz * sdz <= ownedR2) continue;
       }
+      const remainingMass = this._rt.phase === PHASE.HOLD
+        ? D.maxClumpMass - this._rt.clumpMass : D.maxClumpMass;
+      const admission = ingestionReason(e, remainingMass);
+      const absorbable = admission === null;
       // Mass in the funnel: absorbable bodies already inside the cone get counted so
       // the HUD/maw can telegraph the catch before it lands ("×N IN NET").
       // The "IN NET" read names mass actually inside the glass — bodies easing through
       // the wedge's soft lip (lipT > 0, pull fading to zero past the drawn rim) don't count.
-      if (ABSORBABLE.has(e.type)
+      if (absorbable
         && (inBasin || lipT === 0)
         // A capped clump has no next meal — counting these would make the HUD's +N
         // promise a feed the ball can never eat (suckCount is already gated at :785).
@@ -613,9 +645,11 @@ export const gyreSnare = {
       // makes the ball chatter instead of floating loose. Same skip rides _trySnag and the
       // suck lane — residue in any lane must not re-flag a body as immune.
       if (e.data && e.data.gyreCore) continue;
+      if (remainingMass > 0 && admission === 'too-heavy' && (inBasin || lipT === 0)) {
+        this._rt.tooHeavyCount += 1;
+      }
       // Only absorbables get the full basin grab; other dynamics get a courtesy tug so the
       // beam still reads as gravity on them.
-      const absorbable = ABSORBABLE.has(e.type);
       const couple = couplingScale(this._profile(e));
       const mass = entityMass(e);
       // The lane's accel share — the honest "how hard gravity grips it": 1 deep in
@@ -661,7 +695,7 @@ export const gyreSnare = {
       // can answer "why won't it snag?" with TOWING N instead of bare SEARCHING.
       // Projectiles excluded: fire streaking through the wedge gets the point-defense
       // tug, but a bullet isn't "loot in tow" — it would fake the retrievable count.
-      if (!absorbable && e.type !== 'projectile' && pullK > 0.05) this._rt.towCount += 1;
+      if (!absorbable && admission !== 'too-heavy' && e.type !== 'projectile' && pullK > 0.05) this._rt.towCount += 1;
       this._queueAccel(e, ax, az, mass, dt, state);
     }
     // Strongest grips glow first: in a dense belt the 8 slots go to the bodies being
@@ -698,7 +732,7 @@ export const gyreSnare = {
       // Defense-in-depth parity with the pull/suck lanes: residue from a path the
       // boundary sweep didn't reach must not re-flag a body as the held core.
       if (e.data && e.data.gyreCore) continue;
-      if (!ABSORBABLE.has(e.type) || !isDynamic(e)) continue;
+      if (ingestionReason(e) !== null) continue;
       // Same opt-out _absorb/_launch honor: a physicsBody:false absorbable has no rapier
       // body to pull or throw — coring it would freeze it in stasis while every impulse
       // queues into a record nothing consumes.
@@ -762,6 +796,7 @@ export const gyreSnare = {
     const rt = this._rt;
     const core = state.entities.get(rt.coreId);
     if (!core || core.alive === false || !core.pos) { this._drop('core_lost'); return; }
+    if (hasProtectedContent(core)) { this._releaseProtectedCore(core); return; }
     const t = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
 
     // Strain break first: something violent flung the ball too far off the maw — the beam slips.
@@ -819,6 +854,7 @@ export const gyreSnare = {
     // towCount resets above BOTH lanes — a local reset inside _pullPass would wipe
     // the suck lane's annulus count from the same tick.
     rt.towCount = 0;
+    rt.tooHeavyCount = 0;
     this._suckPass(dt, state, player, core, rt);
     // Keep the wedge pull alive so the cone keeps feeding material into the ball —
     // outside the suck's annulus, which the core's own lane already owns.
@@ -858,11 +894,15 @@ export const gyreSnare = {
       // of depending on sweep ordering.
       if (!e || e.alive === false || !e.pos || e.id === core.id || (e.data && e.data.gyreCore)) continue;
       if (e.id === state.playerId) continue;
-      const absorbable = ABSORBABLE.has(e.type);
       if (!isDynamic(e) || PULL_SKIP_TYPES.has(e.type) || e.physicsBody === false) continue;
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never re-absorbed
-      // Persistent / world-record mass stays live — the katamari must not eat a quest item.
-      if ((e.flags && e.flags.persistent) || (e.data && e.data.worldRecordId)) continue;
+      const remainingMass = D.maxClumpMass - rt.clumpMass;
+      const admission = ingestionReason(e, remainingMass);
+      const absorbable = admission === null;
+      if (admission === 'too-heavy') {
+        if (remainingMass > 0) rt.tooHeavyCount += 1;
+        continue; // no leech held against a full ball, and no partial-body disappearance
+      }
       const dx = core.pos.x - e.pos.x;
       const dz = core.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz);
@@ -928,17 +968,15 @@ export const gyreSnare = {
   },
 
   _absorb(state, rt, core, e, dx, dz, dist) {
-    if (rt.clumpMass >= D.maxClumpMass) return; // capped — still eats nothing
+    if (ingestionReason(e, D.maxClumpMass - rt.clumpMass) !== null) return false;
     const em = entityMass(e);
     const er = entityRadius(e);
     const massBefore = rt.clumpMass;
-    rt.clumpMass = Math.min(D.maxClumpMass, rt.clumpMass + em);
-    // The cap-crossing meal donates only its absorbed fraction of volume — granting the
-    // whole er^3 at a partial mass-add over-inflates the last grow step.
-    const frac = em > 0 ? (rt.clumpMass - massBefore) / em : 0;
+    rt.clumpMass = massBefore + em;
+    // Ingestion is whole-body: if the meal cannot fit it stays alive with all its mass.
     rt.clumpRadius = Math.min(
       D.maxClumpRadius,
-      Math.cbrt(rt.clumpRadius ** 3 + er ** 3 * frac),
+      Math.cbrt(rt.clumpRadius ** 3 + er ** 3),
     );
     // Member ledger for the VFX lumps — bounded, keeps the approach direction so lumps
     // land where the mass actually hit. totalAbsorbed stays unbounded so the HUD's ×N
@@ -1007,6 +1045,16 @@ export const gyreSnare = {
         this.bus.emit(GYRE_EVENTS.full, { mass: rt.clumpMass, tick: state.tick });
       }
     }
+    return true;
+  },
+
+  _releaseProtectedCore(core) {
+    // A cargo/quest owner can adopt a formerly empty core while it is held. Preserve
+    // that owner's current deadlines instead of restoring the pre-snag stash over them.
+    delete core.data.gyreCore;
+    this._restoreLifetime(core, true);
+    if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(core);
+    this._drop('core_adopted');
   },
 
   /** Release: bowl the clump along the nose. */
@@ -1017,6 +1065,7 @@ export const gyreSnare = {
       this._drop(!player ? 'player_lost' : 'launch_without_core');
       return;
     }
+    if (hasProtectedContent(core)) { this._releaseProtectedCore(core); return; }
     const dir = this._launchDirObj || (this._launchDirObj = { x: 1, z: 0 });
     this._noseDir(player, dir);
     rt.phase = PHASE.LAUNCH;
@@ -1035,6 +1084,7 @@ export const gyreSnare = {
     rt.basinCount = 0; // the "N in net" read is basin-only — a flying ball owns none
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
+    rt.tooHeavyCount = 0;
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
     rt.basinSpots.length = 0;
     rt.ballMass = rt.clumpMass;
@@ -1145,6 +1195,7 @@ export const gyreSnare = {
     rt.basinCount = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    rt.tooHeavyCount = 0;
     rt.holdLag = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
@@ -1311,6 +1362,7 @@ export const gyreSnare = {
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
     pub.towCount = rt.towCount || 0;
+    pub.tooHeavyCount = rt.tooHeavyCount || 0;
     // Live-ball count publishes on EVERY phase incl. OFF — the HUD's '+N' counts balls
     // still flying while the lash is closed; freezing it here would pin a phantom
     // extra-ball pip until the next beam opened.
@@ -1608,6 +1660,7 @@ export const gyreSnare = {
       if (rt.launchWindup <= 0 && rt.launchLeft <= 0) this._finishLaunch(state);
     } else if (rt.phase === PHASE.BEAM) {
       rt.towCount = 0;
+      rt.tooHeavyCount = 0;
       this._pullPass(dt, state, player, maw, nose);
       this._trySnag(state, maw);
     } else if (rt.phase === PHASE.HOLD) {

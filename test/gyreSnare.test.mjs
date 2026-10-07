@@ -26,6 +26,7 @@ import { physics } from '../src/core/physics.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { readRecentImpulseProvenance, clearImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { GYRE_SNARE } from '../src/data/gyreSnare.js';
+import { gyreHud } from '../src/ui/gyreHud.js';
 
 const DT = SIM_DT;
 const T = GYRE_SNARE;
@@ -79,6 +80,108 @@ function dist(a, b) { return Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z); }
 
 function hold(t) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
 function release(t) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+
+test('oversized cores stay whole and report TOO HEAVY instead of IN NET', () => {
+  const t = boot();
+  const massive = rock(t.sim, T.mawDist, 0, T.maxClumpMass + 1, 4);
+  const wide = rock(t.sim, T.mawDist + 8, 0, 10, T.maxClumpRadius + 1);
+  hold(t);
+  assert.equal(t.sys._rt.phase, 'beaming');
+  assert.equal(t.sys._rt.coreId, null);
+  assert.equal(massive.physicsBody.mass, T.maxClumpMass + 1);
+  assert.equal(wide.physicsBody.radius, T.maxClumpRadius + 1);
+  assert.equal(t.state.gyreSnare.basinCount, 0);
+  assert.equal(t.state.gyreSnare.tooHeavyCount, 2);
+  const hud = Object.create(gyreHud);
+  hud.init({ state: t.state });
+  assert.match(hud._resolve(t.state.gyreSnare, t.state.simTime).text, /TOO HEAVY ×2/);
+});
+
+test('quest and recoverable cargo wrecks remain tug-only at snag and absorb boundaries', () => {
+  for (const data of [
+    { wreckMissionId: 'rescue', isCommunicator: true },
+    { salvagePool: { cmdty_salvage_electronics: 2 } },
+    { loot: [{ id: 'cmdty_ore_iron', qty: 2 }] },
+    { cargoManifest: { lines: [{ commodityId: 'cmdty_ore_iron', qty: 3 }] } },
+    { freightCustodyPod: { custodyId: 'freight', qty: 4, status: 'live' } },
+    { missionPinned: true },
+    { persistenceOwner: 'mission:rescue' },
+  ]) {
+    const t = boot();
+    const wreck = rock(t.sim, T.mawDist + 8, 0, 12, 4, 'wreck');
+    wreck.data = structuredClone(data);
+    hold(t);
+    assert.equal(t.sys._rt.phase, 'beaming');
+    assert.equal(t.state.gyreSnare.basinCount, 0);
+    assert.equal(t.state.gyreSnare.towCount, 1);
+    assert.ok(consumePhysicsCommand(wreck).impulses.length > 0, 'protected cargo still feels the tug');
+    assert.equal(t.sys._absorb(t.state, t.sys._rt, wreck, wreck, 0, 0, 0), false);
+    assert.equal(wreck.alive, true);
+    assert.deepEqual(wreck.data, data);
+  }
+});
+
+test('late cargo and mission owners release held cores before a hold or launch without losing lifetime', () => {
+  for (const ownership of [
+    { salvagePool: { cmdty_ore_iron: 3 } },
+    { missionPinned: true },
+    { persistenceOwner: 'mission:rescue' },
+  ]) {
+    for (const boundary of ['hold', 'release']) {
+      const t = boot();
+      const core = rock(t.sim, T.mawDist, 0, 12, 4, 'wreck');
+      core.data.despawnAt = 30;
+      hold(t);
+      assert.equal(t.sys._rt.coreId, core.id);
+      Object.assign(core.data, structuredClone(ownership));
+      core.data.despawnAt = 45; // current owner replaces the pre-snag deadline
+      if (boundary === 'release') release(t);
+      else t.sim.step();
+      assert.equal(t.sys._rt.phase, 'off');
+      assert.equal(core.alive, true);
+      assert.equal(core.data.gyreCore, undefined);
+      assert.equal(core.data.gyreLaunched, undefined);
+      assert.equal(core.data.despawnAt, 45);
+      assert.equal(core.physicsBody.impactDamageScale, undefined);
+      assert.equal(t.events.some((event) => event.name === 'gyre:launched'), false);
+    }
+  }
+});
+
+test('empty scrap with a historic settled claim is still legal material', () => {
+  const t = boot();
+  const core = rock(t.sim, T.mawDist, 0, 12, 4, 'wreck');
+  core.data = { salvagePool: { cmdty_ore_iron: 0 }, loot: [], salvorClaimedBy: 'former-crew',
+    wreckMissionId: null, freightCustodyPod: { qty: 4, status: 'player_collected' } };
+  hold(t);
+  assert.equal(t.sys._rt.coreId, core.id);
+  const meal = rock(t.sim, core.pos.x + 8, core.pos.z, 6, 4);
+  t.sim.step();
+  assert.equal(meal.alive, false);
+  assert.equal(t.sys._rt.clumpMass, 18);
+});
+
+test('net feedback distinguishes legal meals, towed cargo and bodies that cannot fit', () => {
+  const t = boot();
+  rock(t.sim, T.mawDist + 45, 0, 12, 4);
+  const freight = rock(t.sim, T.mawDist + 55, 0, 12, 4, 'wreck');
+  freight.data.salvagePool = { cmdty_ore_iron: 2 };
+  rock(t.sim, T.mawDist + 60, 0, T.maxClumpMass + 1, 4);
+  hold(t);
+  assert.equal(t.state.gyreSnare.basinCount, 1);
+  assert.equal(t.state.gyreSnare.towCount, 1);
+  assert.equal(t.state.gyreSnare.tooHeavyCount, 1);
+  const hud = Object.create(gyreHud);
+  hud.init({ state: t.state });
+  const text = hud._resolve(t.state.gyreSnare, t.state.simTime).text;
+  assert.match(text, /×1 IN NET/);
+  assert.match(text, /TOWING ×1/);
+  assert.match(text, /TOO HEAVY ×1/);
+  const holdingText = hud._resolve({ phase: 'holding', clumpMass: 2300, maxClumpMass: 2400,
+    basinCount: 0, tooHeavyCount: 1, towCount: 1 }, t.state.simTime).text;
+  assert.doesNotMatch(holdingText, /\+1/);
+  assert.match(holdingText, /TOWING ×1.*TOO HEAVY ×1/);
+});
 
 // ── golden inertness ─────────────────────────────────────────────────────────────
 test('verb untouched → strict no-op (mirror off, no pull, no events)', async () => {
@@ -570,19 +673,19 @@ test('pullMaxAccel clamps any single body impulse (fast inbound body in the basi
 });
 
 // ── katamari caps ───────────────────────────────────────────────────────────────
-test('maxClumpMass clamps the union and a capped clump stops eating AND pulling', async () => {
+test('a whole meal can fill maxClumpMass and a capped clump stops eating AND pulling', async () => {
   const t = await bootPhysics();
   const core = rock(t.sim, T.mawDist, 0, 6, 4);
   hold(t);
   assert.equal(t.sys._rt.phase, 'holding');
   const rt = t.sys._rt;
   rt.clumpMass = T.maxClumpMass - 3;
-  const meal = rock(t.sim, T.mawDist + 14, 4, 50, 4); // inside merge distance
+  const meal = rock(t.sim, T.mawDist + 14, 4, 3, 4); // fits the remaining mass exactly
   for (let i = 0; i < 30 && meal.alive !== false; i++) {
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
-  assert.equal(meal.alive, false, 'the heavy meal merged');
-  assert.equal(rt.clumpMass, T.maxClumpMass, 'mass clamps at the authored ceiling');
+  assert.equal(meal.alive, false, 'the whole meal merged');
+  assert.equal(rt.clumpMass, T.maxClumpMass, 'the full meal reaches the authored ceiling');
   // At cap a follower touching the clump skin is refused the merge (the _absorb
   // early-return + continue) — collision nudges make contact velocity unreadable,
   // so pin survival + the mass ceiling instead.
@@ -831,15 +934,16 @@ test('absorbables inside the cone publish basinCount for the net-read', async ()
 });
 
 // -- saturation beat: gyre_snare_full latches once at the cap crossing --
-test('the first absorb past the mass cap fires exactly one FULL cue', async () => {
+test('the absorb that fills the mass cap fires exactly one FULL cue', async () => {
   const t = await bootPhysics();
   const core = rock(t.sim, T.mawDist, 0, 6, 4);
   hold(t);
   for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.coreId, core.id, 'core held before feeding the cap');
-  // Two 1500t meals outpace the 2400t cap — the second crossing must not re-fire.
+  // The meals fit the ceiling exactly; a further meal must not re-fire FULL.
   rock(t.sim, core.pos.x + 8, core.pos.z, 1500, 6);
-  rock(t.sim, core.pos.x - 8, core.pos.z, 1500, 6);
+  rock(t.sim, core.pos.x - 8, core.pos.z, T.maxClumpMass - 1506, 6);
+  rock(t.sim, core.pos.x, core.pos.z + 8, 10, 2);
   for (let i = 0; i < 12; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   const fulls = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_full');
   assert.equal(fulls.length, 1, `FULL cue latched once (got ${fulls.length})`);
@@ -958,10 +1062,10 @@ test('a capped clump gives non-absorbables exactly one pull lane', async () => {
   hold(t);
   for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.coreId, core.id);
-  // Saturate directly: a 1500t meal then a second under the skin crosses the 2400t cap.
+  // Saturate with two whole meals that fit the 2400t cap exactly.
   rock(t.sim, core.pos.x + 8, core.pos.z, 1500, 6);
   for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
-  rock(t.sim, core.pos.x + 4, core.pos.z, 1500, 6);
+  rock(t.sim, core.pos.x + 4, core.pos.z, T.maxClumpMass - 1506, 6);
   for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.ok(t.sys._rt.clumpMass >= T.maxClumpMass, `clump saturated (got ${t.sys._rt.clumpMass})`);
   // A mine inside annulus∩basin: at cap the suck lane must not stack on the basin tug.
@@ -1401,21 +1505,23 @@ test('a reloaded ball keeps kill credit and re-adopts the HUD ball mirror', asyn
   t.cleanup();
 });
 
-test('the cap-crossing absorb donates only its absorbed fraction of volume', async () => {
+test('a meal that cannot wholly fit keeps all of its mass and volume', async () => {
   const t = await bootPhysics();
   rock(t.sim, T.mawDist, 0, 8, 4);
   hold(t);
   for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   const rt = t.sys._rt;
-  rt.clumpMass = T.maxClumpMass - 5; // one meal from the cap
+  rt.clumpMass = T.maxClumpMass - 5;
   const meal = rock(t.sim, T.mawDist + 2, 0, 50, 30);
   const rBefore = rt.clumpRadius;
   t.state.input.actions.gyreSnare = true; t.sim.step(); t.sim.step(); t.sim.step();
-  const expected = Math.cbrt(rBefore ** 3 + 30 ** 3 * (5 / 50));
-  assert.ok(Math.abs(rt.clumpRadius - expected) < 0.5,
-    `radius grew by the absorbed 10% of the meal (got ${rt.clumpRadius.toFixed(2)}, expected ~${expected.toFixed(2)})`);
-  assert.ok(rt.clumpRadius < Math.cbrt(rBefore ** 3 + 30 ** 3) - 1,
-    'the crossing absorb donated a fraction of the meal volume, not all of it');
+  assert.equal(rt.clumpRadius, rBefore);
+  assert.equal(rt.clumpMass, T.maxClumpMass - 5);
+  assert.equal(meal.alive, true);
+  assert.equal(meal.physicsBody.mass, 50);
+  assert.equal(meal.physicsBody.radius, 30);
+  assert.equal(t.state.gyreSnare.basinCount, 0, 'no impossible meal is promised');
+  assert.equal(t.state.gyreSnare.tooHeavyCount, 1);
   t.cleanup();
 });
 
