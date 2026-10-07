@@ -1895,7 +1895,7 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
   let best = null;
   let bestD2 = Infinity;
   const inp = state.input;
-  const aim = (TARGET_LOCK_LAB.mode === 'cursor' || TARGET_LOCK_LAB.mode === 'dir') && inp && inp.aimIntentActive === true && inp.autoFire !== true && inp.aimWorld
+  const aim = (TARGET_LOCK_LAB.mode === 'cursor' || TARGET_LOCK_LAB.mode === 'dir') && inp && inp.aimIntentActive === true && inp.autoFire !== true && inp.aimFromStick !== true && inp.aimWorld
     && Number.isFinite(inp.aimWorld.x) && Number.isFinite(inp.aimWorld.z) ? inp.aimWorld : null;
   const rangeWeight = Number(TARGET_LOCK_LAB.rangeWeight) || 0;
   for (const e of indexedShipLikeScan(state)) {

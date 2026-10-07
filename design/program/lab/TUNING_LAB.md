@@ -481,11 +481,11 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here, 2026-10-07 00:36 ET):** #6 weapon balance SHIPPED as PR #232
-(`lab2b/beam-armor`, not merged; see 10.5): Beam Laser M paid flat armor every tick and never vented. It now pays
-flat armor once per 0.25 s and trips the vent; 9/16 -> 16/16 dummy kills, duty 1.00 -> 0.77, all other weapon rows
-bit-identical. Every other weapon proved fine (numbers in 10.5). Earlier: #3 PR #231 (10.4), #5 PR #230 (10.3),
-#4 PR #229 (10.2). Next: #8 target selection/lock, then #7, #9, #10.
+**Status (restart from here, 2026-10-07 01:03 ET):** #8 target lock SHIPPED as PR #233 (`lab2b/target-lock`,
+not merged; see 10.6): the auto-lock takes the hostile under the mouse cursor (range weight 0.25) and waits 0.15 s
+after a lost lock; intended-pick 18–52% -> 100%, 0 flicker. #6 shipped as PR #232 (10.5). Earlier: #3 PR #231,
+#5 PR #230, #4 PR #229. Next: #7 collision/ram, then #9, #10. Focused tests only, per-file timeout
+(`/tmp/p7/runfiles.sh`-style xargs + `timeout 120`); never the whole suite.
 
 ### 10.1 #4 NPC evasion + engagement spacing
 
@@ -834,4 +834,35 @@ reference.
 - After both fixes the tier-3 beam is slower than tier-2 Pulse M / Heavy AC M on heavy armor (bruiser 21.8 vs 12.4 s);
   its edge is hitscan. Levers: `heatPerSec` 55, `heatDissip` 22, `range` 240 in `src/data/weapons.js`.
 - Pulse M, plasma, railgun, missile, EMP carry no heat fields at all (duty 1.00) — authored, but they never meet the vent.
+
+### 10.6 #8 target selection / lock: shipped as PR #233 (`lab2b/target-lock`)
+
+**Bench.** `node scripts/lab/run.mjs lock` (`scripts/lab/benches/targetLock.mjs`). Real path: autoTargetAssist's quiet
+refresh emits `ui:targetNearestHostileToPlayer`; the bench wires uiRoot's exported `targetNearestHostileToPlayer` to
+the bus (uiRoot is not a sim system). Hitch at the origin, wasp packs pinned at seeded bearings/ranges 150–900 wu
+(>= 90 apart), cursor (pointer live) on a seeded intended contact. Families: pick-4/6, pick-6j (cursor up to 60 wu
+off), chain-4/6/6j (kill the lock via combat.onHit, cursor moves to another), chain-6d15/d/d40 (cursor waits 0.15/
+0.25/0.40 s after the kill), threat (wasp 70 wu behind, cursor 600–900 ahead), nopointer-4, live-4 (AI free, 20 s,
+lock switches/min). Sweep `scripts/lab/sweeps/lockSweep8.mjs baseline|probe|verify` (40 seeds, live 5; ~15 s).
+Table: `node design/program/lab/results/lock-2b/locktab.mjs <dir> [phase]`.
+
+**Finding.** Master always locks the nearest hostile (every pick in every family = nearest): intended 18–52%,
+threat 0%. With a lock, auto-aim overrides the cursor, so after each kill the guns swing to the closest contact.
+
+**Probe.** Cursor-point cost `|h - cursor| + w·|h - player|`: w 0–0.25 = 100% everywhere; 0.5 = 99–100%; 1.0 =
+83–92% under jitter; 2.0 ~ back to nearest. Bearing form (distance to the aim ray at the hostile's range): 90–98% at
+w 0.1 — worse for a mouse, kept out. Immediate re-pick + reaction delay: 60% (cursor still on the wreck). Grace
+0.15 s (quantised by the 0.12 s refresh -> 0.232 s gap/kill) = 100% for reactions <= 0.25 s; 0.35 s covers 0.40 s at a
+0.34 s gap.
+
+**Shipped.** w 0.25, grace 0.15 s, cursor only with `aimIntentActive`, not G mode, not pad (`inp.aimFromStick`,
+minted only in the pad branch of input.js). Verify (production checkout): master vs PR as in the table above; lab
+seam reproduces it. Tests: `test/target-lock-cursor-pick.test.mjs` 7 (5 fail on master); 149 focused files with a
+120 s per-file timeout: the same 9 pre-existing failing files on master. Results `results/lock-2b/verify-prod/`.
+
+**Also fixed (same PR, own commit):** `test/golden-wreck-thread.test.mjs` defaulted its scratch dir to
+`C:/Users/93rob/...`, which created `./C:/` in the worktree on Linux; now `os.tmpdir()`.
+
+**Candidates (not changed):** pad/stick aim still picks nearest (needs a bearing score of its own); Tab cycle is
+distance-ordered; with a 0.40 s reaction the grace is too short (58%).
 
