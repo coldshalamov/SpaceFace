@@ -137,7 +137,7 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-stick[data-brake="1"] :is(.mf-lit,.mf-lit-bloom,.mf-arm,.mf-arm-bloom) { opacity:0; }
 #sf-touch-overlay .mf-stick[data-flick="1"] :is(.mf-lit,.mf-lit-bloom) { animation:mf-flick 190ms ease-out both; }
 #sf-touch-overlay .mf-readout { position:absolute; left:calc(-90px + var(--mf-shift)); width:180px; top:calc(var(--mf-r) * 1.62 + 6px); display:grid; justify-items:center; gap:3px; text-align:center; text-shadow:0 1px 6px rgb(0 0 0 / .9); }
-#sf-touch-overlay .mf-stick[data-side="above"] .mf-readout { top:auto; bottom:calc(var(--mf-r) * 1.62 + 6px); }
+#sf-touch-overlay .mf-stick[data-side="above"] .mf-readout { top:auto; bottom:calc(var(--mf-r) * 1.62 + 24px); }
 #sf-touch-overlay .mf-num { font:250 40px/.86 var(--mf-numeral); font-stretch:100%; font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.02em; color:rgb(var(--mf-tint)); }
 #sf-touch-overlay .mf-unit { font:600 12px/1 var(--mf-face); font-stretch:108%; font-style:normal; letter-spacing:.14em; text-transform:uppercase; color:rgb(var(--mf-bone) / .7); }
 #sf-touch-overlay .mf-stick[data-boost="1"] .mf-num, #sf-touch-overlay .mf-stick[data-brake="1"] .mf-num { font:800 25px/1 var(--mf-face); font-stretch:125%; letter-spacing:.08em; }
@@ -291,7 +291,7 @@ const SCREEN_CSS = `
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station header.sxb-berth { flex:none!important; height:auto!important; max-height:none!important; }
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .dp-frame__body--station { flex:1 0 auto!important; min-height:60vh; height:auto!important; overflow:visible!important; }
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .sx-screen__body { overflow:visible!important; max-height:none!important; height:auto!important; }
- html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station footer.sxb-ops { flex:none!important; position:sticky!important; bottom:0; z-index:6; display:flex!important; flex-wrap:wrap!important; align-items:center!important; gap:4px 10px!important; padding:6px 14px calc(10px + env(safe-area-inset-bottom,0px))!important; height:auto!important; background:linear-gradient(0deg,rgb(7 8 10 / .97) 82%,rgb(7 8 10 / 0)); }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station footer.sxb-ops { flex:none!important; position:sticky!important; bottom:0; z-index:6; display:flex!important; flex-wrap:wrap!important; align-items:center!important; gap:4px 10px!important; padding:6px 14px calc(10px + env(safe-area-inset-bottom,0px))!important; height:auto!important; background:linear-gradient(0deg,rgb(7 8 10) 62%,rgb(7 8 10 / 0)); }
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail { order:1; width:100%!important; flex:0 0 100%!important; max-width:100%!important; min-width:0!important; overflow-x:auto!important; overflow-y:hidden; scrollbar-width:none; height:auto!important; }
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail .sxb-ops__dock { display:block!important; width:max-content!important; min-width:100%; }
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail .sx-dock { width:max-content!important; flex-wrap:nowrap!important; position:relative!important; }
@@ -324,15 +324,16 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-band-hud { display:none!important; }
  /* the right dock stacks law/intercept and contact cards up from the bottom-right corner, which is the key cluster's:
     on a phone it hangs from under the pause key instead; the radar's accessibility canvas must not eat a thumb */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(150px + var(--sf-safe-top,0px))!important; bottom:auto!important; right:calc(12px + var(--sf-safe-right,0px))!important; width:min(236px,58vw)!important; max-height:calc(100dvh - 400px); overflow:hidden; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(290px + var(--sf-safe-top,0px))!important; bottom:auto!important; right:calc(12px + var(--sf-safe-right,0px))!important; width:min(236px,58vw)!important; max-height:calc(100dvh - 520px); overflow:hidden; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-radar-semantic-canvas { pointer-events:none!important; }
  :root[data-sf-mobile-wheel="1"] #hud .sf-rightdock { opacity:0!important; }
  /* the Massline cadence card is a 330px instrument in the mid-left column, where a thumb lives: on a phone it keeps its
     status line and window bar, drops the stat row and hint, and sits under the pause key */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .ml2-cadence-slot { position:fixed!important; left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; top:calc(70px + var(--sf-safe-top,0px))!important; bottom:auto!important; width:min(230px,52vw)!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .ml-cadence { width:100%!important; padding:9px 12px 8px!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .ml-cadence :is(.ml-cadence__stats,.ml-cadence__hint) { display:none!important; }
- :root[data-sf-mobile-wheel="1"] #hud .ml2-cadence-slot { opacity:0!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { position:fixed!important; right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; top:calc(176px + var(--sf-safe-top,0px))!important; bottom:auto!important; width:min(230px,56vw)!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"]:has(.ml-cadence:not([hidden])) .sf-leftcontext { opacity:0!important; pointer-events:none!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence { width:100%!important; padding:9px 12px 8px!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence :is(.ml-cadence__stats,.ml-cadence__hint) { display:none!important; }
+ :root[data-sf-mobile-wheel="1"] .ml2-cadence-slot { opacity:0!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; width:max(120px, calc(100vw - var(--mf-cluster-w,196px) - 56px))!important; max-width:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud :is(.sf-contact-hail__button,.sf-comm-backlog-btn) { min-height:40px; min-width:60px; pointer-events:auto; }
@@ -348,6 +349,7 @@ const SCREEN_CSS = `
 }
 @media (max-height:500px) {
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { top:56px!important; transform:scale(.4)!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(150px + var(--sf-safe-top,0px))!important; max-height:100px; }
 }
 `;
 

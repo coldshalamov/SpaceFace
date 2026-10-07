@@ -333,12 +333,16 @@ try {
 
   // dock and undock by thumb (--dock): fly to a berth, tap the DOCK key, use the station page, tap Undock
   if (argv.dock) {
-    const near = await page.evaluate(() => {
+    const near = await page.evaluate(async () => {
       const st = window.SF.state, p = st.entities.get(st.playerId);
-      const station = st.entityList.find((e) => e.type === 'station' && e.alive !== false);
+      const station = st.entityList.find((e) => e.type === 'station' && e.alive !== false && e.data && e.data.stationId);
       if (!station || !p) return null;
-      p.pos.x = station.pos.x + (station.radius || 60) + 30; p.pos.z = station.pos.z; p.vel.x = 0; p.vel.z = 0;
-      return { id: station.id, name: station.name || station.data?.name || null };
+      // the berth anchor the dock gate measures against (physics.updateDockRange), so the ship parks where docking is lawful
+      const mod = await import('/src/data/collisionProxyManifests.js');
+      const manifest = mod.resolveCollisionProxyManifest(station);
+      const anchor = manifest && manifest.docking ? mod.resolveDockAnchor(station, manifest, p) : null;
+      p.pos.x = anchor ? anchor.x : station.pos.x + (station.radius || 60) + 30; p.pos.z = anchor ? anchor.z : station.pos.z; p.vel.x = 0; p.vel.z = 0;
+      return { id: station.id, name: station.name || station.data?.name || null, anchored: !!anchor };
     });
     check('a station stands in the opening sector', !!near, JSON.stringify(near));
     if (near) {
