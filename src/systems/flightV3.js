@@ -286,9 +286,33 @@ export const flightV3 = {
     );
     this._driveAuthority = driveAuthority;
     if (isPlayer) this._playerDriveAuthority = driveAuthority;
+    // Hoisted above the player boost block: the boost state machine only queues impulses and
+    // spends energy, so this snapshot is identical to one taken after it. The orbit-chord probe
+    // below needs it to ask the assist itself whether it will own yaw this tick.
+    const body = bodySnapshotInto(entity, profile, _stepBody);
+    const orbitAnchor = isPlayer && tether && tether.targetId != null && state.entities
+      && typeof state.entities.get === 'function'
+      ? state.entities.get(tether.targetId)
+      : null;
     let boosting = input.boost;
     if (isPlayer) {
       const autoBoost = !!(autopilot && autopilot.active);
+      // A held tether-orbit chord and a dash impulse are incompatible control contracts. The
+      // orbit helper can continuously trim yaw and the swing coordinator can lower sustained
+      // boost to the speed the hull can actually track, but a boost press also carries a discrete
+      // dash impulse (170 wu/s on the Wasp). That impulse lands outside the throttle governor and
+      // can jump angular speed above maxYawRate / radius in one tick, leaving no physical yaw
+      // authority capable of following it. While the explicit forward+turn orbit chord owns the
+      // helm, Shift therefore means continuous boost only; release either chord key (or turn the
+      // assist Off) and the ordinary dash press is immediately available again.
+      //
+      // The predicate IS the assist: the same pure step the steering call below runs, probed with
+      // the same body/anchor/intent it will see, so suppression can never drift from the yaw it
+      // protects. Only `.active` is read here; the steering call still runs after boost so its
+      // input spread carries the resource-gated boost flag.
+      const orbitOwnsBoostPress = craftOrbitAssistStep(
+        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt,
+      ).active === true;
       // Input owns the latch. Read its published state before stepping boost so an engaged burn
       // does not also regenerate the same capacitor in this tick; the burn debit below is the
       // only new consumer and remains player-only.
@@ -296,7 +320,7 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost,
+        suppressDash: autoBoost || orbitOwnsBoostPress,
         suppressRegen: requestedTravelBurn,
       });
       input.boost = boosting;
@@ -332,30 +356,15 @@ export const flightV3 = {
       debitTravelBurn(this, entity, input, dt, state);
     }
 
-    const body = bodySnapshotInto(entity, profile, _stepBody);
     let orbitAssist = null;
     let orbitSwingScale = 1;
     let pursuitSlot = null;
     if (isPlayer) {
-      const anchor = tether && tether.targetId != null && state.entities
-        && typeof state.entities.get === 'function'
-        ? state.entities.get(tether.targetId)
-        : null;
-      orbitAssist = stepAnchorRelativeOrbitAssist({
-        dt,
-        host: body,
-        anchor,
-        tether,
-        flightIntent: {
-          forward: finite(rawInput && (rawInput.moveZ ?? rawInput.throttle)),
-          lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
-        },
-        input,
-        profile,
-        strength: state.settings && state.settings.gameplay
-          && state.settings.gameplay.orbitAssistStrength,
-        controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
-      });
+      // Same step the pre-boost probe ran; re-run with the post-boost input so the returned
+      // packet carries the resource-gated boost flag and the keys the boost block attached.
+      orbitAssist = craftOrbitAssistStep(
+        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt,
+      );
       if (orbitAssist.active) {
         input = orbitAssist.input;
         // Swing/yaw coordination: the yaw helper is exact only while the nose can turn as fast
@@ -1036,6 +1045,31 @@ const _stepCtl = { source: 'npc-flight-v3', mode: 'assisted', force: null, torqu
 const _diagBody = { pos: null, vel: null, rot: 0, angVel: 0, mass: 1, inertia: 1, radius: 0 };
 const _diagControl = { telemetry: null };
 const _diagArgs = { body: null, profile: null, control: _diagControl };
+
+/**
+ * One argument-binding for the tether orbit helper, shared by the pre-boost suppression probe
+ * and the post-boost steering call. The two calls differ only in `input` (pre- vs post-boost
+ * packet, and the helper reads just `brake` from it, which the boost block never touches), so
+ * the probe's `.active` is always the steering call's `.active`: suppression owns exactly the
+ * ticks the assist owns.
+ */
+function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, tether, profile, dt) {
+  return stepAnchorRelativeOrbitAssist({
+    dt,
+    host: body,
+    anchor,
+    tether,
+    flightIntent: {
+      forward: finite(rawInput && (rawInput.moveZ ?? rawInput.throttle)),
+      lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
+    },
+    input,
+    profile,
+    strength: state.settings && state.settings.gameplay
+      && state.settings.gameplay.orbitAssistStrength,
+    controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+  });
+}
 
 /**
  * Translation speed the current input packet drives toward: the assisted governor's
