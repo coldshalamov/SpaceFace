@@ -131,7 +131,11 @@ export function createDamageRouter(context, statusService, options = {}) {
     }
 
     const shieldBroke = before.shield > 0 && target.shield <= 0;
-    const postFlatRaw = applyArmorFlatInto(postShieldRaw, Math.max(0, Number(target.armorFlat) || 0), model.channelOrder, ROUTE_SCRATCH[2]);
+    // Flat armor is a per-packet deduction. A continuous source (beam) splits its damage into one
+    // packet per tick, so it carries armorFlatScale (< 1) and pays the flat once per armor window
+    // instead of once per tick. Absent = 1 (projectiles, rams, fields).
+    const armorFlat = Math.max(0, Number(target.armorFlat) || 0) * (packet.armorFlatScale == null ? 1 : packet.armorFlatScale);
+    const postFlatRaw = applyArmorFlatInto(postShieldRaw, armorFlat, model.channelOrder, ROUTE_SCRATCH[2]);
     const terminalRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[3]);
     let armorDamage = 0;
     for (const channel of model.channelOrder) {
@@ -593,6 +597,8 @@ export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 't
     shieldBypass: clamp01(Number(packet.shieldBypass) || 0),
     flags: packet.flags && typeof packet.flags === 'object' ? { ...packet.flags } : {},
     source: packet.source && typeof packet.source === 'object' ? { ...packet.source } : null,
+    // Present only on continuous (per-tick) packets, so every other packet keeps its shape.
+    ...(packet.armorFlatScale == null ? null : { armorFlatScale: clamp01(Number(packet.armorFlatScale) || 0) }),
   };
 }
 
