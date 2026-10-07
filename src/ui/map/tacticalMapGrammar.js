@@ -67,8 +67,8 @@ export const TACTICAL_SYMBOLS = Object.freeze({
 
 export const MAP_LEGEND_ORDER = Object.freeze(['player', 'objective', 'hostile', 'station', 'gate']);
 
-const COMPACT_METRICS = Object.freeze({ size: 220, center: 110, radius: 105 });
-const EXPANDED_METRICS = Object.freeze({ size: 340, center: 170, radius: 165 });
+const COMPACT_METRICS = Object.freeze({ size: 188, center: 94, radius: 90 });
+const EXPANDED_METRICS = Object.freeze({ size: 290, center: 145, radius: 141 });
 const OBJECTIVE_EDGE_INSET = 15;
 
 export function symbolDescriptor(kind) {

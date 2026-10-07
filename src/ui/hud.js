@@ -746,13 +746,13 @@ export function resolveObjectiveHudLayout(width, height) {
   const safeWidth = safeRight - safeLeft;
   const edge = compact ? 8 : 12;
   const bottom = compact ? 96 : 12;
-  const objectiveWidth = Math.min(compact ? 300 : 272, safeWidth - edge * 2);
+  const objectiveWidth = Math.min(compact ? 300 : 245, safeWidth - edge * 2);
   const objectiveHeight = compact ? 68 : 84;
   const vitalsWidth = compact ? 152 : 272;
   const vitalsHeight = compact ? 124 : 170;
   const stackGap = 8;
-  const rightWidth = compact ? 150 : 232;
-  const rightHeight = compact ? 320 : 472;
+  const rightWidth = compact ? 150 : 198;
+  const rightHeight = compact ? 320 : 410;
   const actionWidth = Math.min(compact ? 420 : 520, safeWidth - edge * 2);
   const actionHeight = compact ? 64 : 76;
   const layout = {
@@ -777,9 +777,9 @@ export function resolveObjectiveHudLayout(width, height) {
     // In ORRERY the deck is hidden but the travel tape is re-seated on this same band above the
     // receipt lane (~h-140..h-86), so the reservation still reaches the floor instruments.
     commandDeck: {
-      x: safeLeft + (safeWidth - Math.min(360, Math.max(220, safeWidth - 640))) / 2,
+      x: safeLeft + (safeWidth - Math.min(320, Math.max(190, safeWidth - 640))) / 2,
       y: h - 74 - 220,
-      width: Math.min(360, Math.max(220, safeWidth - 640)),
+      width: Math.min(320, Math.max(190, safeWidth - 640)),
       height: 220,
     },
     centerSafe: {
@@ -1471,7 +1471,7 @@ function injectTravelTapeStyle() {
   s.id = 'sf-vtape-style';
   s.textContent = `
   .sf-vtape { --vt-brass:var(--k-bone-62); --vt-amber:var(--k-signal); --vt-teal:var(--k-text-live);
-    position:relative; width:min(340px,46vw); margin:0 auto 6px; padding:5px 9px 4px;
+    position:relative; width:min(300px,40vw); margin:0 auto 6px; padding:5px 9px 4px;
     display:flex; flex-direction:column; gap:3px; pointer-events:none;
     opacity:0; visibility:hidden;
     transition:opacity .22s ease, visibility .22s; }
@@ -1545,7 +1545,7 @@ function injectTravelTapeStyle() {
      narrower than the tape. Anchor it to the dock's left edge and scale it to fit that band
      (--sf-vtape-fit steps are set with --sf-hud-edge-fit in hudStyles). */
   @media (max-width: 1279px), (max-height: 719px) {
-    #hud[data-hud="orrery"] > .sf-vtape { left:auto; right:calc(var(--sf-dock-w, 276px) + 36px);
+    #hud[data-hud="orrery"] > .sf-vtape { left:auto; right:calc(var(--sf-dock-w, 236px) + 36px);
       transform:scale(var(--sf-vtape-fit, .85)); transform-origin:100% 100%; }
   }
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
@@ -1554,6 +1554,9 @@ function injectTravelTapeStyle() {
     .sf-vtape, .sf-vtape__fill, .sf-vtape__cap, .sf-vtape__arcstop, .sf-vtape__arcring { transition:none; }
     .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
   }
+  html.sf-reduce-motion .sf-vtape, html.sf-reduce-motion .sf-vtape__fill, html.sf-reduce-motion .sf-vtape__cap,
+  html.sf-reduce-motion .sf-vtape__arcstop, html.sf-reduce-motion .sf-vtape__arcring { transition:none; }
+  html.sf-reduce-motion .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
   /* The shared DRIVE gauge, while the burn is the consumer using it (W1-4 one-pool-one-gauge).
      The numeric readout also gains a ⟫ marker, so this is never colour-only. */
   .sf-bar--burn .sf-bar__fill { background:var(--k-signal); }

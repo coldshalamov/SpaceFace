@@ -397,6 +397,8 @@ function injectStyle() {
      popping at full size — margin-top keeps the owned transform untouched. */
   .sf-ft--rise { animation:sf-ft-rise 220ms ease-out 1; }
   @keyframes sf-ft-rise { from { margin-top:6px; } to { margin-top:0; } }
+  @media (prefers-reduced-motion:reduce) { .sf-ft--rise { animation:none; } }
+  html.sf-reduce-motion .sf-ft--rise { animation:none; }
   .sf-ft--hull { color:#ffd24a; }
   /* FB-019 hit pips — control receipts, not damage numbers. One drawn mark per layer at the
      impact: ring for shield work, diamond outline for armor bite, solid square for hull — the

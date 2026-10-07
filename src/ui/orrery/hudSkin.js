@@ -101,7 +101,7 @@ ${S} #hud .sf-radar-wrap--orrery .sf-radar::before { content:""; position:absolu
   pointer-events:none; z-index:-1; background:radial-gradient(closest-side, rgb(4 6 9 / .8), rgb(4 6 9 / .62) 58%, rgb(4 6 9 / 0)); }
 /* the kit bezel, face ring and north caret are the old instrument's chrome; the frame replaces them */
 ${S} #hud .sf-radar-wrap--orrery :is(.sf-kit-radar__bezel, .sf-kit-radar__face, .sf-kit-radar__n) { display:none; }
-${S} #hud .sf-radar-wrap--orrery .sf-radar-objective-key { margin-top:26px; font-family:var(--dp-face-label); font-stretch:112%;
+${S} #hud .sf-radar-wrap--orrery .sf-radar-objective-key { margin-top:22px; font-family:var(--dp-face-label); font-stretch:112%;
   font-weight:600; font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-hand, #f2b950); ${HALO} }
 
 /* ---- the contact roster: a ladder of words on a lit spine, never a plate with row rules ------- */

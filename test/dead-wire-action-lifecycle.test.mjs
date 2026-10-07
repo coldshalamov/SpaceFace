@@ -245,7 +245,8 @@ test('seed 47 tether-raider scenario: four lifecycle events produce authored cue
     assert.equal(played.includes('combat.action.attach.end'), false);
     assert.equal(played.includes('combat.action.reel.tick'), false);
 
-    assert.ok(h.toasts.some((row) => row.text === 'Need a target' && row.kind === 'error'), `got ${JSON.stringify(h.toasts)}`);
+    // The landed denial line carries its fix-hint on the same beat (bindCombatDenialToasts).
+    assert.ok(h.toasts.some((row) => row.text === 'Need a target — Lock a contact first' && row.kind === 'error'), `got ${JSON.stringify(h.toasts)}`);
     assert.equal(formatCombatActionRejectLine('insufficient_capacitor'), 'Not enough capacitor');
 
     const peak = peakBeatsPerSecond(h.audioCues.filter((row) => String(row.id || '').startsWith('combat.action.')));

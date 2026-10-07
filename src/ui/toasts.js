@@ -268,15 +268,30 @@ export function createToasts(ctx) {
     while (live.length > MAX) dismiss(live[live.length - 1]);
   }
 
-  function dismiss(rec) {
-    if (!rec) return;
+  function dismiss(rec, opts = {}) {
+    if (!rec || rec._dismissing) return;
     const i = live.indexOf(rec);
     if (i < 0 && !rec.el) return;
     const hadFocus = elementHoldsFocus(rec.el);
     if (i >= 0) live.splice(i, 1);
-    rec.el.classList.remove('sf-toast--in');
-    rec.el.classList.add('sf-toast--out');
-    if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+    rec._dismissing = true;
+    if (rec.el) {
+      if (opts.instant) {
+        // Session-boundary teardown: the scene is swapping underneath, so there is nothing
+        // to fade out over — drop the card synchronously instead of the exit beat.
+        if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      } else {
+        // The tick's inline opacity ramp would pin the card mid-fade; hand the exit to the class.
+        rec.el.style.opacity = '';
+        rec.el.classList.remove('sf-toast--in');
+        rec.el.classList.add('sf-toast--out');
+        // The exit fade is real: removal waits one transition beat so a click-dismiss reads as a
+        // departure, not a snap. Expiry already fades via tick(); the beat there is invisible
+        // (opacity is ~0) and keeps one removal path. Focus restore below stays synchronous.
+        const el = rec.el;
+        setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 170);
+      }
+    }
     if (hadFocus) restoreFocusAfterDismiss(i >= 0 ? i : 0);
     recomputeNextWake();
   }
@@ -319,7 +334,7 @@ export function createToasts(ctx) {
   // scene. Bound BEFORE the bind*Ui calls below: automationPayoff emits its "while you were away"
   // receipt on save:loaded, and that new-session receipt must land in the lane AFTER this clear.
   for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
-    bus.on(name, () => { while (live.length) dismiss(live[live.length - 1]); });
+    bus.on(name, () => { while (live.length) dismiss(live[live.length - 1], { instant: true }); });
   }
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);

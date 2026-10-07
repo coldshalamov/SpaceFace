@@ -97,7 +97,7 @@ test('the HUD model carries the preview while the brake is held and nothing othe
 
 test('the tape actually paints the preview: wiring pins', () => {
   assert.match(HUD_SRC, /const brakeStop = resolveBrakeStopPreview\(p, profile, state\.input\)/);
-  assert.match(HUD_SRC, /const want = active \|\| nearCeiling \|\| !!brakeStop/);
+  assert.match(HUD_SRC, /const want = !radialHeld && \(active \|\| nearCeiling \|\| !!brakeStop\)/);
   assert.match(HUD_SRC, /sf-vtape--stopping/);
   assert.match(HUD_SRC, /BRAKING · SETTLES ~/);
 });

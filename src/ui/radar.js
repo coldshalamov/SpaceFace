@@ -46,12 +46,12 @@ import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instrument
 import { injectOrrery } from './orrery/tokens.js';
 import GLYPHS from '../../assets/ui/kit/assets/radar/radar-glyph-paths.json' with { type: 'json' };
 
-const COMPACT_SIZE = 220;
+const COMPACT_SIZE = 188;
 const COMPACT_C = COMPACT_SIZE / 2;
-const COMPACT_R = 105;
-const EXPAND_SIZE = 340;
+const COMPACT_R = 90;
+const EXPAND_SIZE = 290;
 const EXPAND_C = EXPAND_SIZE / 2;
-const EXPAND_R = 165;
+const EXPAND_R = 141;
 
 export const SWARM_DENSITY_THRESHOLD = 8;
 
@@ -1319,7 +1319,7 @@ function drawBackground(g, center, radius, { grid = true } = {}) {
 // around it is ORRERY light: the rim, a drifting tick orbit, north, the range ENGRAVED along the
 // lower rim (it was a boxed chip on the canvas), and the amber Hand pointing at the objective. It is
 // built in canvas coordinates, so every mark lines up with what the canvas draws.
-const FRAME_PAD = 30;
+const FRAME_PAD = 26;
 function createRadarFrame(size, center, radius) {
   injectOrrery();
   const root = orrSvg('svg', {
@@ -1333,7 +1333,7 @@ function createRadarFrame(size, center, radius) {
     d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,
     class: 'orr-core orr-hi', 'stroke-width': 1.2, fill: 'none',
   }));
-  const north = orrSvg('text', { x: center, y: center - radius - 22, 'text-anchor': 'middle', 'font-size': 9 });
+  const north = orrSvg('text', { x: center, y: center - radius - 22, 'text-anchor': 'middle', 'font-size': 8 });
   north.textContent = 'N';
   root.appendChild(north);
   const objective = orrHand({ cx: center, cy: center, r0: radius - 18, r1: radius + 13, width: 1.5, pip: 4 });
@@ -1349,7 +1349,7 @@ function createRadarFrame(size, center, radius) {
       rangeText = text;
       if (rangeNode) rangeNode.remove();
       rangeNode = circularText(center, center, radius + 17, `RANGE  ${text}`.toUpperCase(),
-        { startDeg: 270, size: 8, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true });
+        { startDeg: 270, size: 7, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true });
       root.appendChild(rangeNode);
     },
     /** bearing in degrees (0 = up, clockwise) or null for no objective */
@@ -1442,7 +1442,7 @@ export function createRadar(ctx) {
     if (frame) frame.dispose();
     frame = createRadarFrame(configuredSize, configuredCenter, configuredRadius);
     // Inside the dial, sized in percent of it, so the frame tracks the dial through every responsive
-    // size (220 / 200 / 132) and the expanded scope without a layout read.
+    // size (188 / 172 / 132) and the expanded scope without a layout read.
     const span = `${(((configuredSize + FRAME_PAD * 2) / configuredSize) * 100).toFixed(3)}%`;
     frame.el.style.cssText = `position:absolute;left:50%;top:50%;width:${span};height:${span};transform:translate(-50%,-50%);pointer-events:none;overflow:visible;z-index:1;`;
     dial.appendChild(frame.el);

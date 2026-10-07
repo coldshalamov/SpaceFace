@@ -339,7 +339,7 @@ function injectStyle() {
     border-radius:4px; box-shadow:0 14px 30px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
     color:#e7edf5; text-shadow:${INK_SHADOW};
     font-family:var(--hud-body,"IBM Plex Sans","Segoe UI",sans-serif); transition:opacity .16s ease-out, transform .16s ease-out; }
-  #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(340px, calc(100vw - 40px)); }
+  #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(300px, calc(100vw - 40px)); }
   #sf-sector-law[hidden] { display:none !important; }
   #sf-sector-law.sf-law--badge { width:max-content; max-width:100%; padding:4px 10px; }
   #sf-sector-law.sf-law--badge .sf-law__headline,
@@ -366,7 +366,8 @@ function injectStyle() {
     .sf-law__headline { font-size:12px; }
     .sf-law__detail { font-size:12px; }
   }
-  @media (prefers-reduced-motion:reduce) { #sf-sector-law { transition:none; } }`;
+  @media (prefers-reduced-motion:reduce) { #sf-sector-law { transition:none; } }
+  html.sf-reduce-motion #sf-sector-law { transition:none; }`;
   document.head.appendChild(style);
 }
 

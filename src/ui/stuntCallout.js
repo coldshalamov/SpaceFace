@@ -75,6 +75,7 @@ const CSS = `
 .sf-stuntcall__rise { animation:sf-stuntcall-rise .34s cubic-bezier(.2, .9, .3, 1) both; }
 @keyframes sf-stuntcall-rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
 html.sf-reduce-motion .sf-stuntcall__rise { animation:none; }
+@media (prefers-reduced-motion:reduce) { .sf-stuntcall__rise { animation:none; } }
 .sf-stuntcall__sr { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
   clip:rect(0 0 0 0); white-space:nowrap; }
 `;
