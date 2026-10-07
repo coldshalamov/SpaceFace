@@ -101,3 +101,59 @@ That overlaps #220 (bloom/renderer).
 - #220 bloom/renderer: not touched. Tone-mapping work belongs there.
 
 Sheets (box): `/workspace/look-unify/all_before.png`, `all_after.png`, `worst12_before_after.png`.
+
+## Pass 2, step 1: cause A/B (one factor at a time)
+Models: cockpit_dome, place_cargo_pod_hazmat, place_habitat_pod, place_utility_module. Inspect view, live renderer, bloom on.
+Metric: share of lit pixels (L > 0.18) that clip (any channel 255) = c, and that are white specular (L > 0.85, sat < 0.25) = s.
+Bench: `scripts/fleet-look.mjs --tune / --post / --lights / --ab` (the `--ab` switch was added on this branch).
+
+| run | change |
+|---|---|
+| v0 | baseline (pass 1) |
+| v1 | surface.paintCeiling 0.74 → 0.45 |
+| v2 | clear coat off |
+| v3 | exposure 0.7 |
+| v4 | rig key/rim/fill halved |
+| v5 | illustrated off (no effect: flag not honoured on parts) |
+| v6 | albedoGamma 1.0 |
+| v7 | bloom off |
+| v8 | exposure 0.4 |
+| v9 | all rig lights 0 |
+| va | grade/toe/vignette 0 |
+| vb | material.envMapIntensity × 0 |
+| vc | emissive × 0 |
+| vd | scene.environment off + rig 0 |
+| ve | base colour × 0.5 |
+| vf | **scene.environment off** (rig unchanged) |
+| vg | env off + rig 0 + emissive 0 |
+
+```
+v0         cockpit_dome_i c 70.4 s 72.1 L0.84 | place_cargo_po c 39.9 s 62.9 L0.87 | place_habitat_ c  8.1 s 45.6 L0.79 | place_utility_ c 35.7 s 72.4 L0.88
+v1         cockpit_dome_i c 70.4 s 72.2 L0.84 | place_cargo_po c 32.8 s 43.8 L0.84 | place_habitat_ c  5.7 s 17.1 L0.75 | place_utility_ c 26.9 s 53.6 L0.85
+v2         cockpit_dome_i c 69.4 s 70.6 L0.83 | place_cargo_po c 38.7 s 60.0 L0.86 | place_habitat_ c  7.8 s 44.1 L0.78 | place_utility_ c 34.2 s 70.8 L0.87
+v3         cockpit_dome_i c 72.1 s 72.9 L0.84 | place_cargo_po c 35.6 s 41.4 L0.82 | place_habitat_ c  7.1 s 13.7 L0.74 | place_utility_ c 30.7 s 47.8 L0.84
+v4         cockpit_dome_i c 70.4 s 72.2 L0.84 | place_cargo_po c 38.4 s 54.2 L0.81 | place_habitat_ c  8.0 s 36.7 L0.72 | place_utility_ c 34.1 s 64.7 L0.84
+v5         cockpit_dome_i c 70.3 s 72.1 L0.84 | place_cargo_po c 39.9 s 62.9 L0.87 | place_habitat_ c  8.1 s 45.6 L0.79 | place_utility_ c 35.7 s 72.4 L0.88
+v6         cockpit_dome_i c 70.3 s 72.0 L0.84 | place_cargo_po c 39.0 s 61.1 L0.86 | place_habitat_ c  8.0 s 44.5 L0.79 | place_utility_ c 34.9 s 70.7 L0.87
+v7         cockpit_dome_i c 73.2 s 76.4 L0.82 | place_cargo_po c 30.7 s 61.0 L0.86 | place_habitat_ c  5.1 s 45.9 L0.79 | place_utility_ c 21.8 s 72.1 L0.87
+v8         cockpit_dome_i c 73.8 s 74.4 L0.84 | place_cargo_po c 27.2 s 30.3 L0.73 | place_habitat_ c  5.2 s  7.1 L0.62 | place_utility_ c 23.0 s 29.7 L0.75
+v9         cockpit_dome_i c 71.0 s 72.7 L0.84 | place_cargo_po c 37.2 s 43.0 L0.74 | place_habitat_ c  7.8 s 23.5 L0.60 | place_utility_ c 32.9 s 63.5 L0.78
+va         cockpit_dome_i c 70.0 s 71.7 L0.85 | place_cargo_po c 31.5 s 61.4 L0.87 | place_habitat_ c  6.5 s 41.3 L0.79 | place_utility_ c 29.8 s 70.0 L0.87
+vb         cockpit_dome_i c 70.4 s 72.2 L0.84 | place_cargo_po c 39.9 s 62.9 L0.87 | place_habitat_ c  8.1 s 45.7 L0.79 | place_utility_ c 35.8 s 72.4 L0.88
+vc         cockpit_dome_i c  3.4 s 13.8 L0.68 | place_cargo_po c 40.0 s 63.0 L0.87 | place_habitat_ c  8.1 s 45.7 L0.80 | place_utility_ c 35.7 s 72.5 L0.88
+vd         cockpit_dome_i c 76.9 s 76.9 L0.84 | place_cargo_po c  0.0 s  0.0 L0.24 | place_habitat_ c  0.0 s  0.0 L0.28 | place_utility_ c  1.9 s  0.0 L0.24
+ve         cockpit_dome_i c 71.2 s 72.8 L0.84 | place_cargo_po c 27.6 s 38.8 L0.79 | place_habitat_ c  2.4 s  6.7 L0.51 | place_utility_ c 23.7 s 45.2 L0.80
+vf         cockpit_dome_i c 75.6 s 75.6 L0.83 | place_cargo_po c  0.0 s  0.2 L0.51 | place_habitat_ c  0.0 s  0.0 L0.58 | place_utility_ c  0.6 s  0.0 L0.52
+vg         cockpit_dome_i c  0.0 s  0.0 L0.28 | place_cargo_po c  0.0 s  0.0 L0.24 | place_habitat_ c  0.0 s  0.0 L0.28 | place_utility_ c  0.0 s  0.0 L0.22
+```
+
+**Findings**
+- **Cream hulls: the image-based environment light (`scene.environment`, the foundry HDRI normalized to mean radiance 1.0) causes the blowout.**
+  Removing it alone (vf) takes clip from 36–40% to 0–0.6% and spec from 45–72% to ≈0, with shading intact (L 0.51–0.58).
+  Everything else moves it only partly. Rig lights at 0 (v9) still clip about 33%. Exposure 0.4 (v8) still clips 23–27%.
+  Halving base colour (ve) still clips 24–28%. Coat, bloom, grade, gamma and paint ceiling each cut less than 10 points.
+- **Why pass 1 and `envMapIntensity` did nothing (vb is identical to v0):** these materials have `envMap === null` and use
+  `scene.environment`. In this three.js build, `WebGLRenderer` then sets `envMapIntensity = scene.environmentIntensity` (1.0)
+  and ignores `material.envMapIntensity`. So every authored and role-band env value is dead in the live renderer.
+- **Cockpit dome: emissive causes it.** Glass is emissive #d3eaff × 2.2. Emissive × 0 (vc) takes the dome from clip 70% to 3%.
+- No unlit or toon path is involved: every hull runs through the illustrated physical shader.
