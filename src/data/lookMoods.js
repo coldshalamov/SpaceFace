@@ -39,7 +39,9 @@ export const LOOK_BASE = deepFreeze({
     bandMix: 0.20,
     // Colour of the unlit side and of the lit side (multipliers on diffuse light).
     // Raised shadow floor prevents dark hulls and unlit enemies from vanishing into pitch-black voids.
-    shadowTint: [0.64, 0.72, 1.12],
+    // Warm-neutral since look pass 3: with the scene IBL cut to sceneEnv, the old ultramarine
+    // [0.64, 0.72, 1.12] floor turned every cream hull grey/lavender (LOOK_UNIFY.md pass 3).
+    shadowTint: [0.80, 0.76, 0.82],
     lightTint: [1.06, 1.02, 0.96],
     // Dark contour where the hull turns away from the camera. 0 = none.
     contour: 0.25,
@@ -64,7 +66,7 @@ export const LOOK_BASE = deepFreeze({
     // material's authored/role envMapIntensity. three.js ignores material.envMapIntensity when
     // the env comes from scene.environment, so before this the IBL hit every hull at 1.0 and
     // blew pale paint flat (LOOK_UNIFY.md pass 2).
-    sceneEnv: 0.18,
+    sceneEnv: 0.22,
   },
   post: {
     // How hard the sector wears the grade below (0 = ungraded) and its corner darkening.

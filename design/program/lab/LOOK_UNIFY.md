@@ -215,3 +215,34 @@ lavender under the Look's blue shadow tint (see worst12_before_after2.png). Rais
 `surface.shadowTint`, should also bring meanL into 0.38–0.42. That change is not rendered yet.
 
 Sheets (box): `/workspace/look-unify/all_after2.png`, `/workspace/look-unify/worst12_before_after2.png` (BEFORE = master).
+
+## Pass 3: restore cream, lift luminance
+A/B on pale and worst models (inspect view). c = clip %, s = white-spec %, L = mean luminance over lit pixels,
+w = warmth (R − B, 0–255) of pale pixels; negative means cool.
+
+| run | change |
+|---|---|
+| b18 | pass 2 (sceneEnv 0.18) |
+| e22 / e25 / e30 | sceneEnv 0.22 / 0.25 / 0.30 |
+| t1 | sceneEnv 0.25 + surface.shadowTint [0.80, 0.76, 0.82] |
+| t2 | t1 + post.shadowTint neutral |
+| t3 | post.shadowTint neutral only |
+| t4 | sceneEnv 0.25 + neutral grey ambient light |
+```
+b18  _vector_insp c13.5 s 0.3 L0.60 w-10.6|cargo_pod_ha c 0.1 s 7.7 L0.72 w +2.1|comms_array_ c 0.4 s23.2 L0.75 w+12.6|habitat_pod_ c 0.0 s 4.0 L0.68 w +3.7|parts_rack_i c 0.0 s 2.3 L0.67 w-18.1|utility_modu c 2.1 s 9.0 L0.74 w -9.3
+e22  _vector_insp c13.4 s 0.3 L0.61 w -6.5|cargo_pod_ha c 0.1 s12.1 L0.74 w +5.7|comms_array_ c 0.4 s31.7 L0.76 w+14.4|habitat_pod_ c 0.0 s 7.2 L0.69 w +7.4|parts_rack_i c 0.0 s 3.2 L0.69 w-12.6|utility_modu c 2.8 s12.8 L0.76 w -5.1
+e25  _vector_insp c13.6 s 0.3 L0.63 w -3.9|cargo_pod_ha c 1.0 s15.8 L0.75 w +8.6|comms_array_ c 0.4 s32.7 L0.77 w+15.5|habitat_pod_ c 0.0 s 8.8 L0.71 w+10.4|parts_rack_i c 0.0 s 4.0 L0.71 w -6.8|utility_modu c 3.5 s15.7 L0.77 w -1.9
+e30  _vector_insp c13.7 s 0.6 L0.65 w -0.2|cargo_pod_ha c 6.2 s22.6 L0.78 w+12.4|comms_array_ c 0.4 s37.1 L0.78 w+16.8|habitat_pod_ c 0.1 s14.8 L0.72 w+14.5|parts_rack_i c 1.8 s 6.2 L0.74 w +2.7|utility_modu c 8.0 s27.4 L0.80 w +3.4
+t1   _vector_insp c13.6 s 0.3 L0.63 w +7.8|cargo_pod_ha c 2.4 s16.6 L0.76 w+19.4|comms_array_ c 0.4 s32.7 L0.77 w+21.4|habitat_pod_ c 0.0 s 9.8 L0.71 w+28.7|parts_rack_i c 0.4 s 4.0 L0.71 w+20.2|utility_modu c 4.3 s16.5 L0.78 w+12.6
+t2   _vector_insp c13.6 s 0.3 L0.64 w+10.8|cargo_pod_ha c 2.4 s16.6 L0.76 w+20.6|comms_array_ c 0.4 s32.7 L0.77 w+21.6|habitat_pod_ c 0.0 s 9.9 L0.71 w+29.7|parts_rack_i c 0.4 s 4.0 L0.72 w+22.2|utility_modu c 4.3 s16.5 L0.78 w+13.5
+t3   _vector_insp c13.5 s 0.3 L0.60 w -1.2|cargo_pod_ha c 0.1 s 7.7 L0.72 w +5.3|comms_array_ c 0.4 s23.1 L0.75 w+13.8|habitat_pod_ c 0.0 s 4.0 L0.68 w +7.2|parts_rack_i c 0.0 s 2.3 L0.67 w-10.9|utility_modu c 2.1 s 9.0 L0.74 w -6.3
+t4   _vector_insp c13.6 s 0.3 L0.63 w -3.5|cargo_pod_ha c 1.0 s15.9 L0.75 w +8.9|comms_array_ c 0.4 s32.7 L0.77 w+15.7|habitat_pod_ c 0.0 s 8.8 L0.71 w+10.8|parts_rack_i c 0.0 s 4.0 L0.71 w -6.4|utility_modu c 3.5 s15.7 L0.77 w -1.6
+```
+**Why hulls read cool:** `LOOK_BASE.surface.shadowTint` [0.64, 0.72, 1.12] multiplies the unlit diffuse with ultramarine.
+Before pass 2 the bright, warm-neutralized IBL masked it. Once the IBL was cut, it dominated pale paint.
+- Warming it (t1) moves pale-pixel warmth from −7…+10 to +13…+29, which reads as cream.
+- The post grade tint (t3, about +3) and the ambient colour (t4, about 0) barely matter.
+- The HDR is not the cause: it is already neutralized.
+- sceneEnv lifts luminance, but spec rises with it (utility 9 → 16 → 27 % for 0.18 → 0.25 → 0.30).
+
+**Pick:** sceneEnv 0.22 + surface.shadowTint [0.80, 0.76, 0.82] in LOOK_BASE. Moods keep their own tints.
