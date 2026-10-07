@@ -64,7 +64,7 @@ export const GYRE_SNARE = Object.freeze({
   launchImpactScaleBase: 1.6,// damage scale floor on a launched ball
   launchImpactScalePerMass: 90, // +1 impactDamageScale per this many tons of clump mass
   launchImpactScaleMax: 8,   // impulseKernel clamps physicsBody.impactDamageScale to [0,8]
-  launchProvenanceHoldS: 6,  // kill-credit window survives the whole flight
+  launchProvenanceHoldS: 9.5, // kill-credit window covers the whole ballTtlS flight + a beat
   // ── Resource cost ─────────────────────────────────────────────────────────────────
   capActivateMin: 10,        // cap needed to open the beam
   capDrainPerS: 6.5,         // cap/s while the beam is live (empty tank = auto-bowl)

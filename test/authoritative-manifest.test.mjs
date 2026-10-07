@@ -91,7 +91,7 @@ test('production init + update order lengths match the live browser baseline', (
   // the character owners after ravel and before physics.
   // 174 -> 175 init / 133 -> 134 update: RUBRIC / HM-11 system owner, after solstice and
   // before physics, in both orders.
-  // 175 -> 177 init / 134 -> 136 update: gyreSnare (telekinetic katamari lash, after
+  // 176 -> 178 init / 135 -> 137 update: gyreSnare (telekinetic katamari lash, after
   // fields and before planetRuntime/physics) and gyreHud (DOM-guarded pill, after
   // fieldHud) — one system each in both orders.
   assert.equal(PRODUCTION_INIT_ORDER.length, 178);

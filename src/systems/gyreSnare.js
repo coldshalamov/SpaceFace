@@ -25,7 +25,7 @@ import { couplingScale } from '../core/fields/fieldKernel.js';
 import {
   queuePhysicsImpulse,
   queuePhysicsTorqueImpulse,
-  writePhysicsBodyResponse,
+  syncDerivedPhysicsMass,
 } from '../core/physicsAuthority.js';
 import {
   recordImpulseProvenance,
@@ -117,7 +117,16 @@ export const gyreSnare = {
     const rt = this._rt;
     const wasOff = rt.phase === PHASE.OFF;
     const coreId = rt.coreId;
-    if (!wasOff) this._clearCoreMark();
+    const boundary = reason === 'save_loaded' || reason === 'new_game' || reason === 'sector_exit';
+    if (boundary) {
+      // A mid-hold save serializes data.gyreCore onto the entity, and the fresh state swap
+      // makes the rt.coreId lookup stale — sweep every entity for the residue flag so a
+      // loaded rock isn't pull-immune for the rest of the save. gyreLaunched stays: a ball
+      // mid-flight in the save is still a launched body (it despawns on its own schedule).
+      this._sweepBoundaryResidue();
+    } else if (!wasOff) {
+      this._clearCoreMark();
+    }
     const droppedPhase = rt.phase;
     rt.phase = PHASE.OFF;
     rt.coreId = null;
@@ -129,7 +138,7 @@ export const gyreSnare = {
     rt.launchedId = null;
     // A boundary drop also forgets the flying ball — its entity is about to vanish with the
     // sector anyway, and stale ballPos would leak a dead clump overlay into the next scene.
-    if (reason === 'save_loaded' || reason === 'new_game' || reason === 'sector_exit') rt.ballId = null;
+    if (boundary) rt.ballId = null;
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       // dropped = a live beam/hold released without launch; coreId is null when the beam
@@ -147,6 +156,19 @@ export const gyreSnare = {
         this.helpers.markEntityVisualChanged(core);
       }
     }
+  },
+
+  _sweepBoundaryResidue() {
+    const ents = this.state && this.state.entities;
+    if (!ents || typeof ents.forEach !== 'function') return;
+    const mark = this.helpers && typeof this.helpers.markEntityVisualChanged === 'function'
+      ? this.helpers.markEntityVisualChanged : null;
+    ents.forEach((e) => {
+      if (e && e.data && e.data.gyreCore) {
+        delete e.data.gyreCore;
+        if (mark) mark(e);
+      }
+    });
   },
 
   // ── the verb ───────────────────────────────────────────────────────────────────
@@ -223,8 +245,11 @@ export const gyreSnare = {
 
   /** Beam pull: everything loose in the basin/wedge gets dragged toward the maw. */
   _pullPass(dt, state, player, maw, nose) {
+    const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
+      ? this.helpers.queryRadius : null;
+    if (!queryRadius) return;
     const reach = D.mawDist + D.basinRadius + 60;
-    const cands = this.helpers.queryRadius(player.pos, reach, this._scratch);
+    const cands = queryRadius(player.pos, reach, this._scratch);
     const tan = Math.tan(D.coneHalfAngleRad);
     const shipVx = finite(player.vel && player.vel.x);
     const shipVz = finite(player.vel && player.vel.z);
@@ -295,13 +320,23 @@ export const gyreSnare = {
 
   /** Snag the closest absorbable at the maw's heart → it becomes the clump core. */
   _trySnag(state, maw) {
-    const cands = this.helpers.queryRadius(maw, D.snagRadius, this._scratch);
+    const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
+      ? this.helpers.queryRadius : null;
+    if (!queryRadius) return false;
+    const cands = queryRadius(maw, D.snagRadius, this._scratch);
     let best = null, bestD = Infinity;
     for (let i = 0; i < cands.length; i++) {
       const e = cands[i];
       if (!e || e.alive === false || !e.pos) continue;
       if (e.id === state.playerId || e.data && e.data.gyreLaunched) continue;
       if (!ABSORBABLE.has(e.type) || !isDynamic(e)) continue;
+      // A snagged core becomes the thrown ball — it needs a real collider and must never
+      // be a mission/persistent body the ball's 9 s despawn could quietly delete. Pickups
+      // stay absorbable as members but never become the core: their collider is a sensor,
+      // which would bowl a ball that hits nothing.
+      if (e.type === 'pickup') continue;
+      if (e.physicsBody && e.physicsBody.material === 'sensor') continue;
+      if ((e.flags && e.flags.persistent) || (e.data && e.data.worldRecordId)) continue;
       const d = Math.hypot(e.pos.x - maw.x, e.pos.z - maw.z);
       if (d < bestD) { bestD = d; best = e; }
     }
@@ -350,7 +385,10 @@ export const gyreSnare = {
       const s = D.holdMaxAccel / Math.sqrt(a2);
       ax *= s; az *= s;
     }
-    const mass = Math.max(rt.clumpMass, entityMass(core));
+    // The authored body carries the real clump mass (grown on every absorb via
+    // syncDerivedPhysicsMass), so impulse = a·m·dt produces the authored Δv regardless of how
+    // big the ball has become — the lash holds a 2400 t clump as surely as a 6 t pebble.
+    const mass = entityMass(core);
     queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
     // A lazy tumble — the ball reads as levitating rock, not a rigid joint.
     queuePhysicsTorqueImpulse(core, { x: 0, y: mass * 2.2 * dt, z: 0 }, this._evidence(state.tick));
@@ -368,8 +406,11 @@ export const gyreSnare = {
 
   /** Drag absorbables onto the clump and merge the ones that touch. */
   _suckPass(dt, state, player, core, rt) {
+    const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
+      ? this.helpers.queryRadius : null;
+    if (!queryRadius) return;
     const suckR = rt.clumpRadius + D.suckBandWidth;
-    const cands = this.helpers.queryRadius(core.pos, suckR, this._scratch);
+    const cands = queryRadius(core.pos, suckR, this._scratch);
     const shipVx = finite(player && player.vel && player.vel.x);
     const shipVz = finite(player && player.vel && player.vel.z);
     for (let i = 0; i < cands.length; i++) {
@@ -378,6 +419,8 @@ export const gyreSnare = {
       if (e.id === state.playerId) continue;
       if (!ABSORBABLE.has(e.type) || !isDynamic(e)) continue;
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never re-absorbed
+      // Persistent / world-record mass stays live — the katamari must not eat a quest item.
+      if ((e.flags && e.flags.persistent) || (e.data && e.data.worldRecordId)) continue;
       const dx = core.pos.x - e.pos.x;
       const dz = core.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz);
@@ -420,13 +463,16 @@ export const gyreSnare = {
     }
     if (this.helpers.removeEntity) this.helpers.removeEntity(e.id);
     else e.alive = false;
-    // The ball's real physics mass grows so the spring/launch stay honest.
-    if (core.physicsBody) {
-      writePhysicsBodyResponse(core, {
-        massScale: clamp(rt.clumpMass / Math.max(rt.coreBaseMass, 1e-3), 1, 8),
-        inertiaScale: clamp(rt.clumpRadius / Math.max(entityRadius(core), 1e-3), 1, 8),
-      });
-    }
+    // Grow the AUTHORED body record (mass/inertia/radius + revision bump → the physics owner
+    // rebuilds the ball with the new spec). A one-tick writePhysicsBodyResponse would revert
+    // on the next pass; this is the real katamari — the rapier body genuinely gains mass and
+    // a bigger collider, which also keeps the skin-touch absorb threshold honest.
+    syncDerivedPhysicsMass(
+      core,
+      rt.clumpMass,
+      Math.max(8, Math.round(rt.clumpMass * rt.clumpRadius * rt.clumpRadius * 0.4)),
+      rt.clumpRadius,
+    );
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.absorbed, {
         coreId: core.id, victimId: e.id, victimType: e.type, mass: em,
@@ -537,7 +583,8 @@ export const gyreSnare = {
     pub.clumpRadius = rt.clumpRadius;
     pub.absorbs = rt.members.length;
     pub.members = rt.members;
-    pub.launchedId = rt.launchedId;
+    // launchedId published above from rt.ballId already covers the LAUNCH→OFF transition —
+    // a re-beam while the ball still flies keeps its clump overlay instead of clobbering it.
     pub.launchDir.x = rt.launchDir.x; pub.launchDir.z = rt.launchDir.z;
     const core = rt.coreId != null ? state.entities.get(rt.coreId) : null;
     if (core && core.pos) {
@@ -575,7 +622,9 @@ export const gyreSnare = {
       // Deliberate release bowls a held clump; every other close (beam with no core, mid-launch,
       // or the player gone/docked) is a drop — never a launch from a dock seat or a corpse.
       if (rt.phase === PHASE.HOLD && player) this._launch(state, player);
-      else if (rt.phase !== PHASE.OFF) this._drop('released');
+      else if (rt.phase === PHASE.BEAM) this._drop('released');
+      // LAUNCH is exempt: the release edge that starts the bowl must not truncate its burst.
+      // (Any other close — player gone, docked, dead — lands via the !player drop below.)
     }
     rt.wasHeld = held;
 
@@ -593,7 +642,7 @@ export const gyreSnare = {
     if (rt.phase === PHASE.LAUNCH) {
       const core = rt.launchedId != null ? state.entities.get(rt.launchedId) : null;
       if (core && core.alive !== false && rt.launchLeft > 0) {
-        const mass = Math.max(rt.clumpMass || entityMass(core), entityMass(core));
+        const mass = entityMass(core);
         // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = launchSpeed.
         const j = (D.launchSpeed * mass) / D.launchTicks;
         queuePhysicsImpulse(core, {

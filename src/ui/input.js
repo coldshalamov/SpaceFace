@@ -492,6 +492,8 @@ export function createUiInput(ctx, screenManager) {
         bus.emit('ui:toggleCargo');
         return;
       case 'o': case 'O':
+        // Auto-repeat must not strobe the contacts-strip pin: one toggle per keypress.
+        if (ev.repeat) return;
         ev.preventDefault();
         bus.emit('ui:toggleOverview');
         return;

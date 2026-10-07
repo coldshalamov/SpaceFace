@@ -1,5 +1,5 @@
 /**
- * Gyre Snare — held-verb telekinetic katamari lash (input.js 'gyreSnare' verb, KeyO).
+ * Gyre Snare — held-verb telekinetic katamari lash (input.js 'gyreSnare' verb, Quote).
  *
  * Harness: curated sim host with production systems in production relative order
  * (gyreSnare → physics). Movement proofs boot the real SG-02 rapier-dynamic authority so
@@ -275,4 +275,122 @@ test('two identical runs produce identical clump trajectories', async () => {
   const a = await run();
   const b = await run();
   assert.deepEqual(a, b, 'identical seed/inputs → identical lash');
+});
+
+// ── katamari mass is real physics ────────────────────────────────────────────────
+test('absorbed mass lands on the authored body — launch speed stays authored regardless of clump mass', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  const meal = rock(t.sim, T.mawDist + 30, 10, 48, 8); // a heavy meal — clump ends 54 t
+  hold(t);
+  for (let i = 0; i < 400 && t.sys._rt.members.length === 0; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(t.sys._rt.members.length, 1, 'the meal was absorbed');
+  assert.ok(Math.abs(t.sys._rt.clumpMass - 54) < 1e-6, `clump mass 54, got ${t.sys._rt.clumpMass}`);
+  // The rapier-side mass genuinely grew — this is what keeps the spring/launch honest.
+  assert.ok(Math.abs(core.physicsBody.mass - 54) < 1e-6,
+    `authored body mass tracks the clump (got ${core.physicsBody.mass})`);
+  assert.ok(core.physicsBody.radius > 4, 'authored collider radius grew with the clump');
+
+  release(t);
+  for (let i = 0; i < T.launchTicks + 3; i++) t.sim.step();
+  const v = speed(core);
+  assert.ok(v > T.launchSpeed * 0.7 && v < T.launchSpeed * 1.3,
+    `grown ball bowls at authored speed ${T.launchSpeed}, got ${v.toFixed(1)}`);
+  t.cleanup();
+});
+
+test('multiple absorbs feed the ledger and the volumetric radius', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  const mealA = rock(t.sim, T.mawDist + 24, 8, 6, 4);
+  const mealB = rock(t.sim, T.mawDist - 22, -9, 6, 4);
+  hold(t);
+  for (let i = 0; i < 500 && t.sys._rt.members.length < 2; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(t.sys._rt.members.length, 2, 'two absorb records');
+  assert.equal(mealA.alive, false);
+  assert.equal(mealB.alive, false);
+  assert.ok(Math.abs(t.sys._rt.clumpMass - 18) < 1e-6, `mass union 18, got ${t.sys._rt.clumpMass}`);
+  assert.ok(Math.abs(core.physicsBody.mass - 18) < 1e-6);
+  t.cleanup();
+});
+
+// ── boundary residue ─────────────────────────────────────────────────────────────
+test('save:loaded sweeps a serialized gyreCore flag off a rock the ledger never knew', async () => {
+  const t = await bootPhysics();
+  const stale = rock(t.sim, 500, 500);
+  stale.data.gyreCore = true; // as if a mid-hold save serialized the mark
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.bus.emit('save:loaded', {});
+  assert.equal(stale.data.gyreCore, undefined, 'boundary drop sweeps serialized residue');
+  t.cleanup();
+});
+
+// ── launch edge cases ─────────────────────────────────────────────────────────────
+test('re-tapping during the launch burst does not truncate the bowl', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0, 10, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  assert.equal(t.sys._rt.phase, 'launching');
+  // Re-press and release inside the 5-tick burst — the launch must finish its impulse.
+  hold(t); release(t);
+  for (let i = 0; i < T.launchTicks + 2; i++) t.sim.step();
+  const v = speed(body);
+  assert.ok(v > T.launchSpeed * 0.7,
+    `a release inside the burst still bowls at ${T.launchSpeed}, got ${v.toFixed(1)}`);
+  t.cleanup();
+});
+
+test('re-beaming while the ball still flies keeps the mirror on the ball', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0, 8, 4);
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < T.launchTicks + 2; i++) t.sim.step(); // burst done → OFF
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.equal(t.state.gyreSnare.launchedId, body.id, 'mirror still tracks the flying ball');
+  // A fresh grip opens a new beam without losing the ball's mirror track.
+  hold(t);
+  assert.equal(t.sys._rt.phase, 'beaming');
+  assert.equal(t.state.gyreSnare.launchedId, body.id, 'ball overlay survives the new beam');
+  assert.ok(Math.hypot(t.state.gyreSnare.ballPos.x - body.pos.x,
+    t.state.gyreSnare.ballPos.z - body.pos.z) < T.launchSpeed * DT + 1,
+    'ballPos mirrors the live ball (one publish tick of lag at most)');
+  t.cleanup();
+});
+
+// ── cap drain rate ────────────────────────────────────────────────────────────────
+test('capacitor drains at the authored rate — ×1.35 while a clump is held', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0);
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const before = t.player.cap;
+  for (let i = 0; i < 60; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const drained = before - t.player.cap;
+  const want = T.capDrainPerS * T.capHoldMult * (60 * DT);
+  assert.ok(Math.abs(drained - want) < want * 0.02,
+    `hold drain ≈ ${want.toFixed(2)} over 1 s, got ${drained.toFixed(2)}`);
+  t.cleanup();
+});
+
+// ── snag eligibility ──────────────────────────────────────────────────────────────
+test('a pickup or persistent body never becomes the core', async () => {
+  const t = await bootPhysics();
+  const pickup = rock(t.sim, T.mawDist, 0, 2, 2, 'pickup');
+  const persistent = rock(t.sim, T.mawDist + 8, 4, 6, 4, 'wreck');
+  persistent.flags = { persistent: true };
+  hold(t);
+  for (let i = 0; i < 120; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.notEqual(t.sys._rt.coreId, pickup.id, 'sensor-bodied pickup never cores');
+  assert.notEqual(t.sys._rt.coreId, persistent.id, 'persistent mass never cores');
+  t.cleanup();
 });

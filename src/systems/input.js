@@ -288,10 +288,13 @@ const VERB_BINDINGS = {
   // planetRuntime system owns the collector state; yield is path x density, never a hold timer.
   toggleSkimCollector: ['Digit8'], // edge: toggle the atmospheric skim collector (The Anvil bands)
   // The Gyre Snare — held-key telekinetic katamari lash (gyreSnare system owns the state).
-  // KeyO is the LAST free letter key: plain 'o' only (the UI Band cycle claims Shift+O, so the
-  // unmodified key still falls through to flight). Level verb: hold to beam + hold the clump,
-  // release to bowl it; hold-to-toggle latch opt-in via accessibility.holdToToggle.gyreSnare.
-  gyreSnare:          ['KeyO'],     // level: hold to pull/snag/grow a ball, release to bowl it
+  // Quote (') is free repo-wide (checked against both scheme tables, ui/bindings.js, and the
+  // UI key router): every letter is claimed, and 'o' in particular was triple-claimed
+  // (Band cycle on Shift+O + the overview-pin toggle on plain 'o'). Quote is right-pinky
+  // reachable, a natural hold verb, and carries no modifier alias or UI claim. Level verb:
+  // hold to beam + hold the clump, release to bowl it; hold-to-toggle latch opt-in via
+  // accessibility.holdToToggle.gyreSnare.
+  gyreSnare:          ['Quote'],    // level: hold to pull/snag/grow a ball, release to bowl it
   // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Digit9 is free repo-wide (same audit as
   // Digit4-8; Digit1-3 carry the ORDNANCE band) and completes the deployable row.
   // Comma is free repo-wide (checked against both scheme tables and ui/bindings.js) and sits
@@ -469,6 +472,7 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
   if (code === 'NumLock') return 'Num Lock';
   if (code === 'CapsLock') return 'Caps Lock';
   if (code === 'Backquote') return '`';
+  if (code === 'Quote') return "'";
   if (code === 'Backslash' || code === 'IntlBackslash') return '\\';
   if (code === 'BracketLeft') return '[';
   if (code === 'BracketRight') return ']';
