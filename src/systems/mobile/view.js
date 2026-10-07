@@ -258,7 +258,12 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     const ended = model.end(e.pointerId, e.clientX, e.clientY, e.timeStamp, cancelled);
     const capture = captures.get(e.pointerId); captures.delete(e.pointerId);
     try { if (capture?.hasPointerCapture?.(e.pointerId)) capture.releasePointerCapture(e.pointerId); } catch {}
-    if (p.role === 'stick') stickUI.release({ flick: !cancelled && model.flickS > 0, immediate: cancelled });
+    if (p.role === 'stick') {
+      // a flick can begin and end between two animation frames, before the instrument was ever drawn: draw it
+      // once so the streak still shows
+      if (!cancelled && model.flickS > 0 && stickUI.root.hidden) { placeStick(p); stickUI.show(p, { heading: null }); }
+      stickUI.release({ flick: !cancelled && model.flickS > 0, immediate: cancelled });
+    }
     if (p.role === 'wheel') {
       model.wheel = null;
       if (cancelled) closeWheel();

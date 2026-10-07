@@ -91,7 +91,24 @@ const finger = {
   /** drag over `ms` in `steps` moves */
   async drag(id, x0, y0, x1, y1, ms = 300, steps = 10) { for (let i = 1; i <= steps; i += 1) { await finger.move(id, x0 + (x1 - x0) * i / steps, y0 + (y1 - y0) * i / steps); await sleep(ms / steps); } },
 };
-const snap = () => page.evaluate(() => {
+// A production bundle does not expose window.SF (debug surfaces are dev-only), so against a deployment every read comes from
+// the DOM the player sees: the speed numeral, the stick's own flags and readout, the wheel, the toast, which screen is up.
+let HAS_SF = false;
+const snapDom = () => page.evaluate(() => {
+  const q = (s) => document.querySelector(s), vis = (s) => { const e = q(s); return !!e && !e.hidden && e.getBoundingClientRect().width > 0; };
+  const stick = q('.mf-stick'), shown = !!stick && !stick.hidden;
+  const word = q('.mf-stick .mf-num')?.textContent || '';
+  const mag = /^[0-9]+$/.test(word) ? Number(word) / 100 : (stick?.dataset.boost === '1' ? 1 : 0);
+  const screens = ['pause', 'station', 'mainMenu', 'newGame', 'settings'].filter((id) => { const e = q('[data-screen="' + id + '"]'); return e && e.getBoundingClientRect().width > 0 && getComputedStyle(e).display !== 'none'; });
+  const flightOn = document.documentElement.dataset.sfMobileFlight === '1';
+  return { mode: flightOn ? 'flight' : 'other', rot: null, speed: Number((q('.mf-speed b')?.textContent || '').replace(/[^0-9.]/g, '')) || 0,
+    axes: { lx: 0, ly: shown ? -mag : 0, rx: 0, ry: 0 },
+    flight: { active: shown && !stick.classList.contains('is-leaving'), mag, boost: stick?.dataset.boost === '1', brake: stick?.dataset.brake === '1', flick: stick?.dataset.flick === '1' },
+    fire: q('.mf-gun')?.dataset.held === '1', stickShown: shown && !stick.classList.contains('is-leaving'), boostFlag: stick?.dataset.boost, leaving: !!q('.mf-stick.is-leaving'),
+    wheelOpen: vis('.mf-wheel'), gunHeld: q('.mf-gun')?.dataset.held, dockShown: vis('.mf-dock'),
+    screens, toast: vis('.mf-toast') ? q('.mf-toast').textContent : null };
+});
+const snapSf = () => page.evaluate(() => {
   const st = window.SF.state, p = st.entities.get(st.playerId), t = window.SF.ctx.touch, m = t.mobile;
   const q = (s) => document.querySelector(s);
   return { mode: st.mode, rot: p ? +p.rot.toFixed(3) : null, speed: p ? +Math.hypot(p.vel.x, p.vel.z).toFixed(1) : null,
@@ -101,6 +118,7 @@ const snap = () => page.evaluate(() => {
     wheelOpen: !!q('.mf-wheel') && !q('.mf-wheel').hidden, gunHeld: q('.mf-gun')?.dataset.held, dockShown: !!q('.mf-dock') && !q('.mf-dock').hidden,
     screens: [...(st.ui.screenStack || [])], toast: q('.mf-toast') && !q('.mf-toast').hidden ? q('.mf-toast').textContent : null };
 });
+const snap = () => (HAS_SF ? snapSf() : snapDom());
 const rect = (sel) => page.evaluate((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2, l: r.left, t: r.top, w: r.width, h: r.height } : null; }, sel);
 const shot = (name) => page.screenshot({ path: join(OUT, `${name}.png`) });
 
@@ -108,7 +126,8 @@ try {
   // ---- boot: title -> New Game -> Launch, with fingers ----------------------------------------------
   console.log(`probe: ${server.url}  ${W}x${H}  ->  ${OUT}`);
   await page.goto(server.url, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state, null, { timeout: BOOT_TIMEOUT });
+  HAS_SF = await page.waitForFunction(() => window.SF && window.SF.state, null, { timeout: argv.url ? 8000 : BOOT_TIMEOUT }).then(() => true).catch(() => false);
+  console.log(`  debug handle: ${HAS_SF ? 'window.SF present (dev route)' : 'absent (production bundle): reading the DOM only'}`);
   const splash = await page.waitForSelector('#cinematic-splash .cine-begin', { timeout: 120000 }).catch(() => null);
   if (splash) {
     await sleep(3500);
@@ -135,7 +154,7 @@ try {
   check('title verbs sit inside the screen' + (LAND ? ' (first three; the column scrolls)' : ' below the logotype'), menu.rects.length >= 4 && shown.every((r) => (LAND || r.top >= menu.logoBottom - 2) && r.left >= 0 && r.right <= menu.vw && r.bottom <= menu.vh), JSON.stringify(menu.rects.map((r) => r.t)));
   const small = menu.rects.filter((r) => r.bottom - r.top < 44).map((r) => r.t);
   check('title verbs are thumb-sized (>= 44px)', small.length === 0, small.join(','));
-  const newGame = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /^new game$/i.test((x.textContent || '').trim()) && x.getBoundingClientRect().width > 4); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  const newGame = await rect('[data-screen="mainMenu"] button[data-action="newGame"]'); // the demo build labels this verb Adventure
   await finger.tap(newGame.x, newGame.y);
   await page.waitForSelector('.sf-ng-footer', { state: 'visible', timeout: 30000 });
   await sleep(1500);
@@ -150,8 +169,8 @@ try {
   const launch = await rect('.sf-ng-launch');
   await finger.tap(launch.x, launch.y);
   const t0 = Date.now();
-  await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: BOOT_TIMEOUT, polling: 1000 });
-  check('a plain New Game is the adventure, not the physics toy', await page.evaluate(() => window.SF.state.sandbox !== true));
+  await page.waitForFunction(() => (window.SF && window.SF.state ? window.SF.state.mode === 'flight' : document.documentElement.dataset.sfMobileFlight === '1'), null, { timeout: BOOT_TIMEOUT, polling: 1000 });
+  check('a plain New Game is the adventure, not the physics toy', await page.evaluate(() => (window.SF && window.SF.state ? window.SF.state.sandbox !== true : !document.querySelector('.sf-sandbox-lab-form') || ![...document.querySelectorAll('.sf-sandbox-lab-form')].some((e) => e.offsetParent))));
   console.log(`  launch -> flight in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   await sleep(4000);
 
@@ -168,6 +187,7 @@ try {
       const out = [];
       for (const e of document.querySelectorAll('body *')) {
         if (e.closest('#sf-touch-overlay') || e.closest('dialog') || e.tagName === 'CANVAS' || e.tagName === 'SCRIPT' || e.tagName === 'STYLE') continue;
+        if (/semantic|sr-only|visually-hidden/.test(String(e.className))) continue; // screen-reader text, clipped off screen
         if (![...e.childNodes].some((n) => n.nodeType === 3 && n.nodeValue.trim())) continue;
         const cs = getComputedStyle(e);
         if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) < 0.08) continue;
@@ -188,6 +208,8 @@ try {
   };
   await sleep(2500);
   await overlaps('HUD text keeps off the deck controls (idle)');
+  // anything at all (not only text) standing in the powers handle's column, for the record
+  writeFileSync(join(OUT, 'edge-column.txt'), (await page.evaluate(() => { const h = document.querySelector('.mf-edge').getBoundingClientRect(); return [...document.querySelectorAll('body *')].filter((e) => !e.closest('#sf-touch-overlay')).map((e) => ({ e, r: e.getBoundingClientRect() })).filter(({ r }) => r.width > 2 && r.height > 2 && r.right > h.left && r.left < h.right && r.bottom > h.top && r.top < h.bottom).map(({ e, r }) => `${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}.${String(e.className).split(' ').slice(0, 3).join('.')} [${[r.left, r.top, r.width, r.height].map(Math.round)}] ${getComputedStyle(e).position}`).slice(0, 25); })).join('\n'));
   const stickAt = { x: Math.round(W * 0.3), y: Math.round(H * (LAND ? 0.6 : 0.66)) };
   const radius = await page.evaluate(() => Math.min(innerWidth, innerHeight) * 0.19 < 54 ? 54 : Math.min(86, Math.min(innerWidth, innerHeight) * 0.19));
   const before = await snap();
@@ -197,11 +219,11 @@ try {
   await sleep(1500);
   let s = await snap();
   check('stick appears under the thumb and drives thrust', s.stickShown && s.flight.active && s.flight.mag > 0.3 && s.axes.ly < -0.1, JSON.stringify(s.flight) + ' ' + JSON.stringify(s.axes));
-  check('the hull turns toward the stick', Math.abs(s.rot - before.rot) > 0.05 || s.axes.lx !== 0, `rot ${before.rot} -> ${s.rot}`);
+  if (HAS_SF) check('the hull turns toward the stick', Math.abs(s.rot - before.rot) > 0.05 || s.axes.lx !== 0, `rot ${before.rot} -> ${s.rot}`);
   await shot('11-flight-stick');
   await sleep(1500);
   const moving = await snap();
-  check('the hull accelerates', moving.speed > before.speed + 5, `speed ${before.speed} -> ${moving.speed}`);
+  check('the hull accelerates (the speed numeral climbs)', moving.speed > before.speed + 5, `speed ${before.speed} -> ${moving.speed}`);
   // boost: pull past the dashed ring
   await finger.drag(id, stickAt.x + radius * 0.55, stickAt.y - radius * 0.5, stickAt.x + radius * 1.1, stickAt.y - radius * 1.1, 200);
   await sleep(500);
@@ -218,7 +240,12 @@ try {
 
   // flick: a quick straight jump and lift. Frames are counted inside the page: a flick pulse lasts ~4 sim ticks,
   // too short for a polled evaluate to catch reliably.
-  await page.evaluate(() => { const m = window.SF.ctx.touch.mobile.model; const orig = m.sample.bind(m); window.__flicks = 0; m.sample = (dt) => { const f = orig(dt); if (f.flight.flick) window.__flicks += 1; return f; }; });
+  await page.evaluate(() => {
+    window.__flicks = 0;
+    const watch = () => { const st = document.querySelector('.mf-stick'); if (!st) return setTimeout(watch, 50); new MutationObserver(() => { if (st.dataset.flick === '1') window.__flicks += 1; }).observe(st, { attributes: true, attributeFilter: ['data-flick'] }); };
+    watch();
+    if (window.SF && window.SF.ctx) { const m = window.SF.ctx.touch.mobile.model; const orig = m.sample.bind(m); m.sample = (dt) => { const f = orig(dt); if (f.flight.flick) window.__flicks += 1; return f; }; }
+  });
   await finger.flick(stickAt.x, stickAt.y, stickAt.x + radius * 1.1, stickAt.y - radius * 0.2);
   await sleep(400);
   const flicks = await page.evaluate(() => window.__flicks);
@@ -285,15 +312,17 @@ try {
   s = await snap();
   check('a tap in open space puts the pinned wheel away', !s.wheelOpen);
 
-  // DOCK key follows dock:range
-  await page.evaluate(() => window.SF.bus.emit('dock:range', { inRange: true }));
-  await sleep(500);
-  s = await snap();
-  check('DOCK key appears when a berth is in range', s.dockShown);
-  await shot('17-flight-dock');
-  await page.evaluate(() => window.SF.bus.emit('dock:range', { inRange: false }));
-  await sleep(300);
-  check('DOCK key leaves when the berth does', !(await snap()).dockShown);
+  // DOCK key follows dock:range (needs the debug bus, so dev route only)
+  if (HAS_SF) {
+    await page.evaluate(() => window.SF.bus.emit('dock:range', { inRange: true }));
+    await sleep(500);
+    s = await snap();
+    check('DOCK key appears when a berth is in range', s.dockShown);
+    await shot('17-flight-dock');
+    await page.evaluate(() => window.SF.bus.emit('dock:range', { inRange: false }));
+    await sleep(300);
+    check('DOCK key leaves when the berth does', !(await snap()).dockShown);
+  }
 
   // main breadth: a grid of taps; every non-control point must start the stick
   const refused = await page.evaluate(() => {
@@ -315,7 +344,7 @@ try {
   // pause
   const pause = await rect('.mf-pause');
   await finger.tap(pause.x, pause.y);
-  await page.waitForFunction(() => window.SF.state.ui.screenStack.includes('pause'), null, { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => (window.SF && window.SF.state ? window.SF.state.ui.screenStack.includes('pause') : !!document.querySelector('[data-screen="pause"]') && document.querySelector('[data-screen="pause"]').getBoundingClientRect().width > 0), null, { timeout: 15000 }).catch(() => {});
   await sleep(1500);
   s = await snap();
   check('the pause key opens the pause screen', s.screens.includes('pause'), JSON.stringify(s.screens));
@@ -332,7 +361,7 @@ try {
   check('Resume returns to flight with the deck up', s.mode === 'flight' && !s.screens.length && (await page.evaluate(() => !document.querySelector('.mf-flight').hidden)), JSON.stringify(s.screens));
 
   // dock and undock by thumb (--dock): fly to a berth, tap the DOCK key, use the station page, tap Undock
-  if (argv.dock) {
+  if (argv.dock && HAS_SF) {
     const near = await page.evaluate(async () => {
       const st = window.SF.state, p = st.entities.get(st.playerId);
       const station = st.entityList.find((e) => e.type === 'station' && e.alive !== false && e.data && e.data.stationId);
