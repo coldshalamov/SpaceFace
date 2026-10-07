@@ -2093,6 +2093,52 @@ function runCookSyncTwin(label, run, fallback = undefined) {
   }
 }
 
+// Per-lane fault rollup on state.render — O(1) at fault time only. A lane that
+// parks and degrades for N epochs is otherwise invisible to diagnostics (frame
+// counters only cover whole-frame kills); the rollup keeps it observable.
+function noteLaneFault(state, lane) {
+  const render = state && state.render;
+  if (!render) return;
+  const rollup = render.laneFaults || (render.laneFaults = {});
+  const row = rollup[lane] || (rollup[lane] = { faults: 0, parkedEpoch: null, lastAt: 0 });
+  row.faults += 1;
+  row.lastAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now();
+}
+
+// One syncEntityViews row faulted mid-pass: epoch-latch the quarantine so it
+// can't re-throw every pass, count it, warn once per epoch. Degrade direction:
+// the row serves its last pose for the epoch rather than killing the whole
+// presented pass.
+function notePresentationRowFault(owner, mesh, entityId, err) {
+  const userData = mesh && mesh.userData;
+  if (!userData) return;
+  const epoch = serviceFaultEpoch(owner.state);
+  if (userData.sfRowFaultedEpoch === epoch) return;
+  userData.sfRowFaultedEpoch = epoch;
+  noteLaneFault(owner.state, 'entityViewRow');
+  console.warn('[render] entity-view row faulted; quarantined for this epoch', entityId, err);
+}
+
+// prepareFrame tail call sites: a throw here reaches the frame-level catch and
+// kills the whole presented pass (PRESENTATION STALLED blast radius). Each site
+// degrades to its last state for the epoch — warn once per epoch per label and
+// continue the pass instead.
+function tryPresentedCall(owner, label, run, fallback = undefined) {
+  try { return run(); } catch (tailError) {
+    const epoch = serviceFaultEpoch(owner.state);
+    const key = `_presentedTailFault_${label}`;
+    const latched = owner[key] || (owner[key] = { epoch: -1, warned: false });
+    if (latched.epoch !== epoch) { latched.epoch = epoch; latched.warned = false; }
+    if (!latched.warned) {
+      latched.warned = true;
+      noteLaneFault(owner.state, `presentedTail.${label}`);
+      console.warn(`[render] presented tail '${label}' faulted; serving last state`, tailError);
+    }
+    return fallback;
+  }
+}
+
 function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
   return drainDisposeQueueLane(owner, '_despawnDisposeQueue', '_despawnDisposeHead',
     '_despawnDisposeIter', '_despawnDisposeLedgerSkips', budgetMs);
@@ -2316,7 +2362,21 @@ function driveProtectedFirstFlightDrain(owner) {
   const drainParked = owner._protectedFirstFlightFaultEpoch === drainEpoch
     && ((owner._protectedFirstFlightFaultRetries | 0) >= 3
       || drainClockNow() < (owner._protectedFirstFlightRetryAt || 0));
-  if (!owner._protectedFirstFlightDrainIter && !drainParked) {
+  if (drainParked) {
+    // Post-retry degrade: the hoisted exempt cohort sits unbuilt for the whole
+    // hold otherwise — one bounded atomic sync-twin rescue per epoch, matching
+    // the sibling lanes' contract.
+    if ((owner._protectedFirstFlightFaultRetries | 0) >= 3
+      && owner._protectedFirstFlightDegradedEpoch !== drainEpoch
+      && typeof owner._drainProtectedFirstFlightBuilds === 'function') {
+      owner._protectedFirstFlightDegradedEpoch = drainEpoch;
+      noteLaneFault(owner.state, 'protectedFirstFlightDrain');
+      return runCookSyncTwin('protected first-flight drain',
+        () => owner._drainProtectedFirstFlightBuilds(), 0);
+    }
+    return 0;
+  }
+  if (!owner._protectedFirstFlightDrainIter) {
     owner._protectedFirstFlightDrainIter = owner._drainProtectedFirstFlightBuildsSteps();
   }
   if (!owner._protectedFirstFlightDrainIter) return 0;
@@ -3462,7 +3522,28 @@ function driveHoldExemptDegrade(owner, state, sliceMs) {
     owner._holdExemptDegradeFaults = 0;
     owner._holdExemptDegradeEpoch = degradeEpoch;
   }
-  if ((owner._holdExemptDegradeFaults | 0) >= 3) return 0;
+  if ((owner._holdExemptDegradeFaults | 0) >= 3) {
+    // Post-retry degrade: this lane is the only in-hold enqueue path, so a
+    // parked epoch otherwise leaves mid-hold arrivals meshless until release.
+    // One bounded atomic sync-twin enqueue per epoch — the rescue the sibling
+    // lanes already use.
+    if (owner._holdExemptSyncTwinEpoch !== degradeEpoch) {
+      owner._holdExemptSyncTwinEpoch = degradeEpoch;
+      noteLaneFault(state, 'holdExemptEnqueue');
+      const frame = owner._activityFrame;
+      const evaluator = makeHoldExemptMeshBuildEvaluator(
+        state, frame && frame.renderGlassIds);
+      const entities = Array.isArray(state.entityList) ? state.entityList : [];
+      return runCookSyncTwin('hold-exempt enqueue', () => enqueueMissingMeshBuilds(
+        entities,
+        owner._meshes,
+        owner._meshBuildQueuedIds,
+        owner._meshBuildQueue,
+        (entity) => !owner._sectorBoundaryPreparations?.has(entity.id) && evaluator(entity),
+        null, null), 0);
+    }
+    return 0;
+  }
   if (!owner._holdExemptDegradeIter) {
     const frame = owner._activityFrame;
     const evaluator = makeHoldExemptMeshBuildEvaluator(
@@ -25233,8 +25314,25 @@ export const render = {
 
   syncEntityViews(alpha) {
     const iter = this.syncEntityViewsSteps(alpha);
-    let step = iter.next();
-    while (!step.done) step = iter.next();
+    // Drive belt: a machinery-level fault outside the row quarantine (query
+    // mint, drains, publish tail) must not reach the presented-frame caller —
+    // the last-painted picture stands instead of a PRESENTATION STALLED.
+    let step;
+    try {
+      step = iter.next();
+      while (!step.done) step = iter.next();
+    } catch (syncError) {
+      closeCookStepsIter(iter);
+      const epoch = serviceFaultEpoch(this.state);
+      if (this._entityViewSyncFaultEpoch !== epoch) this._entityViewSyncFaultWarned = false;
+      this._entityViewSyncFaultEpoch = epoch;
+      if (!this._entityViewSyncFaultWarned) {
+        this._entityViewSyncFaultWarned = true;
+        noteLaneFault(this.state, 'entityViewSync');
+        console.warn('[render] syncEntityViews drive faulted; serving last-painted picture', syncError);
+      }
+      return undefined;
+    }
     return step.value;
   },
 
@@ -25329,76 +25427,82 @@ export const render = {
       if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
       const mesh = world.meshRefs[slot];
       if (!mesh) continue;
+      if (mesh.userData && mesh.userData.sfRowFaultedEpoch === serviceFaultEpoch(this.state)) continue;
       const entityId = world.entityIds[slot];
-      const packedFlags = world.flags[slot];
-      const entity = world.entityRefs[slot];
-      if (world.doomed && world.doomed[slot] === 1) {
-        // Doomed rows are already quarantined out of exactVisible; the hide must not
-        // route through shouldSubmitEntityMesh — its protected-root bypass would keep
-        // a player/forceRender/neverCull doom drawing. The pose write, cull refresh,
-        // and options fill are dead work here: the mesh is hidden this same iteration
-        // and a revived row re-poses through the visible loop on re-entry.
+      try {
+        const packedFlags = world.flags[slot];
+        const entity = world.entityRefs[slot];
+        if (world.doomed && world.doomed[slot] === 1) {
+          // Doomed rows are already quarantined out of exactVisible; the hide must not
+          // route through shouldSubmitEntityMesh — its protected-root bypass would keep
+          // a player/forceRender/neverCull doom drawing. The pose write, cull refresh,
+          // and options fill are dead work here: the mesh is hidden this same iteration
+          // and a revived row re-poses through the visible loop on re-entry.
+          syncResolvingMarker(mesh);
+          const doomedChanged = applyEntityMeshVisibility(mesh, false);
+          if (doomedChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+          if (mesh.userData && mesh.userData.asteroidInstanceBody) {
+            mesh.userData.asteroidInstanceViewCulled = true;
+          }
+          world.clearDirty(slot);
+          this._queueHiddenSubtreeFreeze(mesh);
+          transformed++;
+          continue;
+        }
+        if (entity && entity.alive !== false) {
+          world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
+        }
+        const posed = this._applyPresentationPose(slot, mesh, alpha, true);
+        const isPlayer = !!(packedFlags & PRESENTATION_FLAGS.PLAYER) || entityId === this.state.playerId;
+        const forceRender = !!(packedFlags & PRESENTATION_FLAGS.FORCE_RENDER)
+          || !!(entity && entity.flags && entity.flags.forceRender);
+        const neverCull = !!(packedFlags & PRESENTATION_FLAGS.NEVER_CULL)
+          || !!(entity && entity.flags && entity.flags.neverCull);
+        _protectedRootOptions.isPlayer = isPlayer;
+        _protectedRootOptions.forceRender = forceRender;
+        _protectedRootOptions.neverCull = neverCull;
+        const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
+        // A protected root keeps its prior visibility when the latest fence has no pose for it.
+        // Ordinary stale identities still fail closed and leave the submit list immediately.
         syncResolvingMarker(mesh);
-        const doomedChanged = applyEntityMeshVisibility(mesh, false);
-        if (doomedChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+        _submitVisibilityOptions.isPlayer = isPlayer;
+        _submitVisibilityOptions.forceRender = forceRender;
+        _submitVisibilityOptions.neverCull = neverCull;
+        _submitVisibilityOptions.hidden = true;
+        _submitVisibilityOptions.snapshotMissing = !posed;
+        _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
+        _submitVisibilityOptions.sfAdmittedOnce = !!(mesh.userData && mesh.userData.sfAdmittedOnce);
+        _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
+          && !authoredPendingBoundarySubmitsStandIn(mesh);
+        _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
+        _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.activityFrame = this._activityFrame;
+        _submitVisibilityOptions.entityId = entityId;
+        _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
+        _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
+        _submitVisibilityOptions.middleBand = false;
+        _submitVisibilityOptions.type = null;
+        _submitVisibilityOptions.projectedPx = 0;
+        _submitVisibilityOptions.allowShadowCast = false;
+        _submitVisibilityOptions.onLiveGlass = false;
+        const visibilityChanged = !(!posed && protectedRoot)
+          && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh(_submitVisibilityOptions));
+        if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
         if (mesh.userData && mesh.userData.asteroidInstanceBody) {
           mesh.userData.asteroidInstanceViewCulled = true;
         }
         world.clearDirty(slot);
+        // Out of the visible set the root's local transform is never rewritten (the pose above
+        // was its final write until re-entry), so the walk's per-frame updateMatrix compose and
+        // the force it propagates through the subtree are dead work. Frozen roots still refresh
+        // their matrixWorld when a moved ancestor forces the walk, and hidden pose writers all
+        // run the matrixAutoUpdate === false hook — output is identical, the compose is gone.
         this._queueHiddenSubtreeFreeze(mesh);
         transformed++;
-        continue;
-      }
-      if (entity && entity.alive !== false) {
-        world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
-      }
-      const posed = this._applyPresentationPose(slot, mesh, alpha, true);
-      const isPlayer = !!(packedFlags & PRESENTATION_FLAGS.PLAYER) || entityId === this.state.playerId;
-      const forceRender = !!(packedFlags & PRESENTATION_FLAGS.FORCE_RENDER)
-        || !!(entity && entity.flags && entity.flags.forceRender);
-      const neverCull = !!(packedFlags & PRESENTATION_FLAGS.NEVER_CULL)
-        || !!(entity && entity.flags && entity.flags.neverCull);
-      _protectedRootOptions.isPlayer = isPlayer;
-      _protectedRootOptions.forceRender = forceRender;
-      _protectedRootOptions.neverCull = neverCull;
-      const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
-      // A protected root keeps its prior visibility when the latest fence has no pose for it.
-      // Ordinary stale identities still fail closed and leave the submit list immediately.
-      syncResolvingMarker(mesh);
-      _submitVisibilityOptions.isPlayer = isPlayer;
-      _submitVisibilityOptions.forceRender = forceRender;
-      _submitVisibilityOptions.neverCull = neverCull;
-      _submitVisibilityOptions.hidden = true;
-      _submitVisibilityOptions.snapshotMissing = !posed;
-      _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
-      _submitVisibilityOptions.sfAdmittedOnce = !!(mesh.userData && mesh.userData.sfAdmittedOnce);
-      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
-        && !authoredPendingBoundarySubmitsStandIn(mesh);
-      _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
-      _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
-      _submitVisibilityOptions.activityFrame = this._activityFrame;
-      _submitVisibilityOptions.entityId = entityId;
-      _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
-      _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
-      _submitVisibilityOptions.middleBand = false;
-      _submitVisibilityOptions.type = null;
-      _submitVisibilityOptions.projectedPx = 0;
-      _submitVisibilityOptions.allowShadowCast = false;
-      _submitVisibilityOptions.onLiveGlass = false;
-      const visibilityChanged = !(!posed && protectedRoot)
-        && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh(_submitVisibilityOptions));
-      if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
-      if (mesh.userData && mesh.userData.asteroidInstanceBody) {
-        mesh.userData.asteroidInstanceViewCulled = true;
-      }
-      world.clearDirty(slot);
-      // Out of the visible set the root's local transform is never rewritten (the pose above
-      // was its final write until re-entry), so the walk's per-frame updateMatrix compose and
-      // the force it propagates through the subtree are dead work. Frozen roots still refresh
-      // their matrixWorld when a moved ancestor forces the walk, and hidden pose writers all
-      // run the matrixAutoUpdate === false hook — output is identical, the compose is gone.
-      this._queueHiddenSubtreeFreeze(mesh);
-      transformed++;
+        } catch (rowError) {
+          notePresentationRowFault(this, mesh, entityId, rowError);
+          continue;
+        }
     }
 
     // The mint itself is O(subtree); a cull storm (the opening picture's
@@ -25437,376 +25541,381 @@ export const render = {
       const packedFlags = world.flags[slot];
       const entity = world.entityRefs[slot];
       if (!mesh || (entity && entity.alive === false)) continue;
-
-      const userData = mesh.userData || (mesh.userData = {});
-      // Roots frozen while culled rejoin the live compose path here — mount-frozen static
-      // roots carry no stamp and are left alone.
-      if (userData.sfHiddenFrozen === true) {
-        // The ~2x-subtree interior restore rides the bounded drain instead of
-        // landing inside this pass — queue while the flag still reads true.
-        // The flag now STAYS set until the restore mint consumes it: a
-        // sub-dwell re-hide early-outs the freeze queue and dead-drops this
-        // restore for zero walks, while the vendored updateMatrixWorld
-        // force-descend keeps the pose correct through the window. The show
-        // seq below still feeds the freeze side's flap hysteresis.
-        this._queueHiddenSubtreeUnfreeze(mesh);
-        mesh.matrixAutoUpdate = true;
-      }
-      // Every visible row stamps the last-show seq: a first-time flapper (hide
-      // right after a show) dwell-defers too, not only rows that once froze.
-      userData.sfHiddenFreezeLastShowSeq = this._viewSyncSeq || 0;
-      // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
-      if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
-      if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
-      const viewRadius = (entity && entity.alive !== false)
-        ? entityVisualCullRadius(entity, mesh)
-        : 0;
-      if (entity && entity.alive !== false) {
-        world.refreshVisibleEntity(slot, entity, viewRadius);
-      }
-      const dirty = world.dirtyMasks[slot];
-      // A clean render root still needs a validity check against the latest completed fence. The
-      // check is an index lookup only; pose writes remain dirty/delta-gated below.
-      let posed = this._hasCompletedPresentationPose(slot, entityId);
-      const isPlayer = !!(packedFlags & PRESENTATION_FLAGS.PLAYER)
-        || entityId === this.state.playerId
-        || !!(entity && entity.id === this.state.playerId);
-      const forceRender = !!(packedFlags & PRESENTATION_FLAGS.FORCE_RENDER)
-        || !!(entity && entity.flags && entity.flags.forceRender);
-      const neverCull = !!(packedFlags & PRESENTATION_FLAGS.NEVER_CULL)
-        || !!(entity && entity.flags && entity.flags.neverCull);
-      _protectedRootOptions.isPlayer = isPlayer;
-      _protectedRootOptions.forceRender = forceRender;
-      _protectedRootOptions.neverCull = neverCull;
-      const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
-      let poseApplied = false;
-      if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
-        | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
-        posed = this._applyPresentationPose(slot, mesh, alpha);
-        poseApplied = !!posed;
-        if (!posed && !protectedRoot) {
-          if (applyEntityMeshVisibility(mesh, false)) {
-            this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+      if (mesh.userData && mesh.userData.sfRowFaultedEpoch === serviceFaultEpoch(this.state)) continue;
+      try {
+        const userData = mesh.userData || (mesh.userData = {});
+        // Roots frozen while culled rejoin the live compose path here — mount-frozen static
+        // roots carry no stamp and are left alone.
+        if (userData.sfHiddenFrozen === true) {
+          // The ~2x-subtree interior restore rides the bounded drain instead of
+          // landing inside this pass — queue while the flag still reads true.
+          // The flag now STAYS set until the restore mint consumes it: a
+          // sub-dwell re-hide early-outs the freeze queue and dead-drops this
+          // restore for zero walks, while the vendored updateMatrixWorld
+          // force-descend keeps the pose correct through the window. The show
+          // seq below still feeds the freeze side's flap hysteresis.
+          this._queueHiddenSubtreeUnfreeze(mesh);
+          mesh.matrixAutoUpdate = true;
+        }
+        // Every visible row stamps the last-show seq: a first-time flapper (hide
+        // right after a show) dwell-defers too, not only rows that once froze.
+        userData.sfHiddenFreezeLastShowSeq = this._viewSyncSeq || 0;
+        // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
+        if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
+        if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
+        const viewRadius = (entity && entity.alive !== false)
+          ? entityVisualCullRadius(entity, mesh)
+          : 0;
+        if (entity && entity.alive !== false) {
+          world.refreshVisibleEntity(slot, entity, viewRadius);
+        }
+        const dirty = world.dirtyMasks[slot];
+        // A clean render root still needs a validity check against the latest completed fence. The
+        // check is an index lookup only; pose writes remain dirty/delta-gated below.
+        let posed = this._hasCompletedPresentationPose(slot, entityId);
+        const isPlayer = !!(packedFlags & PRESENTATION_FLAGS.PLAYER)
+          || entityId === this.state.playerId
+          || !!(entity && entity.id === this.state.playerId);
+        const forceRender = !!(packedFlags & PRESENTATION_FLAGS.FORCE_RENDER)
+          || !!(entity && entity.flags && entity.flags.forceRender);
+        const neverCull = !!(packedFlags & PRESENTATION_FLAGS.NEVER_CULL)
+          || !!(entity && entity.flags && entity.flags.neverCull);
+        _protectedRootOptions.isPlayer = isPlayer;
+        _protectedRootOptions.forceRender = forceRender;
+        _protectedRootOptions.neverCull = neverCull;
+        const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
+        let poseApplied = false;
+        if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
+          | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
+          posed = this._applyPresentationPose(slot, mesh, alpha);
+          poseApplied = !!posed;
+          if (!posed && !protectedRoot) {
+            if (applyEntityMeshVisibility(mesh, false)) {
+              this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+            }
+          }
+          if (posed) this._persistentSubmitLanes.markDirty(entityId, 'transform');
+          transformed++;
+        }
+        if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
+  
+        // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
+        // width with hysteresis. Newly visible roots are fully posed above before this decision.
+        _viewBandOptions.isPlayer = isPlayer;
+        _viewBandOptions.dx = mesh.position.x - bounds.x;
+        _viewBandOptions.dz = mesh.position.z - bounds.z;
+        _viewBandOptions.innerHalfX = innerView.halfX;
+        _viewBandOptions.innerHalfZ = innerView.halfZ;
+        _viewBandOptions.radius = viewRadius;
+        _viewBandOptions.forceInner = forceRender || neverCull;
+        const viewBand = classifyEntityViewBand(_viewBandOptions);
+        // _viewBandOptions already carries forceInner; a middle band can only exist with it
+        // false, so the pooled struct answers exactly like the callee's `{}` default.
+        const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot, _viewBandOptions);
+        let lodLevel = userData.lod ? userData.lod.level : null;
+        const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
+        // Projected size must measure the drawn envelope, not the presence proxy: a station's
+        // authored hull outgrows entityPresenceRadius and would resolve a coarser LOD while its
+        // visible footprint is still large on screen.
+        // The attach-time hlod stamp is a declared class, not the drawn envelope: a hull that
+        // outgrows it (stations whose authored body exceeds dockRadius) would resolve a coarser
+        // LOD while its visible footprint is still large — union it with the measured cull radius.
+        const cullRadius = viewRadius || entityVisualCullRadius(entity, mesh) || world.radii[slot] || 0;
+        const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
+          ? Math.max(hlodVisualRadius, cullRadius)
+          : cullRadius;
+        const projectedPx = projectedWidthPx(
+          mesh.position,
+          lodRadius,
+          this.cam && this.cam.obj,
+          this.viewport,
+        );
+        if (userData.lod && userData.updateLod) {
+          lodChecked++;
+          lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
+          // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
+          // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
+          if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
+            userData.updateLod(lodLevel);
+            userData._appliedLodLevel = lodLevel;
           }
         }
-        if (posed) this._persistentSubmitLanes.markDirty(entityId, 'transform');
-        transformed++;
-      }
-      if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
-
-      // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
-      // width with hysteresis. Newly visible roots are fully posed above before this decision.
-      _viewBandOptions.isPlayer = isPlayer;
-      _viewBandOptions.dx = mesh.position.x - bounds.x;
-      _viewBandOptions.dz = mesh.position.z - bounds.z;
-      _viewBandOptions.innerHalfX = innerView.halfX;
-      _viewBandOptions.innerHalfZ = innerView.halfZ;
-      _viewBandOptions.radius = viewRadius;
-      _viewBandOptions.forceInner = forceRender || neverCull;
-      const viewBand = classifyEntityViewBand(_viewBandOptions);
-      // _viewBandOptions already carries forceInner; a middle band can only exist with it
-      // false, so the pooled struct answers exactly like the callee's `{}` default.
-      const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot, _viewBandOptions);
-      let lodLevel = userData.lod ? userData.lod.level : null;
-      const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
-      // Projected size must measure the drawn envelope, not the presence proxy: a station's
-      // authored hull outgrows entityPresenceRadius and would resolve a coarser LOD while its
-      // visible footprint is still large on screen.
-      // The attach-time hlod stamp is a declared class, not the drawn envelope: a hull that
-      // outgrows it (stations whose authored body exceeds dockRadius) would resolve a coarser
-      // LOD while its visible footprint is still large — union it with the measured cull radius.
-      const cullRadius = viewRadius || entityVisualCullRadius(entity, mesh) || world.radii[slot] || 0;
-      const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
-        ? Math.max(hlodVisualRadius, cullRadius)
-        : cullRadius;
-      const projectedPx = projectedWidthPx(
-        mesh.position,
-        lodRadius,
-        this.cam && this.cam.obj,
-        this.viewport,
-      );
-      if (userData.lod && userData.updateLod) {
-        lodChecked++;
-        lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
-        // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
-        // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
-        if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
-          userData.updateLod(lodLevel);
-          userData._appliedLodLevel = lodLevel;
-        }
-      }
-      // Keeper masks remain correctness at every LOD and decorative sleep cadence.
-      if (entity && userData.updateCeresCradleLayout) userData.updateCeresCradleLayout(entity, this.state);
-      const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
-      // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
-      // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
-      // 'place' covers the landmark casters (hub, refinery, wreck cathedral) — the same
-      // cast-radius + LOD gate as stations bounds them to the shadow ortho.
-      let shadowPolicyRefreshed = false;
-      if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
-        // entity may be null for a world-record row; the retained stand-in keeps the old
-        // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
-        const policyResult = this._syncShadowCasterPolicyChecked(mesh, lodLevel, entity || _shadowFallbackEntity, { framePass: true });
-        if (policyResult) {
-          shadowPolicyRefreshed = true;
-          shadowPolicyRefreshes++;
-          // The caster set changed so the map re-renders — but receiveShadow only
-          // moves on visible/material/userData flips, which the traverse summed
-          // itself. A zero delta settles the tally with no whole-scene recount.
-          this._shadowMapDirty = true;
-          if (!noteShadowPolicyChanged(this._shadowReceiverTally, policyResult)) {
-            this._shadowReceiversDirty = true;
+        // Keeper masks remain correctness at every LOD and decorative sleep cadence.
+        if (entity && userData.updateCeresCradleLayout) userData.updateCeresCradleLayout(entity, this.state);
+        const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
+        // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
+        // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
+        // 'place' covers the landmark casters (hub, refinery, wreck cathedral) — the same
+        // cast-radius + LOD gate as stations bounds them to the shadow ortho.
+        let shadowPolicyRefreshed = false;
+        if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
+          // entity may be null for a world-record row; the retained stand-in keeps the old
+          // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
+          const policyResult = this._syncShadowCasterPolicyChecked(mesh, lodLevel, entity || _shadowFallbackEntity, { framePass: true });
+          if (policyResult) {
+            shadowPolicyRefreshed = true;
+            shadowPolicyRefreshes++;
+            // The caster set changed so the map re-renders — but receiveShadow only
+            // moves on visible/material/userData flips, which the traverse summed
+            // itself. A zero delta settles the tally with no whole-scene recount.
+            this._shadowMapDirty = true;
+            if (!noteShadowPolicyChanged(this._shadowReceiverTally, policyResult)) {
+              this._shadowReceiversDirty = true;
+            }
           }
         }
-      }
-
-      if (entity && mesh.userData?.geometryPending && this.state.mode === 'flight'
-        && Number.isFinite(this.state.render?.firstPlayableFrameAt)) {
-        this._noteArrivalRosterMiss(entity);
-        void this._liveGeometryAdmissions?.enqueue(entity, mesh);
-      }
-      // The sim-side activity frame classifies glass/runway at the requested zoom and a fixed
-      // aspect; the live camera can be zoomed out further, putting a runway-classed hull on the
-      // real screen. The presented pose inside the live glass extents wins over the runway deny.
-      const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
-      const onLiveGlass = rootOnLiveGlass(bounds, liveViewFrustum, mesh.position, glassRadius);
-      const glassSpan = Math.max(bounds.glassHalfX || 0, bounds.glassHalfZ || 0, 1);
-      let planarSpeed = 0;
-      if (entity) {
-        if (Number.isFinite(entity.speed)) planarSpeed = entity.speed;
-        else if (entity.vel) planarSpeed = Math.hypot(Number(entity.vel.x) || 0, Number(entity.vel.z) || 0);
-      }
-      _livingMachineOptions.isPlayer = isPlayer;
-      _livingMachineOptions.onGlass = onLiveGlass;
-      _livingMachineOptions.distanceWu = Math.hypot(
-        (mesh.position ? mesh.position.x : 0) - (bounds.x || 0),
-        (mesh.position ? mesh.position.z : 0) - (bounds.z || 0),
-      );
-      _livingMachineOptions.speedWu = planarSpeed;
-      _livingMachineOptions.role = typeName;
-      _livingMachineOptions.glassRadiusWu = glassSpan;
-      const machineScore = livingMachineScore(_livingMachineOptions);
-      userData.livingMachineScore = machineScore;
-      userData.livingMachineAwake = livingMachineStaysInMotion(machineScore);
-      if (living) {
-        if (userData.livingMachineAwake) living.awake += 1;
-        else living.asleep += 1;
-      }
-      // Pin the asset key the glass boundary already retains. An entity id is
-      // not that key, so eviction (which looks up entry.key) would ignore it.
-      if (this._assetResidency && typeof this._assetResidency.noteOwnerVisibility === 'function') {
-        if (mesh) this._assetResidency.noteOwnerVisibility(mesh, onLiveGlass);
-        if (entity && entity !== mesh) this._assetResidency.noteOwnerVisibility(entity, onLiveGlass);
-      }
-      // The live-glass deadline only exists once the live screen does: a root
-      // pending behind the loading shell is not on glass yet — its clock starts
-      // at the first playable frame, same gate the admission lane serves.
-      const liveScreen = this.state.mode === 'flight'
-        && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
-      if (userData.geometryPending === true && onLiveGlass && liveScreen) {
-        if (!Number.isFinite(userData.onGlassPendingSince)) userData.onGlassPendingSince = now;
-        const pendingS = now - userData.onGlassPendingSince;
-        if (pendingS > onGlassPendingMaxS) onGlassPendingMaxS = pendingS;
-        onGlassPendingCount++;
-        if (onGlassPendingIds.length < 16) {
-          const flags = `${userData.spacefaceGeometryResident === true ? 'R' : '-'}` +
-            `${entity && entity.mesh === mesh ? '' : ':stalemesh'}`;
-          onGlassPendingIds.push(
-            `${entityId}:${pendingS.toFixed(1)}:${entity ? 'e' : 'noent'}:${flags}`,
+  
+        if (entity && mesh.userData?.geometryPending && this.state.mode === 'flight'
+          && Number.isFinite(this.state.render?.firstPlayableFrameAt)) {
+          this._noteArrivalRosterMiss(entity);
+          void this._liveGeometryAdmissions?.enqueue(entity, mesh);
+        }
+        // The sim-side activity frame classifies glass/runway at the requested zoom and a fixed
+        // aspect; the live camera can be zoomed out further, putting a runway-classed hull on the
+        // real screen. The presented pose inside the live glass extents wins over the runway deny.
+        const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
+        const onLiveGlass = rootOnLiveGlass(bounds, liveViewFrustum, mesh.position, glassRadius);
+        const glassSpan = Math.max(bounds.glassHalfX || 0, bounds.glassHalfZ || 0, 1);
+        let planarSpeed = 0;
+        if (entity) {
+          if (Number.isFinite(entity.speed)) planarSpeed = entity.speed;
+          else if (entity.vel) planarSpeed = Math.hypot(Number(entity.vel.x) || 0, Number(entity.vel.z) || 0);
+        }
+        _livingMachineOptions.isPlayer = isPlayer;
+        _livingMachineOptions.onGlass = onLiveGlass;
+        _livingMachineOptions.distanceWu = Math.hypot(
+          (mesh.position ? mesh.position.x : 0) - (bounds.x || 0),
+          (mesh.position ? mesh.position.z : 0) - (bounds.z || 0),
+        );
+        _livingMachineOptions.speedWu = planarSpeed;
+        _livingMachineOptions.role = typeName;
+        _livingMachineOptions.glassRadiusWu = glassSpan;
+        const machineScore = livingMachineScore(_livingMachineOptions);
+        userData.livingMachineScore = machineScore;
+        userData.livingMachineAwake = livingMachineStaysInMotion(machineScore);
+        if (living) {
+          if (userData.livingMachineAwake) living.awake += 1;
+          else living.asleep += 1;
+        }
+        // Pin the asset key the glass boundary already retains. An entity id is
+        // not that key, so eviction (which looks up entry.key) would ignore it.
+        if (this._assetResidency && typeof this._assetResidency.noteOwnerVisibility === 'function') {
+          if (mesh) this._assetResidency.noteOwnerVisibility(mesh, onLiveGlass);
+          if (entity && entity !== mesh) this._assetResidency.noteOwnerVisibility(entity, onLiveGlass);
+        }
+        // The live-glass deadline only exists once the live screen does: a root
+        // pending behind the loading shell is not on glass yet — its clock starts
+        // at the first playable frame, same gate the admission lane serves.
+        const liveScreen = this.state.mode === 'flight'
+          && Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
+        if (userData.geometryPending === true && onLiveGlass && liveScreen) {
+          if (!Number.isFinite(userData.onGlassPendingSince)) userData.onGlassPendingSince = now;
+          const pendingS = now - userData.onGlassPendingSince;
+          if (pendingS > onGlassPendingMaxS) onGlassPendingMaxS = pendingS;
+          onGlassPendingCount++;
+          if (onGlassPendingIds.length < 16) {
+            const flags = `${userData.spacefaceGeometryResident === true ? 'R' : '-'}` +
+              `${entity && entity.mesh === mesh ? '' : ':stalemesh'}`;
+            onGlassPendingIds.push(
+              `${entityId}:${pendingS.toFixed(1)}:${entity ? 'e' : 'noent'}:${flags}`,
+            );
+          }
+        } else if (userData.onGlassPendingSince != null) {
+          userData.onGlassPendingSince = null;
+        }
+        syncResolvingMarker(mesh);
+        _submitVisibilityOptions.isPlayer = isPlayer;
+        _submitVisibilityOptions.forceRender = forceRender;
+        _submitVisibilityOptions.neverCull = neverCull;
+        _submitVisibilityOptions.hidden = false;
+        _submitVisibilityOptions.middleBand = viewBand === 'middle';
+        _submitVisibilityOptions.type = typeName;
+        _submitVisibilityOptions.projectedPx = projectedPx;
+        _submitVisibilityOptions.allowShadowCast = false;
+        _submitVisibilityOptions.snapshotMissing = !posed;
+        _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
+        _submitVisibilityOptions.sfAdmittedOnce = !!(mesh.userData && mesh.userData.sfAdmittedOnce);
+        _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
+          && !authoredPendingBoundarySubmitsStandIn(mesh);
+        _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
+        _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.activityFrame = this._activityFrame;
+        _submitVisibilityOptions.entityId = entityId;
+        _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
+        _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
+        _submitVisibilityOptions.onLiveGlass = onLiveGlass;
+        const visibilityChanged = !(!posed && protectedRoot)
+          && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
+        if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+        // D38 — a latched root on the live glass is a hole in the picture: whatever lane queued
+        // its compile/residency while it was still off-glass must not finish under ambient FIFO
+        // rules. The deadline-band clause catches the same root one band early — the pending
+        // latch already hides it, so waiting for the measured crossing only adds frames.
+        if (userData.pipelinesPending === true && liveScreen
+            && (onLiveGlass === true || (entity && entityIsOnDeadlineGlass(entity, this.state)))) {
+          promoteOnGlassPipelineLatch(this, mesh);
+        }
+        if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
+          // Quiet parked cast-band roots: root TRS unchanged → skip sub-texel compare.
+          // (In-function bit-identical early-out held ~0.87×; call-site skip is the cut.)
+          _shadowCastPoseGate.poseApplied = poseApplied;
+          _shadowCastPoseGate.visibilityChanged = visibilityChanged;
+          _shadowCastPoseGate.policyRefreshed = shadowPolicyRefreshed;
+          if (shouldNoteRealtimeShadowCasterPose(mesh, _shadowCastPoseGate)) {
+            _shadowCasterPoseOptions.visualRadius = lodRadius;
+            _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
+            _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
+            if (noteRealtimeShadowCasterPose(mesh, _shadowCasterPoseOptions)) {
+              this._shadowMapDirty = true;
+            }
+          }
+        }
+  
+        if (entity) classifyRenderEntity(this._entityFrame, entity, mesh, false);
+        fullSynced++;
+  
+        // Visible interactive and hero roots retain their authored per-frame presentation closures.
+        // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
+        // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
+        const farSpeck = lodLevel === 'lod2' && !isPlayer;
+        if (entity && runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, simNow);
+        if (isPlayer && entity && this._livingHullPresentation) {
+          this._livingHullPresentation.sync(
+            entity.data && entity.data.livingHull,
+            this.state.simTime,
+            entity,
           );
         }
-      } else if (userData.onGlassPendingSince != null) {
-        userData.onGlassPendingSince = null;
-      }
-      syncResolvingMarker(mesh);
-      _submitVisibilityOptions.isPlayer = isPlayer;
-      _submitVisibilityOptions.forceRender = forceRender;
-      _submitVisibilityOptions.neverCull = neverCull;
-      _submitVisibilityOptions.hidden = false;
-      _submitVisibilityOptions.middleBand = viewBand === 'middle';
-      _submitVisibilityOptions.type = typeName;
-      _submitVisibilityOptions.projectedPx = projectedPx;
-      _submitVisibilityOptions.allowShadowCast = false;
-      _submitVisibilityOptions.snapshotMissing = !posed;
-      _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
-      _submitVisibilityOptions.sfAdmittedOnce = !!(mesh.userData && mesh.userData.sfAdmittedOnce);
-      _submitVisibilityOptions.authoredPending = isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState)
-        && !authoredPendingBoundarySubmitsStandIn(mesh);
-      _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
-      _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
-      _submitVisibilityOptions.activityFrame = this._activityFrame;
-      _submitVisibilityOptions.entityId = entityId;
-      _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
-      _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
-      _submitVisibilityOptions.onLiveGlass = onLiveGlass;
-      const visibilityChanged = !(!posed && protectedRoot)
-        && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
-      if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
-      // D38 — a latched root on the live glass is a hole in the picture: whatever lane queued
-      // its compile/residency while it was still off-glass must not finish under ambient FIFO
-      // rules. The deadline-band clause catches the same root one band early — the pending
-      // latch already hides it, so waiting for the measured crossing only adds frames.
-      if (userData.pipelinesPending === true && liveScreen
-          && (onLiveGlass === true || (entity && entityIsOnDeadlineGlass(entity, this.state)))) {
-        promoteOnGlassPipelineLatch(this, mesh);
-      }
-      if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
-        // Quiet parked cast-band roots: root TRS unchanged → skip sub-texel compare.
-        // (In-function bit-identical early-out held ~0.87×; call-site skip is the cut.)
-        _shadowCastPoseGate.poseApplied = poseApplied;
-        _shadowCastPoseGate.visibilityChanged = visibilityChanged;
-        _shadowCastPoseGate.policyRefreshed = shadowPolicyRefreshed;
-        if (shouldNoteRealtimeShadowCasterPose(mesh, _shadowCastPoseGate)) {
-          _shadowCasterPoseOptions.visualRadius = lodRadius;
-          _shadowCasterPoseOptions.extent = this._shadowOrthoExtent;
-          _shadowCasterPoseOptions.mapSize = this._keyLight?.shadow?.mapSize?.x;
-          if (noteRealtimeShadowCasterPose(mesh, _shadowCasterPoseOptions)) {
-            this._shadowMapDirty = true;
+        if (isPlayer && entity && this._crucibleGhostPresentation) {
+          this._crucibleGhostPresentation.sync(this.state, mesh);
+        }
+        if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
+            && userData.updateWorldSitePresentation) {
+          userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
+        }
+        if (entity && runClosures && userData.updateDamageState) {
+          if (entity.hull !== userData._dmgHull || entity.shield !== userData._dmgShield
+            || entity.alive !== userData._dmgAlive) {
+            userData._dmgHull = entity.hull;
+            userData._dmgShield = entity.shield;
+            userData._dmgAlive = entity.alive;
+            userData.updateDamageState(entity, simNow);
           }
         }
-      }
-
-      if (entity) classifyRenderEntity(this._entityFrame, entity, mesh, false);
-      fullSynced++;
-
-      // Visible interactive and hero roots retain their authored per-frame presentation closures.
-      // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
-      // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
-      const farSpeck = lodLevel === 'lod2' && !isPlayer;
-      if (entity && runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, simNow);
-      if (isPlayer && entity && this._livingHullPresentation) {
-        this._livingHullPresentation.sync(
-          entity.data && entity.data.livingHull,
-          this.state.simTime,
-          entity,
-        );
-      }
-      if (isPlayer && entity && this._crucibleGhostPresentation) {
-        this._crucibleGhostPresentation.sync(this.state, mesh);
-      }
-      if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
-          && userData.updateWorldSitePresentation) {
-        userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
-      }
-      if (entity && runClosures && userData.updateDamageState) {
-        if (entity.hull !== userData._dmgHull || entity.shield !== userData._dmgShield
-          || entity.alive !== userData._dmgAlive) {
-          userData._dmgHull = entity.hull;
-          userData._dmgShield = entity.shield;
-          userData._dmgAlive = entity.alive;
-          userData.updateDamageState(entity, simNow);
+        if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, simNow);
+        if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
+            && userData.updateAuthoredMotion) {
+          userData.updateAuthoredMotion(entity, authoredNow, _worldSiteA11y);
+        } else if (entity && userData.updateCeresPhysicalState) {
+          // Native shoe/pad poses and consumed-force radiance remain exact when decoration sleeps.
+          userData.updateCeresPhysicalState(entity, _worldSiteA11y);
         }
-      }
-      if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, simNow);
-      if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
-          && userData.updateAuthoredMotion) {
-        userData.updateAuthoredMotion(entity, authoredNow, _worldSiteA11y);
-      } else if (entity && userData.updateCeresPhysicalState) {
-        // Native shoe/pad poses and consumed-force radiance remain exact when decoration sleeps.
-        userData.updateCeresPhysicalState(entity, _worldSiteA11y);
-      }
-
-      // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale
-      // freeze presFrameDt is exactly 0 — skipping here also skips the spring CPU, and every
-      // consumer floors its dt so passing 0 would still creep.
-      // The living-machine score decides decorative motion. The player always scores awake.
-      // A ship or station on the glass stays awake. Off-glass bodies sleep their bob, arms,
-      // and tumble. Shots, pickups, ordnance, and a fresh wreck keep moving: those are readable.
-      if (entity && !farSpeck && presFrameDt > 0) {
-        const frameDt = presFrameDt;
-        const simTime = simNow;
-        const machineAwake = userData.livingMachineAwake !== false;
-        if (typeName === 'ship' || typeName === 'drone' || typeName === 'freighter') {
-          if (machineAwake) {
-            _craftMicroMotionOptions.motionReduce = _worldSiteA11y.reducedMotion;
-            _craftMicroMotionOptions.playerMiningActive = !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active);
-            _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
-            _craftMicroMotionOptions.playerTargetId = this.state && this.state.player && this.state.player.targetId;
-            _craftMicroMotionOptions.entities = this.state && this.state.entities;
-            const tetherView = this.state && this.state.player && this.state.player.tether;
-            _craftMicroMotionOptions.tetherActive = !!(tetherView && tetherView.active);
-            _craftMicroMotionOptions.tetherTargetId = tetherView ? tetherView.targetId : null;
-            _craftMicroMotionOptions.tetherLoad = tetherView && Number.isFinite(tetherView.load) ? tetherView.load : 0;
-            _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
-            _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
-            globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
-            globalForgeCrown.updateForgeCrown(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
-            globalLawArenaDressing.updateBossDressing(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+  
+        // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale
+        // freeze presFrameDt is exactly 0 — skipping here also skips the spring CPU, and every
+        // consumer floors its dt so passing 0 would still creep.
+        // The living-machine score decides decorative motion. The player always scores awake.
+        // A ship or station on the glass stays awake. Off-glass bodies sleep their bob, arms,
+        // and tumble. Shots, pickups, ordnance, and a fresh wreck keep moving: those are readable.
+        if (entity && !farSpeck && presFrameDt > 0) {
+          const frameDt = presFrameDt;
+          const simTime = simNow;
+          const machineAwake = userData.livingMachineAwake !== false;
+          if (typeName === 'ship' || typeName === 'drone' || typeName === 'freighter') {
+            if (machineAwake) {
+              _craftMicroMotionOptions.motionReduce = _worldSiteA11y.reducedMotion;
+              _craftMicroMotionOptions.playerMiningActive = !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active);
+              _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
+              _craftMicroMotionOptions.playerTargetId = this.state && this.state.player && this.state.player.targetId;
+              _craftMicroMotionOptions.entities = this.state && this.state.entities;
+              const tetherView = this.state && this.state.player && this.state.player.tether;
+              _craftMicroMotionOptions.tetherActive = !!(tetherView && tetherView.active);
+              _craftMicroMotionOptions.tetherTargetId = tetherView ? tetherView.targetId : null;
+              _craftMicroMotionOptions.tetherLoad = tetherView && Number.isFinite(tetherView.load) ? tetherView.load : 0;
+              _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
+              _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
+              globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+              globalForgeCrown.updateForgeCrown(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+              globalLawArenaDressing.updateBossDressing(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+            }
+            if (isPlayer && this.scene) {
+              slipstreamSeen = true;
+              if (!this._overheadCues) this._overheadCues = createFlightOverheadPresentation(this.scene);
+              _overheadCuesOptions.reducedMotion = _worldSiteA11y.reducedMotion;
+              _overheadCuesOptions.reducedFlash = _worldSiteA11y.reducedFlash;
+              _overheadCuesOptions.simTime = simTime;
+              this._overheadCues.sync(entity, mesh, frameDt, this.state, _overheadCuesOptions);
+            }
+          } else if (typeName === 'projectile') {
+            globalProjectileMotion.updateProjectileMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
+          } else if (typeName === 'asteroid') {
+            // instancePool lets adopted InstancedMesh leaves dirty the pool when the tumble
+            // writes their transforms — otherwise a still camera keeps serving the stale matrix.
+            if (machineAwake) {
+              _worldSiteA11y.instancePool = this._asteroidInstancePool;
+              globalAsteroidMotion.updateAsteroidMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
+            }
+          } else if (typeName === 'pickup') {
+            const playerEntity = framePlayer;
+            globalPickupMotion.updatePickupMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+          } else if (typeName === 'bomb' || typeName === 'mine' || typeName === 'vectormine'
+              || typeName === 'charge' || typeName === 'payload' || typeName === 'beacon') {
+            const playerEntity = framePlayer;
+            globalOrdnanceMotion.updateOrdnanceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+          } else if (typeName === 'station' && machineAwake) {
+            const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
+            const playerEntity = framePlayer;
+            if (isGate) {
+              globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+            } else {
+              globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+            }
+          } else if (typeName === 'place' && machineAwake) {
+            // Landmarks/props carry authored ANIM_ parts (beacons, dishes, drills); gates
+            // filed as places still get the full gate treatment.
+            const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
+            const playerEntity = framePlayer;
+            if (isGate) {
+              globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+            } else {
+              globalInfrastructureMotion.updatePlaceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+            }
+          } else if (typeName === 'wreck') {
+            // Fresh kill wrecks spiral (root-owned) while dead drift continues (child-owned).
+            globalShipMicroMotion.updateDeathSpiral(entity, mesh, simTime, frameDt, _worldSiteA11y);
+            globalInfrastructureMotion.updateWreckMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
           }
-          if (isPlayer && this.scene) {
-            slipstreamSeen = true;
-            if (!this._overheadCues) this._overheadCues = createFlightOverheadPresentation(this.scene);
-            _overheadCuesOptions.reducedMotion = _worldSiteA11y.reducedMotion;
-            _overheadCuesOptions.reducedFlash = _worldSiteA11y.reducedFlash;
-            _overheadCuesOptions.simTime = simTime;
-            this._overheadCues.sync(entity, mesh, frameDt, this.state, _overheadCuesOptions);
-          }
-        } else if (typeName === 'projectile') {
-          globalProjectileMotion.updateProjectileMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
-        } else if (typeName === 'asteroid') {
-          // instancePool lets adopted InstancedMesh leaves dirty the pool when the tumble
-          // writes their transforms — otherwise a still camera keeps serving the stale matrix.
-          if (machineAwake) {
-            _worldSiteA11y.instancePool = this._asteroidInstancePool;
-            globalAsteroidMotion.updateAsteroidMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
-          }
-        } else if (typeName === 'pickup') {
-          const playerEntity = framePlayer;
-          globalPickupMotion.updatePickupMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
-        } else if (typeName === 'bomb' || typeName === 'mine' || typeName === 'vectormine'
-            || typeName === 'charge' || typeName === 'payload' || typeName === 'beacon') {
-          const playerEntity = framePlayer;
-          globalOrdnanceMotion.updateOrdnanceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
-        } else if (typeName === 'station' && machineAwake) {
-          const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
-          const playerEntity = framePlayer;
-          if (isGate) {
-            globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
-          } else {
-            globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
-          }
-        } else if (typeName === 'place' && machineAwake) {
-          // Landmarks/props carry authored ANIM_ parts (beacons, dishes, drills); gates
-          // filed as places still get the full gate treatment.
-          const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
-          const playerEntity = framePlayer;
-          if (isGate) {
-            globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
-          } else {
-            globalInfrastructureMotion.updatePlaceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
-          }
-        } else if (typeName === 'wreck') {
-          // Fresh kill wrecks spiral (root-owned) while dead drift continues (child-owned).
-          globalShipMicroMotion.updateDeathSpiral(entity, mesh, simTime, frameDt, _worldSiteA11y);
-          globalInfrastructureMotion.updateWreckMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
         }
+  
+        // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
+        // frame and is punched up whenever the entity's shield value drops.
+        const shieldBubble = userData.shieldBubble;
+        if (entity && shieldBubble) {
+          // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
+          // Quiet-latches while flash/contact/collapse are cold (see shieldBubblePresentation.js).
+          // simNow already anchors to state.simTime; presFrameDt carries the flash decay so a hard
+          // freeze holds uFlash still instead of decaying on the wall clock.
+          updateEntityShieldBubblePresentation(
+            entity,
+            shieldBubble,
+            now,
+            simNow,
+            _worldSiteA11y && _worldSiteA11y.reducedMotion === true,
+            presFrameDt,
+          );
+        }
+  
+        const hlod = userData.hlod;
+        if (hlod) {
+          hlodDetailedVisible += Number(hlod.detailedVisible) || 0;
+          hlodProxyVisible += Number(hlod.proxyVisible) || 0;
+          if (hlod.swapped) hlodObjectsSwapped++;
+        }
+        world.clearDirty(slot);
+      } catch (rowError) {
+        notePresentationRowFault(this, mesh, entityId, rowError);
+        continue;
       }
-
-      // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
-      // frame and is punched up whenever the entity's shield value drops.
-      const shieldBubble = userData.shieldBubble;
-      if (entity && shieldBubble) {
-        // Per-ship fallback material: same shell clock as the pooled lane, same sim-time source.
-        // Quiet-latches while flash/contact/collapse are cold (see shieldBubblePresentation.js).
-        // simNow already anchors to state.simTime; presFrameDt carries the flash decay so a hard
-        // freeze holds uFlash still instead of decaying on the wall clock.
-        updateEntityShieldBubblePresentation(
-          entity,
-          shieldBubble,
-          now,
-          simNow,
-          _worldSiteA11y && _worldSiteA11y.reducedMotion === true,
-          presFrameDt,
-        );
-      }
-
-      const hlod = userData.hlod;
-      if (hlod) {
-        hlodDetailedVisible += Number(hlod.detailedVisible) || 0;
-        hlodProxyVisible += Number(hlod.proxyVisible) || 0;
-        if (hlod.swapped) hlodObjectsSwapped++;
-      }
-      world.clearDirty(slot);
     }
 
     // Deferred interior restores mint a few roots per pass alongside the
@@ -26873,7 +26982,9 @@ export const render = {
       if (this.state.render) this.state.render.activityFrame = null;
     } else if (this._activityFrameTick !== activityTick
         || (this._openingFirstPicturePrepared && this.state.mode !== 'flight')) {
-      publishActivityFrame(this, getActivityFrame(this.state));
+      tryPresentedCall(this, 'activity-frame', () => {
+        publishActivityFrame(this, getActivityFrame(this.state));
+      });
       this._activityFrameTick = activityTick;
       if (this.state && this.state.render) this.state.render.activityFrame = this._activityFrame;
     }
@@ -26906,7 +27017,9 @@ export const render = {
       this._openingPictureHoldSinceMs = null;
     }
     if (!holdOpeningPicture) {
-      updateShipPitchPresentation(this.state, this._presentationFrameDt);
+      tryPresentedCall(this, 'ship-pitch', () => {
+        updateShipPitchPresentation(this.state, this._presentationFrameDt);
+      });
       this.syncEntityViews(alpha);
       if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
       if (this.cam && typeof this.cam.follow === 'function') {
@@ -26918,8 +27031,10 @@ export const render = {
           && Number.isFinite(pm.position.x) && Number.isFinite(pm.position.z)
           ? pm.position
           : null;
-        this.cam.follow(frameDt, alpha, presented, this._cameraClearanceAt);
-        this._updateCameraOccluders(frameDt);
+        tryPresentedCall(this, 'camera-follow', () => {
+          this.cam.follow(frameDt, alpha, presented, this._cameraClearanceAt);
+          this._updateCameraOccluders(frameDt);
+        });
       }
     } else if (this.state && this.state.render) {
       // prepareOpeningFirstPicture already published the exact final pose, visibility, camera, and
@@ -26930,15 +27045,25 @@ export const render = {
       this.state.render.interpolationAlpha = 1;
     }
     if (!holdOpeningPicture && !holdLoadingGpu) {
-      syncContactShadowPool(this._contactShadowPool, this._entityFrame);
-      tickShieldShellClock(this._shipAuxPool, this.state);
-      syncShipAuxPools(this._shipAuxPool, this._entityFrame);
+      tryPresentedCall(this, 'contact-shadow-pool', () => {
+        syncContactShadowPool(this._contactShadowPool, this._entityFrame);
+      });
+      tryPresentedCall(this, 'shield-shell-clock', () => {
+        tickShieldShellClock(this._shipAuxPool, this.state);
+      });
+      tryPresentedCall(this, 'ship-aux-pools', () => {
+        syncShipAuxPools(this._shipAuxPool, this._entityFrame);
+      });
     }
     const shadowRadius = Number.isFinite(this._frameShadowCastRadius)
       ? this._frameShadowCastRadius
       : liveShadowCastRadius(this.state);
     this._frameShadowCastRadius = shadowRadius;
-    if (!holdOpeningPicture && !holdLoadingGpu) this._syncAuthoredInstanceSubmission(shadowRadius);
+    if (!holdOpeningPicture && !holdLoadingGpu) {
+      tryPresentedCall(this, 'authored-instances', () => {
+        this._syncAuthoredInstanceSubmission(shadowRadius);
+      });
+    }
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
@@ -26946,12 +27071,16 @@ export const render = {
     this._updateSectorPaletteTransition(frameDt);
     this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {
-      if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
-      parallaxLayers.update(frameDt);
+      tryPresentedCall(this, 'backdrop', () => {
+        if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
+        parallaxLayers.update(frameDt);
+      });
     }
-    this._syncShadowMapEnabled();
-    if (this._syncKeyLightShadowFrustum(shadowRadius)) this._shadowMapDirty = true;
-    const shadowFollowChanged = this._updateShadowFollow(false);
+    tryPresentedCall(this, 'shadow-map-enabled', () => this._syncShadowMapEnabled());
+    if (tryPresentedCall(this, 'keylight-frustum', () => this._syncKeyLightShadowFrustum(shadowRadius), false)) {
+      this._shadowMapDirty = true;
+    }
+    const shadowFollowChanged = tryPresentedCall(this, 'shadow-follow', () => this._updateShadowFollow(false), false);
     if (this._keyLight && this._keyLight.shadow && this.renderer && this.renderer.shadowMap) {
       const refreshWasPending = this._shadowRefreshScheduled === true;
       // Same pinned-keys contract as the opening path: the tally, not the map flags, gates work.
@@ -26972,25 +27101,33 @@ export const render = {
         skippedLast: this._shadowPresentSkipped === true || refreshWasPending,
         dirty,
       });
-      this._shadowRefreshScheduled = scheduleRealtimeShadowRefresh(
-        this.renderer, this._keyLight, shadowMapActive && refreshShadow);
+      this._shadowRefreshScheduled = tryPresentedCall(this, 'shadow-refresh-schedule', () => scheduleRealtimeShadowRefresh(
+        this.renderer, this._keyLight, shadowMapActive && refreshShadow), false);
       this._shadowPresentSkipped = dirty && !refreshShadow;
-      if (this._shadowRefreshScheduled) this._updateShadowFollow(true);
+      if (this._shadowRefreshScheduled) {
+        tryPresentedCall(this, 'shadow-follow', () => this._updateShadowFollow(true), false);
+      }
       if (!shadowMapActive) this._activeShadowCamera = null;
     }
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
     // an offset from its target; we move both together. No-op unless the shadow map will render.
     if (this._shadowRefreshScheduled) {
-      this._activeShadowCamera = prepareActiveShadowCamera(
+      this._activeShadowCamera = tryPresentedCall(this, 'active-shadow-camera', () => prepareActiveShadowCamera(
         this.renderer, this._keyLight, Math.max(1, this._shadowReceiverCount),
-      );
+      ), this._activeShadowCamera);
     }
     const shadowCamera = this._activeShadowCamera || null;
-    if (!holdOpeningPicture && !holdLoadingGpu) this._syncAsteroidInstanceSubmission(shadowCamera);
+    if (!holdOpeningPicture && !holdLoadingGpu) {
+      tryPresentedCall(this, 'asteroid-instances', () => {
+        this._syncAsteroidInstanceSubmission(shadowCamera);
+      });
+    }
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
-      if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
+      if (this.collisionDebug && this.collisionDebug.on) {
+        tryPresentedCall(this, 'collision-debug', () => this.collisionDebug.update());
+      }
     if (useCpu) perf.recordRenderWork('prepareFrame', performance.now() - t0);
     return true;
   },
@@ -28650,21 +28787,21 @@ export const render = {
       // × every site inside one frame. The first site per sync pass drives;
       // later sites serve the in-flight signature (the memo's conservative
       // direction already).
-      if (memo.sig != null && memo.lastDrainSeq === this._viewSyncSeq) {
+      if (memo.lastDrainSeq === this._viewSyncSeq) {
         return memo.sig;
       }
       memo.lastDrainSeq = this._viewSyncSeq;
       const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now();
-      const deadline = memo.sig == null ? Number.POSITIVE_INFINITY : startedAt + 4;
+      // The first-ever mint shares the per-pass bound too: serve-null is the
+      // memo's legal direction and the sync fallback below stays once-per-pass,
+      // so an unbounded drain here is never the right call inside a presented
+      // frame — a faulting census would otherwise pay ~6 O(scene) walks in one.
+      const deadline = startedAt + 4;
       let step = null;
-      // No prior signature to serve (first-ever mint): the call drains
-      // synchronously — same atomic cost as the pre-stepped code, paid once.
-      while (memo.sig == null
-        || ((typeof performance !== 'undefined' && typeof performance.now === 'function'
-          ? performance.now() : Date.now()) < deadline)) {
-        // A spent pass serves the in-flight signature instead of stepping —
-        // the first-ever mint keeps draining (nothing to serve yet).
+      while ((typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()) < deadline) {
+        // A spent pass serves the in-flight signature instead of stepping.
         if (memo.sig != null && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
         try {
           step = memo.pendingIter.next();
@@ -28704,7 +28841,10 @@ export const render = {
       // park after 3 tries, keyed to the epoch so a fresh census re-arms it.
       const sigEpochNow = shadowCensusEpoch();
       const sigParked = memo.sigFaultEpoch === sigEpochNow && (memo.sigFaults | 0) >= 3;
-      if (!sigParked) {
+      // At most one whole-scene sync traverse per presented pass — under a
+      // persistent census fault ~15 consult sites would each retry it.
+      if (!sigParked && memo.sigFallbackSeq !== this._viewSyncSeq) {
+        memo.sigFallbackSeq = this._viewSyncSeq;
         try {
           memo.sig = lightCensusSignature(scene);
           memo.sigFaults = 0;
@@ -30651,8 +30791,30 @@ function drainSceneEnvRebindQueue(owner) {
 // bake at mint; a call under different options abandons the parked walk and
 // re-collects, matching the sync path's always-fresh traverse. Returns
 // true/false like the sync twin, or null while the walk stays parked.
+// A persistently faulting root otherwise re-mints a fresh iterator on every
+// pass the wallet admits — mint + partial-walk spend forever, plus starvation
+// pressure on legitimate evals. ≥3 faults per epoch parks the root behind a
+// jittered deferral serving the no-change verdict.
+function notePolicyRootFault(owner, root, err) {
+  const epoch = serviceFaultEpoch(owner.state);
+  const map = owner._policyRootFaults || (owner._policyRootFaults = new Map());
+  let rec = map.get(root);
+  if (!rec || rec.epoch !== epoch) {
+    rec = { epoch, faults: 0, deferUntil: 0 };
+    map.set(root, rec);
+  }
+  rec.faults += 1;
+  if (rec.faults >= 3 && rec.deferUntil <= (owner._viewSyncSeq || 0)) {
+    rec.deferUntil = (owner._viewSyncSeq || 0) + 30 + ((rec.faults * 7) % 60);
+    noteLaneFault(owner.state, 'shadowPolicyRoot');
+    console.warn(`[render] shadow policy root faulted x${rec.faults}; serving no-change while deferred`, err);
+  }
+}
+
 function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineFn) {
   const parkedMap = owner._policyStepsParked || (owner._policyStepsParked = new Map());
+  const faultRec = owner._policyRootFaults && owner._policyRootFaults.get(root);
+  if (faultRec && faultRec.deferUntil > (owner._viewSyncSeq || 0)) return false;
   let slot = parkedMap.get(root);
   // The sig names only verdict-changing terms: lodLevel feeds no per-node
   // verdict (the walker's visit never reads it), so a mid-walk LOD flip
@@ -30677,6 +30839,7 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
         carriedDelta,
       };
     } catch (mintError) {
+      notePolicyRootFault(owner, root, mintError);
       console.warn('[render] shadow policy steps mint failed; root stays dirty for the next eval', mintError);
       return null;
     }
@@ -30691,6 +30854,7 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
       // would read done and stamp a verdict + LOD level over a half-applied
       // walk while clearing the root's dirty latch.
       parkedMap.delete(root);
+      notePolicyRootFault(owner, root, driveError);
       console.warn('[render] shadow policy steps drive failed; root stays dirty for the next eval', driveError);
       return null;
     }
