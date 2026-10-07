@@ -1,16 +1,12 @@
 name: mobile-preview-acceptance
 # Read-only proof against an immutable Vercel candidate URL, not moving production.
-# Default candidate is commit 0e279ac: identical runtime to this branch's CI-only follow-ups.
+# The caller must name the intended completed candidate; never silently test an old preview.
 on:
   workflow_dispatch:
     inputs:
       url:
         description: Public candidate deployment URL
-        default: https://spaceface-play-demo-22t1th2il-robin-gattis-projects.vercel.app/
         required: true
-  push:
-    branches: [fix/mobile-readiness-20261006]
-    paths: [.github/workflows/mobile-preview-acceptance.yml]
 permissions:
   contents: read
 concurrency:
@@ -26,7 +22,7 @@ jobs:
         engine: [webkit, chromium]
     env:
       MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
-      MOBILE_PROBE_URL: ${{ inputs.url || 'https://spaceface-play-demo-22t1th2il-robin-gattis-projects.vercel.app/' }}
+      MOBILE_PROBE_URL: ${{ inputs.url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,7 +50,9 @@ jobs:
       - name: Hosted worker and mobile launch acceptance
         run: |
           node scripts/check-runtime-worker-browser.mjs
-          node scripts/probe-deployed-mobile.mjs
+          mkdir -p .devshots/mobile-deployment/"$MOBILE_PROBE_ENGINE"
+          set -o pipefail
+          DEBUG=pw:browser node scripts/probe-deployed-mobile.mjs 2>&1 | tee .devshots/mobile-deployment/"$MOBILE_PROBE_ENGINE"/browser-process.log
       - name: Existing multi-touch flight and power interaction acceptance
         if: matrix.engine == 'chromium'
         run: node scripts/probe-mobile-flight.mjs --url="$MOBILE_PROBE_URL" --tag=vercel-candidate --boot-timeout=300

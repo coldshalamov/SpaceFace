@@ -11,12 +11,13 @@ if (!['webkit', 'chromium'].includes(engine)) throw new Error('Engine must be we
 const out = resolve(process.env.MOBILE_PROBE_OUT || `.devshots/mobile-deployment/${engine}`);
 await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
-  responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [] };
+  responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [] };
 let browser;
 const snapshot = page => page.evaluate(() => {
   const shown = e => !e.hidden && e.getBoundingClientRect().width > 0
     && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
   return {
+    launchButton: (() => { const e = document.querySelector('.sf-ng-launch'); return e ? { text: e.textContent, disabled: e.disabled, ariaDisabled: e.getAttribute('aria-disabled') } : null; })(),
     title: document.title, mobile: document.documentElement.dataset.sfMobile || null,
     flight: document.documentElement.dataset.sfMobileFlight || null,
     capabilities: { coarse: matchMedia('(pointer: coarse)').matches, anyCoarse: matchMedia('(any-pointer: coarse)').matches,
@@ -28,13 +29,19 @@ const snapshot = page => page.evaluate(() => {
   };
 });
 const visible = async (page, selector) => page.locator(selector).first().isVisible().catch(() => false);
-const critical = response => /\.(?:glb|wasm|m?js)(?:\?|$)/.test(response.url) && response.status >= 400;
+const critical = response => response.status >= 400 && (
+  /\.(?:glb|wasm|m?js)(?:\?|$)/.test(response.url) || /\/assets\/ships\/motions\/.*\.json(?:\?|$)/.test(response.url));
 try {
   browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: true,
     ...(engine === 'chromium' ? { args: ['--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio'] } : {}) });
-  const context = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
+  const context = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block',
+    // Official Vercel E2E header: exclude preview-only feedback UI, not game code
+    // or deployment protection. Production visitors do not normally load this toolbar.
+    extraHTTPHeaders: { 'x-vercel-skip-toolbar': '1' } });
   const page = await context.newPage(); page.setDefaultTimeout(20000);
-  page.on('pageerror', error => report.pageErrors.push(String(error)));
+  page.on('crash', () => report.lifecycle.push({ event: 'page-crash', at: new Date().toISOString() }));
+  page.on('close', () => report.lifecycle.push({ event: 'page-close', at: new Date().toISOString() }));
+  page.on('pageerror', error => report.pageErrors.push(String(error?.stack || error)));
   page.on('console', message => {
     if (['error', 'warning'].includes(message.type()) && report.console.length < 250)
       report.console.push({ type: message.type(), text: message.text().slice(0, 3000) });
@@ -69,6 +76,8 @@ try {
   while (Date.now() - launchAt < 300000) {
     await page.waitForTimeout(2000);
     const state = await snapshot(page); report.observations.push({ elapsedMs: Date.now() - launchAt, ...state });
+    if (report.console.some(entry => /\[SpaceFace\] new game startup failed/.test(entry.text)))
+      throw new Error('Game reported a startup-readiness failure; see console and failed asset URLs');
     if (state.flight === '1' && !state.loading.length) { reachedFlight = true; break; }
     if (Date.now() - launchAt > 5000 && await visible(page, menu))
       throw new Error('New Game returned to the main menu without entering flight');
@@ -118,8 +127,9 @@ try {
   }
   process.exitCode = 1;
 } finally {
-  await browser?.close();
+  // Persist diagnostics before a crashed renderer can stall browser shutdown.
   await writeFile(join(out, 'report.json'), JSON.stringify(report, null, 2));
+  await browser?.close();
   console.log(JSON.stringify({ engine, passed: report.passed, launchMs: report.launchMs,
     failure: report.failure, final: report.final, pageErrors: report.pageErrors,
     failedHttp: report.responses.filter(r => r.status >= 400) }, null, 2));
