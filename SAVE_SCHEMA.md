@@ -168,6 +168,7 @@ Current save version: `14`
 | `$.encounterDirector` | object | {} |
 | `$.enemyMind` | null | null |
 | `$.entities` | object | {} |
+| `$.entities.ceresWorkfleetRefs` | array | length 0 |
 | `$.entities.freeIds` | array | length 0 |
 | `$.entities.nextEntityId` | number | 2 |
 | `$.entities.nextOccupantGeneration` | null | null |
