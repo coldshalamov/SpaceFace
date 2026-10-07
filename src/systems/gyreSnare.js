@@ -189,11 +189,26 @@ export const gyreSnare = {
     }
   },
 
+  _restoreLifetime(e) {
+    // Stashed at snag: a freed (non-launched) core resumes its authored deadlines
+    // instead of living forever as stasis residue.
+    if (!e || !e.data) return;
+    if (e.data.gyrePrevDespawnAt !== undefined) {
+      e.data.despawnAt = e.data.gyrePrevDespawnAt;
+      delete e.data.gyrePrevDespawnAt;
+    }
+    if (e.data.gyrePrevTtl !== undefined) {
+      e.ttl = e.data.gyrePrevTtl;
+      delete e.data.gyrePrevTtl;
+    }
+  },
+
   _clearCoreMark() {
     const rt = this._rt;
     const core = rt.coreId != null && this.state ? this.state.entities.get(rt.coreId) : null;
     if (core && core.data && core.data.gyreCore) {
       delete core.data.gyreCore;
+      this._restoreLifetime(core);
       if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') {
         this.helpers.markEntityVisualChanged(core);
       }
@@ -208,6 +223,10 @@ export const gyreSnare = {
     ents.forEach((e) => {
       if (e && e.data && e.data.gyreCore) {
         delete e.data.gyreCore;
+        // The stash only restores within a live drop — a serialized body's deadlines
+        // are relative to the old timeline, so loaded residue just drops them.
+        delete e.data.gyrePrevDespawnAt;
+        delete e.data.gyrePrevTtl;
         if (mark) mark(e);
       }
     });
@@ -440,8 +459,12 @@ export const gyreSnare = {
     best.data.gyreCore = true;
     // A timed body (timedWreckOrAsteroidDeadline) cored mid-hold would die at its own
     // deadline → core_lost evaporates the whole clump, members included. The lash
-    // holds mass in stasis — BOTH lifetime channels clear on snag: data.despawnAt
-    // (the data-table deadline) and entity.ttl (the sibling sweep at coreSystem).
+    // holds mass in stasis — BOTH lifetime channels are stashed + cleared on snag:
+    // data.despawnAt (the data-table deadline) and entity.ttl (the sibling sweep at
+    // coreSystem). A non-launch drop restores them — a strained-off core resumes its
+    // authored cleanup deadline rather than becoming a permanent free body.
+    best.data.gyrePrevDespawnAt = best.data.despawnAt;
+    best.data.gyrePrevTtl = best.ttl;
     delete best.data.despawnAt;
     best.ttl = Infinity;
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(best);
@@ -663,6 +686,8 @@ export const gyreSnare = {
     rt.launchLeft = D.launchTicks;
     rt.launchDir.x = dir.x;
     rt.launchDir.z = dir.z;
+    // rt.coreId keeps pointing at the now-flying ball through the 5-tick burst — the
+    // clump overlay + pub.coreId ride the payload until _finishLaunch clears it.
     rt.launchedId = core.id;
     rt.ballId = core.id; // outlives LAUNCH so render/HUD can track the bowling ball to its grave
     rt.ballMass = rt.clumpMass;
@@ -677,13 +702,20 @@ export const gyreSnare = {
       D.launchImpactScaleMax,
       D.launchImpactScaleBase + rt.clumpMass / D.launchImpactScalePerMass,
     );
-    core.physicsBody = core.physicsBody || {};
-    core.physicsBody.impactDamageScale = scale;
-    // Bump the body revision — RESOLVED_BODY_CACHE keys on (body, revision), so the
-    // authored-spec write must invalidate or the resolved spec reads stale.
-    core.physicsBody.revision = Math.max(0, Math.trunc(finite(core.physicsBody.revision))) + 1;
+    if (core.physicsBody !== false) {
+      // physicsBody===false is an authored opt-out — materializing a record here
+      // would make shouldSyncPhysicsBodyEntity spawn a body the entity declined.
+      core.physicsBody = core.physicsBody || {};
+      core.physicsBody.impactDamageScale = scale;
+      // Bump the body revision — RESOLVED_BODY_CACHE keys on (body, revision), so the
+      // authored-spec write must invalidate or the resolved spec reads stale.
+      core.physicsBody.revision = Math.max(0, Math.trunc(finite(core.physicsBody.revision))) + 1;
+    }
     core.data = core.data || {};
     delete core.data.gyreCore;
+    // Launch stamps its own TTL — the stashed authored deadlines drop with the core flag.
+    delete core.data.gyrePrevDespawnAt;
+    delete core.data.gyrePrevTtl;
     core.data.gyreLaunched = true;
     core.data.despawnAt = (Number.isFinite(state.simTime) ? state.simTime : 0) + D.ballTtlS;
     recordImpulseProvenance(core, {
@@ -731,6 +763,16 @@ export const gyreSnare = {
     rt.clumpRadius = 0;
     rt.coreBaseMass = 0;
     rt.members.length = 0;
+    // Same live-side ledger reset _drop does: after the ball dies a core-less re-beam
+    // must not publish the dead clump's count/cue state as if it were live. The frozen
+    // ball ledger (ballId/ballMass/ballMembers/ballClumpRadius/ballAbsorbs) survives —
+    // it is the payload's own bookkeeping, not the beam's.
+    rt.totalAbsorbed = 0;
+    rt.basinCount = 0;
+    rt.orbitSeed = 0;
+    rt.lastAbsorbCueS = -1e9;
+    rt.strainCueLatched = false;
+    rt.fullCueLatched = false;
     rt.launchedId = null;
     // ballId/ballMass deliberately survive: the clump visual keeps riding the thrown mass until it
     // despawns, and the HUD's "ball live" dot reads the same flag.

@@ -276,6 +276,7 @@ test('each new pad verb merges into state.input.actions like a stock pad verb', 
     ['cloak', 'edge', 'cloakToggle'],
     ['bulletTime', 'held', 'bulletTime'],
     ['siteBeam', 'held', 'siteBeam'],
+    ['gyreSnare', 'held', 'gyreSnare'],
   ];
   for (const [verb, kind, act] of cases) {
     gp.actions = nullActions();
@@ -289,4 +290,47 @@ test('each new pad verb merges into state.input.actions like a stock pad verb', 
     assert.equal(state.input.actions[act], false, `pad ${verb} release clears actions.${act}`);
     state.tick += 1;
   }
+});
+
+test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', () => {
+  const bus = createBus();
+  const gp = createGamepad({ bus });
+  const state = makeState();
+  gp.tick(1 / 60, state);
+  assert.equal(gp.isConnected(), true);
+
+  // Hold RB (its solo verb is boost — it stays live under the chord), tap Y: the lash
+  // holds while Y's own verb (deployRepulsor) stays suppressed for the hold.
+  press(BTN.r1, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  press(BTN.alt, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, true, 'RB+Y holds the lash');
+  assert.equal(gp.actions.deployRepulsor.held, false, 'the chorded Y solo stays silent');
+  assert.equal(gp.actions.boost.held, true, 'the modifier keeps boost');
+
+  press(BTN.alt, false); press(BTN.r1, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, false, 'releasing Y sets the lash down');
+
+  // Gyre events pulse the pad's haptic frame: a queued pulse sets the frame's
+  // magnitude to the spec value on the next tick (idle baseline stays near 0).
+  const drain = (n = 15) => { for (let i = 0; i < n; i++) { state.tick += 1; gp.tick(1 / 60, state); } };
+  drain();
+  assert.ok(gp.haptics.strong < 0.4, `idle baseline is quiet (strong=${gp.haptics.strong})`);
+  const pulseAt = (ev, want) => {
+    bus.emit(ev, { coreId: 9 });
+    state.tick += 1; gp.tick(1 / 60, state);
+    assert.ok(gp.haptics.strong >= want, `${ev} pulses strong>=${want} (got ${gp.haptics.strong})`);
+    drain();
+  };
+  pulseAt('gyre:snagged', 0.70);
+  pulseAt('gyre:full', 0.65);
+  pulseAt('gyre:launched', 0.90);
+
+  // A boundary-flagged drop is a context reset, not a player verb — the pad stays silent.
+  bus.emit('gyre:dropped', { boundary: true });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong < 0.45, `boundary drop does not pulse (strong=${gp.haptics.strong})`);
+  pulseAt('gyre:dropped', 0.45);
 });

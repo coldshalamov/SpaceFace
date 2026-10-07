@@ -1037,3 +1037,24 @@ test('a mid-launch key press is a fresh edge — the beam re-opens, not eaten', 
   release(t);
   t.cleanup();
 });
+
+test('a dropped core resumes its authored lifetime; a launched one keeps the ball deadline', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  core.data = core.data || {};
+  core.data.despawnAt = 9999;   // authored data-table deadline
+  core.ttl = 8888;              // authored sibling-sweep deadline
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'timed body cored');
+  assert.equal(core.data.despawnAt, undefined, 'snag clears the data deadline');
+  assert.equal(core.ttl, Infinity, 'snag clears the sibling deadline');
+  // Losing the player is a live drop, not a launch — the authored deadlines come back.
+  t.state.entities.delete(t.state.playerId);
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'player lost drops the hold');
+  assert.equal(core.data.despawnAt, 9999, 'the data deadline is restored');
+  // The sibling sweep decrements ttl on the drop tick itself — the resume loses one step.
+  assert.ok(core.ttl > 8887 && core.ttl <= 8888, `the sibling deadline is restored (got ${core.ttl})`);
+  t.cleanup();
+});
