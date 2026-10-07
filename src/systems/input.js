@@ -1597,6 +1597,10 @@ export const input = {
     const aimWorld = inp.aimWorld || (inp.aimWorld = { x: 0, z: 0 });
     if (aimAxes && !kbmRecent && p && p.pos) {
       inp.aimIntentActive = true;
+      // The aim point below is synthetic (300 wu along the stick), not a place the player
+      // pointed at; target acquisition reads this to keep stick aim on nearest-hostile picks.
+      // Minted only here so headless/mouse input objects keep their shape.
+      inp.aimFromStick = true;
       // Right-stick / right-touch aim is independent of the ship nose, like the mouse.
       // FB-004: pad aim rides the shared response curve + aim sensitivity (touch keeps its own
       // scale); the raw gp.axes stay untouched either way.
@@ -1616,6 +1620,7 @@ export const input = {
       const controllerDrawToFly = inp.autoFire && gpAimActive && !tpAimActive && !kbmRecent;
       writeAutoTargetVector(inp, ax, ay, controllerDrawToFly);
     } else {
+      if (inp.aimFromStick) delete inp.aimFromStick;
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
       // FB-004: the raw _ndc stays the device truth; sensitivity and Y inversion apply to the
       // derived aim channel only (amplified or flipped NDC still raycasts — the aim just points
