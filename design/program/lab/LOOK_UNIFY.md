@@ -246,3 +246,52 @@ Before pass 2 the bright, warm-neutralized IBL masked it. Once the IBL was cut, 
 - sceneEnv lifts luminance, but spec rises with it (utility 9 → 16 → 27 % for 0.18 → 0.25 → 0.30).
 
 **Pick:** sceneEnv 0.22 + surface.shadowTint [0.80, 0.76, 0.82] in LOOK_BASE. Moods keep their own tints.
+
+### Pass 3 rendered result (286 models × 2 views)
+```
+models 286
+metric               master | pass2 | pass3
+meanL                0.464±0.153 | 0.357±0.140 | 0.368±0.142
+clipPct              5.583±9.400 | 2.399±4.591 | 2.422±4.559
+specPct              10.395±15.692 | 0.748±3.702 | 0.949±4.000
+bloomHalo            0.005±0.002 | 0.004±0.002 | 0.005±0.003
+contrast             0.742±0.149 | 0.586±0.161 | 0.604±0.160
+sat                  0.367±0.110 | 0.437±0.117 | 0.428±0.116
+clip non-glow        5.18 | 1.62 | 1.67 (n=193)
+warm hull/mech       n/a | n/a | -1.0
+outliers master 57 
+outliers pass2 7 cockpit_dome fin_crystalline place_station_billboard place_traffic_signal pod_utility weapon_heavy_cannon weapon_railgun
+outliers pass3 9 cockpit_dome fin_crystalline place_comms_array place_station_billboard place_traffic_signal place_works_rover pod_utility weapon_heavy_cannon weapon_railgun
+per role (pass-last): L sd, spec, clip  master -> last
+  accent      n= 13 L sd 0.127->0.139 spec  14.8->  0.4 clip  15.6->  9.1
+  ceramic     n=  9 L sd 0.088->0.069 spec   4.6->  0.2 clip   2.0->  0.3
+  geology     n= 13 L sd 0.120->0.110 spec   4.1->  0.1 clip   1.6->  0.5
+  hull        n= 84 L sd 0.169->0.159 spec  18.1->  1.5 clip   5.3->  2.0
+  mechanical  n= 71 L sd 0.149->0.136 spec   9.0->  1.6 clip   7.0->  2.1
+  service     n= 12 L sd 0.056->0.058 spec   6.0->  0.1 clip   0.5->  0.0
+  signal      n= 80 L sd 0.112->0.092 spec   5.5->  0.3 clip   4.9->  3.2
+worst12 spec+clip:
+  place_utility_module                152.0 -> 11.2 -> 16.7
+  cockpit_dome                        138.7 -> 66.4 -> 65.0
+  place_cargo_pod_hazmat              101.6 -> 7.7 -> 12.6
+  place_comms_array                   94.8 -> 27.4 -> 32.0
+  place_habitat_pod                   90.8 -> 8.1 -> 14.1
+  place_construction_frame            88.2 -> 1.4 -> 1.8
+  engine_plasma_ring                  86.8 -> 2.4 -> 2.4
+  place_cargo_pod_standard_breached   85.5 -> 4.9 -> 8.9
+  place_habitat_pod_derelict          81.2 -> 7.3 -> 12.8
+  engine_vector                       81.0 -> 15.9 -> 16.2
+  pod_utility                         78.3 -> 79.0 -> 78.6
+  place_parts_rack                    78.0 -> 2.3 -> 3.4
+```
+- **Cream is restored on pale hulls.** In worst12_before_after3.png, utility module, cargo pods, habitat pods, parts rack and comms array read
+  ivory or cream again, not grey/lavender, and keep their shaded form. The dome still reads as glass.
+- **Outliers:** 9 (≤ 10 met). New are place_comms_array and place_works_rover, both just over the line from the higher IBL.
+- **Spec:** 0.95% (master 10.4%).
+- **Clip on non-glow roles:** 1.67% (pass 2 1.62%; target 1.5%, nearly met). All-role clip is 2.42%, carried by accent glow.
+- **meanL:** 0.368, still under 0.38–0.42. Raising sceneEnv further costs spec and clip on the pale hulls (A/B e25/e30).
+  Getting the last +0.02 without highlights would take a lift in mid-tones (post grade/exposure), which is #220's area. Not done.
+- Warmth metric: only measured from pass 3 on (hull/mech pale pixels R−B ≈ −1 at full-frame scale; the A/B table above has
+  the per-model shift).
+
+Sheets (box): `/workspace/look-unify/all_after3.png`, `/workspace/look-unify/worst12_before_after3.png` (BEFORE = master).
