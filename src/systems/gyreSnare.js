@@ -228,11 +228,14 @@ export const gyreSnare = {
     // instead of living forever as stasis residue.
     if (!e || !e.data) return;
     if (e.data.gyrePrevDespawnAt !== undefined) {
-      // futureOnly (adoption hand-back): the adopter owns the body's deadline now.
-      // A stash already in the past would assassinate their body on the next
-      // lifetime sweep — drop it and let the adopter's deadline stand.
+      // futureOnly (hand-back): the body's CURRENT owner keeps its deadline. Restore
+      // the authored stash only when nothing else set one AND it's still in the
+      // future — resurrecting a stale stash assassinates an adopted body on the next
+      // lifetime sweep, and clobbering a live launch deadline would cut a still-
+      // flying overflow ball's flight short.
       const now = this.state && this.state.simTime;
-      if (futureOnly && Number.isFinite(now) && e.data.gyrePrevDespawnAt <= now) {
+      if (futureOnly && (e.data.despawnAt != null
+        || (Number.isFinite(now) && e.data.gyrePrevDespawnAt <= now))) {
         delete e.data.gyrePrevDespawnAt;
       } else {
         e.data.despawnAt = e.data.gyrePrevDespawnAt;
@@ -240,8 +243,11 @@ export const gyreSnare = {
       }
     }
     if (e.data.gyrePrevTtl !== undefined) {
-      e.ttl = e.data.gyrePrevTtl;
-      delete e.data.gyrePrevTtl;
+      // The countdown channel has no absolute-time test — under futureOnly the new
+      // owner takes the body's deadline wholesale: resuming a nearly-exhausted
+      // authored ttl would assassinate it exactly like a stale despawnAt.
+      if (futureOnly) delete e.data.gyrePrevTtl;
+      else { e.ttl = e.data.gyrePrevTtl; delete e.data.gyrePrevTtl; }
     }
   },
 
@@ -265,9 +271,10 @@ export const gyreSnare = {
   _handBack(ball) {
     delete ball.data.gyreLaunched;
     delete ball.data.gyreLaunchMeta; // the adopter owns the body now — no lash credit rides it
-    // Symmetric with _restoreLifetime on drop: the authored deadlines the ball carried
-    // before the lash caught it come back instead of leaving it immortal unless the
-    // adopter deadlined it themselves.
+    // Symmetric with _restoreLifetime on drop, but future-only: the authored deadlines
+    // the ball carried before the lash caught it come back ONLY while still in the
+    // future and only when the new owner left despawnAt unset — a stale stash or a
+    // resumed countdown would assassinate the adopter's body on the next sweep.
     this._restoreLifetime(ball, true);
     if (ball.physicsBody && ball.physicsBody !== false) {
       if (ball.data.gyrePrevImpactScale !== undefined) ball.physicsBody.impactDamageScale = ball.data.gyrePrevImpactScale;
@@ -299,9 +306,8 @@ export const gyreSnare = {
       // A serialized mid-flight ball keeps gyreLaunched + its own deadline — still a
       // launched body, so keep it watched: if an adopting system later strips the
       // deadline, the retire pass hands it back instead of orphaning the mark. The
-      // lifetime stashes ride with it too — they are plain authored values, no staler
-      // than the serialized despawnAt the ball already carries, and _handBack restores
-      // them symmetric with the drop contract.
+      // lifetime stashes ride with it too — consumed by the future-only hand-back
+      // contract when a foreign owner finally takes the body.
       if (e && e.data && e.data.gyreLaunched) {
         this._trackBall(e.id);
         // The kill-credit record lives in a WeakMap keyed on the entity OBJECT — a real
@@ -440,7 +446,8 @@ export const gyreSnare = {
   _pullPass(dt, state, player, maw, nose, owned) {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
-    if (!queryRadius) return;
+    this._rt.basinCount = 0; // reset above the guard — a helper-less host must not
+    if (!queryRadius) return; // publish a frozen +N read forever
     const ownedCore = owned && owned.core && owned.core.pos ? owned.core : null;
     const ownedR2 = ownedCore && owned.r > 0 ? owned.r * owned.r : 0;
     const reach = D.mawDist + D.basinRadius + D.queryReachWu;
@@ -448,7 +455,6 @@ export const gyreSnare = {
     const tan = Math.tan(D.coneHalfAngleRad);
     const shipVx = finite(player.vel && player.vel.x);
     const shipVz = finite(player.vel && player.vel.z);
-    this._rt.basinCount = 0;
     for (let i = 0; i < cands.length; i++) {
       const e = cands[i];
       if (!e || e.alive === false || !e.pos) continue;
@@ -612,7 +618,9 @@ export const gyreSnare = {
         coreId: best.id, type: best.type, mass: rt.clumpMass, radius: rt.clumpRadius,
         tick: state.tick,
       });
-      this.bus.emit('audio:cue', { id: 'gyre_snare_snag' });
+      // Mass-graded snag voice: a pebble cracks bright, a rock the size of a
+      // building thumps — same convention as the launch cue below.
+      this.bus.emit('audio:cue', { id: 'gyre_snare_snag', rate: 1.08 - Math.min(0.3, rt.clumpMass / 500) });
       this.bus.emit('camera:shake', { amount: 0.12 });
     }
     return true;
@@ -680,13 +688,11 @@ export const gyreSnare = {
   _suckPass(dt, state, player, core, rt) {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
+    // Reset above the guard — a helper-less host must not publish a frozen +N read forever.
+    rt.suckCount = 0;
     if (!queryRadius) return;
     const suckR = rt.clumpRadius + D.suckBandWidth;
     const cands = queryRadius(core.pos, suckR, this._scratch);
-    // The annulus's own inbound count: meals the clump is already vacuuming but that sit
-    // OUTSIDE the drawn glass still belong in the "×N IN NET" read — as clumpRadius grows
-    // toward the cap the annulus reaches well past the basin, so basin-only under-reports.
-    rt.suckCount = 0;
     const shipVx = finite(player && player.vel && player.vel.x);
     const shipVz = finite(player && player.vel && player.vel.z);
     for (let i = 0; i < cands.length; i++) {
@@ -903,9 +909,14 @@ export const gyreSnare = {
         speed: D.launchSpeed, dir: { x: dir.x, z: dir.z }, members: rt.members.length,
         tick: state.tick,
       });
+      // Mass-graded launch voice: a pebble cracks bright, a capped moon bowls
+      // low and heavy — rate falls and gain swells as clumpMass approaches the cap.
+      const launchFrac = Math.min(1, rt.clumpMass / D.maxClumpMass);
       this.bus.emit('audio:cue', {
         id: 'gyre_snare_launch',
         position: { x: core.pos.x, z: core.pos.z },
+        rate: 1.05 - 0.45 * launchFrac,
+        gain: 0.7 + 0.5 * launchFrac,
       });
     }
     // The kinetic payoff (shake + Newton kick) does NOT land here — it rides the first
@@ -955,11 +966,14 @@ export const gyreSnare = {
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
+      graves: null,
     });
     // Default each tick: the grave ring only blooms when the ball actually DIES — an
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
     // launchedId without a grave, and must not shatter under a still-live body.
     pub.ballGrave = false;
+    if (pub.graves === null) pub.graves = [];
+    pub.graves.length = 0;
     pub.phase = rt.phase;
     // Retire pass over EVERY watched launched id — not just the HUD's primary ball:
     // a second launch or a boundary reload can orphan an older marked body, and an
@@ -977,6 +991,13 @@ export const gyreSnare = {
           if (this.bus) {
             this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: e.pos.x, z: e.pos.z } });
           }
+          // Ring for the HUD mirror too: a retired non-primary ball still deserves a
+          // visual grave — the lane's quiet-TTL shatter was audio-only.
+          const meta = e.data.gyreLaunchMeta;
+          pub.graves.push({
+            x: e.pos.x, z: e.pos.z,
+            r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : 6,
+          });
           rt.ballIds.splice(i, 1);
           continue;
         }

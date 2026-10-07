@@ -1127,7 +1127,11 @@ export const save = {
       // that dropped every in-flight shot would silently lose real combat state. Restore keeps
       // their finite ttl and leaves them transient.
       const liveProjectile = e.type === 'projectile';
-      if (!isPlayer && !liveProjectile && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
+      // A live gyre ball is the same class: a player-launched in-flight damage dealer
+      // carrying its own data.despawnAt deadline (plus gyreLaunchMeta kill credit) — a
+      // continue that dropped it would silently lose a 2400t bowling ball mid-flight.
+      const gyreBall = !!(e.data && e.data.gyreLaunched);
+      if (!isPlayer && !liveProjectile && !gyreBall && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
       out.push(plainEntity(e, isPlayer));
     }
     return {

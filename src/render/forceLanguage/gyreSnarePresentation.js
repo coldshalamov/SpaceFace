@@ -111,6 +111,7 @@ uniform float uTime;
 uniform float uLen;
 uniform float uRad;
 uniform float uSize;
+uniform vec3 uAim;   // beam-local pull target — the HELD core's offset from the maw plane
 attribute float aSeed;
 varying float vFade;
 void main() {
@@ -121,6 +122,9 @@ void main() {
   float r = uRad * (1.45 - 1.15 * t);               // wide orbit → tight at the mouth
   float a = aSeed * 6.2832 + uTime * (1.6 + aSeed * 2.2);
   vec3 p = vec3(x, cos(a) * r, sin(a) * r);
+  // While a core is held the well it orbits is off-axis from the maw — bend the
+  // funnel's last stretch toward it so the suction arrow points at the real mass.
+  p += uAim * smoothstep(0.55, 1.0, t);
   vFade = smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.75, 1.0, t));
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_PointSize = uSize * (280.0 / max(1.0, -mv.z));
@@ -268,6 +272,7 @@ export class GyreSnarePresentation {
       vertexShader: SPIRAL_VERT, fragmentShader: SPIRAL_FRAG,
       uniforms: {
         uTime: { value: 0 }, uLen: { value: 1 }, uRad: { value: 1 }, uFade: { value: 1 },
+        uAim: { value: new THREE.Vector3() },
         uSize: { value: 3.4 }, uCol: { value: new THREE.Color(glass) },
       },
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
@@ -357,6 +362,7 @@ export class GyreSnarePresentation {
     this._nose = { x: 0, z: 0 };
     this._mawPt = { x: 0, z: 0 };
     this._ballPt = { x: 0, z: 0 };
+    this._corePt = { x: 0, z: 0 };
   }
 
   _lumpMaterial(type) {
@@ -544,6 +550,19 @@ export class GyreSnarePresentation {
       this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = len;
       this._spiralMat.uniforms.uRad.value = endR;
+      // Aim the funnel's endpoint at the held core's beam-local offset: while a mass
+      // is tethered it orbits ±75 wu off the maw plane, and the suction arrow should
+      // point at the gravity well it really feeds — not an empty plane.
+      // Beam frame: +x = nose→maw (dx,dz)/len; local ẑ maps to (-dz,dx)/len.
+      if (holding && mirror.corePos) {
+        const cl = this.toLocal(finite(mirror.corePos.x), finite(mirror.corePos.z), this._corePt);
+        const ox = cl.x - mL.x, oz = cl.z - mL.z;
+        const inv = len > 0 ? 1 / len : 0;
+        const bx = dx * inv, bz = dz * inv;
+        this._spiralMat.uniforms.uAim.value.set(ox * bx + oz * bz, 0, -ox * bz + oz * bx);
+      } else {
+        this._spiralMat.uniforms.uAim.value.set(0, 0, 0);
+      }
       this._spiralMat.uniforms.uFade.value = 1;
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
@@ -605,6 +624,14 @@ export class GyreSnarePresentation {
         this._fireBurst(this._lastBall.x, this._lastBall.z, Math.max(6, this._lastBall.r * 1.6), flashCalm);
       }
       this._lastBall = null;
+    }
+    // Non-primary graves: a second ball retired on a quiet TTL gets its own ring at
+    // its own spot — the sim publishes {x,z,r} only on the retire tick.
+    if (Array.isArray(mirror.graves)) {
+      for (let i = 0; i < mirror.graves.length; i++) {
+        const g = mirror.graves[i];
+        this._fireBurst(finite(g.x), finite(g.z), Math.max(6, finite(g.r, 6) * 1.6), flashCalm);
+      }
     }
 
     if (cx == null) {
@@ -746,13 +773,29 @@ export class GyreSnarePresentation {
         this._moteKick = 1;
       }
       if (phase === 'launching' && cx != null) {
-        this._fireBurst(mirror.corePos.x, mirror.corePos.z, Math.max(6, finite(mirror.clumpRadius, 8) * 2.2));
-        this._coneMat.uniforms.uPulse.value = 1;
+        // Coil-engage flare only — HALF-size: the big shatter blooms at the throw
+        // itself (launchWindup01 → 0, below), matching where gyre:thrown/shake/recoil
+        // land. Blooming the full ring at the release edge left it half-decayed by
+        // the time the ball actually flew.
+        this._fireBurst(mirror.corePos.x, mirror.corePos.z, Math.max(6, finite(mirror.clumpRadius, 8) * 1.1));
+        this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.5);
+        this._throwBeat = false;
       }
       // A live bowling ball keeps its frozen member ledger — the lumps ride the throw.
       // Only drop them when the mirror itself stopped tracking a ball.
       if (phase === 'off' && mirror.launchedId == null) this._clearLumps();
       this._phase = phase;
+    }
+
+    // The throw beat: the big ring blooms the tick the coil RELEASES (windup → 0),
+    // not the release edge — same beat the gyre:thrown haptic + camera:shake ride.
+    if (phase === 'launching' && !this._throwBeat && finite(mirror.launchWindup01, 1) <= 0.02) {
+      this._throwBeat = true;
+      const bx = mirror.ballPos ? finite(mirror.ballPos.x) : finite(mirror.corePos && mirror.corePos.x);
+      const bz = mirror.ballPos ? finite(mirror.ballPos.z) : finite(mirror.corePos && mirror.corePos.z);
+      const br = Math.max(6, finite(mirror.ballClumpRadius, finite(mirror.clumpRadius, 8)) * 2.2);
+      this._fireBurst(bx, bz, br);
+      this._coneMat.uniforms.uPulse.value = 1;
     }
 
     // ── bursts ───────────────────────────────────────────────────────────────

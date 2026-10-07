@@ -1118,8 +1118,12 @@ test('a same-state destroy→init reload re-seeds the ball watch list', async ()
   t.sim.step();
   assert.equal(a.data.gyreLaunched, undefined, 'the adopted ball is unmarked post-reload');
   assert.equal(a.physicsBody.impactDamageScale, 0.2, 'the authored scale is restored');
-  assert.equal(a.data.despawnAt, 9999, 'the authored data deadline comes back too');
-  assert.ok(a.ttl > 8887 && a.ttl <= 8888, `the authored ttl comes back (got ${a.ttl})`);
+  assert.equal(a.data.despawnAt, 9999, 'a still-future authored data deadline comes back too');
+  // The countdown channel has no absolute-time test: resuming a nearly-exhausted
+  // authored ttl would assassinate the adopter's body the same way a stale despawnAt
+  // did before wave-19 — the stash is consumed and the adopter owns the deadline.
+  assert.equal(a.ttl, Infinity, `the adopter owns the countdown wholesale (got ${a.ttl})`);
+  assert.equal(a.data.gyrePrevTtl, undefined, 'the ttl stash is consumed, not resumed');
   t.cleanup();
 });
 
@@ -1409,6 +1413,9 @@ test('an adopted ball with a stale authored deadline is not assassinated', async
   assert.equal(core.data.despawnAt, undefined,
     'a stale authored deadline is NOT resurrected under an adopter');
   assert.equal(core.data.gyrePrevDespawnAt, undefined, 'the stale stash is consumed');
+  assert.equal(core.data.gyrePrevTtl, undefined,
+    'the countdown stash is consumed too — a nearly-exhausted authored ttl would ' +
+    'assassinate the adopter\'s body the same way');
   t.cleanup();
 });
 
@@ -1425,6 +1432,11 @@ test('save:loaded with >8 live balls bounds the watch and adopts the freshest', 
     };
     balls.push(b);
   }
+  // A serialized ball can carry pre-snag lifetime stashes — the overflow hand-back
+  // must consume them WITHOUT clobbering the launch deadline still on the body.
+  balls[0].data.gyrePrevDespawnAt = t.state.simTime + 999;
+  balls[0].data.gyrePrevTtl = 5;
+  const keptDeadline = balls[0].data.despawnAt;
   t.bus.emit('save:loaded', {});
   t.sim.step();
   assert.equal(t.sys._rt.ballIds.length, 8, 'the watch list stays bounded at 8');
@@ -1432,11 +1444,64 @@ test('save:loaded with >8 live balls bounds the watch and adopts the freshest', 
   // marks stripped, not orphaned.
   assert.equal(balls[0].data.gyreLaunched, undefined, 'overflow ball handed back');
   assert.equal(balls[0].data.gyreLaunchMeta, undefined, 'its credit meta goes with the mark');
+  assert.equal(balls[0].data.despawnAt, keptDeadline,
+    'the live launch deadline stands — the stash must not clobber it');
+  assert.equal(balls[0].data.gyrePrevDespawnAt, undefined, 'the despawnAt stash is consumed');
+  assert.equal(balls[0].data.gyrePrevTtl, undefined, 'the ttl stash is consumed');
   assert.equal(balls[1].data.gyreLaunched, undefined, 'second overflow handed back too');
   assert.equal(balls[9].data.gyreLaunched, true, 'the youngest ball keeps its mark');
   assert.equal(t.sys._rt.ballId, balls[9].id,
     'the HUD mirror adopts the freshest deadline, not iteration order');
   assert.equal(t.state.gyreSnare.launchedId, balls[9].id,
     'the mirror survives the load — the sweep re-adopts after the boundary reset');
+  t.cleanup();
+});
+
+test('the launch windup coils the clump aft of the maw before the burst', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  release(t);
+  // Release edge: LAUNCH begins with the coil owed first (launchLeft is stamped
+  // alongside — the burst only fires once launchWindup drains to 0).
+  assert.ok(t.sys._rt.launchWindup > 0, 'the coil is owed before the burst');
+  const dir = t.sys._rt.launchDir;
+  const maw = t.sys._maw(t.player, { x: 0, z: 0 });
+  // A few coil ticks: the spring drags the clump toward the coil point — maw minus
+  // launchWindupPullWu along the launch axis — the slingshot anticipation a
+  // truncated windup would silently skip. (The orbit can seat the clump anywhere
+  // on its ring, so the honest check is convergence, not raw aftness.)
+  const coil = { x: maw.x - dir.x * T.launchWindupPullWu, z: maw.z - dir.z * T.launchWindupPullWu };
+  const d0 = Math.hypot(core.pos.x - coil.x, core.pos.z - coil.z);
+  for (let i = 0; i < 3; i++) t.sim.step();
+  assert.equal(t.sys._rt.phase, 'launching');
+  const d1 = Math.hypot(core.pos.x - coil.x, core.pos.z - coil.z);
+  assert.ok(d1 < d0 - 1,
+    `the coil spring pulled the clump toward the windup point (d0=${d0.toFixed(2)} → d1=${d1.toFixed(2)})`);
+  assert.ok(t.state.gyreSnare.launchWindup01 > 0 && t.state.gyreSnare.launchWindup01 < 1,
+    'the mirror publishes the coil ramp while it winds');
+  // The burst then bowls it FORWARD — aft of the coil becomes ahead of the maw.
+  for (let i = 0; i < 14; i++) t.sim.step();
+  const ahead = (core.pos.x - maw.x) * dir.x + (core.pos.z - maw.z) * dir.z;
+  assert.ok(ahead > 30, `post-burst the ball flies downrange (ahead=${ahead.toFixed(2)})`);
+  t.cleanup();
+});
+
+test('losing the player mid-hold drops the clump as player_lost, not a launch', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  // The player body is simply GONE — destroyed mid-hold (not docked, not a release).
+  t.state.entities.delete(t.player.id);
+  t.state.playerId = null;
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'player_lost'),
+    'the drop reads player_lost, not released/player_docked');
+  assert.equal(t.sys._rt.launchedId, null, 'a dead player never bowls the clump');
   t.cleanup();
 });

@@ -94,8 +94,10 @@ export const gyreHud = {
           return { text: `GYRE — BOWL ${this._bowlMass}t`, cls: 'gyre-launched' };
         }
         const mass = Math.round(g.ballMass || 0);
-        const count = (g.absorbs || 0) + 1;
-        return { text: mass > 0 ? `GYRE — BALL AWAY ×${count} · ${mass}t` : 'GYRE — BALL AWAY', cls: 'gyre-ball' };
+        // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
+        // "×1" would claim it ate nothing. Show mass only until the ledger exists.
+        const count = g.members == null ? null : (g.absorbs || 0) + 1;
+        return { text: mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t` : `GYRE — BALL AWAY · ${mass}t`) : 'GYRE — BALL AWAY', cls: 'gyre-ball' };
       }
       return { text: '', cls: '' };
     }
