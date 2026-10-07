@@ -1229,7 +1229,7 @@ export const gyreSnare = {
       ballTtlS: 0,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
-      liveBalls: 0,
+      liveBalls: 0, absorbDir: { x: 0, z: 0 },
     });
     if (pub.basinSpots === null) pub.basinSpots = [];
     pub.basinSpots.length = 0;
@@ -1319,7 +1319,12 @@ export const gyreSnare = {
         clamp(rt.holdLag / D.holdLagRefWu, 0, 1) * D.holdLagStrainMax,
       ) : 0;
     } else { pub.strain01 = 0; pub.coreAngVel = 0; }
+    // The newest member's approach direction — the gulp dips toward the side the mass
+    // actually hit instead of reading omnidirectional. nx/nz ride the member ledger.
     pub.liveBalls = rt.ballIds.length;
+    const lastM = pub.members && pub.members.length ? pub.members[pub.members.length - 1] : null;
+    pub.absorbDir.x = lastM ? finite(lastM.nx) : 0;
+    pub.absorbDir.z = lastM ? finite(lastM.nz) : 0;
     // The capacitor's dying gasp warns the hands/ears ~3 s out — a pad-first player
     // gets no `·Ns` pill read, so the forced bowl must not arrive unattributed.
     // Latched per hold like strain; _drop/_finishLaunch re-arm it for the next lash.

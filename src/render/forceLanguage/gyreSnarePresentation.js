@@ -210,6 +210,8 @@ export class GyreSnarePresentation {
     this._closeK = 0;        // last k*k of the ramp — the clump group shrinks on it
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
     this._moteKick = 0;      // absorb gulp: the mote spiral's own clock surges for a beat
+    this._gulpDirX = 0;      // newest member's approach dir (world frame) — the funnel
+    this._gulpDirZ = 0;      // dips toward the hit side while _moteKick is hot
     this._moteT = 0;         // spiral uTime accumulator — decoupled so a gulp doesn't rewind motes
 
     // The authored palette in src/data/gyreSnare.js is the single source of truth —
@@ -560,7 +562,8 @@ export class GyreSnarePresentation {
       // The capacitor dying thins the glass itself — a lash <8 s from dry fades up to
       // 30% in-world, not just in the pill (same telegraph language as the ball's ·Ns).
       const fuseS = finite(mirror.fuseS);
-      const fuseDim = fuseS > 0 && fuseS < 8 ? 0.7 + 0.3 * (fuseS / 8) : 1;
+      const fuseDim = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
+        ? 0.7 + 0.3 * (fuseS / GYRE_SNARE.fuseWarnVisS) : 1;
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
       this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm * wakeEase * fuseDim;
@@ -578,7 +581,13 @@ export class GyreSnarePresentation {
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
-      if (absorbsNow > this._absorbSeen) { this._discKick = 1; this._clumpKick = 1; this._moteKick = 1; }
+      if (absorbsNow > this._absorbSeen) {
+        this._discKick = 1; this._clumpKick = 1; this._moteKick = 1;
+        // The gulp lands on the side the mass actually hit — the member ledger's
+        // approach direction (world frame) biases the funnel's aim while the kick lasts.
+        this._gulpDirX = finite(mirror.absorbDir && mirror.absorbDir.x);
+        this._gulpDirZ = finite(mirror.absorbDir && mirror.absorbDir.z);
+      }
       if (absorbsNow < this._absorbSeen) this._absorbSeen = 0; // new clump ledger
       this._absorbSeen = absorbsNow;
       this._discKick *= Math.exp(-sdt * 4.2);
@@ -614,6 +623,14 @@ export class GyreSnarePresentation {
         const inv = len > 0 ? 1 / len : 0;
         const bx = dx * inv, bz = dz * inv;
         aimT.set(ox * bx + oz * bz, 0, -ox * bz + oz * bx);
+        // Gulp dip: while the absorb kick is hot the funnel leans toward the side the
+        // meal hit (world dir → beam-local, same transform as the core offset above).
+        if (this._moteKick > 0.02 && (this._gulpDirX || this._gulpDirZ)) {
+          const gx = this._gulpDirX * bx + this._gulpDirZ * bz;
+          const gz = -this._gulpDirX * bz + this._gulpDirZ * bx;
+          aimT.x += gx * this._moteKick * 0.6;
+          aimT.z += gz * this._moteKick * 0.6;
+        }
       } else {
         aimT.set(0, 0, 0);
       }
@@ -787,7 +804,10 @@ export class GyreSnarePresentation {
         const ttl01 = Math.max(0, Math.min(1, finite(mirror.ballTtl01, 1)));
         // No streak during the coil — the ribbon gathers as the wind-up releases.
         const wind = finite(mirror.launchWindup01);
-        this._trailMat.uniforms.uAlpha.value = 0.3 * flashCalm * (1 - wind) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.12));
+        // Mass reads at range: a capped katamari streaks heavier than a pebble — the
+        // alpha rides the frozen throw mass the way the launch cue grades its growl.
+        const massFade = 0.65 + 0.5 * Math.min(1, finite(mirror.ballMass) / GYRE_SNARE.maxClumpMass);
+        this._trailMat.uniforms.uAlpha.value = 0.3 * massFade * flashCalm * (1 - wind) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.12));
         this._trail.visible = true;
       } else if (this._trail.visible) {
         this._trail.visible = false;

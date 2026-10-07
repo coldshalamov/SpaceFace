@@ -365,6 +365,11 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   assert.ok(gp.haptics.strong >= 0.18 && gp.haptics.strong < 0.4,
     `launch-phase drop keeps the soft flick (strong=${gp.haptics.strong})`);
   drain();
+  // But 'strained' wins over the null coreId — a tear is never an empty drop.
+  bus.emit('gyre:dropped', { coreId: null, reason: 'strained' });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong >= 0.55, `a tear beats the empty key (strong=${gp.haptics.strong})`);
+  drain();
   // A clump TORN off the lash (reason 'strained') is the verb's biggest loss beat —
   // heavier than a released drop (0.45), short of the throw crack (0.90).
   bus.emit('gyre:dropped', { coreId: 9, reason: 'strained' });

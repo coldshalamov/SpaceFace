@@ -11,6 +11,7 @@ import {
   claimBottomLaneSeat,
   releaseBottomLaneClaim,
 } from './hudLayout.js';
+import { GYRE_SNARE } from '../data/gyreSnare.js';
 
 export const GYRE_HUD_CSS = `
 .sf-gyre-pill {
@@ -97,12 +98,17 @@ export const gyreHud = {
     // but a second bowl mid-flight shouldn't make the first one's grave invisible.
     const bttl = g.ballTtlS || 0;
     const extraBalls = Math.max(0, (g.liveBalls || 0) - 1);
-    const ballTxt = bttl > 0 && bttl < 4
-      ? ` · ball ${Math.max(1, Math.ceil(bttl))}s${extraBalls > 0 ? ` +${extraBalls}` : ''}` : '';
+    let ballTxt = bttl > 0 && bttl < GYRE_SNARE.ballTtlWarnS
+      ? ` · ball ${Math.max(1, Math.ceil(bttl))}s` : '';
+    // Other live balls still flying read even when the primary's countdown isn't
+    // running — a second bowl mid-flight shouldn't make the first one's grave silent.
+    if (extraBalls > 0) {
+      ballTxt += ballTxt ? ` +${extraBalls}` : ` · +${extraBalls} ball${extraBalls > 1 ? 's' : ''}`;
+    }
     // Fuse speaks during BEAM too — a lashing <8 s from dry shouldn't announce itself
     // only through the after-the-fact dry toast.
     const fuseS = g.fuseS || 0;
-    const fuseTxt = fuseS > 0 && fuseS < 8 ? ` · ${Math.max(1, Math.ceil(fuseS))}s` : '';
+    const fuseTxt = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS ? ` · ${Math.max(1, Math.ceil(fuseS))}s` : '';
     if (!g.phase || g.phase === 'off') {
       // A thrown clump still on the map deserves a quiet "it's yours" dot for its short flight.
       if (g && g.launchedId != null) {
@@ -118,7 +124,7 @@ export const gyreHud = {
         // The thrown ball's 9 s flight is otherwise silent — the same ·Ns countdown
         // the fuse uses telegraphs the quiet-TTL grave before the ribbon just dims.
         const ttlS = g.ballTtlS || 0;
-        const ttlTxt = ttlS > 0 && ttlS < 4 ? ` · ${Math.max(1, Math.ceil(ttlS))}s` : '';
+        const ttlTxt = ttlS > 0 && ttlS < GYRE_SNARE.ballTtlWarnS ? ` · ${Math.max(1, Math.ceil(ttlS))}s` : '';
         const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t` : `GYRE — BALL AWAY · ${mass}t`) : 'GYRE — BALL AWAY';
         return { text: label + ttlTxt, cls: 'gyre-ball' };
       }
@@ -182,11 +188,11 @@ export const gyreHud = {
     // Fuse bar (top edge): cap ÷ current drain, clamped to an 8 s window — a shrinking
     // countdown. Only the hold family carries it; a beaming-empty fuse is long and the
     // constant bar would be noise.
-    const f = Number.isFinite(fuse) ? Math.max(0, Math.min(1, fuse / 8)) : 0;
+    const f = Number.isFinite(fuse) ? Math.max(0, Math.min(1, fuse / GYRE_SNARE.fuseWarnVisS)) : 0;
     dom.fuse.style.width = `${Math.round(f * 100)}%`;
-    // Only the last 8 s draw: a healthy burn pinning the bar at 100% is noise, not
-    // signal — the countdown language is the same gate the ·Ns text uses.
-    dom.fuse.style.display = f > 0.02 && fuse < 8 ? 'block' : 'none';
+    // Only the last fuseWarnVisS s draw: a healthy burn pinning the bar at 100% is
+    // noise, not signal — the countdown language is the same gate the ·Ns text uses.
+    dom.fuse.style.display = f > 0.02 && fuse < GYRE_SNARE.fuseWarnVisS ? 'block' : 'none';
     if (cls !== this._lastClass) {
       this._lastClass = cls;
       dom.pill.classList.toggle('gyre-holding', cls === 'gyre-holding');

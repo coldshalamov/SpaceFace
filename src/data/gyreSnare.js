@@ -124,6 +124,10 @@ export const GYRE_SNARE = Object.freeze({
   capActivateMin: 10,        // cap needed to open the beam
   capDrainPerS: 6.5,         // cap/s while the beam is live (empty tank = auto-bowl)
   fuseLowWarnS: 3,           // s of burn left → the fuse-low warning fires (ears/hands, ~3 s out)
+  fuseWarnVisS: 8,           // s — the visual telegraph window: HUD ·Ns + bar and the glass
+                           // dim all key on this so the countdown reads in one window
+  ballTtlWarnS: 4,           // s — the ball's quiet-TTL telegraph window for HUD `·Ns` +
+                           // grave countdown (the ribbon's own fade is a separate shape)
   capHoldMult: 1.35,         // ×drain while a clump is held (holding mass is heavier work)
   // Hold drain scales with clump mass up to a cap: the mass term saturates at
   // capMassDrainMax so a FULL ball (2400t) costs the same fuse as a 130t one —
