@@ -752,7 +752,10 @@ identical to the lab candidate.
     95.1 → 98.0 (band 80–97), just over #229's upper bands.
   - Other archetypes: wasp 76.0 → 78.8, corsair 82.6 → 84.0, lancer 87.5 → 85.1, dart 78.4 → 78.3,
     ghost 73.8 → 72.9, jackal 87.1 → 90.4.
-  - This is flagged in PR #231. Follow-up: widen those bands or add a little reaver/bruiser evasion.
+  - This is flagged in PR #231. **Decision (Robin, 2026-10-07):** accept it. Shots should land, and these are the
+    heavy, slow enemies. The upper bands in the #229 bench criteria are raised to 99% for reaver (70–99) and
+    bruiser (80–99) only (`TYPE_BANDS` in `npcSweep4.mjs`). No production change. Re-judged with #231 applied:
+    all bands pass.
 
 **Tests.**
 - `velocity-vectoring`: the schedule assertions now follow the yaw-fraction contract; the authority-bound

@@ -111,6 +111,8 @@ const CLASS = { wasp: 'agile', dart: 'agile', ghost: 'agile', corsair: 'agile', 
 // Revised after top2 (decision, recorded in TUNING_LAB 10.x): the medium ceiling moved 92 -> 97 so the
 // interceptor (reaver) is not forced into slippery territory; Robin wants shots to land.
 export const BANDS = { agile: [60, 85], medium: [70, 97], heavy: [80, 97] };
+// Robin (2026-10-07): the heavy/slow reaver and bruiser may be hit ~98% once the #3 turn rates land (PR #231).
+export const TYPE_BANDS = { reaver: [70, 99], bruiser: [80, 99] };
 const AGILE = new Set(['wasp', 'corsair', 'dart']);
 export const CRITERIA = {
   egressOpenMin: 90,      // % of egress legs (>= 20 ticks) whose OWN radial motion is outward and heading out by the end
@@ -137,7 +139,7 @@ export function judge(runs) {
     const ub = t.n ? 100 * t.hit / t.n : null; const near = t.nearN ? 100 * t.nearHit / t.nearN : null; const farMan = t.farN ? 100 * t.farMan / t.farN : null;
     summary[type] = { ubHit: ub && +ub.toFixed(1), nearHit: near && +near.toFixed(1), farMan: farMan && +farMan.toFixed(1), farN: t.farN, egN: t.egN, egOpen: t.egN ? +(100 * t.egOpen / t.egN).toFixed(1) : null, dive: t.dive };
     egN += t.egN; egOpen += t.egOpen; dive += t.dive;
-    const band = BANDS[CLASS[type] || 'medium'];
+    const band = TYPE_BANDS[type] || BANDS[CLASS[type] || 'medium'];
     if (ub != null && (ub < band[0] || ub > band[1])) fails.push(`${type}:ubHit ${ub.toFixed(1)} not in ${band[0]}-${band[1]}`);
     if (near != null && t.nearN >= 20 && near < CRITERIA.nearHitMin) fails.push(`${type}:near ${near.toFixed(1)}`);
     if (AGILE.has(type) && t.farN >= 20 && farMan < CRITERIA.agileFarManMin) fails.push(`${type}:farMan ${farMan.toFixed(1)}`);
