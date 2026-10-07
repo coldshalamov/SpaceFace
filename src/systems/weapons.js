@@ -129,6 +129,17 @@ function weaponHeatDissipScale(state, entity) {
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
 
+// SF-2b #6 lab seam: how long a continuous beam's "armor packet" lasts. The router deducts a
+// target's armorFlat once per packet; a beam emits one packet per tick, so at 60 Hz a 60-dps beam
+// lands 1-damage packets and flat 1 erases all of them. armorFlatScale = dt / beamArmorPacketS makes
+// the beam pay the flat once per window. null = master behaviour (full flat on every tick).
+export const WEAPON_BALANCE_LAB = { beamArmorPacketS: null };
+const WEAPON_BALANCE_LAB_DEFAULTS = Object.freeze({ ...WEAPON_BALANCE_LAB });
+export function setWeaponBalanceLab(overrides = {}) {
+  Object.assign(WEAPON_BALANCE_LAB, WEAPON_BALANCE_LAB_DEFAULTS, overrides || {});
+  return WEAPON_BALANCE_LAB;
+}
+
 // Enemy mount roles (authored in enemies.js as `occasional`/`defensiveOnly`, preserved by
 // combat.resolveEnemyWeapon). `occasional` opens a deterministic sim-time window — a seeded
 // phase per mount so twin racks don't volley in lockstep — and `defensiveOnly` answers only
@@ -1201,7 +1212,7 @@ export const weapons = {
         from: { x: origin.x, z: origin.z }, to,
         dmgType: damageType,
         dpsThisTick: damage,
-        damagePacket: buildWeaponDamagePacket(w, def, damage, damageType),
+        damagePacket: beamDamagePacket(w, def, damage, damageType, dt),
         beamKey,
         opticFamilyId: beamMeta.opticFamilyId,
       });
@@ -2617,6 +2628,13 @@ function resetWeaponDiagnostics(diag) {
   if (!diag) return;
   diag.autoFireSpatialQueries = 0;
   diag.autoFireCandidates = 0;
+}
+
+function beamDamagePacket(w, def, damage, damageType, dt) {
+  const packet = buildWeaponDamagePacket(w, def, damage, damageType);
+  const windowS = WEAPON_BALANCE_LAB.beamArmorPacketS;
+  if (windowS > 0 && dt > 0) packet.armorFlatScale = Math.min(1, dt / windowS);
+  return packet;
 }
 
 export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) {
