@@ -16,6 +16,7 @@ const BENCHES = {
   sling: () => import('./benches/slingThrow.mjs'),
   flight: () => import('./benches/flightTurn.mjs'),
   lock: () => import('./benches/targetLock.mjs'),
+  collision: () => import('./benches/collision.mjs'),
 };
 
 function parseArgs(argv) {

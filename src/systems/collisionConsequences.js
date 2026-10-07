@@ -36,6 +36,22 @@ import { OVERKILL_ORIGIN_KINDS } from '../data/hullFractureSeams.js';
 
 export const COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS = 12;
 
+// Tuning-lab seam (Phase 2b #7): selfCrashCap = max share of a hull's full toughness
+// (shield+armor+hull) one self-piloted crash may take; null = off (master behaviour).
+const COLLISION_LAB = { selfCrashCap: null };
+export function setCollisionLab(next = {}) { COLLISION_LAB.selfCrashCap = next.selfCrashCap ?? null; }
+const SELF_CRASH_TAGS = new Set(['environment', 'direct_contact']);
+function selfCrashDamageCap(target, provenance) {
+  const cap = COLLISION_LAB.selfCrashCap;
+  if (!(cap > 0)) return Infinity;
+  const tag = provenance && provenance.tag;
+  const actorId = provenance ? provenance.actorId : null;
+  if (!SELF_CRASH_TAGS.has(tag) || (actorId != null && actorId !== target.id)) return Infinity;
+  const full = Math.max(0, Number(target.shieldMax) || 0) + Math.max(0, Number(target.armorMax) || 0)
+    + Math.max(0, Number(target.hullMax) || 0);
+  return full > 0 ? cap * full : Infinity;
+}
+
 // ── FB-090 owner-local quiet latch ─────────────────────────────────────────────
 // Bench A/B: production default ON. Every piece of per-tick work here lives in two
 // collections that are populated ONLY by this system's own event handlers: physics:impact /
@@ -376,7 +392,10 @@ export const collisionConsequences = {
       _slamArg.tick = tick;
       notePendingSlam(target, _slamArg);
     }
-    const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, other, receipt) : null;
+    const selfCap = receipt.impactDamage > 0 ? selfCrashDamageCap(target, receipt.provenance) : Infinity;
+    const damageResult = receipt.impactDamage > 0
+      ? this._routeImpactDamage(target, other, selfCap < receipt.impactDamage ? { ...receipt, impactDamage: selfCap } : receipt)
+      : null;
     if (target.alive !== false) clearPendingSlam(target.id);
 
     // fields spread into the trace's own raw record — the arg object is never retained.
