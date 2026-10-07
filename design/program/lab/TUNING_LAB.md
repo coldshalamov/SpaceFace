@@ -481,11 +481,11 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here, 2026-10-07 01:43 ET):** #9 docking SHIPPED as PR #234 (`lab2b/dock-orbit`, see 10.8):
-far-side autopilot approaches round the station (circle 1.3 x mouth, 60° carrot); docked 60/72 -> 72/72, station
-contacts 82,772 -> 0. #7 collision PROVEN against its contracts, no PR (10.7; self-crash cap candidate patch saved).
-#8 PR #233, #6 PR #232, #3 PR #231, #5 PR #230, #4 PR #229. Next: #10 mining. Focused tests only, per-file
-`timeout 120` (8-way xargs); never the whole suite.
+**Status (restart from here, 2026-10-07 02:03 ET):** PHASE 2b COMPLETE. #10 mining SHIPPED as PR #235
+(`lab2b/rich-core-ore`, 10.9): rich cores pay the cheapest rare in their tier (platinoid), not the alphabetical
+emerald; loop income CV 0.99 -> 0.43, ordinary pay unchanged. #9 PR #234, #8 PR #233, #7 proven/no PR (10.7),
+#6 PR #232, #3 PR #231, #5 PR #230, #4 PR #229 (needs #228), #2 PR #228, #1 PR #227. Pairwise merge-tree: all clean;
+#225 conflicts with master itself (flightV3.js, massline-orbit-assist test).
 
 ### 10.1 #4 NPC evasion + engagement spacing
 
@@ -928,4 +928,27 @@ bit-identical). Tests: `test/autopilot-dock-far-side.test.mjs` 4 (import-fails o
 **Candidates (not changed):** the station is still excluded from the autopilot's obstacle avoidance in the berth
 stage (by design: lane lock); only the M ring hub was benched (other proxies share the manifest path, scaled by
 dockRadius); docking from a hot tumble/fling was not benched.
+
+### 10.9 #10 mining (drill, magnet pickup, rich core): shipped as PR #235 (`lab2b/rich-core-ore`)
+
+**Benches.** `mining` (pickup magnet: 12 chips at 60–780 wu, scatter 0–120 wu/s, player hold / cruise 100 / orbit 90;
+16-chip depletion bursts incl. a 160 wu/s flyby; collected, time, laps swept around the ship). `richCore` (drives
+the real `_updateRichCoreCharge` with releases ~ N(1.75 s + bias, sigma)). `miningLoop` (starter Hitch, 10-rock
+field, mine each rock to depletion, hold through every exposed core and release at 50%; 120 s; credits/min at base
+value, ordinary vs rich share). Seam `setMiningLab({ richPick: 'cheapest' })`.
+
+**Proven fine.** Magnet: 1512/1512 collected, 0.13–1.89 s by distance, worst orbit 0.03 laps; bursts 0.31–1.40 s.
+Rich-core timing: sigma 0.15 s -> 99% (tier 0) .. 84% (tier 5); sigma 0.20 -> 95..67%; 0.15 s late -> 94..62%.
+
+**Finding.** `richOreForTier` tie-breaks by id: every tier 0–3 core pays cmdty_gem_emerald (1676 cr). One core on a
+starter rock = 5–13k cr; loop income CV 0.99 (common) / 0.86 (metallic); cores 70–96% of credits in runs with one.
+
+**Shipped / verify** (production, 8 seeds): cheapest rare within tier (platinoid 140 cr for tiers 0–3, xenium 739
+at 4+). Common 4304±4271 -> 848±365 cr/min, metallic 3512±3037 -> 1208±538; ordinary 533/998 unchanged; units and
+cores identical. Tests: `test/rich-core-ore-pick.test.mjs` 3 (2 fail on master); 99 focused files: the same 7
+fail identically on master. Results `results/mining-2b/{lab,verify-prod}`.
+
+**Candidates (not changed):** rich-core window is generous vs BUILD_PLAN's "~60% for a mid player" (only tier 5
+with sloppy timing gets there); whether a gem jackpot is wanted on purpose; the focused bundle has no cargo writer
+(the mining stub hold of 40 was widened in the bench).
 

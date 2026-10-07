@@ -1,0 +1,637 @@
+{
+  "schema": "spaceface.tuningLab.result.v1",
+  "bench": "miningLoop",
+  "bundle": "focused",
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "scenarios": [
+    "loop|common",
+    "loop|metallic"
+  ],
+  "variants": [
+    "baseline"
+  ],
+  "wallMs": 51023,
+  "node": "v20.19.2",
+  "generatedAt": "2026-10-07T06:01:34.274Z",
+  "summary": [
+    {
+      "key": "loop|common",
+      "seed": 1,
+      "units": 131,
+      "unitsPerMin": 65.5,
+      "creditsPerMin": 1383,
+      "rocksDone": 5,
+      "maxGapS": 4,
+      "cores": 2,
+      "coresDone": 2,
+      "richCreditShare": 0.66,
+      "ordinaryCreditsPerMin": 473,
+      "byC": {
+        "cmdty_silicate": 101,
+        "cmdty_ore_iron": 17,
+        "cmdty_ore_platinoid": 13
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 2,
+      "units": 163,
+      "unitsPerMin": 81.5,
+      "creditsPerMin": 1393,
+      "rocksDone": 5,
+      "maxGapS": 3.1,
+      "cores": 2,
+      "coresDone": 2,
+      "richCreditShare": 0.55,
+      "ordinaryCreditsPerMin": 623,
+      "byC": {
+        "cmdty_ore_iron": 26,
+        "cmdty_silicate": 126,
+        "cmdty_ore_platinoid": 11
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 3,
+      "units": 97,
+      "unitsPerMin": 48.5,
+      "creditsPerMin": 665,
+      "rocksDone": 4,
+      "maxGapS": 6.8,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.42,
+      "ordinaryCreditsPerMin": 385,
+      "byC": {
+        "cmdty_ore_iron": 17,
+        "cmdty_silicate": 76,
+        "cmdty_ore_platinoid": 4
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 4,
+      "units": 137,
+      "unitsPerMin": 68.5,
+      "creditsPerMin": 1124,
+      "rocksDone": 5,
+      "maxGapS": 10.3,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.5,
+      "ordinaryCreditsPerMin": 564,
+      "byC": {
+        "cmdty_ore_iron": 32,
+        "cmdty_silicate": 97,
+        "cmdty_ore_platinoid": 8
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 5,
+      "units": 119,
+      "unitsPerMin": 59.5,
+      "creditsPerMin": 487,
+      "rocksDone": 5,
+      "maxGapS": 4.4,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 487,
+      "byC": {
+        "cmdty_silicate": 99,
+        "cmdty_ore_iron": 20
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 6,
+      "units": 161,
+      "unitsPerMin": 80.5,
+      "creditsPerMin": 690,
+      "rocksDone": 5,
+      "maxGapS": 4.4,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 690,
+      "byC": {
+        "cmdty_silicate": 125,
+        "cmdty_ore_iron": 36
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 7,
+      "units": 133,
+      "unitsPerMin": 66.5,
+      "creditsPerMin": 553,
+      "rocksDone": 5,
+      "maxGapS": 4.1,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 553,
+      "byC": {
+        "cmdty_silicate": 108,
+        "cmdty_ore_iron": 25
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 8,
+      "units": 116,
+      "unitsPerMin": 58,
+      "creditsPerMin": 487,
+      "rocksDone": 5,
+      "maxGapS": 7.3,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 487,
+      "byC": {
+        "cmdty_silicate": 93,
+        "cmdty_ore_iron": 23
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 1,
+      "units": 128,
+      "unitsPerMin": 64,
+      "creditsPerMin": 1769,
+      "rocksDone": 3,
+      "maxGapS": 4.1,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.32,
+      "ordinaryCreditsPerMin": 1209,
+      "byC": {
+        "cmdty_ore_copper": 22,
+        "cmdty_ore_titanium": 14,
+        "cmdty_ore_iron": 84,
+        "cmdty_ore_platinoid": 8
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 2,
+      "units": 120,
+      "unitsPerMin": 60,
+      "creditsPerMin": 1663,
+      "rocksDone": 2,
+      "maxGapS": 3.3,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.17,
+      "ordinaryCreditsPerMin": 1383,
+      "byC": {
+        "cmdty_ore_copper": 29,
+        "cmdty_ore_titanium": 23,
+        "cmdty_ore_iron": 64,
+        "cmdty_ore_platinoid": 4
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 3,
+      "units": 96,
+      "unitsPerMin": 48,
+      "creditsPerMin": 1263,
+      "rocksDone": 2,
+      "maxGapS": 3.7,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.22,
+      "ordinaryCreditsPerMin": 983,
+      "byC": {
+        "cmdty_ore_copper": 27,
+        "cmdty_ore_iron": 54,
+        "cmdty_ore_titanium": 11,
+        "cmdty_ore_platinoid": 4
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 4,
+      "units": 144,
+      "unitsPerMin": 72,
+      "creditsPerMin": 1985,
+      "rocksDone": 3,
+      "maxGapS": 3,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.28,
+      "ordinaryCreditsPerMin": 1425,
+      "byC": {
+        "cmdty_ore_titanium": 18,
+        "cmdty_ore_iron": 90,
+        "cmdty_ore_copper": 28,
+        "cmdty_ore_platinoid": 8
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 5,
+      "units": 41,
+      "unitsPerMin": 20.5,
+      "creditsPerMin": 391,
+      "rocksDone": 2,
+      "maxGapS": 6.8,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 391,
+      "byC": {
+        "cmdty_ore_copper": 6,
+        "cmdty_ore_iron": 31,
+        "cmdty_ore_titanium": 4
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 6,
+      "units": 97,
+      "unitsPerMin": 48.5,
+      "creditsPerMin": 1038,
+      "rocksDone": 2,
+      "maxGapS": 4.3,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 1038,
+      "byC": {
+        "cmdty_ore_copper": 20,
+        "cmdty_ore_titanium": 14,
+        "cmdty_ore_iron": 63
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 7,
+      "units": 98,
+      "unitsPerMin": 49,
+      "creditsPerMin": 1015,
+      "rocksDone": 2,
+      "maxGapS": 5.2,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 1015,
+      "byC": {
+        "cmdty_ore_iron": 62,
+        "cmdty_ore_copper": 25,
+        "cmdty_ore_titanium": 11
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 8,
+      "units": 53,
+      "unitsPerMin": 26.5,
+      "creditsPerMin": 537,
+      "rocksDone": 2,
+      "maxGapS": 8.1,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 537,
+      "byC": {
+        "cmdty_ore_iron": 36,
+        "cmdty_ore_copper": 11,
+        "cmdty_ore_titanium": 6
+      },
+      "variant": "baseline"
+    }
+  ],
+  "runs": [
+    {
+      "key": "loop|common",
+      "seed": 1,
+      "units": 131,
+      "unitsPerMin": 65.5,
+      "creditsPerMin": 1383,
+      "rocksDone": 5,
+      "maxGapS": 4,
+      "cores": 2,
+      "coresDone": 2,
+      "richCreditShare": 0.66,
+      "ordinaryCreditsPerMin": 473,
+      "byC": {
+        "cmdty_silicate": 101,
+        "cmdty_ore_iron": 17,
+        "cmdty_ore_platinoid": 13
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 2,
+      "units": 163,
+      "unitsPerMin": 81.5,
+      "creditsPerMin": 1393,
+      "rocksDone": 5,
+      "maxGapS": 3.1,
+      "cores": 2,
+      "coresDone": 2,
+      "richCreditShare": 0.55,
+      "ordinaryCreditsPerMin": 623,
+      "byC": {
+        "cmdty_ore_iron": 26,
+        "cmdty_silicate": 126,
+        "cmdty_ore_platinoid": 11
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 3,
+      "units": 97,
+      "unitsPerMin": 48.5,
+      "creditsPerMin": 665,
+      "rocksDone": 4,
+      "maxGapS": 6.8,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.42,
+      "ordinaryCreditsPerMin": 385,
+      "byC": {
+        "cmdty_ore_iron": 17,
+        "cmdty_silicate": 76,
+        "cmdty_ore_platinoid": 4
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 4,
+      "units": 137,
+      "unitsPerMin": 68.5,
+      "creditsPerMin": 1124,
+      "rocksDone": 5,
+      "maxGapS": 10.3,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.5,
+      "ordinaryCreditsPerMin": 564,
+      "byC": {
+        "cmdty_ore_iron": 32,
+        "cmdty_silicate": 97,
+        "cmdty_ore_platinoid": 8
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 5,
+      "units": 119,
+      "unitsPerMin": 59.5,
+      "creditsPerMin": 487,
+      "rocksDone": 5,
+      "maxGapS": 4.4,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 487,
+      "byC": {
+        "cmdty_silicate": 99,
+        "cmdty_ore_iron": 20
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 6,
+      "units": 161,
+      "unitsPerMin": 80.5,
+      "creditsPerMin": 690,
+      "rocksDone": 5,
+      "maxGapS": 4.4,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 690,
+      "byC": {
+        "cmdty_silicate": 125,
+        "cmdty_ore_iron": 36
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 7,
+      "units": 133,
+      "unitsPerMin": 66.5,
+      "creditsPerMin": 553,
+      "rocksDone": 5,
+      "maxGapS": 4.1,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 553,
+      "byC": {
+        "cmdty_silicate": 108,
+        "cmdty_ore_iron": 25
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|common",
+      "seed": 8,
+      "units": 116,
+      "unitsPerMin": 58,
+      "creditsPerMin": 487,
+      "rocksDone": 5,
+      "maxGapS": 7.3,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 487,
+      "byC": {
+        "cmdty_silicate": 93,
+        "cmdty_ore_iron": 23
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 1,
+      "units": 128,
+      "unitsPerMin": 64,
+      "creditsPerMin": 1769,
+      "rocksDone": 3,
+      "maxGapS": 4.1,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.32,
+      "ordinaryCreditsPerMin": 1209,
+      "byC": {
+        "cmdty_ore_copper": 22,
+        "cmdty_ore_titanium": 14,
+        "cmdty_ore_iron": 84,
+        "cmdty_ore_platinoid": 8
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 2,
+      "units": 120,
+      "unitsPerMin": 60,
+      "creditsPerMin": 1663,
+      "rocksDone": 2,
+      "maxGapS": 3.3,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.17,
+      "ordinaryCreditsPerMin": 1383,
+      "byC": {
+        "cmdty_ore_copper": 29,
+        "cmdty_ore_titanium": 23,
+        "cmdty_ore_iron": 64,
+        "cmdty_ore_platinoid": 4
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 3,
+      "units": 96,
+      "unitsPerMin": 48,
+      "creditsPerMin": 1263,
+      "rocksDone": 2,
+      "maxGapS": 3.7,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.22,
+      "ordinaryCreditsPerMin": 983,
+      "byC": {
+        "cmdty_ore_copper": 27,
+        "cmdty_ore_iron": 54,
+        "cmdty_ore_titanium": 11,
+        "cmdty_ore_platinoid": 4
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 4,
+      "units": 144,
+      "unitsPerMin": 72,
+      "creditsPerMin": 1985,
+      "rocksDone": 3,
+      "maxGapS": 3,
+      "cores": 1,
+      "coresDone": 1,
+      "richCreditShare": 0.28,
+      "ordinaryCreditsPerMin": 1425,
+      "byC": {
+        "cmdty_ore_titanium": 18,
+        "cmdty_ore_iron": 90,
+        "cmdty_ore_copper": 28,
+        "cmdty_ore_platinoid": 8
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 5,
+      "units": 41,
+      "unitsPerMin": 20.5,
+      "creditsPerMin": 391,
+      "rocksDone": 2,
+      "maxGapS": 6.8,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 391,
+      "byC": {
+        "cmdty_ore_copper": 6,
+        "cmdty_ore_iron": 31,
+        "cmdty_ore_titanium": 4
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 6,
+      "units": 97,
+      "unitsPerMin": 48.5,
+      "creditsPerMin": 1038,
+      "rocksDone": 2,
+      "maxGapS": 4.3,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 1038,
+      "byC": {
+        "cmdty_ore_copper": 20,
+        "cmdty_ore_titanium": 14,
+        "cmdty_ore_iron": 63
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 7,
+      "units": 98,
+      "unitsPerMin": 49,
+      "creditsPerMin": 1015,
+      "rocksDone": 2,
+      "maxGapS": 5.2,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 1015,
+      "byC": {
+        "cmdty_ore_iron": 62,
+        "cmdty_ore_copper": 25,
+        "cmdty_ore_titanium": 11
+      },
+      "variant": "baseline"
+    },
+    {
+      "key": "loop|metallic",
+      "seed": 8,
+      "units": 53,
+      "unitsPerMin": 26.5,
+      "creditsPerMin": 537,
+      "rocksDone": 2,
+      "maxGapS": 8.1,
+      "cores": 0,
+      "coresDone": 0,
+      "richCreditShare": 0,
+      "ordinaryCreditsPerMin": 537,
+      "byC": {
+        "cmdty_ore_iron": 36,
+        "cmdty_ore_copper": 11,
+        "cmdty_ore_titanium": 6
+      },
+      "variant": "baseline"
+    }
+  ]
+}
