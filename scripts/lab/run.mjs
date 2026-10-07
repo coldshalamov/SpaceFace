@@ -10,6 +10,7 @@ import { table, writeResult } from './labMetrics.mjs';
 
 const BENCHES = {
   tether: () => import('./benches/tetherSpin.mjs'),
+  ttk: () => import('./benches/ttk.mjs'),
   aim: () => import('./benches/autoAim.mjs'),
   npc: () => import('./benches/npcEvasion.mjs'),
   sling: () => import('./benches/slingThrow.mjs'),
