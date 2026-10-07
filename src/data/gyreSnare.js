@@ -75,6 +75,10 @@ export const GYRE_SNARE = Object.freeze({
                            // saturates; a fast ship dragging the clump lags ~this far
   holdLagStrainMax: 0.3,     // the lag channel's strain01 ceiling — below the 0.4 STRAIN
                            // latch, so dragging shades the glass but never cries "tearing"
+  holdBackReactionFrac: 0.02,// the orbit spring's counter-force fraction the helm eats —
+                           // the lash is not massless: telekinesis under load tugs the ship
+  holdBackReactionMassCap: 150, // t — reaction rides min(clumpMass, this): a capped katamari
+                           // drags ~7% of the spring force, a pebble is free
   tumbleTorqueK: 2.2,        // gain steering the held core's spin toward tumbleTargetRadS
   tumbleTargetRadS: 0.55,    // rad/s — lazy rubble drift; a servo target so the spin settles
                            // instead of winding up open-loop over a long hold

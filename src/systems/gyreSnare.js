@@ -102,6 +102,7 @@ function freshRuntime() {
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
     basinSpots: [],        // bounded {x,z,r,k} of bodies actually being dragged — the victim-side pull glow
+    towCount: 0,           // non-absorbable bodies under tow this tick — loot the beam drags but never eats
     holdLag: 0,            // wu — core's distance off its orbit slot: the spring's residual error,
                            // a mild second-order tension read for ordinary dragging (strained only
                            // trips past holdStrainDist — lag shades the glass before that)
@@ -188,6 +189,7 @@ export const gyreSnare = {
     rt.totalAbsorbed = 0;
     rt.basinCount = 0;
     rt.suckCount = 0;
+    rt.towCount = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     // A boundary drop also forgets the flying ball mirror — stale ballPos would leak a
@@ -500,7 +502,8 @@ export const gyreSnare = {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
     this._rt.basinCount = 0; // reset above the guard — a helper-less host must not
-    this._rt.basinSpots.length = 0; // publish a frozen +N read forever
+    this._rt.towCount = 0;   // publish a frozen +N read forever
+    this._rt.basinSpots.length = 0; //
     if (!queryRadius) return;
     const ownedCore = owned && owned.core && owned.core.pos ? owned.core : null;
     const ownedR2 = ownedCore && owned.r > 0 ? owned.r * owned.r : 0;
@@ -574,7 +577,8 @@ export const gyreSnare = {
       }
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never pulled back
       // The held core is owned by the orbit spring — a basin grab on it fights the slot and
-      // makes the ball chatter instead of floating loose.
+      // makes the ball chatter instead of floating loose. Same skip rides _trySnag and the
+      // suck lane — residue in any lane must not re-flag a body as immune.
       if (e.data && e.data.gyreCore) continue;
       // Only absorbables get the full basin grab; other dynamics get a courtesy tug so the
       // beam still reads as gravity on them.
@@ -598,8 +602,8 @@ export const gyreSnare = {
           az -= (dx / distMaw) * D.mawSwirlAccel * couple;
         }
         // Frame damping inside the basin: settle relative to the ship so captures stick.
-        ax -= (finite(e.vel.x) - shipVx) * D.basinDamping;
-        az -= (finite(e.vel.z) - shipVz) * D.basinDamping;
+        ax -= (finite(e.vel && e.vel.x) - shipVx) * D.basinDamping;
+        az -= (finite(e.vel && e.vel.z) - shipVz) * D.basinDamping;
       } else {
         // Wedge courtesy: gentle drift toward the maw down the cone, easing to zero at
         // the soft-lip outer edge (lipT 0 inside the drawn rim → 1 at the lip).
@@ -617,6 +621,9 @@ export const gyreSnare = {
       if (pullK > 0.05 && this._spotScratch.length < D.basinSpotMax * 4) {
         this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e), k: pullK });
       }
+      // Loot in tow: non-absorbable dynamics the beam drags but never eats — the HUD
+      // can answer "why won't it snag?" with TOWING N instead of bare SEARCHING.
+      if (!absorbable && pullK > 0.05) this._rt.towCount += 1;
       this._queueAccel(e, ax, az, mass, dt, state);
     }
     // Strongest grips glow first: in a dense belt the 8 slots go to the bodies being
@@ -650,6 +657,9 @@ export const gyreSnare = {
       const e = cands[i];
       if (!e || e.alive === false || !e.pos) continue;
       if (e.id === state.playerId || e.data && e.data.gyreLaunched) continue;
+      // Defense-in-depth parity with the pull/suck lanes: residue from a path the
+      // boundary sweep didn't reach must not re-flag a body as the held core.
+      if (e.data && e.data.gyreCore) continue;
       if (!ABSORBABLE.has(e.type) || !isDynamic(e)) continue;
       // Same opt-out _absorb/_launch honor: a physicsBody:false absorbable has no rapier
       // body to pull or throw — coring it would freeze it in stasis while every impulse
@@ -731,8 +741,8 @@ export const gyreSnare = {
     // Spring → orbit slot, damped vs ship frame so the ball tracks the ship.
     const shipVx = finite(player.vel && player.vel.x);
     const shipVz = finite(player.vel && player.vel.z);
-    let ax = (tx - core.pos.x) * D.holdSpringK - (finite(core.vel.x) - shipVx) * D.holdDamping;
-    let az = (tz - core.pos.z) * D.holdSpringK - (finite(core.vel.z) - shipVz) * D.holdDamping;
+    let ax = (tx - core.pos.x) * D.holdSpringK - (finite(core.vel && core.vel.x) - shipVx) * D.holdDamping;
+    let az = (tz - core.pos.z) * D.holdSpringK - (finite(core.vel && core.vel.z) - shipVz) * D.holdDamping;
     const a2 = ax * ax + az * az;
     if (a2 > D.holdMaxAccel * D.holdMaxAccel) {
       const s = D.holdMaxAccel / Math.sqrt(a2);
@@ -743,6 +753,13 @@ export const gyreSnare = {
     // big the ball has become — the lash holds a 2400 t clump as surely as a 6 t pebble.
     const mass = entityMass(core);
     queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
+    // Newton's third on the lash: the spring pulls the clump toward its slot, so the
+    // helm eats a small fraction of the same force in opposition. Capped by towed mass —
+    // a pebble is free, a 2400 t katamari tugs like a load.
+    const towMass = Math.min(mass, D.holdBackReactionMassCap) * D.holdBackReactionFrac;
+    if (towMass > 0) {
+      queuePhysicsImpulse(player, { x: -ax * towMass * dt, y: 0, z: -az * towMass * dt }, this._evidence(state.tick));
+    }
     // A lazy tumble — steer the spin toward a small target ω so it settles into
     // floating-rubble drift instead of winding up open-loop on a long hold.
     const spinErr = D.tumbleTargetRadS - finite(core.angVel);
@@ -834,8 +851,8 @@ export const gyreSnare = {
         let ax = (dx / dist) * pull;
         let az = (dz / dist) * pull;
         // Gentle frame damping so incoming mass settles onto the ball instead of orbiting it.
-        ax -= (finite(e.vel.x) - shipVx) * D.suckDamping;
-        az -= (finite(e.vel.z) - shipVz) * D.suckDamping;
+        ax -= (finite(e.vel && e.vel.x) - shipVx) * D.suckDamping;
+        az -= (finite(e.vel && e.vel.z) - shipVz) * D.suckDamping;
         this._queueAccel(e, ax, az, mass, dt, state);
       }
     }
@@ -1040,6 +1057,9 @@ export const gyreSnare = {
     rt.clumpRadius = 0;
     rt.members.length = 0;
     rt.launchWindup = 0;
+    // The beam ended in a THROW, not a release or a tear — a previous lash's 'strained'
+    // must not dress a clean bowl's close ramp as a slip.
+    rt.dropReason = 'launched';
     // Same live-side ledger reset _drop does: after the ball dies a core-less re-beam
     // must not publish the dead clump's count/cue state as if it were live. The frozen
     // ball ledger (ballId/ballMass/ballMembers/ballClumpRadius/ballAbsorbs) survives —
@@ -1047,6 +1067,7 @@ export const gyreSnare = {
     rt.totalAbsorbed = 0;
     rt.basinCount = 0;
     rt.suckCount = 0;
+    rt.towCount = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     rt.lastAbsorbCueS = -1e9;
@@ -1203,6 +1224,7 @@ export const gyreSnare = {
     if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlS = 0; pub.ballClumpRadius = 0; }
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
+    pub.towCount = rt.towCount || 0;
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {
       pub.coreId = null; pub.strain01 = 0;
@@ -1362,9 +1384,9 @@ export const gyreSnare = {
         const shipVx = finite(player.vel && player.vel.x);
         const shipVz = finite(player.vel && player.vel.z);
         let ax = (wx - core.pos.x) * D.launchWindupSpringK
-          - (finite(core.vel.x) - shipVx) * D.launchWindupDamping;
+          - (finite(core.vel && core.vel.x) - shipVx) * D.launchWindupDamping;
         let az = (wz - core.pos.z) * D.launchWindupSpringK
-          - (finite(core.vel.z) - shipVz) * D.launchWindupDamping;
+          - (finite(core.vel && core.vel.z) - shipVz) * D.launchWindupDamping;
         const wa2 = ax * ax + az * az;
         if (wa2 > D.holdMaxAccel * D.holdMaxAccel) {
           const s = D.holdMaxAccel / Math.sqrt(wa2);

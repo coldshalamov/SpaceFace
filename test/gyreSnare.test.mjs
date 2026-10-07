@@ -1719,6 +1719,46 @@ test('a lagging clump shades strain01 via the spring residual — never the tear
   t.cleanup();
 });
 
+test('non-absorbable loot under tow publishes towCount — TOWING answers "why no snag"', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist + 30, 10, 6, 4, 'pickup');   // absorbable? no — dragged only
+  rock(t.sim, T.mawDist + 55, -18, 8, 5, 'mine');
+  hold(t);
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'beaming', 'nothing absorbable to core');
+  assert.equal(t.state.gyreSnare.basinCount, 0, 'loot never counts as the next meal');
+  assert.equal(t.state.gyreSnare.towCount, 2, `bodies under tow (got ${t.state.gyreSnare.towCount})`);
+  t.cleanup();
+});
+
+test('a heavy clump drags the helm — the lash is not massless to the ship', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 200, 14);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  // Park the ball well off its slot so the spring pulls hard; the helm eats the
+  // small counter-force in opposition (forward — the ball ahead tugs the ship on).
+  core.pos.x = T.mawDist + 90;
+  core.pos.z = 0;
+  const vx0 = t.player.vel.x;
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const dv = t.player.vel.x - vx0;
+  assert.ok(dv > 1, `the ship is tugged under a heavy clump (Δvx ${dv.toFixed(2)})`);
+  t.cleanup();
+});
+
+test('a gyreCore residue body cannot be re-snagged (defense-in-depth lane parity)', async () => {
+  const t = await bootPhysics();
+  const marked = rock(t.sim, T.mawDist + 8, 0, 6, 4);
+  marked.data.gyreCore = true; // residue no sweep path reached
+  rock(t.sim, T.mawDist + 30, 10, 6, 4); // a clean absorbable further out of range
+  hold(t);
+  t.sim.step();
+  assert.notEqual(t.sys._rt.coreId, marked.id, 'residue flag wins — the marked body is never cored');
+  assert.equal(marked.data.gyreCore, true, 'flag left alone by the pass');
+  t.cleanup();
+});
+
 // ── wave-22 coverage ────────────────────────────────────────────────────────────
 test('the lash never eats pickups — tugged, never merged (loot is not katamari fuel)', async () => {
   const t = await bootPhysics();

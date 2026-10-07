@@ -123,7 +123,7 @@ export const gyreHud = {
     if (g.phase === 'launching') {
       this._bowlUntil = now + 0.4;
       this._bowlMass = Math.round(g.clumpMass || 0);
-      return { text: `GYRE — BOWL ${this._bowlMass}t`, cls: 'gyre-launched' };
+      return { text: `GYRE — BOWL ${this._bowlMass}t${ballTxt}`, cls: 'gyre-launched' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;
@@ -149,9 +149,18 @@ export const gyreHud = {
       return { text: `GYRE — ×${count} · ${mass}t${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-holding', strain: s, fuse };
     }
     // Net anticipation: material already inside the cone names the catch before it
-    // lands — "×N IN NET" instead of a bare SEARCHING sweep.
+    // lands — "×N IN NET" instead of a bare SEARCHING sweep. A beam towing only
+    // non-absorbables (loot it drags but never eats) gets its own word: TOWING ×N —
+    // the "why won't it snag?" read instead of silence.
     const net = g.basinCount || 0;
-    return { text: net > 0 ? `GYRE — ×${net} IN NET${fuseTxt}${ballTxt}` : `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+    const tow = g.towCount || 0;
+    if (net > 0) {
+      return { text: `GYRE — ×${net} IN NET${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+    }
+    if (tow > 0) {
+      return { text: `GYRE — TOWING ×${tow}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+    }
+    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
   },
 
   _apply(dom, text, cls, strain, fuse) {

@@ -557,9 +557,13 @@ export class GyreSnarePresentation {
       }
       this._wakeRamp = Math.min(1, this._wakeRamp + sdt / 0.15);
       const wakeEase = this._wakeRamp * this._wakeRamp * (3 - 2 * this._wakeRamp); // smoothstep
+      // The capacitor dying thins the glass itself — a lash <8 s from dry fades up to
+      // 30% in-world, not just in the pill (same telegraph language as the ball's ·Ns).
+      const fuseS = finite(mirror.fuseS);
+      const fuseDim = fuseS > 0 && fuseS < 8 ? 0.7 + 0.3 * (fuseS / 8) : 1;
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
-      this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm * wakeEase;
+      this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
       // for the cone to occlude background glow and read as a surface, not a hologram.
       this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * (holding ? 1.2 : 0.8);
