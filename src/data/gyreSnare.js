@@ -170,6 +170,9 @@ export const GYRE_EVENTS = Object.freeze({
   // First wind-up tick — the coil engaging. The pad rides a low sustained rumble
   // through the ~100 ms draw so the sling's pull-back is felt, not just seen.
   windup: 'gyre:windup',
+  // Quiet-TTL grave — emitted beside the gyre_snare_ball_death cue on a thrown ball's
+  // authored expiry (primary + secondaries) so the arc closes in the hands too.
+  ballGrave: 'gyre:ballGrave',
   dropped: 'gyre:dropped',
   strained: 'gyre:strained',
   // The lash's ~3 s countdown — latched once per hold so the forced bowl lands

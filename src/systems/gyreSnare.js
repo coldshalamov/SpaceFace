@@ -103,6 +103,7 @@ function freshRuntime() {
     strainCueLatched: false, // gyre_snare_strain fires once per strain excursion
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
     orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
+    orbitDir: 1,           // ±1 — revolution direction from the same hash, so successive clumps don't all circle one way
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
@@ -200,6 +201,7 @@ export const gyreSnare = {
     rt.holdLag = 0; // dead-state hygiene — the lag read is HOLD-only but resets like the rest
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
+    rt.orbitDir = 1;
     // A boundary drop also forgets the flying ball mirror — stale ballPos would leak a
     // dead clump overlay into the next scene. The sweep then re-seeds watch + mirror
     // from what actually lives in the new map: a serialized ball mid-flight keeps its
@@ -720,6 +722,9 @@ export const gyreSnare = {
     let seedHash = 0;
     for (let i = 0; i < idStr.length; i++) seedHash = (seedHash * 31 + idStr.charCodeAt(i)) | 0;
     rt.orbitSeed = ((seedHash >>> 0) % 6283) * 0.001; // stable 0..2π per entity, any id type
+    // Revolution direction from another hash bit — successive clumps don't all
+    // circle the maw the same way.
+    rt.orbitDir = (seedHash & 0x10000) !== 0 ? 1 : -1;
     best.data = best.data || {};
     best.data.gyreCore = true;
     // A timed body (timedWreckOrAsteroidDeadline) cored mid-hold would die at its own
@@ -761,7 +766,8 @@ export const gyreSnare = {
     // Orbit slot: revolves around the maw, breathes in/out — "loosely floating in zero G".
     const orbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale)
       + Math.sin(t * D.orbitLiftRate + rt.orbitSeed) * D.orbitLiftRad;
-    const angle = rt.orbitSeed + t * D.orbitRate + Math.sin(t * D.orbitWobbleRate + rt.orbitSeed) * D.orbitWobbleRad;
+    const angle = rt.orbitSeed + rt.orbitDir * t * D.orbitRate
+      + Math.sin(t * D.orbitWobbleRate + rt.orbitSeed) * D.orbitWobbleRad;
     const tx = maw.x + Math.cos(angle) * orbitR;
     const tz = maw.z + Math.sin(angle) * orbitR;
     // The spring's residual error — how far the clump rides off its slot. Zero at a
@@ -1134,6 +1140,7 @@ export const gyreSnare = {
     rt.holdLag = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
+    rt.orbitDir = 1;
     rt.lastAbsorbCueS = -1e9;
     rt.strainCueLatched = false;
     rt.fullCueLatched = false;
@@ -1174,6 +1181,7 @@ export const gyreSnare = {
           && state.simTime >= e.data.despawnAt && rt.ballIds[i] !== rt.ballId) {
           if (this.bus) {
             this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: e.pos.x, z: e.pos.z } });
+            this.bus.emit(GYRE_EVENTS.ballGrave, { id: e.id, tick: state && state.tick });
           }
           // Ring for the HUD mirror too: a retired non-primary ball still deserves a
           // visual grave — the lane's quiet-TTL shatter was audio-only.
@@ -1222,6 +1230,7 @@ export const gyreSnare = {
             // ~9 wu stale at launchSpeed 520.
             position: ball.pos ? { x: ball.pos.x, z: ball.pos.z } : { x: pub.ballPos.x, z: pub.ballPos.z },
           });
+          this.bus.emit(GYRE_EVENTS.ballGrave, { id: ball.id, tick: state && state.tick });
         }
         // Hand-back: a live adopted body keeps nothing of ours — the shared helper
         // strips gyreLaunched and restores the stashed authored impactDamageScale.
@@ -1251,6 +1260,7 @@ export const gyreSnare = {
         if (ball.data.despawnAt != null && Number.isFinite(state.simTime)
           && state.simTime >= ball.data.despawnAt && this.bus) {
           this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: ball.pos.x, z: ball.pos.z } });
+          this.bus.emit(GYRE_EVENTS.ballGrave, { id: ball.id, tick: state && state.tick });
           pub.ballGrave = true; // its last live tick — the ring blooms as the body retires
           // unwatched ⇒ disarmed — the non-primary quiet-TTL path keeps this invariant;
           // the primary's gets it too even though the body dies moments later.
@@ -1322,6 +1332,9 @@ export const gyreSnare = {
         ttl01: D.ballTtlS > 0 ? Math.max(0, Math.min(1, ttlS / D.ballTtlS)) : 1,
         mass: entityMass(e),
         r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : entityRadius(e),
+        // Bounded member slice (≤6) so a second thrown katamari isn't a bare
+        // collider — the presentation seeds its cheap secondary overlay from it.
+        members: meta && Array.isArray(meta.members) ? meta.members.slice(0, 6) : null,
       });
     }
     bTmp.sort((a, b) => a.ttlS - b.ttlS);

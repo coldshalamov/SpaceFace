@@ -361,6 +361,24 @@ export class GyreSnarePresentation {
     this._trail2.frustumCulled = false;
     scene.add(this._trail2);
 
+    // ── secondary katamari overlay ─────────────────────────────────────────
+    // One bounded group (veil + ≤6 lumps) riding the soonest-dying secondary ball —
+    // a second thrown katamari flew its whole 9 s as a bare collider. The launch
+    // meta's serialized member slice (pub.balls[].members) lets it wear rubble too.
+    this._secGroup = new THREE.Group();
+    this._secGroup.visible = false;
+    this._secGroup.frustumCulled = false;
+    this._secVeilMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(glass), transparent: true, opacity: 0.07,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    this._secVeil = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), this._secVeilMat);
+    this._secGroup.add(this._secVeil);
+    this._secLumps = [];
+    this._secId = null;   // which balls[] id the overlay currently tracks
+    this._secN = -1;      // lump ledger size last laid out (rebuild key)
+    scene.add(this._secGroup);
+
     // Grip-spoke: a faint tether from the maw ring to the orbiting clump so the ball
     // visibly circles a held point, not bare space. Opacity rides strain — the tether
     // tightens as the clump nears the slip point.
@@ -598,6 +616,9 @@ export class GyreSnarePresentation {
       // The coil also raises the cone's pulse floor — the glass visibly tenses while it
       // winds back, legible at combat range where a subtle maw choke alone was too quiet.
       const holding = phase === 'holding';
+      // The throw is the payoff beat — the glass keeps HOLD-phase tension through
+      // the coil + burst instead of relaxing back to the weaker beaming floor.
+      const tense = holding || phase === 'launching';
       const strain = clamp01(finite(mirror.strain01));
       // OFF→beam edge: ease the cone in over ~150 ms instead of popping full-alpha in one
       // frame — the glass opens with the wake shimmer, plus a small pulse bump.
@@ -616,10 +637,10 @@ export class GyreSnarePresentation {
         ? 0.7 + 0.3 * (fuseS / GYRE_SNARE.fuseWarnVisS) : 1;
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
-      this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm * wakeEase * fuseDim;
+      this._coneMat.uniforms.uAlpha.value = (tense ? 0.62 : 0.42) * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
       // for the cone to occlude background glow and read as a surface, not a hologram.
-      this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * fuseDim * (holding ? 1.2 : 0.8);
+      this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * fuseDim * (tense ? 1.2 : 0.8);
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
       // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
       // Single canonical writer: the decayed carry maxes against the strain
@@ -829,10 +850,11 @@ export class GyreSnarePresentation {
       const p = this.toLocal(cx, cz, this._nose);
       this._clump.visible = true;
       this._clump.position.set(p.x, 0.6, p.z);
-      // Feed squash-pop: each absorb compresses the clump ~12% for ~120 ms — "mass
-      // landed" reads on the payload, not just the mouth flash. (The assignment also
-      // clears any cancelled close-ramp shrink — a fresh cx means the ramp died.)
-      this._clump.scale.setScalar(1 - 0.12 * this._clumpKick);
+      // Feed squash-pop: each absorb compresses the clump ~12% then SPRINGS back —
+      // sin(π·kick) peaks mid-decay so the tail rebounds ~+4% oversize before
+      // settling: a snap, not a monotone squash. (Also clears cancelled ramp shrink.)
+      this._clump.scale.setScalar(
+        1 - 0.12 * this._clumpKick + 0.10 * Math.sin(this._clumpKick * Math.PI));
       this._clumpSpin += sdt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
@@ -967,6 +989,58 @@ export class GyreSnarePresentation {
     }
     this._ballId = mirror.launchedId;
 
+    // Secondary katamari overlay: the soonest-dying secondary ball wears a light
+    // version of the rubble language — a veil + ≤6 lumps off the serialized
+    // member slice the sim publishes on pub.balls[].members. Rebuilt only when
+    // the tracked ball or its ledger size changes; rides the live branch AND the
+    // "nothing held, secondaries still flying" branch alike.
+    {
+      const sb = mirror.balls && mirror.balls.length ? mirror.balls[0] : null;
+      const sbm = sb && Array.isArray(sb.members) ? sb.members : null;
+      if (sb && Number.isFinite(sb.x) && this.toLocal) {
+        const lp = this.toLocal(sb.x, sb.z, this._ballPt);
+        this._secGroup.position.set(lp.x, 0.6, lp.z);
+        const ballR = Math.max(2.5, finite(sb.r, 8));
+        this._secVeil.scale.setScalar(ballR * 1.22);
+        this._secVeilMat.opacity = 0.07 * flashCalm;
+        if (this._secId !== sb.id || this._secN !== (sbm ? sbm.length : 0)) {
+          this._secId = sb.id;
+          this._secN = sbm ? sbm.length : 0;
+          for (let i = 0; i < this._secLumps.length; i++) this._secLumps[i].visible = false;
+          const n = Math.min(this._secN, 6);
+          for (let i = 0; i < n; i++) {
+            const member = sbm[i];
+            let lm = this._secLumps[i];
+            if (!lm) {
+              lm = new THREE.Mesh(
+                jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, 53 + i * 7919));
+              this._secLumps.push(lm);
+              this._secGroup.add(lm);
+            }
+            lm.material = this._lumpMaterial(member.type);
+            // Same compaction language as the primary lumps — chunks scale with
+            // the ball so a capped secondary still carpets its own shell.
+            const r = Math.max(0.35, finite(member.radius, 2) * 0.62)
+              * Math.min(3, Math.max(1, ballR / 14));
+            lm.scale.setScalar(r);
+            const spread = Math.max(0, ballR - r * 0.45);
+            lm.position.set(
+              finite(member.nx, 0) * spread,
+              ((i * 0.61803398875) % 1 - 0.5) * r * 1.1,
+              finite(member.nz, 0) * spread);
+            lm.visible = true;
+          }
+        }
+        // The whole group tumbles like the primary's rubble — levitating debris,
+        // not a rigid wheel (frozen under reduced-motion like everything else).
+        this._secGroup.rotation.y += sdt * 2.6 * calm;
+        this._secGroup.visible = true;
+      } else if (this._secGroup.visible) {
+        this._secGroup.visible = false;
+        this._secId = null;
+      }
+    }
+
     // ── phase transitions ────────────────────────────────────────────────────
     if (phase !== this._phase) {
       // The grip is the payoff: entering HOLD flashes the cone hard AND gulps the
@@ -1020,7 +1094,9 @@ export class GyreSnarePresentation {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    this.scene.remove(this._beam, this._clump, this._trail, this._trail2, this._grip, this._halo);
+    this.scene.remove(this._beam, this._clump, this._trail, this._trail2, this._grip, this._halo, this._secGroup);
+    this._secVeil.geometry.dispose(); this._secVeilMat.dispose();
+    for (const m of this._secLumps) m.geometry.dispose(); // lump MATERIALS stay shared via _lumpMats
     this._halo.geometry.dispose(); this._haloMat.dispose();
     this._veil.geometry.dispose(); this._veilMat.dispose();
     this._trail.geometry.dispose(); this._trailMat.dispose();

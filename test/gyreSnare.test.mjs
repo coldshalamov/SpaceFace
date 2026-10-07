@@ -50,7 +50,7 @@ function boot(seed = 4242, { withPhysics = false, playerRadius = 12 } = {}) {
   state.playerId = player.id;
   player.cap = 100; // full capacitor — the verb drains it
   const events = [];
-  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:absorbTick', 'gyre:launched', 'gyre:thrown', 'gyre:dropped', 'gyre:fuseLow', 'audio:cue', 'toast']) {
+  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:absorbTick', 'gyre:launched', 'gyre:thrown', 'gyre:dropped', 'gyre:fuseLow', 'gyre:ballGrave', 'audio:cue', 'toast']) {
     sim.bus.on(name, (p) => events.push({ name, p, tick: state.tick }));
   }
   return { sim, state, bus: sim.bus, helpers, player, events, sys: sim.registry.get('gyreSnare'), physicsSys: sim.registry.get('physics') };
@@ -710,6 +710,8 @@ test('a ball dying at its TTL fires the muffled shatter; an impact death does no
   assert.ok(!t.state.entities.has(ball.id) || ball.alive === false, 'the sweep took the body');
   const deaths = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death');
   assert.equal(deaths.length, 1, `the primary ball graves exactly once (got ${deaths.length})`);
+  const graves = t.events.filter((e) => e.name === 'gyre:ballGrave');
+  assert.equal(graves.length, 1, 'the pad taps the authored grave once (the arc closes in the hands)');
   assert.ok(!t.sys._rt.ballIds.includes(ball.id),
     'a retired primary unwatches — a lingering id re-fired its own grave the next tick');
   t.cleanup();
@@ -724,6 +726,8 @@ test('a ball dying at its TTL fires the muffled shatter; an impact death does no
   assert.equal(t2.sys._rt.ballId, null);
   assert.ok(!t2.events.some((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death'),
     'an impact death stays quiet — collision audio owns that voice');
+  assert.ok(!t2.events.some((e) => e.name === 'gyre:ballGrave'),
+    'no pad grave tap on an impact death — collision rumble owns that beat');
   t2.cleanup();
 });
 
