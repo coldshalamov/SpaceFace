@@ -5,6 +5,7 @@ import { illustratedPigmentForMaterial } from './illustratedLivery.js';
 import { hullLayoutForAsset } from './illustratedHullLayout.js';
 import { resolveLampChannel } from '../data/lampChannels.js';
 import { installLampBus } from './lampBus.js';
+import { applyMaterialRoleBand, MATERIAL_ROLE_ALIASES, substanceRoleOverride } from '../data/materialRoleBands.js';
 
 const ROLE_RULES = Object.freeze([
   ['glass', /canopy|cockpit.?glass|material_glass|window|viewport|visor/i],
@@ -153,6 +154,7 @@ function applyForgeFinish(material, role, options = {}) {
       { slot: options.slot });
     if (channel) installLampBus(material, channel);
   }
+  applyMaterialRoleBand(material, role);
   material.needsUpdate = true;
   return true;
 }
@@ -162,7 +164,9 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
   let role = explicitRole || authoredMaterialRole(material.name);
   if (isForgeMaterial(material)) {
     const authored = String(material.userData.spacefaceMaterialRole || '').trim().toLowerCase();
-    return applyForgeFinish(material, authored || role || 'hull', options);
+    let forgeRole = authored || role || 'hull';
+    forgeRole = MATERIAL_ROLE_ALIASES[forgeRole] || forgeRole;
+    return applyForgeFinish(material, substanceRoleOverride(material.name, forgeRole) || forgeRole, options);
   }
   // The liner's release table predates these descriptive material names. Ceramic *paint* is a
   // coating, not a heat shield; its safety glazing and forged frame are separate substances.
@@ -178,6 +182,8 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
     else if (/scorch/i.test(material.name)) role = 'rubber';
     else if (/glass|glaz/i.test(material.name)) role = 'glass';
   }
+  if (role && MATERIAL_ROLE_ALIASES[role]) role = MATERIAL_ROLE_ALIASES[role];
+  role = (role && substanceRoleOverride(material.name, role)) || role;
   if (!role) return false;
   material.userData = {
     ...(material.userData || {}), spacefaceMaterialRole: role,
@@ -295,6 +301,7 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
     options.assetId, role, material.userData.spacefaceAuthoredMaterialName,
   );
   if (role !== 'glass' && role !== 'drive' && role !== 'signal') installIllustratedSurface(material);
+  applyMaterialRoleBand(material, role);
   material.needsUpdate = true;
   return true;
 }
@@ -411,6 +418,7 @@ function applyAssetSpecificCorrection(material, assetId, allowTextures) {
   }
   material.emissive.setHex(0x000000);
   material.emissiveIntensity = 0;
+  applyMaterialRoleBand(material, 'geology');
   material.dithering = true;
   material.needsUpdate = true;
   return 'geology';
