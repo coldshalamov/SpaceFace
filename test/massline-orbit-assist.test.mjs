@@ -389,6 +389,74 @@ test('Flight V3 shapes forward thrust while the orbit outruns yaw authority', ()
     `the scale must reach the physics command: ${saturatedForce} vs ${trackableForce}`);
 });
 
+test('boost press inside the live orbit chord uses sustained boost without an orbit-breaking dash', () => {
+  const harness = makeFlightHarness();
+  harness.anchor.pos = { x: 90, z: 0 }; // 30 WU live radius from the player at x=120.
+  harness.state.player.tether.restLength = 30;
+  harness.state.input.boost = true;
+  harness.player.boost = {
+    energy: 220,
+    max: 220,
+    drainRate: 36,
+    regenRate: 28,
+    dashImpulse: 170,
+    dashCost: 28,
+    dashCd: 1.8,
+    dashCdT: 0,
+    topSpeedPct: 0,
+    burnDurS: 0,
+    burnCdS: 0,
+  };
+
+  const system = Object.create(flightV3Module.flightV3);
+  system.init({ state: harness.state, bus: harness.bus });
+  system.update(DT, harness.state);
+  const command = consumePhysicsCommand(harness.player);
+  const frame = harness.player._flightFrame.orbitAssist;
+
+  assert.equal(frame.active, true, 'the forward+turn tether chord owns yaw');
+  assert.ok(frame.swingThrottleScale < 1,
+    `short-line boosted demand must be shaped to finite yaw authority; got ${frame.swingThrottleScale}`);
+  assert.equal(harness.player.flags.boosting, true,
+    'the fix must keep continuous boost alive rather than swallowing the boost key');
+  assert.equal(command.impulses.length, 0,
+    'the boost keydown must not inject a discrete dash that jumps angular speed beyond yaw authority');
+  assert.equal(harness.player.boost.dashCdT, 0,
+    'an orbit-suppressed dash must not burn the dash cooldown');
+  assert.ok(harness.player.boost.energy > 210,
+    `only sustained-boost drain should be charged on this tick, got ${harness.player.boost.energy}`);
+});
+
+test('releasing the orbit contract restores the ordinary boost dash immediately', () => {
+  const harness = makeFlightHarness();
+  harness.state.settings.gameplay.orbitAssistStrength = 'off';
+  harness.state.input.boost = true;
+  harness.player.boost = {
+    energy: 220,
+    max: 220,
+    drainRate: 36,
+    regenRate: 28,
+    dashImpulse: 170,
+    dashCost: 28,
+    dashCd: 1.8,
+    dashCdT: 0,
+    topSpeedPct: 0,
+    burnDurS: 0,
+    burnCdS: 0,
+  };
+
+  const system = Object.create(flightV3Module.flightV3);
+  system.init({ state: harness.state, bus: harness.bus });
+  system.update(DT, harness.state);
+  const command = consumePhysicsCommand(harness.player);
+
+  assert.equal(harness.player._flightFrame.orbitAssist.active, false);
+  assert.equal(command.impulses.length, 1,
+    'Orbit Assist Off must preserve the normal press-edge dash verb');
+  assert.ok(harness.player.boost.dashCdT > 0, 'ordinary dash cooldown still arms');
+  assert.ok(harness.player.boost.energy < 200, 'ordinary dash still pays its energy cost');
+});
+
 test('the production forward-plus-turn controller passes the deterministic orbit matrix', async () => {
   const matrix = await masslineLab.orbitAssistAcceptanceMatrix({ seed: 47 });
   assert.equal(matrix.schema, 'spaceface.masslineControlLab.orbitAssistMatrix.v1');
