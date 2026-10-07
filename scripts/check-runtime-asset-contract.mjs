@@ -61,6 +61,7 @@ for (const part of manifest.parts || []) {
   if (part.status === 'blocked' && part.file) blockedFiles.add(normalizeRel(part.file));
 }
 
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 const assets = [];
 for (const absPath of listGlbs(RELEASE_PARTS_ROOT)) {
   const rel = normalizeRel(relative(ROOT, absPath));
@@ -69,6 +70,8 @@ for (const absPath of listGlbs(RELEASE_PARTS_ROOT)) {
   if (blockedFiles.has(partRel)) continue;
   assets.push(await inspectReleaseGlb(absPath, partRel));
 }
+const assetsByPath = new Map(assets.map(asset => [asset.path, asset]));
+for (const asset of assets) evaluateContract(asset, manifestByFile.get(asset.path), assetsByPath);
 
 const requiredFailures = assets.flatMap((asset) => (asset.issues || [])
   .filter((issue) => issue.severity === 'required')
@@ -80,6 +83,7 @@ const advisories = assets.flatMap((asset) => (asset.issues || [])
 printReport(assets, requiredFailures, advisories);
 
 if (STRICT && requiredFailures.length) process.exit(1);
+}
 
 async function inspectReleaseGlb(absPath, partRel) {
   const category = partRel.split('/')[0] || 'asset';
@@ -116,13 +120,13 @@ async function inspectReleaseGlb(absPath, partRel) {
     row.materials = materials.length;
     row.primitives = meshes.reduce((sum, mesh) => sum + mesh.listPrimitives().length, 0);
     row.lod = countLodMarkers(nodes, meshes, gltfJson);
+    row.authoredAssetId = gltfJson.asset?.extras?.spacefaceAsset?.assetId || null;
     row.maxTextureEdge = maxTextureEdge(gltfJson, manifestPart);
     row.uncompressedTextures = countUncompressedTextures(gltfJson);
     row.repeatedMaterialNames = repeatedNames(materials.map((mat) => materialName(mat)));
     row.duplicateMaterialGroups = countDuplicateMaterialGroups(materials);
     row.missingNormals = countMissingNormals(meshes);
 
-    evaluateContract(row, manifestPart);
     return row;
   } catch (error) {
     row.issues.push({
@@ -134,13 +138,34 @@ async function inspectReleaseGlb(absPath, partRel) {
   }
 }
 
-function evaluateContract(row, manifestPart) {
+// Embedded bodies retain all three tiers. A declared separate-file family must
+// prove each exact tier under the same authored identity; filenames alone grant nothing.
+export function hullLodContractIssue(row, manifestPart, assetsByPath = new Map()) {
+  const family = manifestPart?.lodFamily;
+  if (!family) return row.lod.lod0 && row.lod.lod1 && row.lod.lod2 ? null
+    : `hull requires LOD0/LOD1/LOD2 markers; got ${row.lod.lod0}/${row.lod.lod1}/${row.lod.lod2}`;
+  const tiers = ['lod0', 'lod1', 'lod2'];
+  const files = tiers.map(tier => normalizeRel(family[tier] || ''));
+  if (files.some(file => !file) || new Set(files).size !== 3 || files[0] !== row.path) {
+    return 'hull LOD family requires three distinct files with its canonical LOD0';
+  }
+  for (let index = 0; index < tiers.length; index++) {
+    const tier = tiers[index], member = assetsByPath.get(files[index]);
+    if (!member || member.issues.some(issue => issue.code === 'parse-error')) return `hull LOD family is missing readable ${tier}: ${files[index]}`;
+    if (!row.authoredAssetId || member.authoredAssetId !== row.authoredAssetId) return `hull LOD family has a foreign authored identity at ${tier}`;
+    if (!member.lod[tier] || tiers.some(other => other !== tier && member.lod[other])) return `hull LOD family requires exact ${tier} markers in ${files[index]}`;
+  }
+  return null;
+}
+
+function evaluateContract(row, manifestPart, assetsByPath) {
   const { path, category, lod, materials, missingNormals, uncompressedTextures, maxTextureEdge: maxEdge } = row;
 
   if (HULL_FILES.has(path)) {
-    if (!lod.lod0 || !lod.lod1 || !lod.lod2) {
+    const issue = hullLodContractIssue(row, manifestPart, assetsByPath);
+    if (issue) {
       pushIssue(row, 'required', 'missing-hull-lods',
-        `hull requires LOD0/LOD1/LOD2 markers; got ${lod.lod0}/${lod.lod1}/${lod.lod2}`);
+        issue);
     }
   }
 
