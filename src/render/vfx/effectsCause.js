@@ -3,7 +3,29 @@
 
 const num = (v) => (Number.isFinite(v) ? v : 0);
 
-/** Plume the plasma stream should draw. Leaves the published drive record alone. */
+/** Transverse-work floors for the arc rescue below, matching the `main` deadband's scale. */
+const LATERAL_WORK_FLOOR = 0.02;
+const YAW_TARGET_FLOOR = 0.02;
+
+/**
+ * Plume the plasma stream should draw. Leaves the published drive record alone.
+ *
+ * Circular flight under a held forward command is the one shape the forward projection cannot
+ * see: a velocity-vectored carve applies its acceleration perpendicular to the nose, and a
+ * tethered swing hands the centripetal force to the rope entirely, so `main` reads ~0 (or the
+ * nose-vs-tangent residual reads as reverse) while the ship is burning hardest. The governor
+ * clipping a positive forward command (`governor.engaged`) is the held-throttle truth that
+ * survives at the cap, and live transverse work or a live steering target is the arc. Both
+ * together keep the bell and its contrail lit at the commanded drive; the straight-line cap
+ * coast — held key, no bending, no transverse work — still reads as the idle bell below.
+ */
+function heldThrottleArc(actuators) {
+  const governor = actuators && actuators.governor;
+  if (!governor || governor.engaged !== true) return false;
+  if (Math.abs(num(actuators.lateral)) > LATERAL_WORK_FLOOR) return true;
+  return Math.abs(num(actuators.yawRateTarget)) > YAW_TARGET_FLOOR;
+}
+
 export function plumeAchievedPicture(driveInfo, actuators) {
   const src = driveInfo || {};
   const out = {
@@ -22,6 +44,10 @@ export function plumeAchievedPicture(driveInfo, actuators) {
   if (!actuators) return out;
   const main = Math.max(0, num(actuators.main));
   if (out.retroOnly || (out.reverse > 0.05 && main <= 0.02)) {
+    if (heldThrottleArc(actuators)) {
+      out.picture = 'work';
+      return out;
+    }
     out.drive = 0;
     out.throttle = 0;
     out.speedDrive = 0;
@@ -33,6 +59,10 @@ export function plumeAchievedPicture(driveInfo, actuators) {
     return out;
   }
   if (main <= 0.02) {
+    if (heldThrottleArc(actuators)) {
+      out.picture = 'work';
+      return out;
+    }
     if (out.throttle > 0.2 || out.drive > 0.2) {
       // Key is held, the actuator is not doing work: a bell, not a contrail.
       out.throttle = 0.02;

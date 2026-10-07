@@ -87,6 +87,59 @@ test('plume follows achieved actuator work, under the emit floor when the key is
   assert.equal(published.drive, 0.6);
 });
 
+test('a held-throttle arc keeps the plume working: centripetal work is not a dark coast', () => {
+  // Vectored carve at the cap: W held, the governor zeroed main, and the applied acceleration is
+  // the path-bending vectoring force — perpendicular to the nose, so the forward projection is 0.
+  // The bell and its contrail must stay lit at the commanded drive.
+  const carve = plumeAchievedPicture(
+    { throttle: 0.9, drive: 0.9, speedDrive: 1, boost: 0, reverse: 0 },
+    {
+      main: 0, lateral: 18, yawRateTarget: 0.7,
+      manual: { forward: 0, lateral: 0 },
+      governor: { engaged: true, overspeed: false },
+    },
+  );
+  assert.equal(carve.picture, 'work');
+  assert.equal(carve.drive, 0.9);
+  assert.ok(resolveDriveTarget(carve.throttle, carve.speedDrive) > EMIT_FLOOR);
+  // Tether orbit assist: the rope owns the centripetal force, the helm owns the tangent, so the
+  // actuator block shows no forward and no lateral work — but the steering target is live and a
+  // positive forward command was clipped by the governor. The trail must survive.
+  const tetherOrbit = plumeAchievedPicture(
+    { throttle: 0.9, drive: 0.9, speedDrive: 1, boost: 0, reverse: 0 },
+    {
+      main: 0, lateral: 0, yawRateTarget: 0.9,
+      manual: { forward: 0, lateral: 0 },
+      governor: { engaged: true, overspeed: true },
+    },
+  );
+  assert.equal(tetherOrbit.picture, 'work');
+  assert.ok(resolveDriveTarget(tetherOrbit.throttle, tetherOrbit.speedDrive) > EMIT_FLOOR);
+  // Pure strafe fires the lateral jets, never the main bell: no forward command was clipped.
+  const strafe = plumeAchievedPicture(
+    { throttle: 0.02, drive: 0.02, speedDrive: 0.4, boost: 0, reverse: 0 },
+    {
+      main: 0, lateral: 18, yawRateTarget: 0,
+      manual: { forward: 0, lateral: 1 },
+      governor: { engaged: false, overspeed: false },
+    },
+  );
+  assert.notEqual(strafe.picture, 'work');
+  assert.ok(resolveDriveTarget(strafe.throttle, strafe.speedDrive) < EMIT_FLOOR);
+  // The authored straight-line cap coast keeps its idle bell: held key, governor clipped the
+  // command, but nothing is bending the path and no transverse work exists.
+  const straight = plumeAchievedPicture(
+    { throttle: 0.8, drive: 0.8, speedDrive: 1, boost: 0, reverse: 0 },
+    {
+      main: 0, lateral: 0, yawRateTarget: 0,
+      manual: { forward: 0, lateral: 0 },
+      governor: { engaged: true, overspeed: false },
+    },
+  );
+  assert.equal(straight.picture, 'idle-bell');
+  assert.ok(resolveDriveTarget(straight.throttle, straight.speedDrive) < EMIT_FLOOR);
+});
+
 test('impact severity is a class, and a scar grows in the hull frame', () => {
   assert.equal(collisionEventClass(0.1), 'graze');
   const eventClass = collisionEventClass(0.5);
