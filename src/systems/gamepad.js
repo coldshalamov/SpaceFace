@@ -828,7 +828,13 @@ export function createGamepad(ctx) {
     bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
     bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
     bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
-    bus.on('gyre:absorbed', () => startPulse(HAPTIC_VERB_PULSES['gyre:absorbed'], 'gyre:absorbed'));
+    bus.on('gyre:absorbed', (payload) => {
+      // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the
+      // drop thud — lerped on min(1, mass/80) so katamari escalation is felt, not just seen.
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 80);
+      const base = HAPTIC_VERB_PULSES['gyre:absorbed'];
+      startPulse({ strong: base.strong + 0.25 * t, weak: base.weak + 0.1 * t, ms: base.ms + 40 * t }, 'gyre:absorbed');
+    });
     bus.on('gyre:dropped', (payload) => {
       // A save/sector boundary drop is a context reset, not a player verb — stay silent like the
       // audio cue does instead of buzzing through a transition. A clump slipping the lash is the

@@ -538,7 +538,9 @@ export const gyreSnare = {
       const nowS = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
       if (nowS - rt.lastAbsorbCueS >= D.absorbCueMinGapS) {
         rt.lastAbsorbCueS = nowS;
-        this.bus.emit('audio:cue', { id: 'gyre_snare_absorb', gain: 0.7 });
+        // Meal size in the ear too: the tick drops pitch as the victim gets heavier — a
+        // pebble ticks high, a wreck thuds low.
+        this.bus.emit('audio:cue', { id: 'gyre_snare_absorb', gain: 0.7, rate: 1.15 - Math.min(0.5, em / 160) });
       }
     }
   },
@@ -618,7 +620,7 @@ export const gyreSnare = {
     const pub = state.gyreSnare || (state.gyreSnare = {
       phase: PHASE.OFF, nose: { x: 0, z: 0 }, maw: { x: 0, z: 0 },
       coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
-      coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0,
+      coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0,
     });
@@ -628,9 +630,14 @@ export const gyreSnare = {
     if (rt.ballId != null && state && state.entities) {
       const ball = state.entities.get(rt.ballId);
       if (!ball || ball.alive === false || !ball.data || !ball.data.gyreLaunched || !ball.pos) {
-        // The ball met its grave — impact (collision audio covers) or quiet TTL expiry in
-        // open space. Give the quiet death a voice at the spot the burst VFX fires on.
-        if (this.bus) this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: pub.ballPos.x, z: pub.ballPos.z } });
+        // The ball met its grave. Only a quiet TTL expiry gets the shatter — an entity
+        // left dead with its deadline passed — while impact deaths (removed, or dead with
+        // no deadline pending) already sing through collision audio at the same spot.
+        if (ball && ball.data && ball.data.despawnAt != null
+          && Number.isFinite(state && state.simTime) && state.simTime >= ball.data.despawnAt
+          && this.bus) {
+          this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: pub.ballPos.x, z: pub.ballPos.z } });
+        }
         rt.ballId = null;
         rt.ballMass = 0;
         rt.ballMembers = null;
@@ -671,12 +678,15 @@ export const gyreSnare = {
     // edge, so the visual radius floors at basinRadius.
     pub.endRadius = Math.max(pub.coneLen * Math.tan(D.coneHalfAngleRad), D.basinRadius);
     pub.coreId = rt.coreId;
-    pub.clumpMass = rt.clumpMass;
-    pub.clumpRadius = rt.clumpRadius;
-    pub.absorbs = rt.totalAbsorbed;
-    pub.members = rt.members;
-    // launchedId published above from rt.ballId already covers the LAUNCH→OFF transition —
-    // a re-beam while the ball still flies keeps its clump overlay instead of clobbering it.
+    pub.maxClumpMass = D.maxClumpMass;
+    // A re-beam while the thrown ball still flies keeps ITS frozen ledger — opening a fresh
+    // search must not strip the old ball's lumps or collapse its eventual death-burst to
+    // the 6 wu floor. The live ledger only wins while a new core is held.
+    const ridingBall = rt.coreId == null && rt.ballId != null && rt.ballMembers != null;
+    pub.clumpMass = ridingBall ? rt.ballMass : rt.clumpMass;
+    pub.clumpRadius = ridingBall ? rt.ballClumpRadius : rt.clumpRadius;
+    pub.absorbs = ridingBall ? rt.ballAbsorbs : rt.totalAbsorbed;
+    pub.members = ridingBall ? rt.ballMembers : rt.members;
     pub.launchDir.x = rt.launchDir.x; pub.launchDir.z = rt.launchDir.z;
     const core = rt.coreId != null ? state.entities.get(rt.coreId) : null;
     if (core && core.pos) {

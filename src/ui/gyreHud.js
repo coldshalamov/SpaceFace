@@ -32,6 +32,7 @@ export const GYRE_HUD_CSS = `
 .sf-gyre-pill.gyre-strain { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
 .sf-gyre-pill.gyre-launched { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-ball { border-left-color: var(--dp-lamp-dim, #8a6b3a); }
+.sf-gyre-pill.gyre-full { color: var(--dp-lamp-hot, #ffd98c); border-left-color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 @media (forced-colors: active) {
   .sf-gyre-pill { background: Canvas; color: CanvasText; border: 1px solid CanvasText; box-shadow: none; text-shadow: none; forced-color-adjust: none; }
 }
@@ -96,6 +97,11 @@ export const gyreHud = {
       if (this._strainOn) {
         return { text: `GYRE — STRAIN ${mass}t`, cls: 'gyre-strain' };
       }
+      // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
+      const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;
+      if (full) {
+        return { text: `GYRE — ×${count} · ${mass}t FULL`, cls: 'gyre-full' };
+      }
       return { text: `GYRE — ×${count} · ${mass}t`, cls: 'gyre-holding' };
     }
     return { text: 'GYRE — SEARCHING', cls: '' };
@@ -114,6 +120,7 @@ export const gyreHud = {
       dom.pill.classList.toggle('gyre-strain', cls === 'gyre-strain');
       dom.pill.classList.toggle('gyre-launched', cls === 'gyre-launched');
       dom.pill.classList.toggle('gyre-ball', cls === 'gyre-ball');
+      dom.pill.classList.toggle('gyre-full', cls === 'gyre-full');
     }
     if (!this._visible) {
       dom.pill.style.display = 'flex';

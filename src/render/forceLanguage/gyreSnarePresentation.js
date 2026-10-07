@@ -183,6 +183,7 @@ export class GyreSnarePresentation {
     this._discKick = 0;
     this._wakeRamp = 1;      // 0→1 over ~150 ms on the OFF→beam edge — the glass "opens" with the shimmer
     this._beamWasOn = false;
+    this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
 
     // The authored palette in src/data/gyreSnare.js is the single source of truth —
     // hex literals here drifted from it once already (maw disc vs palette.maw).
@@ -340,7 +341,9 @@ export class GyreSnarePresentation {
     const mirror = state.gyreSnare;
     const phase = mirror && mirror.phase ? mirror.phase : 'off';
     const live = phase !== 'off' || (mirror && mirror.launchedId != null);
-    if (!live && this._quiet) return;
+    // A mid-flight ball-death burst must keep ticking after the mirror goes quiet —
+    // early-returning here froze the ring at t≈0.03 as a faint glow stuck at the grave.
+    if (!live && this._quiet && !this._bursts.some((b) => b.t < 1)) return;
     if (!live) { this._quiet = true; }
     else this._quiet = false;
 
@@ -400,10 +403,11 @@ export class GyreSnarePresentation {
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
-      if (absorbsNow > this._absorbSeen) this._discKick = 1;
+      if (absorbsNow > this._absorbSeen) { this._discKick = 1; this._clumpKick = 1; }
       if (absorbsNow < this._absorbSeen) this._absorbSeen = 0; // new clump ledger
       this._absorbSeen = absorbsNow;
       this._discKick *= Math.exp(-dt * 4.2);
+      this._clumpKick *= Math.exp(-dt * 6);
       this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * flashCalm);
       this._discMat.uniforms.uTime.value = this.time;
       this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55) + this._discKick * 0.5) * flashCalm;
@@ -436,6 +440,9 @@ export class GyreSnarePresentation {
       const p = this.toLocal(cx, cz, this._nose);
       this._clump.visible = true;
       this._clump.position.set(p.x, 0.6, p.z);
+      // Feed squash-pop: each absorb compresses the clump ~12% for ~120 ms — "mass
+      // landed" reads on the payload, not just the mouth flash.
+      this._clump.scale.setScalar(1 - 0.12 * this._clumpKick);
       this._clumpSpin += dt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
