@@ -55,17 +55,44 @@ test('rejected cut emits no successful throw or VFX, remains attached', () => {
   assert.equal(f.bus.count('massline:throw'), 0);
   assert.equal(f.bus.count('presentation:vfxCue'), 0);
 });
-test('snap queue deadline is at most five fixed ticks, does not manufacture a hit', () => {
+test('snap queue deadline is the forecast entry plus one slack tick (<= 6), does not manufacture a hit', () => {
   const f = setup(); nextWindow(f); f.press(); f.step();
   assert.ok(f.host._pendingSnap, 'real near-future geometry queued');
   const pressTick = f.state.tick;
-  for (let i = 1; i < 5; i++) { tick(f); f.step(); assert.equal(f.bus.count('massline:throw'), 0); }
+  const enterTicks = Math.round(f.state.massline2.throw.solution.window.enterS * 60);
+  assert.ok(enterTicks >= 1 && enterTicks <= 5, `queued only inside the 90 ms ceiling, got ${enterTicks}`);
+  for (let i = 1; i <= enterTicks; i++) { tick(f); f.step(); assert.equal(f.bus.count('massline:throw'), 0); }
   tick(f); f.step();
   assert.equal(f.bus.count('massline:throw'), 1);
   const receipt = f.state.massline2.throw.lastThrow;
-  assert.equal(receipt.tick - pressTick, 5);
+  assert.equal(receipt.tick - pressTick, enterTicks + 1);
+  assert.ok(receipt.tick - pressTick <= 6);
   assert.equal(receipt.mode, 'snap-manual'); // Bodies deliberately didn't move; the forecast isn't permission.
   assert.equal(receipt.prediction.onSolution, false);
+});
+test('a queued press whose window arrives one tick after the forecast still releases on solution', () => {
+  // SF-2b (#5): the coast forecast runs up to one tick early under a thrusting spin. With the
+  // deadline at exactly the forecast tick the accepted press was cut off solution (a near miss).
+  const f = setup();
+  let x = null;
+  for (let probe = 24; probe > -40; probe -= 0.05) {
+    f.victim.pos.x = probe;
+    const now = solveCadenceRelease(f.payload, f.victim);
+    const win = forecastCadenceWindow(f.player, f.payload, f.victim, { restLength: 100 });
+    if (!now.onSolution && win.reliable && win.enterS != null && Math.round(win.enterS * 60) === 5) { x = probe; break; }
+  }
+  assert.ok(x != null, 'a real window exactly five ticks ahead exists');
+  f.press(); f.step();
+  assert.ok(f.host._pendingSnap, 'the press is accepted into the queue');
+  const pressTick = f.state.tick;
+  for (let i = 1; i <= 5; i++) { tick(f); f.step(); assert.equal(f.bus.count('massline:throw'), 0, `no cut before the window (tick ${i})`); }
+  f.victim.pos.x = 50; // the window opens one tick late (on-solution geometry)
+  tick(f); f.step();
+  assert.equal(f.bus.count('massline:throw'), 1);
+  const receipt = f.state.massline2.throw.lastThrow;
+  assert.equal(receipt.tick - pressTick, 6);
+  assert.equal(receipt.mode, 'snap', 'the accepted press releases on the solution it was promised');
+  assert.equal(receipt.prediction.onSolution, true);
 });
 test('queued throw cannot redirect when pointer identity changes', () => {
   const f = setup(); nextWindow(f); f.press(); f.step(); assert.ok(f.host._pendingSnap);

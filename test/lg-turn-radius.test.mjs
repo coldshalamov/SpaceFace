@@ -106,7 +106,10 @@ test('seed 4242 the turn line is the circle you fly', () => {
   const hitchMetres = Number(hitchMatch[1]);
   assert.ok(Math.abs(hitchMetres - hitchFlown.radius) <= 2, `${hitchMetres} vs ${hitchFlown.radius}`);
   assert.ok(hitchFlown.atFightSpeed);
-  assert.ok(Math.abs(hitchMetres - Math.round(hitch.guess)) >= 100, `line ${hitchMetres} still the yaw-cap guess ${hitch.guess}`);
+  // SF-2b (#3): the cruise W+turn now flies ~0.57 of max yaw (was ~0.33), so the real circle
+  // (~139 m unfitted) sits closer to the yaw-cap guess (~80 m) than the old ~230 m did. The line
+  // must still be the flown circle, not that guess.
+  assert.ok(Math.abs(hitchMetres - Math.round(hitch.guess)) >= 40, `line ${hitchMetres} still the yaw-cap guess ${hitch.guess}`);
 
   const hawser = statedMetres('ship_hawser');
   const hawserFlown = flownCircle('ship_hawser');

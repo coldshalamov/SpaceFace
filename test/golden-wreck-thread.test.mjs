@@ -7,6 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import { createSimulation } from '../src/core/sim.js';
 import { uniqueWreckById } from '../src/data/uniqueWrecks.js';
@@ -23,7 +24,7 @@ import { encounterDirector } from '../src/systems/encounterDirector.js';
 const WRECK_ID = 'wreck_nestbreaker';
 const UNIQUE_DROP = 'unique_nestbreaker_rack';
 const SCRATCH = process.env.DEPTH_SCRATCH
-  || 'C:/Users/93rob/AppData/Local/Temp/grok-goal-91667f5416cc/implementer/package-B';
+  || join(tmpdir(), 'spaceface-golden-wreck-thread');
 
 function boot(seed = 61001) {
   const def = uniqueWreckById(WRECK_ID);

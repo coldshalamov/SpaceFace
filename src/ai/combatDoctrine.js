@@ -38,6 +38,18 @@ export const DOCTRINE_TELEGRAPH_TICKS = 30;
 const IDS = new Set(Object.values(CombatDoctrineId));
 const INTERCEPTOR_STRIKE_MIN_TICKS = 24;
 const INTERCEPTOR_STRIKE_MAX_TICKS = 54;
+// SF-2b (#4): the strike's max clock only runs once the pass is inside its band. A run that has not
+// closed yet keeps closing (bounded by STRIKE_CLOSE_CAP_TICKS) instead of timing out at 290 WU and
+// "extending" from a pass that never happened.
+const INTERCEPTOR_STRIKE_BAND_WU = 225;
+const SWARM_STRIKE_BAND_WU = 180;
+const STRIKE_CLOSE_CAP_TICKS = 240;
+// SF-2b (#4): an egress leg (extend / breakaway / peel / disengage / escape) must point out of the
+// target's reach: its heading is clamped into a cone of this cosine around the away-from-target
+// bearing, keeping the run's sweep side. Master followed the current velocity, which on a pass that
+// had not crossed yet pointed straight back into the target (wasp extend closed 118 -> 66 WU).
+const EGRESS_AWAY_MIN_COS = 0.8;
+const EGRESS_PHASES = new Set(['extend', 'breakaway', 'peel', 'disengage', 'escape']);
 const INTERCEPTOR_EXTEND_TICKS = 75;
 const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
@@ -111,7 +123,9 @@ const STALKER_RELOCATE_MAX_TICKS = 75;
 const SWARM_STRIKE_MIN_TICKS = 20;
 const SWARM_STRIKE_MAX_TICKS = 44;
 const SWARM_EXTEND_TICKS = 30;
-const SWARM_EXTEND_MAX_TICKS = 90;
+// SF-2b (#4): 90 ticks was shorter than a light hull needs to turn off a pass and open range, so
+// most swarm extends ended still inside the strike band. The 320 WU exit is unchanged.
+const SWARM_EXTEND_MAX_TICKS = 150;
 const SWARM_REFORM_TICKS = 24;
 // Start the full half-second cue before the close pass, while a light hull still has room to
 // line up its fixed gun. At 200 WU the target crosses most of the firing band during the cue;
@@ -362,6 +376,7 @@ export class CombatDoctrineRuntime {
     } else {
       updateRanged(record, tick, self, target, distance);
     }
+    trackEgressPoint(record, self, target);
     return snapshot(record, target, directive, factionBehavior, self);
   }
 
@@ -478,7 +493,7 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
   } else if (record.phase === 'strike') {
     record.closestDistance = Math.min(record.closestDistance, distance);
     const passed = runHasPassed(record, self, target, distance);
-    if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || age >= INTERCEPTOR_STRIKE_MAX_TICKS) {
+    if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || strikeTimedOut(record, tick, age, distance, INTERCEPTOR_STRIKE_MAX_TICKS, INTERCEPTOR_STRIKE_BAND_WU)) {
       if (dispatched && interceptorTargetStationary(target)) beginReform(record, tick);
       else beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
@@ -1065,7 +1080,7 @@ function updateSwarmPack(record, tick, self, target, distance) {
   } else if (record.phase === 'strike') {
     record.closestDistance = Math.min(record.closestDistance, distance);
     const passed = runHasPassed(record, self, target, distance);
-    if ((age >= SWARM_STRIKE_MIN_TICKS && passed) || age >= SWARM_STRIKE_MAX_TICKS) {
+    if ((age >= SWARM_STRIKE_MIN_TICKS && passed) || strikeTimedOut(record, tick, age, distance, SWARM_STRIKE_MAX_TICKS, SWARM_STRIKE_BAND_WU)) {
       beginEgress(record, 'extend', tick, self, target, 'swarm_pass_complete');
     }
   } else if (record.phase === 'extend' && age >= SWARM_EXTEND_TICKS &&
@@ -1137,6 +1152,7 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
     fireWindow: false,
     outcome: null,
     closestDistance: Infinity,
+    strikeBandTick: null,
     flightPoint: null,
     ramAuthorized: false,
     preferredRange: null,
@@ -1686,6 +1702,15 @@ function interceptorTargetStationary(target) {
   return Math.hypot(vel.x, vel.z) <= INTERCEPTOR_STATIONARY_TARGET_SPEED;
 }
 
+// The strike's max clock starts when the pass first enters its band (re-armed per strike phase);
+// a pass that never closes still ends at STRIKE_CLOSE_CAP_TICKS.
+function strikeTimedOut(record, tick, age, distance, maxTicks, bandWu) {
+  if (record.strikeBandTick == null || record.strikeBandTick < record.phaseStartedTick) {
+    record.strikeBandTick = distance <= bandWu ? tick : null;
+  }
+  return (record.strikeBandTick != null && tick - record.strikeBandTick >= maxTicks) || age >= STRIKE_CLOSE_CAP_TICKS;
+}
+
 function runHasPassed(record, self, target, distance) {
   if (!self || !target) return false;
   if (record.closestDistance < 220 && distance > record.closestDistance + 32) return true;
@@ -1743,6 +1768,34 @@ function committedChargePoint(self, target, distance) {
   });
 }
 
+// Unit heading (dx, dz) clamped into the away cone around the bearing from target to self,
+// keeping its tangential sign (the run's sweep side). Returns null when already inside the cone.
+function clampIntoAwayCone(dx, dz, ux, uz, minCos) {
+  if (dx * ux + dz * uz >= minCos) return null;
+  const sweep = -dx * uz + dz * ux >= 0 ? 1 : -1;
+  const sin = Math.sqrt(Math.max(0, 1 - minCos * minCos));
+  return { x: ux * minCos - uz * sin * sweep, z: uz * minCos + ux * sin * sweep };
+}
+
+// Keep a committed egress leg pointed out of the LIVE target's reach. The stored point is re-aimed
+// only when its bearing has left the away cone (the target moved, or the hull is still carrying
+// momentum past it); a leg that is already opening keeps its point.
+function trackEgressPoint(record, self, target) {
+  if (!record.flightPoint || !EGRESS_PHASES.has(record.phase) || !self || !self.pos || !target || !target.pos) return;
+  const sx = finite(self.pos.x);
+  const sz = finite(self.pos.z);
+  const fx = record.flightPoint.x - sx;
+  const fz = record.flightPoint.z - sz;
+  const fl = Math.hypot(fx, fz);
+  const ax = sx - finite(target.pos.x);
+  const az = sz - finite(target.pos.z);
+  const al = Math.hypot(ax, az);
+  if (!(fl > 1) || !(al > 1)) return;
+  const dir = clampIntoAwayCone(fx / fl, fz / fl, ax / al, az / al, EGRESS_AWAY_MIN_COS);
+  if (!dir) return;
+  record.flightPoint = Object.freeze({ x: sx + dir.x * RUN_EGRESS_DISTANCE, z: sz + dir.z * RUN_EGRESS_DISTANCE });
+}
+
 function egressPoint(self, target, side) {
   const sx = finite(self && self.pos && self.pos.x);
   const sz = finite(self && self.pos && self.pos.z);
@@ -1761,6 +1814,15 @@ function egressPoint(self, target, side) {
     }
   }
   const lateral = side < 0 ? -1 : 1;
+  if (target && target.pos) {
+    const ax = sx - finite(target.pos.x);
+    const az = sz - finite(target.pos.z);
+    const al = Math.hypot(ax, az);
+    if (al > 1) {
+      const dir = clampIntoAwayCone(dx, dz, ax / al, az / al, EGRESS_AWAY_MIN_COS);
+      if (dir) { dx = dir.x; dz = dir.z; }
+    }
+  }
   return Object.freeze({
     x: sx + dx * RUN_EGRESS_DISTANCE - dz * lateral * 80,
     z: sz + dz * RUN_EGRESS_DISTANCE + dx * lateral * 80,

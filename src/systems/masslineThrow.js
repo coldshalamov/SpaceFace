@@ -27,6 +27,11 @@ import { clearSwingTraceReleasePaint, paintSwingTraceRelease } from '../render/m
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
+// SF-2b (#5): the queue outlives the window it accepted the press for by this many ticks. The
+// forecast that queues a press models a coasting swing; under thrust (W+D spin) the real window
+// arrives up to one tick after the forecast, and a deadline at exactly the forecast tick cut the
+// accepted press one tick early — off solution, a near miss the player had been promised.
+const SNAP_DEADLINE_SLACK_TICKS = 1;
 const CURSOR_AIM_GRACE = 48;        // wu of surface miss that still soft-snaps the throw aim
 const SLING_RELEASE_SPEED_FRACTION = 0; // compatibility export: no free release energy
 const SLING_MIN_EXIT_SPEED = 25;    // "genuinely moving" bar (mirrors SNAP_CATCH_MIN_SPEED)
@@ -264,7 +269,7 @@ export const masslineThrow = {
     if (onNow) { this._executeThrow(state, player, payload, aim, solution, 'snap'); return; }
     if (window.reliable && window.enterS > 0 && window.enterS <= SNAP_WINDOW_MS / 1000) {
       this._pendingSnap = { identity, attachmentId: tether.attachmentId,
-        deadlineTick: state.tick + Math.floor(SNAP_WINDOW_MS / 1000 * 60) };
+        deadlineTick: state.tick + Math.ceil(window.enterS * 60 - 1e-6) + SNAP_DEADLINE_SLACK_TICKS };
       runtime.armed = true;
       return;
     }

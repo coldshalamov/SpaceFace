@@ -2105,8 +2105,26 @@ export class Sg02DynamicBodyOwner {
     rec.entity = entity;
     if (preserveRebound) this._reboundEntityIds.delete(entity.id);
     else this._maybeResyncBodyPose(rec, entity);
+    this._syncGuidedVelocity(rec, entity);
     this._applyCcdGate(rec, entity);
     return rec;
+  }
+
+  // A homing round is steered in the sim (weapons._steerHoming rewrites entity.vel every tick).
+  // Under rapier-dynamic the body owns position, so that steer has to reach the body. Before
+  // this, the body kept its launch velocity, and turnRate, seeker cone and fuel did nothing.
+  _syncGuidedVelocity(rec, entity) {
+    if (!rec || !rec.body || !rec.spec || !rec.spec.dynamic || entity.type !== 'projectile') return;
+    const d = entity.data;
+    if (!d || d.kind !== 'missile' || !entity.vel) return;
+    const vx = finite(entity.vel.x);
+    const vz = finite(entity.vel.z);
+    const lv = rec.body.linvel();
+    if ((lv.x - vx) * (lv.x - vx) + (lv.z - vz) * (lv.z - vz) <= 1e-6) return;
+    _vecWriteScratch.x = vx;
+    _vecWriteScratch.y = 0;
+    _vecWriteScratch.z = vz;
+    rec.body.setLinvel(_vecWriteScratch, true);
   }
 
   // Rank-1 CCD gate: reevaluate CCD on every sync from live speed/boost state, body-level only.
