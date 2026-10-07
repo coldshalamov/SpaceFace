@@ -50,7 +50,7 @@ function boot(seed = 4242, { withPhysics = false, playerRadius = 12 } = {}) {
   state.playerId = player.id;
   player.cap = 100; // full capacitor — the verb drains it
   const events = [];
-  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:launched', 'gyre:dropped', 'audio:cue', 'toast']) {
+  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:absorbTick', 'gyre:launched', 'gyre:thrown', 'gyre:dropped', 'audio:cue', 'toast']) {
     sim.bus.on(name, (p) => events.push({ name, p, tick: state.tick }));
   }
   return { sim, state, bus: sim.bus, helpers, player, events, sys: sim.registry.get('gyreSnare'), physicsSys: sim.registry.get('physics') };
@@ -630,6 +630,10 @@ test('a dense belt feed rate-gates the absorb glass tick', async () => {
   const ticks = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_absorb').length;
   assert.ok(absorbs >= 2, `several meals eaten (${absorbs})`);
   assert.ok(ticks >= 1 && ticks < absorbs, `cue gate suppressed stacking (${ticks}/${absorbs})`);
+  // The haptic tick rides the same gate — the pad gets discrete thumps, not a buzz,
+  // while gyre:absorbed still fires per-meal for HUD honesty.
+  const padTicks = t.events.filter((e) => e.name === 'gyre:absorbTick').length;
+  assert.equal(padTicks, ticks, `haptic tick shares the audio gate (${padTicks} vs ${ticks})`);
   t.cleanup();
 });
 
@@ -965,10 +969,10 @@ test('strain cue latches once above 0.4 and re-arms below 0.25', async () => {
   for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.coreId, core.id);
   // Strain measures distance to the MAW (player+mawDist along the nose), not the
-  // ship: pin the core at mawDist+520 so strain = (520-320)/320 = 0.625 > 0.4 while
+  // ship: pin the core at mawDist+560 so strain = (560-480)/160 = 0.5 > 0.4 while
   // staying under the 640 wu break — a long excursion without a drop.
   for (let i = 0; i < 10; i++) {
-    core.pos.x = t.player.pos.x + T.mawDist + 520; core.pos.z = t.player.pos.z;
+    core.pos.x = t.player.pos.x + T.mawDist + 560; core.pos.z = t.player.pos.z;
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
   const strains = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain');
@@ -1297,7 +1301,7 @@ test('a deliberate bowl never rings the strain bell — strain reads zero throug
   for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   // Strain excursion under HOLD: pin past the 320 strain floor (under the 640 break).
   for (let i = 0; i < 5; i++) {
-    core.pos.x = t.player.pos.x + T.mawDist + 520; core.pos.z = t.player.pos.z;
+    core.pos.x = t.player.pos.x + T.mawDist + 560; core.pos.z = t.player.pos.z;
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
   assert.equal(t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain').length, 1,
@@ -1307,7 +1311,7 @@ test('a deliberate bowl never rings the strain bell — strain reads zero throug
   assert.equal(t.sys._rt.phase, 'launching');
   const strainsBefore = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain').length;
   for (let i = 0; i < T.launchWindupTicks + T.launchTicks + 2; i++) {
-    core.pos.x = t.player.pos.x + T.mawDist + 520; core.pos.z = t.player.pos.z;
+    core.pos.x = t.player.pos.x + T.mawDist + 560; core.pos.z = t.player.pos.z;
     t.sim.step();
     assert.equal(t.state.gyreSnare.strain01, 0, 'LAUNCH never publishes strain');
   }
@@ -1543,5 +1547,47 @@ test('a second bowl mid-flight keeps both balls marked and they retire independe
   assert.ok(!t.sys._rt.ballIds.includes(a.id), 'A left the watch list');
   assert.equal(b.data.gyreLaunched, true, 'B still marked and flying');
   assert.ok(t.sys._rt.ballIds.includes(b.id), 'B still watched');
+  t.cleanup();
+});
+
+
+// ── wave-21 coverage ────────────────────────────────────────────────────────────
+test('thrownBeat fires on exactly one tick — the first burst tick, with gyre:thrown', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 8, 4);
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  let beats = 0;
+  for (let i = 0; i < T.launchWindupTicks + T.launchTicks + 4; i++) {
+    t.sim.step();
+    if (t.state.gyreSnare.thrownBeat) {
+      beats += 1;
+      assert.equal(t.sys._rt.launchLeft, T.launchTicks - 1,
+        'the flag marks the first consumed burst tick — same condition as gyre:thrown');
+    }
+  }
+  assert.equal(beats, 1, `exactly one thrownBeat per launch (got ${beats})`);
+  assert.equal(t.events.filter((e) => e.name === 'gyre:thrown').length, 1);
+  t.cleanup();
+});
+
+test('basinSpots publishes the pulled bodies so the victim glow has a target', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist + 60, 20, 6, 4);
+  const b = rock(t.sim, T.mawDist - 90, 5, 6, 4); // wedge pull
+  hold(t);
+  t.sim.step();
+  const spots = t.state.gyreSnare.basinSpots;
+  assert.ok(Array.isArray(spots) && spots.length >= 2, `spots for pulled bodies (got ${spots && spots.length})`);
+  const ids = [a.id, b.id];
+  for (const s of spots) {
+    assert.ok(Number.isFinite(s.x) && Number.isFinite(s.z) && s.r > 0, 'spot carries x/z/r');
+  }
+  // Off-phase publishes an empty ledger, never stale positions.
+  release(t);
+  for (let i = 0; i < 8; i++) t.sim.step();
+  assert.equal(t.state.gyreSnare.basinSpots.length, 0, 'spots die with the beam');
+  assert.ok(ids.length === 2);
   t.cleanup();
 });

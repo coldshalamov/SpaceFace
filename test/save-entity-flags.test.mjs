@@ -64,3 +64,57 @@ test('save scrubs player flight grace but preserves persistent entity gameplay p
   assert.equal(entities.persistent[0].flags.noInterp, undefined);
   assert.equal(entities.persistent[0].flags.docked, undefined);
 });
+
+test('a serialized gyre ball rides the save but restores transient — never flagged persistent', () => {
+  const state = makeState();
+  // A mid-flight gyre ball: marked body, own deadline, kill-credit meta. It serializes
+  // through the same live-projectile clause but is a different type — and the whole
+  // sim (snag/pull/suck guards, sector-regen wipe) relies on live bodies lacking
+  // flags.persistent, so restore must not stamp it.
+  const ball = {
+    id: 9,
+    type: 'asteroid',
+    alive: true,
+    pos: { x: 200, z: 0 },
+    vel: { x: 400, z: 0 },
+    radius: 20,
+    mass: 300,
+    ttl: 18,
+    flags: {},
+    data: {
+      gyreLaunched: true,
+      despawnAt: 30,
+      gyreLaunchMeta: { actorId: 7, absorbs: 3, clumpRadius: 18, members: [{ type: 'asteroid', mass: 5, radius: 2, nx: 0, nz: 0 }] },
+    },
+  };
+  state.entityList.push(ball);
+  state.entities.set(ball.id, ball);
+  save.state = state;
+  save.registry = { get: () => null };
+
+  const entities = save.serializeData().entities;
+  const savedBall = entities.persistent.find((e) => e.id === ball.id);
+  assert.ok(savedBall, 'a launched ball mid-flight rides the save');
+  assert.equal(savedBall.data.gyreLaunched, true);
+
+  // Restore into a fresh state and inspect what the spawn helper receives.
+  const spawned = [];
+  const fresh = makeState();
+  fresh.entities.clear();
+  fresh.entityList.length = 0;
+  fresh.nextEntityId = 0;
+  save.state = fresh;
+  save.helpers = {
+    spawnEntity: (spec) => {
+      const e = Object.assign({ alive: true }, spec);
+      spawned.push(e);
+      return e;
+    },
+  };
+  save._spawnPersistentEntities(JSON.parse(JSON.stringify(entities.persistent)), new Map());
+  const restored = spawned.find((e) => e.data && e.data.gyreLaunched);
+  assert.ok(restored, 'the ball respawns on continue');
+  assert.equal(restored.flags.persistent, false,
+    'a restored gyre ball stays transient like a projectile — a persistent flag would let it survive sector regen as an out-of-timeline marked body and stick forever on a handed-back core');
+  assert.equal(restored.flags.noInterp, true);
+});

@@ -101,6 +101,7 @@ function freshRuntime() {
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
+    basinSpots: [],        // bounded {x,z,r} of bodies actually being dragged — the victim-side pull glow
   };
 }
 
@@ -180,6 +181,7 @@ export const gyreSnare = {
     rt.totalAbsorbed = 0;
     rt.basinCount = 0;
     rt.suckCount = 0;
+    rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     // A boundary drop also forgets the flying ball mirror — stale ballPos would leak a
     // dead clump overlay into the next scene. The sweep then re-seeds watch + mirror
@@ -451,7 +453,8 @@ export const gyreSnare = {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
     this._rt.basinCount = 0; // reset above the guard — a helper-less host must not
-    if (!queryRadius) return; // publish a frozen +N read forever
+    this._rt.basinSpots.length = 0; // publish a frozen +N read forever
+    if (!queryRadius) return;
     const ownedCore = owned && owned.core && owned.core.pos ? owned.core : null;
     const ownedR2 = ownedCore && owned.r > 0 ? owned.r * owned.r : 0;
     const reach = D.mawDist + D.basinRadius + D.queryReachWu;
@@ -549,6 +552,12 @@ export const gyreSnare = {
           ax -= (dx / distMaw) * wedge;
           az -= (dz / distMaw) * wedge;
         }
+      }
+      // The gravity-pull glow rides the same ledger the count does — a faint
+      // brighten on each body being dragged so "increases gravity" reads on the
+      // victim itself, not just the funnel. Bounded so the mirror stays small.
+      if (this._rt.basinSpots.length < D.basinSpotMax) {
+        this._rt.basinSpots.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e) });
       }
       this._queueAccel(e, ax, az, mass, dt, state);
     }
@@ -820,6 +829,10 @@ export const gyreSnare = {
         // Meal size in the ear too: the tick drops pitch as the victim gets heavier — a
         // pebble ticks high, a wreck thuds low.
         this.bus.emit('audio:cue', { id: 'gyre_snare_absorb', gain: 0.7, rate: 1.15 - Math.min(0.5, em / 160) });
+        // The haptic ride shares the gate: a dense belt feed would otherwise hold the
+        // pad in a continuous buzz exactly where the audio designers decided it should
+        // stay a discrete tick. gyre:absorbed still fires per-meal for HUD honesty.
+        this.bus.emit(GYRE_EVENTS.absorbTick, { coreId: core.id, mass: em, clumpMass: rt.clumpMass, tick: state.tick });
       }
       // Escalation reaches the camera too — swallowing a wreck should feel physically
       // different from swallowing a pebble, so heavy meals carry a micro-shake while
@@ -861,6 +874,7 @@ export const gyreSnare = {
     this._trackBall(core.id);
     rt.basinCount = 0; // the "N in net" read is basin-only — a flying ball owns none
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
+    rt.basinSpots.length = 0;
     rt.ballMass = rt.clumpMass;
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
     // clump overlay keeps riding the ball through its whole flight instead of shedding at OFF.
@@ -958,6 +972,7 @@ export const gyreSnare = {
     rt.totalAbsorbed = 0;
     rt.basinCount = 0;
     rt.suckCount = 0;
+    rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     rt.lastAbsorbCueS = -1e9;
     rt.strainCueLatched = false;
@@ -980,7 +995,7 @@ export const gyreSnare = {
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
-      graves: null, thrownBeat: false,
+      graves: null, thrownBeat: false, basinSpots: null,
     });
     // Default each tick: the grave ring only blooms when the ball actually DIES — an
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
@@ -988,6 +1003,9 @@ export const gyreSnare = {
     pub.ballGrave = false;
     if (pub.graves === null) pub.graves = [];
     pub.graves.length = 0;
+    if (pub.basinSpots === null) pub.basinSpots = [];
+    pub.basinSpots.length = 0;
+    for (let i = 0; i < rt.basinSpots.length; i++) pub.basinSpots.push(rt.basinSpots[i]);
     pub.phase = rt.phase;
     // Retire pass over EVERY watched launched id — not just the HUD's primary ball:
     // a second launch or a boundary reload can orphan an older marked body, and an
@@ -1125,11 +1143,12 @@ export const gyreSnare = {
     // which a remaining-fraction ramp could never publish.
     pub.launchWindup01 = rt.phase === PHASE.LAUNCH
       ? (D.launchWindupTicks > 0 ? 1 - rt.launchWindup / D.launchWindupTicks : 1) : 0;
-    // The exact throw tick: coil drained AND the burst countdown already consuming —
-    // gyre:thrown, the pad thump, camera shake and the Newton kick all land here, so
-    // the grave ring blooms on this same tick instead of a frame early off windup01.
+    // The exact throw tick — the first burst tick ONLY, the same condition the
+    // gyre:thrown emit uses: launchLeft already consumed exactly once. gyre:thrown,
+    // the pad thump, camera shake and the Newton kick all land here, so the grave
+    // ring blooms on this same tick instead of a frame early off windup01.
     pub.thrownBeat = rt.phase === PHASE.LAUNCH
-      && rt.launchWindup <= 0 && rt.launchLeft < D.launchTicks;
+      && rt.launchLeft === D.launchTicks - 1;
     const core = rt.coreId != null ? state.entities.get(rt.coreId) : null;
     if (core && core.pos) {
       pub.corePos.x = core.pos.x; pub.corePos.z = core.pos.z;

@@ -62,7 +62,9 @@ export const GYRE_SNARE = Object.freeze({
   holdDamping: 7.5,          // 1/s — damping vs the ship's frame velocity (tracks, doesn't lag)
   holdMaxAccel: 1000,        // wu/s² — hold spring ceiling (strong enough to reel a lagging ball)
   holdBreakDist: 640,        // wu — core shoved beyond this slips the beam entirely (dropped)
-  holdStrainDist: 320,       // wu — beyond this the beam reads "strained" to VFX/HUD
+  holdStrainDist: 480,       // wu — beyond this the beam reads "strained" to VFX/HUD
+                           // (starts 2.4× the maw out: a 320 wu band left "strained"
+                           // bodies fully past the basin's readable edge)
   tumbleTorqueK: 2.2,        // gain steering the held core's spin toward tumbleTargetRadS
   tumbleTargetRadS: 0.55,    // rad/s — lazy rubble drift; a servo target so the spin settles
                            // instead of winding up open-loop over a long hold
@@ -78,6 +80,7 @@ export const GYRE_SNARE = Object.freeze({
   maxClumpRadius: 60,        // wu — volumetric union clamps here; mass keeps growing regardless
   maxClumpMass: 2400,        // t — mass cap (a hard ceiling so a ball can't out-scale a capital)
   maxAbsorbRecords: 28,      // member ledger bound for the VFX lumps
+  basinSpotMax: 8,         // published pull-glow positions per tick (bodies actually being dragged)
   // ── Launch ────────────────────────────────────────────────────────────────────────
   launchSpeed: 520,          // wu/s — release Δv along the nose (mass-independent); the bowl visibly outruns a boosting player (~1.9x boost)
   launchTicks: 5,            // ticks the launch impulse is spread over (slingshot feel)
@@ -125,6 +128,9 @@ export const GYRE_EVENTS = Object.freeze({
   beamOff: 'gyre:beamOff',
   snagged: 'gyre:snagged',
   absorbed: 'gyre:absorbed',
+  // Haptic-rate absorb tick — emitted inside the absorbCueMinGapS gate (one per gate
+  // window) so a dense belt feed reads as discrete pad ticks, not a continuous buzz.
+  absorbTick: 'gyre:absorbTick',
   launched: 'gyre:launched',
   // The ball actually flies — first burst tick after the coil. Consumers that need the
   // release EDGE keep gyre:launched; feel carriers (pad pulse) ride gyre:thrown so the

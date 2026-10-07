@@ -437,7 +437,7 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
   'gyre:launched':          { strong: 0.30, weak: 0.25, ms: 60 },  // coil engages — the sling tautens
   'gyre:thrown':            { strong: 0.90, weak: 0.70, ms: 160 }, // the throw — biggest beat in the pad vocabulary
-  'gyre:absorbed':          { strong: 0.30, weak: 0.20, ms: 50 },
+  'gyre:absorbTick':        { strong: 0.30, weak: 0.20, ms: 50 },
   'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
   'gyre:droppedEmpty':      { strong: 0.20, weak: 0.15, ms: 50 },
   'gyre:strained':          { strong: 0.50, weak: 0.40, ms: 120 },
@@ -832,12 +832,14 @@ export function createGamepad(ctx) {
     bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
     bus.on('gyre:thrown', () => startPulse(HAPTIC_VERB_PULSES['gyre:thrown'], 'gyre:thrown'));
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
-    bus.on('gyre:absorbed', (payload) => {
+    bus.on('gyre:absorbTick', (payload) => {
       // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the
       // drop thud — lerped on min(1, mass/80) so katamari escalation is felt, not just seen.
+      // The tick is sim-rate-gated (shares absorbCueMinGapS): a dense feed reads as
+      // discrete thumps, not a continuous buzz. gyre:absorbed stays per-meal for HUD.
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 80);
-      const base = HAPTIC_VERB_PULSES['gyre:absorbed'];
-      startPulse({ strong: base.strong + 0.25 * t, weak: base.weak + 0.1 * t, ms: base.ms + 40 * t }, 'gyre:absorbed');
+      const base = HAPTIC_VERB_PULSES['gyre:absorbTick'];
+      startPulse({ strong: base.strong + 0.25 * t, weak: base.weak + 0.1 * t, ms: base.ms + 40 * t }, 'gyre:absorbTick');
     });
     bus.on('gyre:dropped', (payload) => {
       // A save/sector boundary drop is a context reset, not a player verb — stay silent like the

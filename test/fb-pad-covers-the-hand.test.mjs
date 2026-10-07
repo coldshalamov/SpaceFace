@@ -313,6 +313,17 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   state.tick += 1; gp.tick(1 / 60, state);
   assert.equal(gp.actions.gyreSnare.held, false, 'releasing Y sets the lash down');
 
+  // Key-first order stays the solo verbs: Y down BEFORE RB is the repulsor, not the
+  // lash — the chord only binds when the modifier (RB) leads.
+  press(BTN.alt, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  press(BTN.r1, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, false, 'Y-first never forms the lash chord');
+  assert.equal(gp.actions.deployRepulsor.held, true, 'the Y-first press stays the repulsor');
+  press(BTN.alt, false); press(BTN.r1, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+
   // Gyre events pulse the pad's haptic frame: a queued pulse sets the frame's
   // magnitude to the spec value on the next tick (idle baseline stays near 0).
   const drain = (n = 15) => { for (let i = 0; i < n; i++) { state.tick += 1; gp.tick(1 / 60, state); } };
@@ -327,6 +338,7 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   pulseAt('gyre:snagged', 0.70);
   pulseAt('gyre:full', 0.65);
   pulseAt('gyre:thrown', 0.90);
+  pulseAt('gyre:absorbTick', 0.30);
 
   // A boundary-flagged drop is a context reset, not a player verb — the pad stays silent.
   bus.emit('gyre:dropped', { boundary: true });

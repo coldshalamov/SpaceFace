@@ -114,6 +114,7 @@ uniform float uSize;
 uniform vec3 uAim;   // beam-local pull target — the HELD core's offset from the maw plane
 attribute float aSeed;
 varying float vFade;
+varying float vGulp;
 void main() {
   float t = fract(aSeed * 7.13 + uTime * (0.35 + aSeed * 0.5));
   // Motes CONVERGE into the mouth: they spawn wide and up-beam of the maw, then run
@@ -125,7 +126,10 @@ void main() {
   // While a core is held the well it orbits is off-axis from the maw — bend the
   // funnel's last stretch toward it so the suction arrow points at the real mass.
   p += uAim * smoothstep(0.55, 1.0, t);
-  vFade = smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.75, 1.0, t));
+  vFade = smoothstep(0.0, 0.15, t);
+  // Terminal gulp: the mote holds full bright, flashes as the mouth swallows it,
+  // then snaps off AT the rim — the swallow beat was invisible when it faded early.
+  vGulp = smoothstep(0.82, 1.0, t);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_PointSize = uSize * (280.0 / max(1.0, -mv.z));
   gl_Position = projectionMatrix * mv;
@@ -136,11 +140,14 @@ const SPIRAL_FRAG = /* glsl */`
 uniform vec3 uCol;
 uniform float uFade;    // close-ramp gate — motes die WITH the glass, not past it
 varying float vFade;
+varying float vGulp;
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float d = dot(c, c);
   if (d > 1.0) discard;
-  gl_FragColor = vec4(uCol, vFade * (1.0 - d) * 0.8 * uFade);
+  // Gulp = brighten into the swallow (peak ~3x near the rim) then cut dead at t→1.
+  float a = vFade * (1.0 + 2.4 * vGulp) * (1.0 - smoothstep(0.88, 1.0, vGulp));
+  gl_FragColor = vec4(uCol, a * (1.0 - d) * 0.8 * uFade);
 }
 `;
 
@@ -359,12 +366,32 @@ export class GyreSnarePresentation {
     this._halo.frustumCulled = false;
     scene.add(this._halo);
 
+    // Basin pull glows: a faint flat brighten on each body the cone is actually
+    // dragging this tick — "increases gravity" reads on the victim itself, not
+    // just on the funnel motes. One pool slot per sim-published basinSpot.
+    this._basinGlows = [];
+    const spotGeo = new THREE.CircleGeometry(1, 24);
+    spotGeo.rotateX(-Math.PI / 2);
+    for (let i = 0; i < GYRE_SNARE.basinSpotMax; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(glass), transparent: true, opacity: 0,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      });
+      const g = new THREE.Mesh(spotGeo, mat);
+      g.visible = false;
+      g.frustumCulled = false;
+      scene.add(g);
+      this._basinGlows.push(g);
+    }
+    this._spotPt = { x: 0, z: 0 };
+
     this._nose = { x: 0, z: 0 };
     this._mawPt = { x: 0, z: 0 };
     this._ballPt = { x: 0, z: 0 };
     this._corePt = { x: 0, z: 0 };
     this._throwBeat = false;   // latched once per launch: the big ring blooms on the sim's thrownBeat tick
     this._lastGraveTick = -1;  // graves dedupe — one bloom per sim tick, not per render frame
+    this._deathT = 0;          // >0 while a dead ball's rubble dissolves into its grave (~0.25 s)
   }
 
   _lumpMaterial(type) {
@@ -395,7 +422,11 @@ export class GyreSnarePresentation {
     slot.spawnT = this.time;         // grow-in: lumps swell in over ~150 ms, not pop
     const m = slot.mesh;
     m.material = this._lumpMaterial(member.type);
-    const r = Math.max(0.35, finite(member.radius, 2) * 0.62);
+    // Katamari compaction: the member ledger caps at MAX_LUMPS but the ball keeps
+    // growing — lumps scale WITH the clump so 28 chunks still carpet a capped 60 wu
+    // shell instead of leaving most of the sphere bare past the ledger's bound.
+    const r = Math.max(0.35, finite(member.radius, 2) * 0.62)
+      * Math.min(3, Math.max(1, finite(this._clumpRadius, 12) / 14));
     slot.baseScale = r;
     m.scale.setScalar(r * 0.2);
     const spread = Math.max(0, finite(this._clumpRadius) - r * 0.45);
@@ -449,7 +480,7 @@ export class GyreSnarePresentation {
     // early-returning here froze the ring at t≈0.03 as a faint glow stuck at the grave.
     // The close-ramp owns the quiet window too: latching _quiet on the first dead frame
     // strangled the ramp after ~1 tick, leaving a ghost cone + frozen clump on screen.
-    if (!live && this._quiet && !this._closing && !this._bursts.some((b) => b.t < 1)) return;
+    if (!live && this._quiet && !this._closing && this._deathT <= 0 && !this._bursts.some((b) => b.t < 1)) return;
     if (!live) { this._quiet = true; }
     else this._quiet = false;
 
@@ -647,10 +678,33 @@ export class GyreSnarePresentation {
       }
     }
 
+    // Victim-side gravity read: each body the cone is dragging this tick gets a
+    // faint flat brighten — "increases gravity" lands on the rock, not just the
+    // funnel motes. Sim caps the ledger at the pool size.
+    const spots = Array.isArray(mirror.basinSpots) ? mirror.basinSpots : null;
+    for (let i = 0; i < this._basinGlows.length; i++) {
+      const g = this._basinGlows[i];
+      const s = spots && i < spots.length ? spots[i] : null;
+      if (!s || !this.toLocal) { g.visible = false; continue; }
+      const lp = this.toLocal(finite(s.x), finite(s.z), this._spotPt);
+      g.position.set(lp.x, 0.35, lp.z);
+      g.scale.setScalar(Math.max(1.5, finite(s.r, 3) * 2.6)
+        * (1 + 0.08 * Math.sin(this.time * 4 + i * 1.7) * calm));
+      g.material.opacity = 0.16 * flashCalm;
+      g.visible = true;
+    }
+
     if (cx == null) {
-      // A freed (grown) core stays a live body — let the glass rubble shrink out on
-      // the close-ramp instead of popping off mid-space one frame before the beam dies.
-      if (this._closing && this._clump.visible && this._closeK > 0) {
+      // A thrown ball's rubble shrinks INTO its grave over ~0.25 s (the k² language of
+      // the close-ramp) instead of teleporting out under the blooming ring.
+      if (this._ballId != null && !this._closing && this._deathT <= 0) this._deathT = 0.25;
+      if (this._deathT > 0) {
+        this._deathT -= sdt;
+        const k = Math.max(0, this._deathT / 0.25);
+        this._clump.scale.setScalar(Math.max(0.001, k * k));
+        this._clump.visible = this._deathT > 0;
+        if (this._deathT <= 0) this._clearLumps();
+      } else if (this._closing && this._clump.visible && this._closeK > 0) {
         this._clump.scale.setScalar(Math.max(0.001, this._closeK));
       } else {
         this._clump.visible = false;
@@ -659,8 +713,9 @@ export class GyreSnarePresentation {
       this._trail.visible = false;
       this._grip.visible = false;
       this._halo.visible = false;
-      if (phase === 'off' && this._ballId == null && !this._closing) this._clearLumps();
+      if (phase === 'off' && this._ballId == null && !this._closing && this._deathT <= 0) this._clearLumps();
     } else {
+      this._deathT = 0;
       const p = this.toLocal(cx, cz, this._nose);
       this._clump.visible = true;
       this._clump.position.set(p.x, 0.6, p.z);
@@ -785,18 +840,21 @@ export class GyreSnarePresentation {
         this._discKick = 1;
         this._moteKick = 1;
       }
-      if (phase === 'launching' && cx != null) {
+      if (phase === 'launching') {
         // Coil-engage flare only — HALF-size: the big shatter blooms at the throw
-        // itself (launchWindup01 → 0, below), matching where gyre:thrown/shake/recoil
-        // land. Blooming the full ring at the release edge left it half-decayed by
-        // the time the ball actually flew.
-        this._fireBurst(mirror.corePos.x, mirror.corePos.z, Math.max(6, finite(mirror.clumpRadius, 8) * 1.1));
+        // itself (thrownBeat, below), matching where gyre:thrown/shake/recoil land.
+        // Position: the tracked clump, else the ball mirror — a core that died on the
+        // release edge shouldn't mute the vocabulary (mirror.launchedId is the marker).
+        const fx = cx != null ? cx : finite(mirror.ballPos.x, finite(mirror.corePos.x));
+        const fz = cx != null ? cz : finite(mirror.ballPos.z, finite(mirror.corePos.z));
+        this._fireBurst(fx, fz, Math.max(6, finite(mirror.clumpRadius, 8) * 1.1));
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.5);
         this._throwBeat = false;
       }
       // A live bowling ball keeps its frozen member ledger — the lumps ride the throw.
-      // Only drop them when the mirror itself stopped tracking a ball.
-      if (phase === 'off' && mirror.launchedId == null) this._clearLumps();
+      // Only drop them when the mirror itself stopped tracking a ball (and no death
+      // dissolve is still playing them out).
+      if (phase === 'off' && mirror.launchedId == null && this._deathT <= 0) this._clearLumps();
       this._phase = phase;
     }
 
@@ -841,5 +899,9 @@ export class GyreSnarePresentation {
     for (const l of this._lumps) l.mesh.geometry.dispose();
     for (const k in this._lumpMats) this._lumpMats[k].dispose();
     for (const b of this._bursts) { b.mesh.geometry.dispose(); b.mesh.material.dispose(); }
+    if (this._basinGlows && this._basinGlows.length) {
+      this._basinGlows[0].geometry.dispose();
+      for (const g of this._basinGlows) g.material.dispose();
+    }
   }
 }
