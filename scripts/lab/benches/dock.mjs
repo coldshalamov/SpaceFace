@@ -10,6 +10,7 @@
 // + worst contact closing speed, mouth speed (speed when entering the corridor), overshoot (wu
 // the hull passes the berth along the axis), path length / straight-line, final status.
 import { createLabWorld, SIM_DT } from '../labWorld.mjs';
+import * as fv3 from '../../../src/systems/flightV3.js';
 import { resolveCollisionProxyManifest, resolveBerthWorld, resolveCorridorAxisWorld } from '../../../src/data/collisionProxyManifests.js';
 
 export const SCENARIOS = {};
@@ -19,7 +20,10 @@ for (const D of [600, 1500]) for (const B of [0, 45, 90, 135, 180]) for (const V
 for (const ship of ['ship_drifter', 'ship_bastion']) for (const B of [0, 90, 180]) SCENARIOS[`${ship.replace('ship_', '')}|1500|${B}|rest`] = { shipId: ship, D: 1500, B, V: 'rest' };
 export const DEFAULT_SCENARIOS = Object.keys(SCENARIOS);
 
+export const VARIANTS = {};
+for (const r of [1.0, 1.3, 1.6]) for (const st of [45, 60, 75]) VARIANTS[`orbit${r}x${st}`] = { dockOrbit: { radiusMult: r, stepDeg: st } };
 export async function runScenario(id, { seed = 1, bundle = 'focused', params = {} } = {}) {
+  if (typeof fv3.setAutopilotDockLab === 'function') fv3.setAutopilotDockLab(params);
   const sc = typeof id === 'object' ? id : SCENARIOS[id];
   if (!sc) throw new Error(`unknown scenario ${id}`);
   const world = await createLabWorld({ seed, bundle, settings: { controlScheme: 'pilot' }, extraSystems: ['dockingCorridor', 'dockingCradle', 'autopilotSystem'] });
@@ -76,5 +80,5 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
       overshoot: +maxPast.toFixed(1), pathRatio: +(pathLen / straight).toFixed(2), maxSpeed: +maxSpeed.toFixed(0),
       endDist: +Math.hypot(pl.pos.x - berth.x, pl.pos.z - berth.z).toFixed(1),
     };
-  } finally { world.dispose(); }
+  } finally { world.dispose(); if (typeof fv3.setAutopilotDockLab === 'function') fv3.setAutopilotDockLab({}); }
 }

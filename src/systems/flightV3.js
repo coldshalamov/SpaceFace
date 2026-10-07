@@ -1467,6 +1467,27 @@ function stopAutopilot(host, state, reason) {
   }
 }
 
+// Tuning-lab seam (Phase 2b #9): dockOrbit = { radiusMult, stepDeg } routes a far-side approach
+// around the station on a circle of radiusMult x mouth radius, a carrot stepDeg ahead toward the
+// corridor axis, until the hull is within stepDeg of the axis; null = master behaviour.
+export const AUTOPILOT_DOCK_LAB = { dockOrbit: null };
+export function setAutopilotDockLab(next = {}) { AUTOPILOT_DOCK_LAB.dockOrbit = next.dockOrbit || null; }
+function dockOrbitWaypoint(entity, axis, mouthRadius, player) {
+  const cfg = AUTOPILOT_DOCK_LAB.dockOrbit;
+  if (!cfg || !player || !player.pos) return null;
+  const R = mouthRadius * cfg.radiusMult;
+  const rx = finite(player.pos.x) - finite(entity.pos.x);
+  const rz = finite(player.pos.z) - finite(entity.pos.z);
+  const along = rx * axis.x + rz * axis.z;
+  const lateral = rx * -axis.z + rz * axis.x;
+  const theta = Math.atan2(lateral, along);
+  const step = cfg.stepDeg * Math.PI / 180;
+  if (Math.abs(theta) <= step || Math.hypot(rx, rz) < R * 0.9) return null;
+  const tw = theta - Math.sign(theta) * step;
+  const c = Math.cos(tw), s = Math.sin(tw);
+  return { x: finite(entity.pos.x) + (axis.x * c - axis.z * s) * R, z: finite(entity.pos.z) + (axis.z * c + axis.x * s) * R };
+}
+
 export function resolveAutopilotTarget(state, autopilot) {
   if (!state || !autopilot) return null;
   const id = autopilot.targetEntityId;
@@ -1548,9 +1569,10 @@ export function resolveAutopilotTarget(state, autopilot) {
         speedGate: positive(manifest.docking.berth && manifest.docking.berth.speedGate, 12),
         kind: 'berth',
       };
+      const orbit = berthStage ? null : dockOrbitWaypoint(entity, axis, mouthRadius, player);
       return {
-        x: berthStage ? dockAnchor.x : approach.x,
-        z: berthStage ? dockAnchor.z : approach.z,
+        x: berthStage ? dockAnchor.x : orbit ? orbit.x : approach.x,
+        z: berthStage ? dockAnchor.z : orbit ? orbit.z : approach.z,
         radius: 0,
         arrivalRadius: dockAnchor.dockRadius,
         dockingProxyId: manifest.id || null,
