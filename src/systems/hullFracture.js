@@ -404,6 +404,9 @@ function tearOffSpec({ note, dir, speed, mass, radius, sectorId }) {
       scanLabel: 'Hull Debris',
       name: 'Hull Debris',
       collisionTearOff: true,
+      // Correlator-only stamp: no production reader keys off it today (tests and the
+      // stunt journal may) — a wreck-sourced chip's victimId is a wreck, not a ship,
+      // and nothing downstream assumes otherwise.
       collisionTearOffOf: note.victimId != null ? note.victimId : null,
       homeSectorId: sectorId,
       persistenceOwner: 'collisionConsequences',

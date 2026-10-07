@@ -45,11 +45,20 @@ export const SHOCKWAVE_SWEEP_LAW = Object.freeze({
   // dust the wave passes through.
   maxPassDeltaV: 60,
   minSweptMass: 2,
-  // Spatial profile of the wave's strength, sampled at the body's own distance (the
-  // wave element passing IT), never at the tick's front edge: no tick-timing dead zone
-  // at the end of the sweep, and a concave curve holds the shove readable through the
-  // middle distance before the wave genuinely spends itself at maxRadius.
+  // Spatial profile of the wave's strength, sampled at the body's own surface distance
+  // (the wave element passing IT, same surface law as the blast's bombSurfaceFalloff),
+  // never at the tick's front edge: no tick-timing dead zone at the end of the sweep,
+  // and a concave curve holds the shove readable through the middle distance before the
+  // wave genuinely spends itself at maxRadius.
   lifeCurve: 0.7,
+  // Pressure couples to the body's cross-section (J ~ p·A): the delivered impulse scales
+  // with (radius / waveRefRadius)^2, clamped. This is what makes the wave read on real
+  // field matter — a mass-400 radius-8 rock catches 16x the wave a radius-2 chip does,
+  // so deltaV ~ 1/radius: close rocks visibly tumble, far rocks sway, small debris flies.
+  waveAreaGain: 18,
+  waveRefRadius: 8,
+  areaFactorMin: 0.2,
+  areaFactorMax: 8,
   maxLiveSweeps: 4,
   // Perf bound: body passes resolved per tick across all live fronts (rare: fronts live
   // ~0.5 s and only near a detonation).
@@ -127,17 +136,24 @@ export function resolveSweepPass(sweep, entity, frontRadius) {
   const bodyRadius = Math.max(0, finite(entity.radius, 0));
   if (dist > frontRadius + bodyRadius) return null;
   sweep.passed.add(entity.id);
-  // Strength is the wave's profile at the body's own radius: a real wave's pressure
-  // where YOU are, not where its leading edge happens to be this tick. The concave
-  // curve (lifeCurve) keeps the shove readable through the middle distance; at the
+  // Strength is the wave's profile at the body's own SURFACE distance (the same
+  // dist-minus-radius law the blast's falloff uses), and the delivered impulse couples
+  // to the body's cross-section: J = budget · waveAreaGain · (r/ref)² · life. The
+  // concave curve keeps the shove readable through the middle distance; at the
   // outermost edge the wave has genuinely spent itself.
+  const areaFactor = Math.min(
+    SHOCKWAVE_SWEEP_LAW.areaFactorMax,
+    Math.max(SHOCKWAVE_SWEEP_LAW.areaFactorMin, (bodyRadius / SHOCKWAVE_SWEEP_LAW.waveRefRadius) * (bodyRadius / SHOCKWAVE_SWEEP_LAW.waveRefRadius)),
+  );
+  const surfaceDist = Math.max(0, dist - bodyRadius);
   const life = Math.pow(
-    clamp01(1 - dist / Math.max(1, sweep.maxRadius)),
+    clamp01(1 - surfaceDist / Math.max(1, sweep.maxRadius)),
     SHOCKWAVE_SWEEP_LAW.lifeCurve,
   );
   const deltaV = Math.min(
     SHOCKWAVE_SWEEP_LAW.maxPassDeltaV,
-    (sweep.passImpulseWu || 0) * life / Math.max(SHOCKWAVE_SWEEP_LAW.minSweptMass, positive(entity.physicsBody && entity.physicsBody.mass, positive(entity.mass, 1))),
+    (sweep.passImpulseWu || 0) * SHOCKWAVE_SWEEP_LAW.waveAreaGain * areaFactor * life
+      / Math.max(SHOCKWAVE_SWEEP_LAW.minSweptMass, positive(entity.physicsBody && entity.physicsBody.mass, positive(entity.mass, 1))),
   );
   if (!(deltaV >= SHOCKWAVE_SWEEP_LAW.nudgeDeltaV)) return null;
   let dirX = 0;
