@@ -834,6 +834,7 @@ export const settingsScreen = {
         ['boost', 'Boost / dash'],
         ['brake', 'Brake / reverse'],
         ['bulletTime', 'Bullet time'],
+        ['gyreSnare', 'Gyre Snare lash'],
         ['massline', 'Massline hold'],
         ['reelIn', 'Tether reel in'],
         ['reelOut', 'Tether reel out'],

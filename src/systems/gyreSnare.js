@@ -147,6 +147,10 @@ export const gyreSnare = {
     rt.members.length = 0;
     rt.launchLeft = 0;
     rt.launchedId = null;
+    // The drop-side ledger dies with the clump too — a fresh beam must not publish the last
+    // ball's absorb count (or reuse its orbit phase) while it searches for a new core.
+    rt.totalAbsorbed = 0;
+    rt.orbitSeed = 0;
     // A boundary drop also forgets the flying ball — its entity is about to vanish with the
     // sector anyway, and stale ballPos would leak a dead clump overlay into the next scene.
     if (boundary) { rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0; }
@@ -637,7 +641,11 @@ export const gyreSnare = {
     // gone (despawnAt/impact), so the glass-clump overlay retires with the ball, not the burst.
     if (rt.ballId != null && state && state.entities) {
       const ball = state.entities.get(rt.ballId);
-      if (!ball || ball.alive === false || !ball.data || !ball.data.gyreLaunched || !ball.pos) {
+      // A ball that lost its despawnAt was adopted by another system (encounterScripts,
+      // egressExit, lootShards, terrainAnchors all strip it) — it is no longer the bowling
+      // ball: retire it rather than pin ballId/HUD forever on a pull-immune asteroid.
+      if (!ball || ball.alive === false || !ball.data || !ball.data.gyreLaunched || !ball.pos
+        || ball.data.despawnAt == null) {
         // The ball met its grave. Only a quiet TTL expiry gets the shatter — an entity
         // left dead with its deadline passed — while impact deaths (removed, or dead with
         // no deadline pending) already sing through collision audio at the same spot.

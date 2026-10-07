@@ -661,3 +661,62 @@ test('a launched ball is pull/suck/snag-immune — it cannot be re-captured or r
   assert.ok(speed(ball) < 0.5, `no pull either (${speed(ball).toFixed(2)})`);
   t.cleanup();
 });
+
+// -- ball-death / adoption retirement (real deadline + despawnAt-stripped paths) --
+test('a ball stripped of despawnAt retires the tracker silently (adopted, not dead)', async () => {
+  const t = await bootPhysics();
+  const ball = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step();
+  assert.equal(t.sys._rt.ballId, ball.id);
+  delete ball.data.despawnAt; // encounterScripts/egressExit adoption strips the deadline
+  t.sim.step();
+  assert.equal(t.sys._rt.ballId, null, 'adopted ball retires from gyre tracking');
+  assert.ok(!t.events.some((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death'),
+    'adoption is not a quiet expiry — no shatter voice');
+  t.cleanup();
+});
+
+test('a ball dying at its TTL fires the muffled shatter; an impact death does not', async () => {
+  const t = await bootPhysics();
+  const ball = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step();
+  // Quiet expiry: deadline reached, entity left dead in place.
+  ball.data.despawnAt = t.state.simTime - 0.01;
+  ball.alive = false;
+  t.sim.step();
+  assert.equal(t.sys._rt.ballId, null);
+  assert.ok(t.events.some((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death'),
+    'TTL expiry sings the muffled shatter');
+  t.cleanup();
+
+  const t2 = await bootPhysics();
+  const ball2 = rock(t2.sim, T.mawDist, 0, 6, 4);
+  hold(t2);
+  for (let i = 0; i < 5; i++) { t2.state.input.actions.gyreSnare = true; t2.sim.step(); }
+  t2.state.input.actions.gyreSnare = false; t2.sim.step();
+  ball2.alive = false; // impact: deadline still pending — collision audio already spoke
+  t2.sim.step();
+  assert.equal(t2.sys._rt.ballId, null);
+  assert.ok(!t2.events.some((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death'),
+    'an impact death stays quiet — collision audio owns that voice');
+  t2.cleanup();
+});
+
+// -- point defense: the basin tugs projectiles but can never eat them --
+test('a projectile in the basin gets pulled toward the maw but can never core', async () => {
+  const t = await bootPhysics();
+  const shot = rock(t.sim, T.mawDist + 30, 10, 0.3, 0.7, 'projectile');
+  shot.vel.x = -40; // inbound fast — the tug must bend it, not stop it
+  hold(t);
+  const sx0 = speed(shot);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'beaming', 'a shot can never be cored');
+  assert.equal(shot.alive, true, 'a shot can never be absorbed');
+  assert.ok(shot.vel.x > -35 || Math.abs(speed(shot) - sx0) > 3,
+    'the basin visibly tugs the shot (vx -40 -> ' + shot.vel.x.toFixed(1) + ')');
+  t.cleanup();
+});
