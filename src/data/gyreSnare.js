@@ -71,11 +71,18 @@ export const GYRE_SNARE = Object.freeze({
   holdStrainDist: 480,       // wu — beyond this the beam reads "strained" to VFX/HUD
                            // (starts 2.4× the maw out: a 320 wu band left "strained"
                            // bodies fully past the basin's readable edge)
+  holdLagRefWu: 160,         // wu — orbit-slot residual at which the mild tension read
+                           // saturates; a fast ship dragging the clump lags ~this far
+  holdLagStrainMax: 0.3,     // the lag channel's strain01 ceiling — below the 0.4 STRAIN
+                           // latch, so dragging shades the glass but never cries "tearing"
   tumbleTorqueK: 2.2,        // gain steering the held core's spin toward tumbleTargetRadS
   tumbleTargetRadS: 0.55,    // rad/s — lazy rubble drift; a servo target so the spin settles
                            // instead of winding up open-loop over a long hold
   // ── Katamari growth ───────────────────────────────────────────────────────────────
   suckBandWidth: 88,         // wu — core sucks absorbables within core.radius + this
+  suckBandMassGain: 0.5,     // extra band wu per wu of clump radius — the annulus widens
+                           // as the ball grows: a capped 60 wu katamari is hungrier than
+                           // a fresh snag, and the halo reads the escalating appetite
   suckAccel: 680,            // wu/s² — pull toward the core inside the suck band
   suckDamping: 1.1,          // 1/s — frame-damping on inbound mass so it settles, not orbits
   absorbEpsilonWu: 4,      // contact = clumpRadius + memberRadius + this — just past skin

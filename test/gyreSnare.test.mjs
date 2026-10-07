@@ -1617,6 +1617,108 @@ test('basinSpots publishes the pulled bodies so the victim glow has a target', a
   t.cleanup();
 });
 
+// ── wave-24 coverage ────────────────────────────────────────────────────────────
+test('basinSpots stay bounded at basinSpotMax — and the strongest grips win the slots', async () => {
+  const t = await bootPhysics();
+  // Nine rocks on a ring just past snagRadius — deep basin (k = 1 each), but nothing
+  // cores, so the beam stays in BEAM and every body is a spot candidate.
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2;
+    rock(t.sim, T.mawDist + Math.cos(a) * 65, Math.sin(a) * 65, 6, 4);
+  }
+  // …plus one wedge-lip body with a weak pull (radial past the drawn rim).
+  // Apex sits noseGap+playerRadius ahead of the hull: axial ~60, radial ~40 puts the
+  // rock inside the soft lip where pullK ≈ 0.42 — a real spot candidate that must lose.
+  const lip = rock(t.sim, 86, 40, 6, 4);
+  hold(t);
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'beaming', 'nothing in snag range — the pass stays a basin scan');
+  const spots = t.state.gyreSnare.basinSpots;
+  assert.equal(spots.length, T.basinSpotMax, `ledger capped (got ${spots.length})`);
+  for (const s of spots) {
+    assert.ok(s.k > 0.9, `a deep-basin grip outranks the lip body (k=${s.k})`);
+  }
+  assert.ok(!spots.some((s) => Math.abs(s.x - lip.pos.x) < 1 && Math.abs(s.z - lip.pos.z) < 1),
+    'the lip body never takes a slot from a basin grip');
+  t.cleanup();
+});
+
+test('snag cores the CLOSEST absorbable at the maw, not the first the query walks', async () => {
+  const t = await bootPhysics();
+  const near = rock(t.sim, T.mawDist + 6, 0, 6, 4);
+  const far = rock(t.sim, T.mawDist + 16, 5, 6, 4); // still inside snagRadius
+  hold(t);
+  assert.equal(t.sys._rt.coreId, near.id, 'the nearer body cores');
+  assert.equal(t.sys._rt.phase, 'holding');
+  t.cleanup();
+});
+
+test('absorb still retires the meal when helpers.removeEntity is absent (alive-flag fallback)', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const core = t.state.entities.get(t.sys._rt.coreId);
+  const meal = rock(t.sim, core.pos.x + 4, core.pos.z, 2, 2);
+  const removeEntity = t.helpers.removeEntity;
+  t.helpers.removeEntity = null;
+  const absorbed0 = t.sys._rt.totalAbsorbed;
+  try {
+    for (let i = 0; i < 60 && meal.alive !== false; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  } finally {
+    t.helpers.removeEntity = removeEntity;
+  }
+  assert.equal(meal.alive, false, 'the meal retires through the alive-flag fallback');
+  assert.ok(t.sys._rt.totalAbsorbed > absorbed0, 'the absorb still ledgered');
+  t.cleanup();
+});
+
+test('a drop during LAUNCH emits coreId null — the ball already flew, nothing was torn', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  release(t); // release edge → _launch → phase 'launching', coil running
+  assert.equal(t.sys._rt.phase, 'launching');
+  t.state.playerId = 'gone'; // player_lost mid-windup
+  t.sim.step();
+  const drops = t.events.filter((e) => e.name === 'gyre:dropped');
+  const last = drops[drops.length - 1];
+  assert.ok(last, 'the drop emitted');
+  assert.equal(last.p.reason, 'player_lost');
+  assert.equal(last.p.coreId, null, 'launch-phase drop emits no clump id');
+  t.cleanup();
+});
+
+test('a capped clump stops promising a next meal (basinCount gates on full)', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  t.sys._rt.clumpMass = T.maxClumpMass; // simulate a saturated ball
+  const inNet = rock(t.sim, T.mawDist + 10, 8, 6, 4); // absorbable parked in the basin
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.basinCount, 0,
+    'a capped ball has no next meal — the +N tail stays silent');
+  assert.ok(inNet.alive !== false);
+  t.cleanup();
+});
+
+test('a lagging clump shades strain01 via the spring residual — never the tear band', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  // Drag the ball far off its orbit slot but inside the strain band: lag ≈ 80 wu,
+  // maw distance stays << holdStrainDist → dist-strain is 0, lag-strain shades in.
+  core.pos.x = T.mawDist + 80;
+  core.pos.z = 0;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const s = t.state.gyreSnare.strain01;
+  assert.ok(s > 0.05 && s < 0.4, `lag reads as mild tension, never alarm (got ${s})`);
+  t.cleanup();
+});
+
 // ── wave-22 coverage ────────────────────────────────────────────────────────────
 test('the lash never eats pickups — tugged, never merged (loot is not katamari fuel)', async () => {
   const t = await bootPhysics();

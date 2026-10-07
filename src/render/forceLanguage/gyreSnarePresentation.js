@@ -536,7 +536,7 @@ export class GyreSnarePresentation {
       this._maw.position.set(len, 0, 0);
       // The mouth gulps geometrically: each absorb kick dilates ring + disc, not just
       // their opacity — the verb's face visibly swallows. During the coil the maw
-      // also draws tight off launchWindup01 — the glass itself tenses before the bloom.
+      // engorges off launchWindup01 — the mouth swells full before it blows.
       const windup = phase === 'launching' ? clamp01(finite(mirror.launchWindup01)) : 0;
       this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick + 0.16 * windup)); // uniform — the torus circle spans local X and Y
       this._disc.position.set(len + 1.5, 0, 0);
@@ -756,7 +756,7 @@ export class GyreSnarePresentation {
       // breathes faintly with strain, so the ball's heart reads as lash material.
       const veilR = Math.max(2.5, this._clumpRadius * 1.22);
       this._veil.scale.setScalar(veilR);
-      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._discKick * 0.05) * flashCalm;
+      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05) * flashCalm;
       this._veil.visible = this._veilMat.opacity > 0.004;
       // Strain tremble: under load the held rubble visibly quivers — the core mesh
       // stays physics-true while its swarm shakes, which is exactly "about to slip".
@@ -813,7 +813,9 @@ export class GyreSnarePresentation {
       // ring would advertise a dead well.
       const capFade = Math.max(0, 1 - finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1)));
       if (phase === 'holding' && capFade > 0.03) {
-        const suckR = this._clumpRadius + finite(GYRE_SNARE.suckBandWidth, 88);
+        // Drawn reach must track the sim's suck annulus exactly — band + mass gain.
+        const suckR = this._clumpRadius * (1 + finite(GYRE_SNARE.suckBandMassGain, 0.5))
+          + finite(GYRE_SNARE.suckBandWidth, 88);
         this._halo.position.set(p.x, 0.42, p.z);
         this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
         this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6);

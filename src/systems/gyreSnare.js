@@ -101,7 +101,10 @@ function freshRuntime() {
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
-    basinSpots: [],        // bounded {x,z,r} of bodies actually being dragged — the victim-side pull glow
+    basinSpots: [],        // bounded {x,z,r,k} of bodies actually being dragged — the victim-side pull glow
+    holdLag: 0,            // wu — core's distance off its orbit slot: the spring's residual error,
+                           // a mild second-order tension read for ordinary dragging (strained only
+                           // trips past holdStrainDist — lag shades the glass before that)
     dropReason: null,      // last _drop cause ('strained', 'released', ...) — presentation reads it for the close shape
   };
 }
@@ -120,6 +123,8 @@ export const gyreSnare = {
     this._sweepBoundaryResidue();
     this._scratch = [];
     this._fieldRocks = [];
+    this._spotScratch = []; // basinSpot candidates — collected in the pull pass, sorted by pullK,
+                            // then the top basinSpotMax publish (strongest grips glow first)
     this._subs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       const on = (name, fn) => this._subs.push(this.bus.on(name, fn));
@@ -206,15 +211,19 @@ export const gyreSnare = {
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       // dropped = a live beam/hold released without launch; coreId is null when the beam
-      // closed empty (no clump ever snagged).
-      this.bus.emit(GYRE_EVENTS.dropped, { coreId, reason: String(reason || 'dropped'), boundary, tick: this.state && this.state.tick });
+      // closed empty (no clump ever snagged) — AND during LAUNCH: the ball is already
+      // thrown (or winding), so a live id would read as a clump torn off the lash when
+      // the real story is "launch burst truncated" — pad/audio consumers take the
+      // quieter empty-drop channel for it.
+      const emitId = droppedPhase === PHASE.LAUNCH ? null : coreId;
+      this.bus.emit(GYRE_EVENTS.dropped, { coreId: emitId, reason: String(reason || 'dropped'), boundary, tick: this.state && this.state.tick });
       // A live lash ending without a launch gets the descending release voice — quiet for
       // an empty-beam release, fuller when a clump slipped the beam. Boundaries stay silent
       // (a save/sector swap shouldn't talk).
       if (!boundary) {
         this.bus.emit('audio:cue', {
-          id: coreId != null ? 'gyre_snare_drop' : 'gyre_snare_off',
-          gain: coreId != null ? 0.9 : 0.5,
+          id: emitId != null ? 'gyre_snare_drop' : 'gyre_snare_off',
+          gain: emitId != null ? 0.9 : 0.5,
         });
         // A strain break is the verb's biggest loss beat — land it in the body too
         // (mass-scaled like the launch kick, smaller since nothing was thrown).
@@ -335,6 +344,9 @@ export const gyreSnare = {
           });
           if (rec && Number.isFinite(meta.holdUntilSim) && Number.isFinite(this.state.simTime)) {
             const rem = Math.max(0, meta.holdUntilSim - this.state.simTime);
+            // holdUntilSim is the ball's despawnAt — ~½ s tighter than a live launch's
+            // launchProvenanceHoldS window. Deliberate: a dead ball can't kill, so the
+            // flight bound is the honest outer envelope for the re-stamped hold.
             holdImpulseProvenance(e, (this.state.tick | 0) + Math.round(rem * 60), this.state.tick | 0);
           }
         }
@@ -553,6 +565,9 @@ export const gyreSnare = {
       // the wedge's soft lip (lipT > 0, pull fading to zero past the drawn rim) don't count.
       if (ABSORBABLE.has(e.type)
         && (inBasin || lipT === 0)
+        // A capped clump has no next meal — counting these would make the HUD's +N
+        // promise a feed the ball can never eat (suckCount is already gated at :785).
+        && !(this._rt.phase === PHASE.HOLD && this._rt.clumpMass >= D.maxClumpMass)
         && !(e.data && (e.data.gyreCore || e.data.gyreLaunched))
         && !(e.flags && e.flags.persistent) && !(e.data && e.data.worldRecordId)) {
         this._rt.basinCount += 1;
@@ -599,10 +614,19 @@ export const gyreSnare = {
       // victim itself, not just the funnel. Bounded so the mirror stays small, and
       // gated on a real pull: a body at the wedge's dead lip isn't being dragged,
       // so it must not fake a glow.
-      if (pullK > 0.05 && this._rt.basinSpots.length < D.basinSpotMax) {
-        this._rt.basinSpots.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e), k: pullK });
+      if (pullK > 0.05 && this._spotScratch.length < D.basinSpotMax * 4) {
+        this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e), k: pullK });
       }
       this._queueAccel(e, ax, az, mass, dt, state);
+    }
+    // Strongest grips glow first: in a dense belt the 8 slots go to the bodies being
+    // dragged hardest — a rock about to cross snagRadius mustn't lose its glow to a
+    // body loitering at the dead lip. (Stable sort: equal k keeps query order.)
+    if (this._spotScratch.length) {
+      this._spotScratch.sort((a, b) => b.k - a.k);
+      const n = Math.min(this._spotScratch.length, D.basinSpotMax);
+      for (let i = 0; i < n; i++) this._rt.basinSpots.push(this._spotScratch[i]);
+      this._spotScratch.length = 0;
     }
     // Belt gravel: any field rock inside the basin promotes into a real body so the beam
     // can catch it (same promotion path the tether uses).
@@ -699,6 +723,10 @@ export const gyreSnare = {
     const angle = rt.orbitSeed + t * D.orbitRate + Math.sin(t * D.orbitWobbleRate + rt.orbitSeed) * D.orbitWobbleRad;
     const tx = maw.x + Math.cos(angle) * orbitR;
     const tz = maw.z + Math.sin(angle) * orbitR;
+    // The spring's residual error — how far the clump rides off its slot. Zero at a
+    // calm float, grows while a fast-moving ship drags the ball behind: the milder
+    // "lashing" read strain01 folds in at publish (capped below the tear band).
+    rt.holdLag = Math.hypot(tx - core.pos.x, tz - core.pos.z);
 
     // Spring → orbit slot, damped vs ship frame so the ball tracks the ship.
     const shipVx = finite(player.vel && player.vel.x);
@@ -735,7 +763,8 @@ export const gyreSnare = {
       core,
       // r:0 when the clump is capped — the suck lane is disabled then, so the basin
       // lane owns the annulus again rather than leaving a dead zone around the ball.
-      r: rt.clumpMass < D.maxClumpMass ? rt.clumpRadius + D.suckBandWidth : 0,
+      r: rt.clumpMass < D.maxClumpMass
+        ? rt.clumpRadius * (1 + D.suckBandMassGain) + D.suckBandWidth : 0,
     });
   },
 
@@ -746,7 +775,9 @@ export const gyreSnare = {
     // Reset above the guard — a helper-less host must not publish a frozen +N read forever.
     rt.suckCount = 0;
     if (!queryRadius) return;
-    const suckR = rt.clumpRadius + D.suckBandWidth;
+    // The band widens with the ball — a capped 60 wu katamari is hungrier than a fresh
+    // snag (katamari escalation legibility; the presentation halo draws the same reach).
+    const suckR = rt.clumpRadius * (1 + D.suckBandMassGain) + D.suckBandWidth;
     const cands = queryRadius(core.pos, suckR, this._scratch);
     const shipVx = finite(player && player.vel && player.vel.x);
     const shipVz = finite(player && player.vel && player.vel.z);
@@ -1066,6 +1097,9 @@ export const gyreSnare = {
             x: e.pos.x, z: e.pos.z,
             r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : 6,
           });
+          // unwatched ⇒ disarmed — same invariant the overflow/adoption paths keep:
+          // the payload never outlives the watch, even when the body dies this step.
+          this._disarmBall(e);
           rt.ballIds.splice(i, 1);
           continue;
         }
@@ -1228,10 +1262,16 @@ export const gyreSnare = {
       // Strain is a HOLD-only read: rt.coreId stays set through the launch coil/burst
       // (cleared at _finishLaunch), so a clump released already-strained would publish a
       // phantom "beam tearing" beat on a deliberate bowl. LAUNCH reports zero like BEAM.
-      pub.strain01 = rt.phase === PHASE.HOLD ? clamp(
-        (Math.hypot(core.pos.x - maw.x, core.pos.z - maw.z) - D.holdStrainDist)
-          / Math.max(1, D.holdBreakDist - D.holdStrainDist),
-        0, 1,
+      pub.strain01 = rt.phase === PHASE.HOLD ? Math.max(
+        clamp(
+          (Math.hypot(core.pos.x - maw.x, core.pos.z - maw.z) - D.holdStrainDist)
+            / Math.max(1, D.holdBreakDist - D.holdStrainDist),
+          0, 1,
+        ),
+        // Mild second-order read: the orbit spring's residual lag shades the glass
+        // while the ship drags the clump behind — capped below the 0.4 STRAIN/cue
+        // thresholds so lag can tense the lash but never cry "tearing".
+        clamp(rt.holdLag / D.holdLagRefWu, 0, 1) * D.holdLagStrainMax,
       ) : 0;
     } else { pub.strain01 = 0; pub.coreAngVel = 0; }
     // Strain gets its own voice on the same hysteresis the HUD uses: the glass tension

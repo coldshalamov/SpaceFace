@@ -90,7 +90,16 @@ export const gyreHud = {
   },
 
   _resolve(g, now) {
-    if (!g || !g.phase || g.phase === 'off') {
+    if (!g) return { text: '', cls: '' };
+    // A live ball's quiet grave telegraphs on EVERY phase, not just OFF — a re-beamed
+    // lash would otherwise swallow the countdown exactly while a second lash winds.
+    const bttl = g.ballTtlS || 0;
+    const ballTxt = bttl > 0 && bttl < 4 ? ` · ball ${Math.max(1, Math.ceil(bttl))}s` : '';
+    // Fuse speaks during BEAM too — a lashing <8 s from dry shouldn't announce itself
+    // only through the after-the-fact dry toast.
+    const fuseS = g.fuseS || 0;
+    const fuseTxt = fuseS > 0 && fuseS < 8 ? ` · ${Math.max(1, Math.ceil(fuseS))}s` : '';
+    if (!g.phase || g.phase === 'off') {
       // A thrown clump still on the map deserves a quiet "it's yours" dot for its short flight.
       if (g && g.launchedId != null) {
         // The launch beat lands first: BOWL survives ~0.4 s past the burst ticks before
@@ -128,22 +137,21 @@ export const gyreHud = {
       const tail = net > 0 ? ` +${net}` : '';
       // Mass-scaled cap drain makes the fuse legible BEFORE the dry auto-bowl: under ~8 s
       // of burn the readout appends the countdown and the top fuse bar drains with it.
-      const fuse = g.fuseS || 0;
-      const fuseTxt = fuse > 0 && fuse < 8 ? ` · ${Math.max(1, Math.ceil(fuse))}s` : '';
+      const fuse = fuseS;
       if (this._strainOn) {
-        return { text: `GYRE — STRAIN ×${count} · ${mass}t${tail}${fuseTxt}`, cls: 'gyre-strain', strain: s, fuse };
+        return { text: `GYRE — STRAIN ×${count} · ${mass}t${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-strain', strain: s, fuse };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
       const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;
       if (full) {
-        return { text: `GYRE — ×${count} · ${mass}t FULL${tail}${fuseTxt}`, cls: 'gyre-full', strain: s, fuse };
+        return { text: `GYRE — ×${count} · ${mass}t FULL${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-full', strain: s, fuse };
       }
-      return { text: `GYRE — ×${count} · ${mass}t${tail}${fuseTxt}`, cls: 'gyre-holding', strain: s, fuse };
+      return { text: `GYRE — ×${count} · ${mass}t${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-holding', strain: s, fuse };
     }
     // Net anticipation: material already inside the cone names the catch before it
     // lands — "×N IN NET" instead of a bare SEARCHING sweep.
     const net = g.basinCount || 0;
-    return { text: net > 0 ? `GYRE — ×${net} IN NET` : 'GYRE — SEARCHING', cls: '' };
+    return { text: net > 0 ? `GYRE — ×${net} IN NET${fuseTxt}${ballTxt}` : `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
   },
 
   _apply(dom, text, cls, strain, fuse) {
