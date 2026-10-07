@@ -1088,3 +1088,45 @@ test('an orphaned second-launched ball hands back its marks when adopted', async
   assert.equal(b.data.gyreLaunched, true, 'B keeps flying as the ball');
   t.cleanup();
 });
+
+test('a same-state destroy→init reload re-seeds the ball watch list', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  a.physicsBody.impactDamageScale = 0.2;
+  a.data.despawnAt = 9999; // authored deadlines the launch keeps stashed for hand-back
+  a.ttl = 8888;
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, a.id, 'A cored');
+  release(t);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the flying ball');
+  // Same-state system reload — no save/sector boundary, the entity map survives.
+  t.sys.destroy();
+  t.sys.init({ state: t.state, bus: t.bus, helpers: t.helpers, registry: t.sim.registry });
+  assert.ok(t.sys._rt.ballIds.includes(a.id), 'the live ball is watched again after reload');
+  // Adoption after the reload must still hand the marks back — not orphan them.
+  delete a.data.despawnAt;
+  t.sim.step();
+  assert.equal(a.data.gyreLaunched, undefined, 'the adopted ball is unmarked post-reload');
+  assert.equal(a.physicsBody.impactDamageScale, 0.2, 'the authored scale is restored');
+  assert.equal(a.data.despawnAt, 9999, 'the authored data deadline comes back too');
+  assert.ok(a.ttl > 8887 && a.ttl <= 8888, `the authored ttl comes back (got ${a.ttl})`);
+  t.cleanup();
+});
+
+test('a physicsBody:false absorbable is never cored or frozen', async () => {
+  const t = await bootPhysics();
+  const ghost = t.sim.spawn({
+    type: 'asteroid', team: 9, pos: { x: T.mawDist, z: 0 }, vel: { x: 0, z: 0 },
+    rot: 0, angVel: 0, radius: 4, collides: true, hull: 40, hullMax: 40,
+    physicsBody: false, data: {},
+  });
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.notEqual(t.sys._rt.coreId, ghost.id, 'an opted-out body is not cored');
+  assert.equal(ghost.physicsBody, false, 'no record is materialized on it');
+  assert.equal(t.sys._rt.phase, 'beaming', 'the beam keeps looking for a real core');
+  release(t);
+  t.cleanup();
+});

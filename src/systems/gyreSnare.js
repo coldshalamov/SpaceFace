@@ -43,7 +43,7 @@ const ABSORBABLE = new Set(GYRE_ABSORBABLE_TYPES);
 // the maw (wedge ≈ wedgeAccel·couple·wedgeFalloff·(1−lipT) ≈ ≤100 wu/s²; basin ≈ 380).
 // Emergent point-defense is part of the weapon's identity: you can sweep a volley aside
 // while winding up the ball, at cap cost.
-const PULL_SKIP_TYPES = new Set(['ship', 'station', 'fx', 'fieldEmitter', 'massSeed', 'masslineSnareAnchor']);
+const PULL_SKIP_TYPES = new Set(['ship', 'station', 'fx', 'fieldEmitter', 'massSeed', 'masslineSnareAnchor', 'masslineSnare']);
 // …except drones, which DO get tugged lightly (coupling-shrugged) — they're listed in neither set.
 const WEAPON_ID = 'wpn_gyre_snare';
 const PROV_TAG = 'gyre_snare';
@@ -112,6 +112,10 @@ export const gyreSnare = {
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
     this._rt = freshRuntime();
+    // Same-state destroy->init (system reload without a save/sector boundary): strip any
+    // gyreCore residue AND re-seed the ball watch list from serialized gyreLaunched marks —
+    // a live launched ball keeps its retire pass so a later adoption can't orphan the mark.
+    this._sweepBoundaryResidue();
     this._scratch = [];
     this._fieldRocks = [];
     this._subs = [];
@@ -224,6 +228,10 @@ export const gyreSnare = {
   // authored scale comes back rather than vanishing with the mark.
   _handBack(ball) {
     delete ball.data.gyreLaunched;
+    // Symmetric with _restoreLifetime on drop: the authored deadlines the ball carried
+    // before the lash caught it come back instead of leaving it immortal unless the
+    // adopter deadlined it themselves.
+    this._restoreLifetime(ball);
     if (ball.physicsBody && ball.physicsBody !== false) {
       if (ball.data.gyrePrevImpactScale !== undefined) ball.physicsBody.impactDamageScale = ball.data.gyrePrevImpactScale;
       else delete ball.physicsBody.impactDamageScale;
@@ -250,7 +258,10 @@ export const gyreSnare = {
       }
       // A serialized mid-flight ball keeps gyreLaunched + its own deadline — still a
       // launched body, so keep it watched: if an adopting system later strips the
-      // deadline, the retire pass hands it back instead of orphaning the mark.
+      // deadline, the retire pass hands it back instead of orphaning the mark. The
+      // lifetime stashes ride with it too — they are plain authored values, no staler
+      // than the serialized despawnAt the ball already carries, and _handBack restores
+      // them symmetric with the drop contract.
       if (e && e.data && e.data.gyreLaunched) {
         const rt2 = this._rt;
         if (rt2 && !rt2.ballIds.includes(e.id)) {
@@ -458,6 +469,10 @@ export const gyreSnare = {
       if (!e || e.alive === false || !e.pos) continue;
       if (e.id === state.playerId || e.data && e.data.gyreLaunched) continue;
       if (!ABSORBABLE.has(e.type) || !isDynamic(e)) continue;
+      // Same opt-out _absorb/_launch honor: a physicsBody:false absorbable has no rapier
+      // body to pull or throw — coring it would freeze it in stasis while every impulse
+      // queues into a record nothing consumes.
+      if (e.physicsBody === false) continue;
       // A snagged core becomes the thrown ball — it needs a real collider and must never
       // be a mission/persistent body the ball's 9 s despawn could quietly delete. Pickups
       // stay absorbable as members but never become the core: their collider is a sensor,
@@ -738,6 +753,7 @@ export const gyreSnare = {
       D.launchImpactScaleMax,
       D.launchImpactScaleBase + rt.clumpMass / D.launchImpactScalePerMass,
     );
+    core.data = core.data || {};
     if (core.physicsBody !== false) {
       // physicsBody===false is an authored opt-out — materializing a record here
       // would make shouldSyncPhysicsBodyEntity spawn a body the entity declined.
@@ -750,11 +766,10 @@ export const gyreSnare = {
       // authored-spec write must invalidate or the resolved spec reads stale.
       core.physicsBody.revision = Math.max(0, Math.trunc(finite(core.physicsBody.revision))) + 1;
     }
-    core.data = core.data || {};
     delete core.data.gyreCore;
-    // Launch stamps its own TTL — the stashed authored deadlines drop with the core flag.
-    delete core.data.gyrePrevDespawnAt;
-    delete core.data.gyrePrevTtl;
+    // Launch stamps its own TTL. The authored-lifetime stashes ride on the ball so an
+    // adoption hand-back can restore them — symmetric with the drop contract; a boundary
+    // sweep drops them as old-timeline residue.
     core.data.gyreLaunched = true;
     core.data.despawnAt = (Number.isFinite(state.simTime) ? state.simTime : 0) + D.ballTtlS;
     recordImpulseProvenance(core, {
@@ -1037,8 +1052,10 @@ export const gyreSnare = {
     // why: an unattributed launch reads as "the lash fired itself". The toast lands
     // before the normal launch beat so the cause is legible at the moment of surprise.
     if (dry && rt.phase === PHASE.HOLD) {
-      this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare drained — clump away', ttl: 1.6 });
-      this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.5 });
+      if (this.bus) {
+        this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare drained — clump away', ttl: 1.6 });
+        this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.5 });
+      }
       this._launch(state, player);
     }
     else if (dry && rt.phase === PHASE.BEAM) this._drop('cap_dry');
