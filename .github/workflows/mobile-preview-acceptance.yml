@@ -1,11 +1,12 @@
 name: mobile-preview-acceptance
 # Read-only proof against an immutable Vercel candidate URL, not moving production.
+# Default candidate is commit 0e279ac: identical runtime to this branch's CI-only follow-ups.
 on:
   workflow_dispatch:
     inputs:
       url:
         description: Public candidate deployment URL
-        default: https://spaceface-play-demo-7on71cauz-robin-gattis-projects.vercel.app/
+        default: https://spaceface-play-demo-22t1th2il-robin-gattis-projects.vercel.app/
         required: true
   push:
     branches: [fix/mobile-readiness-20261006]
@@ -25,7 +26,7 @@ jobs:
         engine: [webkit, chromium]
     env:
       MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
-      MOBILE_PROBE_URL: ${{ inputs.url || 'https://spaceface-play-demo-7on71cauz-robin-gattis-projects.vercel.app/' }}
+      MOBILE_PROBE_URL: ${{ inputs.url || 'https://spaceface-play-demo-22t1th2il-robin-gattis-projects.vercel.app/' }}
     steps:
       - uses: actions/checkout@v4
         with:
