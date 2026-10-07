@@ -1,0 +1,80 @@
+# W108 audit — boot-loading lane
+
+Audited: `devin/1791064509-perf-w60` @ `c676e7f44` (read-only; work branch untouched)
+Lane brief: `wave108-prompts/boot.md`
+
+## saturated: false
+
+Legal, contract-preserving improvements remain. F1–F4 are concrete correctness/robustness gaps in the W107-era machinery (a transient skeleton fault can fail the whole boot or kill two residency lanes for a sector); F5–F6 are small atomic-cost residuals. No quality trade is required by any fix.
+
+## Findings (ranked)
+
+### F1 — Unguarded stepped drives in `prepareOpeningFirstPicture` turn a torn step into a failed boot
+
+- **Evidence:** `src/render/renderer.js:25701-25708` (`drivePublishFirstPicture`) and `25715-25722` (`driveUpgradePromises`) drive `iter.next()` bare — no try/catch, no `closeCookStepsIter`, no degrade. Called inside `settleWithin` at `src/render/pipelineReadiness.js:851-860`; `settleWithin` maps rejection → `{ok:false}` (pipelineReadiness.js:41-53) → readiness `return false` → boot readiness gate fails.
+- **Mechanism:** one skeleton fault anywhere inside `_publishOpeningFirstPictureSteps` (fence pack, env rebind/bind steps, `syncEntityViewsSteps`, two `updateMatrixWorldSteps` composes, pool/shadow bands, authored-submission sync) or `_openingFirstPictureUpgradePromisesSteps` (64-row wait-set walk) escapes the ≤8-pass loop and rejects `prepareOpeningFirstPicture` — a fault the W107 belt doctrine converts to a sync-twin degrade at the other 43 `catch (driveError)` sites becomes a **dead boot** here, not a degraded-but-live boot. The thrown iterator is also never closed. Fault class exists (that's why the belts were built); reachable via a poisoned `userData` getter or a mid-yield world mutation hitting a generator-internal invariant.
+- **Fix sketch:** wrap `iter.next()` in try → `closeCookStepsIter(iter)` → warn → re-mint the iterator once (every leg is idempotent — fence pack, entity sync, compose, pool syncs re-run safely and are already re-run across the 8-pass envelope), or return a retry sentinel the pass loop consumes instead of throwing boot-fatal.
+- **Effort:** S. **Magic-frame impact:** H (failed boot → no frame at all). **Risk:** low — belt only adds fault-path work.
+
+### F2 — Fault-parked reconcile starves the residency poll for the rest of the enterSerial
+
+- **Evidence:** `serviceFaultEpoch` = `` `${enterSerial}|${contextRestoreSeq}` `` (`renderer.js:2248-2253`). Mint gates: keepGpu `2486-2495`, normal pump `2848-2849`. Fault parks stamp `_reconcileFaultEpoch` **and** re-bank `owner._meshReconcileDirty = true` (`2516-2517`, `2878-2879`). The pump then takes `if (owner._meshReconcileDirty || owner._reconcileIter)` → drive → `return 'full'` (`~2905`) **before** the residency-poll mint (`2915`), so a banked-but-parked dirty flag keeps the poll gate unreachable every tick. Dirty is also cleared *without running* at `2600` (stream-hold seam) and `2688` (first-flight hold) — a banked request can be silently dropped when the epoch re-arms.
+- **Mechanism:** one transient throw inside `_reconcileMeshesSteps` parks reconcile until the next sector enter or a GL context restore — the whole first sector sits in one epoch (30+ min of play). Worse than the park itself: the re-banked dirty flag starves the sibling `_residencyPollFaultEpoch`-clear poll lane via the early `'full'` return, so the poll's missed-mesh/prefetch recovery is dead for the same epoch — meshes that miss residency stay missing → pop-in on approach, the exact class this campaign hunts. Same coupling in the keepGpu window during boot (2441-2520).
+- **Fix sketch:** at the fault park, stamp `_meshReconcileDirty = false` instead of true (spawn/enter events re-arm it naturally), and/or gate the `'full'` early-return on a live `owner._reconcileIter` rather than the banked flag so a parked epoch falls through to the poll section. Optionally add a bounded in-epoch retry (cooldown timestamp ~1 s) instead of epoch-scoped parking — keeps "don't hammer a deterministic fault" while recovering from transient ones.
+- **Effort:** S–M. **Magic-frame impact:** M–H (dead residency recovery for a whole sector). **Risk:** med-low — must preserve the no-re-mint invariant within an epoch for deterministic faults.
+
+### F3 — `resetDrawnCullPassBudget` pays ≤4 unbudgeted `Box3.setFromObject` walks at every pass head
+
+- **Evidence:** `src/render/visualCullRadius.js:104-135` drains ≤`DRAWN_CULL_REMEASURE_PER_PASS`(4) FIFO rows at pass head; called at `renderer.js:24546`, the head of `syncEntityViewsSteps` — before the first counted-loop yield (24623) and outside paced-ledger accounting for the stride budget. Rows are force-stamped at ~226-228 (key-moved past defer bias) and ~245-247 (cadence expiry).
+- **Mechanism:** each FIFO row is one `Box3.setFromObject` O(subtree) walk. During boot churn (authored body swaps, whole-ship LOD re-levels, parked-root mounts stamping remeasure rows) the FIFO stays populated → up to 4 fat subtree walks atomically at the head of **every** presented frame and inside each of the ≤8 publish passes — multi-ms unyielded work per frame, exactly the class the remeasure budget was minted to amortize.
+- **Fix sketch:** time-box the drain (`while (queue.length && now() < headDeadline)`, ~1 ms deadline, order preserved), or interleave single-row drains into the 128-row strides where the pass already yields, or charge each walk to `notePacedFrameSpend` so the paced ledger owns it.
+- **Effort:** S–M. **Magic-frame impact:** M. **Risk:** med-low — remeasure freshness/cadence tuning.
+
+### F4 — `driveCompileShadowDepthPipelines` census + compile drives lack the W107 belt
+
+- **Evidence:** `renderer.js:583-590` (`collectIter.next()` bare) and `590-605` (`iterator.next()` bare inside the 4-attempt drift retry). Callers: `9835` (cook), `10102` (inside `try{...}catch{/*best-effort*/}`), `12117` (`warmOpeningShadowPipelines` → `compileOpeningSubmissionPlan` → `drainSubmission` settle), `13956`.
+- **Mechanism:** a torn `collectPotentialShadowCastSubjectsSteps`/`compileShadowDepthPipelinesSteps` propagates — inside the cook it's swallowed by wide best-effort tries (depth variants silently never linked → first live shadow draw pays the link — the `Asteroid_*` depth residual class), and on the opening-submission path it rejects the drain promise → `settleWithin` → `{ok:false}` → readiness false (same failure shape as F1, smaller surface). Inconsistent with the belt doctrine applied to the surrounding drives.
+- **Fix sketch:** tight-try + `closeCookStepsIter` + degrade to the sync twins (`compileShadowDepthPipelines`, and the sync subject collector where available), per the established pattern.
+- **Effort:** S. **Magic-frame impact:** M (readiness failure) / L (best-effort swallow → cold depth link on first shadow draw). **Risk:** low.
+
+### F5 — `_bakeEnv` re-mints `PMREMGenerator` per bake; convolve + upload are necessarily atomic
+
+- **Evidence:** `renderer.js:23088-23138` — `new THREE.PMREMGenerator(renderer)` per call; `pmrem.fromScene(this._envBakeScene, 0, 0.1, 1000, { size: IBL_PMREM_CUBE_SIZE=512 })`. Biggest authored env map: foundry HDRI ~2k×1k Float32 (~33 MB DataTexture, baked f32 artifact verified sha256-gated — `foundryEnvironment.js:69-145`) — its GPU upload lands inside the first `fromScene` draw. Bake sites: init, `_drainFoundryEnvPending` (4 veiled heads: main.js:1195, renderer.js:12523, 15869, 17060), context-restore force, per-cook `!scene.environment` backstop.
+- **Mechanism:** each bake re-pays generator setup (blur material + internal RTs; three.js program cache keeps it to alloc cost, but the cube RT chain re-allocates per instance). The convolve itself cannot be sliced — `PMREMGenerator.fromScene` has no incremental API; a hand-rolled chunked PMREM is L-effort with real pixel-divergence risk (violates zero-visible-degradation). Scheduling is already correct — drains at 4 veiled seams — so the remaining legal residual is per-bake setup.
+- **Fix sketch:** cache `this._pmremGenerator ||= new THREE.PMREMGenerator(renderer)`; dispose and re-mint across `contextRestoreSeq` (the epoch already exists). Identical output.
+- **Effort:** S. **Magic-frame impact:** L–M. **Risk:** low.
+
+### F6 — Mid-publish atomic legs (residuals, ranked after F1–F5)
+
+- **Evidence:** `_syncAuthoredInstanceSubmission` (`renderer.js:25309-25340`, called 25554) and `_syncAsteroidInstanceSubmission` (`25455+`, called 25577) — O(instance-pool) syncs between yields (pools reach ~800 units); `syncContactShadowPool`/`ensureShipAuxPoolCapacityForFrame`/`syncShipAuxPools`/`tickShieldShellClock`/`prepareActiveShadowCamera`/`_syncShadowMapEnabled`/`_updateShadowFollow(true)` — smaller atomic spans in the same leg chain (`25554-25577`). `_presentationQueries.query` full walk (`presentationQueries.js:211+`, called `renderer.js:24602`) — O(boundCount) atomic at pass head before the first yield (it produces the counted arrays — can't yield inside). `setEnvMapForShips` (`visualFactory.js:106-117`) — O(material-cache) re-point + `needsUpdate` stamp storm per env swap.
+- **Mechanism:** bounded, mostly per-frame-normal work — but inside the publish these are unyielded legs; on authored-dense sectors the two pool submissions are the largest remaining un-sliced spans of the first-picture stretch.
+- **Fix sketch:** counted-stride Steps twins for the two pool submissions (careful: shared per-frame machinery); the query walk can yield between classification bands if banded. Low priority vs F1–F4.
+- **Effort:** M. **Magic-frame impact:** L–M. **Risk:** med (shared live-path machinery → bigger blast radius).
+
+## W107 regression verification — all 7 PASS
+
+1. **drainFallbackAlive latch** — PASS. `drainIter` minted only under `typeof this._drainMeshBuildQueueSteps === 'function'` (12563-64); bare-else arm at 12594-12600: `<0` parks (`drainFallbackAlive=false`), numeric result resumes arming; Steps-less owner falls to per-row `runCookSyncTwin` → `_drainMeshBuildQueue` (23823-23842), which drives the twin off the module literal for fixture owners — fixture path semantics unchanged.
+2. **drawn-cull FIFO** — PASS. `resetDrawnCullPassBudget` drains ≤4/pass (visualCullRadius.js:104-135), dead/unparented/stamp-cleared rows dequeue free; `drawnCullForceQueued` cleared on LRU hit (~187), inline write (~275), `primeDrawnCullStamps` (~316); rows past per-pass budget queue under current keys (~226-228).
+3. **Dispose headroom floor** — PASS. `backlog>32` → `budgetMs = max(budgetMs*2, min(DESPAWN_DISPOSE_BUDGET_MS, max(budgetMs, PACED_FRAME_BUDGET_MS − pacedFrameSpend())))` (drainDisposeQueueLane ~2103); warm lane inherits live leftover at the service call site (2376-2390); ≤2 ledger skips.
+4. **Clearance memo translate + admission slice + travel-pad gate** — PASS. Position-only drift translates `cached.box` + rebuilds layout + `_clearanceBoxEpoch++` (3995-4140); `runUrgentBatch` slices 8-root chunks with `yieldToMain` between (liveGeometryAdmission.js ~180-230); `primeMotionTravelPad` gates on `drawnCullRadius != null` (visualCullRadius.js:59-63).
+5. **Foundry drain at veil head + env-source stamp order** — PASS. `_foundryEnvPending` arms for any non-loading mode (23056-23080); drains at all 4 veiled heads (verified); `_drainFoundryEnvPending` idempotent (23082-23086); `_envMapSource` stamps after rebind/dispose commits (~23131); load + bake rejections `.catch` warn.
+6. **Tight-try re-shapes** — PASS. 43 `catch (driveError)` sites; `iter.next()` the only expression under try, awaits outside, `cookSuperseded` propagates — spot-verified at 12705, 12840, 13038, 13167, 13194, 13329, 14598-14652 (`driveEnvBindSteps` triple), 14683+ (`revealMint` 'cook-superseded' throw + catch).
+7. **syncEntityViewsSteps + presented-drain fault parks** — PASS w/ note. (a) Sync driver 24531-24537 exhausts the twin inline — byte-identical; yields at exactly 2 sites (`(index & 127) === 127`, ~24623/24728) in counted loops only; per-row `world.alive`/`slotGenerations` guards. (b) `drainSceneEnvRebindQueue` drops a torn head like a done head incl. `disposeTarget` (29692-29740). (c) `_*FaultEpoch` parks suppress re-mint within an epoch, re-arm on next enter/context-restore; reconcile park re-dirties `_meshReconcileDirty` — **but see F2** for the starvation coupling the design didn't account for. (d) `_flushMeshReleasePending` re-pends on registry throw (22522-22542). (e) Combined-census degrades run `collectInstancePoolCompileRootsAndSubjects` (cook 14851, pool 15531, seal 13773, late-admission 16563 via shared `deriveCensus`); the pool-compile site (~10056) degrades to the roots-only twin — all that site consumes.
+
+## Lane hunts
+
+**(a) Mid-yield mutation across counted loops — clean, with notes.** Counted loops iterate the packed fence snapshot; mounts settling mid-yield (authored boundary commits) aren't in either array → uncounted this pass → covered by the ≤8-settle-pass republish and `_deferNoncriticalMeshStreaming` armed before the loop (25676). Unbinds/despawns hit `world.alive[slot]!==1 || slotGenerations` guards → skipped; the two arrays are disjoint → no double/never counting found. `_entityFrame` reentrancy: during `mode==='loading'` the presented `prepareFrame`→`syncEntityViews` interleaves with the publish's yielded Steps drive (the freeze gate only arms for non-loading admission — `presentationFreeze.js:14-25`, `renderer.js:18429`); `beginRenderEntityFrame`/`endRenderEntityFrame` run concurrently → union census via per-record `seenFrame` stamps ��� transient, self-heals. Mid-yield pose writes land the newer pose — benign 1-frame skew.
+
+**(b) Fault-epoch parks during boot — real finding → F2.** Banked `_meshReconcileDirty` is consumed only through the epoch-gated mints (2486, 2848) and is *cleared without running* at 2600/2688; epoch persists across the loading→flight flip within one enterSerial. The poll starvation via the `'full'` early-return is the part the W107 design missed.
+
+**(c) `_bakeEnv` atomic cost — bounded, see F5.** 512-cube PMREM convolve + ~33 MB Float32 equirect upload inside one synchronous call; correctly scheduled at 4 veiled seams; `fromScene` is unsliceable — the only legal residual is generator reuse.
+
+**(d) Biggest remaining atomic boot stretches, ranked:** 1) `_bakeEnv` convolve+upload (F5); 2) pass-head cull drain ≤4 Box3 walks (F3); 3) `_presentationQueries.query` full walk; 4) mid-publish pool submissions (F6); 5) `setEnvMapForShips` stamp storm. Verified already-sliced: `packPresentationWorldToFence`, `updateMatrixWorldSteps` (frozen-subtree elision intact, staticChildMatrices.js:336-338), `syncEntityViews` counted loops, opening-submission capture+drain, post-opening census/`deriveCensus`, full restore chain (`_clearEntitiesChunked`, `_callDeserializeChunked`, `enterSectorChunked`, residency drain chunks, persistent-spawn batches, mission chunks), save `JSON.parse` → save worker + speculative continue prepare.
+
+## Regression notes
+
+- `drainSceneEnvRebindQueue` torn-head drop also disposes `disposeTarget` — materials the torn walk never reached keep pointing at the disposed env texture (black reflections until next rebind). Rare (poisoned getter) and acknowledged by the comment; alternative (leak the RT per fault) is worse. Noted, not a finding.
+- `sealCensus` roots-only Steps path produces `{roots, subjects:null}` — downstream read is guarded (`if (sealCensus.subjects)`); the branch is dead on real hosts. Fine.
+- `_drainPendingMeshBuilds` (pump tail, 2535/2905/2953/2957/12411) is internally belted via `_drainMeshBuildQueue`'s skeleton catch — safe unguarded.
+- `driveCompileShadowDepthPipelines` stale-drift retry mints a fresh iterator per attempt — correct; belt gap reported as F4.
+- Deferred/wontfix items from the brief not re-reported: batched-mesh specimen gap, loading artwork GL pause, ambient compile-tail serialization, LOD markers/depth over-inclusion, BOOT-F3(a) enterSector split, BOOT-F7 emit slicing + structured-clone copies, F4/F5/F9 tick-paced emit slicing, F6 payload intern, nxb-059 stale scan.
