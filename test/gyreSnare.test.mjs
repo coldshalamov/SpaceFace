@@ -367,18 +367,19 @@ test('re-beaming while the ball still flies keeps the mirror on the ball', async
 });
 
 // ── cap drain rate ────────────────────────────────────────────────────────────────
-test('capacitor drains at the authored rate — ×1.35 while a clump is held', async () => {
+test('capacitor drains at the authored rate — hold scales with clump mass', async () => {
   const t = await bootPhysics();
-  rock(t.sim, T.mawDist, 0);
+  rock(t.sim, T.mawDist, 0, 6, 4); // 6 t core → hold drain ×capHoldMult×(1 + 6/capMassDrainRef)
   hold(t);
   for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'holding');
+  const clumpMass = t.sys._rt.clumpMass;
   const before = t.player.cap;
   for (let i = 0; i < 60; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   const drained = before - t.player.cap;
-  const want = T.capDrainPerS * T.capHoldMult * (60 * DT);
+  const want = T.capDrainPerS * T.capHoldMult * (1 + clumpMass / T.capMassDrainRef) * (60 * DT);
   assert.ok(Math.abs(drained - want) < want * 0.02,
-    `hold drain ≈ ${want.toFixed(2)} over 1 s, got ${drained.toFixed(2)}`);
+    `hold drain ≈ ${want.toFixed(2)} over 1 s for a ${clumpMass} t clump, got ${drained.toFixed(2)}`);
   t.cleanup();
 });
 

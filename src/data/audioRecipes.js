@@ -3072,6 +3072,61 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 2400, filterQ: 0.7,
     subBass: { startFreq: 170, endFreq: 34, dur: 0.32, gain: 0.7 },
   },
+  // Beam wake: a soft rising glass shimmer as the cone ignites — lighter than the snag bite
+  // (which is the grip landing). The lash switching on, not the catch.
+  {
+    id: 'sfx_gyre_beam',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 340, freqSweep: [340, 980], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.02, sustain: 0.0, release: 0.24 },
+    filterType: 'bandpass', filterFreq: 1100, filterQ: 1.4,
+    pitchRange: [0.96, 1.08],
+  },
+  // Lash release: the beam letting go without a launch — a short descending glass fizzle
+  // over a quick sub exhale. Fired at low gain for an empty-beam close and fuller when a
+  // clump slips the beam (strain break / forced drop).
+  {
+    id: 'sfx_gyre_drop',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_drop_glass', 'sfx_gyre_drop_tail'],
+    gainMult: 0.8,
+    pitchRange: [0.94, 1.07],
+  },
+  {
+    id: 'sfx_gyre_drop_glass',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 980, freqSweep: [980, 260], sweepTimeS: 0.14,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 1300, filterQ: 1.6,
+  },
+  {
+    id: 'sfx_gyre_drop_tail',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 220, freqSweep: [220, 70], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.16 },
+    filterType: 'lowpass', filterFreq: 800, filterQ: 0.7,
+    subBass: { startFreq: 90, endFreq: 40, dur: 0.14, gain: 0.45 },
+  },
+  // Beam power-down: the quiet tail for releasing an empty beam (or losing the pilot) — a
+  // single falling tone, no bite. Distinct id so the HUD can tell "nothing held" apart from
+  // "the ball escaped".
+  {
+    id: 'sfx_gyre_off',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 620, freqSweep: [620, 180], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.2,
+    pitchRange: [0.96, 1.06],
+  },
   // Capacitor spool: the rising whine a spinal railgun / siege lance makes while its capacitors
   // recharge for the next shot. Heard on the cooldown tail so the released round feels charged.
   {

@@ -77,6 +77,7 @@ function freshRuntime() {
     launchDir: { x: 1, z: 0 },
     launchedId: null,      // the ball in flight (TTL/telemetry only — it is a free body)
     ballId: null,          // survives LAUNCH→OFF until the thrown clump despawns (mirror track)
+    ballMass: 0,           // t — clump mass frozen at launch so the ball's HUD/VFX keeps it
     orbitSeed: 0,          // per-clump phase so successive balls don't share a start angle
   };
 }
@@ -138,12 +139,21 @@ export const gyreSnare = {
     rt.launchedId = null;
     // A boundary drop also forgets the flying ball — its entity is about to vanish with the
     // sector anyway, and stale ballPos would leak a dead clump overlay into the next scene.
-    if (boundary) rt.ballId = null;
+    if (boundary) { rt.ballId = null; rt.ballMass = 0; }
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       // dropped = a live beam/hold released without launch; coreId is null when the beam
       // closed empty (no clump ever snagged).
       this.bus.emit(GYRE_EVENTS.dropped, { coreId, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
+      // A live lash ending without a launch gets the descending release voice — quiet for
+      // an empty-beam release, fuller when a clump slipped the beam. Boundaries stay silent
+      // (a save/sector swap shouldn't talk).
+      if (!boundary) {
+        this.bus.emit('audio:cue', {
+          id: coreId != null ? 'gyre_snare_drop' : 'gyre_snare_off',
+          gain: coreId != null ? 0.9 : 0.5,
+        });
+      }
     }
   },
 
@@ -248,7 +258,7 @@ export const gyreSnare = {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
     if (!queryRadius) return;
-    const reach = D.mawDist + D.basinRadius + 60;
+    const reach = D.mawDist + D.basinRadius + D.queryReachWu;
     const cands = queryRadius(player.pos, reach, this._scratch);
     const tan = Math.tan(D.coneHalfAngleRad);
     const shipVx = finite(player.vel && player.vel.x);
@@ -270,7 +280,7 @@ export const gyreSnare = {
         const axial = px * nose.x + pz * nose.z;
         if (axial > 0 && axial < D.mawDist + D.basinRadius) {
           const radial = Math.abs(px * nose.z - pz * nose.x);
-          inWedge = radial <= axial * tan + 18; // + soft lip so the visual edge isn't a cliff
+          inWedge = radial <= axial * tan + D.wedgeSoftLipWu; // + soft lip so the visual edge isn't a cliff
         }
       }
       if (!inBasin && !inWedge) continue;
@@ -286,7 +296,7 @@ export const gyreSnare = {
       const mass = entityMass(e);
       let ax = 0, az = 0;
       if (inBasin) {
-        const pull = (absorbable ? D.basinAccel : D.basinAccel * 0.45) * couple;
+        const pull = (absorbable ? D.basinAccel : D.basinAccel * D.nonAbsorbablePull) * couple;
         if (distMaw > 1e-4) {
           ax -= (dx / distMaw) * pull;
           az -= (dz / distMaw) * pull;
@@ -299,7 +309,7 @@ export const gyreSnare = {
         az -= (finite(e.vel.z) - shipVz) * D.basinDamping;
       } else {
         // Wedge courtesy: gentle drift toward the maw down the cone.
-        const wedge = D.wedgeAccel * couple * (absorbable ? 1 : 0.5);
+        const wedge = D.wedgeAccel * couple * (absorbable ? 1 : D.wedgeFalloff);
         if (distMaw > 1e-4) {
           ax -= (dx / distMaw) * wedge;
           az -= (dz / distMaw) * wedge;
@@ -391,7 +401,7 @@ export const gyreSnare = {
     const mass = entityMass(core);
     queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
     // A lazy tumble — the ball reads as levitating rock, not a rigid joint.
-    queuePhysicsTorqueImpulse(core, { x: 0, y: mass * 2.2 * dt, z: 0 }, this._evidence(state.tick));
+    queuePhysicsTorqueImpulse(core, { x: 0, y: mass * D.tumbleTorqueK * dt, z: 0 }, this._evidence(state.tick));
 
     // Strain break: something violent flung the ball too far off the maw — the beam slips.
     const coreDistMaw = Math.hypot(core.pos.x - maw.x, core.pos.z - maw.z);
@@ -438,8 +448,8 @@ export const gyreSnare = {
         let ax = (dx / dist) * pull;
         let az = (dz / dist) * pull;
         // Gentle frame damping so incoming mass settles onto the ball instead of orbiting it.
-        ax -= (finite(e.vel.x) - shipVx) * 1.1;
-        az -= (finite(e.vel.z) - shipVz) * 1.1;
+        ax -= (finite(e.vel.x) - shipVx) * D.suckDamping;
+        az -= (finite(e.vel.z) - shipVz) * D.suckDamping;
         this._queueAccel(e, ax, az, mass, dt, state);
       }
     }
@@ -473,6 +483,14 @@ export const gyreSnare = {
       Math.max(8, Math.round(rt.clumpMass * rt.clumpRadius * rt.clumpRadius * 0.4)),
       rt.clumpRadius,
     );
+    // The clump's HEART visibly grows too: entity.radius is what the motion presenters scale
+    // the core's mesh off — keep it in step with the physics record so growth is visceral.
+    if (finite(core.radius) && core.radius < rt.clumpRadius) {
+      core.radius = rt.clumpRadius;
+      if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') {
+        this.helpers.markEntityVisualChanged(core);
+      }
+    }
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.absorbed, {
         coreId: core.id, victimId: e.id, victimType: e.type, mass: em,
@@ -500,6 +518,7 @@ export const gyreSnare = {
     rt.launchDir.z = dir.z;
     rt.launchedId = core.id;
     rt.ballId = core.id; // outlives LAUNCH so render/HUD can track the bowling ball to its grave
+    rt.ballMass = rt.clumpMass;
     // The ball becomes a weapon: authored impact scale + provenance for kill credit + a
     // bounded flight so the map doesn't keep it forever.
     const scale = Math.min(
@@ -540,7 +559,7 @@ export const gyreSnare = {
     rt.coreBaseMass = 0;
     rt.members.length = 0;
     rt.launchedId = null;
-    // ballId deliberately survives: the clump visual keeps riding the thrown mass until it
+    // ballId/ballMass deliberately survive: the clump visual keeps riding the thrown mass until it
     // despawns, and the HUD's "ball live" dot reads the same flag.
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: PHASE.LAUNCH, reason: 'launched', tick: this.state && this.state.tick });
@@ -555,7 +574,7 @@ export const gyreSnare = {
       coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0,
       strain01: 0, corePos: { x: 0, z: 0 }, launchDir: { x: 1, z: 0 },
-      members: null, launchedId: null, ballPos: { x: 0, z: 0 },
+      members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0,
     });
     pub.phase = rt.phase;
     // Track a live bowling ball even in OFF: launchedId stays published until the entity is
@@ -564,11 +583,13 @@ export const gyreSnare = {
       const ball = state.entities.get(rt.ballId);
       if (!ball || ball.alive === false || !ball.data || !ball.data.gyreLaunched || !ball.pos) {
         rt.ballId = null;
+        rt.ballMass = 0;
       } else {
         pub.ballPos.x = ball.pos.x; pub.ballPos.z = ball.pos.z;
       }
     }
     pub.launchedId = rt.ballId;
+    pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) { pub.coreId = null; pub.strain01 = 0; pub.members = null; return pub; }
     if (!player) return pub;
     const nose = this._noseDir(player, this._pubNose || (this._pubNose = { x: 1, z: 0 }));
@@ -612,7 +633,9 @@ export const gyreSnare = {
         rt.phase = PHASE.BEAM;
         if (this.bus) {
           this.bus.emit(GYRE_EVENTS.beamOn, { playerId: player.id, tick: state.tick });
-          this.bus.emit('audio:cue', { id: 'gyre_snare_snag', gain: 0.35 });
+          // The lash has its own wake voice now — a soft rising shimmer, distinct from the
+          // snag bite that fires when mass actually grips.
+          this.bus.emit('audio:cue', { id: 'gyre_snare_beam', gain: 0.55 });
         }
       } else if (this.bus) {
         this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake' });
@@ -631,8 +654,13 @@ export const gyreSnare = {
     if (rt.phase === PHASE.OFF) { this._publish(state, player); return; }
     if (!player) { this._drop('player_lost'); this._publish(state, null); return; }
 
-    // Cap drain — an empty tank bowls whatever the beam is holding right now.
-    const drain = D.capDrainPerS * (rt.phase === PHASE.HOLD ? D.capHoldMult : 1) * dt;
+    // Cap drain — an empty tank bowls whatever the beam is holding right now. Hold drain
+    // scales with clump mass: a huge ball can out-pull the hull's regen — the bigger the
+    // katamari, the shorter the fuse on your hold.
+    const drainMult = rt.phase === PHASE.HOLD
+      ? D.capHoldMult * (1 + rt.clumpMass / D.capMassDrainRef)
+      : 1;
+    const drain = D.capDrainPerS * drainMult * dt;
     this._spendCap(player, drain);
     const dry = this._cap(player) <= 0;
 

@@ -431,10 +431,12 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // blade severing one of the player's lines is a warning jolt; the whip's stored snap is a crack.
   'massline:playerLineCut': { strong: 0.55, weak: 0.35, ms: 120 },
   'tether:whipSnap':        { strong: 0.70, weak: 0.30, ms: 100 },
-  // Gyre Snare: the snag is a solid bite, the bowl is the hard crack, an absorb a small tap.
+  // Gyre Snare: the snag is a solid bite, the bowl is the hard crack, an absorb a small tap,
+  // a slipped/dropped clump a mid thud (the lash letting go without a launch).
   'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
   'gyre:launched':          { strong: 0.90, weak: 0.70, ms: 160 },
   'gyre:absorbed':          { strong: 0.30, weak: 0.20, ms: 50 },
+  'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
 });
 // Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
 export const HAPTIC_RELEASE_PULSES = Object.freeze({
@@ -823,6 +825,7 @@ export function createGamepad(ctx) {
     bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
     bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
     bus.on('gyre:absorbed', () => startPulse(HAPTIC_VERB_PULSES['gyre:absorbed'], 'gyre:absorbed'));
+    bus.on('gyre:dropped', () => startPulse(HAPTIC_VERB_PULSES['gyre:dropped'], 'gyre:dropped'));
   }
 
   const gp = {

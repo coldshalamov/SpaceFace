@@ -28,11 +28,17 @@ export const GYRE_SNARE = Object.freeze({
   // the physical basin is a disc around the maw (the cone's wide end).
   mawDist: 200,              // wu — fixed tether length from hull to hold point
   noseGap: 14,               // wu — apex sits this far in front of the hull skin
-  coneHalfAngleRad: 0.26,    // ≈15° — end radius ≈ mawDist·tan(halfAngle) ≈ 52 wu
+  // The cone's drawn mouth MUST match the pull basin — the wide end is the gravity well,
+  // so the visual rim marks the exact edge of the yank zone (≈86 wu at mawDist).
+  coneHalfAngleRad: 0.42,    // ≈24° — end radius ≈ (mawDist-noseGap)·tan ≈ 83 wu ≈ basinRadius
   // ── Pull phase (no core yet) ──────────────────────────────────────────────────────
   basinRadius: 86,           // wu — hard pull zone around the maw (the "increased gravity")
   basinAccel: 620,           // wu/s² — reference accel on a ref-mass body in the basin
   wedgeAccel: 150,           // wu/s² — faint pull anywhere inside the cone wedge
+  wedgeSoftLipWu: 18,        // wu — bodies just inside the rim ease in instead of snapping
+  wedgeFalloff: 0.5,         // rim bodies get at most this share of wedgeAccel
+  nonAbsorbablePull: 0.45,   // ×accel on dynamic bodies that can never core/member (rocks the maw shoves)
+  queryReachWu: 60,          // wu — extra query radius past the basin so the wedge reaches its lip
   basinDamping: 1.6,         // 1/s — velocity damping vs ship frame inside the basin (settle, don't orbit-shoot)
   mawSwirlAccel: 90,         // wu/s² — tangential swirl so basin objects spiral in, not dead-stop
   snagRadius: 34,            // wu — reaching the maw's heart snags an absorbable body as the core
@@ -50,9 +56,11 @@ export const GYRE_SNARE = Object.freeze({
   holdMaxAccel: 1000,        // wu/s² — hold spring ceiling (strong enough to reel a lagging ball)
   holdBreakDist: 640,        // wu — core shoved beyond this slips the beam entirely (dropped)
   holdStrainDist: 320,       // wu — beyond this the beam reads "strained" to VFX/HUD
+  tumbleTorqueK: 2.2,        // torque-per-wobble on the held core — the loose zero-G spin
   // ── Katamari growth ───────────────────────────────────────────────────────────────
   suckBandWidth: 88,         // wu — core sucks absorbables within core.radius + this
   suckAccel: 680,            // wu/s² — pull toward the core inside the suck band
+  suckDamping: 1.1,          // 1/s — frame-damping on inbound mass so it settles, not orbits
   absorbOverlap: 1.15,       // contact = (clumpRadius + memberRadius) * this — just past skin touch
   maxClumpRadius: 60,        // wu — volumetric union clamps here; mass keeps growing regardless
   maxClumpMass: 2400,        // t — mass cap (a hard ceiling so a ball can't out-scale a capital)
@@ -69,6 +77,9 @@ export const GYRE_SNARE = Object.freeze({
   capActivateMin: 10,        // cap needed to open the beam
   capDrainPerS: 6.5,         // cap/s while the beam is live (empty tank = auto-bowl)
   capHoldMult: 1.35,         // ×drain while a clump is held (holding mass is heavier work)
+  // Hold drain scales with clump mass: a 240 t ball pulls ~5.4× hold drain (~47 cap/s),
+  // which beats the starter hull's regen — the bigger the katamari, the shorter the fuse.
+  capMassDrainRef: 60,       // t of clump mass per additional ×1 hold drain
   // ── Presentation palette (glassy white) ───────────────────────────────────────────
   palette: Object.freeze({
     glass: '#dff1ff',

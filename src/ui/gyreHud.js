@@ -78,7 +78,8 @@ export const gyreHud = {
     if (!g || !g.phase || g.phase === 'off') {
       // A thrown clump still on the map deserves a quiet "it's yours" dot for its short flight.
       if (g && g.launchedId != null) {
-        return { text: 'GYRE — BALL AWAY', cls: 'gyre-ball' };
+        const mass = Math.round(g.ballMass || 0);
+        return { text: mass > 0 ? `GYRE — BALL AWAY ${mass}t` : 'GYRE — BALL AWAY', cls: 'gyre-ball' };
       }
       return { text: '', cls: '' };
     }
@@ -91,7 +92,7 @@ export const gyreHud = {
       if ((g.strain01 || 0) > 0.35) {
         return { text: `GYRE — STRAIN ${mass}t`, cls: 'gyre-strain' };
       }
-      return { text: `GYRE — ${count} MASS ${mass}t`, cls: 'gyre-holding' };
+      return { text: `GYRE — ×${count} · ${mass}t`, cls: 'gyre-holding' };
     }
     return { text: 'GYRE — SEARCHING', cls: '' };
   },

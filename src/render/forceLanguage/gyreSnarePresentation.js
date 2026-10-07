@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { resolveVfxAccessibilityProfile } from '../vfxAccessibility.js';
 
 /**
  * Gyre Snare presentation — the held-verb telekinetic katamari lash.
@@ -31,7 +32,7 @@ const LUMP_TINT = Object.freeze({
 const CONE_VERT = /* glsl */`
 uniform float uTime;
 uniform float uPulse;
-uniform float uCalm;      // 1 = reduced motion: keep silhouette, still the ripple
+uniform float uCalm;      // 0 = reduced motion: silhouette stays, ripple displacement off
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -107,11 +108,13 @@ attribute float aSeed;
 varying float vFade;
 void main() {
   float t = fract(aSeed * 7.13 + uTime * (0.35 + aSeed * 0.5));
-  float x = uLen - t * uLen * 0.22;                 // approach the maw from just ahead of it
-  float r = uRad * (0.30 + t * 1.15);               // funnel: wide orbit outside, tight at mouth
+  // Motes CONVERGE into the mouth: they spawn wide and up-beam of the maw, then run
+  // inward/tight as t→1 — the funnel reads as matter being pulled to the gravity well.
+  float x = uLen * (0.78 + 0.22 * t);               // up-beam → maw plane as t advances
+  float r = uRad * (1.45 - 1.15 * t);               // wide orbit → tight at the mouth
   float a = aSeed * 6.2832 + uTime * (1.6 + aSeed * 2.2);
   vec3 p = vec3(x, cos(a) * r, sin(a) * r);
-  vFade = (1.0 - t) * smoothstep(0.0, 0.15, t);
+  vFade = smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.75, 1.0, t));
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_PointSize = uSize * (280.0 / max(1.0, -mv.z));
   gl_Position = projectionMatrix * mv;
@@ -174,6 +177,8 @@ export class GyreSnarePresentation {
     this._quiet = true;
     this._absorbSeen = 0;
     this._ballId = null;
+    this._clumpRadius = 0;
+    this._discKick = 0;
 
     const glass = 0xdff1ff, hot = 0xf6fcff;
 
@@ -288,15 +293,17 @@ export class GyreSnarePresentation {
     if (!slot) {
       if (this._lumps.length >= MAX_LUMPS) return;
       const geo = jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, 31 + i * 7919);
-      slot = { mesh: new THREE.Mesh(geo), used: false };
+      slot = { mesh: new THREE.Mesh(geo), used: false, baseScale: 1, spawnT: 0 };
       this._clump.add(slot.mesh);
       this._lumps.push(slot);
     }
     slot.used = true;
+    slot.spawnT = this.time;         // grow-in: lumps swell in over ~150 ms, not pop
     const m = slot.mesh;
     m.material = this._lumpMaterial(member.type);
     const r = Math.max(0.35, finite(member.radius, 2) * 0.62);
-    m.scale.setScalar(r);
+    slot.baseScale = r;
+    m.scale.setScalar(r * 0.2);
     const spread = Math.max(0, finite(this._clumpRadius) - r * 0.45);
     m.position.set(
       finite(member.nx, 0) * spread,
@@ -334,9 +341,13 @@ export class GyreSnarePresentation {
     if (clock < this.time) this._clearLumps();   // restored sim rewound the clock
     this.time = clock;
 
-    const a11y = state.settings && (state.settings.accessibility || state.settings.video) || {};
-    const calm = (a11y.reducedMotion || a11y.motionReduce) ? 0 : 1;
-    const flashCalm = (a11y.reducedFlash || a11y.flashReduce) ? 0.55 : 1;
+    // The canonical VFX accessibility read: motionReduce lives under settings.video,
+    // flashReduce under video or accessibility — never hand-roll the fallback order.
+    const profile = resolveVfxAccessibilityProfile(state.settings);
+    const reducedMotion = profile.id === 'reduced-motion' || profile.id === 'reduced-motion-and-flash';
+    const reducedFlash = profile.id === 'reduced-flash' || profile.id === 'reduced-motion-and-flash';
+    const calm = reducedMotion ? 0 : 1;
+    const flashCalm = reducedFlash ? 0.55 : 1;
 
     // ── beam ─────────────────────────────────────────────────────────────────
     if (phase === 'beaming' || phase === 'holding' || phase === 'launching') {
@@ -355,7 +366,7 @@ export class GyreSnarePresentation {
       this._beam.rotation.y = -Math.atan2(dz, dx);
       this._cone.scale.set(endR, len, endR);
       this._maw.position.set(len, 0, 0);
-      this._maw.scale.set(1, endR, endR);
+      this._maw.scale.setScalar(endR); // uniform — the torus circle spans local X and Y
       this._disc.position.set(len + 1.5, 0, 0);
       this._disc.scale.setScalar(endR * 0.96);
 
@@ -368,9 +379,16 @@ export class GyreSnarePresentation {
         this._coneMat.uniforms.uPulse.value * 0.9,
         strain * 0.7,
       );
-      this._mawMat.opacity = (0.4 + (holding ? 0.25 : 0) + strain * 0.3) * flashCalm;
+      // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
+      // as it feeds, so swallow reads visually even before the lump grows in.
+      const absorbsNow = finite(mirror.absorbs, 0);
+      if (absorbsNow > this._absorbSeen) this._discKick = 1;
+      if (absorbsNow < this._absorbSeen) this._absorbSeen = 0; // new clump ledger
+      this._absorbSeen = absorbsNow;
+      this._discKick *= Math.exp(-dt * 4.2);
+      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * flashCalm);
       this._discMat.uniforms.uTime.value = this.time;
-      this._discMat.uniforms.uAlpha.value = (holding ? 0.9 : 0.55) * flashCalm;
+      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55) + this._discKick * 0.5) * flashCalm;
       this._spiral.visible = calm !== 0;
       this._spiralMat.uniforms.uTime.value = this.time;
       this._spiralMat.uniforms.uLen.value = len;
@@ -405,11 +423,20 @@ export class GyreSnarePresentation {
       for (let i = have; i < want; i++) this._addLump(members[i], i);
       // If the sim restarted the ledger (new core), rebuild.
       if (want < have) { this._clearLumps(); for (let i = 0; i < want; i++) this._addLump(members[i], i); }
+      // Grow-in: a fresh lump swells 0.2→1× over ~150 ms — katamari stick lands visibly.
+      for (const l of this._lumps) {
+        if (!l.used) continue;
+        const g = Math.min(1, Math.max(0, (this.time - l.spawnT) / 0.15));
+        l.mesh.scale.setScalar(l.baseScale * (0.2 + 0.8 * g));
+      }
     }
     if (mirror.launchedId == null) this._ballId = null;
 
     // ── phase transitions ────────────────────────────────────────────────────
     if (phase !== this._phase) {
+      // The grip is the payoff: entering HOLD flashes the cone hard, matching the snag
+      // audio bite + haptic that already fire on the same edge.
+      if (phase === 'holding') this._coneMat.uniforms.uPulse.value = 0.9;
       if (phase === 'launching' && cx != null) {
         this._fireBurst(mirror.corePos.x, mirror.corePos.z, Math.max(6, finite(mirror.clumpRadius, 8) * 2.2));
         this._coneMat.uniforms.uPulse.value = 1;
