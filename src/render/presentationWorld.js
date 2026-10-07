@@ -1,6 +1,8 @@
 // Dense, disposable render-side mirror of authoritative GameState entities.
 // Simulation never reads this object. Journal publication and renderer bindings are the only writers.
 
+import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
+
 export const PRESENTATION_DIRTY = Object.freeze({
   NONE: 0,
   TRANSFORM: 1 << 0,
@@ -148,6 +150,11 @@ export function createPresentationWorld(options = {}) {
   let freeCount = 0;
   let specialCount = 0;
   let maxRadius = 0;
+  // Deferred recompute: a retire burst that kills the max-holder repeatedly used to
+  // pay one O(activeCount) rescan per retire; the flag collapses a burst into one
+  // scan at the next read. Stale reads between mark and read only over-estimate
+  // (the marked max is an upper bound), so queries stay conservative in the gap.
+  let maxRadiusDirty = false;
   let asteroidDirty = true;
   let disposed = false;
   // O(1) count of slots with any PRESENTATION_DIRTY bit. The zero-dirty query
@@ -158,6 +165,9 @@ export function createPresentationWorld(options = {}) {
   let dirtyCount = 0;
   let dirtySlots = new Uint32Array(0);
   let dirtyPositions = new Int32Array(0);
+  // Monotonic stamp the diff-apply uses to mark rows seen this call — replaces
+  // a per-call Set alloc on the journal-fallback hot path.
+  let updateSeq = 0;
 
   const world = {
     capacity: 0,
@@ -167,10 +177,28 @@ export function createPresentationWorld(options = {}) {
     sourceGenerations: new Uint32Array(0),
     revisions: new Uint32Array(0),
     visualRevisions: new Uint32Array(0),
+    // Per-slot seen stamps for updateFromEntities' dedupe — slot-indexed so a
+    // whole-call Set alloc is never needed. Zero-initialized; updateSeq starts
+    // at 1 and wraps by re-zeroing.
+    lastSeenSeq: new Uint32Array(0),
     entityIds: new Float64Array(0),
     typeCodes: new Uint16Array(0),
     flags: new Uint8Array(0),
     dirtyMasks: new Uint8Array(0),
+    // Doomed rows (suppressed mid-collect destroys, feed-skip tombstones) fail
+    // exactVisible before every bypass, so the slot leaves the visible set and
+    // lands in hiddenSlots → a real mesh hide + dirty consume — instead of
+    // drawing at its last pose for the whole suspension window while its
+    // unconsumed VISIBILITY mark defeats both retain paths. `world.visible` is
+    // deliberately NOT this bit: it is the query's own admission bookkeeping.
+    doomed: new Uint8Array(0),
+    // Pack-owned dirty bit: only writers that can alter a snapshot's packed
+    // bytes (pose scalars, flags/typeCodes, fresh alloc) set it; the fence pack
+    // consults it instead of the sync-owned PRESENTATION_DIRTY mask so
+    // never-visited slots (allocated ALL for life) and byte-identical
+    // BINDING/VISIBILITY/VISUAL marks stop paying the full scalar write per
+    // presented frame.
+    packDirty: new Uint8Array(0),
     radii: new Float64Array(0),
     prevX: new Float64Array(0),
     prevY: new Float64Array(0),
@@ -197,13 +225,17 @@ export function createPresentationWorld(options = {}) {
     cellPrev: new Int32Array(0),
     cellNext: new Int32Array(0),
     entityRefs: [],
+    boundEntityRefs: [],
     meshRefs: [],
     diagnostics,
     cellSize,
     get activeCount() { return activeCount; },
     get boundCount() { return boundCount; },
     get freeCount() { return freeCount; },
-    get maxRadius() { return maxRadius; },
+    get maxRadius() {
+      if (maxRadiusDirty) recomputeMaxRadius();
+      return maxRadius;
+    },
     get disposed() { return disposed; },
   };
 
@@ -222,10 +254,13 @@ export function createPresentationWorld(options = {}) {
     world.sourceGenerations = growTyped(world.sourceGenerations, Uint32Array, capacity);
     world.revisions = growTyped(world.revisions, Uint32Array, capacity);
     world.visualRevisions = growTyped(world.visualRevisions, Uint32Array, capacity);
+    world.lastSeenSeq = growTyped(world.lastSeenSeq, Uint32Array, capacity);
     world.entityIds = growTyped(world.entityIds, Float64Array, capacity);
     world.typeCodes = growTyped(world.typeCodes, Uint16Array, capacity);
     world.flags = growTyped(world.flags, Uint8Array, capacity);
     world.dirtyMasks = growTyped(world.dirtyMasks, Uint8Array, capacity);
+    world.doomed = growTyped(world.doomed, Uint8Array, capacity);
+    world.packDirty = growTyped(world.packDirty, Uint8Array, capacity);
     dirtyPositions = growTyped(dirtyPositions, Int32Array, capacity, INVALID_INDEX);
     world.radii = growTyped(world.radii, Float64Array, capacity);
     world.prevX = growTyped(world.prevX, Float64Array, capacity);
@@ -252,6 +287,7 @@ export function createPresentationWorld(options = {}) {
     world.cellPrev = growTyped(world.cellPrev, Int32Array, capacity, INVALID_INDEX);
     world.cellNext = growTyped(world.cellNext, Int32Array, capacity, INVALID_INDEX);
     world.entityRefs = growRefs(world.entityRefs, capacity);
+    world.boundEntityRefs = growRefs(world.boundEntityRefs, capacity);
     world.meshRefs = growRefs(world.meshRefs, capacity);
     world.capacity = capacity;
     diagnostics.capacity = capacity;
@@ -294,6 +330,7 @@ export function createPresentationWorld(options = {}) {
       nextMaxRadius = Math.max(nextMaxRadius, world.radii[world.activeSlots[index]]);
     }
     maxRadius = nextMaxRadius;
+    maxRadiusDirty = false;
     diagnostics.maxRadius = maxRadius;
     diagnostics.maxRadiusRecomputes++;
   }
@@ -380,6 +417,12 @@ export function createPresentationWorld(options = {}) {
       || world.bank[slot] !== nextBank || world.pitch[slot] !== nextPitch
       || world.prevRot[slot] !== nextPrevRot || world.prevBank[slot] !== nextPrevBank
       || world.prevPitch[slot] !== nextPrevPitch;
+    // The prev* columns are unpacked — a prev-only rebase produces a
+    // byte-identical packed row, so it must not claim the fence pack's dirty
+    // bit.
+    const packedChanged = world.x[slot] !== nextX || world.y[slot] !== nextY
+      || world.z[slot] !== nextZ || world.rot[slot] !== nextRot
+      || world.bank[slot] !== nextBank || world.pitch[slot] !== nextPitch;
     // When the skip path is on, identical pose scalars skip re-assigns (and
     // refreshVisibleEntity may have already returned). Toggle off restores the
     // prior always-write behavior for A/B microbench.
@@ -405,6 +448,7 @@ export function createPresentationWorld(options = {}) {
     world.rot[slot] = nextRot;
     world.bank[slot] = nextBank;
     world.pitch[slot] = nextPitch;
+    if (packedChanged) markPackedDirty(slot);
     if (gridChanged && world.alive[slot]) insertIntoGrid(slot);
     return true;
   }
@@ -472,6 +516,9 @@ export function createPresentationWorld(options = {}) {
   function refreshMetadata(slot, entity, visualRadius = null) {
     if (!entity || typeof entity !== 'object') return false;
     let changed = false;
+    // Only flags/typeCodes feed the packed row — radius and entityRef churn is
+    // byte-identical for the fence pack.
+    let packedChanged = false;
     world.entityRefs[slot] = entity;
     const nextType = typeCode(entity.type);
     if (world.typeCodes[slot] !== nextType) {
@@ -480,30 +527,41 @@ export function createPresentationWorld(options = {}) {
       }
       world.typeCodes[slot] = nextType;
       changed = true;
+      packedChanged = true;
     }
     const nextFlags = presentationFlags(entity);
     if (world.flags[slot] !== nextFlags) {
       world.flags[slot] = nextFlags;
       setSpecialMembership(slot, isSpecial(nextFlags));
       changed = true;
+      packedChanged = true;
     }
-    const candidateRadius = Number.isFinite(visualRadius)
-      ? visualRadius
-      : Number(entity.radius);
-    const nextRadius = Math.max(0, Number.isFinite(candidateRadius) ? candidateRadius : 0);
-    const previousRadius = world.radii[slot];
-    if (previousRadius !== nextRadius) {
-      world.radii[slot] = nextRadius;
-      if (nextRadius >= maxRadius) {
-        maxRadius = nextRadius;
-        diagnostics.maxRadius = maxRadius;
-      } else if (previousRadius === maxRadius) {
-        recomputeMaxRadius();
+    // Only a caller that minted a cull radius may write radii — the apply/record
+    // paths pass none, and stomping the bind-stamped visual radius back to
+    // entity.radius leaves culled rows under-testing exactVisible (edge pop-in)
+    // and churns a VISUAL mark on every apply.
+    if (Number.isFinite(visualRadius)) {
+      const nextRadius = Math.max(0, visualRadius);
+      const previousRadius = world.radii[slot];
+      if (previousRadius !== nextRadius) {
+        world.radii[slot] = nextRadius;
+        if (nextRadius >= maxRadius) {
+          maxRadius = nextRadius;
+          maxRadiusDirty = false;
+          diagnostics.maxRadius = maxRadius;
+        } else if (previousRadius === maxRadius) {
+          maxRadiusDirty = true;
+        }
+        changed = true;
       }
-      changed = true;
     }
+    if (packedChanged) markPackedDirty(slot);
     if (changed) markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
     return changed;
+  }
+
+  function markPackedDirty(slot) {
+    if (world.packDirty) world.packDirty[slot] = 1;
   }
 
   function ensureDirtySlotsCapacity(needed) {
@@ -585,9 +643,24 @@ export function createPresentationWorld(options = {}) {
     world.entityIds[slot] = entityId;
     world.typeCodes[slot] = typeCode(record && record.entityType || entity && entity.type);
     world.flags[slot] = PRESENTATION_FLAGS.NONE;
+    world.doomed[slot] = 0;
+    markPackedDirty(slot);
     writeDirtyMask(slot, PRESENTATION_DIRTY.ALL);
-    world.radii[slot] = 0;
+    // refreshMetadata only writes radii for a caller-minted visual radius now, so the
+    // alloc path seeds entity.radius directly — with the same maxRadius bookkeeping
+    // the minted-write path performs (a new row can only raise the bound).
+    const allocRadius = Math.max(0, Number(entity && entity.radius) || 0);
+    const allocPrevRadius = world.radii[slot];
+    world.radii[slot] = allocRadius;
+    if (allocRadius >= maxRadius) {
+      maxRadius = allocRadius;
+      maxRadiusDirty = false;
+      diagnostics.maxRadius = maxRadius;
+    } else if (allocPrevRadius === maxRadius) {
+      maxRadiusDirty = true;
+    }
     world.entityRefs[slot] = entity;
+    world.boundEntityRefs[slot] = null;
     world.meshRefs[slot] = null;
     world.cellX[slot] = INVALID_CELL;
     world.cellZ[slot] = INVALID_CELL;
@@ -653,12 +726,15 @@ export function createPresentationWorld(options = {}) {
     removeFromGrid(slot);
     setSpecialMembership(slot, false);
     removeActive(slot);
-    if (maxRadius > 0 && retiredRadius === maxRadius) recomputeMaxRadius();
+    if (maxRadius > 0 && retiredRadius === maxRadius) maxRadiusDirty = true;
     if (world.meshRefs[slot]) boundCount = Math.max(0, boundCount - 1);
     world.alive[slot] = 0;
     world.visible[slot] = 0;
+    world.doomed[slot] = 0;
+    world.packDirty[slot] = 0;
     writeDirtyMask(slot, PRESENTATION_DIRTY.NONE);
     world.entityRefs[slot] = null;
+    world.boundEntityRefs[slot] = null;
     world.meshRefs[slot] = null;
     byId.delete(entityId);
     world.freeSlots[freeCount++] = slot;
@@ -722,9 +798,20 @@ export function createPresentationWorld(options = {}) {
     if (world.meshRefs[slot] !== mesh) {
       if (!world.meshRefs[slot]) boundCount++;
       world.meshRefs[slot] = mesh;
+      // The row's bound owner is what the bound mesh was bound for — a pushed
+      // resident that differs means the row still wears the previous owner's
+      // corpse, and doom verdicts key on this, not the last pushed ref.
+      world.boundEntityRefs[slot] = entity || world.entityRefs[slot] || null;
       markDirtyBits(slot, PRESENTATION_DIRTY.BINDING | PRESENTATION_DIRTY.TRANSFORM
         | PRESENTATION_DIRTY.VISIBILITY);
       diagnostics.bound = boundCount;
+    }
+    if (world.doomed && world.doomed[slot] === 1) {
+      // A bound mesh is the freshest liveness evidence on a live row — bind
+      // clears the tombstone the way the feed stamps do, and the VISIBILITY
+      // mark re-admits the row on the next query.
+      world.doomed[slot] = 0;
+      markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
     }
     refreshMetadata(slot, entity, visualRadius);
     return true;
@@ -736,7 +823,9 @@ export function createPresentationWorld(options = {}) {
     if (slot === undefined || slot < 0 || !world.meshRefs[slot]
       || mesh && world.meshRefs[slot] !== mesh) return false;
     world.meshRefs[slot] = null;
+    world.boundEntityRefs[slot] = null;
     world.visible[slot] = 0;
+    world.doomed[slot] = 0;
     markDirtyBits(slot, PRESENTATION_DIRTY.BINDING | PRESENTATION_DIRTY.VISIBILITY);
     boundCount = Math.max(0, boundCount - 1);
     diagnostics.bound = boundCount;
@@ -763,8 +852,7 @@ export function createPresentationWorld(options = {}) {
       const nextPrevPitch = Number.isFinite(value.prevPitch) ? value.prevPitch : nextPitch;
       const nextType = typeCode(entity.type);
       const nextFlags = presentationFlags(entity);
-      const candidateRadius = Number.isFinite(visualRadius) ? visualRadius : Number(entity.radius);
-      const nextRadius = Math.max(0, Number.isFinite(candidateRadius) ? candidateRadius : 0);
+      const nextRadius = Number.isFinite(visualRadius) ? Math.max(0, visualRadius) : world.radii[slot];
       if (world.x[slot] === nextX && world.y[slot] === nextY && world.z[slot] === nextZ
         && world.prevX[slot] === nextPrevX && world.prevY[slot] === nextPrevY
         && world.prevZ[slot] === nextPrevZ && world.rot[slot] === nextRot
@@ -793,6 +881,37 @@ export function createPresentationWorld(options = {}) {
     specialCount = 0;
     boundCount = 0;
     maxRadius = 0;
+    maxRadiusDirty = false;
+    asteroidDirty = true;
+    diagnostics.active = 0;
+    diagnostics.bound = 0;
+    diagnostics.free = freeCount;
+    diagnostics.maxRadius = 0;
+    return true;
+  }
+
+  // Stepped twin — identical teardown, paced across presents. The retire
+  // visits by captured entity-id (not live slot index): a destroy apply or a
+  // slot reuse landing mid-suspension can only add rows the snapshot never
+  // covered, so neither can kill a resident minted after the walk started.
+  function* clearSteps(sliceEvery = 256) {
+    ensureAlive();
+    const pendingIds = new Array(activeCount);
+    for (let index = 0; index < activeCount; index++) {
+      pendingIds[index] = world.entityIds[world.activeSlots[index]];
+    }
+    const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+    maxRadius = 0;
+    for (let index = 0; index < pendingIds.length; index++) {
+      const slot = byId.get(pendingIds[index]);
+      if (slot !== undefined) retireSlot(slot);
+      if (((index + 1) % every) === 0) yield;
+    }
+    gridColumns.clear();
+    specialCount = 0;
+    boundCount = 0;
+    maxRadius = 0;
+    maxRadiusDirty = false;
     asteroidDirty = true;
     diagnostics.active = 0;
     diagnostics.bound = 0;
@@ -816,6 +935,410 @@ export function createPresentationWorld(options = {}) {
         ? generationForEntity(entity)
         : 0;
       allocateEntity(entity, generation);
+    }
+    diagnostics.rebuilds++;
+    return true;
+  }
+
+  // Diff-apply twin of rebuildFromEntities: the clear+realloc per call used to
+  // retire every slot, re-mark every row DIRTY.ALL, and drop every mesh
+  // binding — during a suspended stepped journal rebuild that whole-set churn
+  // re-ran on every tick-advanced present. Retained ids keep their slot,
+  // binding, and visible state and pay only compare-then-write (dirty marks
+  // land where pose/metadata actually moved); absent ids retire; new ids
+  // allocate. Bookkeeping stamps exactly what a fresh alloc would mint.
+  function updateFromEntities(entities, generationForEntity = null, options = null) {
+    ensureAlive();
+    if (!Array.isArray(entities)) throw new TypeError('PresentationWorld update requires an entity array');
+    // `options.retire === false` marks a partial sample (an in-flight collect's
+    // prefix): not-yet-collected ids must hold their last pose, so the retire
+    // sweep is suppressed by construction. Retained + new rows still apply.
+    const retireSuppressed = options && options.retire === false;
+    // Slot-indexed seen stamps instead of a Set(N): every entityId maps to the
+    // one slot its id owns (byId is id-keyed), so lastSeenSeq[slot] === seq is
+    // the duplicate test with zero alloc.
+    updateSeq = (updateSeq + 1) >>> 0;
+    if (updateSeq === 0) {
+      updateSeq = 1;
+      world.lastSeenSeq.fill(0);
+    }
+    const seq = updateSeq;
+    const lastSeenSeq = world.lastSeenSeq;
+    let retainedHits = 0;
+    let skippedIds = null;
+    if (retireSuppressed && options.hiddenIds) {
+      // Eager doom at apply-mint — twin of the stepped apply's head pass:
+      // hiddenIds are suppressed-destroy ids never pushed by the live sample,
+      // so the defer-to-completion semantics just delayed the hide.
+      for (const hiddenId of options.hiddenIds) {
+        const slot = byId.get(hiddenId);
+        if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+            && world.doomed[slot] !== 1) {
+          const resident = world.entityRefs[slot];
+          if (resident && resident === world.boundEntityRefs[slot]
+              && resident.alive !== false) continue;
+          const wasVisible = world.visible[slot] === 1;
+          world.doomed[slot] = 1;
+          world.visible[slot] = 0;
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+    }
+    for (const entity of entities) {
+      if (!entity || entity.alive === false) continue;
+      const entityId = sourceEntityId(entity);
+      if (entityId === 0) continue;
+      // The push-time eligibility predicates aren't spawn-static — _noMesh
+      // tombstones post-push after repeated build failures — so the apply
+      // recheck mirrors the journal/push halves or a dead-eligible row keeps
+      // minting rows on every prefix/completed feed until the next collect.
+      // A skipped entity that still owns a row draws its last pose through
+      // the suspension window (the dense retire sweep is suppressed for
+      // partial feeds) — doom it through the same channel as hiddenIds.
+      if (entity._noMesh === true
+          || (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity))) {
+        if (retireSuppressed && byId.get(entityId) !== undefined) {
+          (skippedIds || (skippedIds = [])).push(entityId);
+        }
+        continue;
+      }
+      const generation = typeof generationForEntity === 'function'
+        ? generationForEntity(entity)
+        : 0;
+      let slot = byId.get(entityId);
+      if (slot !== undefined && lastSeenSeq[slot] === seq) {
+        diagnostics.duplicateIdRejects++;
+        continue;
+      }
+      if (slot === undefined || world.alive[slot] !== 1) {
+        allocateEntity(entity, generation);
+        slot = byId.get(entityId);
+        if (slot !== undefined) {
+          lastSeenSeq[slot] = seq;
+          if (world.doomed[slot] === 1) {
+            world.doomed[slot] = 0;
+            if (world.visible[slot] === 0) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
+        }
+        continue;
+      }
+      lastSeenSeq[slot] = seq;
+      // A respawn pushed by this feed clears its doom atomically — the row
+      // re-enters the visible set through the ordinary path, zero frames hidden.
+      // The VISIBILITY re-stamp is what re-admits it: the doom's visible=0
+      // stamp was already consumed by the hide sweep, and a clean static slot
+      // is never re-examined by the TRANSFORM-only retain paths.
+      if (world.doomed[slot] === 1) {
+        world.doomed[slot] = 0;
+        if (world.visible[slot] === 0) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+      }
+      retainedHits += 1;
+      const previousVisual = world.visualRevisions[slot];
+      refreshVisibleEntity(slot, entity);
+      world.sourceGenerations[slot] = generation >>> 0;
+      world.revisions[slot] = 0;
+      const nextVisual = Number.isSafeInteger(entity.presentationVisualRevision)
+        ? entity.presentationVisualRevision >>> 0 : 0;
+      world.visualRevisions[slot] = nextVisual;
+      if (nextVisual !== previousVisual) {
+        markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
+      }
+    }
+    // Suppressed mid-collect destroys and feed-skip tombstones name ids this
+    // partial sample never pushed — their stale rows would keep drawing until
+    // the publish retire. Doom them for the window: the doomed flag fails
+    // exactVisible before every bypass, so the slot evicts into hiddenSlots →
+    // a real applyEntityMeshVisibility(mesh, false) → the hidden loop's
+    // clearDirty consumes the VISIBILITY mark and both retain paths restore.
+    // A respawned id arriving in a feed clears the doom at its stamp above, so
+    // a doom never mints for a row this feed pushed.
+    if (retireSuppressed && (options.hiddenIds || skippedIds)) {
+      // Doom reads the ROW's stored occupant, not the id map: a bound respawn
+      // already refreshed entityRefs (bindMesh's refreshMetadata write), so a
+      // live resident means the row belongs to a real occupant — skip. A dead
+      // or stale resident means the row still shows the destroyed body —
+      // doom it; a later bindMesh re-admits the occupant via its doom clear.
+      if (options.hiddenIds) {
+        for (const hiddenId of options.hiddenIds) {
+          const slot = byId.get(hiddenId);
+          if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+              && world.doomed[slot] !== 1) {
+            const resident = world.entityRefs[slot];
+            if (resident && resident === world.boundEntityRefs[slot]
+                && resident.alive !== false) continue;
+            // Only a prior-visible row ever enters hiddenSlots, so a mark minted
+            // on an already-invisible slot is never consumed — it would pin both
+            // query retains for the slot's whole residency.
+            const wasVisible = world.visible[slot] === 1;
+            world.doomed[slot] = 1;
+            world.visible[slot] = 0;
+            if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
+        }
+      }
+      // Feed-skip tombstones name eligibility-fail occupants — they can never
+      // push or legitimately bind, so no occupant verdict applies: doom the row.
+      if (skippedIds) {
+        for (const hiddenId of skippedIds) {
+          const slot = byId.get(hiddenId);
+          if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+              && world.doomed[slot] !== 1) {
+            const wasVisible = world.visible[slot] === 1;
+            world.doomed[slot] = 1;
+            world.visible[slot] = 0;
+            if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
+        }
+      }
+    }
+    if (retireSuppressed) {
+      // Tombstones minted before the collect never enter a feed to name their id
+      // (pushAlive excludes them from collectOut), so skippedIds can't cover them:
+      // sweep resident rows this partial feed didn't push and doom the ones the
+      // push predicate already fails — the mirror is verbatim or live rows flicker.
+      const refs = world.entityRefs;
+      const doomed = world.doomed;
+      const actives = world.activeSlots;
+      const deadResidents = [];
+      for (let s = 0; s < activeCount; s++) {
+        const slot = actives[s];
+        if (lastSeenSeq[slot] === seq) continue;
+        const resident = refs[slot];
+        if (!resident) continue;
+        if (resident.alive === false) {
+          // A suppressed destroy mints no record, so no later replay retires
+          // the dead occupant's row — free the slot here instead of leaking
+          // it until the next full rebuild. The byId owner check keeps the
+          // verdict slot-exact if its id recycled into a fresh row. Retire
+          // precedes the doom skip: a tombstone minted by the eager passes
+          // must not shield the dead resident's slot from being freed.
+          if (byId.get(world.entityIds[slot]) === slot) deadResidents.push(slot);
+          continue;
+        }
+        if (doomed[slot] === 1) continue;
+        if (resident._noMesh === true
+            || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
+          const wasVisible = world.visible[slot] === 1;
+          doomed[slot] = 1;
+          world.visible[slot] = 0;
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+      for (const slot of deadResidents) retireSlot(slot);
+    }
+    // Rows absent from the collect retire — snapshot the id list since retire
+    // mutates byId mid-iteration. All-retained is the hot case: nothing can be
+    // absent, so the id-array alloc and second walk are skipped. A partial
+    // sample suppresses the sweep outright.
+    if (!retireSuppressed && retainedHits !== byId.size) {
+      // Dense active list instead of a byId key spread or a capacity walk: absents are
+      // the minority during churn, retire mutates byId mid-walk so the ids collect
+      // first, and capacity grows but never shrinks — activeCount tracks the live set.
+      // The byId.get guard keeps the verdict slot-exact.
+      const aliveCols = world.alive;
+      const idCols = world.entityIds;
+      const actives = world.activeSlots;
+      const absent = [];
+      for (let s = 0; s < activeCount; s++) {
+        const slot = actives[s];
+        if (aliveCols[slot] === 1 && lastSeenSeq[slot] !== seq
+            && byId.get(idCols[slot]) === slot) absent.push(idCols[slot]);
+      }
+      for (const entityId of absent) retire(entityId);
+    }
+    diagnostics.rebuilds++;
+    return true;
+  }
+
+  // Stepped twin of updateFromEntities — identical per-row apply, hiddenIds /
+  // skippedIds doom passes, resident and absent sweeps, all indexed so a
+  // presented-frame driver can park the walk between yields and resume it next
+  // present. Per-row writes are atomic (each row completes before the next
+  // yield), so a parked apply leaves a consistent row-wise-partial world — the
+  // verbatim mirror holds per row. The whole-set sweeps stay deferred to apply
+  // completion exactly like the sync path's tail.
+  function* updateFromEntitiesSteps(entities, generationForEntity = null, options = null, yieldEvery = 256) {
+    ensureAlive();
+    if (!Array.isArray(entities)) throw new TypeError('PresentationWorld update requires an entity array');
+    const retireSuppressed = options && options.retire === false;
+    updateSeq = (updateSeq + 1) >>> 0;
+    if (updateSeq === 0) {
+      updateSeq = 1;
+      world.lastSeenSeq.fill(0);
+    }
+    const seq = updateSeq;
+    const lastSeenSeq = world.lastSeenSeq;
+    const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+    let sinceYield = 0;
+    let retainedHits = 0;
+    let skippedIds = null;
+    if (retireSuppressed && options.hiddenIds) {
+      // Eager doom at apply-mint: a parked apply used to leave a suppressed
+      // destroy's target alive+visible for the apply's WHOLE suspension span
+      // ("pops out of existence late"). hiddenIds are suppressed-destroy ids —
+      // never pushed by the live sample — and lastSeenSeq predates seq here,
+      // so the guard admits every resident row; a push in this feed still
+      // re-clears the doom via the retained-hit re-stamp.
+      for (const hiddenId of options.hiddenIds) {
+        const slot = byId.get(hiddenId);
+        if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+            && world.doomed[slot] !== 1) {
+          const resident = world.entityRefs[slot];
+          if (resident && resident === world.boundEntityRefs[slot]
+              && resident.alive !== false) continue;
+          const wasVisible = world.visible[slot] === 1;
+          world.doomed[slot] = 1;
+          world.visible[slot] = 0;
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+    }
+    if (retireSuppressed) {
+      // Extend the mint-time doom to the classes the deferred sweeps would doom
+      // anyway: a parked apply otherwise leaves dead residents and
+      // _noMesh/projectile-ineligible rows drawing at their last pose for the
+      // whole suspension span. Dead residents still retire in the deferred
+      // sweep — only the tombstone lands eagerly.
+      const refs = world.entityRefs;
+      const doomed = world.doomed;
+      const actives = world.activeSlots;
+      for (let s = 0; s < activeCount; s++) {
+        const slot = actives[s];
+        const resident = refs[slot];
+        if (!resident || doomed[slot] === 1) continue;
+        if (resident.alive === false
+            || resident._noMesh === true
+            || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
+          const wasVisible = world.visible[slot] === 1;
+          doomed[slot] = 1;
+          world.visible[slot] = 0;
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+    }
+    for (const entity of entities) {
+      if ((++sinceYield % every) === 0) yield;
+      if (!entity || entity.alive === false) continue;
+      const entityId = sourceEntityId(entity);
+      if (entityId === 0) continue;
+      if (entity._noMesh === true
+          || (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity))) {
+        if (retireSuppressed && byId.get(entityId) !== undefined) {
+          (skippedIds || (skippedIds = [])).push(entityId);
+        }
+        continue;
+      }
+      const generation = typeof generationForEntity === 'function'
+        ? generationForEntity(entity)
+        : 0;
+      let slot = byId.get(entityId);
+      if (slot !== undefined && lastSeenSeq[slot] === seq) {
+        diagnostics.duplicateIdRejects++;
+        continue;
+      }
+      if (slot === undefined || world.alive[slot] !== 1) {
+        allocateEntity(entity, generation);
+        slot = byId.get(entityId);
+        if (slot !== undefined) {
+          lastSeenSeq[slot] = seq;
+          if (world.doomed[slot] === 1) {
+            world.doomed[slot] = 0;
+            // The doom's visible=0 stamp was consumed by the hide sweep — only
+            // a non-TRANSFORM dirty bit re-opens both retain fast paths, so an
+            // un-doomed static row would strand hidden without the re-stamp.
+            if (world.visible[slot] === 0) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
+        }
+        continue;
+      }
+      lastSeenSeq[slot] = seq;
+      if (world.doomed[slot] === 1) {
+        world.doomed[slot] = 0;
+        if (world.visible[slot] === 0) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+      }
+      retainedHits += 1;
+      const previousVisual = world.visualRevisions[slot];
+      refreshVisibleEntity(slot, entity);
+      world.sourceGenerations[slot] = generation >>> 0;
+      world.revisions[slot] = 0;
+      const nextVisual = Number.isSafeInteger(entity.presentationVisualRevision)
+        ? entity.presentationVisualRevision >>> 0 : 0;
+      world.visualRevisions[slot] = nextVisual;
+      if (nextVisual !== previousVisual) {
+        markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
+      }
+    }
+    if (retireSuppressed && (options.hiddenIds || skippedIds)) {
+      if (options.hiddenIds) {
+        for (const hiddenId of options.hiddenIds) {
+          if ((++sinceYield % every) === 0) yield;
+          const slot = byId.get(hiddenId);
+          if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+              && world.doomed[slot] !== 1) {
+            const resident = world.entityRefs[slot];
+            if (resident && resident === world.boundEntityRefs[slot]
+                && resident.alive !== false) continue;
+            const wasVisible = world.visible[slot] === 1;
+            world.doomed[slot] = 1;
+            world.visible[slot] = 0;
+            if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
+        }
+      }
+      if (skippedIds) {
+        for (const hiddenId of skippedIds) {
+          if ((++sinceYield % every) === 0) yield;
+          const slot = byId.get(hiddenId);
+          if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+              && world.doomed[slot] !== 1) {
+            const wasVisible = world.visible[slot] === 1;
+            world.doomed[slot] = 1;
+            world.visible[slot] = 0;
+            if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
+        }
+      }
+    }
+    if (retireSuppressed) {
+      const refs = world.entityRefs;
+      const doomed = world.doomed;
+      const actives = world.activeSlots;
+      const deadResidents = [];
+      for (let s = 0; s < activeCount; s++) {
+        if ((++sinceYield % every) === 0) yield;
+        const slot = actives[s];
+        if (lastSeenSeq[slot] === seq) continue;
+        const resident = refs[slot];
+        if (!resident) continue;
+        if (resident.alive === false) {
+          // Retire precedes the doom skip — an eagerly-minted tombstone must not
+          // shield the dead resident's slot from being freed.
+          if (byId.get(world.entityIds[slot]) === slot) deadResidents.push(slot);
+          continue;
+        }
+        if (doomed[slot] === 1) continue;
+        if (resident._noMesh === true
+            || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
+          const wasVisible = world.visible[slot] === 1;
+          doomed[slot] = 1;
+          world.visible[slot] = 0;
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+      for (const slot of deadResidents) retireSlot(slot);
+    }
+    if (!retireSuppressed && retainedHits !== byId.size) {
+      const aliveCols = world.alive;
+      const idCols = world.entityIds;
+      const actives = world.activeSlots;
+      const absent = [];
+      for (let s = 0; s < activeCount; s++) {
+        if ((++sinceYield % every) === 0) yield;
+        const slot = actives[s];
+        if (aliveCols[slot] === 1 && lastSeenSeq[slot] !== seq
+            && byId.get(idCols[slot]) === slot) absent.push(idCols[slot]);
+      }
+      for (const entityId of absent) retire(entityId);
     }
     diagnostics.rebuilds++;
     return true;
@@ -953,7 +1476,10 @@ export function createPresentationWorld(options = {}) {
     isType,
     consumeAsteroidDirty,
     rebuildFromEntities,
+    updateFromEntities,
+    updateFromEntitiesSteps,
     clear,
+    clearSteps,
     dispose,
     getTypeName: (slot) => typeNames[world.typeCodes[slot]] || '',
     getDiagnostics: () => diagnostics,

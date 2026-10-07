@@ -620,6 +620,7 @@ export const save = {
       ['ravel', () => this._callSerialize('ravel') || {}],
       ['solstice', () => this._callSerialize('solstice') || {}],
       ['rubric', () => this._callSerialize('rubric') || {}],
+      ['ruckus', () => this._callSerialize('ruckus') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
@@ -724,6 +725,7 @@ export const save = {
     data.ravel = this._callSerialize('ravel') || {};
     data.solstice = this._callSerialize('solstice') || {};
     data.rubric = this._callSerialize('rubric') || {};
+    data.ruckus = this._callSerialize('ruckus') || {};
     data.salvage = this._callSerialize('salvage') || {};
     yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
@@ -4732,6 +4734,7 @@ export const save = {
       this._callDeserialize('ravel', data.ravel);
       this._callDeserialize('solstice', data.solstice);
       this._callDeserialize('rubric', data.rubric);
+    this._callDeserialize('ruckus', data.ruckus);
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
@@ -5074,8 +5077,10 @@ export const save = {
       // worth of work has run — cheap tails still finish without a single extra frame, heavy
       // ones paint between batches (the driver's own 16ms gate dedupes any extra yield).
       let saveLoadedDrainSince = nowMs();
+      let saveLoadedDrainGuard = 0;
       while (typeof this.bus.pendingEmitSliceCount === 'function'
-          && this.bus.pendingEmitSliceCount() > 0) {
+          && this.bus.pendingEmitSliceCount() > 0
+          && saveLoadedDrainGuard++ <= 64) { // a listener re-arming sliced emits can't wedge the restore
         // Count AND wall-clock budget: one heavyweight listener would otherwise stretch a
         // count-only slice past the paint deadline — stop the batch after it instead.
         this.bus.drainEmitSlice(4, RESTORE_YIELD_SLICE_MS);

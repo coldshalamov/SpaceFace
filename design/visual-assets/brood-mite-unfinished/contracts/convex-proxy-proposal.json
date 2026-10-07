@@ -1,0 +1,958 @@
+{
+  "schema": "spaceface.broodConvexProposal.v1",
+  "status": "NOT runtime accepted or registered",
+  "sourceSha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+  "units": "WU",
+  "projection": "GLB XZ",
+  "fixedPhysics": "total mass22, radius7.1, COM[-.7,0,0], attack profile unchanged",
+  "nativePlaneSlabY": [
+    -0.65,
+    0.08
+  ],
+  "outlineErrorTargetWU": 0.12,
+  "pieces": [
+    {
+      "id": "abdomen",
+      "points": [
+        [
+          -0.7,
+          -1.358842
+        ],
+        [
+          -0.7,
+          1.358842
+        ],
+        [
+          -1.26256,
+          1.87072
+        ],
+        [
+          -1.86288,
+          2.17584
+        ],
+        [
+          -2.55,
+          2.31
+        ],
+        [
+          -3.49512,
+          2.05864
+        ],
+        [
+          -3.939281,
+          1.73024
+        ],
+        [
+          -5.3,
+          0.04
+        ],
+        [
+          -3.72,
+          -1.92
+        ],
+        [
+          -3.02064,
+          -2.24208
+        ],
+        [
+          -2.08912,
+          -2.24896
+        ],
+        [
+          -1.26256,
+          -1.87072
+        ]
+      ],
+      "midfoldOverfillWU": 0.008,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "thorax",
+      "points": [
+        [
+          -0.7,
+          1.358842
+        ],
+        [
+          -0.7,
+          -1.358842
+        ],
+        [
+          0.14,
+          -1.72
+        ],
+        [
+          0.8,
+          -1.6
+        ],
+        [
+          1.082422,
+          -1.445859
+        ],
+        [
+          1.85,
+          -0.72
+        ],
+        [
+          1.987596,
+          -0.443168
+        ],
+        [
+          1.980383,
+          0.482941
+        ],
+        [
+          1.85,
+          0.72
+        ],
+        [
+          1.082422,
+          1.445859
+        ],
+        [
+          0.8,
+          1.6
+        ],
+        [
+          0.14,
+          1.72
+        ]
+      ],
+      "midfoldOverfillWU": 0.06788225099390856,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_jawab",
+      "points": [
+        [
+          1.325695,
+          -1.436043
+        ],
+        [
+          1.325695,
+          -2.753661
+        ],
+        [
+          1.700069,
+          -2.859735
+        ],
+        [
+          2.884078,
+          -3.050966
+        ],
+        [
+          2.884078,
+          -2.197974
+        ]
+      ],
+      "midfoldOverfillWU": 0.07879086241436883,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_jawbaa",
+      "points": [
+        [
+          2.884078,
+          -2.197974
+        ],
+        [
+          2.884078,
+          -3.050966
+        ],
+        [
+          3.433048,
+          -3.006179
+        ],
+        [
+          3.66327,
+          -2.952613
+        ],
+        [
+          3.66327,
+          -2.27335
+        ]
+      ],
+      "midfoldOverfillWU": 0.032,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_jawbbb",
+      "points": [
+        [
+          5.221653,
+          -2.046299
+        ],
+        [
+          5.999156,
+          -1.59406
+        ],
+        [
+          5.588195,
+          -1.607089
+        ],
+        [
+          5.221653,
+          -1.742793
+        ]
+      ],
+      "midfoldOverfillWU": 0.07879086241436883,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_finaaaaaa",
+      "points": [
+        [
+          -4.884968,
+          -4.040477
+        ],
+        [
+          -4.884968,
+          -3.791605
+        ],
+        [
+          -5.002889,
+          -3.791605
+        ],
+        [
+          -5.154249,
+          -4.168415
+        ]
+      ],
+      "midfoldOverfillWU": 0.0644980619863884,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "midfold",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_finab",
+      "points": [
+        [
+          -4.042617,
+          -2.661175
+        ],
+        [
+          -4.042617,
+          -3.956419
+        ],
+        [
+          -3.532303,
+          -3.929099
+        ],
+        [
+          -3.318065,
+          -3.86761
+        ],
+        [
+          -2.919484,
+          -3.680455
+        ],
+        [
+          -2.919484,
+          -2.486545
+        ],
+        [
+          -3.492881,
+          -2.467876
+        ],
+        [
+          -3.702378,
+          -2.507477
+        ],
+        [
+          -3.914838,
+          -2.584976
+        ]
+      ],
+      "midfoldOverfillWU": 0.07200000000000001,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "midfold",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_finbb",
+      "points": [
+        [
+          -2.455129,
+          -2.339218
+        ],
+        [
+          -1.423062,
+          -2.339218
+        ],
+        [
+          -1.230823,
+          -2.231788
+        ],
+        [
+          -0.673216,
+          -1.682019
+        ],
+        [
+          -1.346784,
+          -0.997981
+        ],
+        [
+          -1.936149,
+          -1.568844
+        ],
+        [
+          -2.258063,
+          -1.991094
+        ]
+      ],
+      "midfoldOverfillWU": 0.008,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "midfold",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_forelega",
+      "points": [
+        [
+          -0.522329,
+          -2.844818
+        ],
+        [
+          -1.669122,
+          -3.323903
+        ],
+        [
+          -0.522329,
+          -3.149798
+        ]
+      ],
+      "midfoldOverfillWU": 0.028844410203711913,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_forelegba",
+      "points": [
+        [
+          -0.522329,
+          -2.844818
+        ],
+        [
+          -0.522329,
+          -3.149798
+        ],
+        [
+          -0.215216,
+          -3.047349
+        ],
+        [
+          0.100957,
+          -2.874188
+        ],
+        [
+          0.408936,
+          -2.63983
+        ],
+        [
+          0.536659,
+          -2.490683
+        ],
+        [
+          0.626219,
+          -2.293314
+        ],
+        [
+          0.626035,
+          -2.24878
+        ],
+        [
+          0.122072,
+          -2.24878
+        ]
+      ],
+      "midfoldOverfillWU": 0.04525483399593905,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_jawab",
+      "points": [
+        [
+          1.325695,
+          1.436043
+        ],
+        [
+          2.884078,
+          2.197974
+        ],
+        [
+          2.884078,
+          3.050966
+        ],
+        [
+          2.665975,
+          3.035207
+        ],
+        [
+          1.530427,
+          2.817335
+        ],
+        [
+          1.325695,
+          2.753661
+        ]
+      ],
+      "midfoldOverfillWU": 0.07879086241436883,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_jawbaa",
+      "points": [
+        [
+          2.884078,
+          2.197974
+        ],
+        [
+          3.66327,
+          2.27335
+        ],
+        [
+          3.66327,
+          2.952613
+        ],
+        [
+          3.105334,
+          3.047024
+        ],
+        [
+          2.884078,
+          3.050966
+        ]
+      ],
+      "midfoldOverfillWU": 0.032,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_jawbbb",
+      "points": [
+        [
+          5.221653,
+          2.046299
+        ],
+        [
+          5.221653,
+          1.742793
+        ],
+        [
+          5.588195,
+          1.607089
+        ],
+        [
+          6.000844,
+          1.60594
+        ]
+      ],
+      "midfoldOverfillWU": 0.07879086241436883,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_finaababa",
+      "points": [
+        [
+          -5.002889,
+          3.791605
+        ],
+        [
+          -4.884968,
+          3.791605
+        ],
+        [
+          -4.884968,
+          4.040477
+        ],
+        [
+          -5.165751,
+          4.157732
+        ]
+      ],
+      "midfoldOverfillWU": 0.0644980619863884,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "midfold",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_finab",
+      "points": [
+        [
+          -4.042617,
+          3.956419
+        ],
+        [
+          -4.042617,
+          2.661175
+        ],
+        [
+          -3.914838,
+          2.584976
+        ],
+        [
+          -3.702378,
+          2.507477
+        ],
+        [
+          -3.492881,
+          2.467876
+        ],
+        [
+          -2.919484,
+          2.486545
+        ],
+        [
+          -2.919484,
+          3.680455
+        ],
+        [
+          -3.418655,
+          3.905354
+        ],
+        [
+          -3.780427,
+          3.950381
+        ]
+      ],
+      "midfoldOverfillWU": 0.07200000000000001,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "midfold",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_finba",
+      "points": [
+        [
+          -1.423062,
+          2.339218
+        ],
+        [
+          -2.455129,
+          2.339218
+        ],
+        [
+          -2.258063,
+          1.991094
+        ],
+        [
+          -1.792837,
+          1.408178
+        ],
+        [
+          -1.346784,
+          0.997981
+        ],
+        [
+          -0.673216,
+          1.682019
+        ],
+        [
+          -1.116978,
+          2.141498
+        ]
+      ],
+      "midfoldOverfillWU": 0.008,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "midfold",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_forelega",
+      "points": [
+        [
+          -0.522329,
+          2.844818
+        ],
+        [
+          -0.522329,
+          3.149798
+        ],
+        [
+          -1.670439,
+          3.318049
+        ]
+      ],
+      "midfoldOverfillWU": 0.028844410203711913,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_forelegbb",
+      "points": [
+        [
+          -0.522329,
+          3.149798
+        ],
+        [
+          -0.522329,
+          2.844818
+        ],
+        [
+          0.122072,
+          2.24878
+        ],
+        [
+          0.626035,
+          2.24878
+        ],
+        [
+          0.626219,
+          2.293314
+        ],
+        [
+          0.536659,
+          2.490683
+        ],
+        [
+          0.408936,
+          2.63983
+        ],
+        [
+          0.100957,
+          2.874188
+        ],
+        [
+          -0.215216,
+          3.047349
+        ]
+      ],
+      "midfoldOverfillWU": 0.04525483399593905,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_jawbab_port_jawbba",
+      "points": [
+        [
+          5.221653,
+          -2.046299
+        ],
+        [
+          5.221653,
+          -1.742793
+        ],
+        [
+          3.66327,
+          -2.27335
+        ],
+        [
+          3.66327,
+          -2.952613
+        ],
+        [
+          4.103683,
+          -2.785856
+        ],
+        [
+          4.967201,
+          -2.259225
+        ]
+      ],
+      "midfoldOverfillWU": 0.06092618484691127,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_jawbab_starboard_jawbba",
+      "points": [
+        [
+          3.66327,
+          2.27335
+        ],
+        [
+          5.221653,
+          1.742793
+        ],
+        [
+          5.221653,
+          2.046299
+        ],
+        [
+          4.570095,
+          2.522659
+        ],
+        [
+          4.103683,
+          2.785856
+        ],
+        [
+          3.66327,
+          2.952613
+        ]
+      ],
+      "midfoldOverfillWU": 0.06092618484691127,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_jawaa_port_jawaa_port_forelegbb_starboard_forelegba",
+      "points": [
+        [
+          1.325695,
+          -2.753661
+        ],
+        [
+          1.325695,
+          2.753661
+        ],
+        [
+          0.122072,
+          2.24878
+        ],
+        [
+          -0.234997,
+          1.652238
+        ],
+        [
+          -0.234997,
+          -1.652238
+        ],
+        [
+          0.122072,
+          -2.24878
+        ]
+      ],
+      "midfoldOverfillWU": 0.07547184905645282,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "static",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_finbbbabb_port_finbabbba_port_finbabba_starboard_finbbbaa_port_finbaba_starboard_finbbbb_port_finbabbbb_starboard_finbbbaba",
+      "points": [
+        [
+          -2.171273,
+          3.090199
+        ],
+        [
+          -2.171273,
+          -3.090199
+        ],
+        [
+          -1.895012,
+          -2.845201
+        ],
+        [
+          -1.423062,
+          -2.339218
+        ],
+        [
+          -1.423062,
+          2.339218
+        ],
+        [
+          -2.023885,
+          2.972722
+        ]
+      ],
+      "midfoldOverfillWU": 0.08616263691415206,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "midfold",
+      "gameplaySolid": true
+    },
+    {
+      "id": "starboard_finaababb_starboard_finaabb_starboard_finbba_starboard_finaaa_starboard_finaabaa",
+      "points": [
+        [
+          -4.884968,
+          4.040477
+        ],
+        [
+          -5.002889,
+          3.791605
+        ],
+        [
+          -4.872796,
+          3.554732
+        ],
+        [
+          -4.392963,
+          2.961113
+        ],
+        [
+          -4.042617,
+          2.661175
+        ],
+        [
+          -2.455129,
+          2.339218
+        ],
+        [
+          -2.171273,
+          2.339218
+        ],
+        [
+          -2.171273,
+          3.090199
+        ],
+        [
+          -2.40666,
+          3.368773
+        ],
+        [
+          -2.618662,
+          3.522839
+        ],
+        [
+          -2.919484,
+          3.680455
+        ],
+        [
+          -4.042617,
+          3.956419
+        ]
+      ],
+      "midfoldOverfillWU": 0.088,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "midfold",
+      "gameplaySolid": true
+    },
+    {
+      "id": "port_finaaaaab_port_finaaab_port_finbaa_port_finaaaab_port_finaab",
+      "points": [
+        [
+          -2.455129,
+          -2.339218
+        ],
+        [
+          -4.042617,
+          -2.661175
+        ],
+        [
+          -4.248075,
+          -2.817823
+        ],
+        [
+          -4.767332,
+          -3.40856
+        ],
+        [
+          -5.002889,
+          -3.791605
+        ],
+        [
+          -4.884968,
+          -4.040477
+        ],
+        [
+          -4.042617,
+          -3.956419
+        ],
+        [
+          -2.919484,
+          -3.680455
+        ],
+        [
+          -2.618662,
+          -3.522839
+        ],
+        [
+          -2.40666,
+          -3.368773
+        ],
+        [
+          -2.171273,
+          -3.090199
+        ],
+        [
+          -2.171273,
+          -2.339218
+        ]
+      ],
+      "midfoldOverfillWU": 0.08944271909999159,
+      "kind": "convex_polygon",
+      "queryAuthority": "proposal-only-not-runtime",
+      "sourcePose": "midfold",
+      "gameplaySolid": true
+    }
+  ],
+  "pieceCount": 24,
+  "initialSplitCount": 44,
+  "rasterStepWU": 0.008,
+  "quantizationErrorBoundWU": 0.022627416997969524,
+  "poses": {
+    "approach": {
+      "visibleToProxyMaxWU": 0.0737563556583431,
+      "proxyToVisibleMaxWU": 0.07879086241436883
+    },
+    "windup": {
+      "visibleToProxyMaxWU": 0.0737563556583431,
+      "proxyToVisibleMaxWU": 0.08944271909999159
+    },
+    "attack": {
+      "visibleToProxyMaxWU": 0.0737563556583431,
+      "proxyToVisibleMaxWU": 0.07879086241436883
+    },
+    "recovery": {
+      "visibleToProxyMaxWU": 0.0737563556583431,
+      "proxyToVisibleMaxWU": 0.07879086241436883
+    }
+  },
+  "clearVolumeJawOverlapPixels": 0,
+  "oldProxyMismatch": {
+    "approach": {
+      "visibleToOldMaxWU": 0.665203728191597,
+      "oldToVisibleMaxWU": 1.1126904331394245
+    },
+    "windup": {
+      "visibleToOldMaxWU": 0.665203728191597,
+      "oldToVisibleMaxWU": 1.0771815074535953
+    },
+    "attack": {
+      "visibleToOldMaxWU": 0.665203728191597,
+      "oldToVisibleMaxWU": 1.1126904331394245
+    },
+    "recovery": {
+      "visibleToOldMaxWU": 0.665203728191597,
+      "oldToVisibleMaxWU": 1.1019401072653632
+    }
+  },
+  "minimality": "Greedy pairwise-minimal within .090 WU four-pose overfill; global minimum not claimed",
+  "neededRuntime": "Canonical convex subpart support shared by native, projectile, LOS, tether/query and metrics, not render-only interpretation"
+}

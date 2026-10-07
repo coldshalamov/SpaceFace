@@ -38,14 +38,59 @@ export const DECODE_CLASS_RANK = Object.freeze({ ambient: 0, deadline: 1, visibl
 // in paced main-thread JS. Slicers report their measured slice spend here; a slicer that runs
 // later in the same frame window can read what the frame has already spent and stand down for
 // the frame instead of stacking its budget on top.
+//
+// The wallet is keyed on the present boundary, not a wall-clock window: an 8ms
+// anchor re-mints a fresh wallet per >8ms frame, so the effective budget scaled
+// with frame length — worst exactly on the heavy frames the ledger exists for.
+// A lazily-armed rAF pump bumps the epoch each displayed frame; spend minted
+// under an older epoch is invisible to this frame's readers. Headless hosts
+// (no rAF) keep the legacy 8ms wall-clock window — there are no presents to key.
 const PACE_FRAME_WINDOW_MS = 8;
 const paceNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
   ? () => performance.now()
   : () => Date.now();
 let paceFrameStartedAt = -Infinity;
 let paceFrameSpentMs = 0;
+let paceFrameEpoch = 0;
+let paceSpentEpoch = -1;
+let pacePumpArmed = false;
+// Last pump fire in wall-clock ms: a hidden/occluded window freezes the epoch
+// while paced spend keeps accumulating — beyond this age the wallet re-keys on
+// the 8ms window instead of reading permanently over-budget. 250ms sits above
+// the worst honest presented frame (a 4fps hitch) so ordinary slow frames keep
+// epoch-keyed isolation while a genuinely starved pump still falls back.
+let pacePumpFiredAt = 0;
+const PACE_EPOCH_STALE_MS = 250;
+
+function paceEpochNow() {
+  // Only a real browser frame loop keys the epoch — headless/test hosts that stub
+  // globalThis.requestAnimationFrame (often microtask-driven) would either hang the
+  // pump's self-re-arm chain or freeze the epoch and livelock paced drains. No
+  // `window` means no presents, so the wall-clock window below is the right key.
+  if (typeof window !== 'object' || typeof window.requestAnimationFrame !== 'function') return -1;
+  if (!pacePumpArmed) {
+    pacePumpArmed = true;
+    const pump = () => {
+      paceFrameEpoch += 1;
+      pacePumpFiredAt = paceNow();
+      window.requestAnimationFrame(pump);
+    };
+    window.requestAnimationFrame(pump);
+  }
+  if (paceNow() - pacePumpFiredAt > PACE_EPOCH_STALE_MS) return -1;
+  return paceFrameEpoch;
+}
 
 export function notePacedFrameSpend(ms) {
+  const epoch = paceEpochNow();
+  if (epoch >= 0) {
+    if (paceSpentEpoch !== epoch) {
+      paceSpentEpoch = epoch;
+      paceFrameSpentMs = 0;
+    }
+    paceFrameSpentMs += Math.max(0, Number(ms) || 0);
+    return;
+  }
   const t = paceNow();
   if (t - paceFrameStartedAt >= PACE_FRAME_WINDOW_MS) {
     paceFrameStartedAt = t;
@@ -55,6 +100,8 @@ export function notePacedFrameSpend(ms) {
 }
 
 export function pacedFrameSpend() {
+  const epoch = paceEpochNow();
+  if (epoch >= 0) return paceSpentEpoch === epoch ? paceFrameSpentMs : 0;
   const t = paceNow();
   return (t - paceFrameStartedAt < PACE_FRAME_WINDOW_MS) ? paceFrameSpentMs : 0;
 }
@@ -207,6 +254,21 @@ const GLTF_PARSE_FRAME_LIMIT = 2;
 const gltfParsePending = [];
 let gltfParseDrainScheduled = false;
 
+// A hidden or occluded tab can starve rAF for the whole load, wedging every
+// queued drain behind the never-firing arm until an outer timeout bounces it.
+// Dual-arm with a short timer: under real frames rAF wins and the drain runs
+// where it always did; starved hosts converge at timer cadence.
+function armFrameDrain(callback) {
+  let fired = false;
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    callback();
+  };
+  requestAnimationFrame(fire);
+  setTimeout(fire, 48);
+}
+
 function drainGltfParseQueue() {
   const batch = gltfParsePending.splice(0, GLTF_PARSE_FRAME_LIMIT);
   for (const task of batch) {
@@ -214,7 +276,7 @@ function drainGltfParseQueue() {
   }
   // The tail must keep draining without a new push — re-arm while items remain
   // (the flag stays latched so pushes during the drain just enqueue).
-  if (gltfParsePending.length) requestAnimationFrame(drainGltfParseQueue);
+  if (gltfParsePending.length) armFrameDrain(drainGltfParseQueue);
   else gltfParseDrainScheduled = false;
 }
 
@@ -224,7 +286,7 @@ export function scheduleGltfParse(fn) {
     gltfParsePending.push({ fn, resolve, reject });
     if (gltfParseDrainScheduled) return;
     gltfParseDrainScheduled = true;
-    requestAnimationFrame(drainGltfParseQueue);
+    armFrameDrain(drainGltfParseQueue);
   });
 }
 
@@ -241,6 +303,8 @@ export function scheduleGltfParse(fn) {
 // the compile itself — one heavy task may exceed the budget exactly as it did before, the
 // minimum is one task per frame, and the per-frame worst case stays budget + one compile.
 const GLTF_COMPILE_FRAME_MS = 4;
+/** The per-frame paced-work budget every slicer drains against (`pacedFrameSpend`). */
+export const PACED_FRAME_BUDGET_MS = GLTF_COMPILE_FRAME_MS;
 const gltfCompilePending = { visible: [], deadline: [], ambient: [] };
 // token -> { entry, lane } for entries still queued — a joiner re-grades a task whose tail
 // already enqueued at a lower class (mirrors budget.promote's queued-waiter re-grade).
@@ -267,7 +331,7 @@ function drainGltfCompileQueue() {
   // starving ambient compile tails indefinitely.
   if (pacedFrameSpend() >= GLTF_COMPILE_FRAME_MS && gltfCompileFramesSkipped < GLTF_COMPILE_MAX_SKIPPED_FRAMES) {
     gltfCompileFramesSkipped += 1;
-    requestAnimationFrame(drainGltfCompileQueue);
+    armFrameDrain(drainGltfCompileQueue);
     return;
   }
   gltfCompileFramesSkipped = 0;
@@ -287,7 +351,7 @@ function drainGltfCompileQueue() {
     || gltfCompilePending.deadline.length
     || gltfCompilePending.ambient.length;
   // Same re-arm contract as the parse drain: the tail must keep draining without a new push.
-  if (pending) requestAnimationFrame(drainGltfCompileQueue);
+  if (pending) armFrameDrain(drainGltfCompileQueue);
   else gltfCompileDrainScheduled = false;
 }
 
@@ -300,7 +364,7 @@ export function scheduleGltfCompile(fn, decodeClass, token) {
     if (token) gltfCompileEntries.set(token, { entry, lane });
     if (gltfCompileDrainScheduled) return;
     gltfCompileDrainScheduled = true;
-    requestAnimationFrame(drainGltfCompileQueue);
+    armFrameDrain(drainGltfCompileQueue);
   });
 }
 

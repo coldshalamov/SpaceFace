@@ -108,6 +108,9 @@ export function dropDressingRow(state, id) {
   const row = table.byId && table.byId.get(id);
   if (!row) return false;
   const idx = table.rows.indexOf(row);
+  // Stamp dead before unlinking: a stepped journal collect holding a snapshot
+  // ref must read alive=false at publish or the dropped row respawns.
+  row.alive = false;
   if (idx >= 0) table.rows.splice(idx, 1);
   table.byId.delete(id);
   table.version++;
@@ -125,6 +128,8 @@ export function dropDressingSector(state, sectorId, keep = null) {
     const home = row && (row.homeSectorId || (row.data && row.data.homeSectorId));
     if (home !== sectorId) continue;
     if (typeof keep === 'function' && keep(row)) continue;
+    // Same dead stamp — snapshot refs held by an in-flight collect skip it.
+    row.alive = false;
     table.rows.splice(i, 1);
     table.byId.delete(row.id);
     clearEntityRuntime(row);

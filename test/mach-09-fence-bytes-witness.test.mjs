@@ -66,15 +66,15 @@ test('bytes-packed stats reduce the retained commit ring to p50/p95/max', () => 
 
 test('seed-4242 Ceres fight-sized pack records its numbers', () => {
   // Deterministic reference pack for a Ceres belt fight: 212 visible bodies recorded on the
-  // seed-4242 scenario. 212 * 72 = 15264 bytes/frame at the current column width — the number
+  // seed-4242 scenario. 212 * 76 = 16112 bytes/frame at the current column width — the number
   // the witness must be able to say when someone asks what the fight costs the present.
   const fence = createSnapshotFence({ capacity: 256 });
   const packed = packPresentationWorldToFence(fakeWorld(212), fence, 4242, 1);
   assert.equal(packed, 212);
-  assert.equal(fence.lastBytesPacked, 212 * PACKED_BYTES_PER_ENTITY); // 15264
+  assert.equal(fence.lastBytesPacked, 212 * PACKED_BYTES_PER_ENTITY); // 16112
   const stats = fence.bytesPackedStats();
-  assert.equal(stats.p50, 15264);
-  assert.equal(stats.p95, 15264);
+  assert.equal(stats.p50, 16112);
+  assert.equal(stats.p95, 16112);
 });
 
 test('the witness sample carries fence bytes and the report prints p50/p95', () => {

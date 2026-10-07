@@ -1,0 +1,14 @@
+✔ physical tuning, inertia envelope and contact reach remain unchanged (1.31ms)
+✔ all three tiers fit existing triangle, draw, material and pivot budgets (0.320001ms)
+✔ strict bounded convex proposal and exact empty head fork (1.598544ms)
+✔ Forge motion bank binds actual cold GLB nodes and rest poses (1.632665ms)
+✔ all 60 Hz motion keys exactly mirror actual Charger driver curves (1.910332ms)
+✔ all editable source tiers are finite closed anatomical meshes (0.241323ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 81.955752
