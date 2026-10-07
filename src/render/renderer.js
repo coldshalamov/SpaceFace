@@ -887,6 +887,10 @@ const FLIGHT_ADMISSION_PRESENT_BOUND_MS = 24;
 // Culled-root subtree freeze mints drain this many roots per syncEntityViews
 // pass (see _queueHiddenSubtreeFreeze) so a cull storm amortizes over frames.
 const HIDDEN_FREEZE_MINT_ROOTS_PER_PASS = 6;
+// Stale drops are bounded too: unbind/re-show waves can leave thousands of
+// dead entries ahead of live ones, and a full-length scan inside one pass is
+// itself the in-frame burst this queue exists to prevent.
+const HIDDEN_FREEZE_SCAN_PER_PASS = 256;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -21026,12 +21030,18 @@ export const render = {
     const pending = this._pendingHiddenFreeze;
     if (!pending || pending.length === 0) return;
     let minted = 0;
-    while (pending.length > 0 && minted < HIDDEN_FREEZE_MINT_ROOTS_PER_PASS) {
-      const mesh = pending.shift();
+    let consumed = 0;
+    while (consumed < pending.length && minted < HIDDEN_FREEZE_MINT_ROOTS_PER_PASS
+        && consumed < HIDDEN_FREEZE_SCAN_PER_PASS) {
+      const mesh = pending[consumed++];
       const ud = mesh.userData || {};
+      // Unbind clears the flag precisely so its entry cannot mint: honor it
+      // before any other check or a pooled reuse inherits a full subtree
+      // freeze the world no longer owns. A row re-shown, detached, or
+      // restored mid-queue drops out instead of minting a freeze on a subtree
+      // that is live again.
+      if (ud.sfHiddenFreezeQueued !== true) continue;
       delete ud.sfHiddenFreezeQueued;
-      // A row re-shown, detached, or restored mid-queue drops out instead of
-      // minting a freeze on a subtree that is live again.
       if (ud.sfHiddenFrozen === true || mesh.matrixAutoUpdate !== true
           || mesh.visible === true || !mesh.parent) continue;
       // Compose before freezing: writers skip the hook once the flag is true,
@@ -21042,6 +21052,10 @@ export const render = {
       freezeHiddenSubtreeMatrices(mesh);
       minted += 1;
     }
+    // Head-index walk + one splice: per-entry shift() costs O(length) each,
+    // which turns a fully-stale storm queue into O(n²) element moves inside a
+    // single sync pass.
+    pending.splice(0, consumed);
   },
 
   _queueAssetResidencyDiagnosticsPublish() {

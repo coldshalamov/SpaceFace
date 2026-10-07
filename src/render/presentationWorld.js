@@ -1479,6 +1479,7 @@ export function createPresentationWorld(options = {}) {
     handleForSlot,
     slotForHandle,
     getSlotForEntityId: (entityId) => byId.get(entityId) ?? INVALID_INDEX,
+    liveSlotValues: () => byId.values(),
     isHandleValid: (handle) => slotForHandle(handle) >= 0,
     collectSpatialBounds,
     collectSpecialSlots,

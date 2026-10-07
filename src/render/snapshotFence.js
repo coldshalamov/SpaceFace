@@ -395,17 +395,22 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
   if (!world || !fence) return 0;
   const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
   const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
+  // Structural counters captured at mint: while neither moves, no row can have
+  // been appended, swap-moved, or recycled, and the post-mint sweeps are pure
+  // re-verification — a quiet pack skips the O(active) membership walk.
+  const allocationsAtMint = diagnostics ? (diagnostics.allocations | 0) : 0;
+  const retirementsAtMint = diagnostics ? (diagnostics.retirements | 0) : 0;
   const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch);
   const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
   const previousIndex = previous && previous.poseEpoch === poseEpoch
     ? (previous.indexByEntityId || null) : null;
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   let packed = 0;
-  // Identity coverage of the two sweeps: a mid-park allocation swap-moved into
-  // the frozen prefix escapes both lists, and only this set can prove the row
-  // was actually packed (positions lie once swap-remove runs mid-park). The key
-  // is slot+generation, not slot alone — a retire+realloc mid-park reuses the
-  // slot number for a new entity, and that row must still pack.
+  // Identity coverage of the sweeps: a mid-park allocation swap-moved into
+  // the frozen prefix escapes the minted list, and only this set can prove the
+  // row was actually packed (positions lie once swap-remove runs mid-park). The
+  // key is slot+generation, not slot alone — a retire+realloc mid-park reuses
+  // the slot number for a new entity, and that row must still pack.
   const packedSlotGens = new Map();
   const packRow = (slot) => {
     if (world.alive[slot] !== 1) return;
@@ -474,26 +479,27 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     if ((index % every) === 0 && index > 0) yield;
     packRow(mintedSlots[index]);
   }
-  // Rows allocated while the pack was parked sit past the frozen bound — sweep
-  // them into this commit or spawn admission waits a whole pack round. Rows
-  // only move toward lower indices under swap-remove, so the appended region
-  // can never duplicate a frozen-prefix slot.
-  const appendedSlots = world.activeSlots
-    ? world.activeSlots.slice(active, (world.getDiagnostics().active | 0)) : [];
-  for (let index = 0; index < appendedSlots.length; index++) {
-    if (((index + active) % every) === 0 && (index + active) > 0) yield;
-    packRow(appendedSlots[index]);
-  }
-  // A row minted into the appended region can be swap-moved into the frozen
-  // prefix before the appended slice is taken — it then escapes both sweeps and
-  // the committed snapshot lacks a live row for a frame. Membership, not
-  // position, is exact: one bounded scan catches whatever the sweeps missed
-  // (packRow is a no-op for a retired row).
-  if (world.activeSlots) {
-    const activeNow = world.getDiagnostics().active | 0;
-    for (let index = 0; index < activeNow; index++) {
-      const slot = world.activeSlots[index];
-      if ((index % every) === 0 && index > 0) yield;
+  // Rows allocated or retired while the pack was parked escape any positional
+  // bound: appends land past the frozen mint slice, and a retire swap-moves a
+  // live row into territory already swept (while the rescanned stale tail can
+  // carry a duplicate that a later alloc then clobbers). Membership, not
+  // position, is exact — the live id→slot index is position-free, and Map
+  // iteration visits mid-walk inserts while skipping deleted keys, so a churn
+  // burst inside one parked pack can neither miss a spawn nor pack a corpse.
+  // Only worth paying when the world mutated mid-park: a quiet pack's frozen
+  // slice already covered every live row (packRow is a no-op for a retired
+  // row, and dedupes anything the minted sweep already packed).
+  const postDiagnostics = typeof world.getDiagnostics === 'function'
+    ? world.getDiagnostics() : null;
+  const worldChurned = postDiagnostics === null
+    ? true
+    : ((postDiagnostics.allocations | 0) !== allocationsAtMint
+      || (postDiagnostics.retirements | 0) !== retirementsAtMint);
+  if (worldChurned && typeof world.liveSlotValues === 'function') {
+    let scanned = 0;
+    for (const slot of world.liveSlotValues()) {
+      if ((scanned % every) === 0 && scanned > 0) yield;
+      scanned += 1;
       packRow(slot);
     }
   }

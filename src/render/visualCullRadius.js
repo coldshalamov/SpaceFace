@@ -57,6 +57,13 @@ function motionTravelPadFor(mesh) {
  * string. A pending substrate (authoredAssetState not yet 'authored*') must not define the
  * size, so callers only reach this once the authored body has landed.
  */
+// Interior subtree grafts (a grandchild splice under unchanged assetState /
+// composition / lodLevel / direct-child-count) move none of the cache keys, so
+// a continuously-visible row could keep a stale-large envelope forever. A
+// cheap cadence bound re-measures periodically, jittered by mesh id so a scene
+// of same-age roots doesn't expire on one frame.
+const DRAWN_CULL_REMEASURE_CALLS = 600;
+
 function drawnCullRadiusForMesh(mesh) {
   const data = mesh && mesh.userData;
   if (!data || mesh.isObject3D !== true || !_drawnCullBox) return 0;
@@ -66,7 +73,8 @@ function drawnCullRadiusForMesh(mesh) {
   const childCount = mesh.children ? mesh.children.length : 0;
   const cached = data.drawnCullRadius;
   if (cached && cached.assetState === assetState && cached.compositionId === compositionId
-    && cached.lodLevel === lodLevel && cached.childCount === childCount) {
+    && cached.lodLevel === lodLevel && cached.childCount === childCount
+    && ++cached.calls < DRAWN_CULL_REMEASURE_CALLS + ((mesh.id | 0) & 63)) {
     return cached.radius;
   }
   _drawnCullBox.setFromObject(mesh);
@@ -88,6 +96,7 @@ function drawnCullRadiusForMesh(mesh) {
   rec.compositionId = compositionId;
   rec.lodLevel = lodLevel;
   rec.childCount = childCount;
+  rec.calls = 0;
   rec.radius = radius;
   return radius;
 }
