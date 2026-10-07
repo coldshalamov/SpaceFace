@@ -204,6 +204,7 @@ export class GyreSnarePresentation {
     this._beamWasOn = false;
     this._closing = false;   // close-ramp: non-launch ends ease the glass out over ~250 ms
     this._closeT = 0;
+    this._closeSpan = 0.25;  // ramp seconds — a strain break snaps down in ~120 ms instead
     this._closeK = 0;        // last k*k of the ramp — the clump group shrinks on it
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
     this._moteKick = 0;      // absorb gulp: the mote spiral's own clock surges for a beat
@@ -485,7 +486,10 @@ export class GyreSnarePresentation {
     else this._quiet = false;
 
     const clock = Number.isFinite(state.simTime) ? state.simTime : this.time + dt;
-    if (clock < this.time) this._clearLumps();   // restored sim rewound the clock
+    // Restored sim rewound the clock — the ledger AND every phase accumulator go back
+    // to zero, or the first post-restore gulp dedupes against a pre-rewind _absorbSeen
+    // and clump/motes snap against their frozen phase.
+    if (clock < this.time) { this._clearLumps(); this._absorbSeen = 0; this._clumpSpin = 0; this._moteT = 0; }
     const sdt = Math.max(0, clock - this.time);  // sim-domain delta — every accumulator
     this.time = clock;                           // below rides the same clock as the sim,
                                                  // so bullet-time/pause freeze the lash
@@ -532,9 +536,12 @@ export class GyreSnarePresentation {
       // their opacity — the verb's face visibly swallows. During the coil the maw
       // also draws tight off launchWindup01 — the glass itself tenses before the bloom.
       const windup = phase === 'launching' ? clamp01(finite(mirror.launchWindup01)) : 0;
-      this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick + 0.08 * windup)); // uniform — the torus circle spans local X and Y
+      this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick + 0.16 * windup)); // uniform — the torus circle spans local X and Y
       this._disc.position.set(len + 1.5, 0, 0);
-      this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick + 0.05 * windup));
+      this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick + 0.10 * windup));
+      // The coil also raises the cone's pulse floor — the glass visibly tenses while it
+      // winds back, legible at combat range where a subtle maw choke alone was too quiet.
+      this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.55 * windup);
 
       const holding = phase === 'holding';
       const strain = clamp01(finite(mirror.strain01));
@@ -607,10 +614,23 @@ export class GyreSnarePresentation {
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
       // down over ~0.25 s instead of popping — the collapse is part of the payoff.
-      if (this._beamWasOn) { this._beamWasOn = false; this._closing = true; this._closeT = 0; }
+      if (this._beamWasOn) {
+        this._beamWasOn = false;
+        this._closing = true;
+        this._closeT = 0;
+        // A strain break is a TEAR, not a polite release: the glass snaps down in
+        // ~120 ms (half the normal ramp) and a ring blooms where the core slipped —
+        // the sim publishes the drop reason so the close reads it. Every other close
+        // (release, post-launch, boundary) keeps the ~250 ms ease.
+        this._closeSpan = mirror.dropReason === 'strained' ? 0.12 : 0.25;
+        if (mirror.dropReason === 'strained') {
+          this._fireBurst(finite(mirror.corePos.x), finite(mirror.corePos.z),
+            Math.max(6, finite(mirror.clumpRadius, 8) * 1.4), flashCalm);
+        }
+      }
       if (this._closing) {
         this._closeT += sdt;
-        const k = Math.max(0, 1 - this._closeT / 0.25);
+        const k = Math.max(0, 1 - this._closeT / (this._closeSpan || 0.25));
         const kk = k * k;
         if (calm !== 0) this._moteT += sdt; // motes keep spiraling while they die (frozen under reduced-motion, same as live)
         this._spiralMat.uniforms.uTime.value = this._moteT;
@@ -847,7 +867,7 @@ export class GyreSnarePresentation {
         // release edge shouldn't mute the vocabulary (mirror.launchedId is the marker).
         const fx = cx != null ? cx : finite(mirror.ballPos.x, finite(mirror.corePos.x));
         const fz = cx != null ? cz : finite(mirror.ballPos.z, finite(mirror.corePos.z));
-        this._fireBurst(fx, fz, Math.max(6, finite(mirror.clumpRadius, 8) * 1.1));
+        this._fireBurst(fx, fz, Math.max(6, finite(mirror.clumpRadius, 8) * 1.1), flashCalm);
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.5);
         this._throwBeat = false;
       }
@@ -867,7 +887,7 @@ export class GyreSnarePresentation {
       const bx = mirror.ballPos ? finite(mirror.ballPos.x) : finite(mirror.corePos && mirror.corePos.x);
       const bz = mirror.ballPos ? finite(mirror.ballPos.z) : finite(mirror.corePos && mirror.corePos.z);
       const br = Math.max(6, finite(mirror.ballClumpRadius, finite(mirror.clumpRadius, 8)) * 2.2);
-      this._fireBurst(bx, bz, br);
+      this._fireBurst(bx, bz, br, flashCalm);
       this._coneMat.uniforms.uPulse.value = 1;
     }
 
@@ -901,6 +921,7 @@ export class GyreSnarePresentation {
     for (const b of this._bursts) { b.mesh.geometry.dispose(); b.mesh.material.dispose(); }
     if (this._basinGlows && this._basinGlows.length) {
       this._basinGlows[0].geometry.dispose();
+      for (const g of this._basinGlows) this.scene.remove(g);
       for (const g of this._basinGlows) g.material.dispose();
     }
   }

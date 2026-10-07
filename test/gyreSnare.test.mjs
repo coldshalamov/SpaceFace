@@ -415,6 +415,8 @@ test('a violently flung core breaks the hold at the strain distance (no launch)'
   assert.equal(t.sys._rt.ballId, null, 'a strained clump is freed, never bowled');
   assert.equal(body.data.gyreCore, undefined, 'strained core is unmarked');
   assert.ok(!t.events.some((e) => e.name === 'gyre:launched'), 'strain break never launches');
+  assert.equal(t.state.gyreSnare.dropReason, 'strained',
+    'the mirror publishes the tear so the close can read it');
   t.cleanup();
 });
 
@@ -706,8 +708,10 @@ test('a ball dying at its TTL fires the muffled shatter; an impact death does no
   for (let i = 0; i < 8; i++) t.sim.step();
   assert.equal(t.sys._rt.ballId, null);
   assert.ok(!t.state.entities.has(ball.id) || ball.alive === false, 'the sweep took the body');
-  assert.ok(t.events.some((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death'),
-    'TTL expiry sings the muffled shatter');
+  const deaths = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death');
+  assert.equal(deaths.length, 1, `the primary ball graves exactly once (got ${deaths.length})`);
+  assert.ok(!t.sys._rt.ballIds.includes(ball.id),
+    'a retired primary unwatches — a lingering id re-fired its own grave the next tick');
   t.cleanup();
 
   const t2 = await bootPhysics();
@@ -1214,7 +1218,7 @@ test('the launch burst still drains cap at the 1x rate', async () => {
   t.cleanup();
 });
 
-test('the ball watch list hands a live marked ball back on eviction', async () => {
+test('the ball watch list drops its oldest watch without stripping a live ball\'s marks', async () => {
   const t = await bootPhysics();
   const a = rock(t.sim, T.mawDist, 0, 40, 6);
   a.physicsBody.impactDamageScale = 0.2;
@@ -1232,8 +1236,16 @@ test('the ball watch list hands a live marked ball back on eviction', async () =
     release(t);
     for (let j = 0; j < 8; j++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
   }
-  assert.equal(a.data.gyreLaunched, undefined, 'the evicted ball is handed back, not orphaned');
-  assert.equal(a.physicsBody.impactDamageScale, 0.2, 'authored scale restored on eviction');
+  // Every slot is a live marked ball: the oldest drops its WATCH but keeps its marks —
+  // handing back mid-flight would strip pull/snag immunity + launch kill-credit while it
+  // still flies. Its own despawnAt still retires it; the residue sweep re-watches the mark
+  // on any future load.
+  assert.equal(a.data.gyreLaunched, true,
+    'the evicted ball keeps its marks — immunity + kill credit ride the flight');
+  assert.equal(a.data.gyrePrevImpactScale, 0.2,
+    'the authored scale stays stashed for whatever adopts the ball later');
+  assert.ok(Number.isFinite(a.data.despawnAt) && a.data.despawnAt > t.state.simTime,
+    'its own deadline still retires it — no orphan');
   t.cleanup();
 });
 
@@ -1436,23 +1448,25 @@ test('save:loaded with >8 live balls bounds the watch and adopts the freshest', 
     };
     balls.push(b);
   }
-  // A serialized ball can carry pre-snag lifetime stashes — the overflow hand-back
-  // must consume them WITHOUT clobbering the launch deadline still on the body.
+  // A serialized ball can carry pre-snag lifetime stashes — the overflow eviction
+  // keeps marks, so the stashes ride inert rather than clobbering anything.
   balls[0].data.gyrePrevDespawnAt = t.state.simTime + 999;
   balls[0].data.gyrePrevTtl = 5;
   const keptDeadline = balls[0].data.despawnAt;
+  const keptStash = balls[0].data.gyrePrevDespawnAt;
   t.bus.emit('save:loaded', {});
   t.sim.step();
   assert.equal(t.sys._rt.ballIds.length, 8, 'the watch list stays bounded at 8');
-  // Overflow retires the earliest-tracked balls through the full hand-back —
-  // marks stripped, not orphaned.
-  assert.equal(balls[0].data.gyreLaunched, undefined, 'overflow ball handed back');
-  assert.equal(balls[0].data.gyreLaunchMeta, undefined, 'its credit meta goes with the mark');
+  // Overflow retires the earliest-tracked WATCHES but keeps every live ball's marks —
+  // all 10 slots are live+marked, so no hand-back runs: immunity + kill credit stay on.
+  assert.equal(balls[0].data.gyreLaunched, true, 'overflow ball keeps its mark');
+  assert.ok(balls[0].data.gyreLaunchMeta != null, 'its credit meta stays with the mark');
   assert.equal(balls[0].data.despawnAt, keptDeadline,
-    'the live launch deadline stands — the stash must not clobber it');
-  assert.equal(balls[0].data.gyrePrevDespawnAt, undefined, 'the despawnAt stash is consumed');
-  assert.equal(balls[0].data.gyrePrevTtl, undefined, 'the ttl stash is consumed');
-  assert.equal(balls[1].data.gyreLaunched, undefined, 'second overflow handed back too');
+    'the live launch deadline stands — the overflow retires the watch only');
+  assert.equal(balls[0].data.gyrePrevDespawnAt, keptStash,
+    'the despawnAt stash rides inert until a real hand-back');
+  assert.equal(balls[0].data.gyrePrevTtl, 5, 'the ttl stash rides along too');
+  assert.equal(balls[1].data.gyreLaunched, true, 'second overflow keeps its mark too');
   assert.equal(balls[9].data.gyreLaunched, true, 'the youngest ball keeps its mark');
   assert.equal(t.sys._rt.ballId, balls[9].id,
     'the HUD mirror adopts the freshest deadline, not iteration order');
@@ -1589,5 +1603,37 @@ test('basinSpots publishes the pulled bodies so the victim glow has a target', a
   for (let i = 0; i < 8; i++) t.sim.step();
   assert.equal(t.state.gyreSnare.basinSpots.length, 0, 'spots die with the beam');
   assert.ok(ids.length === 2);
+  t.cleanup();
+});
+
+// ── wave-22 coverage ────────────────────────────────────────────────────────────
+test('the lash never eats pickups — tugged, never merged (loot is not katamari fuel)', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4); // the core
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const core = t.state.entities.get(t.sys._rt.coreId);
+  // Loot right on the clump's skin — inside the suck band where an absorbable would merge.
+  const loot = rock(t.sim, core.pos.x + 6, core.pos.z, 2, 2, 'pickup');
+  const members0 = t.sys._rt.members.length;
+  for (let i = 0; i < 90; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const alive = t.state.entities.get(loot.id);
+  assert.ok(alive && alive.alive !== false, 'the pickup survives pressed against the clump');
+  assert.equal(t.sys._rt.members.length, members0, 'never merged into the clump ledger');
+  t.cleanup();
+});
+
+test('fuseS publishes the burn countdown during hold and dies with the beam', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  assert.ok(t.state.gyreSnare.fuseS > 0 && Number.isFinite(t.state.gyreSnare.fuseS),
+    `fuse reads positive while holding (got ${t.state.gyreSnare.fuseS})`);
+  release(t);
+  for (let i = 0; i < T.launchWindupTicks + T.launchTicks + 4; i++) t.sim.step();
+  assert.equal(t.state.gyreSnare.fuseS, 0, 'no fuse once the beam is gone');
   t.cleanup();
 });

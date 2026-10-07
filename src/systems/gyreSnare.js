@@ -102,6 +102,7 @@ function freshRuntime() {
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
     basinSpots: [],        // bounded {x,z,r} of bodies actually being dragged — the victim-side pull glow
+    dropReason: null,      // last _drop cause ('strained', 'released', ...) — presentation reads it for the close shape
   };
 }
 
@@ -168,6 +169,7 @@ export const gyreSnare = {
     }
     const droppedPhase = rt.phase;
     const droppedMass = rt.clumpMass;
+    rt.dropReason = reason || 'dropped'; // a strain break is a tear, not a polite release — the close reads the reason
     rt.phase = PHASE.OFF;
     rt.coreId = null;
     rt.clumpMass = 0;
@@ -364,10 +366,30 @@ export const gyreSnare = {
     if (!rt) return; // destroy() before init() — nothing to watch
     if (!rt.ballIds.includes(id)) rt.ballIds.push(id);
     while (rt.ballIds.length > 8) {
-      const e = this.state && this.state.entities ? this.state.entities.get(rt.ballIds[0]) : null;
-      if (e && e.alive !== false && e.data && e.data.gyreLaunched) this._handBack(e);
-      rt.ballIds.shift();
+      // Dead/already-unmarked slots retire first. When EVERY slot is a live marked
+      // ball, evict the oldest WITHOUT _handBack — stripping gyreLaunched mid-flight
+      // would drop its pull/snag immunity + launch kill-credit while it still flies.
+      // Its despawnAt still retires it and the residue sweep still clears the mark;
+      // it only loses its quiet-TTL grave cue.
+      let evict = 0;
+      for (let i = 0; i < rt.ballIds.length; i++) {
+        const e = this.state && this.state.entities ? this.state.entities.get(rt.ballIds[i]) : null;
+        if (!e || e.alive === false || !(e.data && e.data.gyreLaunched)) { evict = i; break; }
+      }
+      const victim = this.state && this.state.entities ? this.state.entities.get(rt.ballIds[evict]) : null;
+      if (victim && victim.alive !== false && victim.data && !victim.data.gyreLaunched) this._handBack(victim);
+      rt.ballIds.splice(evict, 1);
     }
+  },
+
+  // Retiring the HUD mirror's primary ball must unwatch it in the same breath — an id
+  // left in ballIds re-enters the retire pass next tick as a dead non-primary and
+  // fires a second grave + shatter for the same body.
+  _unwatchBall(id) {
+    const rt = this._rt;
+    if (!rt) return;
+    const i = rt.ballIds.indexOf(id);
+    if (i !== -1) rt.ballIds.splice(i, 1);
   },
 
   // ── the verb ───────────────────────────────────────────────────────────────────
@@ -590,9 +612,8 @@ export const gyreSnare = {
       if (e.physicsBody === false) continue;
       // A snagged core becomes the thrown ball — it needs a real collider and must never
       // be a mission/persistent body the ball's 9 s despawn could quietly delete. Pickups
-      // stay absorbable as members but never become the core: their collider is a sensor,
-      // which would bowl a ball that hits nothing.
-      if (e.type === 'pickup') continue;
+      // can't reach this line at all (not absorbable); the sensor guard still covers an
+      // absorbable authored with a sensor collider — it would bowl a ball that hits nothing.
       if (e.physicsBody && e.physicsBody.material === 'sensor') continue;
       if ((e.flags && e.flags.persistent) || (e.data && e.data.worldRecordId)) continue;
       const d = Math.hypot(e.pos.x - maw.x, e.pos.z - maw.z);
@@ -985,28 +1006,20 @@ export const gyreSnare = {
     }
   },
 
-  // ── presentation mirror (read-only for render/HUD; runtime-only, never saved) ───
-  _publish(state, player) {
+  // ── ball watch retire — sim-side work (emits cues, mutates entity data) ──────
+  // Deliberately OUT of _publish: the mirror pass must stay read-only — a publish
+  // that mutates is how a retired primary re-fired its own grave the next tick.
+  // Runs in update() immediately before the mirror write.
+  _sweepBallWatch(state) {
     const rt = this._rt;
-    const pub = state.gyreSnare || (state.gyreSnare = {
-      phase: PHASE.OFF, nose: { x: 0, z: 0 }, maw: { x: 0, z: 0 },
-      coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
-      coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
-      strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
-      members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
-      basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
-      graves: null, thrownBeat: false, basinSpots: null,
-    });
+    const pub = state && state.gyreSnare;
+    if (!rt || !pub) return;
     // Default each tick: the grave ring only blooms when the ball actually DIES — an
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
     // launchedId without a grave, and must not shatter under a still-live body.
     pub.ballGrave = false;
     if (pub.graves === null) pub.graves = [];
     pub.graves.length = 0;
-    if (pub.basinSpots === null) pub.basinSpots = [];
-    pub.basinSpots.length = 0;
-    for (let i = 0; i < rt.basinSpots.length; i++) pub.basinSpots.push(rt.basinSpots[i]);
-    pub.phase = rt.phase;
     // Retire pass over EVERY watched launched id — not just the HUD's primary ball:
     // a second launch or a boundary reload can orphan an older marked body, and an
     // adopted orphan (deadline stripped by encounterScripts/egress/lootShards) must not
@@ -1073,6 +1086,7 @@ export const gyreSnare = {
         if (ball && ball.alive !== false && ball.data && ball.data.gyreLaunched) {
           this._handBack(ball);
         }
+        this._unwatchBall(rt.ballId);
         rt.ballId = null;
         rt.ballMass = 0;
         rt.ballMembers = null;
@@ -1091,10 +1105,38 @@ export const gyreSnare = {
           && state.simTime >= ball.data.despawnAt && this.bus) {
           this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: ball.pos.x, z: ball.pos.z } });
           pub.ballGrave = true; // its last live tick — the ring blooms as the body retires
+          this._unwatchBall(rt.ballId);
           rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
         }
       }
     }
+  },
+
+  // ── presentation mirror (read-only for render/HUD; runtime-only, never saved) ───
+  _publish(state, player) {
+    const rt = this._rt;
+    const pub = state.gyreSnare || (state.gyreSnare = {
+      phase: PHASE.OFF, nose: { x: 0, z: 0 }, maw: { x: 0, z: 0 },
+      coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
+      coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
+      strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
+      members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
+      basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
+      graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
+    });
+    if (pub.basinSpots === null) pub.basinSpots = [];
+    pub.basinSpots.length = 0;
+    for (let i = 0; i < rt.basinSpots.length; i++) pub.basinSpots.push(rt.basinSpots[i]);
+    pub.phase = rt.phase;
+    pub.dropReason = rt.dropReason;
+    // Burn-only fuse read: seconds of cap left at the CURRENT drain rate — hold drain
+    // scales with clump mass, so the bigger the katamari the shorter the fuse. Regen
+    // isn't counted, making it the honest worst case; the HUD draws it as a countdown.
+    const drainMult = rt.phase === PHASE.HOLD
+      ? D.capHoldMult * (1 + Math.min(rt.clumpMass / D.capMassDrainRef, D.capMassDrainMax))
+      : 1;
+    pub.fuseS = (player && rt.phase !== PHASE.OFF)
+      ? this._cap(player) / Math.max(0.001, D.capDrainPerS * drainMult) : 0;
     if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballClumpRadius = 0; }
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
@@ -1180,7 +1222,7 @@ export const gyreSnare = {
   update(dt, state) {
     this.state = state;
     const rt = this._rt;
-    if (!state || state.mode !== 'flight') { if (rt.phase !== PHASE.OFF) this._drop('not_flight'); rt.wasHeld = false; if (state) this._publish(state, null); return; }
+    if (!state || state.mode !== 'flight') { if (rt.phase !== PHASE.OFF) this._drop('not_flight'); rt.wasHeld = false; if (state) { this._sweepBallWatch(state); this._publish(state, null); } return; }
     const player = this._playerCapable(state);
     const held = this._held(state) && !!player;
 
@@ -1189,6 +1231,7 @@ export const gyreSnare = {
       const cap = this._cap(player);
       if (cap >= D.capActivateMin) {
         rt.phase = PHASE.BEAM;
+        rt.dropReason = null; // a fresh wake forgets why the last lash died
         if (this.bus) {
           this.bus.emit(GYRE_EVENTS.beamOn, { playerId: player.id, tick: state.tick });
           // The lash has its own wake voice now — a soft rising shimmer, distinct from the
@@ -1214,13 +1257,14 @@ export const gyreSnare = {
     }
     rt.wasHeld = held;
 
-    if (rt.phase === PHASE.OFF) { this._publish(state, player); return; }
+    if (rt.phase === PHASE.OFF) { this._sweepBallWatch(state); this._publish(state, player); return; }
     if (!player) {
       // Docked and gone are different stories — the beamOff reason is the only record
       // of why the lash died, so keep it honest.
       const raw = this.helpers.player ? this.helpers.player() : state.entities.get(state.playerId);
       const docked = !!(raw && ((raw.flags && raw.flags.docked) || (state.ui && state.ui.docked === true)));
       this._drop(docked ? 'player_docked' : 'player_lost');
+      this._sweepBallWatch(state);
       this._publish(state, null);
       return;
     }
@@ -1314,6 +1358,7 @@ export const gyreSnare = {
       this._drop('cap_dry');
     }
 
+    this._sweepBallWatch(state);
     this._publish(state, player);
   },
 };

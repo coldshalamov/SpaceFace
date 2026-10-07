@@ -19,8 +19,14 @@
 //     from its own clump (the collision-kernel `origin.attackerId === targetId` friendly-fire
 //     route + the player-impact invariant both back this).
 
-/** Entity types that can be snagged into / absorbed by the clump. */
-export const GYRE_ABSORBABLE_TYPES = Object.freeze(['asteroid', 'wreck', 'pickup', 'payload']);
+/**
+ * Entity types that can be snagged into / absorbed by the clump.
+ * Pickups and payloads are deliberately NOT absorbable: the beam still tugs them
+ * (basin pull + wedge shove apply to every dynamic body), so the lash can drag
+ * loot toward the ship — a retrieval tool, not a cargo furnace — but it can never
+ * silently eat a thing the player meant to collect.
+ */
+export const GYRE_ABSORBABLE_TYPES = Object.freeze(['asteroid', 'wreck']);
 
 export const GYRE_SNARE = Object.freeze({
   // ── Cone geometry (the beam's reach) ──────────────────────────────────────────────

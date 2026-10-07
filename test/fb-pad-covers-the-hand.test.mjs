@@ -340,9 +340,23 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   pulseAt('gyre:thrown', 0.90);
   pulseAt('gyre:absorbTick', 0.30);
 
+  // Meal size lerps the absorb thump: mass 160 → t=1 → strong 0.30 + 0.25·1 = 0.55 —
+  // a wreck in the mouth lands near the drop thud, a pebble stays a flick.
+  bus.emit('gyre:absorbTick', { coreId: 9, mass: 160 });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong >= 0.55,
+    `heavy absorbTick scales the thump (strong=${gp.haptics.strong})`);
+  drain();
+
   // A boundary-flagged drop is a context reset, not a player verb — the pad stays silent.
   bus.emit('gyre:dropped', { boundary: true });
   state.tick += 1; gp.tick(1 / 60, state);
   assert.ok(gp.haptics.strong < 0.45, `boundary drop does not pulse (strong=${gp.haptics.strong})`);
+  // An empty beam closing is the soft flick (droppedEmpty 0.20), not the clump thud (0.45).
+  bus.emit('gyre:dropped', {});
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong >= 0.18 && gp.haptics.strong < 0.4,
+    `empty beam close gets the soft flick (strong=${gp.haptics.strong})`);
+  drain();
   pulseAt('gyre:dropped', 0.45);
 });
