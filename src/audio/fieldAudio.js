@@ -95,6 +95,27 @@ export function collectFieldLoopSpecs(state, out = []) {
     });
     if (out.length >= FIELD_LOOP_CAP) break;
   }
+  // The Gyre Snare lash isn't a field record, but it owns the same sustained-voice
+  // contract: a live beam gets one quiet glassy loop anchored on the maw, envelope
+  // riding strain01 so the hum tightens as the clump nears the slip point.
+  const gyre = state && state.gyreSnare;
+  if (gyre && gyre.phase && gyre.phase !== 'off' && out.length < FIELD_LOOP_CAP) {
+    const strain = Number.isFinite(gyre.strain01) ? gyre.strain01 : 0;
+    const pos = gyre.maw && Number.isFinite(gyre.maw.x) ? gyre.maw : null;
+    if (pos) {
+      out.push({
+        key: FIELD_LOOP_PREFIX + 'gyre',
+        fieldId: -1,
+        kind: 'gyre',
+        recipeId: 'sfx_field_loop_gyre',
+        gain: 0.2,
+        trackId: null,
+        envelope: Math.min(1, 0.35 + 0.65 * strain),
+        phase: 'active',
+        position: pos,
+      });
+    }
+  }
   return out;
 }
 

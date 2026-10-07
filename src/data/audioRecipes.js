@@ -3095,6 +3095,16 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 1600, filterQ: 1.8,
     pitchRange: [0.94, 1.04],
   },
+  // Lash loop: the beam's sustained glassy hum while it's live — a quiet presence voice
+  // beside the field loops; envelope rides strain01 so a straining clump tightens it.
+  {
+    id: 'sfx_field_loop_gyre',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'sine',
+    baseFreq: 300, freqSweep: [300, 336], sweepTimeS: 4.5,
+    gainEnvelope: { attack: 0.3, sustain: 1.0, release: 0.4, peak: 0.2 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.1,
+    lfoRate: 0.9, lfoDepth: 0.12,
+  },
   // Beam wake: a soft rising glass shimmer as the cone ignites — lighter than the snag bite
   // (which is the grip landing). The lash switching on, not the catch.
   {

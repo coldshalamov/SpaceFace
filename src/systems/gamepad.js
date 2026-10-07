@@ -431,8 +431,9 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // blade severing one of the player's lines is a warning jolt; the whip's stored snap is a crack.
   'massline:playerLineCut': { strong: 0.55, weak: 0.35, ms: 120 },
   'tether:whipSnap':        { strong: 0.70, weak: 0.30, ms: 100 },
-  // Gyre Snare: the snag is a solid bite, the bowl is the hard crack, an absorb a small tap,
-  // a slipped/dropped clump a mid thud (the lash letting go without a launch).
+  // Gyre Snare: the wake is a soft hum (the lash switching on), the snag a solid bite,
+  // the bowl the hard crack, an absorb a small tap, a dropped clump a mid thud.
+  'gyre:beamOn':            { strong: 0.25, weak: 0.35, ms: 60 },
   'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
   'gyre:launched':          { strong: 0.90, weak: 0.70, ms: 160 },
   'gyre:absorbed':          { strong: 0.30, weak: 0.20, ms: 50 },
@@ -822,6 +823,7 @@ export function createGamepad(ctx) {
     // is the player's own stored release. Both pulse through the same one-live-pulse gate.
     bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
     bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
+    bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
     bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
     bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
     bus.on('gyre:absorbed', () => startPulse(HAPTIC_VERB_PULSES['gyre:absorbed'], 'gyre:absorbed'));

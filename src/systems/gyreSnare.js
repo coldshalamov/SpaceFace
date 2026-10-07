@@ -287,12 +287,19 @@ export const gyreSnare = {
       let inWedge = false;
       let lipT = 0;
       if (!inBasin) {
-        const px = e.pos.x - player.pos.x;
-        const pz = e.pos.z - player.pos.z;
+        // The wedge is measured from the PUBLISHED apex (player.pos + nose·noseGap), not the
+        // hull center — the physics cone and the drawn cone share an origin and a slope, so
+        // nothing visibly outside the glass eats a pull. effTan carries the endRadius floor:
+        // on a capital the drawn mouth is wider than the geometric cone and the wedge follows.
+        const noseGap = D.noseGap + entityRadius(player);
+        const coneLen = Math.max(1, D.mawDist - noseGap);
+        const effTan = Math.max(tan, D.basinRadius / coneLen);
+        const px = e.pos.x - (player.pos.x + nose.x * noseGap);
+        const pz = e.pos.z - (player.pos.z + nose.z * noseGap);
         const axial = px * nose.x + pz * nose.z;
-        if (axial > 0 && axial < D.mawDist + D.basinRadius) {
+        if (axial > 0 && axial < coneLen + D.basinRadius) {
           const radial = Math.abs(px * nose.z - pz * nose.x);
-          const rimR = axial * tan;
+          const rimR = axial * effTan;
           if (radial <= rimR + D.wedgeSoftLipWu) {
             inWedge = true;
             lipT = radial <= rimR ? 0 : (radial - rimR) / D.wedgeSoftLipWu;
@@ -701,7 +708,10 @@ export const gyreSnare = {
           this.bus.emit('audio:cue', { id: 'gyre_snare_beam', gain: 0.55 });
         }
       } else if (this.bus) {
-        this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake' });
+        // A denied wake is still a wake attempt — the refusal needs the same voice
+        // every other tool's no-cap edge gets, or the held key reads dead.
+        this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake', ttl: 1.6 });
+        this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.7 });
       }
     }
     if (!held && rt.wasHeld) {

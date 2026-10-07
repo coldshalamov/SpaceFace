@@ -21,7 +21,7 @@ import { GYRE_SNARE } from '../../data/gyreSnare.js';
 function finite(v, d = 0) { return Number.isFinite(v) ? v : d; }
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
-const MAX_LUMPS = 28;        // mirrors GYRE_SNARE.maxAbsorbRecords
+const MAX_LUMPS = GYRE_SNARE.maxAbsorbRecords; // the member ledger's bound, one source
 const MAX_BURSTS = 4;
 const SPIRAL_COUNT = 96;
 
@@ -178,6 +178,7 @@ export class GyreSnarePresentation {
     this._quiet = true;
     this._absorbSeen = 0;
     this._ballId = null;
+    this._lastBall = null;   // last tracked ballPos + radius — feeds the ball-death burst
     this._clumpRadius = 0;
     this._discKick = 0;
 
@@ -281,10 +282,10 @@ export class GyreSnarePresentation {
     let mat = this._lumpMats[type];
     if (!mat) {
       mat = new THREE.MeshStandardMaterial({
-        color: LUMP_TINT[type] || P.lump,
+        color: LUMP_TINT[type] || GYRE_SNARE.palette.lump,
         roughness: 0.35, metalness: 0.25,
         transparent: true, opacity: 0.85,
-        emissive: 0x9fc4e0, emissiveIntensity: 0.22,
+        emissive: GYRE_SNARE.palette.lumpGlow, emissiveIntensity: 0.22,
       });
       this._lumpMats[type] = mat;
     }
@@ -412,6 +413,12 @@ export class GyreSnarePresentation {
 
     if (cx == null) {
       this._clump.visible = false;
+      // The thrown ball reached its grave (impact or TTL) — douse the spot it died with
+      // a burst so the katamari's exit has the same voice its launch had.
+      if (this._ballId != null && this._lastBall) {
+        this._fireBurst(this._lastBall.x, this._lastBall.z, Math.max(6, this._lastBall.r * 1.6));
+      }
+      this._lastBall = null;
       if (phase === 'off' && this._ballId == null) this._clearLumps();
     } else {
       const p = this.toLocal(cx, cz, this._nose);
@@ -421,6 +428,11 @@ export class GyreSnarePresentation {
       this._clump.rotation.y = -this._clumpSpin;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
       this._ballId = mirror.launchedId;
+      // Track the ball's last-known position + radius so its death frame can burst there.
+      if (mirror.launchedId != null) {
+        const lb = this._lastBall || (this._lastBall = { x: 0, z: 0, r: 0 });
+        lb.x = cx; lb.z = cz; lb.r = this._clumpRadius;
+      }
 
       const members = mirror.members;
       const want = Array.isArray(members) ? Math.min(members.length, MAX_LUMPS) : 0;

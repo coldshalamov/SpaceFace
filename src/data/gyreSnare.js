@@ -97,6 +97,7 @@ export const GYRE_SNARE = Object.freeze({
     hot: '#ffffff',
     maw: '#cfeaff',
     lump: '#e8f4ff',
+    lumpGlow: '#9fc4e0',
   }),
 });
 
