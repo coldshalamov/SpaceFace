@@ -435,7 +435,8 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // the bowl the hard crack, an absorb a small tap, a dropped clump a mid thud.
   'gyre:beamOn':            { strong: 0.25, weak: 0.35, ms: 60 },
   'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
-  'gyre:launched':          { strong: 0.90, weak: 0.70, ms: 160 },
+  'gyre:launched':          { strong: 0.30, weak: 0.25, ms: 60 },  // coil engages — the sling tautens
+  'gyre:thrown':            { strong: 0.90, weak: 0.70, ms: 160 }, // the throw — biggest beat in the pad vocabulary
   'gyre:absorbed':          { strong: 0.30, weak: 0.20, ms: 50 },
   'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
   'gyre:droppedEmpty':      { strong: 0.20, weak: 0.15, ms: 50 },
@@ -829,6 +830,7 @@ export function createGamepad(ctx) {
     bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
     bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
     bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
+    bus.on('gyre:thrown', () => startPulse(HAPTIC_VERB_PULSES['gyre:thrown'], 'gyre:thrown'));
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
     bus.on('gyre:absorbed', (payload) => {
       // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the

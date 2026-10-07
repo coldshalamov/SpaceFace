@@ -468,6 +468,15 @@ export const gyreSnare = {
       }
       if (!inBasin && !inWedge) continue;
       if (PULL_SKIP_TYPES.has(e.type)) continue;
+      // While the clump is held, the suck lane owns the annulus around the core —
+      // without this skip a body inside both volumes eats basin+suck impulses same tick
+      // (each clamped per queue, summing past the authored pullMaxAccel ceiling). The
+      // count honors the same ownership: annulus bodies are _suckPass's suckCount.
+      if (ownedCore && e.id !== ownedCore.id) {
+        const sdx = e.pos.x - ownedCore.pos.x;
+        const sdz = e.pos.z - ownedCore.pos.z;
+        if (sdx * sdx + sdz * sdz <= ownedR2) continue;
+      }
       // Mass in the funnel: absorbable bodies already inside the cone get counted so
       // the HUD/maw can telegraph the catch before it lands ("×N IN NET").
       // The "IN NET" read names mass actually inside the glass — bodies easing through
@@ -477,14 +486,6 @@ export const gyreSnare = {
         && !(e.data && (e.data.gyreCore || e.data.gyreLaunched))
         && !(e.flags && e.flags.persistent) && !(e.data && e.data.worldRecordId)) {
         this._rt.basinCount += 1;
-      }
-      // While the clump is held, the suck lane owns the annulus around the core —
-      // without this skip a body inside both volumes eats basin+suck impulses same tick
-      // (each clamped per queue, summing past the authored pullMaxAccel ceiling).
-      if (ownedCore && e.id !== ownedCore.id) {
-        const sdx = e.pos.x - ownedCore.pos.x;
-        const sdz = e.pos.z - ownedCore.pos.z;
-        if (sdx * sdx + sdz * sdz <= ownedR2) continue;
       }
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never pulled back
       // The held core is owned by the orbit spring — a basin grab on it fights the slot and
@@ -931,8 +932,12 @@ export const gyreSnare = {
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
-      basinCount: 0, ballClumpRadius: 0, launchWindup01: 0,
+      basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
     });
+    // Default each tick: the grave ring only blooms when the ball actually DIES — an
+    // adoption hand-back (live body, deadline stripped by a foreign owner) drops
+    // launchedId without a grave, and must not shatter under a still-live body.
+    pub.ballGrave = false;
     pub.phase = rt.phase;
     // Retire pass over EVERY watched launched id — not just the HUD's primary ball:
     // a second launch or a boundary reload can orphan an older marked body, and an
@@ -941,6 +946,18 @@ export const gyreSnare = {
     if (rt.ballIds.length && state && state.entities) {
       for (let i = rt.ballIds.length - 1; i >= 0; i--) {
         const e = state.entities.get(rt.ballIds[i]);
+        // A non-primary ball's quiet-TTL grave: the lifetime sweep kills and compacts it
+        // later this same step, so the shatter sings HERE on its last live tick — same
+        // rule the primary ballId path uses below. A 2400t ball deserves a grave.
+        if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.pos
+          && e.data.despawnAt != null && Number.isFinite(state && state.simTime)
+          && state.simTime >= e.data.despawnAt && rt.ballIds[i] !== rt.ballId) {
+          if (this.bus) {
+            this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: e.pos.x, z: e.pos.z } });
+          }
+          rt.ballIds.splice(i, 1);
+          continue;
+        }
         if (!e || e.alive === false || !e.data || !e.data.gyreLaunched || !e.pos
           || e.data.despawnAt == null) {
           if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.data.despawnAt == null) {
@@ -959,6 +976,10 @@ export const gyreSnare = {
       // ball: retire it rather than pin ballId/HUD forever on a pull-immune asteroid.
       if (!ball || ball.alive === false || !ball.data || !ball.data.gyreLaunched || !ball.pos
         || ball.data.despawnAt == null) {
+        // Grave vs adoption: a still-live body that lost only its deadline was handed
+        // back to a foreign owner — retire the mirror with NO grave (the burst would
+        // bloom under a live adopted body). Dead/removed balls are real graves.
+        pub.ballGrave = !(ball && ball.alive !== false);
         // The ball met its grave. Only a quiet TTL expiry gets the shatter — an entity
         // left dead with its deadline passed — while impact deaths (removed, or dead with
         // no deadline pending) already sing through collision audio at the same spot.
@@ -989,6 +1010,7 @@ export const gyreSnare = {
         if (ball.data.despawnAt != null && Number.isFinite(state.simTime)
           && state.simTime >= ball.data.despawnAt && this.bus) {
           this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: ball.pos.x, z: ball.pos.z } });
+          pub.ballGrave = true; // its last live tick — the ring blooms as the body retires
           rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
         }
       }
@@ -1158,8 +1180,10 @@ export const gyreSnare = {
         rt.launchLeft -= 1;
         if (rt.launchLeft === D.launchTicks - 1) {
           // First burst tick = the coil release: the weapon's biggest kinetic beat lands
-          // HERE — the throw is over, not while the ball was still winding back.
+          // HERE — the throw is over, not while the ball was still winding back. Pad
+          // players ride gyre:thrown; gyre:launched stays the release-edge record.
           if (this.bus) {
+            this.bus.emit(GYRE_EVENTS.thrown, { tick: state && state.tick });
             this.bus.emit('camera:shake', {
               amount: 0.3 + 0.25 * Math.min(1, rt.ballMass / D.maxClumpMass),
             });
@@ -1194,7 +1218,12 @@ export const gyreSnare = {
       }
       this._launch(state, player);
     }
-    else if (dry && rt.phase === PHASE.BEAM) this._drop('cap_dry');
+    // An empty beam dying of thirst gets the same attribution: the cone vanishes and
+    // the pill goes dark — say why, or the lash reads as self-closing.
+    else if (dry && rt.phase === PHASE.BEAM) {
+      if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare drained — lash off', ttl: 1.6 });
+      this._drop('cap_dry');
+    }
 
     this._publish(state, player);
   },

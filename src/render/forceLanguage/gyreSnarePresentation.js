@@ -130,12 +130,13 @@ void main() {
 
 const SPIRAL_FRAG = /* glsl */`
 uniform vec3 uCol;
+uniform float uFade;    // close-ramp gate — motes die WITH the glass, not past it
 varying float vFade;
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float d = dot(c, c);
   if (d > 1.0) discard;
-  gl_FragColor = vec4(uCol, vFade * (1.0 - d) * 0.8);
+  gl_FragColor = vec4(uCol, vFade * (1.0 - d) * 0.8 * uFade);
 }
 `;
 
@@ -266,7 +267,7 @@ export class GyreSnarePresentation {
     this._spiralMat = new THREE.ShaderMaterial({
       vertexShader: SPIRAL_VERT, fragmentShader: SPIRAL_FRAG,
       uniforms: {
-        uTime: { value: 0 }, uLen: { value: 1 }, uRad: { value: 1 },
+        uTime: { value: 0 }, uLen: { value: 1 }, uRad: { value: 1 }, uFade: { value: 1 },
         uSize: { value: 3.4 }, uCol: { value: new THREE.Color(glass) },
       },
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
@@ -404,6 +405,10 @@ export class GyreSnarePresentation {
     slot.fromZ = finite(member.nz, 0) * finite(this._clumpRadius) * 0.95;
     slot.bobPhase = i * 2.39;
     slot.bobRate = 1.15 + ((i * 0.61803398875) % 1) * 0.9;
+    // Loose zero-G debris also TUMBLES — a slow per-lump spin rate staggered on the
+    // same golden-ratio spread as bobRate so big clumps never read as a rigid wheel.
+    slot.tumbleRate = 0.25 + ((i * 0.75487766624) % 1) * 0.55;
+    slot.tumblePhase = i * 1.13;
     m.rotation.set(i * 1.7, i * 2.3, i * 0.9);
     m.visible = true;
   }
@@ -442,7 +447,9 @@ export class GyreSnarePresentation {
 
     const clock = Number.isFinite(state.simTime) ? state.simTime : this.time + dt;
     if (clock < this.time) this._clearLumps();   // restored sim rewound the clock
-    this.time = clock;
+    const sdt = Math.max(0, clock - this.time);  // sim-domain delta — every accumulator
+    this.time = clock;                           // below rides the same clock as the sim,
+                                                 // so bullet-time/pause freeze the lash
 
     // The canonical VFX accessibility read: motionReduce lives under settings.video,
     // flashReduce under video or accessibility — never hand-roll the fallback order.
@@ -498,7 +505,7 @@ export class GyreSnarePresentation {
         this._wakeRamp = 0;
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.4);
       }
-      this._wakeRamp = Math.min(1, this._wakeRamp + dt / 0.15);
+      this._wakeRamp = Math.min(1, this._wakeRamp + sdt / 0.15);
       const wakeEase = this._wakeRamp * this._wakeRamp * (3 - 2 * this._wakeRamp); // smoothstep
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
@@ -509,7 +516,7 @@ export class GyreSnarePresentation {
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
       // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
       this._coneMat.uniforms.uPulse.value = Math.max(
-        this._coneMat.uniforms.uPulse.value * Math.exp(-dt * 6.3),
+        this._coneMat.uniforms.uPulse.value * Math.exp(-sdt * 6.3),
         strain * 0.7,
       );
       this._coneMat.uniforms.uStrain.value = strain * calm;
@@ -519,9 +526,9 @@ export class GyreSnarePresentation {
       if (absorbsNow > this._absorbSeen) { this._discKick = 1; this._clumpKick = 1; this._moteKick = 1; }
       if (absorbsNow < this._absorbSeen) this._absorbSeen = 0; // new clump ledger
       this._absorbSeen = absorbsNow;
-      this._discKick *= Math.exp(-dt * 4.2);
-      this._clumpKick *= Math.exp(-dt * 6);
-      this._moteKick *= Math.exp(-dt * 5);
+      this._discKick *= Math.exp(-sdt * 4.2);
+      this._clumpKick *= Math.exp(-sdt * 6);
+      this._moteKick *= Math.exp(-sdt * 5);
       this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * flashCalm);
       // Net anticipation: absorbables already inside the cone make the mouth glow
       // brighter before the catch — "×N IN NET" through the glass itself.
@@ -533,24 +540,26 @@ export class GyreSnarePresentation {
       // outright — the frozen motes still read "matter is being pulled" where
       // visible=false left the cone with no suction signifier at all.
       this._spiral.visible = true;
-      if (calm !== 0) this._moteT += dt * (1 + this._moteKick * 1.8 + net * 0.45);
+      if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45);
       this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = len;
       this._spiralMat.uniforms.uRad.value = endR;
+      this._spiralMat.uniforms.uFade.value = 1;
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
       // down over ~0.25 s instead of popping — the collapse is part of the payoff.
       if (this._beamWasOn) { this._beamWasOn = false; this._closing = true; this._closeT = 0; }
       if (this._closing) {
-        this._closeT += dt;
+        this._closeT += sdt;
         const k = Math.max(0, 1 - this._closeT / 0.25);
         const kk = k * k;
-        if (calm !== 0) this._moteT += dt; // motes keep spiraling while they die (frozen under reduced-motion, same as live)
+        if (calm !== 0) this._moteT += sdt; // motes keep spiraling while they die (frozen under reduced-motion, same as live)
         this._spiralMat.uniforms.uTime.value = this._moteT;
+        this._spiralMat.uniforms.uFade.value = kk; // the scatter fades on the same 250ms ramp as the glass
         this._coneMat.uniforms.uTime.value = this.time;
         this._coneMat.uniforms.uAlpha.value = 0.42 * kk * flashCalm;
-        this._coneMat.uniforms.uPulse.value *= Math.exp(-dt * 9);
-        this._coneMat.uniforms.uStrain.value *= Math.exp(-dt * 9); // tremble dies with the ramp
+        this._coneMat.uniforms.uPulse.value *= Math.exp(-sdt * 9);
+        this._coneMat.uniforms.uStrain.value *= Math.exp(-sdt * 9); // tremble dies with the ramp
         // flashCalm rides every close-ramp alpha too — a reduced-flash user shouldn't
         // get a brighter 250 ms tail than those elements ever show while live.
         this._bodyMat.opacity = 0.1 * kk * flashCalm;
@@ -589,8 +598,12 @@ export class GyreSnarePresentation {
     }
     // Ball-death fires the moment the tracker drops it — even mid-hold, so a ball
     // dying while a new clump orbits still gets its grave burst at its own spot.
+    // Adoption retirements (launchedId dropped with ballGrave=false: a foreign owner
+    // kept the live body) get no ring — the shatter must not bloom under a live ball.
     if (this._ballId != null && mirror.launchedId == null && this._lastBall) {
-      this._fireBurst(this._lastBall.x, this._lastBall.z, Math.max(6, this._lastBall.r * 1.6), flashCalm);
+      if (mirror.ballGrave !== false) {
+        this._fireBurst(this._lastBall.x, this._lastBall.z, Math.max(6, this._lastBall.r * 1.6), flashCalm);
+      }
       this._lastBall = null;
     }
 
@@ -615,7 +628,7 @@ export class GyreSnarePresentation {
       // landed" reads on the payload, not just the mouth flash. (The assignment also
       // clears any cancelled close-ramp shrink — a fresh cx means the ramp died.)
       this._clump.scale.setScalar(1 - 0.12 * this._clumpKick);
-      this._clumpSpin += dt * spinRate;
+      this._clumpSpin += sdt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
       // Core veil: the held/grown ball's glass skin — swells with clump radius and
@@ -715,6 +728,10 @@ export class GyreSnarePresentation {
             l.basePos.z + (l.fromZ - l.basePos.z) * (1 - fe) - sway * 0.7 * fe,
           );
         }
+        // And it tumbles: a quiet per-lump yaw/roll drift (staggered at spawn) sells
+        // levitating debris on large clumps where each lump is individually readable.
+        l.mesh.rotation.y += sdt * l.tumbleRate * calm;
+        l.mesh.rotation.x += sdt * l.tumbleRate * 0.6 * calm * Math.sin(l.tumblePhase);
       }
     }
     this._ballId = mirror.launchedId;
@@ -741,7 +758,7 @@ export class GyreSnarePresentation {
     // ── bursts ───────────────────────────────────────────────────────────────
     for (const b of this._bursts) {
       if (b.t >= 1) { if (b.mesh.visible) b.mesh.visible = false; continue; }
-      b.t = Math.min(1, b.t + dt * 1.7);
+      b.t = Math.min(1, b.t + sdt * 1.7);
       const s = b.r * (0.25 + b.t * 1.6);
       b.mesh.scale.setScalar(s);
       b.mesh.material.uniforms.uT.value = b.t;

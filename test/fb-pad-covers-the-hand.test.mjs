@@ -326,7 +326,7 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   };
   pulseAt('gyre:snagged', 0.70);
   pulseAt('gyre:full', 0.65);
-  pulseAt('gyre:launched', 0.90);
+  pulseAt('gyre:thrown', 0.90);
 
   // A boundary-flagged drop is a context reset, not a player verb — the pad stays silent.
   bus.emit('gyre:dropped', { boundary: true });

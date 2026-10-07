@@ -126,6 +126,10 @@ export const GYRE_EVENTS = Object.freeze({
   snagged: 'gyre:snagged',
   absorbed: 'gyre:absorbed',
   launched: 'gyre:launched',
+  // The ball actually flies — first burst tick after the coil. Consumers that need the
+  // release EDGE keep gyre:launched; feel carriers (pad pulse) ride gyre:thrown so the
+  // biggest beat lands as the sling lets go, not while it pulls back.
+  thrown: 'gyre:thrown',
   dropped: 'gyre:dropped',
   strained: 'gyre:strained',
   // First cap-crossing — the escalation arc's ceiling beat (audio chime + pad pulse).
