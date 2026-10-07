@@ -2957,35 +2957,37 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 33,
+      "glass": 1,
+      "hull": 20,
       "mechanical": 1,
+      "signal": 12,
       "warning": 1
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -3040,27 +3042,27 @@
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 18,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -3105,7 +3107,7 @@
       {
         "allowTextures": false,
         "planIndex": 31,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -3130,12 +3132,12 @@
       {
         "allowTextures": false,
         "planIndex": 39,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 40,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 41,
@@ -4090,7 +4092,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_shuttle_dock.glb"
   },
-  "runtimeHash": "71b820a0bd44c6fe37582abd4c04eb188bc55fc9d628dce717256ad975485283",
+  "runtimeHash": "e390554d74b4896571ed2f57a0dbf3f61956e082c7a2e1debae7031114aac564",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

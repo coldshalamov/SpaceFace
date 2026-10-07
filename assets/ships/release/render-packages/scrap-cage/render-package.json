@@ -2765,7 +2765,8 @@
     ],
     "materialProfileRoles": {
       "hull": 7,
-      "mechanical": 12,
+      "mechanical": 9,
+      "rubber": 3,
       "signal": 9,
       "warning": 3
     },
@@ -2818,7 +2819,7 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -2868,7 +2869,7 @@
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -2918,7 +2919,7 @@
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -3746,7 +3747,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_scrap_cage.glb"
   },
-  "runtimeHash": "df0f37391d572bc88e3abee9d8c75dbef09a2ba87f0011b2534de546f3b10f29",
+  "runtimeHash": "ad8fc742ab3d4695ccdc1c6924bfeadcfe359da78494d7dfb114800d1cccd691",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

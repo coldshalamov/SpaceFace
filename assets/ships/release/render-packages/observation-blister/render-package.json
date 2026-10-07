@@ -831,7 +831,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 8
+      "glass": 1,
+      "hull": 4,
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -847,22 +849,22 @@
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1098,7 +1100,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_observation_blister.glb"
   },
-  "runtimeHash": "0a36a3b8065ee1317917f8b6a6a2f8775930d94d62f1da76d5525cd0c85c9f03",
+  "runtimeHash": "7a76590b8ad1b9fd6000dc4b50dc3c1a82dc785e0d1dc6fb606be6cf9fe230b1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

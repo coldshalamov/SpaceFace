@@ -1650,7 +1650,8 @@
     ],
     "materialProfileRoles": {
       "ceramic": 1,
-      "mechanical": 7,
+      "hull": 1,
+      "mechanical": 6,
       "service": 1
     },
     "materialProfiles": [
@@ -1692,7 +1693,7 @@
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1947,7 +1948,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_gatling.glb"
   },
-  "runtimeHash": "1b0f34baf7ad38af91733c72aeb8c8b9a9feea5e8d7b1f473718d394da2b79fc",
+  "runtimeHash": "6022fec9a9e210762a8f04c3f1ecb8184c4f03fbd3223ea6eb1dd78c0817d75f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

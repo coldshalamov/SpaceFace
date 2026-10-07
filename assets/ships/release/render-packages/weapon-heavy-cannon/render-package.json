@@ -1663,8 +1663,8 @@
     "materialProfileRoles": {
       "accent": 1,
       "ceramic": 1,
-      "hull": 1,
-      "mechanical": 3
+      "hull": 2,
+      "mechanical": 2
     },
     "materialProfiles": [
       {
@@ -1690,7 +1690,7 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1865,7 +1865,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
   },
-  "runtimeHash": "859f44d3301c468495b41da1150fc5384f099d5d9a3a402938231c39f678ee18",
+  "runtimeHash": "f6122857081c29d1436418173c77ff08b4430ace7b672ae3ad30c2f965aa1d5c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

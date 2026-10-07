@@ -2449,12 +2449,9 @@
       }
     ],
     "materialProfileRoles": {
-      "copper_coil": 3,
-      "exposed_alloy": 3,
-      "heat_affected_alloy": 3,
+      "accent": 3,
       "hull": 3,
-      "maintenance_mark": 3,
-      "mechanical": 3,
+      "mechanical": 12,
       "signal": 3,
       "warning": 3
     },
@@ -2462,17 +2459,17 @@
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "maintenance_mark"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "heat_affected_alloy"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "copper_coil"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2492,7 +2489,7 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "exposed_alloy"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2502,17 +2499,17 @@
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "maintenance_mark"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "heat_affected_alloy"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "copper_coil"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2532,7 +2529,7 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "exposed_alloy"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2542,17 +2539,17 @@
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "maintenance_mark"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "heat_affected_alloy"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "copper_coil"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2572,7 +2569,7 @@
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "exposed_alloy"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3259,7 +3256,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb"
   },
-  "runtimeHash": "fa740ed307077088da8bf2cc09396bace14de1ca4ac647a82e68b413c53f8eb1",
+  "runtimeHash": "3853948841fe9823fa7fde7d466e5f72ee682512163a1a5214062d0877e475f1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

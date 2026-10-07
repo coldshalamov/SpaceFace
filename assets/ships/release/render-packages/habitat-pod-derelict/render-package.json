@@ -1345,7 +1345,9 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 16
+      "glass": 5,
+      "hull": 10,
+      "rubber": 1
     },
     "materialProfiles": [
       {
@@ -1386,32 +1388,32 @@
       {
         "allowTextures": false,
         "planIndex": 10,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 15,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
@@ -1868,7 +1870,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_habitat_pod_derelict.glb"
   },
-  "runtimeHash": "8ef3ac213f69f666effa463e9a67d5810226ff7dfbb229c72d936869a521f5f8",
+  "runtimeHash": "23df30dea14ce7ae658b5634f3306690bda33521313ba0c0facde0413d7cd855",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

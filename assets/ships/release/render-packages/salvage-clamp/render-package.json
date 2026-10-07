@@ -1566,8 +1566,10 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 15,
-      "mechanical": 3
+      "hull": 12,
+      "mechanical": 3,
+      "rubber": 2,
+      "signal": 1
     },
     "materialProfiles": [
       {
@@ -1613,7 +1615,7 @@
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1623,12 +1625,12 @@
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
         "planIndex": 15,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -2154,7 +2156,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_salvage_clamp.glb"
   },
-  "runtimeHash": "741b23731a600e101f9793aab69f581b11a4cd40be22e939b8ae0ab26ea34d73",
+  "runtimeHash": "1373defce00bcf3d03a6596c5775d144181cbe7edc906db6eadba4a2a10a4334",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

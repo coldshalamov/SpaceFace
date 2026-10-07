@@ -1901,14 +1901,14 @@
     ],
     "materialProfileRoles": {
       "ceramic": 1,
-      "hull": 1,
-      "mechanical": 8
+      "hull": 3,
+      "mechanical": 6
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1948,7 +1948,7 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -2227,7 +2227,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
   },
-  "runtimeHash": "79dd5553888743f4a34916f53c4f9ab1783cbf827f24619b0e02b1fd410cefb9",
+  "runtimeHash": "69dd06568f592528b52fcfd75e56e855d80427125760fb2530572d7d6024ebc4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

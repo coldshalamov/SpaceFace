@@ -1486,8 +1486,9 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 14,
-      "mechanical": 4
+      "hull": 13,
+      "mechanical": 4,
+      "rubber": 1
     },
     "materialProfiles": [
       {
@@ -1498,7 +1499,7 @@
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -2074,7 +2075,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform_cold.glb"
   },
-  "runtimeHash": "9123f39c5d3cf5cb7fbc1df3da564ae45011d479d12565b50c672c2495f4d89c",
+  "runtimeHash": "6f7ca1bae4a3f77b48d6d4709728593520e55846a82419740274368f64633c12",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

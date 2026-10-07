@@ -2824,19 +2824,20 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 33,
-      "mechanical": 1
+      "hull": 29,
+      "mechanical": 1,
+      "signal": 4
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2851,7 +2852,7 @@
       {
         "allowTextures": false,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2866,7 +2867,7 @@
       {
         "allowTextures": false,
         "planIndex": 10,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -3924,7 +3925,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_construction_frame.glb"
   },
-  "runtimeHash": "99bb6e6911958db459b1d118d30c67c1b46498ed9f99a43a251fde0071ca0f4e",
+  "runtimeHash": "01ef31b9a4393c173d87817cde69ed59544cec2bfcf93d97d99162b3e5c38777",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

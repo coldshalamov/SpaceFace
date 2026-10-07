@@ -1749,21 +1749,22 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 2,
-      "mechanical": 12,
-      "signal": 1,
+      "hull": 4,
+      "mechanical": 7,
+      "rubber": 2,
+      "signal": 2,
       "warning": 4
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": false,
@@ -1778,7 +1779,7 @@
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -1808,7 +1809,7 @@
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1818,7 +1819,7 @@
       {
         "allowTextures": false,
         "planIndex": 15,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -2371,7 +2372,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_crusher_module.glb"
   },
-  "runtimeHash": "caebfcb27c53f24505757c85322a609de9c8246c68a3a41568ee08da9d769332",
+  "runtimeHash": "d086b4b5ef0dae0d93e36976e2067e105a08677caa2b6f1f6f9138f4a65f97d9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

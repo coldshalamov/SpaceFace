@@ -1279,18 +1279,19 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 15
+      "hull": 11,
+      "rubber": 4
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -1350,12 +1351,12 @@
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
         "planIndex": 18,
-        "role": "hull"
+        "role": "rubber"
       }
     ],
     "nodeCount": 19,
@@ -1770,7 +1771,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cargo_pod_standard_breached.glb"
   },
-  "runtimeHash": "6694782d38f845770672ca64d563375c3fed7b3f3cf3975f9bcbc7b8f1758a52",
+  "runtimeHash": "ab023e260faf45de2465b0848f6274730227757e0fda154bfe10d819708a12d5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
