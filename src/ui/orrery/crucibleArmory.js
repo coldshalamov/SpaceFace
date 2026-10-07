@@ -3,6 +3,7 @@
 import { equipmentSvg } from './equipmentGlyphs.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
+import { createPipSpannerCrew } from './pipSpannerCrew.js';
 
 export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const doc = root?.ownerDocument;
@@ -22,6 +23,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const buildSummary = make('summary', '', 'Current build');
   const buildList = make('ul', ''); build.append(buildSummary, buildList);
   visual.append(item, label, parts.jig, build); reading.prepend(visual);
+  const crew = createPipSpannerCrew({ host: visual, doc });
   const fitline = make('p', 'orr-armory-fitline', '');
   parts.act.after(fitline);
   // The words remain accessible even when the catalog is empty or no illustration is available.
@@ -35,7 +37,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   let lastArt = null, lastFit = null;
   return {
     wallet(credits, visible = true) { wallet.hidden = !visible; balance.textContent = `${Math.max(0, Number(credits) || 0).toLocaleString('en-US')} cr`; },
-    show(offer, lines, { credits = 0, hullId = '', rows = [] } = {}) {
+    show(offer, lines, { credits = 0, hullId = '', rows = [], armed = true, receipt = null, generation = null } = {}) {
       const fitKey = `${hullId}:${rows.map(row => row.defId || '').join('|')}`;
       if (fitKey !== lastFit) {
         lastFit = fitKey; buildList.replaceChildren();
@@ -55,22 +57,28 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
         const url = offer.kind === 'hull' ? hullPosterUrl(offer.defId || offer.hullId) : null;
         if (url) {
           const image = make('img', ''); image.src = url; image.alt = ''; image.decoding = 'async';
-          image.addEventListener('error', () => { item.replaceChildren(equipmentSvg(offer, doc)); }, { once: true });
+          image.addEventListener('error', () => {
+            if (lastArt === artId) item.replaceChildren(equipmentSvg(offer, doc));
+          }, { once: true });
           item.appendChild(image);
         } else item.appendChild(equipmentSvg(offer, doc));
         label.textContent = offer.kind === 'hull' ? 'Hull preview' : 'Equipment schematic';
       }
       fitline.textContent = lines.slot || (offer.kind === 'service' ? 'Applies to this run.' : 'Inspect before you fit.');
       const price = Math.max(0, Number(offer.price) || 0);
-      buy.disabled = !offer.available || !!offer.purchased;
+      buy.disabled = !offer.available || !!offer.purchased || !armed;
       buy.setAttribute('aria-disabled', String(buy.disabled));
-      buy.textContent = offer.purchased ? 'Already fitted' : !offer.available ? 'Unavailable'
+      buy.textContent = offer.purchased ? 'Already fitted' : !offer.available ? 'Unavailable' : !armed ? 'Select an item to prepare'
         : `${offer.kind === 'hull' ? 'Switch hull' : offer.kind === 'service' ? 'Purchase' : 'Install'} · ${price.toLocaleString('en-US')} cr`;
       buy.setAttribute('aria-label', `${buy.textContent}: ${lines.name}`);
       refusal.textContent = offer.purchased ? 'This item is part of your current build.'
         : !offer.available ? offer.unavailableReason || 'This offer cannot be fitted to the current build.'
           : `${Math.max(0, credits - price).toLocaleString('en-US')} cr remaining after purchase${offer.replaces ? ` · replaces ${offer.replacesName || 'the fitted item'}` : ''}.`;
+      crew?.scope(generation); crew?.inspect(offer); crew?.receipt(receipt);
     },
+    pending(offer) { crew?.pending(offer); buy.disabled = true; buy.setAttribute('aria-disabled', 'true'); },
+    setActive(value) { crew?.setActive(value); },
+    dispose() { lastArt = null; crew?.dispose(); },
     buy,
   };
 }

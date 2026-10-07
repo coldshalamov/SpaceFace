@@ -872,6 +872,8 @@ export const crucibleDraftScreen = {
   },
 
   onShow() {
+    this._visualArmory?.setActive(true);
+    if (this._ctx) this.refresh(this._ctx);
     const r = this._regions;
     if (!r || !canAnimate()) return;
     cue('open');
@@ -882,10 +884,14 @@ export const crucibleDraftScreen = {
   },
 
   onHide() {
+    this._visualArmory?.setActive(false);
     if (canAnimate()) cue('close');
   },
 
   dispose() {
+    this._visualArmory?.dispose();
+    this._purchaseArmed = true;
+    this._purchasePending = false;
     this._reading?.jig?.dispose();
     this._filterRow?.dispose?.();
     if (this._pulseTimer) clearTimeout(this._pulseTimer);
@@ -1112,36 +1118,50 @@ export const crucibleDraftScreen = {
     // Only claim focus when it is not already inside this surface, and when the rebuild did not
     // just restore the player's place. A refused re-roll must not yank the player off the
     // control they just used.
-    if (!restoreFocusedControl(rootEl, savedFocus)) {
-      const active = typeof document !== 'undefined' ? document.activeElement : null;
-      if (!active || !rootEl.contains || !rootEl.contains(active)) {
-        const target = [...cards.querySelectorAll('button:not(:disabled)')].find(card => card.dataset.offerId === this._reading?.offerId)
-          || cards.querySelector('button:not(:disabled)') || this._skip;
-        if (target && typeof target.focus === 'function') {
-          try { target.focus(); } catch { /* focus is best-effort */ }
+    this._restoringInspection = true;
+    try {
+      if (!restoreFocusedControl(rootEl, savedFocus)) {
+        const active = typeof document !== 'undefined' ? document.activeElement : null;
+        if (!active || !rootEl.contains || !rootEl.contains(active)) {
+          const target = [...cards.querySelectorAll('button:not(:disabled)')].find(card => card.dataset.offerId === this._reading?.offerId)
+            || cards.querySelector('button:not(:disabled)') || this._skip;
+          if (target && typeof target.focus === 'function') {
+            try { target.focus(); } catch { /* focus is best-effort */ }
+          }
         }
       }
-    }
+    } finally { this._restoringInspection = false; }
   },
 
   /** Validate against the owner's CURRENT shelf; never spend on a captured/stale offer. */
   _purchaseSelected(ctx) {
+    if (this._purchaseArmed === false || this._purchasePending) return;
     const owner = draftOwner(ctx);
     const offer = owner?.currentOffers?.().find(item => item.id === this._reading?.offerId);
     if (!offer?.available || offer.purchased || ctx.state?.run?.phase !== 'draft') {
       this.refresh(ctx); return;
     }
-    ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
-    const notice = owner?.lastNotice?.();
-    if (!notice) this._flash = { text: `Purchased ${offer.name || offer.defId}.`, until: Date.now() + 5000 };
-    this.refresh(ctx);
+    // A refreshed shelf can select a different row after a purchase. A second click on the
+    // same confirmation key must never silently buy that row; inspection explicitly re-arms it.
+    this._purchaseArmed = false;
+    this._purchasePending = true;
+    this._visualArmory?.pending(offer);
+    try {
+      ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
+    } finally {
+      try { this.refresh(ctx); }
+      finally { this._purchasePending = false; }
+    }
   },
 
   /** Focus or an explicit click selects an offer. Pointer travel never changes a pending purchase. */
   _readFrom(event) {
     const card = event && event.target && event.target.closest ? event.target.closest('[data-offer-id]') : null;
     const offer = card && this._offersById ? this._offersById.get(card.dataset.offerId) : null;
-    if (offer && this._ctx) this._paintReading(this._ctx, offer);
+    if (offer && this._ctx && !this._purchasePending && !this._restoringInspection) {
+      this._purchaseArmed = true;
+      this._paintReading(this._ctx, offer);
+    }
   },
 
   _paintReading(context, offer) {
@@ -1151,10 +1171,17 @@ export const crucibleDraftScreen = {
     // hull switch moves none of offer.id/credits, and a refit can leave both unchanged while
     // the jig goes stale, so the fit rides the key too.
     const fit = activeLoadout(context);
+    const owner = draftOwner(context);
+    const receipt = owner?.preparationReceipt?.();
+    const generation = owner?.preparationGeneration?.();
+    if (r.generation !== generation) this._purchaseArmed = true;
+    const receiptKey = receipt ? `${receipt.generation}:${receipt.sequence}:${receipt.outcome}` : `${generation ?? ''}`;
+    const armed = this._purchaseArmed !== false;
     const fitKey = (fit.hullId || '') + '|' + fit.fittings.join(',');
     if (r.offerId === offer.id && r.credits === context.state?.run?.credits
       && r.demoed === offer.demoed && r.purchased === offer.purchased && r.held === offer.held
-      && r.available === offer.available && r.fitKey === fitKey) return;
+      && r.available === offer.available && r.fitKey === fitKey
+      && r.receiptKey === receiptKey && r.armed === armed) return;
     r.offerId = offer.id;
     r.fitKey = fitKey;
     r.credits = context.state?.run?.credits;
@@ -1162,6 +1189,9 @@ export const crucibleDraftScreen = {
     r.purchased = offer.purchased;
     r.available = offer.available;
     r.held = offer.held;
+    r.receiptKey = receiptKey;
+    r.generation = generation;
+    r.armed = armed;
     // The row being read lights its hardpoint: one ice pass along the leader beam and a pulse
     // of the node ring. Re-armed per row change; reduced motion leaves it off (bone at rest).
     const jigHost = r.parts && r.parts.jig;
@@ -1180,7 +1210,6 @@ export const crucibleDraftScreen = {
     parts.blurb.textContent = lines.blurb;
     parts.act.textContent = lines.activation || '';
     // where it goes: the run's ship with that hardpoint lit
-    const owner = draftOwner(context);
     const rows = owner && typeof owner.refitRows === 'function' ? owner.refitRows() : [];
     const hullId = activeLoadout(context).hullId;
     const slot = Number.isInteger(offer.slotIndex) ? offer.slotIndex : -1;
@@ -1211,7 +1240,9 @@ export const crucibleDraftScreen = {
       if (gauge) parts.budget.appendChild(gauge);
     }
     r.el.classList.toggle('is-unavailable', !offer.available);
-    if (this._visualArmory) this._visualArmory.show(offer, lines, { credits: Number(context.state?.run?.credits) || 0, hullId, rows });
+    if (this._visualArmory) this._visualArmory.show(offer, lines, {
+      credits: Number(context.state?.run?.credits) || 0, hullId, rows, armed, receipt, generation,
+    });
     // The demo word: a fitting the reading is on can fly one round for free — the showcase half
     // of the sandbox. Hulls and the service counter carry no hardpoint, so nothing to demo.
     parts.demo.textContent = '';
@@ -1371,7 +1402,13 @@ export const crucibleDraftScreen = {
     card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
 
     card.addEventListener('click', () => {
-      if (visualShop) { this._paintReading(ctx, this._offersById?.get(offer.id) || offer); return; }
+      if (visualShop) {
+        if (!this._purchasePending) {
+          this._purchaseArmed = true;
+          this._paintReading(ctx, this._offersById?.get(offer.id) || offer);
+        }
+        return;
+      }
       if (offer.available) this._flash = { text: `Bought ${lines.name}.`, until: Date.now() + 5000 };
       ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
       if (ctx.state?.run?.ruleset === 'swarm' && ctx.state.run.phase === 'draft') this.refresh(ctx);

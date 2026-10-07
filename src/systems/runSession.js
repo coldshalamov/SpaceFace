@@ -18,6 +18,10 @@ import { crucibleEarnedPerkIds, loadCrucibleMeta } from './survivalRecords.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
+// Ephemeral identity survives the owner's immutable wallet/ledger commits. A new run or an
+// unrelated replacement cannot inherit a pending armory action merely by reusing its seed.
+const RUN_LIFETIMES = new WeakMap();
+export function runLifetime(run) { return run && typeof run === 'object' ? RUN_LIFETIMES.get(run) || null : null; }
 
 function cloneRun(run) {
   try {
@@ -58,6 +62,7 @@ export const runSession = {
   init(ctx) {
     this.destroy();
     this.state = ctx.state;
+    if (this.state?.run && typeof this.state.run === 'object') RUN_LIFETIMES.set(this.state.run, {});
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || null;
     this._unsubs = [];
@@ -279,6 +284,7 @@ export const runSession = {
     // No bus receipt: this is a per-wave counter a readout polls, not an event anyone acts on.
     // Emitting here would put a bus message on the same beat as every spawn and every death.
     const previous = this.state.run;
+    RUN_LIFETIMES.set(next, runLifetime(previous) || {});
     this.state.run = next;
     if (!validateRunState(next).ok) {
       this.state.run = previous;
@@ -335,6 +341,7 @@ export const runSession = {
 
   _commitRun(next, event, payload) {
     const previous = this.state.run;
+    RUN_LIFETIMES.set(next, event === 'run:started' ? {} : runLifetime(previous) || {});
     this.state.run = next;
     if (!validateRunState(next).ok) {
       this.state.run = previous;

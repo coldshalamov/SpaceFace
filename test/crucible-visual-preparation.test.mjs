@@ -104,6 +104,6 @@ test('explicit purchase only emits the existing intent; wallet/fittings remain o
   f.screen._purchaseSelected(f.ctx);
   assert.deepEqual(f.events, [['run:draftPickRequested',{offerId:'chosen'}]]);
   assert.equal(f.ctx.state.run.credits, 64);
-  assert.equal(f.screen._flash.text, 'Purchased Ordnance top-up.');
+  assert.equal(f.screen._flash, undefined, 'an intent without a receipt cannot invent success');
   assert.equal(f.refreshes(), 1);
 });

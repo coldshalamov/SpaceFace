@@ -24,6 +24,7 @@
 // Init-order only: event-driven, never registered in PRODUCTION_UPDATE_ORDER, never ticks.
 
 import { validateRunState } from '../core/runState.js';
+import { runLifetime } from './runSession.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
 import {
@@ -356,7 +357,48 @@ export const survivalDraft = {
     return this._notice || null;
   },
 
+  /** A presentation receipt belongs to this particular armory, never to campaign saves. */
+  preparationReceipt() {
+    const saved = this._preparationReceipt;
+    if (!saved || !saved.lifetime || saved.lifetime !== runLifetime(this.state?.run) || saved.player !== this.state?.player
+      || saved.value.generation !== this._armoryGeneration || saved.value.wave !== this._wave
+      || this.state?.run?.phase !== 'draft' || this._resolved) return null;
+    return { ...saved.value };
+  },
+
+  preparationGeneration() { return this._armoryGeneration; },
+
+  _preparationCurrent(pending, { allowHullChange = false } = {}) {
+    return !!pending && !!pending.lifetime && pending.lifetime === runLifetime(this.state?.run) && pending.player === this.state?.player
+      && pending.generation === this._armoryGeneration && pending.wave === this._wave
+      && this.state.run.phase === 'draft'
+      && (allowHullChange || pending.ship === this.state.player.ownedShips?.[this.state.player.activeShipIndex])
+      && (pending.offer?.service !== 'weld' || pending.entity === this._playerEntity());
+  },
+
+  _recordPreparation(pending, outcome) {
+    if (!this._preparationCurrent(pending, { allowHullChange: true })) return;
+    const offer = pending.offer;
+    const entity = this._playerEntity();
+    const value = Object.freeze({
+      sequence: pending.sequence, generation: pending.generation, wave: pending.wave,
+      outcome, offerId: offer?.id ?? pending.offerId, name: offer?.name || offer?.defId || 'Equipment',
+      kind: offer?.kind || 'module', defId: offer?.defId || null, slotIndex: offer?.slotIndex ?? null,
+      price: pending.paid && !pending.refunded ? offer.price : 0,
+      charged: !!pending.paid && !pending.refunded,
+      restoredHull: entity === pending.entity ? Math.max(0, (entity?.hull || 0) - pending.hull) : 0,
+      restoredArmor: entity === pending.entity ? Math.max(0, (entity?.armorHp || 0) - pending.armor) : 0,
+      text: this._notice || (outcome === 'accepted' ? 'Preparation complete.'
+        : outcome === 'pending' ? 'Preparation in progress.' : 'Preparation refused.'),
+    });
+    this._preparationReceipt = { lifetime: pending.lifetime, player: pending.player, value };
+  },
+
   _reset() {
+    this._armoryGeneration = (this._armoryGeneration || 0) + 1;
+    this._preparationSequence = this._preparationSequence || 0;
+    this._preparationPending = null;
+    this._preparationReceipt = null;
     this._offers = null;
     this._wave = 0;
     this._resolved = true;
@@ -392,6 +434,8 @@ export const survivalDraft = {
   _openDraft() {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
+    this._armoryGeneration = (this._armoryGeneration || 0) + 1;
+    this._preparationReceipt = null;
     // A swarm run passes THROUGH `draft` between every wave, because cleanup has no legal edge
     // straight back to wave_intro. On the four waves in five that are not upgrade waves, that
     // pass-through must be invisible: resolve it here rather than opening a surface for one frame.
@@ -589,6 +633,7 @@ export const survivalDraft = {
    * run cannot stall on a purchase.
    */
   requestReroll() {
+    if (this._preparationPending) return false;
     const info = this.rerollState();
     if (info && info.reason === 'hangar_reroll' && info.available) {
       if (!info.open) return false;
@@ -626,6 +671,21 @@ export const survivalDraft = {
       const pending = this._pendingPurchase;
       if (!pending || payload.credits !== pending.price) return;
       this._pendingPurchase = null;
+      const preparation = this._preparationPending;
+      if (preparation) {
+        preparation.paid = true;
+        const quote = this.currentOffers().find(offer => offer.id === pending.id);
+        const sameQuote = quote && quote.price === pending.price && quote.defId === pending.defId
+          && quote.slotIndex === pending.slotIndex && quote.kind === pending.kind;
+        if (!this._preparationCurrent(preparation) || !sameQuote) {
+          // The old run may already have been discarded by a callback. Never credit its successor.
+          if (preparation.lifetime === runLifetime(this.state?.run) && this.state.run.phase === 'draft') {
+            this._emit('run:awardRequested', { credits: pending.price, reason: 'crucible:purchaseRefund' });
+          }
+          this._notice = 'The selected build changed. Inspect the current offer before preparing it.';
+          return;
+        }
+      }
       if (pending.kind === EVOLUTION_OFFER_KIND) {
         this._resolveEvolutionPurchase(pending);
         return;
@@ -746,6 +806,7 @@ export const survivalDraft = {
     const run = liveSurvivalRun(this.state);
     if (!run || run.phase !== 'draft') return false;
     if (this._resolved) return false;
+    if (this._preparationPending) return false;
     const offers = this._offers || [];
     const offerId = request && request.offerId;
     if (isSwarmRuleset(run.ruleset) && offerId != null && request && request.demo === true) {
@@ -799,7 +860,31 @@ export const survivalDraft = {
   },
 
   _purchase(offerId) {
-    if (this._pendingPurchase || this._pendingReroll) return false;
+    if (this._preparationPending || this._pendingPurchase || this._pendingReroll) return false;
+    const entity = this._playerEntity();
+    const pending = {
+      sequence: ++this._preparationSequence, generation: this._armoryGeneration, wave: this._wave,
+      lifetime: runLifetime(this.state.run), player: this.state.player,
+      ship: this.state.player?.ownedShips?.[this.state.player.activeShipIndex], entity,
+      hull: Number(entity?.hull) || 0, armor: Number(entity?.armorHp) || 0, offerId,
+      offer: this.currentOffers().find(entry => entry.id === offerId), paid: false, refunded: false,
+    };
+    this._preparationPending = pending;
+    this._notice = null;
+    this._recordPreparation(pending, 'pending');
+    try {
+      const accepted = this._purchaseOffer(offerId);
+      if (this._preparationReceipt?.value.sequence === pending.sequence
+        && this._preparationReceipt.value.outcome === 'pending') this._recordPreparation(pending, 'denied');
+      return accepted && this._preparationCurrent(pending, { allowHullChange: true });
+    } finally {
+      if (this._preparationReceipt?.value.sequence === pending.sequence
+        && this._preparationReceipt.value.outcome === 'pending') this._preparationReceipt = null;
+      if (this._preparationPending === pending) this._preparationPending = null;
+    }
+  },
+
+  _purchaseOffer(offerId) {
     const offer = this.currentOffers().find(entry => entry.id === offerId);
     if (!offer || !offer.available) {
       this._notice = offer?.unavailableReason || 'That offer is no longer available.';
@@ -827,6 +912,7 @@ export const survivalDraft = {
           this._notice = 'A synthesis part would not come off. Nothing was charged.';
           return false;
         }
+        if (!this._preparationCurrent(this._preparationPending)) return false;
       }
     }
     // Hulls and services never meet the hardpoint blocker — their legality was judged live in
@@ -838,11 +924,12 @@ export const survivalDraft = {
         return false;
       }
     }
+    if (!this._preparationCurrent(this._preparationPending)) return false;
     this._pendingPurchase = offer;
     this._emit('run:spendRequested', { credits: offer.price, reason: CRUCIBLE_PURCHASE_SPEND_REASON });
     if (this._pendingPurchase) {
       this._pendingPurchase = null;
-      this._notice = 'The run wallet did not answer. Nothing was charged.';
+      this._notice = 'The run wallet did not answer. Preparation was not completed.';
       return false;
     }
     return this._purchased.has(offer.id);
@@ -1583,6 +1670,13 @@ export const survivalDraft = {
   },
 
   _emit(event, payload) {
+    const preparation = this._preparationPending;
+    if (preparation && event === 'run:awardRequested' && payload?.reason === 'crucible:purchaseRefund') {
+      preparation.refunded = true;
+    }
+    if (preparation && event === 'run:shopPurchased' && payload?.offerId === preparation.offerId) {
+      this._recordPreparation(preparation, 'accepted');
+    }
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
   },
 };
