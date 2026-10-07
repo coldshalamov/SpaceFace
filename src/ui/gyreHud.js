@@ -33,6 +33,12 @@ export const GYRE_HUD_CSS = `
 .sf-gyre-pill.gyre-launched { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-ball { border-left-color: var(--dp-lamp-dim, #8a6b3a); }
 .sf-gyre-pill.gyre-full { color: var(--dp-lamp-hot, #ffd98c); border-left-color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
+.sf-gyre-fill {
+  position: absolute; left: 2px; bottom: 0; height: 2px; width: 0;
+  background: linear-gradient(90deg, var(--dp-lamp, #f2b950), var(--dp-danger, #ff5038));
+  border-radius: 1px; opacity: .85; pointer-events: none;
+}
+@media (forced-colors: active) { .sf-gyre-fill { background: CanvasText; } }
 @media (forced-colors: active) {
   .sf-gyre-pill { background: Canvas; color: CanvasText; border: 1px solid CanvasText; box-shadow: none; text-shadow: none; forced-color-adjust: none; }
 }
@@ -69,12 +75,12 @@ export const gyreHud = {
     if (!dom) return;
     if (state.mode !== 'flight' || (state.ui && state.ui.docked)) { this._hide(dom); return; }
     const g = state.gyreSnare || null;
-    const { text, cls } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
+    const { text, cls, strain } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
     if (!text) { this._hide(dom); return; }
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const seat = claimBottomLaneSeat('gyre', LANE_PRIORITY.active, FIELD_LANE_BASE, now);
     if (!seat.visible) { this._hide(dom); return; }
-    this._apply(dom, text, cls);
+    this._apply(dom, text, cls, strain);
     this._applyLaneSeat(dom.pill, seat.bottom);
   },
 
@@ -104,15 +110,19 @@ export const gyreHud = {
       const s = g.strain01 || 0;
       if (s > 0.4) this._strainOn = true;
       else if (s < 0.25) this._strainOn = false;
+      // Funnel still feeding while held: "+N" keeps katamari anticipation legible —
+      // basinCount publishes through HOLD, so the ball's next meal is named.
+      const net = g.basinCount || 0;
+      const tail = net > 0 ? ` +${net}` : '';
       if (this._strainOn) {
-        return { text: `GYRE — STRAIN ×${count} · ${mass}t`, cls: 'gyre-strain' };
+        return { text: `GYRE — STRAIN ×${count} · ${mass}t${tail}`, cls: 'gyre-strain', strain: s };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
       const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;
       if (full) {
-        return { text: `GYRE — ×${count} · ${mass}t FULL`, cls: 'gyre-full' };
+        return { text: `GYRE — ×${count} · ${mass}t FULL${tail}`, cls: 'gyre-full', strain: s };
       }
-      return { text: `GYRE — ×${count} · ${mass}t`, cls: 'gyre-holding' };
+      return { text: `GYRE — ×${count} · ${mass}t${tail}`, cls: 'gyre-holding', strain: s };
     }
     // Net anticipation: material already inside the cone names the catch before it
     // lands — "×N IN NET" instead of a bare SEARCHING sweep.
@@ -120,13 +130,18 @@ export const gyreHud = {
     return { text: net > 0 ? `GYRE — ×${net} IN NET` : 'GYRE — SEARCHING', cls: '' };
   },
 
-  _apply(dom, text, cls) {
+  _apply(dom, text, cls, strain) {
     if (!text) { this._hide(dom); return; }
     if (text !== this._lastText) {
       this._lastText = text;
       dom.pillText.textContent = text;
       dom.pill.setAttribute('aria-label', text);
     }
+    // The continuous strain01 rides a thin fill bar under the pill — the eye gets
+    // the slip building long before the binary STRAIN flag flips at 0.40.
+    const s = Math.max(0, Math.min(1, Number.isFinite(strain) ? strain : 0));
+    dom.fill.style.width = `${Math.round(s * 100)}%`;
+    dom.fill.style.display = s > 0.02 ? 'block' : 'none';
     if (cls !== this._lastClass) {
       this._lastClass = cls;
       dom.pill.classList.toggle('gyre-holding', cls === 'gyre-holding');
@@ -178,9 +193,13 @@ export const gyreHud = {
     const pillText = document.createElement('span');
     pillText.className = 'gyre-tag';
     pill.appendChild(pillText);
+    const fill = document.createElement('span');
+    fill.className = 'sf-gyre-fill';
+    fill.style.display = 'none';
+    pill.appendChild(fill);
     root.appendChild(pill);
     host.appendChild(root);
-    this._dom = { root, pill, pillText };
+    this._dom = { root, pill, pillText, fill };
     this._lastText = '';
     this._lastClass = '';
     this._visible = false;

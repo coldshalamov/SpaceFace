@@ -47,7 +47,9 @@ export const GYRE_SNARE = Object.freeze({
   snagRadius: 34,            // wu — reaching the maw's heart snags an absorbable body as the core
   pullMaxAccel: 900,         // wu/s² — absolute accel ceiling on any single body
   // ── Hold phase (core tethered) ────────────────────────────────────────────────────
-  orbitRadiusMin: 9,         // wu — core orbits the maw at max(this, coreRadius*orbitScale)
+  orbitRadiusMin: 15,        // wu — core orbits the maw at max(this, coreRadius*orbitScale);
+                           // a 9 wu floor pinned a small first snag nearly dead-center in the
+                           // ~86 wu mouth — "revolving loosely" needs visible room to read
   // >1 so a grown clump orbits AROUND the maw point instead of swallowing it — at 0.9 a
   // 60 wu ball circles a spot inside its own skin and the mouth glow drowns inside the katamari.
   orbitRadiusScale: 1.2,

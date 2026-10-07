@@ -276,6 +276,17 @@ export class GyreSnarePresentation {
     this._lumps = [];   // {mesh, used}
     this._lumpMats = {};
     this._clumpSpin = 0;
+    // Glass veil over the held core: a whisper additive shell around the ball's
+    // heart — the sim's data.gyreCore flag is pull-immunity, but the eye needs the
+    // same answer: THIS rock belongs to the lash, not a vanilla asteroid among
+    // glass lumps. Rides the clump group so it orbits/shrinks with the rubble.
+    this._veilMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(glass), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    this._veil = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), this._veilMat);
+    this._veil.visible = false;
+    this._clump.add(this._veil);
     scene.add(this._clump);
 
     // ── launch bursts ────────────────────────────────────────────────────────
@@ -521,13 +532,17 @@ export class GyreSnarePresentation {
         this._coneMat.uniforms.uTime.value = this.time;
         this._coneMat.uniforms.uAlpha.value = 0.42 * kk * flashCalm;
         this._coneMat.uniforms.uPulse.value *= Math.exp(-dt * 9);
-        this._bodyMat.opacity = 0.07 * kk;
-        this._mawMat.opacity = 0.55 * kk;
-        this._discMat.uniforms.uAlpha.value = 0.55 * kk;
+        // flashCalm rides every close-ramp alpha too — a reduced-flash user shouldn't
+        // get a brighter 250 ms tail than those elements ever show while live.
+        this._bodyMat.opacity = 0.07 * kk * flashCalm;
+        this._mawMat.opacity = 0.55 * kk * flashCalm;
+        this._discMat.uniforms.uAlpha.value = 0.55 * kk * flashCalm;
+        this._closeK = kk; // the clump block below shrinks the freed ball on the same ramp
         this._spiral.visible = calm !== 0;
         if (k <= 0) { this._closing = false; this._beam.visible = false; this._spiral.visible = false; }
       } else if (this._beam.visible) {
         this._beam.visible = false;
+        this._closeK = 0;
       }
     }
 
@@ -558,22 +573,35 @@ export class GyreSnarePresentation {
     }
 
     if (cx == null) {
-      this._clump.visible = false;
+      // A freed (grown) core stays a live body — let the glass rubble shrink out on
+      // the close-ramp instead of popping off mid-space one frame before the beam dies.
+      if (this._closing && this._clump.visible && this._closeK > 0) {
+        this._clump.scale.setScalar(Math.max(0.001, this._closeK));
+      } else {
+        this._clump.visible = false;
+      }
       this._lastBall = null;
       this._trail.visible = false;
       this._grip.visible = false;
       this._halo.visible = false;
-      if (phase === 'off' && this._ballId == null) this._clearLumps();
+      if (phase === 'off' && this._ballId == null && !this._closing) this._clearLumps();
     } else {
       const p = this.toLocal(cx, cz, this._nose);
       this._clump.visible = true;
       this._clump.position.set(p.x, 0.6, p.z);
+      this._clump.scale.setScalar(1); // clear any close-ramp shrink before the squash-pop below
       // Feed squash-pop: each absorb compresses the clump ~12% for ~120 ms — "mass
       // landed" reads on the payload, not just the mouth flash.
       this._clump.scale.setScalar(1 - 0.12 * this._clumpKick);
       this._clumpSpin += dt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
+      // Core veil: the held/grown ball's glass skin — swells with clump radius and
+      // breathes faintly with strain, so the ball's heart reads as lash material.
+      const veilR = Math.max(2.5, this._clumpRadius * 1.22);
+      this._veil.scale.setScalar(veilR);
+      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._discKick * 0.05) * flashCalm;
+      this._veil.visible = this._veilMat.opacity > 0.004;
       // Strain tremble: under load the held rubble visibly quivers — the core mesh
       // stays physics-true while its swarm shakes, which is exactly "about to slip".
       const tremble = (phase === 'holding' ? clamp01(finite(mirror.strain01)) : 0) * calm;
@@ -619,11 +647,14 @@ export class GyreSnarePresentation {
 
       // Gravity halo while held: the suck radius drawn faintly around the ball so
       // "within a radius of the held mass" is legible space, not just pull behavior.
-      if (phase === 'holding') {
+      // It dims out as the clump saturates — at cap the suck lane is disabled and the
+      // ring would advertise a dead well.
+      const capFade = Math.max(0, 1 - finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1)));
+      if (phase === 'holding' && capFade > 0.03) {
         const suckR = this._clumpRadius + finite(GYRE_SNARE.suckBandWidth, 88);
         this._halo.position.set(p.x, 0.42, p.z);
         this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
-        this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm;
+        this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6);
         this._halo.visible = true;
       } else if (this._halo.visible) {
         this._halo.visible = false;
@@ -694,6 +725,7 @@ export class GyreSnarePresentation {
     this.disposed = true;
     this.scene.remove(this._beam, this._clump, this._trail, this._grip, this._halo);
     this._halo.geometry.dispose(); this._haloMat.dispose();
+    this._veil.geometry.dispose(); this._veilMat.dispose();
     this._trail.geometry.dispose(); this._trailMat.dispose();
     this._grip.geometry.dispose(); this._gripMat.dispose();
     this._bodyMat.dispose();
