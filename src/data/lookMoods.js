@@ -64,7 +64,7 @@ export const LOOK_BASE = deepFreeze({
     // material's authored/role envMapIntensity. three.js ignores material.envMapIntensity when
     // the env comes from scene.environment, so before this the IBL hit every hull at 1.0 and
     // blew pale paint flat (LOOK_UNIFY.md pass 2).
-    sceneEnv: 1.0,
+    sceneEnv: 0.18,
   },
   post: {
     // How hard the sector wears the grade below (0 = ungraded) and its corner darkening.
