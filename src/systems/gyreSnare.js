@@ -97,6 +97,7 @@ function freshRuntime() {
     totalAbsorbed: 0,      // absorbs ever merged into this clump — NOT bounded by the VFX ledger
     lastAbsorbCueS: -1e9,  // simTime of the last absorb tick — gates the glass-tick cue rate
     strainCueLatched: false, // gyre_snare_strain fires once per strain excursion
+    fuseCueLatched: false,   // the fuse-low warning fires once per hold
     orbitSeed: 0,          // per-clump phase so successive balls don't share a start angle
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
@@ -210,6 +211,7 @@ export const gyreSnare = {
     // stamp would silence the absorb tick for the old run's whole length), and a fresh
     // clump's first strain excursion should re-arm the latch instead of inheriting it hot.
     rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; rt.fullCueLatched = false;
+    rt.fuseCueLatched = false;
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       // dropped = a live beam/hold released without launch; coreId is null when the beam
@@ -623,7 +625,9 @@ export const gyreSnare = {
       }
       // Loot in tow: non-absorbable dynamics the beam drags but never eats — the HUD
       // can answer "why won't it snag?" with TOWING N instead of bare SEARCHING.
-      if (!absorbable && pullK > 0.05) this._rt.towCount += 1;
+      // Projectiles excluded: fire streaking through the wedge gets the point-defense
+      // tug, but a bullet isn't "loot in tow" — it would fake the retrievable count.
+      if (!absorbable && e.type !== 'projectile' && pullK > 0.05) this._rt.towCount += 1;
       this._queueAccel(e, ax, az, mass, dt, state);
     }
     // Strongest grips glow first: in a dense belt the 8 slots go to the bodies being
@@ -827,6 +831,10 @@ export const gyreSnare = {
         if (dist > 1e-4 && rt.clumpMass < D.maxClumpMass) {
           const tug = D.suckAccel * D.nonAbsorbablePull * couplingScale(this._profile(e));
           this._queueAccel(e, (dx / dist) * tug, (dz / dist) * tug, entityMass(e), dt, state);
+          // Tugged mass inside the annulus glows at its discounted share too.
+          if (this._spotScratch.length < D.basinSpotMax * 4) {
+            this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: D.nonAbsorbablePull * couplingScale(this._profile(e)) });
+          }
         }
         continue;
       }
@@ -846,7 +854,8 @@ export const gyreSnare = {
         // merge. Same gate _absorb enforces at contact, extended to the pull lane so a
         // capped ball doesn't drag leeches against its skin forever.
         if (rt.clumpMass >= D.maxClumpMass) continue;
-        const pull = D.suckAccel * couplingScale(this._profile(e));
+        const couple = couplingScale(this._profile(e));
+        const pull = D.suckAccel * couple;
         const mass = entityMass(e);
         let ax = (dx / dist) * pull;
         let az = (dz / dist) * pull;
@@ -854,6 +863,12 @@ export const gyreSnare = {
         ax -= (finite(e.vel && e.vel.x) - shipVx) * D.suckDamping;
         az -= (finite(e.vel && e.vel.z) - shipVz) * D.suckDamping;
         this._queueAccel(e, ax, az, mass, dt, state);
+        // The last stretch of the feed glows like a basin victim: pre-stage the spot
+        // into the pull lane's scratch (_suckPass runs before _pullPass in HOLD) so a
+        // spiraling meal competes for the 8 glow slots by the same k ordering.
+        if (couple > 0.05 && this._spotScratch.length < D.basinSpotMax * 4) {
+          this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: couple });
+        }
       }
     }
   },
@@ -953,6 +968,9 @@ export const gyreSnare = {
     rt.phase = PHASE.LAUNCH;
     rt.launchLeft = D.launchTicks;
     rt.launchWindup = D.launchWindupTicks;
+    // The aim freezes at the RELEASE edge — the slingshot read. The ball doesn't fly
+    // for ~117 ms (windup + first burst), and re-deriving at the burst would let the
+    // player steer the throw mid-coil: you aim, then the coil bows you away.
     rt.launchDir.x = dir.x;
     rt.launchDir.z = dir.z;
     // rt.coreId keeps pointing at the now-flying ball through the 5-tick burst — the
@@ -1060,6 +1078,7 @@ export const gyreSnare = {
     // The beam ended in a THROW, not a release or a tear — a previous lash's 'strained'
     // must not dress a clean bowl's close ramp as a slip.
     rt.dropReason = 'launched';
+    rt.fuseCueLatched = false;
     // Same live-side ledger reset _drop does: after the ball dies a core-less re-beam
     // must not publish the dead clump's count/cue state as if it were live. The frozen
     // ball ledger (ballId/ballMass/ballMembers/ballClumpRadius/ballAbsorbs) survives —
@@ -1188,6 +1207,9 @@ export const gyreSnare = {
           && state.simTime >= ball.data.despawnAt && this.bus) {
           this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: ball.pos.x, z: ball.pos.z } });
           pub.ballGrave = true; // its last live tick — the ring blooms as the body retires
+          // unwatched ⇒ disarmed — the non-primary quiet-TTL path keeps this invariant;
+          // the primary's gets it too even though the body dies moments later.
+          this._disarmBall(ball);
           this._unwatchBall(rt.ballId);
           rt.ballId = null; rt.launchedId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
         }
@@ -1207,6 +1229,7 @@ export const gyreSnare = {
       ballTtlS: 0,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
+      liveBalls: 0,
     });
     if (pub.basinSpots === null) pub.basinSpots = [];
     pub.basinSpots.length = 0;
@@ -1296,6 +1319,17 @@ export const gyreSnare = {
         clamp(rt.holdLag / D.holdLagRefWu, 0, 1) * D.holdLagStrainMax,
       ) : 0;
     } else { pub.strain01 = 0; pub.coreAngVel = 0; }
+    pub.liveBalls = rt.ballIds.length;
+    // The capacitor's dying gasp warns the hands/ears ~3 s out — a pad-first player
+    // gets no `·Ns` pill read, so the forced bowl must not arrive unattributed.
+    // Latched per hold like strain; _drop/_finishLaunch re-arm it for the next lash.
+    if (rt.phase === PHASE.HOLD && !rt.fuseCueLatched && pub.fuseS > 0 && pub.fuseS < D.fuseLowWarnS) {
+      rt.fuseCueLatched = true;
+      if (this.bus) {
+        this.bus.emit('audio:cue', { id: 'gyre_snare_fuse_low', gain: 0.45 });
+        this.bus.emit(GYRE_EVENTS.fuseLow, { tick: state && state.tick });
+      }
+    }
     // Strain gets its own voice on the same hysteresis the HUD uses: the glass tension
     // rises the tick the clump strains, and latches quiet again once it reels back in.
     if (rt.phase === PHASE.HOLD && !rt.strainCueLatched && pub.strain01 > 0.4) {

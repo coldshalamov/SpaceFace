@@ -3156,6 +3156,18 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 1400, filterQ: 1.2,
     pitchRange: [0.97, 1.03],
   },
+  // Fuse-low: the capacitor's dying gasp — a low falling thrum, latched once per hold
+  // ~3 s before the dry auto-bowl so the lash firing itself lands attributed.
+  {
+    id: 'sfx_gyre_fuse_low',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 210, freqSweep: [210, 130], sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.04, sustain: 0.15, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 700, filterQ: 1.0,
+    pitchRange: [0.98, 1.02],
+  },
   // Beam wake: a soft rising glass shimmer as the cone ignites — lighter than the snag bite
   // (which is the grip landing). The lash switching on, not the catch.
   {

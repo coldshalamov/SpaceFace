@@ -93,8 +93,12 @@ export const gyreHud = {
     if (!g) return { text: '', cls: '' };
     // A live ball's quiet grave telegraphs on EVERY phase, not just OFF — a re-beamed
     // lash would otherwise swallow the countdown exactly while a second lash winds.
+    // "+N" names the OTHER live balls still flying — the pill only mirrors the freshest,
+    // but a second bowl mid-flight shouldn't make the first one's grave invisible.
     const bttl = g.ballTtlS || 0;
-    const ballTxt = bttl > 0 && bttl < 4 ? ` · ball ${Math.max(1, Math.ceil(bttl))}s` : '';
+    const extraBalls = Math.max(0, (g.liveBalls || 0) - 1);
+    const ballTxt = bttl > 0 && bttl < 4
+      ? ` · ball ${Math.max(1, Math.ceil(bttl))}s${extraBalls > 0 ? ` +${extraBalls}` : ''}` : '';
     // Fuse speaks during BEAM too — a lashing <8 s from dry shouldn't announce itself
     // only through the after-the-fact dry toast.
     const fuseS = g.fuseS || 0;

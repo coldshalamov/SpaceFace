@@ -45,7 +45,11 @@ export const GYRE_SNARE = Object.freeze({
   wedgeAccel: 150,           // wu/s² — faint pull anywhere inside the drawn cone wedge
   wedgeSoftLipWu: 18,        // wu — fade band PAST the visible rim: pull eases to zero at the
                            // outer lip so the drawn cone edge is the real physics edge
-  wedgeFalloff: 0.5,         // non-absorbable bodies get at most this share of wedgeAccel
+  wedgeFalloff: 0.5,         // non-absorbable bodies get at most this share of wedgeAccel.
+                           // Deliberately a touch above the basin rate: a body already
+                           // committed to the chute keeps more of its tug so it doesn't
+                           // visibly stall at the rim; the basin discount is the courtesy
+                           // rate for mass merely loitering under the cone.
   nonAbsorbablePull: 0.45,   // ×accel on dynamic bodies that can never core/member (rocks the maw shoves)
   queryReachWu: 60,          // wu — extra query radius past the basin so the wedge reaches its lip
   basinDamping: 1.6,         // 1/s — velocity damping vs ship frame inside the basin (settle, don't orbit-shoot)
@@ -119,6 +123,7 @@ export const GYRE_SNARE = Object.freeze({
   // ── Resource cost ─────────────────────────────────────────────────────────────────
   capActivateMin: 10,        // cap needed to open the beam
   capDrainPerS: 6.5,         // cap/s while the beam is live (empty tank = auto-bowl)
+  fuseLowWarnS: 3,           // s of burn left → the fuse-low warning fires (ears/hands, ~3 s out)
   capHoldMult: 1.35,         // ×drain while a clump is held (holding mass is heavier work)
   // Hold drain scales with clump mass up to a cap: the mass term saturates at
   // capMassDrainMax so a FULL ball (2400t) costs the same fuse as a 130t one —
@@ -155,6 +160,9 @@ export const GYRE_EVENTS = Object.freeze({
   thrown: 'gyre:thrown',
   dropped: 'gyre:dropped',
   strained: 'gyre:strained',
+  // The lash's ~3 s countdown — latched once per hold so the forced bowl lands
+  // attributed (pad pulse + low thrum; the HUD's ·Ns says the same thing to eyes).
+  fuseLow: 'gyre:fuseLow',
   // First cap-crossing — the escalation arc's ceiling beat (audio chime + pad pulse).
   full: 'gyre:full',
 });

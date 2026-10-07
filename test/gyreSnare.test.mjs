@@ -50,7 +50,7 @@ function boot(seed = 4242, { withPhysics = false, playerRadius = 12 } = {}) {
   state.playerId = player.id;
   player.cap = 100; // full capacitor — the verb drains it
   const events = [];
-  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:absorbTick', 'gyre:launched', 'gyre:thrown', 'gyre:dropped', 'audio:cue', 'toast']) {
+  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:absorbTick', 'gyre:launched', 'gyre:thrown', 'gyre:dropped', 'gyre:fuseLow', 'audio:cue', 'toast']) {
     sim.bus.on(name, (p) => events.push({ name, p, tick: state.tick }));
   }
   return { sim, state, bus: sim.bus, helpers, player, events, sys: sim.registry.get('gyreSnare'), physicsSys: sim.registry.get('physics') };
@@ -1723,11 +1723,13 @@ test('non-absorbable loot under tow publishes towCount — TOWING answers "why n
   const t = await bootPhysics();
   rock(t.sim, T.mawDist + 30, 10, 6, 4, 'pickup');   // absorbable? no — dragged only
   rock(t.sim, T.mawDist + 55, -18, 8, 5, 'mine');
+  rock(t.sim, T.mawDist + 45, 14, 1, 2, 'projectile'); // point-defense tug: not "loot"
   hold(t);
   t.sim.step();
   assert.equal(t.sys._rt.phase, 'beaming', 'nothing absorbable to core');
   assert.equal(t.state.gyreSnare.basinCount, 0, 'loot never counts as the next meal');
-  assert.equal(t.state.gyreSnare.towCount, 2, `bodies under tow (got ${t.state.gyreSnare.towCount})`);
+  assert.equal(t.state.gyreSnare.towCount, 2,
+    `tugged bullets don't inflate the retrievable read (got ${t.state.gyreSnare.towCount})`);
   t.cleanup();
 });
 
@@ -1788,5 +1790,113 @@ test('fuseS publishes the burn countdown during hold and dies with the beam', as
   release(t);
   for (let i = 0; i < T.launchWindupTicks + T.launchTicks + 4; i++) t.sim.step();
   assert.equal(t.state.gyreSnare.fuseS, 0, 'no fuse once the beam is gone');
+  t.cleanup();
+});
+
+// ── wave-26 coverage ────────────────────────────────────────────────────────────
+test('two balls expiring on the same tick each get a grave — primary ring + watched ring', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step(); // A flying
+  const b = rock(t.sim, T.mawDist + 2, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step(); // B flying, the HUD's primary
+  assert.equal(t.sys._rt.ballId, b.id);
+  assert.ok(t.sys._rt.ballIds.includes(a.id) && t.sys._rt.ballIds.includes(b.id));
+
+  const deaths0 = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death').length;
+  // Both deadlines on the same tick: the non-primary walks the watch-list retire, the
+  // primary walks the ballGrave branch — same step, no starved beat.
+  a.data.despawnAt = t.state.simTime + 0.02;
+  b.data.despawnAt = t.state.simTime + 0.02;
+  t.sim.step(); // simTime advances past both deadlines on the second tick
+  t.sim.step();
+  assert.equal(t.state.gyreSnare.ballGrave, true, 'the primary ball bloomed its ring');
+  assert.equal(t.state.gyreSnare.graves.length, 1, 'the watched ball published its grave spot');
+  assert.equal(
+    t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death').length - deaths0,
+    2, 'each ball sang its own shatter',
+  );
+  t.sim.step();
+  assert.equal(a.data.gyreLaunchMeta, undefined, 'A disarmed on the way out');
+  assert.equal(b.data.gyreLaunchMeta, undefined, 'B disarmed on the way out');
+  assert.equal(t.sys._rt.ballIds.length, 0, 'watch list empty');
+  t.cleanup();
+});
+
+test('the strain voice re-arms after a drop — a second clump strains with its own cue', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  a.pos.x = t.player.pos.x + T.mawDist + 560; a.pos.z = t.player.pos.z;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(
+    t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain').length, 1,
+    'first excursion latched its cue',
+  );
+  // Strain break — the drop clears the latch, the beam is off, a fresh lash starts cold.
+  a.pos.x = t.player.pos.x + T.mawDist + 700; a.pos.z = t.player.pos.z;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'the tear dropped the beam');
+  t.state.input.actions.gyreSnare = false; t.sim.step();
+  const b = rock(t.sim, T.mawDist + 2, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, b.id, 'new clump cored');
+  b.pos.x = t.player.pos.x + T.mawDist + 560; b.pos.z = t.player.pos.z;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(
+    t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain').length, 2,
+    'the second clump strained with its own cue, not a stale latch',
+  );
+  t.cleanup();
+});
+
+test('a dying capacitor warns once per hold — fuseLow latches under 3 s of burn', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 6; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  t.player.cap = 5; // ~0.5 s of burn at any drainMult — well under fuseLowWarnS
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.ok(t.state.gyreSnare.fuseS > 0 && t.state.gyreSnare.fuseS < T.fuseLowWarnS,
+    `fuse reads under the warn floor (got ${t.state.gyreSnare.fuseS})`);
+  assert.equal(t.sys._rt.fuseCueLatched, true, 'the warning latched');
+  assert.ok(t.events.some((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_fuse_low'),
+    'the low thrum fired');
+  assert.ok(t.events.some((e) => e.name === 'gyre:fuseLow'), 'the pad pulse fired');
+  const before = t.events.filter((e) => e.name === 'gyre:fuseLow').length;
+  for (let i = 0; i < 3 && t.sys._rt.phase === 'holding'; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(t.events.filter((e) => e.name === 'gyre:fuseLow').length, before,
+    'latched — no thrum-per-tick buzz while the tank dies');
+  t.cleanup();
+});
+
+test('a body spiraling into the clump glows like a basin victim (suck-lane spots)', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const core = t.state.entities.get(t.sys._rt.coreId);
+  // Victim inside the suck annulus but off the skin: the pull lane owns it nowhere,
+  // yet it must still glow on the way in.
+  const victim = rock(t.sim, core.pos.x + 40, core.pos.z, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // spatial index registers the spawn
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const spot = (t.state.gyreSnare.basinSpots || []).find(
+    (s) => Math.hypot(s.x - victim.pos.x, s.z - victim.pos.z) < 20,
+  );
+  assert.ok(spot, `the in-flight meal publishes a pull glow (spots=${JSON.stringify(t.state.gyreSnare.basinSpots)})`);
+  assert.ok(spot.k > 0.05, 'glow rides a real grip share');
   t.cleanup();
 });
