@@ -310,6 +310,8 @@ export function installFleetLook(SF) {
           meshes: 1, role: m.userData?.spacefaceMaterialRole || null,
           color: m.color ? '#' + m.color.getHexString() : null,
           roughness: m.roughness, metalness: m.metalness,
+          envMapIntensity: m.envMapIntensity, emissiveIntensity: m.emissiveIntensity,
+          finish: m.userData?.spacefaceFinish || null,
           map: m.map?.image ? `${m.map.image.width}x${m.map.image.height}` : null,
           normalMap: m.normalMap?.image ? `${m.normalMap.image.width}x${m.normalMap.image.height}` : null,
           ormMap: m.roughnessMap?.image ? `${m.roughnessMap.image.width}x${m.roughnessMap.image.height}` : null,
