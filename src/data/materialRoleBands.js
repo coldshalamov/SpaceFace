@@ -51,7 +51,10 @@ function applyValueCeiling(material, role) {
   // Authored base map, not the procedural fallback the legacy path may have generated.
   const coverage = material.userData && material.userData.spacefacePbrCoverage;
   const authoredMap = coverage ? coverage.baseColor : !!material.map;
-  if (!VALUE_CEILING_ROLES.has(role) || authoredMap || !material.color) return;
+  // Illustrated livery paints through its own pigment uniform and its contract keeps the
+  // authored colour factor intact, so the ceiling stays off there.
+  const livery = material.userData && material.userData.spacefaceIllustratedPigment;
+  if (!VALUE_CEILING_ROLES.has(role) || authoredMap || livery || !material.color) return;
   const c = material.color; // linear working space
   const peak = Math.max(linearToSrgb(c.r), linearToSrgb(c.g), linearToSrgb(c.b));
   if (!(peak > PAINT_VALUE_CEILING_SRGB)) return;
