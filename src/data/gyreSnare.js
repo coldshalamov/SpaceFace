@@ -53,7 +53,7 @@ export const GYRE_SNARE = Object.freeze({
   nonAbsorbablePull: 0.45,   // ×accel on dynamic bodies that can never core/member (rocks the maw shoves)
   queryReachWu: 60,          // wu — extra query radius past the basin so the wedge reaches its lip
   basinDamping: 1.6,         // 1/s — velocity damping vs ship frame inside the basin (settle, don't orbit-shoot)
-  mawSwirlAccel: 90,         // wu/s² — tangential swirl so basin objects spiral in, not dead-stop
+  mawSwirlAccel: 130,        // wu/s² — tangential swirl so basin objects visibly spiral in (keyed to orbitDir), not dead-stop
   snagRadius: 34,            // wu — reaching the maw's heart snags an absorbable body as the core
   pullMaxAccel: 900,         // wu/s² — absolute accel ceiling on any single body
   // ── Hold phase (core tethered) ────────────────────────────────────────────────────

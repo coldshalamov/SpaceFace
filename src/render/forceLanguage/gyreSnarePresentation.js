@@ -83,7 +83,8 @@ void main() {
   float rim = smoothstep(0.80, 1.0, vUv.y);
   float apex = smoothstep(0.20, 0.0, vUv.y);
   float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + band * band2 * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.22);
-  vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4, 0.0, 1.0));
+  // uStrain warms the hue itself — the glass reads 'about to tear' without the pill.
+  vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4 + uStrain * 0.5, 0.0, 1.0));
   gl_FragColor = vec4(col, a);
 }
 `;
@@ -226,6 +227,10 @@ export class GyreSnarePresentation {
     // hex literals here drifted from it once already (maw disc vs palette.maw).
     const P = GYRE_SNARE.palette;
     const glass = P.glass, hot = P.rim;
+    // Kept for per-spot hue grading — a body on the verge of snagging warms
+    // toward rim-hot while a courtesy-tug loiterer stays flat glass.
+    this._colGlass = new THREE.Color(glass);
+    this._colHot = new THREE.Color(hot);
 
     // ── beam group: origin at the nose, +X along the beam ───────────────────
     this._beam = new THREE.Group();
@@ -815,8 +820,10 @@ export class GyreSnarePresentation {
       g.scale.setScalar(Math.max(1.5, finite(s.r, 3) * 2.6)
         * (1 + 0.08 * Math.sin(this.time * 4 + i * 1.7) * calm));
       // Opacity rides the pull strength the sim published (k = lane accel share):
-      // a body at the basin's heart burns brighter than one fading at the lip.
+      // a body at the basin's heart burns brighter than one fading at the lip —
+      // and warms toward rim-hot in hue, so 'about to be grabbed' reads at a glance.
       g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm;
+      g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
       g.visible = true;
     }
 

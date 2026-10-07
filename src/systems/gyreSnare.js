@@ -986,8 +986,13 @@ export const gyreSnare = {
       if (nowS - rt.lastAbsorbCueS >= D.absorbCueMinGapS) {
         rt.lastAbsorbCueS = nowS;
         // Meal size in the ear too: the tick drops pitch as the victim gets heavier — a
-        // pebble ticks high, a wreck thuds low.
-        this.bus.emit('audio:cue', { id: 'gyre_snare_absorb', gain: 0.7, rate: 1.15 - Math.min(0.5, em / 160) });
+        // pebble ticks high, a wreck thuds low. And the whole arc creeps upward as the
+        // katamari eats — the 20th meal sounds hungrier than the 1st (escalation you
+        // hear, not just see in the clump radius).
+        this.bus.emit('audio:cue', {
+          id: 'gyre_snare_absorb', gain: 0.7,
+          rate: 1.15 - Math.min(0.5, em / 160) + Math.min(0.3, rt.totalAbsorbed * 0.015),
+        });
         // The haptic ride shares the gate: a dense belt feed would otherwise hold the
         // pad in a continuous buzz exactly where the audio designers decided it should
         // stay a discrete tick. gyre:absorbed still fires per-meal for HUD honesty.
