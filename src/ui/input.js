@@ -1022,10 +1022,12 @@ export function createUiInput(ctx, screenManager) {
       if (def && def.id === 'station') {
         if (gp.actions.tabPrev && gp.actions.tabPrev.pressed && cycleStationTab(-1)) {
           bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
           return;
         }
         if (gp.actions.tabNext && gp.actions.tabNext.pressed && cycleStationTab(1)) {
           bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
           return;
         }
       }
