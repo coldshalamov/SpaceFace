@@ -1421,6 +1421,34 @@ function stopAutopilot(host, state, reason) {
   }
 }
 
+// Phase 2b #9 (tuning lab): the station a docking autopilot targets is excluded from its own
+// obstacle list, so a hull starting behind the station flew the straight line to the corridor mouth
+// THROUGH the station and ground against its proxy forever (measured: every 180° start, every hull,
+// ~7000 contacts at up to 158 wu/s, never docked). A far-side approach now rounds the station on a
+// circle of DOCK_ORBIT_RADIUS_MULT x mouth radius, aiming a carrot DOCK_ORBIT_STEP_DEG ahead toward
+// the corridor axis, until the hull is within that angle of the axis — then the authored mouth aim
+// takes over unchanged. Starts already inside the circle keep the mouth aim (the exit path).
+export const DOCK_ORBIT_RADIUS_MULT = 1.3;
+export const DOCK_ORBIT_STEP_DEG = 60;
+export function dockOrbitWaypoint(entity, axis, mouthRadius, player) {
+  if (!player || !player.pos || !(mouthRadius > 0)) return null;
+  const R = mouthRadius * DOCK_ORBIT_RADIUS_MULT;
+  const rx = finite(player.pos.x) - finite(entity.pos.x);
+  const rz = finite(player.pos.z) - finite(entity.pos.z);
+  const along = rx * axis.x + rz * axis.z;
+  const lateral = rx * -axis.z + rz * axis.x;
+  const theta = Math.atan2(lateral, along);
+  const step = DOCK_ORBIT_STEP_DEG * Math.PI / 180;
+  if (Math.abs(theta) <= step || Math.hypot(rx, rz) < R * 0.9) return null;
+  const tw = theta - Math.sign(theta) * step;
+  const c = Math.cos(tw);
+  const s = Math.sin(tw);
+  return {
+    x: finite(entity.pos.x) + (axis.x * c - axis.z * s) * R,
+    z: finite(entity.pos.z) + (axis.z * c + axis.x * s) * R,
+  };
+}
+
 export function resolveAutopilotTarget(state, autopilot) {
   if (!state || !autopilot) return null;
   const id = autopilot.targetEntityId;
@@ -1502,9 +1530,10 @@ export function resolveAutopilotTarget(state, autopilot) {
         speedGate: positive(manifest.docking.berth && manifest.docking.berth.speedGate, 12),
         kind: 'berth',
       };
+      const orbit = berthStage ? null : dockOrbitWaypoint(entity, axis, mouthRadius, player);
       return {
-        x: berthStage ? dockAnchor.x : approach.x,
-        z: berthStage ? dockAnchor.z : approach.z,
+        x: berthStage ? dockAnchor.x : orbit ? orbit.x : approach.x,
+        z: berthStage ? dockAnchor.z : orbit ? orbit.z : approach.z,
         radius: 0,
         arrivalRadius: dockAnchor.dockRadius,
         dockingProxyId: manifest.id || null,
