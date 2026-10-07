@@ -50,6 +50,19 @@ function motionTravelPadFor(mesh) {
 }
 
 /**
+ * Runtime motion graft onto an already-live row: measure the pad now, inside the
+ * graft, instead of letting the row's next cull consult pay the first-mint walk
+ * mid-pass. Only safe once the row's drawn-cull memo exists — the lazy measure
+ * is load-bearing on rows still mid-mount (pre-fit world boxes are wrong), so a
+ * mount-time attach stays lazy exactly as before.
+ */
+export function primeMotionTravelPad(mesh) {
+  const data = mesh && mesh.userData;
+  if (!data || data.drawnCullRadius == null) return;
+  motionTravelPadFor(mesh);
+}
+
+/**
  * True drawn reach for an authored root that carries no authored visualBounds: measure the
  * real envelope once and cache it on userData. station_helios draws 549x420 WU half-extents
  * against a 90 WU dock radius, so collision-proxied radii hide limbs that are still on the
@@ -81,7 +94,48 @@ const DRAWN_CULL_REMEASURE_PER_PASS = 4;
 // keeps the deferred serve strictly on the legal (over-draw) side.
 const DRAWN_CULL_STALE_SERVE_BIAS = 1.15;
 let _passRemeasureCount = 0;
-export function resetDrawnCullPassBudget() { _passRemeasureCount = 0; }
+// Post-cap forced walks ride a FIFO instead of falling straight to
+// setFromObject: the jittered streak cap staggers which pass each cohort falls
+// through, but every fall-through still paid an unbudgeted O(subtree) walk.
+// Queued rows keep serving their stale-biased envelope (the legal over-draw
+// direction) and drain ≤DRAWN_CULL_REMEASURE_PER_PASS per pass — the staleness
+// bound becomes cap + ceil(queue/K) passes, still a hard bound.
+const _drawnCullForceRemeasure = [];
+export function resetDrawnCullPassBudget() {
+  let spent = 0;
+  while (_drawnCullForceRemeasure.length && spent < DRAWN_CULL_REMEASURE_PER_PASS) {
+    const mesh = _drawnCullForceRemeasure.shift();
+    const data = mesh && mesh.userData;
+    // Rows whose mesh parked (unparented) or had the queue stamp cleared drop —
+    // they are not being culled this pass and re-queue on their next consult.
+    if (!mesh || mesh.isObject3D !== true || !mesh.parent || !data
+        || data.drawnCullForceQueued !== true) continue;
+    data.drawnCullForceQueued = false;
+    _drawnCullBox.setFromObject(mesh);
+    let radius = 0;
+    if (!_drawnCullBox.isEmpty()) {
+      const b = _drawnCullBox;
+      const px = mesh.position ? mesh.position.x : 0;
+      const pz = mesh.position ? mesh.position.z : 0;
+      radius = Math.max(
+        Math.hypot(b.min.x - px, b.min.z - pz),
+        Math.hypot(b.min.x - px, b.max.z - pz),
+        Math.hypot(b.max.x - px, b.min.z - pz),
+        Math.hypot(b.max.x - px, b.max.z - pz),
+      );
+    }
+    const rec = data.drawnCullRadius || (data.drawnCullRadius = {});
+    rec.assetState = data.authoredAssetState || '';
+    rec.compositionId = data.authoredCompositionId || '';
+    rec.lodLevel = data.wholeShipLodActiveLevel || '';
+    rec.childCount = mesh.children ? mesh.children.length : 0;
+    rec.calls = 0;
+    rec.radius = radius;
+    data.drawnCullDefers = 0;
+    spent += 1;
+  }
+  _passRemeasureCount = spent;
+}
 
 function drawnCullRadiusForMesh(mesh) {
   const data = mesh && mesh.userData;
@@ -127,6 +181,7 @@ function drawnCullRadiusForMesh(mesh) {
       rec.calls = DRAWN_CULL_REMEASURE_CALLS >> 1;
       rec.radius = hit;
       data.drawnCullDefers = 0;
+      data.drawnCullForceQueued = false;
       // Refresh recency — the Map iterates in insertion order.
       lru.delete(lruKey);
       lru.set(lruKey, hit);
@@ -159,7 +214,18 @@ function drawnCullRadiusForMesh(mesh) {
     // into a single presented pass.
     const defers = (data.drawnCullDefers = (data.drawnCullDefers || 0) + 1);
     if (known > 0 && defers <= (2 + (mesh.id & 3))) return known * DRAWN_CULL_STALE_SERVE_BIAS;
-    // Past the cap (or nothing honest to serve): fall through and pay the walk.
+    // Past the cap: queue the forced walk on the per-pass FIFO and keep serving
+    // the stale envelope while it waits — the jittered cap used to hand every
+    // exhausted cohort straight to setFromObject, re-stacking ~N/4 unbudgeted
+    // walks inside each jitter group's pass. A never-measured row has nothing
+    // honest to serve: it still pays the walk inline.
+    if (known > 0) {
+      if (data.drawnCullForceQueued !== true) {
+        data.drawnCullForceQueued = true;
+        _drawnCullForceRemeasure.push(mesh);
+      }
+      return known * DRAWN_CULL_STALE_SERVE_BIAS;
+    }
   }
   // Cadence-expiry re-measures defer past the pass budget (a key-moved row
   // still pays — its incoming key owns no stale radius to serve).
@@ -169,7 +235,16 @@ function drawnCullRadiusForMesh(mesh) {
       cached.calls -= 8;
       return cached.radius * DRAWN_CULL_STALE_SERVE_BIAS;
     }
-    // Same jittered streak cap — a stale own-key envelope stops deferring.
+    // Same jittered streak cap — past it the row still owns an honest stale
+    // envelope, so queue the re-measure and keep serving (a zero/never-measured
+    // radius can't over-serve: it walks).
+    if (cached.radius > 0) {
+      if (data.drawnCullForceQueued !== true) {
+        data.drawnCullForceQueued = true;
+        _drawnCullForceRemeasure.push(mesh);
+      }
+      return cached.radius * DRAWN_CULL_STALE_SERVE_BIAS;
+    }
   }
   _passRemeasureCount += 1;
   _drawnCullBox.setFromObject(mesh);
@@ -194,6 +269,7 @@ function drawnCullRadiusForMesh(mesh) {
   rec.calls = 0;
   rec.radius = radius;
   data.drawnCullDefers = 0;
+  data.drawnCullForceQueued = false;
   return radius;
 }
 
@@ -234,6 +310,7 @@ export function primeDrawnCullStamps(mesh) {
   rec.calls = 0;
   rec.radius = radius;
   data.drawnCullDefers = 0;
+  data.drawnCullForceQueued = false;
 }
 
 /** Use authored XZ bounds for view culling without changing gameplay/collision radius. */

@@ -182,7 +182,6 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
     const batch = collectBatch();
     const live = batch.filter((entry) => entry.active());
     if (live.length === 0) return { entries: batch, ready: done };
-    const roots = live.map((entry) => entry.root);
     const startedAt = typeof performance !== 'undefined' && performance && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();
@@ -197,18 +196,26 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
       });
     }
     if (typeof prepareBatch === 'function') {
-      // One merged residency pass over the burst: a single work list and one
-      // chain link instead of N serialized per-root passes.
-      drainStage = `batch-prepare:${live.length}`;
-      const result = await prepareBatch(roots, {
-        isActive: () => live.some((entry) => entry.active()),
-        unSliced: true,
-      });
-      for (const entry of live) {
-        if (!entry.active() || result?.skipped === true) continue;
-        onReady(entry.entity, entry.root);
-        entry.readied = true;
-        done.add(entry);
+      // Merged residency, sliced ~8 roots a pass: a large on-glass burst no
+      // longer pays one count-unbounded prepare inside a single task. Each
+      // chunk's onReady still clears its own latch at its own residency.
+      for (let i = 0; i < live.length; i += 8) {
+        const chunk = live.slice(i, i + 8);
+        drainStage = `batch-prepare:${Math.min(i + 8, live.length)}/${live.length}`;
+        const result = await prepareBatch(
+          chunk.map((entry) => entry.root),
+          {
+            isActive: () => live.some((entry) => entry.active()),
+            unSliced: true,
+          },
+        );
+        for (const entry of chunk) {
+          if (!entry.active() || result?.skipped === true) continue;
+          onReady(entry.entity, entry.root);
+          entry.readied = true;
+          done.add(entry);
+        }
+        if (i + 8 < live.length) await yieldToMain();
       }
     } else {
       for (const entry of live) {

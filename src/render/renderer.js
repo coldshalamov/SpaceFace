@@ -2111,9 +2111,14 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
   // without minting an unbounded drain.
   const backlog = queue.length - owner[headField];
   // A lane inheriting a spent sibling budget keeps ~0 leftover; floor the
-  // escalation at the lane's own base so a deep backlog still reaches the
-  // escalator's intent instead of paying ~1 slice per forced drain.
-  if (backlog > 32) budgetMs = Math.max(budgetMs * 2, DESPAWN_DISPOSE_BUDGET_MS);
+  // escalation so a deep backlog still reaches the escalator's intent instead
+  // of paying ~1 slice per forced drain. The floor consults paced headroom
+  // too: on a spent wallet it drops to this lane's own base share, so live
+  // escalation + warm floor can't sum past ~one frame wallet between lanes.
+  if (backlog > 32) {
+    const headroom = Math.max(budgetMs, PACED_FRAME_BUDGET_MS - pacedFrameSpend());
+    budgetMs = Math.max(budgetMs * 2, Math.min(DESPAWN_DISPOSE_BUDGET_MS, headroom));
+  }
   // A spent paced window skips this drain entirely — the corpses keep one more
   // frame rather than stacking a fresh slice on a frame that's already over.
   // The aging cap mirrors the other paced lanes' so a permanently-busy stretch
@@ -3956,6 +3961,30 @@ function cameraClearanceBoxForMesh(mesh) {
       && cached.posX === posX && cached.posZ === posZ) {
     return cached;
   }
+  // Position-only re-key (same authored content, crossed a 1-WU cell): a world
+  // box translates exactly — a drifting capital paying a full setFromObject
+  // re-walk every couple of frames is what made the memo miss hot. Rotation
+  // staleness is already the memo's accepted contract.
+  if (cached && cached.assetState === assetState && cached.compositionId === compositionId
+      && cached.box
+      && (cached.posX !== posX || cached.posZ !== posZ)) {
+    const dx = mesh.position.x - (Number(cached.rawX) || 0);
+    const dz = mesh.position.z - (Number(cached.rawZ) || 0);
+    if (dx !== 0 || dz !== 0) {
+      cached.box.minX += dx; cached.box.maxX += dx;
+      cached.box.minZ += dz; cached.box.maxZ += dz;
+      cached.layout = cached.bvhQuery ? clearanceLayoutFromBox(cached.box) : null;
+      cached.grid = null;
+      cached.bvhCache = null;
+      cached.cellRoofs = null;
+      _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
+    }
+    cached.posX = posX;
+    cached.posZ = posZ;
+    cached.rawX = mesh.position.x;
+    cached.rawZ = mesh.position.z;
+    return cached;
+  }
   if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid') {
     const hint = asteroidClearanceSpanHint(data);
     if (hint > 0 && hint < CAMERA_CLEARANCE_MIN_SPAN_WU) {
@@ -3968,6 +3997,8 @@ function cameraClearanceBoxForMesh(mesh) {
       rec.compositionId = compositionId;
       rec.posX = posX;
       rec.posZ = posZ;
+      rec.rawX = mesh.position.x;
+      rec.rawZ = mesh.position.z;
       rec.box = null;
       rec.grid = null;
       rec.bvhQuery = false;
@@ -3992,6 +4023,8 @@ function cameraClearanceBoxForMesh(mesh) {
       rec.compositionId = compositionId;
       rec.posX = posX;
       rec.posZ = posZ;
+      rec.rawX = mesh.position.x;
+      rec.rawZ = mesh.position.z;
       rec.grid = null;
       rec.bvhQuery = false;
       rec.layout = null;
@@ -4028,6 +4061,8 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.compositionId = compositionId;
   rec.posX = posX;
   rec.posZ = posZ;
+  rec.rawX = mesh.position.x;
+  rec.rawZ = mesh.position.z;
   rec.box = box;
   rec.grid = null;
   rec.bvhQuery = bvhQuery && box != null;
@@ -12441,6 +12476,7 @@ export const render = {
         let drainIter = typeof this._drainMeshBuildQueueSteps === 'function'
           ? this._drainMeshBuildQueueSteps(Infinity)
           : null;
+        let drainFallbackAlive = true;
         while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
           if (cookStale()) return;
           if (prepareNow() - started > cap) {
@@ -12468,8 +12504,14 @@ export const render = {
               // per-call loop did instead of spinning on a closed iterator.
               drainIter = this._drainMeshBuildQueueSteps(Infinity);
             }
-          } else {
-            built += Number(this._drainMeshBuildQueue(1)) || 0;
+          } else if (drainFallbackAlive) {
+            // The per-call fallback re-mints the same prologue mint + census the
+            // stepped drive died on — belt it, and after its own throw stop
+            // re-calling (a fault here is drain infrastructure, not a row).
+            const drainRow = runCookSyncTwin('mesh-build drain',
+              () => this._drainMeshBuildQueue(1), -1);
+            if (drainRow < 0) drainFallbackAlive = false;
+            else built += Number(drainRow) || 0;
           }
           buildMs += prepareNow() - buildStarted;
           passes += 1;
@@ -17215,6 +17257,7 @@ export const render = {
         openingStepStarted = openingNow();
         // The receipt re-walks the live scene and probes every subject's binding —
         // pace its legs under the cook's own yield instead of one atomic window.
+        const receiptFallback = createOpeningSubmissionReceipt;
         const receiptIter = createOpeningSubmissionReceiptSteps(renderer, plan, {
           scene,
           programMaterials: openingPostMaterials,
@@ -17230,7 +17273,7 @@ export const render = {
             console.warn('[render] opening receipt drive failed; running the sync twin', driveError);
             if (!openingStale()) {
               state.render.openingSubmissionReceipt = runCookSyncTwin('opening receipt',
-                () => createOpeningSubmissionReceipt(renderer, plan, {
+                () => receiptFallback(renderer, plan, {
                   scene,
                   programMaterials: openingPostMaterials,
                   shadowProgramKeys: this._openingShadowAdmission?.programCacheKeys,
@@ -19115,7 +19158,8 @@ export const render = {
     // mounting hidden exemplars into the next run's roots/ids ledgers.
     const staleRun = () => runSeq !== undefined
       && (this._rosterPrewarmRunSeq | 0) !== runSeq;
-    for (const spec of exemplarSpecs) {
+    for (let ei = 0; ei < exemplarSpecs.length; ei++) {
+      const spec = exemplarSpecs[ei];
       if (staleRun()) return;
       if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
       if (this._rosterPrewarmIds.has(spec.id)
@@ -19199,7 +19243,30 @@ export const render = {
         }
         if (cohortOwed()) await yieldToBrowser();
       }
-      if (cohortOwed()) await yieldToBrowser();
+      if (cohortOwed()) {
+        // Mid-drain arrivals: queued payload specs splice in just past the
+        // cursor so a wave landing mid-drain warms inside this drain instead
+        // of serial-waiting out the remaining exemplar tail. Its own emit's
+        // exemplar concat still merges at the post-drain consume; compile
+        // closures are the single shared lane (verified at mint). Covered
+        // ids ride only the weapon pass — a queue row exists for them
+        // exactly when they still own a never-warmed weapon id.
+        const specQueue = this._rosterPrewarmSpecQueue;
+        if (specQueue && specQueue.size) {
+          const splice = [];
+          for (const [qid, row] of specQueue) {
+            specQueue.delete(qid);
+            const qspec = row && row.spec;
+            if (!qspec || qspec.id == null) continue;
+            specs.push(qspec);
+            if (this._rosterPrewarmIds.has(qspec.id)
+                || (this._meshes && this._meshes.has(qspec.id))) continue;
+            splice.push(qspec);
+          }
+          if (splice.length) exemplarSpecs.splice(ei + 1, 0, ...splice);
+        }
+        await yieldToBrowser();
+      }
     }
     // Projectile exemplars: every weapon id the roster fields gets one hidden bolt through the
     // same compile lane, so the first shot of a new gun is as warm as the hull firing it. The
@@ -21497,10 +21564,12 @@ export const render = {
         // One walk feeds both the diagnostic node count and the receiver tally's
         // exact settle — the tally's own recount would re-traverse the same subtree.
         const measure = { nodes: 0 };
-        const receivers = countShadowReceivers(root, measure);
+        const receivers = countShadowReceivers(root, measure, UNMEASURED_SHADOW_NOTE_NODE_MAX);
         nodes += measure.nodes;
         root.parent.remove(root);
-        this._noteShadowMeshRemoved?.(root, receivers);
+        // A cap-aborted walk (-1) must not settle as a receiver count — let the
+        // note's unmeasured path land it on the paced recount.
+        this._noteShadowMeshRemoved?.(root, receivers < 0 ? null : receivers);
         roots += 1;
         // Diagnostics only: probes audit which program keys the warm compiled; parked roots are
         // off the scene graph, so they are published here instead of found by a scene walk.
