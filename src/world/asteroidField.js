@@ -237,6 +237,50 @@ export function* queryAsteroidFieldSteps(state, pos, radius, out = [], batchRows
   return out;
 }
 
+// Nearest-first whole-field twin: emits every live unpromoted record exactly
+// once, bucketed outward from the player's cell by Chebyshev ring. The collect
+// is chunked (key scan + one yield per ring) so a whole-field walk rides a
+// slice clock; the O(R log R) distance sort it replaces couldn't suspend.
+// Ordering is nearest-first by cell — the field's own radius queries already
+// accept mint-cell imprecision for drifted rocks, and the caller's promote
+// contract is coverage over the key space with proximity preference only.
+export function* queryAsteroidFieldNearestSteps(state, pos, out = [], batchRows = 1024) {
+  out.length = 0;
+  const field = state && state.world && state.world.asteroidField;
+  if (!field || !pos) return out;
+  const grid = field.grid;
+  if (!grid || grid.size === 0) return out;
+  const x = finite(pos.x);
+  const z = finite(pos.z);
+  const px = Math.floor(x / ASTEROID_FIELD_CELL);
+  const pz = Math.floor(z / ASTEROID_FIELD_CELL);
+  const batch = Number.isFinite(batchRows) ? Math.max(1, batchRows | 0) : Infinity;
+  const rings = new Map();
+  let scanned = 0;
+  for (const key of grid.keys()) {
+    const cx = Math.floor(key / CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+    const cz = (key % CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+    const ring = Math.max(Math.abs(cx - px), Math.abs(cz - pz));
+    let keys = rings.get(ring);
+    if (!keys) { keys = []; rings.set(ring, keys); }
+    keys.push(key);
+    if (++scanned % batch === 0) yield;
+  }
+  const order = [...rings.keys()].sort((a, b) => a - b);
+  for (let i = 0; i < order.length; i++) {
+    for (const key of rings.get(order[i])) {
+      const bucket = grid.get(key);
+      if (!bucket) continue;
+      for (const rec of bucket) {
+        if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
+        out.push(rec);
+      }
+    }
+    yield;
+  }
+  return out;
+}
+
 export function queryAsteroidField(state, pos, radius, out = []) {
   const iterator = queryAsteroidFieldSteps(state, pos, radius, out, Infinity);
   for (;;) {

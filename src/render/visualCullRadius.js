@@ -76,6 +76,10 @@ const DRAWN_CULL_LRU_SIZE = 8;
 // pass may pay; a denied row serves its stale radius and retries inside a few
 // calls (the cadence exists to bound drift, not to promise a deadline).
 const DRAWN_CULL_REMEASURE_PER_PASS = 4;
+// An over-budget stale serve multiplies by this bias: a stale-small envelope
+// short-culls a hull that grew, while stale-large only over-draws — the bias
+// keeps the deferred serve strictly on the legal (over-draw) side.
+const DRAWN_CULL_STALE_SERVE_BIAS = 1.15;
 let _passRemeasureCount = 0;
 export function resetDrawnCullPassBudget() { _passRemeasureCount = 0; }
 
@@ -125,14 +129,27 @@ function drawnCullRadiusForMesh(mesh) {
       // Refresh recency — the Map iterates in insertion order.
       lru.delete(lruKey);
       lru.set(lruKey, hit);
+      data.drawnCullRadiusMax = Math.max(data.drawnCullRadiusMax || 0, hit);
       return hit;
     }
+  }
+  // A key-moved miss past the pass budget used to pay the Box3 walk anyway —
+  // a one-way fleet LOD descent mints a fresh key per hull and stacks N fat
+  // walks inside the busiest pass. Serve the largest radius this mesh has
+  // ever measured instead (max-ever is the only legal direction: a demoted
+  // hull over-draws transiently, a promoted hull can never under-cull) and
+  // retry the real measure next pass — the memo keeps the outgoing key so the
+  // miss re-enters the same path. A never-measured row has nothing honest to
+  // serve: it still pays the walk.
+  if (keyMoved && _passRemeasureCount >= DRAWN_CULL_REMEASURE_PER_PASS) {
+    const known = Math.max(data.drawnCullRadiusMax || 0, (cached && cached.radius) || 0);
+    if (known > 0) return known;
   }
   // Cadence-expiry re-measures defer past the pass budget (a key-moved row
   // still pays — its incoming key owns no stale radius to serve).
   if (!keyMoved && cached && _passRemeasureCount >= DRAWN_CULL_REMEASURE_PER_PASS) {
     cached.calls -= 8;
-    return cached.radius;
+    return cached.radius * DRAWN_CULL_STALE_SERVE_BIAS;
   }
   _passRemeasureCount += 1;
   _drawnCullBox.setFromObject(mesh);
@@ -156,6 +173,7 @@ function drawnCullRadiusForMesh(mesh) {
   rec.childCount = childCount;
   rec.calls = 0;
   rec.radius = radius;
+  data.drawnCullRadiusMax = Math.max(data.drawnCullRadiusMax || 0, radius);
   return radius;
 }
 

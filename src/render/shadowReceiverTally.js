@@ -80,6 +80,13 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
       // write entirely and add-notes re-stamp, both conservative-on.
       if (notedWalk.notes.size > 0 || notedWalk.detached.size > 0) {
         notedWalk.visits.set(object, notedWalk.seq);
+        // FIFO-evict past the cap — a missing stamp only ever converts to the
+        // conservative side (pending notes stamp their delta; bare removals
+        // skip the retraction), so the cap bounds storm-frame map churn
+        // without an unsafe drop direction.
+        while (notedWalk.visits.size > NOTED_WALK_VISITS_CAP) {
+          notedWalk.visits.delete(notedWalk.visits.keys().next().value);
+        }
       }
     }
     const children = object.children;
@@ -87,6 +94,11 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
   }
   return receivers;
 }
+
+// Upper bound on the noted walk's per-pop visit stamps — one entry per
+// live-popped node would otherwise grow the map O(scene) during a noted
+// recount storm. See the pop-site comment for why eviction is conservative.
+const NOTED_WALK_VISITS_CAP = 4096;
 
 export function createShadowReceiverTally() {
   let count = 0;
