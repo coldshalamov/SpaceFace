@@ -25,7 +25,12 @@ import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propuls
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry, computeSweptHullAdvisory, SWEPT_HULL_DEFAULTS } from '../core/flight/flightTelemetry.js';
-import { orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+import {
+  ORBIT_ASSIST_STRENGTH,
+  ORBIT_ASSIST_TUNING_V1,
+  orbitSwingThrottleScale,
+  stepAnchorRelativeOrbitAssist,
+} from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // FB-001: the authored pursuit-slot chase assist. Pure module; flightV3 is its only caller and
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
@@ -287,8 +292,18 @@ export const flightV3 = {
     this._driveAuthority = driveAuthority;
     if (isPlayer) this._playerDriveAuthority = driveAuthority;
     let boosting = input.boost;
+    let orbitOwnsBoostPress = false;
     if (isPlayer) {
       const autoBoost = !!(autopilot && autopilot.active);
+      // A held tether-orbit chord and a dash impulse are incompatible control contracts. The
+      // orbit helper can continuously trim yaw and the swing coordinator can lower sustained
+      // boost to the speed the hull can actually track, but a boost press also carries a discrete
+      // dash impulse (170 wu/s on the Wasp). That impulse lands outside the throttle governor and
+      // can jump angular speed above maxYawRate / radius in one tick, leaving no physical yaw
+      // authority capable of following it. While the explicit forward+turn orbit chord owns the
+      // helm, Shift therefore means continuous boost only; release either chord key (or turn the
+      // assist Off) and the ordinary dash press is immediately available again.
+      orbitOwnsBoostPress = playerOrbitChordActive(state, entity, rawInput, input, tether);
       // Input owns the latch. Read its published state before stepping boost so an engaged burn
       // does not also regenerate the same capacitor in this tick; the burn debit below is the
       // only new consumer and remains player-only.
@@ -296,7 +311,7 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost,
+        suppressDash: autoBoost || orbitOwnsBoostPress,
         suppressRegen: requestedTravelBurn,
       });
       input.boost = boosting;
@@ -1036,6 +1051,36 @@ const _stepCtl = { source: 'npc-flight-v3', mode: 'assisted', force: null, torqu
 const _diagBody = { pos: null, vel: null, rot: 0, angVel: 0, mass: 1, inertia: 1, radius: 0 };
 const _diagControl = { telemetry: null };
 const _diagArgs = { body: null, profile: null, control: _diagControl };
+
+/**
+ * True only for the exact manual chord that lets the tether orbit helper own yaw this tick.
+ *
+ * This mirrors stepAnchorRelativeOrbitAssist's activation gates before the boost state machine
+ * runs. It exists for one reason: a boost keydown also fires a discrete dash before the orbit
+ * helper is stepped. Suppressing that one impulse while the chord is live lets sustained boost
+ * stay under orbitSwingThrottleScale instead of teleporting the swing beyond finite yaw authority.
+ */
+function playerOrbitChordActive(state, entity, rawInput, input, tether) {
+  const strengthKey = String(
+    state && state.settings && state.settings.gameplay
+      ? state.settings.gameplay.orbitAssistStrength
+      : 'standard',
+  ).toLowerCase();
+  const strengthScale = Object.prototype.hasOwnProperty.call(ORBIT_ASSIST_STRENGTH, strengthKey)
+    ? ORBIT_ASSIST_STRENGTH[strengthKey]
+    : ORBIT_ASSIST_STRENGTH.standard;
+  if (!(strengthScale > 0)) return false;
+  if (!tether || tether.active !== true || tether.targetId == null) return false;
+  if (!state || !state.entities || typeof state.entities.get !== 'function') return false;
+  const anchor = state.entities.get(tether.targetId);
+  if (!anchor || anchor.alive === false || !anchor.pos || !anchor.vel) return false;
+  if (!entity || !entity.pos || !entity.vel) return false;
+  if (!playerFlightControlsActive(state, entity) || input?.drawFlight || input?.brake) return false;
+
+  const forward = finite(rawInput && (rawInput.moveZ ?? rawInput.throttle));
+  const lateral = finite(rawInput && (rawInput.turnIntent ?? rawInput.turn));
+  return forward > ORBIT_ASSIST_TUNING_V1.minIntent && Math.sign(lateral) !== 0;
+}
 
 /**
  * Translation speed the current input packet drives toward: the assisted governor's
