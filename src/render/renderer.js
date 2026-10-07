@@ -2085,7 +2085,10 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
   // while the backlog is deep — a 2ms→4ms escalator caps retention stretch
   // without minting an unbounded drain.
   const backlog = queue.length - owner[headField];
-  if (backlog > 32) budgetMs *= 2;
+  // A lane inheriting a spent sibling budget keeps ~0 leftover; floor the
+  // escalation at the lane's own base so a deep backlog still reaches the
+  // escalator's intent instead of paying ~1 slice per forced drain.
+  if (backlog > 32) budgetMs = Math.max(budgetMs * 2, DESPAWN_DISPOSE_BUDGET_MS);
   // A spent paced window skips this drain entirely — the corpses keep one more
   // frame rather than stacking a fresh slice on a frame that's already over.
   // The aging cap mirrors the other paced lanes' so a permanently-busy stretch
@@ -18562,7 +18565,18 @@ export const render = {
           }
         }
         if (mergedSpecs.length === 0 && mergedExemplars.length === 0) break;
-        emit = { specs: mergedSpecs, compilePipelines: mergedCompile, exemplarSpecs: mergedExemplars };
+        // Payload hulls warm ahead of the deduped family tail — a late
+        // emit's front-row wave no longer waits behind the first emit's
+        // exemplar concat. Coverage/order semantics otherwise unchanged.
+        const mergedIds = new Set();
+        for (const spec of mergedSpecs) if (spec && spec.id != null) mergedIds.add(spec.id);
+        emit = {
+          specs: mergedSpecs,
+          compilePipelines: mergedCompile,
+          exemplarSpecs: mergedSpecs.concat(
+            mergedExemplars.filter((e) => !(e && mergedIds.has(e.id))),
+          ),
+        };
       }
       // The stamp clear is synchronous with the last consume, so an emit
       // either lands in the map above or finds a null stamp and mints its
@@ -22023,9 +22037,13 @@ export const render = {
       }
     } else if (owedBoundRestore && mesh && disposeBound !== true) {
       // A bound-queued row unbound again before the drain minted its owed
-      // restore: the queue entry died with the stamp clear above, so the
-      // restore has to finalize inline or the next owner inherits the marks.
-      unfreezeHiddenSubtreeMatrices(mesh);
+      // restore: the queue entry died with the stamp clear above. Re-queue
+      // the same bound shape rather than paying the ~2x O(subtree) restore
+      // inline — the drain still finalizes it before any real reuse.
+      mesh.userData.sfHiddenUnfreezeBound = true;
+      mesh.userData.sfHiddenUnfreezeQueued = true;
+      (this._pendingHiddenUnfreeze || (this._pendingHiddenUnfreeze = []))
+        .push(mesh);
     }
     // The submit-lane reservation is keyed by entity id, not by the world handle: it must
     // release even when the handle (or the world) is already gone, or the slot strands.

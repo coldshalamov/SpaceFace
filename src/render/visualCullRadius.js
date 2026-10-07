@@ -130,7 +130,6 @@ function drawnCullRadiusForMesh(mesh) {
       // Refresh recency — the Map iterates in insertion order.
       lru.delete(lruKey);
       lru.set(lruKey, hit);
-      data.drawnCullRadiusMax = Math.max(data.drawnCullRadiusMax || 0, hit);
       return hit;
     }
   }
@@ -155,19 +154,22 @@ function drawnCullRadiusForMesh(mesh) {
     // whose true envelope is LARGER than every remembered one under-culls on
     // the stale envelope — a pop-out, the illegal direction. Bound the streak
     // so a sustained over-budget window can't serve a wrong envelope forever.
+    // The cap jitters by mesh id so streaks minted in one burst exhaust across
+    // different passes — a synchronized cliff would re-stack every forced walk
+    // into a single presented pass.
     const defers = (data.drawnCullDefers = (data.drawnCullDefers || 0) + 1);
-    if (known > 0 && defers <= 3) return known * DRAWN_CULL_STALE_SERVE_BIAS;
+    if (known > 0 && defers <= (2 + (mesh.id & 3))) return known * DRAWN_CULL_STALE_SERVE_BIAS;
     // Past the cap (or nothing honest to serve): fall through and pay the walk.
   }
   // Cadence-expiry re-measures defer past the pass budget (a key-moved row
   // still pays — its incoming key owns no stale radius to serve).
   if (!keyMoved && cached && _passRemeasureCount >= DRAWN_CULL_REMEASURE_PER_PASS) {
     const defers = (data.drawnCullDefers = (data.drawnCullDefers || 0) + 1);
-    if (defers <= 3) {
+    if (defers <= (2 + (mesh.id & 3))) {
       cached.calls -= 8;
       return cached.radius * DRAWN_CULL_STALE_SERVE_BIAS;
     }
-    // Same streak cap — a stale own-key envelope stops deferring after 3.
+    // Same jittered streak cap — a stale own-key envelope stops deferring.
   }
   _passRemeasureCount += 1;
   _drawnCullBox.setFromObject(mesh);
@@ -192,7 +194,6 @@ function drawnCullRadiusForMesh(mesh) {
   rec.calls = 0;
   rec.radius = radius;
   data.drawnCullDefers = 0;
-  data.drawnCullRadiusMax = Math.max(data.drawnCullRadiusMax || 0, radius);
   return radius;
 }
 
@@ -233,7 +234,6 @@ export function primeDrawnCullStamps(mesh) {
   rec.calls = 0;
   rec.radius = radius;
   data.drawnCullDefers = 0;
-  data.drawnCullRadiusMax = Math.max(data.drawnCullRadiusMax || 0, radius);
 }
 
 /** Use authored XZ bounds for view culling without changing gameplay/collision radius. */

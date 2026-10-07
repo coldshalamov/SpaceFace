@@ -71,15 +71,16 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
   const stack = [{
     node: scene,
     idx: -1,
-    // kidCount stamps the children-array length the frame last saw so a
-    // resume can detect below-cursor inserts (growth the indexOf shift alone
-    // cannot locate) — see the shifted compare below.
-    kidCount: scene.children ? scene.children.length : 0,
     dead: detached && detached.size > 0 && detached.has(scene) ? 1 : 0,
     visited: false,
   }];
   if (openSet) openSet.add(scene);
   let sinceYield = 0;
+  // Seeded rows re-walk their whole subtree per resume; under sustained
+  // sibling churn that re-push volume is unbounded even though every resume
+  // is slice-charged. Cap the cumulative seed work — past it the walk flags
+  // itself abandoned and resolve() re-mints under the supersede cap.
+  let seededTotal = 0;
   while (stack.length > 0) {
     const frame = stack[stack.length - 1];
     if (frame.dead !== 0) {
@@ -132,28 +133,24 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
                   if (!gapSeed) gapSeed = [];
                   gapSeed.push({ node: parentFrame.node, from: parentFrame.idx, to: shifted });
                 }
-                // Below-cursor inserts (unshift / splice(0,..) / a reorder
-                // dragging an unvisited row ahead of the cursor) leave the
-                // chain child where the indexOf still finds it but put fresh
-                // rows in the consumed prefix — invisible to the gap seed.
-                // Array growth is the tell: when the children list got longer
-                // than the frame last saw, rescan the consumed prefix for
-                // unvisited members.
-                const kidCount = parentFrame.kidCount | 0;
-                if (parentFrame.node.children.length > kidCount) {
-                  const prefixTo = Math.min(shifted, parentFrame.idx);
-                  if (prefixTo > 0) {
-                    if (!gapSeed) gapSeed = [];
-                    gapSeed.push({
-                      node: parentFrame.node,
-                      from: 0,
-                      to: prefixTo,
-                      prefix: true,
-                    });
-                  }
+                // Below-cursor inserts and same-length reorders (unshift,
+                // splice(0,..), or a subtree splice-moved ahead of the
+                // cursor) leave the chain child where the indexOf still
+                // finds it but put fresh rows in the consumed prefix —
+                // invisible to the gap seed. Rescan it on every detected
+                // shift: the seed is openSet-filtered and only re-walks
+                // consumed rows — bounded over-count, never under.
+                const prefixTo = Math.min(shifted, parentFrame.idx);
+                if (prefixTo > 0) {
+                  if (!gapSeed) gapSeed = [];
+                  gapSeed.push({
+                    node: parentFrame.node,
+                    from: 0,
+                    to: prefixTo,
+                    prefix: true,
+                  });
                 }
                 parentFrame.idx = shifted;
-                parentFrame.kidCount = parentFrame.node.children.length;
               }
               if (deadAt >= 0) break;
             }
@@ -175,12 +172,18 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
                 stack.push({
                   node,
                   idx: -1,
-                  kidCount: node.children ? node.children.length : 0,
                   dead: detached.size > 0 && detached.has(node) ? 1 : 0,
                   visited: false,
                 });
                 if (openSet) openSet.add(node);
                 sinceYield += 1;
+                if (notedWalk && (seededTotal += 1) > every * 4) {
+                  // Churned suspends keep re-seeding the consumed prefix —
+                  // abandon so the next mint re-walks from scene instead of
+                  // paying O(resumes x width x subtree) on this walk.
+                  notedWalk.abandon = true;
+                  return receivers;
+                }
                 // A seeded span is real work — yield mid-seed instead of
                 // letting a wide splice turn one resume into its own burst.
                 if (sinceYield >= every) {
@@ -226,7 +229,6 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
       stack.push({
         node: child,
         idx: -1,
-        kidCount: child.children ? child.children.length : 0,
         dead: detached && detached.size > 0 && detached.has(child) ? 1 : 0,
         visited: false,
       });
@@ -261,9 +263,10 @@ export function createShadowReceiverTally() {
   // attribute a root to) — over-counting errs conservative-on, matching the
   // tally's boolean consumers. This converges `dirty` in ONE walk under
   // sustained note storms instead of discarding bounded slices forever.
-  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0, detached: new Set(), openSet: new Set() };
+  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0, detached: new Set(), openSet: new Set(), abandon: false };
   const resetNotedWalk = () => {
     notedWalk.seq = 0;
+    notedWalk.abandon = false;
     notedWalk.visits.clear();
     // The open chain belongs to a single minted walk — a superseded or
     // abandoned walk's chain can never stand in for the next mint's.
@@ -280,6 +283,7 @@ export function createShadowReceiverTally() {
   };
   const clearNotedWalk = () => {
     notedWalk.seq = 0;
+    notedWalk.abandon = false;
     notedWalk.visits.clear();
     notedWalk.openSet.clear();
     notedWalk.notes.clear();
@@ -406,6 +410,16 @@ export function createShadowReceiverTally() {
         }
         const step = pendingRecount.iter.next();
         if (step.done) {
+          if (notedWalk.abandon === true) {
+            // The walk self-abandoned on its cumulative seed budget — churn
+            // made the remaining slices guaranteed-expensive work. Treat as a
+            // supersede: discard and re-mint under the same cap.
+            notedWalk.abandon = false;
+            supersededRecounts += 1;
+            pendingRecount = null;
+            if (tallyNow() - start >= RECOUNT_SLICE_MS) return count;
+            continue;
+          }
           const seqMatched = pendingRecount.seq === dirtySeq;
           if (seqMatched || supersededRecounts >= RECOUNT_SUPERSEDE_CAP) {
             // Seq-matched, or the dirty storm has superseded enough walks that a
