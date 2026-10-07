@@ -1236,14 +1236,20 @@ test('the ball watch list drops its oldest watch without stripping a live ball\'
     release(t);
     for (let j = 0; j < 8; j++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
   }
-  // Every slot is a live marked ball: the oldest drops its WATCH but keeps its marks —
-  // handing back mid-flight would strip pull/snag immunity + launch kill-credit while it
-  // still flies. Its own despawnAt still retires it; the residue sweep re-watches the mark
-  // on any future load.
+  // Every slot is a live marked ball: the oldest drops its WATCH and sheds the weapon
+  // payload, but keeps the mark — handing back mid-flight would strip pull/snag
+  // immunity + launch kill-credit while it still flies. If a foreign owner later
+  // strips its deadline while unwatched, the orphan is a benign immune body, not a
+  // permanently-armed sleeper collider. Its own despawnAt still retires it; the
+  // residue sweep re-watches the mark on any future load.
   assert.equal(a.data.gyreLaunched, true,
-    'the evicted ball keeps its marks — immunity + kill credit ride the flight');
-  assert.equal(a.data.gyrePrevImpactScale, 0.2,
-    'the authored scale stays stashed for whatever adopts the ball later');
+    'the evicted ball keeps its mark — immunity + kill credit ride the flight');
+  assert.equal(a.physicsBody.impactDamageScale, 0.2,
+    'the authored scale is restored — an unwatched orphan is benign, not a sleeper');
+  assert.equal(a.data.gyrePrevImpactScale, undefined,
+    'the scale stash is consumed by the disarm');
+  assert.equal(a.data.gyreLaunchMeta, undefined,
+    'no launch meta rides an unwatched ball');
   assert.ok(Number.isFinite(a.data.despawnAt) && a.data.despawnAt > t.state.simTime,
     'its own deadline still retires it — no orphan');
   t.cleanup();
@@ -1457,14 +1463,16 @@ test('save:loaded with >8 live balls bounds the watch and adopts the freshest', 
   t.bus.emit('save:loaded', {});
   t.sim.step();
   assert.equal(t.sys._rt.ballIds.length, 8, 'the watch list stays bounded at 8');
-  // Overflow retires the earliest-tracked WATCHES but keeps every live ball's marks —
-  // all 10 slots are live+marked, so no hand-back runs: immunity + kill credit stay on.
+  // Overflow retires the earliest-tracked WATCHES and DISARMS the payloads — every
+  // slot is live+marked so no hand-back runs: immunity stays, but the credit shadow
+  // and any weapon scale shed with the watch (an unwatched orphan is benign).
   assert.equal(balls[0].data.gyreLaunched, true, 'overflow ball keeps its mark');
-  assert.ok(balls[0].data.gyreLaunchMeta != null, 'its credit meta stays with the mark');
+  assert.equal(balls[0].data.gyreLaunchMeta, undefined,
+    'the credit shadow sheds with the watch — a later load re-watches the mark only');
   assert.equal(balls[0].data.despawnAt, keptDeadline,
     'the live launch deadline stands — the overflow retires the watch only');
   assert.equal(balls[0].data.gyrePrevDespawnAt, keptStash,
-    'the despawnAt stash rides inert until a real hand-back');
+    'the despawnAt stash rides inert — disarm never touches live deadlines');
   assert.equal(balls[0].data.gyrePrevTtl, 5, 'the ttl stash rides along too');
   assert.equal(balls[1].data.gyreLaunched, true, 'second overflow keeps its mark too');
   assert.equal(balls[9].data.gyreLaunched, true, 'the youngest ball keeps its mark');
@@ -1597,6 +1605,9 @@ test('basinSpots publishes the pulled bodies so the victim glow has a target', a
   const ids = [a.id, b.id];
   for (const s of spots) {
     assert.ok(Number.isFinite(s.x) && Number.isFinite(s.z) && s.r > 0, 'spot carries x/z/r');
+    // k = the lane's accel share — the glow's pull-strength honesty. Deep-in-wedge
+    // bodies read ~1; the gate keeps a dead-lip ghost out of the ledger entirely.
+    assert.ok(Number.isFinite(s.k) && s.k > 0.05 && s.k <= 1, `spot carries pull strength (got ${s.k})`);
   }
   // Off-phase publishes an empty ledger, never stale positions.
   release(t);

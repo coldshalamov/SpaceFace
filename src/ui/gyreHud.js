@@ -102,7 +102,12 @@ export const gyreHud = {
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
         // "×1" would claim it ate nothing. Show mass only until the ledger exists.
         const count = g.members == null ? null : (g.absorbs || 0) + 1;
-        return { text: mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t` : `GYRE — BALL AWAY · ${mass}t`) : 'GYRE — BALL AWAY', cls: 'gyre-ball' };
+        // The thrown ball's 9 s flight is otherwise silent — the same ·Ns countdown
+        // the fuse uses telegraphs the quiet-TTL grave before the ribbon just dims.
+        const ttlS = g.ballTtlS || 0;
+        const ttlTxt = ttlS > 0 && ttlS < 4 ? ` · ${Math.max(1, Math.ceil(ttlS))}s` : '';
+        const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t` : `GYRE — BALL AWAY · ${mass}t`) : 'GYRE — BALL AWAY';
+        return { text: label + ttlTxt, cls: 'gyre-ball' };
       }
       return { text: '', cls: '' };
     }
@@ -158,7 +163,9 @@ export const gyreHud = {
     // constant bar would be noise.
     const f = Number.isFinite(fuse) ? Math.max(0, Math.min(1, fuse / 8)) : 0;
     dom.fuse.style.width = `${Math.round(f * 100)}%`;
-    dom.fuse.style.display = f > 0.02 ? 'block' : 'none';
+    // Only the last 8 s draw: a healthy burn pinning the bar at 100% is noise, not
+    // signal — the countdown language is the same gate the ·Ns text uses.
+    dom.fuse.style.display = f > 0.02 && fuse < 8 ? 'block' : 'none';
     if (cls !== this._lastClass) {
       this._lastClass = cls;
       dom.pill.classList.toggle('gyre-holding', cls === 'gyre-holding');

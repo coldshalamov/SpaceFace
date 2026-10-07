@@ -358,5 +358,12 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   assert.ok(gp.haptics.strong >= 0.18 && gp.haptics.strong < 0.4,
     `empty beam close gets the soft flick (strong=${gp.haptics.strong})`);
   drain();
+  // A clump TORN off the lash (reason 'strained') is the verb's biggest loss beat —
+  // heavier than a released drop (0.45), short of the throw crack (0.90).
+  bus.emit('gyre:dropped', { coreId: 9, reason: 'strained' });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong >= 0.65,
+    `strain break lands the tear pulse (strong=${gp.haptics.strong})`);
+  drain();
   pulseAt('gyre:dropped', 0.45);
 });

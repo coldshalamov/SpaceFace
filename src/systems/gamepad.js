@@ -440,6 +440,9 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   'gyre:absorbTick':        { strong: 0.30, weak: 0.20, ms: 50 },
   'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
   'gyre:droppedEmpty':      { strong: 0.20, weak: 0.15, ms: 50 },
+  // Pseudo-key (like droppedEmpty — not a bus event): a 'strained' gyre:dropped is
+  // the verb's biggest loss beat — between the strain rattle and the throw crack.
+  'gyre:torn':              { strong: 0.70, weak: 0.55, ms: 140 },
   'gyre:strained':          { strong: 0.50, weak: 0.40, ms: 120 },
   'gyre:full':              { strong: 0.65, weak: 0.55, ms: 150 },
 });
@@ -846,7 +849,10 @@ export function createGamepad(ctx) {
       // audio cue does instead of buzzing through a transition. A clump slipping the lash is the
       // full thud; an empty beam closing is a soft flick — audio already splits those voices.
       if (payload && payload.boundary) return;
-      const spec = payload && payload.coreId != null ? 'gyre:dropped' : 'gyre:droppedEmpty';
+      let spec = payload && payload.coreId != null ? 'gyre:dropped' : 'gyre:droppedEmpty';
+      // A clump torn off the lash is the loss beat — heavier than a released drop,
+      // short of the throw crack: the tear lands in the hands like it does on screen.
+      if (spec === 'gyre:dropped' && payload && payload.reason === 'strained') spec = 'gyre:torn';
       startPulse(HAPTIC_VERB_PULSES[spec], spec);
     });
     bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));

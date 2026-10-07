@@ -26,6 +26,8 @@ const MAX_BURSTS = 4;
 const SPIRAL_COUNT = 96;
 
 // Lump tint per absorbed type — the katamari reads what it ate.
+// pickup/payload rows are RESERVED: non-absorbable since wave 22 (the lash tows
+// loot, never eats it) — kept so a stale ledger entry can't NaN a tint lookup.
 const LUMP_TINT = Object.freeze({
   asteroid: 0x9fb4c8, wreck: 0xc8a06a, pickup: 0x7fe0d8, payload: 0xe0c07f,
 });
@@ -589,7 +591,9 @@ export class GyreSnarePresentation {
       // outright — the frozen motes still read "matter is being pulled" where
       // visible=false left the cone with no suction signifier at all.
       this._spiral.visible = true;
-      if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45);
+      // Strain hurries the funnel too — the glass shivers and the clump trembles,
+      // so the spiral's metronome pace would otherwise betray the about-to-tear read.
+      if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strain * 1.5);
       this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = len;
       this._spiralMat.uniforms.uRad.value = endR;
@@ -710,7 +714,9 @@ export class GyreSnarePresentation {
       g.position.set(lp.x, 0.35, lp.z);
       g.scale.setScalar(Math.max(1.5, finite(s.r, 3) * 2.6)
         * (1 + 0.08 * Math.sin(this.time * 4 + i * 1.7) * calm));
-      g.material.opacity = 0.16 * flashCalm;
+      // Opacity rides the pull strength the sim published (k = lane accel share):
+      // a body at the basin's heart burns brighter than one fading at the lip.
+      g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm;
       g.visible = true;
     }
 

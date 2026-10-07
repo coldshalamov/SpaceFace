@@ -274,12 +274,21 @@ export const gyreSnare = {
   // authored scale comes back rather than vanishing with the mark.
   _handBack(ball) {
     delete ball.data.gyreLaunched;
-    delete ball.data.gyreLaunchMeta; // the adopter owns the body now — no lash credit rides it
     // Symmetric with _restoreLifetime on drop, but future-only: the authored deadlines
     // the ball carried before the lash caught it come back ONLY while still in the
     // future and only when the new owner left despawnAt unset — a stale stash or a
     // resumed countdown would assassinate the adopter's body on the next sweep.
     this._restoreLifetime(ball, true);
+    this._disarmBall(ball);
+  },
+
+  // Shed the weapon payload WITHOUT shedding the mark: an evicted-but-still-marked
+  // ball keeps gyreLaunched (pull/snag/suck immunity + launch kill credit ride it to
+  // its own TTL) but nothing keeps the 8× sleeper impact scale or the launch meta —
+  // if a foreign owner strips its deadline while it's unwatched, the orphan is a
+  // benign immune body, not a permanently-armed collider.
+  _disarmBall(ball) {
+    delete ball.data.gyreLaunchMeta; // the adopter owns the body now — no lash credit rides it
     if (ball.physicsBody && ball.physicsBody !== false) {
       if (ball.data.gyrePrevImpactScale !== undefined) ball.physicsBody.impactDamageScale = ball.data.gyrePrevImpactScale;
       else delete ball.physicsBody.impactDamageScale;
@@ -359,8 +368,8 @@ export const gyreSnare = {
   },
 
   // Watch a launched ball. The list is bounded (8): on overflow the OLDEST watch retires —
-  // a still-live marked ball is handed back (marks stripped, authored state restored)
-  // rather than orphaned out of coverage; gone/dead ids just drop.
+  // a still-marked ball keeps its mark but sheds the weapon payload (_disarmBall),
+  // an already-adopted one gets the full hand-back; gone/dead ids just drop.
   _trackBall(id) {
     const rt = this._rt;
     if (!rt) return; // destroy() before init() — nothing to watch
@@ -369,15 +378,19 @@ export const gyreSnare = {
       // Dead/already-unmarked slots retire first. When EVERY slot is a live marked
       // ball, evict the oldest WITHOUT _handBack — stripping gyreLaunched mid-flight
       // would drop its pull/snag immunity + launch kill-credit while it still flies.
-      // Its despawnAt still retires it and the residue sweep still clears the mark;
-      // it only loses its quiet-TTL grave cue.
+      // It still DISARMS: if a foreign owner strips its deadline while unwatched,
+      // the orphan is a benign immune body, not a sleeper collider. Its own
+      // despawnAt still retires it; the residue sweep re-watches the mark on load.
       let evict = 0;
       for (let i = 0; i < rt.ballIds.length; i++) {
         const e = this.state && this.state.entities ? this.state.entities.get(rt.ballIds[i]) : null;
         if (!e || e.alive === false || !(e.data && e.data.gyreLaunched)) { evict = i; break; }
       }
       const victim = this.state && this.state.entities ? this.state.entities.get(rt.ballIds[evict]) : null;
-      if (victim && victim.alive !== false && victim.data && !victim.data.gyreLaunched) this._handBack(victim);
+      if (victim && victim.alive !== false && victim.data) {
+        if (!victim.data.gyreLaunched) this._handBack(victim); // already adopted — full strip
+        else this._disarmBall(victim); // still ours — keep the mark, shed the weapon scale
+      }
       rt.ballIds.splice(evict, 1);
     }
   },
@@ -553,6 +566,12 @@ export const gyreSnare = {
       const absorbable = ABSORBABLE.has(e.type);
       const couple = couplingScale(this._profile(e));
       const mass = entityMass(e);
+      // The lane's accel share — the honest "how hard gravity grips it": 1 deep in
+      // the basin for absorbables, nonAbsorbablePull for courtesy-tugged bodies,
+      // fading to 0 at the wedge's dead lip. The pull glow scales on it.
+      const pullK = inBasin
+        ? (absorbable ? 1 : D.nonAbsorbablePull)
+        : (1 - lipT) * (absorbable ? 1 : D.wedgeFalloff);
       let ax = 0, az = 0;
       if (inBasin) {
         const pull = (absorbable ? D.basinAccel : D.basinAccel * D.nonAbsorbablePull) * couple;
@@ -577,9 +596,11 @@ export const gyreSnare = {
       }
       // The gravity-pull glow rides the same ledger the count does — a faint
       // brighten on each body being dragged so "increases gravity" reads on the
-      // victim itself, not just the funnel. Bounded so the mirror stays small.
-      if (this._rt.basinSpots.length < D.basinSpotMax) {
-        this._rt.basinSpots.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e) });
+      // victim itself, not just the funnel. Bounded so the mirror stays small, and
+      // gated on a real pull: a body at the wedge's dead lip isn't being dragged,
+      // so it must not fake a glow.
+      if (pullK > 0.05 && this._rt.basinSpots.length < D.basinSpotMax) {
+        this._rt.basinSpots.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e), k: pullK });
       }
       this._queueAccel(e, ax, az, mass, dt, state);
     }
@@ -890,9 +911,6 @@ export const gyreSnare = {
     // clump overlay + pub.coreId ride the payload until _finishLaunch clears it.
     rt.launchedId = core.id;
     rt.ballId = core.id; // outlives LAUNCH so render/HUD can track the bowling ball to its grave
-    // Watch every launched id, not just the newest: a second launch or a save-load that
-    // keeps the entity alive would otherwise orphan gyreLaunched + weapon scale forever.
-    this._trackBall(core.id);
     rt.basinCount = 0; // the "N in net" read is basin-only — a flying ball owns none
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.basinSpots.length = 0;
@@ -951,6 +969,11 @@ export const gyreSnare = {
       absorbs: rt.ballAbsorbs,
       members: rt.ballMembers ? rt.ballMembers.slice() : null,
     };
+    // Watch every launched id, not just the newest: a second launch or a save-load
+    // that keeps the entity alive would otherwise orphan gyreLaunched + weapon scale
+    // forever. AFTER the marks: the overflow scan prefers an unmarked slot, and a
+    // freshly-pushed pre-mark ball would read as one and evict itself.
+    this._trackBall(core.id);
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(core);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.launched, {
@@ -1088,6 +1111,7 @@ export const gyreSnare = {
         }
         this._unwatchBall(rt.ballId);
         rt.ballId = null;
+        rt.launchedId = null; // don't leave a stale entity reference on the retired id
         rt.ballMass = 0;
         rt.ballMembers = null;
         rt.ballClumpRadius = 0;
@@ -1097,6 +1121,10 @@ export const gyreSnare = {
         pub.ballClumpRadius = rt.ballClumpRadius;
         pub.ballTtl01 = ball.data.despawnAt != null && Number.isFinite(state.simTime)
           ? Math.max(0, Math.min(1, (ball.data.despawnAt - state.simTime) / D.ballTtlS)) : 1;
+        // Seconds left in the flight — the HUD's ·Ns countdown rides this so the
+        // quiet-TTL grave is telegraphed instead of the ribbon just dimming away.
+        pub.ballTtlS = ball.data.despawnAt != null && Number.isFinite(state.simTime)
+          ? Math.max(0, ball.data.despawnAt - state.simTime) : 0;
         // TTL-imminent: the lifetime sweep marks the ball dead AND compacts it out of
         // the entity map later this same step — so next tick 'ball' is undefined and the
         // retire below goes silent. Sing the grave HERE, on the last tick the ball is
@@ -1106,7 +1134,7 @@ export const gyreSnare = {
           this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: ball.pos.x, z: ball.pos.z } });
           pub.ballGrave = true; // its last live tick — the ring blooms as the body retires
           this._unwatchBall(rt.ballId);
-          rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
+          rt.ballId = null; rt.launchedId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
         }
       }
     }
@@ -1121,6 +1149,7 @@ export const gyreSnare = {
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
+      ballTtlS: 0,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
     });
@@ -1137,7 +1166,7 @@ export const gyreSnare = {
       : 1;
     pub.fuseS = (player && rt.phase !== PHASE.OFF)
       ? this._cap(player) / Math.max(0.001, D.capDrainPerS * drainMult) : 0;
-    if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballClumpRadius = 0; }
+    if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlS = 0; pub.ballClumpRadius = 0; }
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
