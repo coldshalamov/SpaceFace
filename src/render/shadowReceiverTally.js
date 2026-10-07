@@ -168,8 +168,10 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
             // way visited nodes do.
             for (const gap of gapSeed) {
               for (let j = gap.to - 1; j >= gap.from; j -= 1) {
+                // The array is re-read live — a mid-seed yield can return to a
+                // shrunken list, so rows may vanish under the recorded span.
                 const node = gap.node.children[j];
-                if (openSet && openSet.has(node)) continue;
+                if (!node || (openSet && openSet.has(node))) continue;
                 stack.push({
                   node,
                   idx: -1,
