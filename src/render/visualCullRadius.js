@@ -6,6 +6,13 @@
 // actually draws at.
 import * as THREE from 'three';
 import { entityPresenceRadius } from '../world/activityClassification.js';
+import {
+  forcedFrameSpend,
+  FORCED_FRAME_BUDGET_MS,
+  noteForcedFrameSpend,
+  pacedFrameSpend,
+  PACED_FRAME_BUDGET_MS,
+} from './decodeTaskBudget.js';
 
 const _drawnCullBox = new THREE.Box3();
 const _motionPadBox = new THREE.Box3();
@@ -110,6 +117,16 @@ const _drainNow = () => (typeof performance !== 'undefined' && typeof performanc
 export function resetDrawnCullPassBudget(debitSpend) {
   let spent = 0;
   let rows = 0;
+  // The unconditional one-row floor shares the storm-frame pathology the
+  // forced ledger exists for: skip the whole drain while BOTH wallets are
+  // spent — queued rows keep serving the stale-biased envelope (the legal
+  // over-draw direction) and the drain resumes next pass, so the starvation
+  // bound stretches by a pass rather than stacking a walk on a spent frame.
+  const forcedRun = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+  if (forcedRun && forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS) {
+    _passRemeasureCount = 0;
+    return;
+  }
   const drainStart = _drainNow();
   const deadline = drainStart + 1;
   while (_drawnCullForceRemeasure.length && spent < DRAWN_CULL_REMEASURE_PER_PASS
@@ -169,6 +186,7 @@ export function resetDrawnCullPassBudget(debitSpend) {
   _passRemeasureCount = spent;
   const drainedMs = _drainNow() - drainStart;
   if (drainedMs > 0 && typeof debitSpend === 'function') debitSpend(drainedMs);
+  if (drainedMs > 0 && forcedRun) noteForcedFrameSpend(drainedMs);
 }
 
 function drawnCullRadiusForMesh(mesh) {

@@ -403,6 +403,9 @@ import {
   shouldDeferPipelineAutoFlush,
 } from './pipelineAutoFlushPolicy.js';
 import {
+  forcedFrameSpend,
+  FORCED_FRAME_BUDGET_MS,
+  noteForcedFrameSpend,
   notePacedFrameSpend,
   pacedFrameSpend,
   PACED_FRAME_BUDGET_MS,
@@ -2147,12 +2150,19 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
   // frame rather than stacking a fresh slice on a frame that's already over.
   // The aging cap mirrors the other paced lanes' so a permanently-busy stretch
   // can't starve corpse/GL reclaim indefinitely.
-  if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
-      && (owner[ledgerField] | 0) < DESPAWN_DISPOSE_LEDGER_MAX_SKIPS) {
-    owner[ledgerField] = (owner[ledgerField] | 0) + 1;
+  // Forced-cap runs consult the shared forced wallet too: every skip-cap lane
+  // carries its own counter, so a sustained storm trips all of them on the
+  // same presented frame — the forced ledger bounds the summed spend, with
+  // the counter clamped at cap so deferred lanes still force next frame.
+  const pacedSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+  if (pacedSpent
+      && ((owner[ledgerField] | 0) < DESPAWN_DISPOSE_LEDGER_MAX_SKIPS
+        || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+    owner[ledgerField] = Math.min((owner[ledgerField] | 0) + 1, DESPAWN_DISPOSE_LEDGER_MAX_SKIPS);
     return 0;
   }
   owner[ledgerField] = 0;
+  const forcedRun = pacedSpent;
   const startedAt = now();
   const deadline = startedAt + Math.max(0, Number(budgetMs) || 0);
   // Backlog-scaled count: the fixed cap binds before the ms deadline on cheap disposes,
@@ -2249,7 +2259,11 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
     }
     if (drained >= limit || now() > deadline) break;
   }
-  if (drained > 0) notePacedFrameSpend(now() - startedAt);
+  if (drained > 0) {
+    const elapsed = now() - startedAt;
+    notePacedFrameSpend(elapsed);
+    if (forcedRun) noteForcedFrameSpend(elapsed);
+  }
   if (owner[headField] >= queue.length) {
     queue.length = 0;
     owner[headField] = 0;
@@ -3374,6 +3388,10 @@ function abandonHoldExemptCommit(owner) {
   owner._holdExemptCommitList = null;
   owner._holdExemptCommitEpoch = null;
   owner._holdExemptCommitExempt = null;
+  // A parked degrade iter minted its entityList under the old epoch — close it
+  // with the commit twins so a sector flip can't keep enqueueing stale rows.
+  closeCookStepsIter(owner._holdExemptDegradeIter);
+  owner._holdExemptDegradeIter = null;
 }
 
 // Close any in-flight sliced residency poll — its collected rows belong to a
@@ -3385,6 +3403,64 @@ function abandonResidencyPoll(owner) {
   }
   owner._residencyPollIter = null;
   owner._residencyPollEpoch = null;
+}
+
+// Degrade path for a fault-parked hold-exempt collect: the parked collect is
+// the ONLY in-hold enqueue lane (reconcile/poll never run under either hold
+// regime), so a parked epoch used to leave rows minted mid-hold — rescue set,
+// focus flips, glass crossings — meshless until release. Drive a bounded
+// entityList enqueue under the beat's slice clock instead: simpler than the
+// full collect (no warm refill / commit list / decode kick) but covers the
+// same enqueue role. Persistent degrade faults cap at 3 per epoch.
+function driveHoldExemptDegrade(owner, state, sliceMs) {
+  const clock = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  const started = clock();
+  const degradeEpoch = serviceFaultEpoch(state);
+  if (owner._holdExemptDegradeEpoch !== degradeEpoch) {
+    closeCookStepsIter(owner._holdExemptDegradeIter);
+    owner._holdExemptDegradeIter = null;
+    owner._holdExemptDegradeFaults = 0;
+    owner._holdExemptDegradeEpoch = degradeEpoch;
+  }
+  if ((owner._holdExemptDegradeFaults | 0) >= 3) return 0;
+  if (!owner._holdExemptDegradeIter) {
+    const frame = owner._activityFrame;
+    const evaluator = makeHoldExemptMeshBuildEvaluator(
+      state, frame && frame.renderGlassIds);
+    const entities = Array.isArray(state.entityList) ? state.entityList : [];
+    owner._holdExemptDegradeIter = enqueueMissingMeshBuildsSteps(
+      entities,
+      owner._meshes,
+      owner._meshBuildQueuedIds,
+      owner._meshBuildQueue,
+      (entity) => !owner._sectorBoundaryPreparations?.has(entity.id) && evaluator(entity),
+      null, null, null);
+  }
+  let enqueued = 0;
+  for (;;) {
+    let step;
+    try {
+      step = owner._holdExemptDegradeIter.next();
+    } catch (err) {
+      closeCookStepsIter(owner._holdExemptDegradeIter);
+      owner._holdExemptDegradeIter = null;
+      owner._holdExemptDegradeFaults = (owner._holdExemptDegradeFaults | 0) + 1;
+      console.warn('[render] hold-exempt degrade drive failed', err);
+      return 0;
+    }
+    if (step.done) {
+      enqueued = step.value || 0;
+      // Keep the iter slot clear so the next beat re-mints over the freshest
+      // entity list — mid-hold arrivals keep landing instead of one epoch-old
+      // snapshot serving the whole hold.
+      owner._holdExemptDegradeIter = null;
+      break;
+    }
+    if (clock() - started >= sliceMs
+        || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+  }
+  return enqueued;
 }
 
 // Close any in-flight sliced reconcile — a newer epoch's dirty pass mints fresh.
@@ -3436,9 +3512,14 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
   if (!owner || !state || !owner._meshes || !owner._meshBuildQueuedIds || !owner._meshBuildQueue) return 0;
   // A faulted collect parks for the rest of the epoch — re-minting every
   // 100 ms beat used to rethrow ~10 frame aborts/sec through the whole
-  // stream-hold/first-flight-hold window. The exempt collect is an
-  // optimization; the normal build-queue lanes keep builds flowing.
-  if (owner._holdExemptFaultEpoch === serviceFaultEpoch(state)) return 0;
+  // stream-hold/first-flight-hold window. But "the normal build-queue lanes
+  // keep builds flowing" is wrong under a hold: reconcile/poll never run
+  // there, and this collect is the ONLY enqueue lane — a parked epoch left
+  // mid-hold arrivals meshless until release. Degrade to a bounded
+  // entityList enqueue under this beat's slice clock instead.
+  if (owner._holdExemptFaultEpoch === serviceFaultEpoch(state)) {
+    return driveHoldExemptDegrade(owner, state, sliceMs);
+  }
   // Once per invocation: parked commit iterators read this stamp across yields to spot
   // resumes landing under a newer beat (their minted snapshot needs a refresh then).
   owner._holdExemptBeatStamp = (owner._holdExemptBeatStamp || 0) + 1;
@@ -22696,12 +22777,16 @@ export const render = {
     // frame. The aging cap mirrors the sibling lanes' so a permanently-busy
     // stretch still forces the pass; real spend debits the shared ledger so
     // the sibling gates can see it.
-    if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
-        && (this._meshReleaseLedgerSkips | 0) < DESPAWN_DISPOSE_LEDGER_MAX_SKIPS) {
-      this._meshReleaseLedgerSkips = (this._meshReleaseLedgerSkips | 0) + 1;
+    const pacedSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+    if (pacedSpent
+        && ((this._meshReleaseLedgerSkips | 0) < DESPAWN_DISPOSE_LEDGER_MAX_SKIPS
+          || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+      this._meshReleaseLedgerSkips = Math.min(
+        (this._meshReleaseLedgerSkips | 0) + 1, DESPAWN_DISPOSE_LEDGER_MAX_SKIPS);
       return;
     }
     this._meshReleaseLedgerSkips = 0;
+    const forcedRun = pacedSpent;
     const flushNow = () => (typeof performance !== 'undefined'
       && typeof performance.now === 'function') ? performance.now() : Date.now();
     const flushStartedAt = flushNow();
@@ -22728,7 +22813,9 @@ export const render = {
       if (i + 1 < registries.length && flushNow() - flushStartedAt >= 4) {
         this._meshReleaseRegistryIndex = i + 1;
         this._meshReleasePending = pending;
-        notePacedFrameSpend(flushNow() - flushStartedAt);
+        const flushElapsed = flushNow() - flushStartedAt;
+        notePacedFrameSpend(flushElapsed);
+        if (forcedRun) noteForcedFrameSpend(flushElapsed);
         return;
       }
     }
@@ -22741,7 +22828,9 @@ export const render = {
     } else {
       this._meshReleasePending = null;
     }
-    notePacedFrameSpend(flushNow() - flushStartedAt);
+    const flushElapsed = flushNow() - flushStartedAt;
+    notePacedFrameSpend(flushElapsed);
+    if (forcedRun) noteForcedFrameSpend(flushElapsed);
   },
 
   _unbindPresentationMesh(entityId, mesh = null, disposeBound = false) {
@@ -24140,9 +24229,19 @@ export const render = {
     // is post-census — re-run the census's own union predicate and admit the survivors.
     const firstFlightIds = this.state && this.state.render
       && this.state.render.liveSectorFirstFlightIds;
+    // Membership only changes on spawn ticks, but this drain runs ~3-4 times
+    // per presented pass while the latches arm — the O(entityList) census
+    // belongs once per pass (per ids set), not once per drain call. A spawn
+    // landing mid-pass waits the frame — the bounded-late direction the
+    // resume comment below already allows.
+    const newcomerCensusDue = !(this._newcomerCensusSeq === this._viewSyncSeq
+      && this._newcomerCensusIds === firstFlightIds);
     if (firstFlightIds && typeof firstFlightIds.has === 'function'
         && (this.state.render.liveSectorGpuAdmission === true
-          || this.state.render.sectorShellAdmission === true)) {
+          || this.state.render.sectorShellAdmission === true)
+        && newcomerCensusDue) {
+      this._newcomerCensusSeq = this._viewSyncSeq;
+      this._newcomerCensusIds = firstFlightIds;
       const newcomerOpts = { bypassShellGates: true, scan: drainScan };
       let newcomersSeen = 0;
       const newcomerList = this.state.entityList || [];
@@ -24235,7 +24334,11 @@ export const render = {
         // off-glass backlog — hoist it to the head once per drain so the
         // on-glass overflow arm above can finish it inside this slice instead
         // of leaving a hole for the rest of the window.
-        if (hoistedDeadlineBuilds || !(yield* driveHoist(this))) break;
+        // Ordering-only work — on a spent ledger the O(queue-tail) scan is
+        // forced cost on the exact frame the ledger said no to. Skip it there;
+        // rows still drain in queue order.
+        if (hoistedDeadlineBuilds || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+            || !(yield* driveHoist(this))) break;
         hoistedDeadlineBuilds = true;
         continue;
       }
@@ -24252,7 +24355,8 @@ export const render = {
         // work buried behind a skip prefix otherwise waits ~prefix-length calls.
         // Hoist it once per drain — ordering only; later calls still bound the
         // builds through this same slice check.
-        if (!hoistedDeadlineBuilds) {
+        if (!hoistedDeadlineBuilds
+            && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) {
           hoistedDeadlineBuilds = true;
           yield* driveHoist(this);
         }
@@ -28090,6 +28194,15 @@ export const render = {
       }
     }
     if (memo.pendingIter) {
+      // ~15 call sites consult this per presented pass — the drain wallet must
+      // be per PASS, not per call site, or a mid-walk light storm pays ~4 ms
+      // × every site inside one frame. The first site per sync pass drives;
+      // later sites serve the in-flight signature (the memo's conservative
+      // direction already).
+      if (memo.sig != null && memo.lastDrainSeq === this._viewSyncSeq) {
+        return memo.sig;
+      }
+      memo.lastDrainSeq = this._viewSyncSeq;
       const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now();
       const deadline = memo.sig == null ? Number.POSITIVE_INFINITY : startedAt + 4;
@@ -28234,13 +28347,17 @@ export const render = {
       // already spent, defer a frame — withheld casters tolerate the delay (that
       // is the withhold contract). The aging cap mirrors the glTF compile drain's
       // so a permanently-busy frame stream can't starve the drain.
-      if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
-          && (this._depthStageLedgerSkips | 0) < SHADOW_DEPTH_LEDGER_MAX_SKIPS) {
-        this._depthStageLedgerSkips = (this._depthStageLedgerSkips | 0) + 1;
+      const armPacedSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+      if (armPacedSpent
+          && ((this._depthStageLedgerSkips | 0) < SHADOW_DEPTH_LEDGER_MAX_SKIPS
+            || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+        this._depthStageLedgerSkips = Math.min(
+          (this._depthStageLedgerSkips | 0) + 1, SHADOW_DEPTH_LEDGER_MAX_SKIPS);
         this._armDepthStage();
         return;
       }
       this._depthStageLedgerSkips = 0;
+      const armForcedRun = armPacedSpent;
       let slice = null;
       let restoreIdx = -1;
       try {
@@ -28665,7 +28782,9 @@ export const render = {
         }
         // The arm's whole cost lands adjacent to the next presented frame — debit
         // the shared paced ledger so the frame's slicers see the spend, throw or not.
-        notePacedFrameSpend(armNow() - armStartedAt);
+        const armElapsed = armNow() - armStartedAt;
+        notePacedFrameSpend(armElapsed);
+        if (armForcedRun) noteForcedFrameSpend(armElapsed);
         // The re-arm lives in finally: a throw mid-slice must not leave
         // _depthStageScheduled === true with live pending entries — the queue
         // would wedge permanently and withheld casters stay dark forever.
@@ -30024,12 +30143,16 @@ function drainSceneEnvRebindQueue(owner) {
   if (!queue || queue.length === 0) return;
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
-  if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
-      && (owner._envRebindLedgerSkips | 0) < ENV_REBIND_LEDGER_MAX_SKIPS) {
-    owner._envRebindLedgerSkips = (owner._envRebindLedgerSkips | 0) + 1;
+  const pacedSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+  if (pacedSpent
+      && ((owner._envRebindLedgerSkips | 0) < ENV_REBIND_LEDGER_MAX_SKIPS
+        || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+    owner._envRebindLedgerSkips = Math.min(
+      (owner._envRebindLedgerSkips | 0) + 1, ENV_REBIND_LEDGER_MAX_SKIPS);
     return;
   }
   owner._envRebindLedgerSkips = 0;
+  const forcedRun = pacedSpent;
   const startedAt = now();
   const deadline = startedAt + 4;
   while (queue.length > 0) {
@@ -30058,7 +30181,10 @@ function drainSceneEnvRebindQueue(owner) {
     if (now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
   }
   const elapsed = now() - startedAt;
-  if (elapsed > 0) notePacedFrameSpend(elapsed);
+  if (elapsed > 0) {
+    notePacedFrameSpend(elapsed);
+    if (forcedRun) noteForcedFrameSpend(elapsed);
+  }
 }
 
 // Stepped policy-sync lane: a parked iterator per root lets a fat subtree's

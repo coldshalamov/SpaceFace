@@ -106,6 +106,43 @@ export function pacedFrameSpend() {
   return (t - paceFrameStartedAt < PACE_FRAME_WINDOW_MS) ? paceFrameSpentMs : 0;
 }
 
+// Shared forced-spend wallet: skip-cap lanes (dispose drains, release flush,
+// env rebind, drawnCull floor) each carry an independent aging cap, so under a
+// sustained storm every cap can trip on the SAME presented frame and stack
+// ~25-60 ms of "forced" work. A lane about to run only because its cap fired
+// consults this wallet first — over-cap lanes defer a frame (their counter
+// stays at cap, so they still force next frame in arrival order). Not a
+// strict one-unit serialization: forced units carry real debt.
+export const FORCED_FRAME_BUDGET_MS = 8;
+let forcedSpentEpoch = -1;
+let forcedFrameSpentMs = 0;
+let forcedFrameStartedAt = -Infinity;
+
+export function noteForcedFrameSpend(ms) {
+  const epoch = paceEpochNow();
+  if (epoch >= 0) {
+    if (forcedSpentEpoch !== epoch) {
+      forcedSpentEpoch = epoch;
+      forcedFrameSpentMs = 0;
+    }
+    forcedFrameSpentMs += Math.max(0, Number(ms) || 0);
+    return;
+  }
+  const t = paceNow();
+  if (t - forcedFrameStartedAt >= PACE_FRAME_WINDOW_MS) {
+    forcedFrameStartedAt = t;
+    forcedFrameSpentMs = 0;
+  }
+  forcedFrameSpentMs += Math.max(0, Number(ms) || 0);
+}
+
+export function forcedFrameSpend() {
+  const epoch = paceEpochNow();
+  if (epoch >= 0) return forcedSpentEpoch === epoch ? forcedFrameSpentMs : 0;
+  const t = paceNow();
+  return (t - forcedFrameStartedAt < PACE_FRAME_WINDOW_MS) ? forcedFrameSpentMs : 0;
+}
+
 export function createDecodeTaskBudget(limit) {
   if (!Number.isFinite(limit) || limit <= 0) throw new RangeError('Decode budget limit must be finite and positive');
   const size = Math.max(1, Math.floor(limit));
