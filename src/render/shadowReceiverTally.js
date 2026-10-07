@@ -94,6 +94,7 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
           // Mutations landed inside the suspend: re-verify the open chain once
           // per resume rather than probing ancestry per visited node.
           let deadAt = -1;
+          let gapSeed = null;
           for (let i = 1; i < stack.length; i += 1) {
             const f = stack[i];
             if (f.dead !== 0 || (detached.size > 0 && detached.has(f.node))) {
@@ -114,12 +115,37 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
                 && parentFrame.node.children[parentFrame.idx] !== f.node) {
               const shifted = parentFrame.node.children.indexOf(f.node);
               if (shifted < 0) deadAt = i;
-              else parentFrame.idx = shifted;
+              else {
+                // Insert-before-cursor: children between the recorded cursor
+                // and the row's new index would never be pushed — a silent
+                // splice could then stamp an under-counted total. Seed them
+                // for a walk instead: rows already visited re-walk once
+                // (bounded over-count, the legal direction).
+                if (shifted > parentFrame.idx) {
+                  if (!gapSeed) gapSeed = [];
+                  gapSeed.push({ node: parentFrame.node, from: parentFrame.idx, to: shifted });
+                }
+                parentFrame.idx = shifted;
+              }
               if (deadAt >= 0) break;
             }
           }
           if (deadAt >= 0) {
             for (let k = deadAt; k < stack.length; k += 1) stack[k].dead = 1;
+          } else if (gapSeed) {
+            // Reverse-push so the lowest-indexed unvisited sibling pops first.
+            for (const gap of gapSeed) {
+              for (let j = gap.to - 1; j >= gap.from; j -= 1) {
+                const node = gap.node.children[j];
+                stack.push({
+                  node,
+                  idx: -1,
+                  dead: detached.size > 0 && detached.has(node) ? 1 : 0,
+                  visited: false,
+                });
+                if (openSet) openSet.add(node);
+              }
+            }
           }
           if (frame.dead !== 0) {
             stack.pop();

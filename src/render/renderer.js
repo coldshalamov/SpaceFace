@@ -906,6 +906,14 @@ const HIDDEN_FREEZE_NODE_BUDGET_PER_PASS = 4096;
 // compose-visit/frame saved, so a hull re-shown within this many passes never
 // mints — it keeps paying the unfrozen compose it always paid.
 const HIDDEN_FREEZE_FLAP_DWELL = 3;
+// A live (non-dispose) unbind must restore a flagged subtree definitively
+// before the mesh's next owner, so it can't just ride the lazy drain — but a
+// mass unbind (keepGpu recook over a culled sector) pays ~2x O(subtree) per
+// flagged root inside one sweep frame. The first N per pass stay inline;
+// the rest queue as bound entries: same paced drain, but restore-owed — no
+// flap dwell and no detach/invisible abandon, with any still-owed stamp
+// finalized inline at the next unbind.
+const UNBIND_HIDDEN_RESTORE_INLINE_PER_PASS = 2;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -2293,8 +2301,14 @@ function settleRebuildBridges(owner) {
 export function serviceRenderMeshResidency(owner, frameDt) {
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
+  const liveLaneStarted = now();
   drainDespawnDisposeQueue(owner);
-  drainWarmDisposeQueue(owner);
+  // The warm lane drains only what the live lane left of the shared corpse
+  // window: a forced drain on a spent ledger inherits the leftover instead
+  // of minting a fresh 2->4ms deadline, so two deep lanes can't stack ~8ms
+  // of teardown inside one presented beat.
+  drainWarmDisposeQueue(owner,
+    Math.max(0, DESPAWN_DISPOSE_BUDGET_MS - (now() - liveLaneStarted)));
   drainSceneEnvRebindQueue(owner);
   // Deferred identity releases from unbatched unbinds (entity:destroyed storms):
   // one union walk per registry per frame instead of five walks per corpse.
@@ -18427,19 +18441,38 @@ export const render = {
     // between ~8ms slices, with the drain itself in _rosterPrewarmPending so the
     // cook's shell hold still covers the full cohort.
     if (this._rosterPrewarmCohortDrain) {
-      // A drain is already in flight: hand the emit to its tail re-drive rather
-      // than minting a second concurrent drain — the re-drive rebuilds the
-      // exemplar concat and the ledger skips every row the in-flight pass
-      // already covered, so a same-payload re-emit queues zero new census-hold
-      // work under the existing pending member.
-      (this._rosterPrewarmEmitQueue || (this._rosterPrewarmEmitQueue = []))
-        .push({ specs, compilePipelines });
+      // A drain is in flight: fold the emit's payload into the pending spec
+      // map instead of queuing a second serial drain. Coverage dedupes at
+      // push, the consume-time merge dedupes the 3-family exemplar concat
+      // across emits, and the drive re-drains ONCE per burst — a same-payload
+      // re-emit costs a few map writes, never another full-universe walk.
+      const specQueue = this._rosterPrewarmSpecQueue
+        || (this._rosterPrewarmSpecQueue = new Map());
+      for (const spec of specs) {
+        if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
+        if (specQueue.has(spec.id)) continue;
+        if (this._rosterPrewarmIds.has(spec.id)
+            || (this._meshes && this._meshes.has(spec.id))) {
+          // A covered hull is a no-row unless it still owns a never-warmed
+          // weapon id — the consume's weapon pass scans mergedSpecs for those.
+          const weapons = spec.data && spec.data.weapons;
+          const newWeapon = Array.isArray(weapons) && weapons.some((w) => {
+            const weaponId = w && (w.defId || w.id);
+            return typeof weaponId === 'string' && weaponId.length > 0
+              && !(this._rosterPrewarmWeaponIds && this._rosterPrewarmWeaponIds.has(weaponId));
+          });
+          if (!newWeapon) continue;
+        }
+        specQueue.set(spec.id, { spec, compilePipelines, exemplarSpecs });
+      }
       return;
     }
-    // The drive chain covers this mint plus every tail-queued re-emit under one
-    // pending entry — the census hold sees queued emits too.
-    const emitQueue = this._rosterPrewarmEmitQueue
-      || (this._rosterPrewarmEmitQueue = []);
+    // The drive chain covers this mint plus every tail-folded re-emit under one
+    // pending entry — the census hold sees queued specs too. runSeq pins the
+    // run epoch: a mid-drive release bumps it and both the loop and the drain's
+    // per-spec walk bail instead of re-mounting exemplars into the next run's
+    // ledgers.
+    const runSeq = this._rosterPrewarmRunSeq | 0;
     const drive = (async () => {
       for (let emit = { specs, compilePipelines, exemplarSpecs }; emit;) {
         const list = emit.exemplarSpecs || emit.specs.concat(
@@ -18448,18 +18481,42 @@ export const render = {
           asteroidVisualExemplarSpecs(),
         );
         try {
-          await this._drainRosterPrewarmCohort(list, emit.specs, emit.compilePipelines);
+          await this._drainRosterPrewarmCohort(list, emit.specs, emit.compilePipelines, runSeq);
         } catch (error) {
           console.warn('[render] survival roster prewarm drain failed', error);
         }
-        emit = emitQueue.shift() || null;
-        if (!emit) {
-          // The empty-queue read and the stamp clear are synchronous, so an
-          // emit either lands in the shift above or finds a null stamp and
-          // mints its own drive — nothing strands on an exited chain.
-          this._rosterPrewarmCohortDrain = null;
+        if ((this._rosterPrewarmRunSeq | 0) !== runSeq) break;
+        // Consume the coalesced spec map as ONE merged emit: payload specs
+        // dedupe by id at push and the exemplar concats union by spec id
+        // here (coverage re-verify), so a burst re-drains a single pass
+        // instead of a serial pass per queued emit.
+        const specQueue = this._rosterPrewarmSpecQueue;
+        if (!specQueue || specQueue.size === 0) break;
+        const mergedSpecs = [];
+        const mergedExemplars = [];
+        const seenExemplarIds = new Set();
+        let mergedCompile = compilePipelines;
+        for (const [id, row] of specQueue) {
+          specQueue.delete(id);
+          if (!row || !row.spec) continue;
+          mergedSpecs.push(row.spec);
+          mergedCompile = row.compilePipelines || mergedCompile;
+          for (const exemplar of row.exemplarSpecs || []) {
+            const key = exemplar && exemplar.id;
+            if (key == null || seenExemplarIds.has(key)) continue;
+            seenExemplarIds.add(key);
+            if (this._rosterPrewarmIds.has(key)
+                || (this._meshes && this._meshes.has(key))) continue;
+            mergedExemplars.push(exemplar);
+          }
         }
+        if (mergedSpecs.length === 0 && mergedExemplars.length === 0) break;
+        emit = { specs: mergedSpecs, compilePipelines: mergedCompile, exemplarSpecs: mergedExemplars };
       }
+      // The stamp clear is synchronous with the last consume, so an emit
+      // either lands in the map above or finds a null stamp and mints its
+      // own drive — nothing strands on an exited chain.
+      this._rosterPrewarmCohortDrain = null;
     })();
     this._rosterPrewarmCohortDrain = drive;
     const drain = drive.catch((error) => {
@@ -18473,7 +18530,7 @@ export const render = {
     }
   },
 
-  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines) {
+  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines, runSeq) {
     // Yield the browser only once a slice of cohort work actually cost ~8ms —
     // big rosters pace across gaps while a small emit (or a CLI driver) still
     // mints the whole cohort inside its own task.
@@ -18488,7 +18545,13 @@ export const render = {
       cohortLap = cohortNow();
       return true;
     };
+    // Run-epoch guard (drive-minted callers only): a release mid-drain bumps
+    // _rosterPrewarmRunSeq, and this stale pass bails per iteration instead of
+    // mounting hidden exemplars into the next run's roots/ids ledgers.
+    const staleRun = () => runSeq !== undefined
+      && (this._rosterPrewarmRunSeq | 0) !== runSeq;
     for (const spec of exemplarSpecs) {
+      if (staleRun()) return;
       if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
       if (this._rosterPrewarmIds.has(spec.id)
           || (this._meshes && this._meshes.has(spec.id))) continue;
@@ -18586,6 +18649,7 @@ export const render = {
       }
     }
     for (const weaponId of weaponIds) {
+      if (staleRun()) return;
       if (this._rosterPrewarmWeaponIds.has(weaponId)) continue;
       this._rosterPrewarmWeaponIds.add(weaponId);
       const weapon = WEAPONS.find((entry) => entry && entry.id === weaponId);
@@ -18631,24 +18695,27 @@ export const render = {
     // variant, but a mid-round promotion can draw any of the five siblings. One hidden leaf mesh
     // per (type, variant) puts every shared geometry buffer + non-instanced program on the GPU
     // before flight — a late build then costs object creation only.
-    this._rosterPrewarmLeafWarmed = true;
-    try {
-      const leafWarm = buildAsteroidLeafWarmGroup();
-      leafWarm.visible = false;
-      this.scene.add(leafWarm);
-      this._markShadowReceiversDirty?.();
-      this._rosterPrewarmRoots.push(leafWarm);
-      const leafSettled = compilePipelines(leafWarm).catch((error) => {
+    // Flag-guarded: a merged re-drain must not build a second leaf group.
+    if (!this._rosterPrewarmLeafWarmed) {
+      this._rosterPrewarmLeafWarmed = true;
+      try {
+        const leafWarm = buildAsteroidLeafWarmGroup();
+        leafWarm.visible = false;
+        this.scene.add(leafWarm);
+        this._markShadowReceiversDirty?.();
+        this._rosterPrewarmRoots.push(leafWarm);
+        const leafSettled = compilePipelines(leafWarm).catch((error) => {
+          console.warn('[render] asteroid leaf-variant warm failed', error);
+        });
+        if (this._rosterPrewarmPending) {
+          this._rosterPrewarmPending.add(leafSettled);
+          observePipelineAdmission(leafSettled.finally(() => {
+            if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(leafSettled);
+          }));
+        }
+      } catch (error) {
         console.warn('[render] asteroid leaf-variant warm failed', error);
-      });
-      if (this._rosterPrewarmPending) {
-        this._rosterPrewarmPending.add(leafSettled);
-        observePipelineAdmission(leafSettled.finally(() => {
-          if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(leafSettled);
-        }));
       }
-    } catch (error) {
-      console.warn('[render] asteroid leaf-variant warm failed', error);
     }
     // Roots mounted after the reskin continuation's bare→PBR sweep ran never
     // got its upgrade — re-run it idempotently so no exemplar stays bare. A
@@ -18656,6 +18723,7 @@ export const render = {
     try {
       let upgraded = 0;
       for (const root of this._rosterPrewarmRoots || []) {
+        if (staleRun()) return;
         upgraded += upgradeBareRockMaterials(root);
         if (cohortOwed()) await yieldToBrowser();
       }
@@ -20912,8 +20980,12 @@ export const render = {
     if (this._rosterPrewarmPending) this._rosterPrewarmPending.clear();
     // Queued re-emits and the in-flight stamp die with the run: a fresh run
     // mints its own drive rather than consuming emits under the old chain.
-    this._rosterPrewarmEmitQueue = [];
+    // The seq bump also retires a still-running async drive — the drain's
+    // per-spec epoch check bails instead of mounting exemplars into the new
+    // run's roots/ids ledgers.
+    this._rosterPrewarmSpecQueue = new Map();
     this._rosterPrewarmCohortDrain = null;
+    this._rosterPrewarmRunSeq = (this._rosterPrewarmRunSeq | 0) + 1;
     if (this._rosterPartCatalogRoot) {
       const catalog = this._rosterPartCatalogRoot;
       this._rosterPartCatalogRoot = null;
@@ -21400,8 +21472,11 @@ export const render = {
       // sub-dwell cull->show->cull flap costs zero subtree walks. The drain's
       // abandon check would kill a parked restore iterator a pass later via
       // sfHiddenFreezeQueued anyway — stamp-killing it here is just earlier.
+      // A bound (unbind-owed) restore cancels the same way: the freeze lane
+      // re-owns the subtree's marks, so the owed restore is moot.
       delete ud.sfHiddenUnfreezeQueued;
       delete ud.sfHiddenUnfreezeQueuedSeq;
+      delete ud.sfHiddenUnfreezeBound;
       const parkedUnfreeze = ud.sfHiddenUnfreezeIter || null;
       if (parkedUnfreeze) {
         try { parkedUnfreeze.return(); } catch (_) { /* discard proceeds */ }
@@ -21580,21 +21655,39 @@ export const render = {
         // early-out deleted this entry's flag); a detached or externally
         // re-frozen root drops here. sfHiddenFrozen is not a drop signal on
         // this path — it stays true until the mint below consumes it.
+        // mesh.visible matters the same way it does on the freeze lane:
+        // hide-in-place paths (submit-false/pose-fail) never touch the queue,
+        // so a deferred-admission row sits invisible past the dwell — a mint
+        // here would spend the restore on a mesh that draws nothing and
+        // surrender the freeze's savings mid-pending.
+        const boundRestore = ud.sfHiddenUnfreezeBound === true;
         if (ud.sfHiddenFreezeQueued === true
-            || mesh.matrixAutoUpdate !== true || !mesh.parent) continue;
+            || mesh.matrixAutoUpdate !== true
+            || (boundRestore
+              // Bound (unbind-owed) restores mint regardless of attach/visible
+              // state — the row's next owner can't inherit frozen marks — but
+              // a re-frozen row still drops: the freeze lane re-owns marks.
+              ? ud.sfHiddenFrozen === true
+              : (!mesh.parent || mesh.visible !== true))) {
+          if (boundRestore) delete ud.sfHiddenUnfreezeBound;
+          continue;
+        }
         ud.sfHiddenFrozen = false;
         iter = unfreezeHiddenSubtreeMatricesSteps(mesh);
       } else {
         scanned += 1;
         // Abandon checks for a parked restore: re-culled (the freeze lane owns
         // the subtree's marks now — still-stamped nodes stay frozen for the
-        // next restore), detached, or matrixAutoUpdate re-frozen externally.
-        // An unbound row's iter stamp was already deleted — it falls into the
-        // dead-entry gate above for free.
+        // next restore), detached, hidden in place, or matrixAutoUpdate
+        // re-frozen externally. An unbound row's iter stamp was already
+        // deleted — it falls into the dead-entry gate above for free.
+        const boundLive = ud.sfHiddenUnfreezeBound === true;
         if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true
-            || mesh.matrixAutoUpdate !== true || !mesh.parent) {
+            || mesh.matrixAutoUpdate !== true
+            || (!boundLive && (!mesh.parent || mesh.visible !== true))) {
           try { iter.return(); } catch (_) { /* discard proceeds */ }
           delete ud.sfHiddenUnfreezeIter;
+          delete ud.sfHiddenUnfreezeBound;
           continue;
         }
       }
@@ -21614,6 +21707,7 @@ export const render = {
       }
       delete ud.sfHiddenUnfreezeIter;
       delete ud.sfHiddenUnfreezeQueued;
+      delete ud.sfHiddenUnfreezeBound;
       minted += 1;
     }
     pending.length = w;
@@ -21788,12 +21882,15 @@ export const render = {
     // A culled-frozen root leaving the presentation world goes back to whatever owns the
     // object next (dispose, pool reuse, rebuild) in its build-time state. A queued-but-
     // unminted freeze stamp drops with the row so a pooled reuse can't inherit it.
+    const owedBoundRestore = !!(mesh && mesh.userData
+      && mesh.userData.sfHiddenUnfreezeBound === true);
     if (mesh && mesh.userData) {
       delete mesh.userData.sfHiddenFreezeQueued;
       delete mesh.userData.sfHiddenFreezeQueuedSeq;
       delete mesh.userData.sfHiddenFreezeLastShowSeq;
       delete mesh.userData.sfHiddenUnfreezeQueued;
       delete mesh.userData.sfHiddenUnfreezeQueuedSeq;
+      delete mesh.userData.sfHiddenUnfreezeBound;
       // A parked mid-mint iterator must not resume against a row the world no
       // longer owns — kill it here; the subtree's stamped prefix heals via the
       // sfHiddenFrozen branch's restore below (partial prefixes unfreeze
@@ -21812,7 +21909,32 @@ export const render = {
       // A corpse-bound unbind's interior marks die with the subtree — the
       // despawn drain's dispose walks flags, not matrixAutoUpdate, so the
       // ~2x-subtree restore walk is dead work on every kill-burst row.
-      if (disposeBound !== true) unfreezeHiddenSubtreeMatrices(mesh);
+      if (disposeBound !== true) {
+        // Live unbinds stay restore-before-reuse, but a mass unbind (keepGpu
+        // recook over a culled sector's kept boundaries) pays ~2x O(subtree)
+        // per flagged root in one sweep frame — the atomic class the freeze
+        // lanes exist to amortize. Past the inline budget the restore queues
+        // as a bound entry: restore-owed — no dwell, no detach/invisible
+        // abandon — so the drain still finalizes it before any real reuse.
+        if (this._unbindRestoreSeq !== this._viewSyncSeq) {
+          this._unbindRestoreSeq = this._viewSyncSeq;
+          this._unbindRestoreInline = 0;
+        }
+        this._unbindRestoreInline += 1;
+        if (this._unbindRestoreInline <= UNBIND_HIDDEN_RESTORE_INLINE_PER_PASS) {
+          unfreezeHiddenSubtreeMatrices(mesh);
+        } else {
+          mesh.userData.sfHiddenUnfreezeBound = true;
+          mesh.userData.sfHiddenUnfreezeQueued = true;
+          (this._pendingHiddenUnfreeze || (this._pendingHiddenUnfreeze = []))
+            .push(mesh);
+        }
+      }
+    } else if (owedBoundRestore && mesh && disposeBound !== true) {
+      // A bound-queued row unbound again before the drain minted its owed
+      // restore: the queue entry died with the stamp clear above, so the
+      // restore has to finalize inline or the next owner inherits the marks.
+      unfreezeHiddenSubtreeMatrices(mesh);
     }
     // The submit-lane reservation is keyed by entity id, not by the world handle: it must
     // release even when the handle (or the world) is already gone, or the slot strands.

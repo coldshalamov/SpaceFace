@@ -142,8 +142,15 @@ function drawnCullRadiusForMesh(mesh) {
   // miss re-enters the same path. A never-measured row has nothing honest to
   // serve: it still pays the walk.
   if (keyMoved && _passRemeasureCount >= DRAWN_CULL_REMEASURE_PER_PASS) {
-    const known = Math.max(data.drawnCullRadiusMax || 0, (cached && cached.radius) || 0);
-    if (known > 0) return known;
+    // Largest radius the LRU window still knows — max-over-LRU decays a
+    // lod0-era envelope once a descent's keys age out, where the max-ever
+    // field would hold it through a whole sustained key-move storm.
+    let known = (cached && cached.radius) || 0;
+    const lru = data.drawnCullRadiusLru;
+    if (lru) for (const value of lru.values()) { if (value > known) known = value; }
+    // Same over-serve bias as the cadence branch — a never-measured-larger
+    // composition must not under-cull for the deferred pass.
+    if (known > 0) return known * DRAWN_CULL_STALE_SERVE_BIAS;
   }
   // Cadence-expiry re-measures defer past the pass budget (a key-moved row
   // still pays — its incoming key owns no stale radius to serve).
@@ -175,6 +182,45 @@ function drawnCullRadiusForMesh(mesh) {
   rec.radius = radius;
   data.drawnCullRadiusMax = Math.max(data.drawnCullRadiusMax || 0, radius);
   return radius;
+}
+
+/**
+ * Commit-window stamp: measure the drawn envelope + authored-motion pad inside
+ * the paced authored-commit tail (which already walks the subtree off the
+ * presented pass) so the first in-frame cull consult hits the memo instead of
+ * paying Box3.setFromObject inside syncEntityViews. Stamps under the
+ * caller-visible key — a later wholeShipLodActiveLevel mint re-keys, and the
+ * family install stamps again under the real level. The pad consult feeds both
+ * radius paths, so it stamps unconditionally; bounds-carrying rows never reach
+ * the drawn-radius memo, so their envelope walk is skipped.
+ */
+export function primeDrawnCullStamps(mesh) {
+  const data = mesh && mesh.userData;
+  if (!data || mesh.isObject3D !== true || !_drawnCullBox) return;
+  motionTravelPadFor(mesh);
+  const hull = data.hull;
+  if ((hull && hull.userData && hull.userData.visualBounds) || data.visualBounds) return;
+  _drawnCullBox.setFromObject(mesh);
+  let radius = 0;
+  if (!_drawnCullBox.isEmpty()) {
+    const b = _drawnCullBox;
+    const px = mesh.position ? mesh.position.x : 0;
+    const pz = mesh.position ? mesh.position.z : 0;
+    radius = Math.max(
+      Math.hypot(b.min.x - px, b.min.z - pz),
+      Math.hypot(b.min.x - px, b.max.z - pz),
+      Math.hypot(b.max.x - px, b.min.z - pz),
+      Math.hypot(b.max.x - px, b.max.z - pz),
+    );
+  }
+  const rec = data.drawnCullRadius || (data.drawnCullRadius = {});
+  rec.assetState = data.authoredAssetState || '';
+  rec.compositionId = data.authoredCompositionId || '';
+  rec.lodLevel = data.wholeShipLodActiveLevel || '';
+  rec.childCount = mesh.children ? mesh.children.length : 0;
+  rec.calls = 0;
+  rec.radius = radius;
+  data.drawnCullRadiusMax = Math.max(data.drawnCullRadiusMax || 0, radius);
 }
 
 /** Use authored XZ bounds for view culling without changing gameplay/collision radius. */

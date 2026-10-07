@@ -49,7 +49,7 @@ import {
 } from './tabletopPolicy.js';
 import { authoredRunwayHorizonSeconds, closingVelocity, declaredPlaceTargetRadius, willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
-import { entityVisualCullRadius } from './visualCullRadius.js';
+import { entityVisualCullRadius, primeDrawnCullStamps } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachRetroMounts } from './thruster/retroMounts.js';
@@ -3370,6 +3370,10 @@ function commitAuthoredCargoCapsuleBoundary(
       catch (error) { console.warn('[partsLibrary] cargo publish touch failed', error); }
     }
     boundary.userData.authoredAssetState = 'authored';
+    // The first in-frame cull consult would otherwise pay Box3.setFromObject
+    // O(subtree) inside syncEntityViews — stamp the envelope + motion pad
+    // here, inside the paced commit tail, under the caller-visible key.
+    primeDrawnCullStamps(boundary);
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
       catch (error) { console.warn('[partsLibrary] cargo swap observer failed', error); }
@@ -4300,6 +4304,10 @@ async function commitAuthoredPlaceBoundary(
       catch (error) { console.warn('[partsLibrary] place publish touch failed', error); }
     }
     boundary.userData.authoredAssetState = 'authored';
+    // Same commit-tail stamp as the ship/cargo publishes: keep the first
+    // envelope measure out of the presented cull pass (bounds-carrying rows
+    // skip it — only the pad stamps).
+    primeDrawnCullStamps(boundary);
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity: admissionEntity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
       catch (error) { console.warn('[partsLibrary] place swap observer failed', error); }
@@ -9094,6 +9102,9 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
   boundary.userData.wholeShipLodFamily = family;
   boundary.userData.wholeShipLodFamilyInstalled = true;
   boundary.userData.wholeShipLodActiveLevel = 'lod0';
+  // The publish-time envelope stamp keyed on lodLevel='' — re-key it under the
+  // real level now or the first cull consult re-measures in-frame anyway.
+  primeDrawnCullStamps(boundary);
   // Boundary-scoped so soak probes can inspect the live swap-back cache; teardown re-detaches it.
   boundary.userData.wholeShipLodRoots = roots;
   boundary.userData.wholeShipLodRetainedComposed = retainedComposed;
@@ -9490,6 +9501,10 @@ async function commitAuthoredBoundary(
       activateRenderPackagePoolAdmission(admission);
     }
     boundary.userData.authoredAssetState = 'authored';
+    // The publish key is final for non-family rows; a whole-ship LOD family
+    // mints its level after this commit and re-stamps there. Stamping now
+    // still covers the pre-install consult window.
+    primeDrawnCullStamps(boundary);
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
