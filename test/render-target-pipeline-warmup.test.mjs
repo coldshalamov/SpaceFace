@@ -776,9 +776,9 @@ test('startup publishes the final opening visibility boundary before freezing ex
 });
 
 test('opening publication settles the chase camera before classifying first-picture visibility', () => {
-  const source = renderSystem._publishOpeningFirstPicture.toString();
+  const source = renderSystem._publishOpeningFirstPictureSteps.toString();
   const followAt = source.indexOf('this.cam.follow(0,');
-  const visibilityAt = source.indexOf('this.syncEntityViews(1)');
+  const visibilityAt = source.indexOf('this.syncEntityViewsSteps(1)');
   assert.ok(followAt >= 0 && visibilityAt >= 0 && followAt < visibilityAt,
     'the exact census must not cull with the loading camera and then freeze a different chase-camera picture');
 });
@@ -813,6 +813,7 @@ test('opening admission waits for a visible whole-ship LOD transition after auth
     renderer: {},
   };
 
+  owner._openingFirstPictureUpgradePromisesSteps = renderSystem._openingFirstPictureUpgradePromisesSteps;
   const pending = renderSystem._openingFirstPictureUpgradePromises.call(owner);
   assert.deepEqual(pending, [transition.promise],
     'the retained settled base promise is ignored while the live LOD child replacement still blocks');

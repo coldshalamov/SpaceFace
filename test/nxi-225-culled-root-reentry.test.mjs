@@ -88,9 +88,16 @@ test('the renderer unfreezes a re-entered root and applies the pose before the s
   assert.ok(gate > unfreeze, 'the dirty-gated pose apply runs after unfreeze');
   assert.match(source, /_applyPresentationPose\(slot, mesh, alpha/);
   // The hidden exit writes the final current pose THEN freezes — never the reverse.
+  // (The freeze mint rides the bounded queue — it still composes after the pose apply.)
   const hiddenApply = source.indexOf('this._applyPresentationPose(slot, mesh, alpha, true)');
-  const freeze = source.indexOf('mesh.matrixAutoUpdate = false;', hiddenApply);
-  assert.ok(hiddenApply > 0 && freeze > hiddenApply,
-    'the hidden exit applies the current pose before freezing the root');
+  const freezeQueue = source.indexOf('this._queueHiddenSubtreeFreeze(mesh);', hiddenApply);
+  assert.ok(hiddenApply > 0 && freezeQueue > hiddenApply,
+    'the hidden exit applies the current pose before queueing the root freeze');
+  const drain = source.indexOf('_drainHiddenFreezeQueue() {');
+  const drainFlag = source.indexOf('mesh.matrixAutoUpdate = false;', drain);
+  const drainCompose = source.indexOf('mesh.updateMatrix();', drain);
+  const drainFreeze = source.indexOf('freezeHiddenSubtreeMatrices(mesh);', drain);
+  assert.ok(drain > 0 && drainFlag > drain && drainCompose > drainFlag && drainFreeze > drainCompose,
+    'the queued drain still composes the final pose before freezing');
   assert.ok(submitOrder > 0);
 });

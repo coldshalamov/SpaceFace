@@ -237,6 +237,62 @@ export function* queryAsteroidFieldSteps(state, pos, radius, out = [], batchRows
   return out;
 }
 
+// Nearest-first whole-field twin: emits every live unpromoted record exactly
+// once, bucketed outward from the player's cell by Chebyshev ring. The collect
+// is chunked (key scan + a yield every `batchRows` emitted records) so a
+// whole-field walk rides a slice clock; the O(R log R) distance sort it
+// replaces couldn't suspend. `maxRadius` stops emission once a ring's
+// minimum center distance exceeds it (+CELL slack covers centers anywhere
+// inside a boundary cell plus rec.radius reach — the margin over-selects,
+// never under). Ordering is nearest-first by cell — the field's own radius
+// queries already accept mint-cell imprecision for drifted rocks, and the
+// caller's promote contract is coverage over the key space with proximity
+// preference only.
+export function* queryAsteroidFieldNearestSteps(state, pos, out = [], batchRows = 1024,
+    maxRadius = Infinity) {
+  out.length = 0;
+  const field = state && state.world && state.world.asteroidField;
+  if (!field || !pos) return out;
+  const grid = field.grid;
+  if (!grid || grid.size === 0) return out;
+  const x = finite(pos.x);
+  const z = finite(pos.z);
+  const px = Math.floor(x / ASTEROID_FIELD_CELL);
+  const pz = Math.floor(z / ASTEROID_FIELD_CELL);
+  const batch = Number.isFinite(batchRows) ? Math.max(1, batchRows | 0) : Infinity;
+  const radiusCap = Number.isFinite(maxRadius) ? finite(maxRadius) : Infinity;
+  const rings = new Map();
+  let scanned = 0;
+  for (const key of grid.keys()) {
+    const cx = Math.floor(key / CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+    const cz = (key % CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+    const ring = Math.max(Math.abs(cx - px), Math.abs(cz - pz));
+    let keys = rings.get(ring);
+    if (!keys) { keys = []; rings.set(ring, keys); }
+    keys.push(key);
+    if (++scanned % batch === 0) yield;
+  }
+  const order = [...rings.keys()].sort((a, b) => a - b);
+  let emitted = 0;
+  for (let i = 0; i < order.length; i++) {
+    const ring = order[i];
+    // Ring k's records sit at least (k-1)*CELL away — a record can only be
+    // in-radius while (k-1)*CELL <= radiusCap + rec.radius <= radiusCap + CELL.
+    if (radiusCap !== Infinity && (ring - 1) * ASTEROID_FIELD_CELL > radiusCap + ASTEROID_FIELD_CELL) break;
+    for (const key of rings.get(ring)) {
+      const bucket = grid.get(key);
+      if (!bucket) continue;
+      for (const rec of bucket) {
+        if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
+        out.push(rec);
+        if (++emitted % batch === 0) yield;
+      }
+    }
+    yield;
+  }
+  return out;
+}
+
 export function queryAsteroidField(state, pos, radius, out = []) {
   const iterator = queryAsteroidFieldSteps(state, pos, radius, out, Infinity);
   for (;;) {
@@ -453,6 +509,14 @@ export function getOpticFarQuietLatchForBench() {
 
 /** Membership / field-version rescan while latched (0.5 s @ 60 Hz). */
 const OPTIC_FAR_QUIET_RESCAN_TICKS = 30;
+// Per-tick promote/demote budgets: crossing a dense optic pocket used to run
+// every in-disc promote (catchUp + ship-scan + spawnEntity + ~24-listener
+// entity:spawned fan + Rapier mint) inside ONE sim step — the same burst class
+// the first-flight cook paces 4-per-yield and far-actors gate on
+// budget.request. Deferred records stay field-resident (identical sim reads)
+// until their tick — indistinguishable from slightly-later boundary entry.
+const OPTIC_PROMOTE_PER_TICK = 4;
+const OPTIC_DEMOTE_PER_TICK = 4;
 
 function entityIndexVersion(state) {
   const index = state && state.entityIndex;
@@ -530,6 +594,10 @@ export function tickOpticFieldRocks(state, helpers) {
     const dz = rec.pos.z - pz;
     if (dx * dx + dz * dz > radii.enter2) continue;
     opticInterest = true;
+    // Past the per-tick budget the record stays field-resident — it simulates
+    // identically and promotes on a later tick instead of stacking spawn
+    // transactions inside this one.
+    if (promoted >= OPTIC_PROMOTE_PER_TICK) continue;
     const ent = promoteAsteroidFieldRock(state, rec.id, helpers, 'optic-approach');
     if (ent) promoted += 1;
   }
@@ -546,6 +614,9 @@ export function tickOpticFieldRocks(state, helpers) {
     const dx = entity.pos.x - px;
     const dz = entity.pos.z - pz;
     if (dx * dx + dz * dz <= radii.exit2) continue;
+    // Symmetric budget: a mass exit shelves N more bodies next tick rather
+    // than paying N removal fans inside this step.
+    if (shelved >= OPTIC_DEMOTE_PER_TICK) continue;
     if (demoteOpticAsteroidToField(state, entity, helpers, 'optic-exit')) shelved += 1;
   }
 

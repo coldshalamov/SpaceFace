@@ -639,6 +639,7 @@ test('stale census teardown stops before disposing remaining/new live mesh',asyn
  Object.assign(f.values,{
   resolveWorldPresentationEntity:()=>null,isEntityRenderRelevant:()=>false,
   releaseAsteroidInstancesForEntity(){},disposeObject:mesh=>disposed.push(mesh.name),
+  disposeObjectSteps:(mesh)=>{disposed.push(mesh.name);return{next:()=>({done:true})};},
   noteShadowMeshRemoved(){},clearEntityMeshReference(){},
  });
  const running=f.cook({id:'ceres'},7);

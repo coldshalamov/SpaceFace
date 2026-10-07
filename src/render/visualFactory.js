@@ -67,6 +67,7 @@ import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from '
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { attachAuthoredMotionDriver, bindInstanceMotionSteps } from './authoredMotion.js';
+import { primeDrawnCullStamps } from './visualCullRadius.js';
 import {
   admissionOwnerInactive,
   authoredAdmissionRetriableStatus,
@@ -5927,6 +5928,12 @@ function stampBuiltVisual(root) {
     // what the producer declared here.
     if (root.userData && !root.userData.generatedVisualProducer) {
       root.userData.generatedVisualProducer = 'visual-factory-procedural';
+    }
+    // Character-family builders stamp 'authored' with no visualBounds — the
+    // first drawn-cull consult would pay the box walk inside a presented pass.
+    // Pre-pay it here: builds already run inside paced residency lanes.
+    if (root.userData && String(root.userData.authoredAssetState || '').startsWith('authored')) {
+      primeDrawnCullStamps(root);
     }
   }
   return root;

@@ -5,7 +5,9 @@
 // on the same frames that already built meshes. The tally is exact when callers report
 // add/remove; recount() is the dirty fallback.
 
-export function countShadowReceivers(root, out = null) {
+const COUNT_CAP_ABORT = { capAbort: true };
+
+export function countShadowReceivers(root, out = null, maxNodes = 0) {
   if (!root) return 0;
   let receivers = 0;
   let nodes = 1;
@@ -14,10 +16,26 @@ export function countShadowReceivers(root, out = null) {
   if (children && children.length && typeof root.traverse === 'function') {
     // traverse visits root itself, so the node count restarts at 0 here.
     nodes = 0;
-    root.traverse((object) => {
-      nodes += 1;
-      if (object && object !== root && object.receiveShadow === true) receivers += 1;
-    });
+    if (maxNodes > 0) {
+      // Past the cap the whole subtree cost was already the thing being
+      // bounded — bail so the caller falls to the paced recount instead.
+      try {
+        root.traverse((object) => {
+          nodes += 1;
+          if (nodes > maxNodes) throw COUNT_CAP_ABORT;
+          if (object && object !== root && object.receiveShadow === true) receivers += 1;
+        });
+      } catch (error) {
+        if (error !== COUNT_CAP_ABORT) throw error;
+        if (out) out.nodes = nodes;
+        return -1;
+      }
+    } else {
+      root.traverse((object) => {
+        nodes += 1;
+        if (object && object !== root && object.receiveShadow === true) receivers += 1;
+      });
+    }
   }
   if (out) out.nodes = nodes;
   return receivers;
@@ -43,30 +61,208 @@ const RECOUNT_STORM_QUIET_RESOLVES = 8;
 
 /** Iterative pre-order twin of the recount traverse — same receiver test, yields
  * every `nodesPerSlice` visited nodes so resolve() can pace the fallback walk
- * across presented beats instead of paying one atomic O(scene) pass. */
+ * across presented beats instead of paying one atomic O(scene) pass.
+ *
+ * Frame stack: each frame is pushed when its node is first touched and popped
+ * when the node's subtree is exhausted, so the stack is exactly the open
+ * ancestor chain of the walk cursor. That shape is what makes the noted
+ * walk's probes cheap: detached membership propagates through frame.dead
+ * (marked once per resume over the chain instead of an O(depth) parent walk
+ * per pop), and "root's subtree finished" is an openSet membership test.
+ * Graph mutations can only land while the generator is suspended at a yield,
+ * so all staleness checks run in a single O(depth) resume pass:
+ *  - a frame whose node sits in the detached set (a noteRemoved root) kills
+ *    its whole suffix — every deeper member is under it;
+ *  - a broken parent link (f.node.parent !== parentFrame.node) is resolved
+ *    once with the legacy ancestry probe — live means the node reparented
+ *    inside the scene and still counts, dead means un-noted detach;
+ *  - a sibling splice (children[idx] drifted off the frame's node) re-indexes
+ *    the parent's cursor via indexOf so an already-visited sibling's removal
+ *    can't skip an unvisited subtree.
+ */
 function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_SLICE, notedWalk = null) {
   let receivers = 0;
   if (!scene) return receivers;
   const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
-  const stack = [scene];
+  const detached = notedWalk ? notedWalk.detached : null;
+  const openSet = notedWalk ? notedWalk.openSet : null;
+  const stack = [{
+    node: scene,
+    idx: -1,
+    dead: detached && detached.size > 0 && detached.has(scene) ? 1 : 0,
+    visited: false,
+  }];
+  if (openSet) openSet.add(scene);
   let sinceYield = 0;
+  // Seeded rows re-walk their whole subtree per resume; under sustained
+  // sibling churn that re-push volume is unbounded even though every resume
+  // is slice-charged. Cap the cumulative seed work — past it the walk flags
+  // itself abandoned and resolve() re-mints under the supersede cap.
+  let seededTotal = 0;
   while (stack.length > 0) {
-    const object = stack.pop();
-    if (!object) continue;
-    if ((++sinceYield % every) === 0) yield;
-    if (object.receiveShadow === true) receivers += 1;
-    // Notes recorded while this walk was mid-flight get a per-root visit stamp:
-    // a noted root measured post-note is already folded into `receivers`, so the
-    // stamp only re-adds deltas of roots the walk never visited post-note.
-    if (notedWalk) {
-      notedWalk.seq += 1;
-      if (notedWalk.notes.has(object)) notedWalk.visits.set(object, notedWalk.seq);
+    const frame = stack[stack.length - 1];
+    if (frame.dead !== 0) {
+      stack.pop();
+      if (openSet) openSet.delete(frame.node);
+      continue;
+    }
+    const object = frame.node;
+    if (!frame.visited) {
+      frame.visited = true;
+      sinceYield += 1;
+      if (sinceYield >= every) {
+        sinceYield = 0;
+        yield;
+        if (detached) {
+          // Mutations landed inside the suspend: re-verify the open chain once
+          // per resume rather than probing ancestry per visited node.
+          let deadAt = -1;
+          let gapSeed = null;
+          for (let i = 1; i < stack.length; i += 1) {
+            const f = stack[i];
+            if (f.dead !== 0 || (detached.size > 0 && detached.has(f.node))) {
+              deadAt = i;
+              break;
+            }
+            const parentFrame = stack[i - 1];
+            if (f.node.parent !== parentFrame.node) {
+              // Un-noted detach or reparent — decide once per break with the
+              // probe the flat stack paid per pop.
+              let live = false;
+              for (let p = f.node; p; p = p.parent) {
+                if (detached.has(p)) break;
+                if (p === scene) { live = true; break; }
+              }
+              if (!live) { deadAt = i; break; }
+            } else if (parentFrame.node.children
+                && parentFrame.node.children[parentFrame.idx] !== f.node) {
+              const shifted = parentFrame.node.children.indexOf(f.node);
+              // The resume pass charges its own work: each indexOf is
+              // O(siblings) — count it against the slice budget like a visit.
+              sinceYield += 1;
+              if (shifted < 0) deadAt = i;
+              else {
+                // Insert-before-cursor: children between the recorded cursor
+                // and the row's new index would never be pushed — a silent
+                // splice could then stamp an under-counted total. Seed them
+                // for a walk instead: rows already visited re-walk once
+                // (bounded over-count, the legal direction).
+                if (shifted > parentFrame.idx) {
+                  if (!gapSeed) gapSeed = [];
+                  gapSeed.push({ node: parentFrame.node, from: parentFrame.idx, to: shifted });
+                }
+                // Below-cursor inserts and same-length reorders (unshift,
+                // splice(0,..), or a subtree splice-moved ahead of the
+                // cursor) leave the chain child where the indexOf still
+                // finds it but put fresh rows in the consumed prefix —
+                // invisible to the gap seed. Rescan it on every detected
+                // shift: the seed is openSet-filtered and only re-walks
+                // consumed rows — bounded over-count, never under.
+                const prefixTo = Math.min(shifted, parentFrame.idx);
+                if (prefixTo > 0) {
+                  if (!gapSeed) gapSeed = [];
+                  gapSeed.push({
+                    node: parentFrame.node,
+                    from: 0,
+                    to: prefixTo,
+                    prefix: true,
+                  });
+                }
+                parentFrame.idx = shifted;
+              }
+              if (deadAt >= 0) break;
+            }
+          }
+          if (deadAt >= 0) {
+            for (let k = deadAt; k < stack.length; k += 1) stack[k].dead = 1;
+          } else if (gapSeed) {
+            // Reverse-push so the lowest-indexed unvisited sibling pops first.
+            // Rows already on the stack (an earlier seed or the open chain
+            // itself — prefix scans re-see live rows) are skipped rather than
+            // pushed twice; the seeded span still bounds the slice the same
+            // way visited nodes do.
+            for (const gap of gapSeed) {
+              for (let j = gap.to - 1; j >= gap.from; j -= 1) {
+                // The array is re-read live — a mid-seed yield can return to a
+                // shrunken list, so rows may vanish under the recorded span.
+                const node = gap.node.children[j];
+                if (!node || (openSet && openSet.has(node))) continue;
+                stack.push({
+                  node,
+                  idx: -1,
+                  dead: detached.size > 0 && detached.has(node) ? 1 : 0,
+                  visited: false,
+                });
+                if (openSet) openSet.add(node);
+                sinceYield += 1;
+                if (notedWalk && (seededTotal += 1) > every * 4) {
+                  // Churned suspends keep re-seeding the consumed prefix —
+                  // abandon so the next mint re-walks from scene instead of
+                  // paying O(resumes x width x subtree) on this walk.
+                  notedWalk.abandon = true;
+                  return receivers;
+                }
+                // A seeded span is real work — yield mid-seed instead of
+                // letting a wide splice turn one resume into its own burst.
+                if (sinceYield >= every) {
+                  sinceYield = 0;
+                  yield;
+                }
+              }
+            }
+          }
+          if (frame.dead !== 0) {
+            stack.pop();
+            if (openSet) openSet.delete(object);
+            continue;
+          }
+        }
+      }
+      if (object.receiveShadow === true) receivers += 1;
+      // Every visited object gets a visit stamp, not just noted roots: a note
+      // landing later can only decide "did the walk already measure this
+      // root?" if the walk recorded its own measurement unconditionally.
+      if (notedWalk) {
+        notedWalk.seq += 1;
+        // visits has subscribers only while a note or detached root can name a
+        // visited node — gate the per-visit Map write so a clean walk pays
+        // zero churn. A lazy miss errs over-count: unvisited roots skip the
+        // -delta write entirely and add-notes re-stamp, both conservative-on.
+        if (notedWalk.notes.size > 0 || detached.size > 0) {
+          notedWalk.visits.set(object, notedWalk.seq);
+          // FIFO-evict past the cap — a missing stamp only ever converts to
+          // the conservative side (pending notes stamp their delta; bare
+          // removals skip the retraction), so the cap bounds storm-frame map
+          // churn without an unsafe drop direction.
+          while (notedWalk.visits.size > NOTED_WALK_VISITS_CAP) {
+            notedWalk.visits.delete(notedWalk.visits.keys().next().value);
+          }
+        }
+      }
     }
     const children = object.children;
-    if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    if (children && frame.idx + 1 < children.length) {
+      frame.idx += 1;
+      const child = children[frame.idx];
+      stack.push({
+        node: child,
+        idx: -1,
+        dead: detached && detached.size > 0 && detached.has(child) ? 1 : 0,
+        visited: false,
+      });
+      if (openSet) openSet.add(child);
+    } else {
+      stack.pop();
+      if (openSet) openSet.delete(object);
+    }
   }
   return receivers;
 }
+
+// Upper bound on the noted walk's per-pop visit stamps — one entry per
+// live-popped node would otherwise grow the map O(scene) during a noted
+// recount storm. See the pop-site comment for why eviction is conservative.
+const NOTED_WALK_VISITS_CAP = 4096;
 
 export function createShadowReceiverTally() {
   let count = 0;
@@ -85,24 +281,41 @@ export function createShadowReceiverTally() {
   // attribute a root to) — over-counting errs conservative-on, matching the
   // tally's boolean consumers. This converges `dirty` in ONE walk under
   // sustained note storms instead of discarding bounded slices forever.
-  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0 };
+  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0, detached: new Set(), openSet: new Set(), abandon: false };
   const resetNotedWalk = () => {
     notedWalk.seq = 0;
+    notedWalk.abandon = false;
     notedWalk.visits.clear();
+    // The open chain belongs to a single minted walk — a superseded or
+    // abandoned walk's chain can never stand in for the next mint's.
+    notedWalk.openSet.clear();
     // A re-minted walk re-measures every node post-mutation: notes pending from
     // an earlier walk are now absorbed iff the fresh walk visits the root at
     // all (visit seqs start at 1, so a demoted seq-0 note is unabsorbed only
     // when the root stays unreachable). Loose deltas are dropped for the same
-    // reason — a whole fresh walk subsumes them.
+    // reason — a whole fresh walk subsumes them. Detached stamps reset too: a
+    // re-minted walk re-stacks from scene, so a ghost can never be pushed.
     for (const note of notedWalk.notes.values()) note.seq = 0;
     notedWalk.loose = 0;
+    notedWalk.detached.clear();
   };
   const clearNotedWalk = () => {
     notedWalk.seq = 0;
+    notedWalk.abandon = false;
     notedWalk.visits.clear();
+    notedWalk.openSet.clear();
     notedWalk.notes.clear();
     notedWalk.loose = 0;
+    notedWalk.detached.clear();
   };
+  // DFS visits a subtree contiguously, so a -delta retraction is exact only
+  // once the walk has left the root's subtree entirely: a root still on the
+  // open frame chain has only a measured prefix and retracting the full delta
+  // would under-count below truth. Skipping the note leaves the measured
+  // prefix in the served count — over-count errs conservative-on, the legal
+  // direction. (Sites only consult this for roots with a visit stamp, so a
+  // pushed-but-unvisited node in openSet can never masquerade as measured.)
+  const notedWalkRootFinished = (root) => !notedWalk.openSet.has(root);
 
   return {
     get count() { return count; },
@@ -119,15 +332,47 @@ export function createShadowReceiverTally() {
       if (pendingRecount && root) {
         const prev = notedWalk.notes.get(root);
         notedWalk.notes.set(root, { delta: (prev ? prev.delta : 0) + delta, seq: notedWalk.seq });
+        // A re-add after noteRemoved must leave the ghost set: the pop-time
+        // check walks live parentage, so re-attaching under a dead ancestor
+        // still skips correctly while a re-add under live content counts again.
+        notedWalk.detached.delete(root);
       }
       count += delta;
       if (count < 0) count = 0;
     },
     noteRemoved(root, measured) {
       const delta = Number.isFinite(measured) ? measured : countShadowReceivers(root);
-      // A removed root is unreachable: the pending walk can never measure it,
-      // so the removal is absorbed by construction — nothing to record; the
-      // note still settles the served count.
+      // A root removed mid-walk can still sit on the explicit stack: the walk
+      // would fold it in whole and the unabsorbed +add note would then double
+      // on top of the served count. Record the removal as a negative-delta note
+      // and mark the root detached so the pop-time check skips the ghost — the
+      // stamp nets the add+remove pair to zero.
+      if (pendingRecount && root) {
+        notedWalk.detached.add(root);
+        const note = notedWalk.notes.get(root);
+        if (note && notedWalk.visits.get(root) === undefined) {
+          // The add note was never visited: it survives only for the stamp.
+          // Removing it now drops both sides of the pair.
+          notedWalk.notes.delete(root);
+        } else if (note) {
+          // The prior note was already folded into the walk's measurement
+          // (visits stamped it): the removal retracts exactly the receivers
+          // the walk measured — but only once the subtree is fully counted.
+          // A mid-descent removal keeps the absorbed add so the walked prefix
+          // serves conservative-on instead of under-counting by the suffix.
+          if (notedWalkRootFinished(root)) {
+            note.delta = -delta;
+            note.seq = notedWalk.seq;
+          }
+        } else if (notedWalk.visits.get(root) !== undefined
+            && notedWalkRootFinished(root)) {
+          // Only retract a root the walk already measured — an unvisited root
+          // is excluded from `walked` by the detached-skip alone, and a root
+          // mid-descent holds just a prefix: stamping -delta either way would
+          // under-count below the true total.
+          notedWalk.notes.set(root, { delta: -delta, seq: notedWalk.seq });
+        }
+      }
       count -= delta;
       if (count < 0) count = 0;
     },
@@ -164,9 +409,16 @@ export function createShadowReceiverTally() {
       if (options.force === true) return this.recount(scene);
       if (!dirty) return count;
       // Dirty: pace the stepped recount inside this call's bounded slice and
-      // keep serving the last count until a clean walk settles.
+      // keep serving the last count until a clean walk settles. The caller's
+      // frame wallet gates step minting — a spent presented frame parks the
+      // walk untouched, and the slice's real spend is debited on the way out
+      // so every paced lane sees the same budget.
       const start = tallyNow();
+      const spendGate = typeof options.spendGate === 'function' ? options.spendGate : null;
+      const debit = typeof options.debit === 'function' ? options.debit : null;
+      try {
       while (dirty) {
+        if (spendGate && !spendGate()) return count;
         // Supersede at first detection, not just at completion — a dirty bump
         // mid-walk makes the remaining slices guaranteed-stale work.
         if (pendingRecount && pendingRecount.seq !== dirtySeq
@@ -183,6 +435,16 @@ export function createShadowReceiverTally() {
         }
         const step = pendingRecount.iter.next();
         if (step.done) {
+          if (notedWalk.abandon === true) {
+            // The walk self-abandoned on its cumulative seed budget — churn
+            // made the remaining slices guaranteed-expensive work. Treat as a
+            // supersede: discard and re-mint under the same cap.
+            notedWalk.abandon = false;
+            supersededRecounts += 1;
+            pendingRecount = null;
+            if (tallyNow() - start >= RECOUNT_SLICE_MS) return count;
+            continue;
+          }
           const seqMatched = pendingRecount.seq === dirtySeq;
           if (seqMatched || supersededRecounts >= RECOUNT_SUPERSEDE_CAP) {
             // Seq-matched, or the dirty storm has superseded enough walks that a
@@ -211,6 +473,9 @@ export function createShadowReceiverTally() {
           continue;
         }
         if (tallyNow() - start >= RECOUNT_SLICE_MS) return count;
+      }
+      } finally {
+        if (debit) debit(tallyNow() - start);
       }
       return count;
     },

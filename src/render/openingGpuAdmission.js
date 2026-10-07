@@ -18,7 +18,7 @@ import {
   detachedTextureUploadPending,
   rehydrateDetachedTextures,
 } from './packageCpuDetach.js';
-import { collectStartupTextures } from './startupGpuResidency.js';
+import { collectStartupTextures, collectStartupTexturesSteps } from './startupGpuResidency.js';
 
 /**
  * A package texture whose CPU mirror was released after its proven upload still reaches three's
@@ -33,7 +33,20 @@ import { collectStartupTextures } from './startupGpuResidency.js';
 async function reattachDetachedAdmissionTextures(subjects, renderer, yieldToMain) {
   const properties = renderer && renderer.properties;
   if (!properties || typeof properties.get !== 'function') return;
-  const pending = collectStartupTextures(subjects)
+  // The collect walks every cohort subtree — O(roots x nodes) inside the paced
+  // admit loop — so drive the Steps twin under the caller's yield contract.
+  let collected = null;
+  if (typeof collectStartupTexturesSteps === 'function' && typeof yieldToMain === 'function') {
+    const it = collectStartupTexturesSteps(subjects);
+    for (;;) {
+      const step = it.next();
+      if (step.done) { collected = step.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    collected = collectStartupTextures(subjects);
+  }
+  const pending = collected
     .filter((texture) => detachedTextureUploadPending(texture, properties));
   if (pending.length === 0) return;
   let receipt = null;
@@ -445,12 +458,14 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
 
 /**
  * Reusable drawable-hide session for a batched touch loop. The scene's drawable
- * enumeration is O(scene) — mint it once per cohort instead of once per batch.
- * `keep` accumulates across uses: batch subjects share ancestors, so a later
- * batch's keep mint skips walks a prior batch already unioned in. Under-hiding
- * is safe by contract — a drawable the session under-covers just draws inside
- * the absorbed touch pass (which exists to absorb links), never inside a
- * presented frame; stale entries for detached nodes hide+restore harmlessly.
+ * enumeration is O(scene) — mint it once per cook and share `drawables` across
+ * the cook's legs. `keep` is per-CALL state (withOnlySubjectsDrawable mints it
+ * per batch); session objects carry no keep set at all — re-drawing every prior
+ * batch's subjects in
+ * each later absorbed pass. Under-hiding is safe by contract — a drawable the
+ * session under-covers just draws inside the absorbed touch pass (which exists
+ * to absorb links), never inside a presented frame; stale entries for detached
+ * nodes hide+restore harmlessly.
  */
 export function drawableHideSession(scene) {
   const drawables = [];
@@ -459,20 +474,43 @@ export function drawableHideSession(scene) {
       if (isDrawable(object)) drawables.push(object);
     });
   }
-  return { scene, drawables, keep: new Set() };
+  return { scene, drawables };
+}
+
+// Stepped twin of the session mint: the O(scene) enumeration yields at stride
+// boundaries so a lazy mid-cook mint paces across presents instead of landing
+// atomic inside the admit leg. Reversed-children push reproduces traverse's
+// pre-order exactly (drawables order is cosmetic — the hide pass only reads
+// membership).
+export function* drawableHideSessionSteps(scene, sliceEvery = 4096) {
+  const drawables = [];
+  if (scene) {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (isDrawable(object)) drawables.push(object);
+      const children = object.children || [];
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      if ((++visited % sliceEvery) === 0) yield;
+    }
+  }
+  return { scene, drawables };
 }
 
 export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
-  const keep = session ? session.keep
-    : new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
+  // `keep` scopes to THIS call's subjects: whileRevealedGroup now holds reveals
+  // across suspension, so a session-accumulated keep re-draws every prior
+  // batch's subjects inside each later absorbed pass (≈N²/48 subject-draws per
+  // cook). Prior-batch members are hidden by the scan below — their programs
+  // already linked in their own batch — and restore in `finally`.
+  const keep = new Set();
   // A drawable ancestor must stay un-hidden: render() skips a hidden object's whole subtree, so
   // hiding one would make the subject's "draw" a silent no-op and leave its program cold. The
   // same holds for descendants — a Group subject whose mesh children are hidden draws nothing.
-  const fresh = session
-    ? (Array.isArray(subjects) ? subjects : [subjects]).filter((s) => s && !keep.has(s))
-    : [...keep];
-  for (const subject of fresh) {
-    if (session) keep.add(subject);
+  for (const subject of (Array.isArray(subjects) ? subjects : [subjects])) {
+    if (!subject || keep.has(subject)) continue;
+    keep.add(subject);
     for (let p = subject.parent; p && !keep.has(p); p = p.parent) keep.add(p);
     if (typeof subject.traverse === 'function') subject.traverse((node) => keep.add(node));
   }
@@ -871,7 +909,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       let touched = null;
       let touchError = null;
       try {
-        touched = touchMany(group);
+        touched = await touchMany(group);
       } catch (error) {
         touchError = error;
       }

@@ -13,6 +13,7 @@
 // is just a visibility flip on an already-bound node.
 
 import { bindAuthoredMotion, bindAuthoredMotionSteps } from '../contracts/motionBank.js';
+import { primeMotionTravelPad } from './visualCullRadius.js';
 
 const ACCEPTED_SCAN_SOURCE = 'player-scanner';
 
@@ -147,6 +148,9 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   if (motionPadSpec.length) root.userData.authoredMotionPadSpec = motionPadSpec;
   else delete root.userData.authoredMotionPadSpec;
   delete root.userData.__authoredMotionPad;
+  // A graft landing on an already-mounted row would otherwise pay the pad's
+  // first-mint subtree walk inside the next cull consult.
+  if (motionPadSpec.length) primeMotionTravelPad(root);
   // Ambient/attach clips arm on the first update so their anchor lands on the real clock.
   let attachFired = false;
   root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow, a11y) {

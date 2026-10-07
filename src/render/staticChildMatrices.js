@@ -191,6 +191,102 @@ export function unfreezeHiddenSubtreeMatrices(root) {
     const userData = node.userData;
     if (userData && userData.sfMatrixFrozen === true) userData.sfMatrixFrozen = false;
   }
+  // Interior marks went stale the moment any descendant restored: a mount-frozen
+  // node (no sfCullFrozen stamp, skipped above) can hold sfMatrixFrozen over
+  // now-live children, and the vendored walk would prune the whole branch. The
+  // re-mark is self-healing both ways — still-frozen interior subtrees re-mark,
+  // everything else clears.
+  markStaticMatrixSubtrees(root);
+  root.matrixWorldNeedsUpdate = true;
+  return restored;
+}
+
+// Stepped twins of the hidden-cull mints — identical output to the sync pair,
+// walked iteratively so the drain's node budget can park a packaged-hull mint
+// mid-subtree on its queue entry. A killed/abandoned freeze iterator leaves a
+// correctly-stamped prefix (sfCullFrozen is per-node, so unfreeze restores
+// exactly what was frozen); a killed unfreeze leaves still-stamped nodes for a
+// later restore mint.
+export function* freezeHiddenSubtreeMatricesSteps(root) {
+  if (!root || typeof root.traverse !== 'function') return 0;
+  let frozen = 0;
+  const order = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const object = stack.pop();
+    order.push(object);
+    if (shouldFreezeStaticChild(object, root) && object.matrixAutoUpdate !== false) {
+      object.matrixAutoUpdate = false;
+      if (typeof object.updateMatrix === 'function') object.updateMatrix();
+      const userData = object.userData || (object.userData = {});
+      userData.sfCullFrozen = true;
+      frozen += 1;
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    if ((order.length % 1024) === 0) yield;
+  }
+  // Reverse of the collected pre-order list is a valid post-order for the
+  // sfMatrixFrozen mark pass (same contract as freezeStaticChildMatricesSteps).
+  for (let i = order.length - 1; i >= 0; i -= 1) {
+    const node = order[i];
+    let frozenSubtree = node.matrixAutoUpdate === false;
+    const children = node.children || [];
+    for (let j = 0; j < children.length; j++) {
+      const ud = children[j].userData;
+      if (!(ud && ud.sfMatrixFrozen === true)) { frozenSubtree = false; break; }
+    }
+    if (node.userData) {
+      if (frozenSubtree) node.userData.sfMatrixFrozen = true;
+      else if (node.userData.sfMatrixFrozen) node.userData.sfMatrixFrozen = false;
+    }
+    if ((i % 1024) === 0) yield;
+  }
+  remarkStaticMatrixAncestors(root);
+  return frozen;
+}
+
+export function* unfreezeHiddenSubtreeMatricesSteps(root) {
+  if (!root) return 0;
+  let restored = 0;
+  const order = [];
+  if (typeof root.traverse === 'function') {
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      order.push(object);
+      const userData = object.userData;
+      if (userData && userData.sfCullFrozen === true) {
+        object.matrixAutoUpdate = true;
+        delete userData.sfCullFrozen;
+        if (userData.sfMatrixFrozen) userData.sfMatrixFrozen = false;
+        restored += 1;
+      }
+      const children = object.children || [];
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      if ((order.length % 1024) === 0) yield;
+    }
+  }
+  for (let node = root.parent; node; node = node.parent) {
+    const userData = node.userData;
+    if (userData && userData.sfMatrixFrozen === true) userData.sfMatrixFrozen = false;
+  }
+  // Same self-healing interior re-mark as the sync unfreeze — a mount-frozen
+  // node (no sfCullFrozen stamp) over now-live children re-evaluates here.
+  for (let i = order.length - 1; i >= 0; i -= 1) {
+    const node = order[i];
+    let frozenSubtree = node.matrixAutoUpdate === false;
+    const children = node.children || [];
+    for (let j = 0; j < children.length; j++) {
+      const ud = children[j].userData;
+      if (!(ud && ud.sfMatrixFrozen === true)) { frozenSubtree = false; break; }
+    }
+    if (node.userData) {
+      if (frozenSubtree) node.userData.sfMatrixFrozen = true;
+      else if (node.userData.sfMatrixFrozen) node.userData.sfMatrixFrozen = false;
+    }
+    if ((i % 1024) === 0) yield;
+  }
   root.matrixWorldNeedsUpdate = true;
   return restored;
 }

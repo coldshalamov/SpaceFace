@@ -1191,6 +1191,10 @@ function enterLoadingMode(state, bus) {
       renderer.setClearColor(_loadingClearColor, prevAlpha);
     }
   } catch (_) { /* best effort — the shell still covers the handoff */ }
+  // A foundry HDRI that armed while a presented surface was up bakes its PMREM
+  // convolve here — the held frame is already black and the veil is coming up,
+  // so the one bounded convolve lands where presented frames never run.
+  try { state.render && state.render._drainFoundryEnvPending?.(); } catch (_) { /* env optional */ }
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 

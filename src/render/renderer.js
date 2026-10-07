@@ -6,7 +6,7 @@ import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
 import { pickDecodeRunwayCandidates, pickDecodeRunwayCandidatesSteps } from './decodeRunwayPick.js';
-import { entityVisualCullRadius } from './visualCullRadius.js';
+import { entityVisualCullRadius, resetDrawnCullPassBudget } from './visualCullRadius.js';
 import {
   clearPooledTransientMarks,
   noteSharedTextureConsumer,
@@ -172,6 +172,7 @@ import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
 import {
   clearWaveHullRunwayKeys,
+  collectMeshPresentationEntities,
   collectMeshPresentationEntitiesChunked,
   warmNearbyLedgerRows,
   warmNearbyLedgerRowsSteps,
@@ -190,7 +191,7 @@ import {
 import { NEMESIS_KITS } from '../data/nemesisRival.js';
 import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID, heistLaunchVariant } from '../data/heistFacilities.js';
 import { BREAKAWAY_PRESSURE } from '../data/heistMission.js';
-import { promoteAsteroidFieldRock, queryAsteroidField, queryAsteroidFieldSteps } from '../world/asteroidField.js';
+import { promoteAsteroidFieldRock, queryAsteroidField, queryAsteroidFieldNearestSteps, queryAsteroidFieldSteps } from '../world/asteroidField.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { itineraryPositionInto, itineraryVelocityInto } from '../world/worldCatchup.js';
 import {
@@ -199,6 +200,7 @@ import {
   packPresentationWorldToFence,
   packPresentationWorldToFenceSteps,
   poseSpanAlpha,
+  snapshotHasEntityGeneration,
   snapshotIndexOf,
 } from './snapshotFence.js';
 import {
@@ -341,6 +343,7 @@ import {
   collectFirstFlightEffectRootsSteps,
   collectFirstFlightLayerDrawables,
   collectInstancePoolCompileRoots,
+  collectInstancePoolCompileRootsAndSubjects,
   collectInstancePoolCompileRootsAndSubjectsSteps,
   collectInstancePoolCompileRootsSteps,
   collectLateAdmittedCompileRoots,
@@ -401,6 +404,9 @@ import {
   shouldDeferPipelineAutoFlush,
 } from './pipelineAutoFlushPolicy.js';
 import {
+  forcedFrameSpend,
+  FORCED_FRAME_BUDGET_MS,
+  noteForcedFrameSpend,
   notePacedFrameSpend,
   pacedFrameSpend,
   PACED_FRAME_BUDGET_MS,
@@ -448,6 +454,7 @@ import {
   describeOpeningAdmissionIdentityDelta,
   describeOpeningAdmissionIdentityDeltaSteps,
   drawableHideSession,
+  drawableHideSessionSteps,
   materialHasCompiledProgram,
   materialList,
   touchSubjectOnExactTarget,
@@ -484,7 +491,9 @@ import {
 import { predictNextSector } from './sectorPredict.js';
 import {
   freezeHiddenSubtreeMatrices,
+  freezeHiddenSubtreeMatricesSteps,
   unfreezeHiddenSubtreeMatrices,
+  unfreezeHiddenSubtreeMatricesSteps,
   updateMatrixWorldSteps,
 } from './staticChildMatrices.js';
 import {
@@ -575,7 +584,17 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
     const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
     let precollected = null;
     for (;;) {
-      const collectStep = collectIter.next();
+      let collectStep;
+      try {
+        collectStep = collectIter.next();
+      } catch (collectError) {
+        // A torn census used to propagate through the cook's best-effort catch
+        // (silent cold depth link) or reject the drain settle. Skip the
+        // pre-collect so the compile below pays the sync collect instead.
+        closeCookStepsIter(collectIter);
+        console.warn('[render] shadow-cast subject census drive failed; compiling without pre-collect', collectError);
+        break;
+      }
       if (collectStep.done) { precollected = collectStep.value; break; }
       await pace();
     }
@@ -584,7 +603,25 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const iterator = compileShadowDepthPipelinesSteps(depthOpts);
     for (;;) {
-      const step = iterator.next();
+      let step;
+      try {
+        step = iterator.next();
+      } catch (driveError) {
+        closeCookStepsIter(iterator);
+        console.warn('[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
+        const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
+          () => compileShadowDepthPipelines(depthOpts),
+          { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
+        // The degrade discards the remaining drift retries and runs under
+        // census terms minted pre-fault — a {stale} or never-compiled shape
+        // must read aborted like this drive's own exhausted loop, or callers
+        // evaluate marks that never landed and park roots on unearned
+        // undrawable verdicts.
+        if (degraded && (degraded.stale === true || degraded.skipped === true)) {
+          degraded.aborted = true;
+        }
+        return degraded;
+      }
       if (step.done) {
         if (step.value && step.value.stale === true) break;
         return step.value;
@@ -882,6 +919,35 @@ const FIRST_PLAYABLE_PAINT_REARM_MS = 2000;
 // presents while the compositor's idle window sits unspent. Racing the resume against a
 // tighter bound keeps ≥40 fps behavior identical — rAF always wins — and drains below it.
 const FLIGHT_ADMISSION_PRESENT_BOUND_MS = 24;
+
+// Culled-root subtree freeze mints drain this many roots per syncEntityViews
+// pass (see _queueHiddenSubtreeFreeze) so a cull storm amortizes over frames.
+const HIDDEN_FREEZE_MINT_ROOTS_PER_PASS = 6;
+// Stale drops are bounded too: unbind/re-show waves can leave thousands of
+// dead entries ahead of live ones, and a full-length scan inside one pass is
+// itself the in-frame burst this queue exists to prevent.
+const HIDDEN_FREEZE_SCAN_PER_PASS = 256;
+// Dead drops (unbind-cleared flags) cost ~2 field reads — exempt them from the
+// live-consult budget but still bound total pass length for a dead-entry storm.
+const HIDDEN_FREEZE_VISIT_PER_PASS = 1024;
+// The mint work inside each drain is node-bounded too: the Steps twins yield
+// every ~1024 nodes, so a packaged-hull mint parks mid-subtree on its queue
+// entry and resumes next pass instead of paying ~2x O(subtree) inside one
+// presented beat.
+const HIDDEN_FREEZE_MINT_YIELD_NODES = 1024;
+const HIDDEN_FREEZE_NODE_BUDGET_PER_PASS = 4096;
+// Boundary flap hysteresis: a mint+restore pair costs ~4 subtree visits vs ~1
+// compose-visit/frame saved, so a hull re-shown within this many passes never
+// mints — it keeps paying the unfrozen compose it always paid.
+const HIDDEN_FREEZE_FLAP_DWELL = 3;
+// A live (non-dispose) unbind must restore a flagged subtree definitively
+// before the mesh's next owner, so it can't just ride the lazy drain — but a
+// mass unbind (keepGpu recook over a culled sector) pays ~2x O(subtree) per
+// flagged root inside one sweep frame. The first N per pass stay inline;
+// the rest queue as bound entries: same paced drain, but restore-owed — no
+// flap dwell and no detach/invisible abandon, with any still-owed stamp
+// finalized inline at the next unbind.
+const UNBIND_HIDDEN_RESTORE_INLINE_PER_PASS = 2;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -1986,15 +2052,89 @@ function reattachAuthoredReadmission(owner, entity, mesh, state) {
 // entity:destroyed handler, so only the traverse + GL-free tail remains — the classic
 // mass-despawn hitch — and it spreads across frames instead of landing in one sim step.
 const DESPAWN_DISPOSE_DRAIN_MAX = 8;
+// The first few unmeasured notes per view-sync pass keep exact counting — a
+// lone LOD swap (one removed + one added) never pays a scene recount. Past the
+// cap the tally marks dirty instead: every _shadowReceiverCount consumer is
+// boolean (>0) and the paced recount re-measures scene truth, so the deferred
+// serve errs conservative-on — exactly the churn-frame brick class the tally
+// exists to prevent.
+const UNMEASURED_SHADOW_NOTE_EXACT_PER_PASS = 2;
+// A lone unmeasured note inside the exact-count budget still must not pay an
+// unbounded subtree walk — a spaced trickle of torn hulks would ride under
+// the per-pass cap while paying O(hulk) twice per pass. Past the node cap
+// the count defers to the paced recount, same legal-direction serve.
+const UNMEASURED_SHADOW_NOTE_NODE_MAX = 128;
+
 const DESPAWN_DISPOSE_BUDGET_MS = 2;
 // Sustained busy frames can't defer GL reclaim forever: after this many skipped
 // drains the lane runs its bounded min-item slice anyway — same aging contract
 // the glTF compile drain and the depth arm already carry.
 const DESPAWN_DISPOSE_LEDGER_MAX_SKIPS = 2;
 
+// Cook drive guard: the cook's outer try only carries a finally, so a throwing
+// stepped iterator used to reject the whole cook — muting every section after
+// it with no log and landing the arrival meshless. A throwing step must close
+// its iterator, log once, and degrade just its own section (sync twin where one
+// exists, section-skip otherwise) instead of propagating.
+function closeCookStepsIter(iter) {
+  try { if (iter && typeof iter.return === 'function') iter.return(); } catch (_) { /* cleanup-only */ }
+}
+// The sync twin a degraded drive falls back to can throw on the same pathology
+// that killed the stepped walk — it is the pre-Steps code, not new logic. Log
+// once and keep the caller's partial result instead of letting the twin's
+// throw take the whole cook tail down.
+function runCookSyncTwin(label, run, fallback = undefined) {
+  try { return run(); } catch (syncError) {
+    console.warn(`[render] ${label} sync twin failed; keeping the partial result`, syncError);
+    return fallback;
+  }
+}
+
 function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
-  const queue = owner && owner._despawnDisposeQueue;
-  if (!queue || owner._despawnDisposeHead >= queue.length) return 0;
+  return drainDisposeQueueLane(owner, '_despawnDisposeQueue', '_despawnDisposeHead',
+    '_despawnDisposeIter', '_despawnDisposeLedgerSkips', budgetMs);
+}
+
+// Warm/catalog corpses get their own FIFO: a parked fat catalog iterator used
+// to monopolize each drain's deadline and pin live corpses' GL reclaim +
+// receiver-note settle behind its whole teardown. Drained only from whatever
+// budget the live lane leaves, under the same aging contract.
+function drainWarmDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
+  return drainDisposeQueueLane(owner, '_warmDisposeQueue', '_warmDisposeHead',
+    '_warmDisposeIter', '_warmDisposeLedgerSkips', budgetMs);
+}
+
+// Synchronous tail-flush for teardown paths — runs one corpse lane to empty
+// with its own measured walks (same settle contract as the paced drain).
+function flushDisposeQueueLane(owner, queueField, headField) {
+  const queue = owner && owner[queueField];
+  if (!Array.isArray(queue)) return;
+  for (; owner[headField] < queue.length; owner[headField]++) {
+    const queued = queue[owner[headField]];
+    if (queued && queued.parent == null) {
+      const flushMeasure = { receivers: 0 };
+      // Per-corpse catch: a disposer-hook throw tears this subtree but must
+      // not strand the corpses behind it — flag partial teardown and settle
+      // the tally via the dirty recount (null) like the paced lanes do.
+      try {
+        disposeObject(queued, flushMeasure);
+      } catch (error) {
+        console.info('[render] dispose queue flush step failed', error);
+        if (queued.userData) queued.userData.sfDespawnPartialTeardown = true;
+        flushMeasure.receivers = null;
+      }
+      const queuedUd = queued.userData;
+      if (queuedUd && queuedUd.sfDespawnNoted === true) delete queuedUd.sfDespawnNoted;
+      else owner._noteShadowMeshRemoved?.(queued, flushMeasure.receivers);
+    }
+  }
+  queue.length = 0;
+  owner[headField] = 0;
+}
+
+function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerField, budgetMs) {
+  const queue = owner && owner[queueField];
+  if (!queue || owner[headField] >= queue.length) return 0;
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
   // Backlog-aware escalation: push rate is O(1) per corpse while per-frame
@@ -2002,18 +2142,37 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
   // (and the GL memory it retains) grows linearly. Double the per-frame budget
   // while the backlog is deep — a 2ms→4ms escalator caps retention stretch
   // without minting an unbounded drain.
-  const backlog = queue.length - owner._despawnDisposeHead;
-  if (backlog > 32) budgetMs *= 2;
+  const backlog = queue.length - owner[headField];
+  // A lane inheriting a spent sibling budget keeps ~0 leftover; floor the
+  // escalation so a deep backlog still reaches the escalator's intent instead
+  // of paying ~1 slice per forced drain. The floor consults paced headroom
+  // too: on a spent wallet it drops to this lane's own base share, so live
+  // escalation + warm floor can't sum past ~one frame wallet between lanes.
+  // The clamp reads min(2x, max(base, headroom)): the live lane escalates to
+  // its doubled budget only while the wallet still has room, while a lane
+  // called with ~0 (warm leftover) keeps its floor up to the shared base.
+  if (backlog > 32) {
+    const headroom = Math.max(budgetMs, PACED_FRAME_BUDGET_MS - pacedFrameSpend());
+    budgetMs = Math.min(Math.max(budgetMs * 2, DESPAWN_DISPOSE_BUDGET_MS),
+      Math.max(budgetMs, headroom));
+  }
   // A spent paced window skips this drain entirely — the corpses keep one more
   // frame rather than stacking a fresh slice on a frame that's already over.
   // The aging cap mirrors the other paced lanes' so a permanently-busy stretch
   // can't starve corpse/GL reclaim indefinitely.
-  if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
-      && (owner._despawnDisposeLedgerSkips | 0) < DESPAWN_DISPOSE_LEDGER_MAX_SKIPS) {
-    owner._despawnDisposeLedgerSkips = (owner._despawnDisposeLedgerSkips | 0) + 1;
+  // Forced-cap runs consult the shared forced wallet too: every skip-cap lane
+  // carries its own counter, so a sustained storm trips all of them on the
+  // same presented frame — the forced ledger bounds the summed spend, with
+  // the counter clamped at cap so deferred lanes still force next frame.
+  const pacedSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+  if (pacedSpent
+      && ((owner[ledgerField] | 0) < DESPAWN_DISPOSE_LEDGER_MAX_SKIPS
+        || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+    owner[ledgerField] = Math.min((owner[ledgerField] | 0) + 1, DESPAWN_DISPOSE_LEDGER_MAX_SKIPS);
     return 0;
   }
-  owner._despawnDisposeLedgerSkips = 0;
+  owner[ledgerField] = 0;
+  const forcedRun = pacedSpent;
   const startedAt = now();
   const deadline = startedAt + Math.max(0, Number(budgetMs) || 0);
   // Backlog-scaled count: the fixed cap binds before the ms deadline on cheap disposes,
@@ -2022,47 +2181,62 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
   // deadline still bounds what one frame spends.
   const limit = Math.max(
     DESPAWN_DISPOSE_DRAIN_MAX,
-    Math.ceil((queue.length - owner._despawnDisposeHead) / 4),
+    Math.ceil((queue.length - owner[headField]) / 4),
   );
   let drained = 0;
   // One fat corpse (a packaged hull's ~1-3k nodes) used to drain atomically
   // inside a presented beat — the deadline was only consulted between corpses.
   // Each corpse now gets a parked Steps iterator that suspends mid-corpse on
   // the same deadline and resumes next drain; a remounted corpse abandons it.
-  while (owner._despawnDisposeHead < queue.length) {
-    const m = queue[owner._despawnDisposeHead];
+  while (owner[headField] < queue.length) {
+    const m = queue[owner[headField]];
     // The corpse must still be detached: a boundary re-mounted between the destroyed event and
     // this drain belongs to a new owner — disposing its tree would strip live prepared work.
     if (m && m.parent != null) {
-      owner._despawnDisposeIter = null;
-      owner._despawnDisposeHead += 1;
+      // A corpse abandoned mid-teardown keeps a partially-torn subtree — the
+      // parked iterator already cleared castShadow prefixes, released owner
+      // slots, and fired disposer hooks on visited nodes. Flag it so the
+      // remount's next checked policy sync re-arms the torn prefix (the
+      // dirtySeq memo would otherwise skip it — teardown wrote flags without
+      // bumping the generation).
+      const abandonedIter = owner[iterField];
+      if (abandonedIter && abandonedIter._corpse === m && m.userData) {
+        m.userData.sfDespawnPartialTeardown = true;
+      }
+      owner[iterField] = null;
+      owner[headField] += 1;
       drained += 1;
       if (drained >= limit || now() > deadline) break;
       continue;
     }
-    let iter = owner._despawnDisposeIter;
+    let iter = owner[iterField];
     // A parked iterator that survives a queue reset (destroy/clearAllMeshes
     // flush the tail synchronously but own no iter) must never drive its
     // remaining walk against a new corpse — re-mint on identity mismatch.
-    if (iter && m && iter._corpse !== m) iter = owner._despawnDisposeIter = null;
+    if (iter && m && iter._corpse !== m) iter = owner[iterField] = null;
     if (!iter && m) {
       try {
-        iter = owner._despawnDisposeIter = disposeObjectSteps(m);
+        // The teardown already walks the whole subtree — measure its receiver
+        // tally mid-walk so the removal note lands exact instead of paying a
+        // second standalone countShadowReceivers traverse per corpse.
+        const corpseMeasure = { receivers: 0 };
+        iter = owner[iterField] = disposeObjectSteps(m, corpseMeasure);
         iter._corpse = m;
+        iter._measure = corpseMeasure;
       } catch (error) {
         // A torn-dispose corpse is the accepted failure mode of every paced
         // lane — log bounded, advance, don't take the frame's whole residency
         // service (release flush, rebuild bridges, reconcile) down with it.
         console.info('[render] despawn dispose iterator mint failed', error);
-        owner._despawnDisposeIter = null;
-        owner._despawnDisposeHead += 1;
+        owner[iterField] = null;
+        owner[headField] += 1;
         drained += 1;
         if (drained >= limit || now() > deadline) break;
         continue;
       }
     }
     if (!iter) {
-      owner._despawnDisposeHead += 1;
+      owner[headField] += 1;
       drained += 1;
       if (drained >= limit || now() > deadline) break;
       continue;
@@ -2072,20 +2246,38 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
       iterDone = iter.next().done === true;
     } catch (error) {
       console.info('[render] despawn dispose iterator step failed', error);
+      // A torn walk leaves a partial measurement — settle the tally with the
+      // dirty recount path (null) instead of under-subtracting.
+      if (iter) iter._measure = null;
+      // The corpse is consumed mid-teardown: the same torn castShadow prefix
+      // the remount head-check flags — stamp it so a mesh re-mounted later
+      // re-arms the policy sync instead of skipping on the dirtySeq memo.
+      if (m && m.userData) m.userData.sfDespawnPartialTeardown = true;
       iterDone = true;
     }
     if (iterDone) {
-      owner._despawnDisposeIter = null;
-      owner._despawnDisposeHead += 1;
+      owner[iterField] = null;
+      owner[headField] += 1;
       drained += 1;
+      // Corpses pushed without an upfront note settle the receiver tally here
+      // with the teardown's own measurement (conservative-on: receivers hold
+      // in the count only until this corpse's dispose completes). A corpse
+      // flagged sfDespawnNoted already paid its note at push time.
+      const ud = m && m.userData;
+      if (ud && ud.sfDespawnNoted === true) delete ud.sfDespawnNoted;
+      else if (m) owner._noteShadowMeshRemoved?.(m, iter._measure ? iter._measure.receivers : null);
     }
     if (drained >= limit || now() > deadline) break;
   }
-  if (drained > 0) notePacedFrameSpend(now() - startedAt);
-  if (owner._despawnDisposeHead >= queue.length) {
+  if (drained > 0) {
+    const elapsed = now() - startedAt;
+    notePacedFrameSpend(elapsed);
+    if (forcedRun) noteForcedFrameSpend(elapsed);
+  }
+  if (owner[headField] >= queue.length) {
     queue.length = 0;
-    owner._despawnDisposeHead = 0;
-    owner._despawnDisposeIter = null;
+    owner[headField] = 0;
+    owner[iterField] = null;
   }
   return drained;
 }
@@ -2096,33 +2288,61 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
 // invocations: ≤4 ms (or the paced ledger, whichever trips first) per call, the
 // same bound every other pump leg already observes. A Steps-less owner keeps
 // the sync drain.
+// Fault-park epochs compose the enter serial with the context-restore counter:
+// a restore rebuilds every GPU object the parked lanes repair, so the parked
+// lane must re-arm there too — enterSerial alone would stay parked through the
+// post-restore rebuild window.
+function serviceFaultEpoch(state) {
+  const st = state || {};
+  const enter = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
+  return `${enter == null ? 'x' : enter}|${Number(st.contextRestoreSeq) || 0}`;
+}
+
 function driveProtectedFirstFlightDrain(owner) {
   if (!owner) return 0;
   if (typeof owner._drainProtectedFirstFlightBuildsSteps !== 'function') {
     return typeof owner._drainProtectedFirstFlightBuilds === 'function'
       ? owner._drainProtectedFirstFlightBuilds() : 0;
   }
-  if (!owner._protectedFirstFlightDrainIter) {
+  const drainEpoch = serviceFaultEpoch(owner.state);
+  const drainClockNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  // Bounded in-epoch retry, same contract as the flight reconcile/poll lanes:
+  // a transient fault heals in ~1 s instead of leaving exempt repartitions
+  // parked for the whole enter; a persistent fault still parks.
+  const drainParked = owner._protectedFirstFlightFaultEpoch === drainEpoch
+    && ((owner._protectedFirstFlightFaultRetries | 0) >= 3
+      || drainClockNow() < (owner._protectedFirstFlightRetryAt || 0));
+  if (!owner._protectedFirstFlightDrainIter && !drainParked) {
     owner._protectedFirstFlightDrainIter = owner._drainProtectedFirstFlightBuildsSteps();
   }
-  const clock = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() : Date.now());
-  const started = clock();
+  if (!owner._protectedFirstFlightDrainIter) return 0;
+  const started = drainClockNow();
   let built = 0;
   for (;;) {
     let step;
     try {
       step = owner._protectedFirstFlightDrainIter.next();
     } catch (err) {
+      // A re-minting rethrow turns one skeleton fault into a presented-frame
+      // exception for the rest of the hold — park the lane for this enter
+      // instead; a fresh enter serial re-arms the mint.
       owner._protectedFirstFlightDrainIter = null;
-      throw err;
+      if (owner._protectedFirstFlightFaultEpoch !== drainEpoch) {
+        owner._protectedFirstFlightFaultRetries = 0;
+      }
+      owner._protectedFirstFlightFaultEpoch = drainEpoch;
+      owner._protectedFirstFlightFaultRetries = (owner._protectedFirstFlightFaultRetries | 0) + 1;
+      owner._protectedFirstFlightRetryAt = drainClockNow() + 1000;
+      console.warn('[render] protected first-flight drain faulted; parked until the next enter', err);
+      break;
     }
     if (step.done) {
       built = step.value || 0;
       owner._protectedFirstFlightDrainIter = null;
       break;
     }
-    if (clock() - started >= 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+    if (drainClockNow() - started >= 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
   }
   return built;
 }
@@ -2147,7 +2367,6 @@ function releaseRebuildBridge(owner, id, slot) {
   const mesh = slot.mesh;
   if (mesh.parent) mesh.parent.remove(mesh);
   owner._despawnDisposeQueue.push(mesh);
-  noteShadowMeshRemoved(owner, mesh);
   owner._queueAssetResidencyDiagnosticsPublish();
 }
 
@@ -2171,36 +2390,57 @@ function settleRebuildBridges(owner) {
   let processed = 0;
   for (const [id, slot] of bridges) {
     if (++processed > visitBound) break;
-    slot.frames += 1;
-    const e = state && state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(id) : null;
-    const live = slot.epoch === epoch && e && e.alive !== false;
-    let release = !live || slot.frames >= REBUILD_BRIDGE_MAX_SYNCS;
-    if (!release) {
-      // Whatever is mounted for the entity now — the parked replacement, a
-      // second rebuild's mount, or the reconcile's later build — is the mesh
-      // the bridge covers. An empty slot after a failed build keeps drawing
-      // until some mount becomes drawable; a vanished replacement releases.
-      const current = owner._meshes.get(id);
-      release = current ? rebuildBridgeDrawable(current) : slot.replacement != null;
-    }
-    if (!release) {
-      // Rotate the unreleased row to the map's tail so a permanently-parked
-      // front can't starve rows behind it — every slot is seen within
-      // ceil(size/cap) frames regardless of order.
+    try {
+      slot.frames += 1;
+      const e = state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(id) : null;
+      const live = slot.epoch === epoch && e && e.alive !== false;
+      let release = !live || slot.frames >= REBUILD_BRIDGE_MAX_SYNCS;
+      if (!release) {
+        // Whatever is mounted for the entity now — the parked replacement, a
+        // second rebuild's mount, or the reconcile's later build — is the mesh
+        // the bridge covers. An empty slot after a failed build keeps drawing
+        // until some mount becomes drawable; a vanished replacement releases.
+        const current = owner._meshes.get(id);
+        release = current ? rebuildBridgeDrawable(current) : slot.replacement != null;
+      }
+      if (!release) {
+        // Rotate the unreleased row to the map's tail so a permanently-parked
+        // front can't starve rows behind it — every slot is seen within
+        // ceil(size/cap) frames regardless of order.
+        bridges.delete(id);
+        bridges.set(id, slot);
+        continue;
+      }
       bridges.delete(id);
-      bridges.set(id, slot);
-      continue;
+      releaseRebuildBridge(owner, id, slot);
+    } catch (bridgeError) {
+      // One torn row (a poisoned slot/entity lookup or release) must not abort
+      // the pass. Give the row one retry at the tail — a transient fault
+      // settles next pass; past that the row drops like a released one rather
+      // than throwing into every presented frame.
+      slot.faults = (slot.faults | 0) + 1;
+      console.warn('[render] rebuild bridge settle failed for one row', bridgeError);
+      bridges.delete(id);
+      if (slot.faults < 2) bridges.set(id, slot);
+      // A dropped row still owns its bridge cover — a parked replacement would
+      // stay presented past its window without the release pass.
+      else { try { releaseRebuildBridge(owner, id, slot); } catch (_) { /* already torn */ } }
     }
-    bridges.delete(id);
-    releaseRebuildBridge(owner, id, slot);
   }
 }
 
 export function serviceRenderMeshResidency(owner, frameDt) {
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
+  const liveLaneStarted = now();
   drainDespawnDisposeQueue(owner);
+  // The warm lane drains only what the live lane left of the shared corpse
+  // window: a forced drain on a spent ledger inherits the leftover instead
+  // of minting a fresh 2->4ms deadline, so two deep lanes can't stack ~8ms
+  // of teardown inside one presented beat.
+  drainWarmDisposeQueue(owner,
+    Math.max(0, DESPAWN_DISPOSE_BUDGET_MS - (now() - liveLaneStarted)));
   drainSceneEnvRebindQueue(owner);
   // Deferred identity releases from unbatched unbinds (entity:destroyed storms):
   // one union walk per registry per frame instead of five walks per corpse.
@@ -2249,7 +2489,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // each invocation's real cost bounded.
     if (feedMoved || owner._residentReattachFrame === 0 || pacedFrameSpend() < 2) {
       owner._residentReattachStamp = reattachFeed;
-      if (!owner._residentReattachIter) {
+      const reattachEpoch = serviceFaultEpoch(st);
+      if (!owner._residentReattachIter
+          && owner._residentReattachFaultEpoch !== reattachEpoch) {
         mintResidentReattachSweep(owner);
       }
     }
@@ -2272,8 +2514,12 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         try {
           step = iterator.next();
         } catch (err) {
+          // Park the lane for this enter rather than rethrowing through the
+          // service tail — the mint gate above re-arms on the next serial.
           owner._residentReattachIter = null;
-          throw err;
+          owner._residentReattachFaultEpoch = serviceFaultEpoch(st);
+          console.warn('[render] resident reattach sweep faulted; parked until the next enter', err);
+          break;
         }
         if (step.done) {
           if (owner._residentReattachIter === iterator) owner._residentReattachIter = null;
@@ -2283,6 +2529,22 @@ export function serviceRenderMeshResidency(owner, frameDt) {
             || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
       }
       notePacedFrameSpend(now() - sweepStart);
+    }
+    // A sweep that faulted this epoch reads "done" (iter === null) to the
+    // reconcile mint gate below — reconcile would release every dead-id mesh
+    // the sweep never re-keyed, turning keepGpu into release-all + rebuild.
+    // Run the sweep's sync twin ONCE per epoch (idempotent by design) so the
+    // gate's !iter precondition means what it says again.
+    if (!owner._residentReattachIter
+        && owner._residentReattachFaultEpoch === serviceFaultEpoch(st)
+        && owner._keepGpuReattachEpoch !== owner._residentReattachFaultEpoch) {
+      owner._keepGpuReattachEpoch = owner._residentReattachFaultEpoch;
+      runCookSyncTwin('resident reattach', () => {
+        const it = reattachResidentGpuMeshesSteps(owner);
+        it._remap = st.mode === 'loading' && st.sessionEntityIdRemap instanceof Map
+          ? st.sessionEntityIdRemap : null;
+        for (;;) { if (it.next().done) break; }
+      });
     }
     // Restore reissues entity ids (spawnEntity ignores saved ids) and a mesh can also be missing
     // because its build was still queued at save time, so the kept set can leave live entities
@@ -2294,7 +2556,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // (census + grading + keepResidentSet release) inside one DOM-stalling task. It mints
     // only after the reattach sweep ran to completion, so dead-id meshes the
     // sweep could still move are never released by the first reconcile leg.
-    if (owner._meshReconcileDirty && !owner._reconcileIter && !owner._residentReattachIter) {
+    if (owner._meshReconcileDirty && !owner._reconcileIter && !owner._residentReattachIter
+        && owner._reconcileFaultEpoch !== serviceFaultEpoch(st)) {
       if (typeof owner._reconcileMeshesSteps === 'function') {
         owner._reconcileIter = owner._reconcileMeshesSteps({ keepResidentSet: true });
         owner._reconcileKeepGpu = true;
@@ -2302,6 +2565,45 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       } else {
         // Fixture/custom owners without the staged twin keep the atomic call.
         owner.reconcileMeshes({ keepResidentSet: true });
+      }
+    }
+    // A reconcile parked on the fault epoch inside this bounded window used to
+    // stay dead until the next enter — a gate-required mesh then reads
+    // 'missing' and the authored-visuals wait fails hard ~210 s later. After
+    // the banked dirty ages ~1 s behind the park, run the sync twin ONCE (the
+    // loading shell tolerates the atomic pass) then keep the park either way —
+    // a persistent fault must not re-mint+rethrow every service tick.
+    if (owner._meshReconcileDirty && !owner._reconcileIter
+        && owner._reconcileFaultEpoch === serviceFaultEpoch(st)) {
+      if (owner._keepGpuReconcileEpoch !== owner._reconcileFaultEpoch) {
+        owner._keepGpuReconcileEpoch = owner._reconcileFaultEpoch;
+        owner._keepGpuReconcileDegraded = false;
+        owner._keepGpuReconcileDirtySince = now();
+      }
+      if (!owner._keepGpuReconcileDegraded
+          && now() - owner._keepGpuReconcileDirtySince >= 1000) {
+        owner._keepGpuReconcileDegraded = true;
+        if (typeof owner._reconcileMeshesSteps === 'function') {
+          // Escalated-paced re-mint, not the atomic drain: the kept resident
+          // set is the whole cooked sector — exactly the fat case the paced
+          // twin exists for, so an inline drain re-stalls the very window it
+          // rescues. Re-mint the same iterator and let the drive below pace
+          // it across shell ticks at an escalated slice.
+          owner._reconcileIter = owner._reconcileMeshesSteps({ keepResidentSet: true });
+          owner._reconcileKeepGpu = true;
+          owner._reconcileDegraded = true;
+          owner._reconcileEpoch = st.world && st.world.enterSerial != null
+            ? st.world.enterSerial : null;
+        } else {
+          // Fixture/custom owners without the staged twin keep the atomic
+          // call — re-dirty on a throw so the reconcile isn't lost for the
+          // epoch (the iterator clears the flag at its head).
+          try { owner.reconcileMeshes({ keepResidentSet: true }); }
+          catch (err) {
+            owner._meshReconcileDirty = true;
+            console.warn('[render] keep-gpu reconcile degrade failed', err);
+          }
+        }
       }
     }
     if (owner._reconcileIter) {
@@ -2319,19 +2621,32 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           try {
             step = iterator.next();
           } catch (err) {
+            // Re-request so the dropped pass still retries on the next
+            // enter — but park the lane for this one instead of rethrowing
+            // into every service tick of the keep-gpu window.
             abandonReconcile(owner);
-            throw err;
+            owner._meshReconcileDirty = true;
+            owner._reconcileFaultEpoch = serviceFaultEpoch(st);
+            console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
+            break;
           }
           if (step.done) {
             if (owner._reconcileIter === iterator) {
               owner._reconcileIter = null;
               owner._reconcileEpoch = null;
               owner._reconcileKeepGpu = null;
+              owner._reconcileDegraded = null;
             }
             break;
           }
-          if (now() - reconcileSliceStart >= 4
-              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+          // A degrade-minted iter is the keepGpu rescue lane itself — pace it
+          // at an escalated slice per shell tick and keep it off the presented
+          // ledger consult (a busy stretch otherwise pauses the rescue back
+          // toward the ~210 s gate it exists to beat).
+          const degradeSlice = owner._reconcileDegraded === true ? 16 : 4;
+          if (now() - reconcileSliceStart >= degradeSlice
+              || (owner._reconcileDegraded !== true
+                && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         }
         notePacedFrameSpend(now() - reconcileSliceStart);
       }
@@ -2616,8 +2931,14 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         try {
           step = iterator.next();
         } catch (err) {
+          closeCookStepsIter(iterator);
           owner._arrivalRosterIter = null;
-          throw err;
+          // The roster publish is telemetry-only, but the minted-once-per-enter
+          // tail owns the asteroid capacity reserve — flag a reserve-only pass
+          // so one transient fault can't strand it for the whole sector.
+          owner._arrivalReservePending = true;
+          console.warn('[render] arrival roster drive failed; flagging the capacity reserve', err);
+          break;
         }
         if (step.done) {
           if (owner._arrivalRosterIter === iterator) owner._arrivalRosterIter = null;
@@ -2634,6 +2955,67 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       owner._arrivalRosterIter = null;
     }
   }
+  // Reserve-only retry after a roster drive fault: the reserve tallies
+  // entities + field rocks directly — the roster result is telemetry, not an
+  // input — so it drives standalone under the same slice cadence, then parks
+  // for the enter on a second fault.
+  const arrivalLiveEpoch = owner.state && owner.state.world && owner.state.world.enterSerial != null
+    ? owner.state.world.enterSerial : null;
+  // The reserve iter rides the roster's enter-scoped snapshot — a parked iter
+  // surviving a serial flip would stamp the departed world's tallies.
+  if (owner._arrivalReserveIter && owner._arrivalReserveEpoch !== arrivalLiveEpoch) {
+    closeCookStepsIter(owner._arrivalReserveIter);
+    owner._arrivalReserveIter = null;
+    owner._arrivalReservePending = true;
+  }
+  if (owner._arrivalReservePending) {
+    // Bounded re-arm, same contract as the reconcile/poll lanes: a transient
+    // fault retries in ~1 s; a persistent one parks for the epoch.
+    const reserveParked = owner._arrivalReserveFaultEpoch === arrivalLiveEpoch
+      && ((owner._arrivalReserveFaultRetries | 0) >= 3
+        || now() < (owner._arrivalReserveRetryAt || 0));
+    if (!reserveParked) {
+      owner._arrivalReservePending = false;
+      const reserveEntities = Array.isArray(owner.state && owner.state.entityList)
+        ? owner.state.entityList : [];
+      if (typeof owner._reserveArrivalAsteroidCapacitySteps === 'function') {
+        owner._arrivalReserveIter = owner._reserveArrivalAsteroidCapacitySteps(reserveEntities);
+        owner._arrivalReserveEpoch = arrivalLiveEpoch;
+      } else {
+        runCookSyncTwin('arrival-asteroid-reserve',
+          () => owner._reserveArrivalAsteroidCapacity(reserveEntities));
+      }
+    }
+  }
+  if (owner._arrivalReserveIter) {
+    const reserveSliceStart = now();
+    for (;;) {
+      const iterator = owner._arrivalReserveIter;
+      if (!iterator) break;
+      let step;
+      try {
+        step = iterator.next();
+      } catch (err) {
+        owner._arrivalReserveIter = null;
+        if (owner._arrivalReserveFaultEpoch !== arrivalLiveEpoch) {
+          owner._arrivalReserveFaultRetries = 0;
+        }
+        owner._arrivalReserveFaultEpoch = arrivalLiveEpoch;
+        owner._arrivalReserveFaultRetries = (owner._arrivalReserveFaultRetries | 0) + 1;
+        owner._arrivalReserveRetryAt = now() + 1000;
+        owner._arrivalReservePending = true;
+        console.warn('[render] arrival capacity reserve failed; retrying under cooldown', err);
+        break;
+      }
+      if (step.done) {
+        if (owner._arrivalReserveIter === iterator) owner._arrivalReserveIter = null;
+        break;
+      }
+      if (now() - reserveSliceStart >= 4
+          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+    }
+    notePacedFrameSpend(now() - reserveSliceStart);
+  }
   // Both collectors ride staged generators across frames: a fat-sector walk
   // (sweep + chunked collect + classify + decode kick + ~20 warm scans) ran the
   // whole pass inside one presented frame — the hold/exempt machinery carries
@@ -2649,7 +3031,13 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       // world's sweep runs even if the enter didn't re-set dirty.
       owner._meshReconcileDirty = true;
     }
-    if (owner._meshReconcileDirty && !owner._reconcileIter) {
+    let reconcileWorked = false;
+    // Epoch-park now carries a bounded in-epoch retry: a transient fault heals
+    // in ~1 s instead of dead-id meshes drifting for the whole sector, while a
+    // persistent fault still parks (3 drives per epoch, >=1 s between mints).
+    const reconcileParked = owner._reconcileFaultEpoch === serviceFaultEpoch(owner.state)
+      && ((owner._reconcileFaultRetries | 0) >= 3 || now() < (owner._reconcileRetryAt || 0));
+    if (owner._meshReconcileDirty && !owner._reconcileIter && !reconcileParked) {
       // The full pass is the poll's superset — close any suspended poll rather
       // than commit its departed-window verdicts after the reconcile lands.
       abandonResidencyPoll(owner);
@@ -2660,8 +3048,10 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         // Fixture/custom owners without the staged twin keep the atomic call.
         owner.reconcileMeshes();
       }
+      reconcileWorked = true;
     }
     if (owner._reconcileIter) {
+      reconcileWorked = true;
       // Once per pump invocation: a suspended sweep re-mints its scan env on
       // resume under a newer stamp (the refreshOnNewerBeat mechanism).
       owner._residencySweepBeatStamp = (owner._residencySweepBeatStamp || 0) + 1;
@@ -2675,8 +3065,17 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         } catch (err) {
           // A throwing pass must not leave a closed iterator parked — next
           // frame would read done and treat a partial sweep as complete.
+          // Re-dirty so the dropped pass retries next enter; the fault stamp
+          // parks it for this one instead of rethrowing into every frame.
           abandonReconcile(owner);
-          throw err;
+          owner._meshReconcileDirty = true;
+          const reconcileFaultEpoch = serviceFaultEpoch(owner.state);
+          if (owner._reconcileFaultEpoch !== reconcileFaultEpoch) owner._reconcileFaultRetries = 0;
+          owner._reconcileFaultEpoch = reconcileFaultEpoch;
+          owner._reconcileFaultRetries = (owner._reconcileFaultRetries | 0) + 1;
+          owner._reconcileRetryAt = now() + 1000;
+          console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
+          break;
         }
         if (step.done) {
           if (owner._reconcileIter === iterator) {
@@ -2701,7 +3100,10 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // The drain is budgeted and the late-present gate already throttles it on heavy
     // frames, so fold the drain into the same frame instead of stranding it.
     if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) owner._drainPendingMeshBuilds();
-    return 'full';
+    // A dirty flag banked behind the fault-epoch park mints no work — returning
+    // 'full' would starve the residency poll for the rest of the epoch, so a
+    // parked reconcile falls through to the poll section instead.
+    if (reconcileWorked) return 'full';
   }
   if (pollDue || owner._residencyPollIter) {
     const liveEpoch = owner.state && owner.state.world && owner.state.world.enterSerial != null
@@ -2709,7 +3111,10 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     if (owner._residencyPollIter && owner._residencyPollEpoch !== liveEpoch) {
       abandonResidencyPoll(owner);
     }
-    if (pollDue && !owner._residencyPollIter) {
+    // Same bounded in-epoch retry as the reconcile lane.
+    const pollParked = owner._residencyPollFaultEpoch === serviceFaultEpoch(owner.state)
+      && ((owner._residencyPollFaultRetries | 0) >= 3 || now() < (owner._residencyPollRetryAt || 0));
+    if (pollDue && !owner._residencyPollIter && !pollParked) {
       if (typeof owner._reconcileMeshResidencySteps === 'function') {
         owner._residencyPollIter = owner._reconcileMeshResidencySteps();
         owner._residencyPollEpoch = liveEpoch;
@@ -2727,8 +3132,16 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         try {
           step = iterator.next();
         } catch (err) {
+          // Parked for this enter the same way the reconcile lane is — the
+          // next poll cadence after a fresh serial re-mints.
           abandonResidencyPoll(owner);
-          throw err;
+          const pollFaultEpoch = serviceFaultEpoch(owner.state);
+          if (owner._residencyPollFaultEpoch !== pollFaultEpoch) owner._residencyPollFaultRetries = 0;
+          owner._residencyPollFaultEpoch = pollFaultEpoch;
+          owner._residencyPollFaultRetries = (owner._residencyPollFaultRetries | 0) + 1;
+          owner._residencyPollRetryAt = now() + 1000;
+          console.warn('[render] residency poll drive failed; parked until the next enter', err);
+          break;
         }
         if (step.done) {
           if (owner._residencyPollIter === iterator) {
@@ -3011,6 +3424,10 @@ function abandonHoldExemptCommit(owner) {
   owner._holdExemptCommitList = null;
   owner._holdExemptCommitEpoch = null;
   owner._holdExemptCommitExempt = null;
+  // A parked degrade iter minted its entityList under the old epoch — close it
+  // with the commit twins so a sector flip can't keep enqueueing stale rows.
+  closeCookStepsIter(owner._holdExemptDegradeIter);
+  owner._holdExemptDegradeIter = null;
 }
 
 // Close any in-flight sliced residency poll — its collected rows belong to a
@@ -3024,6 +3441,64 @@ function abandonResidencyPoll(owner) {
   owner._residencyPollEpoch = null;
 }
 
+// Degrade path for a fault-parked hold-exempt collect: the parked collect is
+// the ONLY in-hold enqueue lane (reconcile/poll never run under either hold
+// regime), so a parked epoch used to leave rows minted mid-hold — rescue set,
+// focus flips, glass crossings — meshless until release. Drive a bounded
+// entityList enqueue under the beat's slice clock instead: simpler than the
+// full collect (no warm refill / commit list / decode kick) but covers the
+// same enqueue role. Persistent degrade faults cap at 3 per epoch.
+function driveHoldExemptDegrade(owner, state, sliceMs) {
+  const clock = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  const started = clock();
+  const degradeEpoch = serviceFaultEpoch(state);
+  if (owner._holdExemptDegradeEpoch !== degradeEpoch) {
+    closeCookStepsIter(owner._holdExemptDegradeIter);
+    owner._holdExemptDegradeIter = null;
+    owner._holdExemptDegradeFaults = 0;
+    owner._holdExemptDegradeEpoch = degradeEpoch;
+  }
+  if ((owner._holdExemptDegradeFaults | 0) >= 3) return 0;
+  if (!owner._holdExemptDegradeIter) {
+    const frame = owner._activityFrame;
+    const evaluator = makeHoldExemptMeshBuildEvaluator(
+      state, frame && frame.renderGlassIds);
+    const entities = Array.isArray(state.entityList) ? state.entityList : [];
+    owner._holdExemptDegradeIter = enqueueMissingMeshBuildsSteps(
+      entities,
+      owner._meshes,
+      owner._meshBuildQueuedIds,
+      owner._meshBuildQueue,
+      (entity) => !owner._sectorBoundaryPreparations?.has(entity.id) && evaluator(entity),
+      null, null, null);
+  }
+  let enqueued = 0;
+  for (;;) {
+    let step;
+    try {
+      step = owner._holdExemptDegradeIter.next();
+    } catch (err) {
+      closeCookStepsIter(owner._holdExemptDegradeIter);
+      owner._holdExemptDegradeIter = null;
+      owner._holdExemptDegradeFaults = (owner._holdExemptDegradeFaults | 0) + 1;
+      console.warn('[render] hold-exempt degrade drive failed', err);
+      return 0;
+    }
+    if (step.done) {
+      enqueued = step.value || 0;
+      // Keep the iter slot clear so the next beat re-mints over the freshest
+      // entity list — mid-hold arrivals keep landing instead of one epoch-old
+      // snapshot serving the whole hold.
+      owner._holdExemptDegradeIter = null;
+      break;
+    }
+    if (clock() - started >= sliceMs
+        || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+  }
+  return enqueued;
+}
+
 // Close any in-flight sliced reconcile — a newer epoch's dirty pass mints fresh.
 function abandonReconcile(owner) {
   const iterator = owner && owner._reconcileIter;
@@ -3033,6 +3508,7 @@ function abandonReconcile(owner) {
   owner._reconcileIter = null;
   owner._reconcileEpoch = null;
   owner._reconcileKeepGpu = null;
+  owner._reconcileDegraded = null;
 }
 
 // The tracker-record prune + detached-owner release is one atomic multi-ms sweep
@@ -3071,6 +3547,16 @@ function residencyPruneSweepDue(owner) {
 function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
   const state = owner && owner.state;
   if (!owner || !state || !owner._meshes || !owner._meshBuildQueuedIds || !owner._meshBuildQueue) return 0;
+  // A faulted collect parks for the rest of the epoch — re-minting every
+  // 100 ms beat used to rethrow ~10 frame aborts/sec through the whole
+  // stream-hold/first-flight-hold window. But "the normal build-queue lanes
+  // keep builds flowing" is wrong under a hold: reconcile/poll never run
+  // there, and this collect is the ONLY enqueue lane — a parked epoch left
+  // mid-hold arrivals meshless until release. Degrade to a bounded
+  // entityList enqueue under this beat's slice clock instead.
+  if (owner._holdExemptFaultEpoch === serviceFaultEpoch(state)) {
+    return driveHoldExemptDegrade(owner, state, sliceMs);
+  }
   // Once per invocation: parked commit iterators read this stamp across yields to spot
   // resumes landing under a newer beat (their minted snapshot needs a refresh then).
   owner._holdExemptBeatStamp = (owner._holdExemptBeatStamp || 0) + 1;
@@ -3126,7 +3612,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         warmDone = warmIter.next().done === true;
       } catch (err) {
         abandonHoldExemptCollect(owner);
-        throw err;
+        owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+        console.warn('[render] hold-exempt warm refill failed; parked until the next enter', err);
+        return 0;
       }
       if (!warmDone) {
         if (now() - started >= sliceMs
@@ -3159,7 +3647,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
           // A throwing walk used to leave the closed iterator parked on the owner:
           // the next beat read done and committed the partial out as if complete.
           abandonHoldExemptCollect(owner);
-          throw err;
+          owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+          console.warn('[render] hold-exempt collect drive failed; parked until the next enter', err);
+          return 0;
         }
         if (step.done) { done = true; break; }
         if (now() - started >= sliceMs
@@ -3231,7 +3721,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         // Same abandon as the collect pump: a throwing step must not leave a dead
         // generator parked on the owner to be misread as done next beat.
         abandonHoldExemptCommit(owner);
-        throw err;
+        owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+        console.warn('[render] hold-exempt enqueue drive failed; parked until the next enter', err);
+        return 0;
       }
       commitSteps += 1;
       if (step.done) { cycleEnqueued = step.value || 0; owner._holdExemptEnqueueIter = null; }
@@ -3248,7 +3740,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         step = owner._holdExemptKickIter.next();
       } catch (err) {
         abandonHoldExemptCommit(owner);
-        throw err;
+        owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+        console.warn('[render] hold-exempt decode-kick drive failed; parked until the next enter', err);
+        return 0;
       }
       commitSteps += 1;
       if (step.done) { cycleKickStarted = step.value || 0; owner._holdExemptKickIter = null; }
@@ -3805,10 +4299,39 @@ function cameraClearanceBoxForMesh(mesh) {
   const assetState = data.authoredAssetState || '';
   const compositionId = data.authoredCompositionId || '';
   const posX = Math.round(mesh.position.x);
+  const posY = Math.round(mesh.position.y);
   const posZ = Math.round(mesh.position.z);
   const cached = data.cameraClearanceBox;
   if (cached && cached.assetState === assetState && cached.compositionId === compositionId
-      && cached.posX === posX && cached.posZ === posZ) {
+      && cached.posX === posX && cached.posY === posY && cached.posZ === posZ) {
+    return cached;
+  }
+  // Position-only re-key (same authored content, crossed a 1-WU cell): a world
+  // box translates exactly — a drifting capital paying a full setFromObject
+  // re-walk every couple of frames is what made the memo miss hot. Rotation
+  // staleness is already the memo's accepted contract.
+  if (cached && cached.assetState === assetState && cached.compositionId === compositionId
+      && cached.box
+      && (cached.posX !== posX || cached.posY !== posY || cached.posZ !== posZ)) {
+    const dx = mesh.position.x - (Number(cached.rawX) || 0);
+    const dy = mesh.position.y - (Number(cached.rawY) || 0);
+    const dz = mesh.position.z - (Number(cached.rawZ) || 0);
+    if (dx !== 0 || dy !== 0 || dz !== 0) {
+      cached.box.minX += dx; cached.box.maxX += dx;
+      cached.box.minY += dy; cached.box.maxY += dy;
+      cached.box.minZ += dz; cached.box.maxZ += dz;
+      cached.layout = cached.bvhQuery ? clearanceLayoutFromBox(cached.box) : null;
+      cached.grid = null;
+      cached.bvhCache = null;
+      cached.cellRoofs = null;
+      _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
+    }
+    cached.posX = posX;
+    cached.posY = posY;
+    cached.posZ = posZ;
+    cached.rawX = mesh.position.x;
+    cached.rawY = mesh.position.y;
+    cached.rawZ = mesh.position.z;
     return cached;
   }
   if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid') {
@@ -3822,7 +4345,11 @@ function cameraClearanceBoxForMesh(mesh) {
       rec.assetState = assetState;
       rec.compositionId = compositionId;
       rec.posX = posX;
+      rec.posY = posY;
       rec.posZ = posZ;
+      rec.rawX = mesh.position.x;
+      rec.rawY = mesh.position.y;
+      rec.rawZ = mesh.position.z;
       rec.box = null;
       rec.grid = null;
       rec.bvhQuery = false;
@@ -3842,11 +4369,15 @@ function cameraClearanceBoxForMesh(mesh) {
       const box = rec.box || (rec.box = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 });
       box.minX = mesh.position.x - half; box.maxX = mesh.position.x + half;
       box.minZ = mesh.position.z - half; box.maxZ = mesh.position.z + half;
-      box.minY = -half; box.maxY = half;
+      box.minY = mesh.position.y - half; box.maxY = mesh.position.y + half;
       rec.assetState = assetState;
       rec.compositionId = compositionId;
       rec.posX = posX;
+      rec.posY = posY;
       rec.posZ = posZ;
+      rec.rawX = mesh.position.x;
+      rec.rawY = mesh.position.y;
+      rec.rawZ = mesh.position.z;
       rec.grid = null;
       rec.bvhQuery = false;
       rec.layout = null;
@@ -3882,7 +4413,11 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.assetState = assetState;
   rec.compositionId = compositionId;
   rec.posX = posX;
+  rec.posY = posY;
   rec.posZ = posZ;
+  rec.rawX = mesh.position.x;
+  rec.rawY = mesh.position.y;
+  rec.rawZ = mesh.position.z;
   rec.box = box;
   rec.grid = null;
   rec.bvhQuery = bvhQuery && box != null;
@@ -8132,9 +8667,9 @@ function noteShadowMeshAdded(owner, root) {
   if (owner) owner._shadowReceiversDirty = true;
 }
 
-function noteShadowMeshRemoved(owner, root) {
+function noteShadowMeshRemoved(owner, root, measuredReceivers = null) {
   if (owner && typeof owner._noteShadowMeshRemoved === 'function') {
-    owner._noteShadowMeshRemoved(root);
+    owner._noteShadowMeshRemoved(root, measuredReceivers);
     return;
   }
   if (owner) owner._shadowReceiversDirty = true;
@@ -8625,7 +9160,7 @@ function disposeRendererMeshRoots(owner, scene, disposeGpu) {
         meshes.delete?.(id);
         continue;
       }
-      try { owner._unbindPresentationMesh?.(id, mesh); } catch (_) { /* best effort */ }
+      try { owner._unbindPresentationMesh?.(id, mesh, true); } catch (_) { /* best effort */ }
       try { releaseAsteroidInstancesForEntity(owner._asteroidInstancePool, id); } catch (_) { /* best effort */ }
       removeRendererRoot(scene, mesh);
       if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`);
@@ -9436,6 +9971,7 @@ export const render = {
         // application-owned resources against the settled renderer context.
         this._contextRestoreReceipt = deferWebGlContextRestore(lifecycle.guard(() => {
           if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
+          if (state) state.contextRestoreSeq = (Number(state.contextRestoreSeq) || 0) + 1;
           this._contextRecovery.retryCount = 0;
           this._contextRecovery.forceNewContext = () => {
             if (!lifecycle.isActive()) return;
@@ -9810,7 +10346,16 @@ export const render = {
               // microtask alone (recompile loop + depth-subject list below).
               const censusIter = collectInstancePoolCompileRootsAndSubjectsSteps(liveScene, 256);
               for (;;) {
-                const censusStep = censusIter.next();
+                let censusStep;
+                try {
+                  censusStep = censusIter.next();
+                } catch (driveError) {
+                  closeCookStepsIter(censusIter);
+                  console.warn('[render] pool compile census drive failed; running the sync twin', driveError);
+                  poolCompileRoots = runCookSyncTwin('pool compile census',
+                    () => collectInstancePoolCompileRoots(liveScene), []);
+                  break;
+                }
                 if (censusStep.done) {
                   poolCompileRoots = censusStep.value ? censusStep.value.roots : [];
                   break;
@@ -10057,7 +10602,19 @@ export const render = {
         if (paceBootQueue) await paceBootQueue();
         if (!lifecycle.isActive()) return;
         if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-          for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+          const lightBudgetIter = syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video);
+          for (;;) {
+            let lightStep;
+            try {
+              lightStep = lightBudgetIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(lightBudgetIter);
+              console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+              runCookSyncTwin('light-budget', () =>
+                syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+              break;
+            }
+            if (lightStep.done) break;
             if (!lifecycle.isActive()) return;
             if (paceBootQueue) await paceBootQueue();
           }
@@ -10083,7 +10640,16 @@ export const render = {
         let leaves = null;
         const leavesIter = collectOpeningSubmissionLeavesSteps(scene, { includeOffscreen: true });
         for (;;) {
-          const leafStep = leavesIter.next();
+          let leafStep;
+          try {
+            leafStep = leavesIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(leavesIter);
+            console.warn('[render] opening leaf census drive failed; running the sync twin', driveError);
+            leaves = runCookSyncTwin('opening leaf census',
+              () => collectOpeningSubmissionLeaves(scene, { includeOffscreen: true }), []);
+            break;
+          }
           if (leafStep.done) { leaves = leafStep.value; break; }
           await yieldToBrowser();
         }
@@ -10096,7 +10662,16 @@ export const render = {
         };
         const firstFlightRootsIter = collectFirstFlightEffectRootsSteps(scene);
         for (;;) {
-          const rootStep = firstFlightRootsIter.next();
+          let rootStep;
+          try {
+            rootStep = firstFlightRootsIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(firstFlightRootsIter);
+            console.warn('[render] first-flight root census drive failed; running the sync twin', driveError);
+            for (const root of runCookSyncTwin('first-flight root census',
+                () => collectFirstFlightEffectRoots(scene), [])) addExtraVfx(root);
+            break;
+          }
           if (rootStep.done) {
             for (const root of rootStep.value) addExtraVfx(root);
             break;
@@ -10194,6 +10769,10 @@ export const render = {
     // the bounded per-frame drain in serviceRenderMeshResidency.
     this._despawnDisposeQueue = [];
     this._despawnDisposeHead = 0;
+    // Warm/catalog corpses ride their own FIFO so a parked fat teardown can't
+    // starve live corpse reclaim — drained from leftover budget only.
+    this._warmDisposeQueue = [];
+    this._warmDisposeHead = 0;
     this._clearanceMeshes = null;
     this._clearanceMeshesVersion = -1;
     // Chase-camera structural clearance floor: camera.js calls this once per frame with its
@@ -10330,6 +10909,10 @@ export const render = {
     // Diagnostics: what each pending bounded-warm promise is, so a settle that times out can
     // name what it was still waiting on instead of only counting it.
     this._rosterPrewarmPendingLabels = new WeakMap();
+    // Drain-attempt flags: the paced cohort marks each one-time leg (leaf
+    // blanket, part catalog) attempted so a re-emit queues no repeat work.
+    this._rosterPrewarmLeafWarmed = false;
+    this._rosterPrewarmCatalogAttempted = false;
     // Hidden root holding one instantiated copy of every mountable accessory record — the
     // fitSeed picks mounts per entity id, so only the whole catalog covers every live spawn.
     this._rosterPartCatalogRoot = null;
@@ -10426,7 +11009,7 @@ export const render = {
         const currentContextGeneration = () => this._contextRecovery?.generation;
         return disposePreparedSectorBoundary(record, {
           unbindPresentationMesh: (id, boundary) => rendererGenerationIsActive()
-            ? this._unbindPresentationMesh(id, boundary) : false,
+            ? this._unbindPresentationMesh(id, boundary, true) : false,
           releaseAsteroid: (id) => rendererGenerationIsActive()
             ? releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id) : false,
           meshes: this._meshes,
@@ -10458,7 +11041,19 @@ export const render = {
             const disposeInFlight = state.mode === 'flight';
             let disposeSliceStart = disposeNow();
             for (;;) {
-              if (disposeIter.next().done === true) {
+              let stepDone = false;
+              try {
+                stepDone = disposeIter.next().done === true;
+              } catch (error) {
+                // Same contract as the paced despawn lane: a hook throw tears the
+                // subtree — flag it so a later remount re-arms policy sync, leave
+                // measure.settled false so the receiver tally recounts dirty, and
+                // consume the corpse instead of killing the whole dispose drive.
+                console.info('[render] boundary dispose iterator step failed', error);
+                if (boundary && boundary.userData) boundary.userData.sfDespawnPartialTeardown = true;
+                return true;
+              }
+              if (stepDone) {
                 boundaryDisposeMeasure.settled = true;
                 return true;
               }
@@ -10474,7 +11069,10 @@ export const render = {
                 // A context loss while parked abandons the remaining walk — the
                 // generic teardown is reserved for live-context resources.
                 if (!rendererGenerationIsActive() || this._contextLost === true
-                    || recordContextGeneration !== currentContextGeneration()) return false;
+                    || recordContextGeneration !== currentContextGeneration()) {
+                  if (boundary && boundary.userData) boundary.userData.sfDespawnPartialTeardown = true;
+                  return false;
+                }
                 disposeSliceStart = disposeNow();
               }
             }
@@ -10695,7 +11293,18 @@ export const render = {
       const envMap = this._envMap;
       if (!envMap || !subject) return;
       if (typeof bindEnvironmentToStandardMaterialsSteps === 'function') {
-        for (const _ of bindEnvironmentToStandardMaterialsSteps(subject, envMap)) {
+        const envBindIter = bindEnvironmentToStandardMaterialsSteps(subject, envMap);
+        for (;;) {
+          let envBindStep;
+          try {
+            envBindStep = envBindIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(envBindIter);
+            console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('env-bind', () => bindEnvironmentToStandardMaterials(subject, envMap));
+            break;
+          }
+          if (envBindStep.done) break;
           await admissionPaceYield();
         }
       } else {
@@ -10723,11 +11332,48 @@ export const render = {
       if (list.length === 0) return { skipped: true, reason: 'empty touch group' };
       for (const subject of list) await stampSubjectEnvAsync(subject);
       if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
-        return this.bloom.touchScenePipelines(list, cam.obj, scene);
+        return this.bloom.touchScenePipelines(list, cam.obj, scene, { drawableSession });
       }
       return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene, { drawableSession });
     };
     const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
+    // The session mint is an O(scene) drawable enumeration — pace its Steps twin
+    // under the admission yield contract so a mid-cook mint slices across
+    // presents instead of landing atomic inside the touch leg.
+    const mintTouchDrawableSession = async (targetScene) => {
+      // One O(scene) drawable census per cook, shared across the cook's legs —
+      // the session contract already tolerates a stale snapshot (a drawable
+      // minted after the census is simply never hidden: it draws inside the
+      // absorbed pass, never inside a presented frame). `keep` stays per-leg
+      // session state (F2 scopes it per call below the session anyway).
+      const cookGeneration = this._liveSectorCookGeneration || 0;
+      let census = this._touchDrawableCensus;
+      if (!census || census.scene !== targetScene || census.generation !== cookGeneration) {
+        let drawables;
+        if (typeof drawableHideSessionSteps === 'function') {
+          const it = drawableHideSessionSteps(targetScene);
+          for (;;) {
+            let step;
+            try {
+              step = it.next();
+            } catch (driveError) {
+              closeCookStepsIter(it);
+              console.warn('[render] drawable census drive failed; running the sync twin', driveError);
+              drawables = runCookSyncTwin('drawable census',
+                () => drawableHideSession(targetScene).drawables, []);
+              break;
+            }
+            if (step.done) { drawables = step.value.drawables; break; }
+            await admissionPaceYield();
+          }
+        } else {
+          drawables = drawableHideSession(targetScene).drawables;
+        }
+        census = { scene: targetScene, generation: cookGeneration, drawables };
+        this._touchDrawableCensus = census;
+      }
+      return { scene: targetScene, drawables: census.drawables };
+    };
     // A package texture whose CPU mirror was released after its proven upload still reaches
     // three's uploader when the next bind re-enters it — a moved version, a different
     // upload-cache key on the shared dedupe Source, or a properties record recreated after
@@ -10747,7 +11393,15 @@ export const render = {
       }
       const it = collectStartupTexturesSteps(subjects);
       for (;;) {
-        const step = it.next();
+        let step;
+        try {
+          step = it.next();
+        } catch (driveError) {
+          closeCookStepsIter(it);
+          console.warn('[render] startup-texture collect drive failed; running the sync twin', driveError);
+          return runCookSyncTwin('startup-texture collect',
+            () => detachedSubjectUploadsPending(subjects), []);
+        }
         if (step.done) {
           return step.value.filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
         }
@@ -11769,7 +12423,19 @@ export const render = {
       // Env/light/shadow cardinality is part of the driver key. Bake before capture, not here:
       // replacing scene.environment after the opening plan is frozen fails the first-draw gate.
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-        for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+        const lightBudgetIter = syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video);
+        for (;;) {
+          let lightStep;
+          try {
+            lightStep = lightBudgetIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(lightBudgetIter);
+            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('light-budget', () =>
+              syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+            break;
+          }
+          if (lightStep.done) break;
           if (typeof yieldToBrowser === 'function') await yieldToBrowser();
         }
       } else {
@@ -11854,7 +12520,13 @@ export const render = {
           units,
           renderer,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-          compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
+          compileOne: async (subject) => {
+            // The env stamp is visibility-independent — pace it outside the
+            // reveal; compile's light census walks traverseVisible, so the
+            // reveal covers the synchronous compile call itself.
+            await stampSubjectEnvAsync(subject);
+            return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene));
+          },
           touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
           yieldToMain: yieldToBrowser,
         })
@@ -12126,6 +12798,16 @@ export const render = {
         if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) {
           throw new Error('webgl-context-lost-during-live-sector-cook');
         }
+        // Every cook yield seam melts a bounded slice of the freeze backlog —
+        // syncEntityViews keeps queueing roots under the veil, and the drain
+        // is dwell-gated + self-capped, so the idle gap is exactly the right
+        // place for it (providerYield seams inherit it through this helper).
+        // The unfreeze twin rides the same seam: a mass re-show backlog
+        // otherwise retires only inside presented passes (≤6 mints on a quiet
+        // frame, ~1 under pressure) while freeze drains at full caps here.
+        this._drainHiddenFreezeQueue?.();
+        this._drainHiddenUnfreezeQueue?.();
+        this._drainFoundryEnvPending?.();
       };
       // Infinity drain skipped the admission clock and blocked New Game at gpu-resources
       // (RAF/timeout never ran). Slice the queue so the loading shell can present.
@@ -12168,6 +12850,7 @@ export const render = {
         let drainIter = typeof this._drainMeshBuildQueueSteps === 'function'
           ? this._drainMeshBuildQueueSteps(Infinity)
           : null;
+        let drainFallbackAlive = true;
         while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
           if (cookStale()) return;
           if (prepareNow() - started > cap) {
@@ -12177,16 +12860,32 @@ export const render = {
           const headBefore = this._meshBuildQueueHead;
           const buildStarted = prepareNow();
           if (drainIter) {
-            const drainStep = drainIter.next();
-            if (drainStep.done) {
+            let drainStep = null;
+            try {
+              drainStep = drainIter.next();
+            } catch (driveError) {
+              // A throwing drain step abandons the stepped twin — the loop
+              // degrades to the per-call drain it wraps instead of taking
+              // the whole cook tail down with it.
+              closeCookStepsIter(drainIter);
+              console.warn('[render] mesh-build drain drive failed; degrading to the per-call drain', driveError);
+              drainIter = null;
+            }
+            if (drainStep && drainStep.done) {
               built += Number(drainStep.value) || 0;
               // An early-returning drain (refused gate, exhausted slice check)
               // closes the iterator with rows still queued — re-mint like the
               // per-call loop did instead of spinning on a closed iterator.
               drainIter = this._drainMeshBuildQueueSteps(Infinity);
             }
-          } else {
-            built += Number(this._drainMeshBuildQueue(1)) || 0;
+          } else if (drainFallbackAlive) {
+            // The per-call fallback re-mints the same prologue mint + census the
+            // stepped drive died on — belt it, and after its own throw stop
+            // re-calling (a fault here is drain infrastructure, not a row).
+            const drainRow = runCookSyncTwin('mesh-build drain',
+              () => this._drainMeshBuildQueue(1), -1);
+            if (drainRow < 0) drainFallbackAlive = false;
+            else built += Number(drainRow) || 0;
           }
           buildMs += prepareNow() - buildStarted;
           passes += 1;
@@ -12261,12 +12960,27 @@ export const render = {
         openingSeen.add(entity);
         openingEntities.push(entity);
       };
-      for (const entity of indexedShipLikeScan(state)) considerOpening(entity);
-      for (const entity of indexedTypeScan(state, 'stations')) considerOpening(entity);
-      for (const entity of indexedTypeScan(state, 'wrecks')) considerOpening(entity);
-      // On-runway tow bodies pin GLASS_ACTORS at the readiness gate (partsLibrary); they must
-      // enter this drain too or the gate waits on a mesh nobody schedules.
-      for (const entity of indexedTypeScan(state, 'payloads')) considerOpening(entity);
+      // The index buckets are already compact, but a same-dense-sector cook
+      // still walks four unclocked collects — one merged drive on the
+      // neighbors' slice clock, source order preserved.
+      const openingScanSources = [
+        indexedShipLikeScan(state),
+        indexedTypeScan(state, 'stations'),
+        indexedTypeScan(state, 'wrecks'),
+        // On-runway tow bodies pin GLASS_ACTORS at the readiness gate (partsLibrary); they must
+        // enter this drain too or the gate waits on a mesh nobody schedules.
+        indexedTypeScan(state, 'payloads'),
+      ];
+      let openingScanSinceYield = 0;
+      for (const source of openingScanSources) {
+        for (const entity of source) {
+          considerOpening(entity);
+          if ((++openingScanSinceYield % 256) === 0) {
+            if (cookStale()) return cookSuperseded;
+            await yieldLiveSectorGpu();
+          }
+        }
+      }
       // The enqueue is a generator slice on the same clock as the drains around
       // it — the two list-wide classify passes used to run atomic between census
       // and the shell drain.
@@ -12274,12 +12988,28 @@ export const render = {
         shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
         debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
       });
-      for (const _ of enqueueMissingMeshBuildsSteps(
+      const openingEnqueueIter = enqueueMissingMeshBuildsSteps(
         openingEntities,
         this._meshes,
         this._meshBuildQueuedIds,
         this._meshBuildQueue,
-      )) {
+      );
+      for (;;) {
+        let enqueueStep;
+        try {
+          enqueueStep = openingEnqueueIter.next();
+        } catch (driveError) {
+          closeCookStepsIter(openingEnqueueIter);
+          console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+          runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+            openingEntities,
+            this._meshes,
+            this._meshBuildQueuedIds,
+            this._meshBuildQueue,
+          ));
+          break;
+        }
+        if (enqueueStep.done) break;
         if (cookStale()) return cookSuperseded;
         await openingEnqueueYield(false);
       }
@@ -12374,38 +13104,51 @@ export const render = {
         ? state.entities.get(state.playerId)
         : null;
       if (player && player.pos && !recook) {
-        const rockHits = [];
-        const rockQueryIter = queryAsteroidFieldSteps(state, player.pos,
-          firstFlightRockCookRadiusWu(state), rockHits);
-        for (;;) {
-          const rockStep = rockQueryIter.next();
-          if (rockStep.done) break;
-          if (cookStale()) return cookSuperseded;
-          await yieldLiveSectorGpu();
-        }
         const px = Number(player.pos.x) || 0;
         const pz = Number(player.pos.z) || 0;
-        rockHits.sort((left, right) => {
-          const dlx = (Number(left && left.pos && left.pos.x) || 0) - px;
-          const dlz = (Number(left && left.pos && left.pos.z) || 0) - pz;
-          const drx = (Number(right && right.pos && right.pos.x) || 0) - px;
-          const drz = (Number(right && right.pos && right.pos.z) || 0) - pz;
-          return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
-        });
+        const rockCookRadius = firstFlightRockCookRadiusWu(state);
+        // Ring-ascending emit instead of collect-all + O(H log H) sort: the
+        // stream approximates exact-distance order at cell granularity and the
+        // promote consumes it directly — a dense field no longer pays a whole
+        // in-radius collect + unsuspendable sort to mint 25 keys.
+        const rockHits = [];
+        const rockEmit = queryAsteroidFieldNearestSteps(state, player.pos, rockHits,
+          1024, rockCookRadius);
         const seenRockKeys = new Set();
+        let rockCursor = 0;
+        let rockDone = false;
         let rockPromotesSinceYield = 0;
-        for (const rec of rockHits) {
-          if (seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
-          const key = asteroidFirstFlightCookKey(rec);
-          if (seenRockKeys.has(key)) continue;
-          if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
-          seenRockKeys.add(key);
-          // A promote fans a synchronous entity:spawned emit to ~24 listeners —
-          // pace the burst or the cook's slice clock parks for the whole tail.
-          if ((++rockPromotesSinceYield % 4) === 0) {
-            if (cookStale()) return cookSuperseded;
-            await yieldLiveSectorGpu();
+        while (!rockDone && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP) {
+          try {
+            if (rockEmit.next().done) rockDone = true;
+          } catch (driveError) {
+            // A throwing emit abandons its tail — the collected prefix is a
+            // legal partial promotion set (unpromoted rocks stay instanced).
+            closeCookStepsIter(rockEmit);
+            console.warn('[render] rock emit drive failed; promoting the collected prefix', driveError);
+            rockDone = true;
           }
+          for (; rockCursor < rockHits.length
+              && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP; rockCursor += 1) {
+            const rec = rockHits[rockCursor];
+            const dx = rec.pos.x - px;
+            const dz = rec.pos.z - pz;
+            const reach = rockCookRadius + (Number(rec.radius) || 0);
+            if (dx * dx + dz * dz > reach * reach) continue;
+            const key = asteroidFirstFlightCookKey(rec);
+            if (seenRockKeys.has(key)) continue;
+            if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+            seenRockKeys.add(key);
+            // A promote fans a synchronous entity:spawned emit to ~24 listeners —
+            // pace the burst or the cook's slice clock parks for the whole tail.
+            if ((++rockPromotesSinceYield % 4) === 0) {
+              if (cookStale()) return cookSuperseded;
+              await yieldLiveSectorGpu();
+            }
+          }
+          if (rockDone) break;
+          if (cookStale()) return cookSuperseded;
+          await yieldLiveSectorGpu();
         }
       }
       // Same deterministic arm as the jump census: registered sector:enter spawners fire
@@ -12497,7 +13240,16 @@ export const render = {
               if (typeof censusIter.return === 'function') { try { censusIter.return(); } catch { /* cleanup-only */ } }
               return cookSuperseded;
             }
-            const censusStep = censusIter.next();
+            let censusStep;
+            try {
+              censusStep = censusIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(censusIter);
+              console.warn('[render] first-flight census drive failed; running the sync twin', driveError);
+              firstFlightEntities = runCookSyncTwin('first-flight census',
+                () => collectFirstFlightCookEntities(state), firstFlightEntities);
+              break;
+            }
             if (censusStep.done) { firstFlightEntities = censusStep.value; break; }
             if (openingProviderNow() - censusSliceStart >= 8
                 || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
@@ -12535,23 +13287,61 @@ export const render = {
         let survivalSliceArmed = state.mode === 'flight';
         if (player && player.pos) {
           const coveredKeys = new Set();
+          let coveredSinceYield = 0;
           for (const entity of state.entityList || []) {
             if (entity && entity.type === 'asteroid' && entity.alive !== false) {
               coveredKeys.add(asteroidFirstFlightCookKey(entity));
             }
+            if ((++coveredSinceYield % 256) === 0) {
+              if (cookStale()) return cookSuperseded;
+              if (openingProviderNow() - survivalSliceStart >= 8
+                  || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+                if (survivalSliceArmed) {
+                  notePacedFrameSpend(openingProviderNow() - survivalSliceStart);
+                }
+                await yieldLiveSectorGpu();
+                survivalSliceStart = openingProviderNow();
+                survivalSliceArmed = state.mode === 'flight';
+              }
+            }
           }
           const field = state.world && state.world.asteroidField;
-          const px = Number(player.pos.x) || 0;
-          const pz = Number(player.pos.z) || 0;
-          const reach = (field && Array.isArray(field.rocks) ? field.rocks : [])
-            .filter((rec) => rec && rec.alive !== false && rec.liveEntityId == null && rec.pos)
-            .sort((left, right) => {
-              const dlx = (Number(left.pos.x) || 0) - px;
-              const dlz = (Number(left.pos.z) || 0) - pz;
-              const drx = (Number(right.pos.x) || 0) - px;
-              const drz = (Number(right.pos.z) || 0) - pz;
-              return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
-            });
+          // Whole-field coverage now walks the grid cell-ring nearest-first —
+          // a stepped traversal that yields per ring — instead of materializing
+          // + sorting every record in one atomic O(R log R) leg (the cook's
+          // biggest unclocked stretch on dense sectors). Every live unpromoted
+          // record still visits exactly once; ordering is nearest-first by
+          // cell, and the promote contract is coverage-priority only.
+          const reach = [];
+          if (field) {
+            const reachIter = queryAsteroidFieldNearestSteps(state, player.pos, reach);
+            for (;;) {
+              let reachStep;
+              try {
+                reachStep = reachIter.next();
+              } catch (driveError) {
+                // A throwing emit abandons its tail — the collected prefix is a
+                // legal partial coverage set (unreached records stay instanced).
+                closeCookStepsIter(reachIter);
+                console.warn('[render] survival field emit drive failed; covering the collected prefix', driveError);
+                break;
+              }
+              if (reachStep.done) break;
+              if (cookStale()) {
+                try { reachIter.return(); } catch { /* cleanup-only */ }
+                return cookSuperseded;
+              }
+              if (openingProviderNow() - survivalSliceStart >= 8
+                  || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+                if (survivalSliceArmed) {
+                  notePacedFrameSpend(openingProviderNow() - survivalSliceStart);
+                }
+                await yieldLiveSectorGpu();
+                survivalSliceStart = openingProviderNow();
+                survivalSliceArmed = state.mode === 'flight';
+              }
+            }
+          }
           const promotedRocks = [];
           // The rock-promote walk rides the same slice clock as the provider
           // drive — promotes mutate the world one record at a time, so a bail
@@ -12583,12 +13373,28 @@ export const render = {
               shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
               debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
             });
-            for (const _ of enqueueMissingMeshBuildsSteps(
+            const promotedEnqueueIter = enqueueMissingMeshBuildsSteps(
               promotedRocks,
               this._meshes,
               this._meshBuildQueuedIds,
               this._meshBuildQueue,
-            )) {
+            );
+            for (;;) {
+              let enqueueStep;
+              try {
+                enqueueStep = promotedEnqueueIter.next();
+              } catch (driveError) {
+                closeCookStepsIter(promotedEnqueueIter);
+                console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+                runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+                  promotedRocks,
+                  this._meshes,
+                  this._meshBuildQueuedIds,
+                  this._meshBuildQueue,
+                ));
+                break;
+              }
+              if (enqueueStep.done) break;
               if (cookStale()) return cookSuperseded;
               await promotedEnqueueYield(false);
             }
@@ -12641,7 +13447,15 @@ export const render = {
               if (typeof warmIterator.return === 'function') { try { warmIterator.return(); } catch { /* cleanup-only */ } }
               return cookSuperseded;
             }
-            const warmStep = warmIterator.next();
+            let warmStep;
+            try {
+              warmStep = warmIterator.next();
+            } catch (driveError) {
+              closeCookStepsIter(warmIterator);
+              console.warn('[render] warm ledger refill drive failed; running the sync twin', driveError);
+              runCookSyncTwin('warm ledger refill', () => warmNearbyLedgerRows(state));
+              break;
+            }
             if (warmStep.done) break;
             if (openingProviderNow() - widenSliceStart >= 8
                 || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
@@ -12660,7 +13474,16 @@ export const render = {
         {
           const collectIterator = collectMeshPresentationEntitiesChunked(state, presentation);
           for (;;) {
-            const step = collectIterator.next();
+            let step;
+            try {
+              step = collectIterator.next();
+            } catch (driveError) {
+              closeCookStepsIter(collectIterator);
+              console.warn('[render] presentation collect drive failed; running the sync twin', driveError);
+              runCookSyncTwin('presentation collect',
+                () => collectMeshPresentationEntities(state, presentation));
+              break;
+            }
             if (step.done) break;
             if (openingProviderNow() - widenSliceStart >= 8
                 || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
@@ -12718,14 +13541,49 @@ export const render = {
         for (const [id, mesh] of this._meshes) {
           const entity = resolveWorldPresentationEntity(state, id);
           if (entity && isEntityRenderRelevant(entity, state)) continue;
-          this._unbindPresentationMesh(id, mesh);
+          this._unbindPresentationMesh(id, mesh, true);
           releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
           this.scene.remove(mesh);
-          disposeObject(mesh);
+          // Row bookkeeping lands before the first teardown yield: a fat corpse
+          // suspended mid-dispose would otherwise stay addressable through
+          // _meshes, letting a same-id entity:destroyed push it onto the
+          // despawn queue for a second concurrent teardown (+double receiver
+          // debit) — and letting the post-yield delete kill an id-reissue row.
           this._meshes.delete(id);
           this._meshesVersion += 1;
-          noteShadowMeshRemoved(this, mesh);
           clearEntityMeshReference(entity, mesh);
+          // A fat leftover corpse's GL teardown is the same brick class this
+          // loop already slices — drive its stepped twin under the same leg
+          // clock and settle the tally from the teardown's own measurement.
+          const leftoverMeasure = { receivers: 0 };
+          const leftoverDispose = disposeObjectSteps(mesh, leftoverMeasure);
+          let leftoverTorn = false;
+          for (;;) {
+            let leftoverDone = false;
+            try {
+              leftoverDone = leftoverDispose.next().done === true;
+            } catch (error) {
+              // Per-corpse catch (despawn-lane contract): a hook throw tears the
+              // subtree — flag for remount re-arm, settle via dirty recount (null),
+              // and keep the sweep alive instead of abandoning every corpse behind.
+              console.info('[render] leftover dispose iterator step failed', error);
+              if (mesh && mesh.userData) mesh.userData.sfDespawnPartialTeardown = true;
+              leftoverTorn = true;
+              leftoverDone = true;
+            }
+            if (leftoverDone) break;
+            if (openingProviderNow() - leftoverSliceStart >= 8
+                || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+              if (leftoverSliceArmed) {
+                notePacedFrameSpend(openingProviderNow() - leftoverSliceStart);
+              }
+              await yieldLiveSectorGpu();
+              leftoverSliceStart = openingProviderNow();
+              leftoverSliceArmed = state.mode === 'flight';
+              if (cookStale()) return cookSuperseded;
+            }
+          }
+          noteShadowMeshRemoved(this, mesh, leftoverTorn ? null : leftoverMeasure.receivers);
           if (openingProviderNow() - leftoverSliceStart >= 8
               || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
             if (leftoverSliceArmed) {
@@ -12744,12 +13602,28 @@ export const render = {
         shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
         debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
       });
-      for (const _ of enqueueMissingMeshBuildsSteps(
+      const leftoverEnqueueIter = enqueueMissingMeshBuildsSteps(
         firstFlightEntities,
         this._meshes,
         this._meshBuildQueuedIds,
         this._meshBuildQueue,
-      )) {
+      );
+      for (;;) {
+        let enqueueStep;
+        try {
+          enqueueStep = leftoverEnqueueIter.next();
+        } catch (driveError) {
+          closeCookStepsIter(leftoverEnqueueIter);
+          console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+          runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+            firstFlightEntities,
+            this._meshes,
+            this._meshBuildQueuedIds,
+            this._meshBuildQueue,
+          ));
+          break;
+        }
+        if (enqueueStep.done) break;
         if (cookStale()) return cookSuperseded;
         await leftoverEnqueueYield(false);
       }
@@ -12890,10 +13764,11 @@ export const render = {
               units: uniqueAdmissionUnits(staleSubjects),
               renderer,
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-              compileOne: (subject) => {
+              compileOne: async (subject) => {
+                await stampSubjectEnvAsync(subject);
                 const restore = revealSubjectWithAncestors(subject);
                 try {
-                  return compileSubjectColorAndDepth(subject, this._selectPostRoute());
+                  return this._compilePostRoute(this._selectPostRoute(), subject, cam.obj, scene);
                 } finally {
                   restore();
                 }
@@ -13191,7 +14066,16 @@ export const render = {
                   if (typeof sealCensusIter.return === 'function') { try { sealCensusIter.return(); } catch { /* cleanup-only */ } }
                   return cookSuperseded;
                 }
-                const censusStep = sealCensusIter.next();
+                let censusStep;
+                try {
+                  censusStep = sealCensusIter.next();
+                } catch (driveError) {
+                  closeCookStepsIter(sealCensusIter);
+                  console.warn('[render] pool seal census drive failed; running the sync twin', driveError);
+                  sealCensus = runCookSyncTwin('pool seal census',
+                    () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: null });
+                  break;
+                }
                 if (censusStep.done) { sealCensus = censusStep.value; break; }
                 await sealPace();
               }
@@ -13202,15 +14086,21 @@ export const render = {
                   if (typeof poolRootsIt.return === 'function') { try { poolRootsIt.return(); } catch { /* cleanup-only */ } }
                   return cookSuperseded;
                 }
-                const poolRootsStep = poolRootsIt.next();
+                let poolRootsStep;
+                try {
+                  poolRootsStep = poolRootsIt.next();
+                } catch (driveError) {
+                  closeCookStepsIter(poolRootsIt);
+                  console.warn('[render] pool roots census drive failed; running the sync twin', driveError);
+                  sealCensus = runCookSyncTwin('pool roots census',
+                    () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: null });
+                  break;
+                }
                 if (poolRootsStep.done) { sealCensus = { roots: poolRootsStep.value, subjects: null }; break; }
                 await sealPace();
               }
             } else {
-              sealCensus = {
-                roots: collectInstancePoolCompileRoots(scene),
-                subjects: null,
-              };
+              sealCensus = collectInstancePoolCompileRootsAndSubjects(scene);
             }
             const latePoolRoots = sealCensus.roots;
             poolSealRoots = latePoolRoots.length;
@@ -13317,22 +14207,30 @@ export const render = {
                 issueKeyFor: openingCompileIssueKey,
                 renderer,
                 beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-                compileOne: (subject) => whileRevealed(subject,
-                  () => compileSubjectColorAndDepth(subject, sealRoute)),
+                compileOne: async (subject) => {
+                  await stampSubjectEnvAsync(subject);
+                  return whileRevealed(subject, () => this._compilePostRoute(sealRoute, subject, cam.obj, scene));
+                },
                 touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
                 // Loading shell only: grouped touches share one render across a
                 // ≤24-subject batch (replicates the cook admit's touchMany —
                 // this site was never armed, so every seal unit paid its own
                 // whole-scene hide/render/restore).
                 touchMany: state.mode === 'loading'
-                  ? (subjects) => {
+                  ? async (subjects) => {
                     const drawable = subjects.filter(sealTouchCanDraw);
                     if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
+                    // The reveal must stay held until the async touch settles:
+                    // the pacing driver resumes a suspended touch while the
+                    // live scene keeps presenting, so an early restore re-hides
+                    // the subjects mid-draw and the whole batch no-ops.
+                    // Mint the session before the reveal: the paced mint suspends,
+                    // and reveals must not be held across presented frames.
+                    poolSealTouchSession = poolSealTouchSession || (await mintTouchDrawableSession(scene));
                     const restores = [];
                     try {
                       for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                      poolSealTouchSession = poolSealTouchSession || drawableHideSession(scene);
-                      return touchExactTargetSubjects(drawable, poolSealTouchSession);
+                      return await touchExactTargetSubjects(drawable, poolSealTouchSession);
                     } finally {
                       for (let i = restores.length - 1; i >= 0; i--) restores[i]();
                     }
@@ -13561,7 +14459,13 @@ export const render = {
                 }
               }
             }
-          } catch (_) { /* census failure must not wedge the settle */ }
+          } catch (_) {
+            // A torn census must not read as empty — the pending===0 gate below
+            // would release the settle on a half-counted sweep. Treat the walk
+            // as still-pending (the settle loop re-mints a fresh iterator and
+            // retries, or ends by deadline like the drive-fail path's own 1).
+            pending = Math.max(pending, 1);
+          }
           if (names && names.length > 0) pendingLoadNames = names;
           return pending;
         };
@@ -13582,7 +14486,18 @@ export const render = {
             let sweepSegStart = prepareNow();
             for (;;) {
               if (cookStale()) return cookSuperseded;
-              const sweepStep = sweepIter.next();
+              let sweepStep;
+              try {
+                sweepStep = sweepIter.next();
+              } catch (driveError) {
+                // A throwing sweep step degrades to still-pending — the settle
+                // loop retries on a fresh iterator or ends by deadline rather
+                // than releasing the shell on a half-counted census.
+                closeCookStepsIter(sweepIter);
+                console.warn('[render] boundary settle sweep drive failed; treating as still-pending', driveError);
+                pendingBoundaryCount = 1;
+                break;
+              }
               if (sweepStep.done) {
                 pendingBoundaryCount = sweepStep.value || 0;
                 break;
@@ -13629,7 +14544,18 @@ export const render = {
               let stragglersSegStart = prepareNow();
               while (!stragglersDone) {
                 if (cookStale()) return cookSuperseded;
-                const stragglersStep = stragglersIter.next();
+                let stragglersStep;
+                try {
+                  stragglersStep = stragglersIter.next();
+                } catch (driveError) {
+                  // A throwing census abandons the straggler admit this pass —
+                  // unadmitted roots draw through the bloom lane later exactly
+                  // as they did before this sweep existed.
+                  closeCookStepsIter(stragglersIter);
+                  console.warn('[render] never-linked census drive failed; skipping the straggler admit', driveError);
+                  stragglersDone = true;
+                  continue;
+                }
                 if (stragglersStep.done) {
                   stragglersDone = true;
                   stragglers.push(...(stragglersStep.value || []));
@@ -13770,7 +14696,17 @@ export const render = {
         let settledPlanSegStart = prepareNow();
         for (;;) {
           if (cookStale()) return cookSuperseded;
-          const settledPlanStep = settledPlanIter.next();
+          let settledPlanStep;
+          try {
+            settledPlanStep = settledPlanIter.next();
+          } catch (driveError) {
+            // A throwing plan build abandons the recapture — the receipt keeps
+            // its pre-settle stamp (the same state the gate ran on before this
+            // recapture existed) instead of taking the whole cook down.
+            closeCookStepsIter(settledPlanIter);
+            console.warn('[render] settled plan rebuild drive failed; keeping the pre-settle receipt', driveError);
+            break;
+          }
           if (settledPlanStep.done) {
             settledPlan = settledPlanStep.value;
             break;
@@ -13800,7 +14736,21 @@ export const render = {
           let settledReceiptSegStart = prepareNow();
           for (;;) {
             if (cookStale()) return cookSuperseded;
-            const settledReceiptStep = settledReceiptIter.next();
+            let settledReceiptStep;
+            try {
+              settledReceiptStep = settledReceiptIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(settledReceiptIter);
+              console.warn('[render] settled receipt drive failed; running the sync twin', driveError);
+              state.render.openingSubmissionReceipt = runCookSyncTwin('settled receipt',
+                () => createOpeningSubmissionReceipt(renderer, settledPlan, {
+                  scene,
+                  programMaterials: settledPostMaterials,
+                  shadowProgramKeys: this._openingShadowAdmission?.programCacheKeys,
+                  shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
+                }), state.render.openingSubmissionReceipt);
+              break;
+            }
             if (settledReceiptStep.done) {
               state.render.openingSubmissionReceipt = settledReceiptStep.value;
               break;
@@ -13928,7 +14878,16 @@ export const render = {
       const firstFlightRootsIter = collectFirstFlightEffectRootsSteps(scene);
       let firstFlightRoots = null;
       for (;;) {
-        const rootsStep = firstFlightRootsIter.next();
+        let rootsStep;
+        try {
+          rootsStep = firstFlightRootsIter.next();
+        } catch (driveError) {
+          closeCookStepsIter(firstFlightRootsIter);
+          console.warn('[render] first-flight roots drive failed; running the sync twin', driveError);
+          firstFlightRoots = runCookSyncTwin('first-flight roots',
+            () => collectFirstFlightEffectRoots(scene), []);
+          break;
+        }
         if (rootsStep.done) { firstFlightRoots = rootsStep.value; break; }
         if (cookStale()) return cookSuperseded;
         await yieldToBrowser();
@@ -13943,25 +14902,47 @@ export const render = {
             shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
             debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
           });
-        for (const _ of bindEnvironmentToStandardMaterialsSteps(scene, scene.environment)) {
-          if (cookStale()) return cookSuperseded;
-          await envBindYield(false);
-        }
-        for (const root of firstFlightRoots) {
-          for (const _ of bindEnvironmentToStandardMaterialsSteps(root, scene.environment)) {
+        const envBindDrive = (root) => bindEnvironmentToStandardMaterialsSteps(root, scene.environment);
+        const envBindSync = (root) => bindEnvironmentToStandardMaterials(root, scene.environment);
+        const driveEnvBindSteps = async (root) => {
+          const envBindIter = envBindDrive(root);
+          for (;;) {
+            let envStep;
+            try {
+              envStep = envBindIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(envBindIter);
+              console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+              runCookSyncTwin('env-bind', () => envBindSync(root));
+              return 'drive-settled';
+            }
+            if (envStep.done) return 'drive-settled';
             if (cookStale()) return cookSuperseded;
             await envBindYield(false);
           }
+        };
+        if ((await driveEnvBindSteps(scene)) === cookSuperseded) return cookSuperseded;
+        for (const root of firstFlightRoots) {
+          if ((await driveEnvBindSteps(root)) === cookSuperseded) return cookSuperseded;
         }
         for (const root of preparedRoots) {
-          for (const _ of bindEnvironmentToStandardMaterialsSteps(root, scene.environment)) {
-            if (cookStale()) return cookSuperseded;
-            await envBindYield(false);
-          }
+          if ((await driveEnvBindSteps(root)) === cookSuperseded) return cookSuperseded;
         }
       }
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-        for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+        const lightBudgetIter = syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video);
+        for (;;) {
+          let lightStep;
+          try {
+            lightStep = lightBudgetIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(lightBudgetIter);
+            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('light-budget', () =>
+              syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+            break;
+          }
+          if (lightStep.done) break;
           if (cookStale()) return cookSuperseded;
           await yieldToBrowser();
         }
@@ -13983,7 +14964,15 @@ export const render = {
               mintStep = revealMint.next();
             } catch (err) {
               if (String(err && err.message) === 'cook-superseded') return cookSuperseded;
-              throw err;
+              // A stepped mint that throws for any other reason abandons the
+              // stepped reveal — the sync mint re-reveals the whole scene so
+              // the compile tail still sees every drawable.
+              closeCookStepsIter(revealMint);
+              console.warn('[render] stepped reveal mint failed; running the sync twin', err);
+              restoreReveal = runCookSyncTwin('reveal mint',
+                () => revealSubjectForCompile(scene), () => {});
+              restoreRevealSteps = null;
+              break;
             }
             if (mintStep.done) {
               restoreReveal = mintStep.value.restore;
@@ -14039,7 +15028,17 @@ export const render = {
         restoreShadows();
         if (restoreRevealSteps) {
           for (;;) {
-            const step = restoreRevealSteps.next();
+            let step;
+            try {
+              step = restoreRevealSteps.next();
+            } catch (restoreError) {
+              // A dead restore iterator inside the finally must not mask an
+              // in-flight error or strand the minted reveal half-restored —
+              // the sync tail re-runs the same idempotent row restores.
+              console.warn('[render] stepped reveal restore failed; running the sync tail', restoreError);
+              restoreReveal();
+              break;
+            }
             if (step.done) break;
             await yieldToBrowser();
           }
@@ -14095,7 +15094,17 @@ export const render = {
         let cookPictureSegStart = cookNow();
         for (;;) {
           if (cookStale()) return cookSuperseded;
-          const cookPictureStep = cookPicturePlanIter.next();
+          let cookPictureStep;
+          try {
+            cookPictureStep = cookPicturePlanIter.next();
+          } catch (driveError) {
+            // A throwing plan build abandons the picture census — the compile
+            // tail still warms every rostered root directly (subjects list
+            // degrades to the opening-roots-only cohort).
+            closeCookStepsIter(cookPicturePlanIter);
+            console.warn('[render] cook picture plan drive failed; warming rostered roots only', driveError);
+            break;
+          }
           if (cookPictureStep.done) {
             cookPicturePlan = cookPictureStep.value;
             break;
@@ -14130,7 +15139,18 @@ export const render = {
           const cookCensusIter = collectInstancePoolCompileRootsAndSubjectsSteps(scene, 256);
           for (;;) {
             if (cookStale()) return cookSuperseded;
-            const censusStep = cookCensusIter.next();
+            let censusStep;
+            try {
+              censusStep = cookCensusIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(cookCensusIter);
+              console.warn('[render] cook census drive failed; running the sync twin', driveError);
+              const censusValue = runCookSyncTwin('cook census',
+                () => collectInstancePoolCompileRootsAndSubjects(scene), null);
+              if (censusValue && Array.isArray(censusValue.roots)) cookPoolRootsMemo = censusValue.roots;
+              if (censusValue && Array.isArray(censusValue.subjects)) cookCensusSubjects = censusValue.subjects;
+              break;
+            }
             if (censusStep.done) {
               const censusValue = censusStep.value || {};
               if (Array.isArray(censusValue.roots)) cookPoolRootsMemo = censusValue.roots;
@@ -14206,7 +15226,16 @@ export const render = {
             const lateIt = collectLateAdmittedCompileRootsSteps(this._meshes, openingSubjects);
             for (;;) {
               if (cookStale()) return cookSuperseded;
-              const lateStep = lateIt.next();
+              let lateStep;
+              try {
+                lateStep = lateIt.next();
+              } catch (driveError) {
+                closeCookStepsIter(lateIt);
+                console.warn('[render] late-admitted census drive failed; running the sync twin', driveError);
+                lateAdmittedCohort = runCookSyncTwin('late-admitted census',
+                  () => collectLateAdmittedCompileRoots(this._meshes, openingSubjects), []);
+                break;
+              }
               if (lateStep.done) { lateAdmittedCohort = lateStep.value; break; }
               await paceCookStretch();
             }
@@ -14790,7 +15819,16 @@ export const render = {
         let poolCensus;
         for (;;) {
           if (cookStale()) return cookSuperseded;
-          const censusStep = poolCensusIter.next();
+          let censusStep;
+          try {
+            censusStep = poolCensusIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(poolCensusIter);
+            console.warn('[render] pool census drive failed; running the sync twin', driveError);
+            poolCensus = runCookSyncTwin('pool census',
+              () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: [] });
+            break;
+          }
           if (censusStep.done) { poolCensus = censusStep.value; break; }
           await paceCookStretch();
         }
@@ -14933,14 +15971,15 @@ export const render = {
               // (drain itself is bounded by the readiness batch's own timeout).
               deadlineMs: cookDeadlineMs - (cookNow() - cookStarted),
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-              compileOne: (subject) => {
+              compileOne: async (subject) => {
                 // Fresh readiness re-probe at issue time (the units carry every
                 // material through now): a subject whose materials all still have
                 // linked programs skips the issue entirely, and one that lost a
                 // program since the census compiles here behind the shell.
                 for (const material of materialList(subject)) {
                   if (!materialAlreadyLinked(material)) {
-                    return whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route));
+                    await stampSubjectEnvAsync(subject);
+                    return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene));
                   }
                 }
                 return Promise.resolve({ skipped: true, reason: 'programs-ready' });
@@ -14955,15 +15994,16 @@ export const render = {
               // Loading shell: the drawable members of each group share one render (see
               // touchSubjectOnExactTarget); restore is last-in-first-out for nested subjects.
               touchMany: state.mode === 'loading'
-                ? (subjects) => {
+                ? async (subjects) => {
                   const drawable = subjects.filter(touchCanDraw);
                   touchesSkippedHidden += subjects.length - drawable.length;
                   if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
+                  // Mint the session before the reveal (paced mint suspends).
+                  rockTouchSession = rockTouchSession || (await mintTouchDrawableSession(scene));
                   const restores = [];
                   try {
                     for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                    rockTouchSession = rockTouchSession || drawableHideSession(scene);
-                    return touchExactTargetSubjects(drawable, rockTouchSession);
+                    return await touchExactTargetSubjects(drawable, rockTouchSession);
                   } finally {
                     for (let i = restores.length - 1; i >= 0; i--) restores[i]();
                   }
@@ -15107,6 +16147,13 @@ export const render = {
         if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) {
           throw new Error('webgl-context-lost-during-live-sector-cook');
         }
+        // Same drain-ride as the opening cook — the departed-sector sweep's
+        // providerYield seams inherit it through the shared yield helper.
+        // Unfreeze rides too: the depart sweep's hide wave + the new sector's
+        // bound restores queue re-show rows the whole cook long.
+        this._drainHiddenFreezeQueue?.();
+        this._drainHiddenUnfreezeQueue?.();
+        this._drainFoundryEnvPending?.();
       };
       state.render.liveSectorGpuAdmission = true;
       // A second sector:enter inside a yield gap makes this cook stale: it captured S1 while
@@ -15132,7 +16179,19 @@ export const render = {
             shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
             debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
           });
-          for (const _ of bindEnvironmentToStandardMaterialsSteps(scene, scene.environment)) {
+          const jumpEnvBindIter = bindEnvironmentToStandardMaterialsSteps(scene, scene.environment);
+          for (;;) {
+            let envStep;
+            try {
+              envStep = jumpEnvBindIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(jumpEnvBindIter);
+              console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+              runCookSyncTwin('env-bind', () =>
+                bindEnvironmentToStandardMaterials(scene, scene.environment));
+              break;
+            }
+            if (envStep.done) break;
             if (cookStale()) return cookSuperseded;
             await jumpEnvBindYield(false);
           }
@@ -15141,38 +16200,50 @@ export const render = {
           ? state.entities.get(state.playerId)
           : null;
         if (player && player.pos) {
-          const rockHits = [];
-          const rockQueryIter = queryAsteroidFieldSteps(state, player.pos,
-            firstFlightRockCookRadiusWu(state), rockHits);
-          for (;;) {
-            const rockStep = rockQueryIter.next();
-            if (rockStep.done) break;
-            if (cookStale()) return cookSuperseded;
-            await yieldLiveSectorGpu();
-          }
           const px = Number(player.pos.x) || 0;
           const pz = Number(player.pos.z) || 0;
-          rockHits.sort((left, right) => {
-            const dlx = (Number(left && left.pos && left.pos.x) || 0) - px;
-            const dlz = (Number(left && left.pos && left.pos.z) || 0) - pz;
-            const drx = (Number(right && right.pos && right.pos.x) || 0) - px;
-            const drz = (Number(right && right.pos && right.pos.z) || 0) - pz;
-            return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
-          });
+          const rockCookRadius = firstFlightRockCookRadiusWu(state);
+          // Ring-ascending emit instead of collect-all + O(H log H) sort (F9
+          // parity): the promote consumes the stream directly so a dense field
+          // no longer pays a whole in-radius collect + unsuspendable sort.
+          const rockHits = [];
+          const rockEmit = queryAsteroidFieldNearestSteps(state, player.pos, rockHits,
+            1024, rockCookRadius);
           const seenRockKeys = new Set();
+          let rockCursor = 0;
+          let rockDone = false;
           let rockPromotesSinceYield = 0;
-          for (const rec of rockHits) {
-            if (seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
-            const key = asteroidFirstFlightCookKey(rec);
-            if (seenRockKeys.has(key)) continue;
-            if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
-            seenRockKeys.add(key);
-            // A promote fans a synchronous entity:spawned emit to ~24 listeners —
-            // pace the burst or the cook's slice clock parks for the whole tail.
-            if ((++rockPromotesSinceYield % 4) === 0) {
-              if (cookStale()) return cookSuperseded;
-              await yieldLiveSectorGpu();
+          while (!rockDone && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP) {
+            try {
+              if (rockEmit.next().done) rockDone = true;
+            } catch (driveError) {
+              // A throwing emit abandons its tail — the collected prefix is a
+              // legal partial promotion set (unpromoted rocks stay instanced).
+              closeCookStepsIter(rockEmit);
+              console.warn('[render] rock emit drive failed; promoting the collected prefix', driveError);
+              rockDone = true;
             }
+            for (; rockCursor < rockHits.length
+                && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP; rockCursor += 1) {
+              const rec = rockHits[rockCursor];
+              const dx = rec.pos.x - px;
+              const dz = rec.pos.z - pz;
+              const reach = rockCookRadius + (Number(rec.radius) || 0);
+              if (dx * dx + dz * dz > reach * reach) continue;
+              const key = asteroidFirstFlightCookKey(rec);
+              if (seenRockKeys.has(key)) continue;
+              if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+              seenRockKeys.add(key);
+              // A promote fans a synchronous entity:spawned emit to ~24 listeners —
+              // pace the burst or the cook's slice clock parks for the whole tail.
+              if ((++rockPromotesSinceYield % 4) === 0) {
+                if (cookStale()) return cookSuperseded;
+                await yieldLiveSectorGpu();
+              }
+            }
+            if (rockDone) break;
+            if (cookStale()) return cookSuperseded;
+            await yieldLiveSectorGpu();
           }
         }
         // Deterministic population arm: systems that materialize bodies on sector:enter
@@ -15377,7 +16448,16 @@ export const render = {
               if (typeof firstFlightEntitiesIter.return === 'function') { try { firstFlightEntitiesIter.return(); } catch { /* cleanup-only */ } }
               return cookSuperseded;
             }
-            const censusStep = firstFlightEntitiesIter.next();
+            let censusStep;
+            try {
+              censusStep = firstFlightEntitiesIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(firstFlightEntitiesIter);
+              console.warn('[render] first-flight census drive failed; running the sync twin', driveError);
+              firstFlightEntities = runCookSyncTwin('first-flight census',
+                () => collectFirstFlightCookEntities(state), []);
+              break;
+            }
             if (censusStep.done) { firstFlightEntities = censusStep.value; break; }
             if (providerSliceDue()) {
               const superseded = await providerYield();
@@ -15415,7 +16495,15 @@ export const render = {
                 if (typeof warmIterator.return === 'function') { try { warmIterator.return(); } catch { /* cleanup-only */ } }
                 return cookSuperseded;
               }
-              const warmStep = warmIterator.next();
+              let warmStep;
+              try {
+                warmStep = warmIterator.next();
+              } catch (driveError) {
+                closeCookStepsIter(warmIterator);
+                console.warn('[render] warm ledger refill drive failed; running the sync twin', driveError);
+                runCookSyncTwin('warm ledger refill', () => warmNearbyLedgerRows(state));
+                break;
+              }
               if (warmStep.done) break;
               if (providerSliceDue()) {
                 const superseded = await providerYield();
@@ -15439,7 +16527,16 @@ export const render = {
                 if (typeof collectIterator.return === 'function') { try { collectIterator.return(); } catch { /* cleanup-only */ } }
                 return cookSuperseded;
               }
-              const step = collectIterator.next();
+              let step;
+              try {
+                step = collectIterator.next();
+              } catch (driveError) {
+                collectDone = true;
+                console.warn('[render] presentation collect drive failed; running the sync twin', driveError);
+                runCookSyncTwin('presentation collect',
+                  () => collectMeshPresentationEntities(state, presentation));
+                break;
+              }
               if (step.done) { collectDone = true; break; }
               if (providerSliceDue()) {
                 const superseded = await providerYield();
@@ -15487,14 +16584,38 @@ export const render = {
           for (const [id, mesh] of this._meshes) {
             const entity = resolveWorldPresentationEntity(state, id);
             if (entity && isEntityRenderRelevant(entity, state)) continue;
-            this._unbindPresentationMesh(id, mesh);
+            this._unbindPresentationMesh(id, mesh, true);
             releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
             this.scene.remove(mesh);
-            disposeObject(mesh);
+            // Row bookkeeping before the first teardown yield — same race as
+            // the leftover sweep: a suspended corpse must not stay addressable
+            // for a double despawn push or an id-reissue delete.
             this._meshes.delete(id);
             this._meshesVersion += 1;
-            noteShadowMeshRemoved(this, mesh);
             clearEntityMeshReference(entity, mesh);
+            const departMeasure = { receivers: 0 };
+            const departDispose = disposeObjectSteps(mesh, departMeasure);
+            let departTorn = false;
+            for (;;) {
+              let departDone = false;
+              try {
+                departDone = departDispose.next().done === true;
+              } catch (error) {
+                // Per-corpse catch (despawn-lane contract): flag the torn subtree
+                // for remount re-arm, settle the tally via dirty recount (null),
+                // and keep the depart sweep alive for the corpses behind it.
+                console.info('[render] depart dispose iterator step failed', error);
+                if (mesh && mesh.userData) mesh.userData.sfDespawnPartialTeardown = true;
+                departTorn = true;
+                departDone = true;
+              }
+              if (departDone) break;
+              if (providerSliceDue()) {
+                const superseded = await providerYield();
+                if (superseded) return superseded;
+              }
+            }
+            noteShadowMeshRemoved(this, mesh, departTorn ? null : departMeasure.receivers);
             if (providerSliceDue()) {
               const superseded = await providerYield();
               if (superseded) return superseded;
@@ -15503,12 +16624,28 @@ export const render = {
         } finally {
           this._meshReleaseBatchEnd?.();
         }
-        for (const _ of enqueueMissingMeshBuildsSteps(
+        const providerEnqueueIter = enqueueMissingMeshBuildsSteps(
           firstFlightEntities,
           this._meshes,
           this._meshBuildQueuedIds,
           this._meshBuildQueue,
-        )) {
+        );
+        for (;;) {
+          let enqueueStep;
+          try {
+            enqueueStep = providerEnqueueIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(providerEnqueueIter);
+            console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+            runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+              firstFlightEntities,
+              this._meshes,
+              this._meshBuildQueuedIds,
+              this._meshBuildQueue,
+            ));
+            break;
+          }
+          if (enqueueStep.done) break;
           if (providerSliceDue()) {
             const superseded = await providerYield();
             if (superseded) return superseded;
@@ -15685,7 +16822,19 @@ export const render = {
         return postSuperseded();
       };
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-        for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+        const lightBudgetIter = syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video);
+        for (;;) {
+          let lightStep;
+          try {
+            lightStep = lightBudgetIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(lightBudgetIter);
+            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('light-budget', () =>
+              syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+            break;
+          }
+          if (lightStep.done) break;
           if (await postPace()) return postSupersededResult();
         }
       } else {
@@ -15700,103 +16849,78 @@ export const render = {
       const collectLateAdmissionCensus = async () => {
         const censusIter = typeof collectInstancePoolCompileRootsAndSubjectsSteps === 'function'
           ? collectInstancePoolCompileRootsAndSubjectsSteps(scene, 256) : null;
-        if (!censusIter) {
-          // Steps-less host fallback — still paced: each collector's own Steps
-          // twin exists in latePipelineAdmission, so this path survives only
-          // where those are unavailable too (then the sync collectors run).
-          let fallbackRoots = [];
-          let fallbackLateEntities = [];
-          let fallbackUncompiled = [];
-          if (typeof collectInstancePoolCompileRootsSteps === 'function') {
-            const rootsIt = collectInstancePoolCompileRootsSteps(scene);
-            for (;;) {
-              const rootsStep = rootsIt.next();
-              if (rootsStep.done) { fallbackRoots = rootsStep.value; break; }
-              if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+        // Roots, late-admitted entities and the uncompiled sweep all derive
+        // from the one combined {roots, subjects} walk — the same derivation
+        // the healthy drive runs below, shared so a Steps-less host or a torn
+        // drive pays one atomic collect instead of three separate walks plus
+        // the per-root subject re-collects the null-subjects shape forced.
+        const deriveCensus = async (censusValue) => {
+          let meshWalkVisited = 0;
+          const meshRootSet = new Set();
+          for (const root of this._meshes.values()) {
+            if (root) meshRootSet.add(root);
+            if (++meshWalkVisited % 256 === 0 && await postPace()) {
+              return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
             }
-          } else {
-            fallbackRoots = collectInstancePoolCompileRoots(scene);
           }
-          if (typeof collectLateAdmittedCompileRootsSteps === 'function') {
-            const lateIt = collectLateAdmittedCompileRootsSteps(this._meshes, openingSubjects);
-            for (;;) {
-              const lateStep = lateIt.next();
-              if (lateStep.done) { fallbackLateEntities = lateStep.value; break; }
-              if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+          const lateRootSet = new Set();
+          const enclosingMemo = new Map();
+          const enclosingMeshRoot = (subject) => {
+            const chain = [];
+            let hit = null;
+            let node = subject;
+            while (node) {
+              if (meshRootSet.has(node)) { hit = node; break; }
+              if (enclosingMemo.has(node)) { hit = enclosingMemo.get(node); break; }
+              chain.push(node);
+              node = node.parent;
             }
-          } else {
-            fallbackLateEntities = collectLateAdmittedCompileRoots(this._meshes, openingSubjects);
+            for (const entry of chain) enclosingMemo.set(entry, hit);
+            return hit;
+          };
+          const uncompiled = [];
+          for (const subject of censusValue.subjects) {
+            if (await postPace()) {
+              return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+            }
+            if (opening.has(subject)) continue;
+            uncompiled.push(subject);
+            const holder = enclosingMeshRoot(subject);
+            if (holder) lateRootSet.add(holder);
           }
-          if (typeof collectUncompiledSceneDrawablesSteps === 'function') {
-            const uncompiledIt = collectUncompiledSceneDrawablesSteps(scene, openingSubjects);
-            for (;;) {
-              const uncompiledStep = uncompiledIt.next();
-              if (uncompiledStep.done) { fallbackUncompiled = uncompiledStep.value; break; }
-              if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+          // _meshes insertion order — the same order the registry walk produced.
+          const lateEntities = [];
+          for (const root of this._meshes.values()) {
+            if (++meshWalkVisited % 256 === 0 && await postPace()) {
+              return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
             }
-          } else {
-            fallbackUncompiled = collectUncompiledSceneDrawables(scene, openingSubjects);
+            if (lateRootSet.has(root)) lateEntities.push(root);
           }
           return {
-            roots: fallbackRoots,
-            lateEntities: fallbackLateEntities,
-            uncompiled: fallbackUncompiled,
-            subjects: null,
+            roots: censusValue.roots,
+            lateEntities,
+            uncompiled,
+            subjects: censusValue.subjects,
           };
+        };
+        if (!censusIter) {
+          return deriveCensus(collectInstancePoolCompileRootsAndSubjects(scene));
         }
         let census = null;
         for (;;) {
-          const censusStep = censusIter.next();
+          let censusStep;
+          try {
+            censusStep = censusIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(censusIter);
+            console.warn('[render] late-admission census drive failed; running the sync twin', driveError);
+            return deriveCensus(runCookSyncTwin('late-admission census',
+              () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: [] }));
+          }
           if (censusStep.done) { census = censusStep.value; break; }
           if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
         }
-        let meshWalkVisited = 0;
-        const meshRootSet = new Set();
-        for (const root of this._meshes.values()) {
-          if (root) meshRootSet.add(root);
-          if (++meshWalkVisited % 256 === 0 && await postPace()) {
-            return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
-          }
-        }
-        const lateRootSet = new Set();
-        const enclosingMemo = new Map();
-        const enclosingMeshRoot = (subject) => {
-          const chain = [];
-          let hit = null;
-          let node = subject;
-          while (node) {
-            if (meshRootSet.has(node)) { hit = node; break; }
-            if (enclosingMemo.has(node)) { hit = enclosingMemo.get(node); break; }
-            chain.push(node);
-            node = node.parent;
-          }
-          for (const entry of chain) enclosingMemo.set(entry, hit);
-          return hit;
-        };
-        const uncompiled = [];
-        for (const subject of census.subjects) {
-          if (await postPace()) {
-            return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
-          }
-          if (opening.has(subject)) continue;
-          uncompiled.push(subject);
-          const holder = enclosingMeshRoot(subject);
-          if (holder) lateRootSet.add(holder);
-        }
-        // _meshes insertion order — the same order the registry walk produced.
-        const lateEntities = [];
-        for (const root of this._meshes.values()) {
-          if (++meshWalkVisited % 256 === 0 && await postPace()) {
-            return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
-          }
-          if (lateRootSet.has(root)) lateEntities.push(root);
-        }
-        return {
-          roots: census.roots,
-          lateEntities,
-          uncompiled,
-          subjects: census.subjects,
-        };
+        return deriveCensus(census || { roots: [], subjects: [] });
       };
       // flatMap(collectCompileSubjects) without the per-root re-traversal: bucket
       // the census subjects under their nearest enclosing compile root (nested
@@ -15941,7 +17065,7 @@ export const render = {
       // Group form of whileRevealed: reveal every subject (and its hidden ancestors) of a
       // touch group, run once, restore last-in-first-out so shared ancestors and nested
       // subjects return exactly to where they started.
-      const whileRevealedGroup = (subjects, run) => {
+      const whileRevealedGroup = async (subjects, run) => {
         const restores = [];
         try {
           for (const subject of subjects) {
@@ -15955,7 +17079,10 @@ export const render = {
               restoreSubject();
             });
           }
-          return run();
+          // Await inside the try: the pacing driver resumes a suspended touch
+          // while the live scene keeps presenting — restoring at first suspend
+          // re-hides the subjects and the rest of the touch no-ops.
+          return await run();
         } finally {
           for (let i = restores.length - 1; i >= 0; i--) restores[i]();
         }
@@ -15974,16 +17101,20 @@ export const render = {
             issueKeyFor: openingCompileIssueKey,
             renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-            compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
+            compileOne: async (subject) => {
+              await stampSubjectEnvAsync(subject);
+              return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene));
+            },
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
             // Thousands of units on a Crucible cook (the bounded roster warm's palette subjects):
             // one touch each was ~6 ms of whole-scene hide/render/restore — ~20 s of the launch.
             // Loading only; the same shell-less path keeps one subject per touch.
             touchMany: state.mode === 'loading'
-              ? (subjects) => whileRevealedGroup(subjects, () => {
-                lateTouchSession = lateTouchSession || drawableHideSession(scene);
-                return touchExactTargetSubjects(subjects, lateTouchSession);
-              })
+              ? async (subjects) => {
+                // Mint the session before the reveal (paced mint suspends).
+                lateTouchSession = lateTouchSession || (await mintTouchDrawableSession(scene));
+                return whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects, lateTouchSession));
+              }
               : null,
             touchBatchSize: 24,
             yieldToMain: yieldToBrowser,
@@ -16042,7 +17173,16 @@ export const render = {
           const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
           let precollected = null;
           for (;;) {
-            const collectStep = collectIter.next();
+            let collectStep;
+            try {
+              collectStep = collectIter.next();
+            } catch (driveError) {
+              // A throwing caster pre-collect just skips the optimization —
+              // the ceremony's own census collects the same list internally.
+              closeCookStepsIter(collectIter);
+              console.warn('[render] caster pre-collect drive failed; letting the ceremony collect', driveError);
+              break;
+            }
             if (collectStep.done) { precollected = collectStep.value; break; }
             if (await postPace()) {
               return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
@@ -16053,7 +17193,17 @@ export const render = {
         for (let attempt = 0; attempt < 4; attempt += 1) {
           const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
           for (;;) {
-            const depthStep = depthIter.next();
+            let depthStep;
+            try {
+              depthStep = depthIter.next();
+            } catch (driveError) {
+              // A throw is not light drift — a re-mint hits the same fault, so
+              // skip the pass (the next admission re-arm retries it wholesale)
+              // instead of burning the four drift attempts on the dead drive.
+              closeCookStepsIter(depthIter);
+              console.warn('[render] depth compile drive failed; skipping the depth pass', driveError);
+              return { skipped: true, reason: 'depth-compile-drive-failed', subjects: 0 };
+            }
             if (depthStep.done) {
               lastRetryResult = depthStep.value;
               if (lastRetryResult && (lastRetryResult.stale === true
@@ -16138,13 +17288,17 @@ export const render = {
             issueKeyFor: openingCompileIssueKey,
             renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-            compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, rescanRoute)),
+            compileOne: async (subject) => {
+              await stampSubjectEnvAsync(subject);
+              return whileRevealed(subject, () => this._compilePostRoute(rescanRoute, subject, cam.obj, scene));
+            },
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
             touchMany: state.mode === 'loading'
-              ? (subjects) => whileRevealedGroup(subjects, () => {
-                rescanTouchSession = rescanTouchSession || drawableHideSession(scene);
-                return touchExactTargetSubjects(subjects, rescanTouchSession);
-              })
+              ? async (subjects) => {
+                // Mint the session before the reveal (paced mint suspends).
+                rescanTouchSession = rescanTouchSession || (await mintTouchDrawableSession(scene));
+                return whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects, rescanTouchSession));
+              }
               : null,
             touchBatchSize: 24,
             yieldToMain: yieldToBrowser,
@@ -16188,6 +17342,9 @@ export const render = {
       };
     };
     state.render.preparePostOpeningPipelines = () => {
+      // An armed late-foundry bake retires at the pass head — the paced
+      // ledger already tolerates this spend, the presented frame didn't.
+      this._drainFoundryEnvPending?.();
       // Both the software warmup chain and the KHR live-sector barrier can reach this pass in
       // the same loading window; the released flag only lands at the end, so a second caller
       // must join the in-flight run rather than double the shadow-map prime and compiles.
@@ -16272,14 +17429,24 @@ export const render = {
         if (!plan) {
           const planIter = buildOpeningSubmissionPlanSteps.call(this);
           for (;;) {
-            const planStep = planIter.next();
+            let planStep;
+            try {
+              planStep = planIter.next();
+            } catch (driveError) {
+              // A throwing plan build degrades to plan-incomplete — the
+              // documented refuse path below already enters flight and keeps
+              // admitting behind the first picture.
+              closeCookStepsIter(planIter);
+              console.warn('[render] opening plan drive failed; degrading to plan-incomplete', driveError);
+              break;
+            }
             if (planStep.done) {
               plan = planStep.value;
               break;
             }
             await yieldToBrowser();
           }
-          stampProducerReceipt(plan);
+          if (plan) stampProducerReceipt(plan);
         }
         if (!plan || plan.complete !== true
           || !plan.firstPlayablePipelineSet
@@ -16428,6 +17595,7 @@ export const render = {
         openingStepStarted = openingNow();
         // The receipt re-walks the live scene and probes every subject's binding —
         // pace its legs under the cook's own yield instead of one atomic window.
+        const receiptFallback = createOpeningSubmissionReceipt;
         const receiptIter = createOpeningSubmissionReceiptSteps(renderer, plan, {
           scene,
           programMaterials: openingPostMaterials,
@@ -16435,7 +17603,23 @@ export const render = {
           shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
         });
         for (;;) {
-          const receiptStep = receiptIter.next();
+          let receiptStep;
+          try {
+            receiptStep = receiptIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(receiptIter);
+            console.warn('[render] opening receipt drive failed; running the sync twin', driveError);
+            if (!openingStale()) {
+              state.render.openingSubmissionReceipt = runCookSyncTwin('opening receipt',
+                () => receiptFallback(renderer, plan, {
+                  scene,
+                  programMaterials: openingPostMaterials,
+                  shadowProgramKeys: this._openingShadowAdmission?.programCacheKeys,
+                  shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
+                }), state.render.openingSubmissionReceipt);
+            }
+            break;
+          }
           if (receiptStep.done) {
             // A prepare superseded mid-receipt must not stamp the dead scene's
             // census over the live baseline the first-draw gate validates.
@@ -16524,13 +17708,12 @@ export const render = {
       releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
       const m = this._meshes.get(id);
       if (m) {
-        this._unbindPresentationMesh(id, m);
+        this._unbindPresentationMesh(id, m, true);
         scene.remove(m); this._meshes.delete(id); this._meshesVersion += 1;
         // Kill bursts land the per-corpse traverse+dispose flush inside one sim step. The GL
         // tail is presentation-only — the corpse is already off-scene — so it queues for the
         // bounded per-frame drain instead of hitching the whole despawn into one task.
         this._despawnDisposeQueue.push(m);
-        this._noteShadowMeshRemoved?.(m);
         this._queueAssetResidencyDiagnosticsPublish();
       }
     }, { presentation: true });
@@ -17612,10 +18795,13 @@ export const render = {
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
-        // Nothing in flight awaits this stored promise — suppress the rejection the way
-        // the sibling assignment does, or a failed cook surfaces as an uncaught page
-        // error while ordinary residency keeps drawing the sector.
-        pipelinePrecompile.catch(() => {});
+        // Nothing in flight awaits this stored promise — suppress the unhandled
+        // rejection the way the sibling assignment does, but keep the failure
+        // loud: a cook that rejected mid-tail leaves the sector meshless and
+        // needs a breadcrumb, not a silent swallow.
+        pipelinePrecompile.catch((error) => {
+          console.warn('[render] pipeline precompile rejected', error);
+        });
         this._publishAssetResidencyDiagnostics();
         return;
       }
@@ -17654,7 +18840,9 @@ export const render = {
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
-        pipelinePrecompile.catch(() => {});
+        pipelinePrecompile.catch((error) => {
+          console.warn('[render] pipeline precompile rejected', error);
+        });
         this._publishAssetResidencyDiagnostics();
         return;
       }
@@ -17968,17 +19156,12 @@ export const render = {
     if (!lifecycle) return false;
     const destroyed = lifecycle.destroy();
     if (!destroyed && this._rendererResourcesDisposed === true) return false;
-    // The deferred-corpse queue only exists once init reaches its allocation — a renderer torn
-    // down mid-init (or a facade owner in tests) must still destroy cleanly.
-    if (Array.isArray(this._despawnDisposeQueue)) {
-      for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
-        const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
-        if (queued && queued.parent == null) disposeObject(queued);
-      }
-      this._despawnDisposeQueue.length = 0;
-      this._despawnDisposeHead = 0;
-      this._despawnDisposeIter = null;
-    }
+    // The deferred-corpse queues only exist once init reaches their allocation — a renderer
+    // torn down mid-init (or a facade owner in tests) must still destroy cleanly.
+    flushDisposeQueueLane(this, '_despawnDisposeQueue', '_despawnDisposeHead');
+    flushDisposeQueueLane(this, '_warmDisposeQueue', '_warmDisposeHead');
+    this._despawnDisposeIter = null;
+    this._warmDisposeIter = null;
     disposeRendererOwnedResources(this, { contextLost: this._contextLost === true });
     globalShipMicroMotion.unbindEvents();
     globalAsteroidMotion.unbindEvents();
@@ -18148,7 +19331,174 @@ export const render = {
       // type warms the leaf + detail material family the promotion can ever draw.
       asteroidVisualExemplarSpecs(),
     );
-    for (const spec of exemplarSpecs) {
+    // A re-emit with nothing new must queue zero census-hold work — the same
+    // dedupe the per-spec ledger gives inside the drain, applied at mint time:
+    // every exemplar/weapon already ledgered and the leaf + catalog legs already
+    // attempted means there is genuinely nothing for a drain to do.
+    let needsWork = !this._rosterPrewarmLeafWarmed || !this._rosterPrewarmCatalogAttempted;
+    if (!needsWork) {
+      for (const spec of exemplarSpecs) {
+        if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
+        if (!this._rosterPrewarmIds.has(spec.id)
+            && !(this._meshes && this._meshes.has(spec.id))) { needsWork = true; break; }
+      }
+    }
+    if (!needsWork) {
+      for (const spec of specs) {
+        const weapons = spec && spec.data && spec.data.weapons;
+        if (!Array.isArray(weapons)) continue;
+        for (const w of weapons) {
+          const weaponId = w && (w.defId || w.id);
+          if (typeof weaponId === 'string' && weaponId.length > 0
+              && !(this._rosterPrewarmWeaponIds && this._rosterPrewarmWeaponIds.has(weaponId))) {
+            needsWork = true;
+            break;
+          }
+        }
+        if (needsWork) break;
+      }
+    }
+    if (!needsWork) return;
+    // The cohort used to mount inside one emit task — ~40-60 whole-boundary
+    // vf.build+scene.add runs plus a synchronous countShadowReceivers per mount
+    // froze the loading shell's rAF. It now drives as a paced drain that yields
+    // between ~8ms slices, with the drain itself in _rosterPrewarmPending so the
+    // cook's shell hold still covers the full cohort.
+    if (this._rosterPrewarmCohortDrain) {
+      // A drain is in flight: fold the emit's payload into the pending spec
+      // map instead of queuing a second serial drain. Coverage dedupes at
+      // push, the consume-time merge dedupes the 3-family exemplar concat
+      // across emits, and the drive re-drains ONCE per burst — a same-payload
+      // re-emit costs a few map writes, never another full-universe walk.
+      const specQueue = this._rosterPrewarmSpecQueue
+        || (this._rosterPrewarmSpecQueue = new Map());
+      for (const spec of specs) {
+        if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
+        if (specQueue.has(spec.id)) continue;
+        if (this._rosterPrewarmIds.has(spec.id)
+            || (this._meshes && this._meshes.has(spec.id))) {
+          // A covered hull is a no-row unless it still owns a never-warmed
+          // weapon id — the consume's weapon pass scans mergedSpecs for those.
+          const weapons = spec.data && spec.data.weapons;
+          const newWeapon = Array.isArray(weapons) && weapons.some((w) => {
+            const weaponId = w && (w.defId || w.id);
+            return typeof weaponId === 'string' && weaponId.length > 0
+              && !(this._rosterPrewarmWeaponIds && this._rosterPrewarmWeaponIds.has(weaponId));
+          });
+          if (!newWeapon) continue;
+        }
+        specQueue.set(spec.id, { spec, compilePipelines, exemplarSpecs });
+      }
+      return;
+    }
+    // The drive chain covers this mint plus every tail-folded re-emit under one
+    // pending entry — the census hold sees queued specs too. runSeq pins the
+    // run epoch: a mid-drive release bumps it and both the loop and the drain's
+    // per-spec walk bail instead of re-mounting exemplars into the next run's
+    // ledgers.
+    const runSeq = this._rosterPrewarmRunSeq | 0;
+    const drive = (async () => {
+      for (let emit = { specs, compilePipelines, exemplarSpecs }; emit;) {
+        const list = emit.exemplarSpecs || emit.specs.concat(
+          wreckVisualExemplarSpecs(),
+          combatSpawnableExemplarSpecs(),
+          asteroidVisualExemplarSpecs(),
+        );
+        try {
+          await this._drainRosterPrewarmCohort(list, emit.specs, emit.compilePipelines, runSeq);
+        } catch (error) {
+          console.warn('[render] survival roster prewarm drain failed', error);
+        }
+        if ((this._rosterPrewarmRunSeq | 0) !== runSeq) break;
+        // Consume the coalesced spec map as ONE merged emit: payload specs
+        // dedupe by id at push and the exemplar concats union by spec id
+        // here (coverage re-verify), so a burst re-drains a single pass
+        // instead of a serial pass per queued emit.
+        const specQueue = this._rosterPrewarmSpecQueue;
+        if (!specQueue || specQueue.size === 0) break;
+        const mergedSpecs = [];
+        const mergedExemplars = [];
+        const seenExemplarIds = new Set();
+        let mergedCompile = compilePipelines;
+        for (const [id, row] of specQueue) {
+          specQueue.delete(id);
+          if (!row || !row.spec) continue;
+          mergedSpecs.push(row.spec);
+          mergedCompile = row.compilePipelines || mergedCompile;
+          for (const exemplar of row.exemplarSpecs || []) {
+            const key = exemplar && exemplar.id;
+            if (key == null || seenExemplarIds.has(key)) continue;
+            seenExemplarIds.add(key);
+            if (this._rosterPrewarmIds.has(key)
+                || (this._meshes && this._meshes.has(key))) continue;
+            mergedExemplars.push(exemplar);
+          }
+        }
+        if (mergedSpecs.length === 0 && mergedExemplars.length === 0) break;
+        // Payload hulls warm ahead of the deduped family tail — a late
+        // emit's front-row wave no longer waits behind the first emit's
+        // exemplar concat. Coverage/order semantics otherwise unchanged.
+        const mergedIds = new Set();
+        for (const spec of mergedSpecs) if (spec && spec.id != null) mergedIds.add(spec.id);
+        emit = {
+          specs: mergedSpecs,
+          compilePipelines: mergedCompile,
+          exemplarSpecs: mergedSpecs.concat(
+            mergedExemplars.filter((e) => !(e && mergedIds.has(e.id))),
+          ),
+        };
+      }
+      // The stamp clear is synchronous with the last consume, so an emit
+      // either lands in the map above or finds a null stamp and mints its
+      // own drive — nothing strands on an exited chain. Identity-guard the
+      // clear: a stale drive's settle must not wipe a newer drive's stamp
+      // (the run-epoch machinery already retired its work — but an unguarded
+      // null would let the next emit mint a concurrent third drive).
+      if (this._rosterPrewarmCohortDrain === drive) this._rosterPrewarmCohortDrain = null;
+    })();
+    this._rosterPrewarmCohortDrain = drive;
+    const drain = drive.catch((error) => {
+      console.warn('[render] survival roster prewarm drive failed', error);
+    });
+    if (this._rosterPrewarmPending) {
+      this._rosterPrewarmPending.add(drain);
+      observePipelineAdmission(drain.finally(() => {
+        if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(drain);
+      }));
+      // A drive minted between the settle hold's exit and the released stamp
+      // lands after the post-opening pass's collection cut — arm the rescan so
+      // the late cohort sweeps under the pass instead of compiling cold inside
+      // flight. Post-release emits leave the flag alone: their drain is the
+      // ordinary paced in-flight path.
+      if (this._postOpeningPipelineAdmissionReleased !== true) {
+        this._postOpeningRescanRequested = true;
+      }
+    }
+  },
+
+  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines, runSeq) {
+    // Yield the browser only once a slice of cohort work actually cost ~8ms —
+    // big rosters pace across gaps while a small emit (or a CLI driver) still
+    // mints the whole cohort inside its own task.
+    const cohortNow = () => (typeof performance !== 'undefined'
+      && typeof performance.now === 'function' ? performance.now() : Date.now());
+    let cohortLap = cohortNow();
+    // Sync check: `await` on a resolved promise still suspends to a microtask —
+    // callers gate the await itself so an under-budget slice never leaves the
+    // current task.
+    const cohortOwed = () => {
+      if (cohortNow() - cohortLap < 8) return false;
+      cohortLap = cohortNow();
+      return true;
+    };
+    // Run-epoch guard (drive-minted callers only): a release mid-drain bumps
+    // _rosterPrewarmRunSeq, and this stale pass bails per iteration instead of
+    // mounting hidden exemplars into the next run's roots/ids ledgers.
+    const staleRun = () => runSeq !== undefined
+      && (this._rosterPrewarmRunSeq | 0) !== runSeq;
+    for (let ei = 0; ei < exemplarSpecs.length; ei++) {
+      const spec = exemplarSpecs[ei];
+      if (staleRun()) return;
       if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
       if (this._rosterPrewarmIds.has(spec.id)
           || (this._meshes && this._meshes.has(spec.id))) continue;
@@ -18176,7 +19526,10 @@ export const render = {
         boundary.userData = boundary.userData || {};
         boundary.userData.rosterPrewarm = spec.id;
         this.scene.add(boundary);
-        this._noteShadowMeshAdded?.(boundary);
+        // Cohort-batched tally: one dirty mark per mount instead of a
+        // synchronous countShadowReceivers walk per exemplar — the paced
+        // recount absorbs the whole cohort in one walk.
+        this._markShadowReceiversDirty?.();
         this._rosterPrewarmRoots.push(boundary);
         try {
           const admitted = requestAuthoredUpgrade(boundary, this.renderer, this.scene, {
@@ -18196,7 +19549,7 @@ export const render = {
             // fitSeed/palette = the exact chunk keys the second witness must promote.
             upgradeJobKey: witness > 0 ? `rosterPrewarm:${spec.id}:w${witness}` : undefined,
             residencyRole: 'survival-roster-prewarm',
-            sectorId: (state && state.world && state.world.currentSectorId) || null,
+            sectorId: (this.state && this.state.world && this.state.world.currentSectorId) || null,
             isResidencyOwnerActive: () => this._rosterPrewarmIds.has(spec.id)
               && boundary.parent === this.scene,
           });
@@ -18226,6 +19579,31 @@ export const render = {
         } catch (error) {
           console.warn('[render] survival roster prewarm admission failed', spec.id, error);
         }
+        if (cohortOwed()) await yieldToBrowser();
+      }
+      if (cohortOwed()) {
+        // Mid-drain arrivals: queued payload specs splice in just past the
+        // cursor so a wave landing mid-drain warms inside this drain instead
+        // of serial-waiting out the remaining exemplar tail. Its own emit's
+        // exemplar concat still merges at the post-drain consume; compile
+        // closures are the single shared lane (verified at mint). Covered
+        // ids ride only the weapon pass — a queue row exists for them
+        // exactly when they still own a never-warmed weapon id.
+        const specQueue = this._rosterPrewarmSpecQueue;
+        if (specQueue && specQueue.size) {
+          const splice = [];
+          for (const [qid, row] of specQueue) {
+            specQueue.delete(qid);
+            const qspec = row && row.spec;
+            if (!qspec || qspec.id == null) continue;
+            specs.push(qspec);
+            if (this._rosterPrewarmIds.has(qspec.id)
+                || (this._meshes && this._meshes.has(qspec.id))) continue;
+            splice.push(qspec);
+          }
+          if (splice.length) exemplarSpecs.splice(ei + 1, 0, ...splice);
+        }
+        await yieldToBrowser();
       }
     }
     // Projectile exemplars: every weapon id the roster fields gets one hidden bolt through the
@@ -18241,6 +19619,7 @@ export const render = {
       }
     }
     for (const weaponId of weaponIds) {
+      if (staleRun()) return;
       if (this._rosterPrewarmWeaponIds.has(weaponId)) continue;
       this._rosterPrewarmWeaponIds.add(weaponId);
       const weapon = WEAPONS.find((entry) => entry && entry.id === weaponId);
@@ -18266,7 +19645,7 @@ export const render = {
         mesh.visible = false;
         mesh.position.set(0, 0, 0);
         this.scene.add(mesh);
-        this._noteShadowMeshAdded?.(mesh);
+        this._markShadowReceiversDirty?.();
         this._rosterPrewarmRoots.push(mesh);
         const settled = compilePipelines(mesh).catch((error) => {
           console.warn('[render] survival roster projectile warm failed', weaponId, error);
@@ -18280,29 +19659,46 @@ export const render = {
       } catch (error) {
         console.warn('[render] survival roster projectile warm failed', weaponId, error);
       }
+      if (cohortOwed()) await yieldToBrowser();
     }
     // Leaf-variant blanket: each type's exemplar only touches its hashId-picked displacement
     // variant, but a mid-round promotion can draw any of the five siblings. One hidden leaf mesh
     // per (type, variant) puts every shared geometry buffer + non-instanced program on the GPU
     // before flight — a late build then costs object creation only.
-    try {
-      const leafWarm = buildAsteroidLeafWarmGroup();
-      leafWarm.visible = false;
-      this.scene.add(leafWarm);
-      this._noteShadowMeshAdded?.(leafWarm);
-      this._rosterPrewarmRoots.push(leafWarm);
-      const leafSettled = compilePipelines(leafWarm).catch((error) => {
+    // Flag-guarded: a merged re-drain must not build a second leaf group.
+    if (!this._rosterPrewarmLeafWarmed) {
+      this._rosterPrewarmLeafWarmed = true;
+      try {
+        const leafWarm = buildAsteroidLeafWarmGroup();
+        leafWarm.visible = false;
+        this.scene.add(leafWarm);
+        this._markShadowReceiversDirty?.();
+        this._rosterPrewarmRoots.push(leafWarm);
+        const leafSettled = compilePipelines(leafWarm).catch((error) => {
+          console.warn('[render] asteroid leaf-variant warm failed', error);
+        });
+        if (this._rosterPrewarmPending) {
+          this._rosterPrewarmPending.add(leafSettled);
+          observePipelineAdmission(leafSettled.finally(() => {
+            if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(leafSettled);
+          }));
+        }
+      } catch (error) {
         console.warn('[render] asteroid leaf-variant warm failed', error);
-      });
-      if (this._rosterPrewarmPending) {
-        this._rosterPrewarmPending.add(leafSettled);
-        observePipelineAdmission(leafSettled.finally(() => {
-          if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(leafSettled);
-        }));
       }
-    } catch (error) {
-      console.warn('[render] asteroid leaf-variant warm failed', error);
     }
+    // Roots mounted after the reskin continuation's bare→PBR sweep ran never
+    // got its upgrade — re-run it idempotently so no exemplar stays bare. A
+    // sweep that lands later upgrades the same set again (no-op).
+    try {
+      let upgraded = 0;
+      for (const root of this._rosterPrewarmRoots || []) {
+        if (staleRun()) return;
+        upgraded += upgradeBareRockMaterials(root);
+        if (cohortOwed()) await yieldToBrowser();
+      }
+    } catch (_) { /* upgrade pass is best-effort */ }
+    this._rosterPrewarmCatalogAttempted = true;
     this._admitRosterPartCatalog(compilePipelines, specs);
   },
 
@@ -18722,11 +20118,29 @@ export const render = {
         this._earlyCrucibleWarmMenu = false;
       }
       try {
-        if (root.parent) {
-          root.parent.remove(root);
+        const wasMounted = !!root.parent;
+        if (root.parent) root.parent.remove(root);
+        if (this._contextLost === true) {
+          if (wasMounted) this._noteShadowMeshRemoved?.(root);
+          // Same flag as the sibling teardowns: the inline note settles the
+          // tally, so a root that ever re-queued can't be double-counted.
+          if (root.userData) root.userData.sfDespawnNoted = true;
+          return;
+        }
+        // An installed authored disposer keeps its own teardown contract; the
+        // plain disposeObject fallback rides the bounded drain which settles
+        // the receiver note from its own measured walk. Unmounted roots ride
+        // the same paced lane — a fat composed tree released before its first
+        // mount used to pay the atomic O(subtree) teardown inline; the
+        // pre-stamped sfDespawnNoted just tells the drain its measured note
+        // nets to nothing (never mounted = never counted).
+        if (!disposePreparedAuthoredBoundary(root)) {
+          if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+          if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
+          this._warmDisposeQueue.push(root);
+        } else if (wasMounted) {
           this._noteShadowMeshRemoved?.(root);
         }
-        if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
       } catch (_) { /* teardown is best-effort */ }
     };
     // The exemplar build loops used to run as one synchronous ~120-250 ms block
@@ -19263,12 +20677,22 @@ export const render = {
     const index = list.indexOf(root);
     if (index >= 0) list.splice(index, 1);
     try {
-      if (root.parent) {
-        root.parent.remove(root);
+      const wasMounted = !!root.parent;
+      if (root.parent) root.parent.remove(root);
+      if (this._contextLost === true) {
+        if (wasMounted) this._noteShadowMeshRemoved?.(root);
+        if (root.userData) root.userData.sfDespawnNoted = true;
+        return;
+      }
+      // Never-mounted roots ride the paced lane too (sfDespawnNoted skips
+      // the nets-to-nothing note) — see the sibling release sites.
+      if (!disposePreparedAuthoredBoundary(root)) {
+        if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+        if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
+        this._warmDisposeQueue.push(root);
+      } else if (wasMounted) {
         this._noteShadowMeshRemoved?.(root);
       }
-      if (this._contextLost === true) return;
-      if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
     } catch (_) { /* teardown is best-effort */ }
   },
 
@@ -20478,10 +21902,12 @@ export const render = {
         // One walk feeds both the diagnostic node count and the receiver tally's
         // exact settle — the tally's own recount would re-traverse the same subtree.
         const measure = { nodes: 0 };
-        const receivers = countShadowReceivers(root, measure);
+        const receivers = countShadowReceivers(root, measure, UNMEASURED_SHADOW_NOTE_NODE_MAX);
         nodes += measure.nodes;
         root.parent.remove(root);
-        this._noteShadowMeshRemoved?.(root, receivers);
+        // A cap-aborted walk (-1) must not settle as a receiver count — let the
+        // note's unmeasured path land it on the paced recount.
+        this._noteShadowMeshRemoved?.(root, receivers < 0 ? null : receivers);
         roots += 1;
         // Diagnostics only: probes audit which program keys the warm compiled; parked roots are
         // off the scene graph, so they are published here instead of found by a scene walk.
@@ -20523,12 +21949,33 @@ export const render = {
     if (this._rosterPrewarmIds) this._rosterPrewarmIds.clear();
     if (this._rosterPrewarmWeaponIds) this._rosterPrewarmWeaponIds.clear();
     if (this._rosterPrewarmPending) this._rosterPrewarmPending.clear();
+    // Queued re-emits and the in-flight stamp die with the run: a fresh run
+    // mints its own drive rather than consuming emits under the old chain.
+    // The seq bump also retires a still-running async drive — the drain's
+    // per-spec epoch check bails instead of mounting exemplars into the new
+    // run's roots/ids ledgers.
+    this._rosterPrewarmSpecQueue = new Map();
+    this._rosterPrewarmCohortDrain = null;
+    this._rosterPrewarmRunSeq = (this._rosterPrewarmRunSeq | 0) + 1;
     if (this._rosterPartCatalogRoot) {
       const catalog = this._rosterPartCatalogRoot;
       this._rosterPartCatalogRoot = null;
       try {
+        const catalogMounted = !!catalog.parent;
         if (catalog.parent) catalog.parent.remove(catalog);
-        if (this._contextLost !== true) disposeObject(catalog);
+        // The catalog accumulated receiveShadow parts while mounted — settle
+        // the tally exactly like the sibling warm roots do: measured note via
+        // the bounded drain (authored disposer first if one was installed).
+        if (this._contextLost === true) {
+          if (catalogMounted) this._noteShadowMeshRemoved?.(catalog);
+          if (catalog.userData) catalog.userData.sfDespawnNoted = true;
+        } else if (!disposePreparedAuthoredBoundary(catalog)) {
+          if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+          if (!catalogMounted && catalog.userData) catalog.userData.sfDespawnNoted = true;
+          this._warmDisposeQueue.push(catalog);
+        } else if (catalogMounted) {
+          this._noteShadowMeshRemoved?.(catalog);
+        }
       } catch (error) {
         console.warn('[render] roster part catalog release failed', reason, error);
       }
@@ -20536,18 +21983,32 @@ export const render = {
     for (const root of roots) {
       if (!root) continue;
       try {
-        if (root.parent) {
+        const wasMounted = !!root.parent;
+        if (wasMounted) {
           root.parent.remove(root);
-          this._noteShadowMeshRemoved?.(root);
+          // Queued corpses settle the tally from the teardown's own measured
+          // walk; a contextLost corpse never queues, so it notes inline — and
+          // flags the mesh so the drain can't double-count it.
+          if (this._contextLost === true) {
+            this._noteShadowMeshRemoved?.(root);
+            if (root.userData) root.userData.sfDespawnNoted = true;
+          }
         }
         // A lost context already owns those buffers: detach the root but never invoke the
         // old context's disposers (the same abandon contract the rest of teardown obeys).
         if (this._contextLost === true) continue;
         // Whole composed warm trees pace across the despawn drain's parked
         // per-corpse iterators instead of paying an atomic teardown inside the
-        // run:ended emit — the detach/shadow bookkeeping above stays immediate.
-        if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
-        this._despawnDisposeQueue.push(root);
+        // run:ended emit — never-mounted roots ride the same lane with
+        // sfDespawnNoted pre-stamped (no mount-time note to settle), so the
+        // paced contract covers them instead of the inline O(subtree) walk.
+        if (!disposePreparedAuthoredBoundary(root)) {
+          if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+          if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
+          this._warmDisposeQueue.push(root);
+        } else if (wasMounted) {
+          this._noteShadowMeshRemoved?.(root);
+        }
       } catch (error) {
         console.warn('[render] survival roster prewarm release failed', reason, error);
       }
@@ -20960,6 +22421,308 @@ export const render = {
 
   // Burst-safe variant: a bus flush carrying N corpse events rebuilds the canonical sort once
   // at the microtask boundary instead of O(assets) per corpse.
+  // Culled roots freeze their subtree matrices so the per-frame walk stops
+  // recomposing them, but the freeze mint itself is O(subtree) — a cull storm
+  // (the opening picture's syncEntityViews, a sector transition) sums it to
+  // O(scene) inside one presented pass. The freeze is benefit-only, so mints
+  // ride this queue drained a few roots per sync pass; an unfrozen culled
+  // subtree keeps paying the compose it always paid.
+  _queueHiddenSubtreeFreeze(mesh) {
+    if (!mesh || mesh.matrixAutoUpdate !== true) return;
+    const ud = mesh.userData || (mesh.userData = {});
+    if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true) {
+      // The kept sfHiddenFrozen flag also marks the show->restore window: a
+      // re-hide inside it cancels the pending restore outright, so a
+      // sub-dwell cull->show->cull flap costs zero subtree walks. The drain's
+      // abandon check would kill a parked restore iterator a pass later via
+      // sfHiddenFreezeQueued anyway — stamp-killing it here is just earlier.
+      // A bound (unbind-owed) restore cancels the same way: the freeze lane
+      // re-owns the subtree's marks, so the owed restore is moot.
+      delete ud.sfHiddenUnfreezeQueued;
+      delete ud.sfHiddenUnfreezeQueuedSeq;
+      delete ud.sfHiddenUnfreezeBound;
+      const parkedUnfreeze = ud.sfHiddenUnfreezeIter || null;
+      if (parkedUnfreeze) {
+        try { parkedUnfreeze.return(); } catch (_) { /* discard proceeds */ }
+        delete ud.sfHiddenUnfreezeIter;
+      }
+      return;
+    }
+    ud.sfHiddenFreezeQueued = true;
+    // Queue age feeds the drain's flap dwell: a mint must only fire after the
+    // root stays culled across the whole dwell window, or a first-cycle
+    // cull->show flap pays the mint+restore pair for ~zero compose savings.
+    ud.sfHiddenFreezeQueuedSeq = this._viewSyncSeq || 0;
+    // Shared flap epoch: the unfreeze lane's own dwell only delays its stamp,
+    // so a freeze queued after a cancelled unfreeze inherits the queue date of
+    // a long-dead first request — this stamp is what the freezes dwell on.
+    ud.sfHiddenFlapSeq = ud.sfHiddenFreezeQueuedSeq;
+    if (!this._pendingHiddenFreeze) this._pendingHiddenFreeze = [];
+    this._pendingHiddenFreeze.push(mesh);
+  },
+
+  _drainHiddenFreezeQueue() {
+    const pending = this._pendingHiddenFreeze;
+    if (!pending || pending.length === 0) return;
+    // The drain rides every cook yield seam AND the per-pass sync call —
+    // its per-call caps are per-INVOCATION, so an unclocked drain stacks
+    // seams/frame × caps of invisible presented-frame work. Debit the wallet
+    // honestly in flight and let a spent wallet park the tail after the
+    // first row (progress is still guaranteed per call).
+    const drainNow = () => (typeof performance !== 'undefined'
+      && typeof performance.now === 'function' ? performance.now() : Date.now());
+    const drainStarted = drainNow();
+    const flightMode = this.state && this.state.mode === 'flight';
+    try {
+      const viewSeq = this._viewSyncSeq || 0;
+      let minted = 0;
+      let scanned = 0;
+      let visited = 0;
+      let nodesWorked = 0;
+      let w = 0;
+      const tornFreezeMints = [];
+      for (let r = 0; r < pending.length; r += 1) {
+        const mesh = pending[r];
+        if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
+            || visited >= HIDDEN_FREEZE_VISIT_PER_PASS
+            || nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS
+            || (flightMode && visited > 0 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+          pending[w++] = mesh;
+          continue;
+        }
+      visited += 1;
+      const ud = mesh.userData || {};
+      let iter = ud.sfHiddenFreezeIter || null;
+      if (!iter) {
+        // Unbind clears the flag precisely so its entry cannot mint: honor it
+        // before any other check or a pooled reuse inherits a full subtree
+        // freeze the world no longer owns. Dead drops are free — a mass-unbind
+        // storm can't starve live entries behind its own garbage.
+        if (ud.sfHiddenFreezeQueued !== true) continue;
+        scanned += 1;
+        // Boundary flap hysteresis: a root re-shown inside the dwell window
+        // would pay ~4 subtree visits minting+restoring a freeze that saves ~1
+        // compose-visit per hidden frame — defer the mint, never drop the entry.
+        const lastShow = ud.sfHiddenFreezeLastShowSeq;
+        // The dwell spans queue age as well as last-show: a freshly-queued entry
+        // stays deferred until it has spent the full window culled — the first
+        // cull->show cycle of a flap used to mint the same pass it queued.
+        const dwellBase = Math.max(lastShow || 0, ud.sfHiddenFreezeQueuedSeq || 0,
+          ud.sfHiddenFlapSeq || 0);
+        if (viewSeq - dwellBase < HIDDEN_FREEZE_FLAP_DWELL) {
+          pending[w++] = mesh;
+          continue;
+        }
+        // A row re-shown, detached, or restored mid-queue drops out instead of
+        // minting a freeze on a subtree that is live again — the queued flags
+        // are consumed on the drop so a later cull window can re-queue.
+        if (ud.sfHiddenFrozen === true || mesh.matrixAutoUpdate !== true
+            || mesh.visible === true || !mesh.parent) {
+          delete ud.sfHiddenFreezeQueued;
+          delete ud.sfHiddenFreezeQueuedSeq;
+          continue;
+        }
+        // Compose before freezing: writers skip the hook once the flag is true,
+        // so the local matrix for the last pose exists only after this compose.
+        mesh.matrixAutoUpdate = false;
+        mesh.updateMatrix();
+        ud.sfHiddenFrozen = true;
+        iter = freezeHiddenSubtreeMatricesSteps(mesh);
+      } else {
+        scanned += 1;
+        // Abandon checks for a parked mint: the queued flag cleared (unbind),
+        // the frozen flag cleared (a re-show queued the unfreeze lane, which
+        // restores exactly the stamped prefix), a detached root (the stamped
+        // prefix heals on re-show), or matrixAutoUpdate restored externally —
+        // all kill the iterator and drop the row.
+        if (ud.sfHiddenFreezeQueued !== true || ud.sfHiddenFrozen !== true
+            || mesh.matrixAutoUpdate === true || mesh.visible === true || !mesh.parent) {
+          try { iter.return(); } catch (_) { /* discard proceeds */ }
+          delete ud.sfHiddenFreezeIter;
+          delete ud.sfHiddenFreezeQueued;
+          delete ud.sfHiddenFreezeQueuedSeq;
+          continue;
+        }
+      }
+      // Drive the mint under the per-pass node budget — a packaged-hull subtree
+      // parks mid-walk on its own queue entry instead of landing the whole
+      // freeze+mark pair inside one presented beat.
+      let step = null;
+      try {
+        while (!(step = iter.next()).done) {
+          nodesWorked += HIDDEN_FREEZE_MINT_YIELD_NODES;
+          if (nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS) break;
+        }
+      } catch (_) {
+        // A torn mint drops the row; sfHiddenFrozen stays true so the subtree
+        // keeps the frozen prefix and a re-show restores it by stamp.
+        if (tornFreezeMints.length < 4) tornFreezeMints.push(mesh && mesh.name || '?');
+        step = { done: true };
+      }
+      if (!step || step.done !== true) {
+        // The queued flag stays set while parked — unbind clearing it is how a
+        // dead parked mint is detected on resume.
+        ud.sfHiddenFreezeIter = iter;
+        pending[w++] = mesh;
+        continue;
+      }
+      delete ud.sfHiddenFreezeIter;
+      delete ud.sfHiddenFreezeQueued;
+      delete ud.sfHiddenFreezeQueuedSeq;
+      minted += 1;
+      }
+      pending.length = w;
+      if (tornFreezeMints.length > 0) {
+        console.info('[render] hidden-freeze mints torn mid-walk; rows dropped:', tornFreezeMints.join(', '));
+      }
+    } finally {
+      if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
+    }
+  },
+
+  // The unfreeze rides the same bounded-drain shape as the freeze: a mass
+  // re-show (sector re-entry, camera snap over a culled fleet, zoom-in across
+  // the cull boundary) otherwise pays ~2x O(subtree) restore walks per root
+  // inside one presented pass — the atomic O(scene) class relocated from the
+  // cull edge to the un-cull edge. Deferral is correctness-safe: the root's
+  // pose write sets matrixWorldNeedsUpdate, and the vendored updateMatrixWorld
+  // descends marked subtrees under force, so the re-shown subtree keeps paying
+  // the unfrozen compose it paid pre-W100 until its restore mints.
+  _queueHiddenSubtreeUnfreeze(mesh) {
+    if (!mesh) return;
+    const ud = mesh.userData || {};
+    if (ud.sfHiddenFrozen !== true || ud.sfHiddenUnfreezeQueued === true) return;
+    ud.sfHiddenUnfreezeQueued = true;
+    // Queue age feeds the drain's restore-side dwell: the mint must only run
+    // after the root stays shown for the whole dwell window, or a first-cycle
+    // cull->show flap pays the ~3-walk restore for ~zero hidden frames. The
+    // queue stamp is the show epoch — sfHiddenFreezeLastShowSeq re-stamps on
+    // every visible pass and so can never serve as a dwell base.
+    ud.sfHiddenUnfreezeQueuedSeq = this._viewSyncSeq || 0;
+    ud.sfHiddenFlapSeq = ud.sfHiddenUnfreezeQueuedSeq;
+    (this._pendingHiddenUnfreeze || (this._pendingHiddenUnfreeze = [])).push(mesh);
+  },
+
+  _drainHiddenUnfreezeQueue() {
+    const pending = this._pendingHiddenUnfreeze;
+    if (!pending || pending.length === 0) return;
+    // Twin of the freeze drain's metering: a mass re-show mints up to the
+    // same caps inside the same seams, so it debits the flight wallet and
+    // parks its tail on a spent wallet — first row still guaranteed per call.
+    const drainNow = () => (typeof performance !== 'undefined'
+      && typeof performance.now === 'function' ? performance.now() : Date.now());
+    const drainStarted = drainNow();
+    const flightMode = this.state && this.state.mode === 'flight';
+    try {
+    const viewSeq = this._viewSyncSeq || 0;
+    let minted = 0;
+    let scanned = 0;
+    let visited = 0;
+    let nodesWorked = 0;
+    let w = 0;
+    const tornUnfreezeMints = [];
+    for (let r = 0; r < pending.length; r += 1) {
+      const mesh = pending[r];
+      if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
+          || visited >= HIDDEN_FREEZE_VISIT_PER_PASS
+          || nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS
+          || (flightMode && visited > 0 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+        pending[w++] = mesh;
+        continue;
+      }
+      visited += 1;
+      const ud = mesh.userData || {};
+      let iter = ud.sfHiddenUnfreezeIter || null;
+      if (!iter) {
+        // Dead drops (flag cleared mid-queue — unbind also killed the iter
+        // stamp) are free — same exemption as the freeze drain so an unbind
+        // storm can't park live restores.
+        if (ud.sfHiddenUnfreezeQueued !== true) continue;
+        scanned += 1;
+        // Restore-side flap dwell — the freeze mint's mirror image. The kept
+        // sfHiddenFrozen flag early-outs the freeze queue on a sub-dwell
+        // re-hide and this entry dead-drops at the flag check for zero walks;
+        // a period>=4 flapper used to pay ~7 subtree walks per cycle for ~3
+        // hidden frames of compose savings.
+        // Dwell on the latest queue direction stamp, not this lane's own:
+        // a cancel-then-refreeze flap would otherwise keep deferring the
+        // freeze mint on the original queue date forever.
+        if (viewSeq - Math.max(ud.sfHiddenUnfreezeQueuedSeq || 0, ud.sfHiddenFlapSeq || 0)
+            < HIDDEN_FREEZE_FLAP_DWELL) {
+          pending[w++] = mesh;
+          continue;
+        }
+        delete ud.sfHiddenUnfreezeQueued;
+        delete ud.sfHiddenUnfreezeQueuedSeq;
+        // Re-culled rows dead-drop above (the kept flag's freeze-queue
+        // early-out deleted this entry's flag); a detached or externally
+        // re-frozen root drops here. sfHiddenFrozen is not a drop signal on
+        // this path — it stays true until the mint below consumes it.
+        // mesh.visible matters the same way it does on the freeze lane:
+        // hide-in-place paths (submit-false/pose-fail) never touch the queue,
+        // so a deferred-admission row sits invisible past the dwell — a mint
+        // here would spend the restore on a mesh that draws nothing and
+        // surrender the freeze's savings mid-pending.
+        const boundRestore = ud.sfHiddenUnfreezeBound === true;
+        if (ud.sfHiddenFreezeQueued === true
+            || mesh.matrixAutoUpdate !== true
+            || (boundRestore
+              // Bound (unbind-owed) restores mint regardless of attach/visible
+              // state — the row's next owner can't inherit frozen marks — but
+              // a re-frozen row still drops: the freeze lane re-owns marks.
+              ? ud.sfHiddenFrozen === true
+              : (!mesh.parent || mesh.visible !== true))) {
+          if (boundRestore) delete ud.sfHiddenUnfreezeBound;
+          continue;
+        }
+        ud.sfHiddenFrozen = false;
+        iter = unfreezeHiddenSubtreeMatricesSteps(mesh);
+      } else {
+        scanned += 1;
+        // Abandon checks for a parked restore: re-culled (the freeze lane owns
+        // the subtree's marks now — still-stamped nodes stay frozen for the
+        // next restore), detached, hidden in place, or matrixAutoUpdate
+        // re-frozen externally. An unbound row's iter stamp was already
+        // deleted — it falls into the dead-entry gate above for free.
+        const boundLive = ud.sfHiddenUnfreezeBound === true;
+        if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true
+            || mesh.matrixAutoUpdate !== true
+            || (!boundLive && (!mesh.parent || mesh.visible !== true))) {
+          try { iter.return(); } catch (_) { /* discard proceeds */ }
+          delete ud.sfHiddenUnfreezeIter;
+          delete ud.sfHiddenUnfreezeBound;
+          continue;
+        }
+      }
+      let step = null;
+      try {
+        while (!(step = iter.next()).done) {
+          nodesWorked += HIDDEN_FREEZE_MINT_YIELD_NODES;
+          if (nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS) break;
+        }
+      } catch (_) {
+        if (tornUnfreezeMints.length < 4) tornUnfreezeMints.push(mesh && mesh.name || '?');
+        step = { done: true };
+      }
+      if (!step || step.done !== true) {
+        ud.sfHiddenUnfreezeIter = iter;
+        pending[w++] = mesh;
+        continue;
+      }
+      delete ud.sfHiddenUnfreezeIter;
+      delete ud.sfHiddenUnfreezeQueued;
+      delete ud.sfHiddenUnfreezeBound;
+      minted += 1;
+    }
+    pending.length = w;
+    if (tornUnfreezeMints.length > 0) {
+      console.info('[render] hidden-unfreeze mints torn mid-walk; rows dropped:', tornUnfreezeMints.join(', '));
+    }
+    } finally {
+      if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
+    }
+  },
+
   _queueAssetResidencyDiagnosticsPublish() {
     if (this._assetResidencyDiagnosticsPublishQueued === true) return;
     this._assetResidencyDiagnosticsPublishQueued = true;
@@ -21009,17 +22772,11 @@ export const render = {
     // descendant) is dead work until first submit. Freeze it here; syncEntityViews restores
     // matrixAutoUpdate on entry. Every root transform writer composes through the
     // matrixAutoUpdate === false hook (PERF-59), so the freeze cannot stale a live write.
-    // Compose once now: writers skip the hook while the flag is still true, so the local
-    // matrix for the just-written bind pose only exists after this updateMatrix().
-    if (mesh.matrixAutoUpdate === true) {
-      mesh.matrixAutoUpdate = false;
-      mesh.updateMatrix();
-      mesh.userData.sfHiddenFrozen = true;
-      // Without the subtree freeze the per-frame walk still descends this culled
-      // root's whole subtree recomposing local matrices nobody writes until
-      // re-entry — stamp-boundary freeze + sfMatrixFrozen marks prune it out.
-      freezeHiddenSubtreeMatrices(mesh);
-    }
+    // The subtree freeze is benefit-only, so its O(subtree) mint rides the
+    // bounded queue instead of landing inside this bind — the drain composes
+    // the just-written bind pose (writers skip the hook once the flag is true)
+    // before freezing, same as the inline form did.
+    this._queueHiddenSubtreeFreeze(mesh);
     const lanes = this._persistentSubmitLanes;
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
@@ -21051,16 +22808,69 @@ export const render = {
 
   _flushMeshReleasePending() {
     const pending = this._meshReleasePending;
-    this._meshReleasePending = null;
     if (!pending || pending.size === 0) return;
-    globalShipMicroMotion.releaseMeshSet(pending);
-    globalAsteroidMotion.releaseMeshSet(pending);
-    globalInfrastructureMotion.releaseMeshSet(pending);
-    globalForgeCrown.releaseMeshSet(pending);
-    globalLawArenaDressing.releaseMeshSet(pending);
+    // Releases are idempotent and the Set dedupes, so a spent paced window
+    // defers the flush rather than stacking an un-metered walk inside a storm
+    // frame. The aging cap mirrors the sibling lanes' so a permanently-busy
+    // stretch still forces the pass; real spend debits the shared ledger so
+    // the sibling gates can see it.
+    const pacedSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+    if (pacedSpent
+        && ((this._meshReleaseLedgerSkips | 0) < DESPAWN_DISPOSE_LEDGER_MAX_SKIPS
+          || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+      this._meshReleaseLedgerSkips = Math.min(
+        (this._meshReleaseLedgerSkips | 0) + 1, DESPAWN_DISPOSE_LEDGER_MAX_SKIPS);
+      return;
+    }
+    this._meshReleaseLedgerSkips = 0;
+    const forcedRun = pacedSpent;
+    const flushNow = () => (typeof performance !== 'undefined'
+      && typeof performance.now === 'function') ? performance.now() : Date.now();
+    const flushStartedAt = flushNow();
+    const registries = [globalShipMicroMotion, globalAsteroidMotion,
+      globalInfrastructureMotion, globalForgeCrown, globalLawArenaDressing];
+    // The flush used to run all 5 O(pending) registries in one atomic span.
+    // Pace at registry granularity: past the 4 ms wall a resume cursor carries
+    // the remaining registries to the next call — the SAME Set stays pending,
+    // so rows added mid-flush are never dropped (and releases are idempotent,
+    // so a re-driven registry tolerates rows it already saw).
+    const flushStartSize = pending.size;
+    let rePend = false;
+    let i = this._meshReleaseRegistryIndex | 0;
+    for (; i < registries.length; i++) {
+      try {
+        registries[i].releaseMeshSet(pending);
+      } catch (releaseError) {
+        // A throwing registry loses only its own rows for this pass — re-pend
+        // the set so the next flush retries them instead of pinning dead
+        // meshes in that registry's motion records for the session's life.
+        rePend = true;
+        console.warn('[render] mesh-release registry flush failed; rows re-pended', releaseError);
+      }
+      if (i + 1 < registries.length && flushNow() - flushStartedAt >= 4) {
+        this._meshReleaseRegistryIndex = i + 1;
+        this._meshReleasePending = pending;
+        const flushElapsed = flushNow() - flushStartedAt;
+        notePacedFrameSpend(flushElapsed);
+        if (forcedRun) noteForcedFrameSpend(flushElapsed);
+        return;
+      }
+    }
+    this._meshReleaseRegistryIndex = 0;
+    // Rows added while this flush was suspended only ever saw the registries
+    // that hadn't run yet — a grown set re-drives whole next pass instead of
+    // leaking those rows' releases on the already-run prefix.
+    if (rePend || pending.size > flushStartSize) {
+      this._meshReleasePending = pending;
+    } else {
+      this._meshReleasePending = null;
+    }
+    const flushElapsed = flushNow() - flushStartedAt;
+    notePacedFrameSpend(flushElapsed);
+    if (forcedRun) noteForcedFrameSpend(flushElapsed);
   },
 
-  _unbindPresentationMesh(entityId, mesh = null) {
+  _unbindPresentationMesh(entityId, mesh = null, disposeBound = false) {
     if (mesh) {
       // The caller-match gate covers the release too: a stale caller id that
       // mismatches the mark must not strip the live mark-owner's claims — a
@@ -21133,11 +22943,66 @@ export const render = {
       }
     }
     // A culled-frozen root leaving the presentation world goes back to whatever owns the
-    // object next (dispose, pool reuse, rebuild) in its build-time state.
+    // object next (dispose, pool reuse, rebuild) in its build-time state. A queued-but-
+    // unminted freeze stamp drops with the row so a pooled reuse can't inherit it.
+    const owedBoundRestore = !!(mesh && mesh.userData
+      && mesh.userData.sfHiddenUnfreezeBound === true);
+    if (mesh && mesh.userData) {
+      delete mesh.userData.sfHiddenFreezeQueued;
+      delete mesh.userData.sfHiddenFreezeQueuedSeq;
+      delete mesh.userData.sfHiddenFreezeLastShowSeq;
+      delete mesh.userData.sfHiddenUnfreezeQueued;
+      delete mesh.userData.sfHiddenUnfreezeQueuedSeq;
+      delete mesh.userData.sfHiddenUnfreezeBound;
+      delete mesh.userData.sfHiddenFlapSeq;
+      // A parked mid-mint iterator must not resume against a row the world no
+      // longer owns — kill it here; the subtree's stamped prefix heals via the
+      // sfHiddenFrozen branch's restore below (partial prefixes unfreeze
+      // exactly by stamp).
+      try { mesh.userData.sfHiddenFreezeIter?.return?.(); } catch (_) { /* discard */ }
+      delete mesh.userData.sfHiddenFreezeIter;
+      try { mesh.userData.sfHiddenUnfreezeIter?.return?.(); } catch (_) { /* discard */ }
+      delete mesh.userData.sfHiddenUnfreezeIter;
+      // A mesh recycling out of a despawn-noted corpse must not carry the
+      // drain's note-skip flag into a fresh queue entry.
+      delete mesh.userData.sfDespawnNoted;
+    }
     if (mesh && mesh.userData && mesh.userData.sfHiddenFrozen === true) {
       mesh.userData.sfHiddenFrozen = false;
       mesh.matrixAutoUpdate = true;
-      unfreezeHiddenSubtreeMatrices(mesh);
+      // A corpse-bound unbind's interior marks die with the subtree — the
+      // despawn drain's dispose walks flags, not matrixAutoUpdate, so the
+      // ~2x-subtree restore walk is dead work on every kill-burst row.
+      if (disposeBound !== true) {
+        // Live unbinds stay restore-before-reuse, but a mass unbind (keepGpu
+        // recook over a culled sector's kept boundaries) pays ~2x O(subtree)
+        // per flagged root in one sweep frame — the atomic class the freeze
+        // lanes exist to amortize. Past the inline budget the restore queues
+        // as a bound entry: restore-owed — no dwell, no detach/invisible
+        // abandon — so the drain still finalizes it before any real reuse.
+        if (this._unbindRestoreSeq !== this._viewSyncSeq) {
+          this._unbindRestoreSeq = this._viewSyncSeq;
+          this._unbindRestoreInline = 0;
+        }
+        this._unbindRestoreInline += 1;
+        if (this._unbindRestoreInline <= UNBIND_HIDDEN_RESTORE_INLINE_PER_PASS) {
+          unfreezeHiddenSubtreeMatrices(mesh);
+        } else {
+          mesh.userData.sfHiddenUnfreezeBound = true;
+          mesh.userData.sfHiddenUnfreezeQueued = true;
+          (this._pendingHiddenUnfreeze || (this._pendingHiddenUnfreeze = []))
+            .push(mesh);
+        }
+      }
+    } else if (owedBoundRestore && mesh && disposeBound !== true) {
+      // A bound-queued row unbound again before the drain minted its owed
+      // restore: the queue entry died with the stamp clear above. Re-queue
+      // the same bound shape rather than paying the ~2x O(subtree) restore
+      // inline — the drain still finalizes it before any real reuse.
+      mesh.userData.sfHiddenUnfreezeBound = true;
+      mesh.userData.sfHiddenUnfreezeQueued = true;
+      (this._pendingHiddenUnfreeze || (this._pendingHiddenUnfreeze = []))
+        .push(mesh);
     }
     // The submit-lane reservation is keyed by entity id, not by the world handle: it must
     // release even when the handle (or the world) is already gone, or the slot strands.
@@ -21466,14 +23331,11 @@ export const render = {
 
   clearAllMeshes(keepPlayer) {
     this._sectorBoundaryPreparations?.abortAll('render-mesh-clear');
-    // Whole-tree teardown stays synchronous — flush the deferred corpse tail with it.
-    for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
-      const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
-      if (queued && queued.parent == null) disposeObject(queued);
-    }
-    this._despawnDisposeQueue.length = 0;
-    this._despawnDisposeHead = 0;
+    // Whole-tree teardown stays synchronous — flush the deferred corpse tails with it.
+    flushDisposeQueueLane(this, '_despawnDisposeQueue', '_despawnDisposeHead');
+    flushDisposeQueueLane(this, '_warmDisposeQueue', '_warmDisposeHead');
     this._despawnDisposeIter = null;
+    this._warmDisposeIter = null;
     // Depth-stage bookkeeping is keyed on roots this teardown is about to
     // remove — wholesale-clear it with the meshes (the per-root seam is
     // _sweepDetachedDepthStageRoots at arm time).
@@ -21496,7 +23358,7 @@ export const render = {
     try {
       for (const [id, m] of [...this._meshes]) {
         if (keepPlayer && id === this.state.playerId) continue;
-        this._unbindPresentationMesh(id, m);
+        this._unbindPresentationMesh(id, m, true);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
       }
@@ -21526,9 +23388,29 @@ export const render = {
       if (!texture) return;
       if (!this._rendererLifecycle) { try { texture.dispose(); } catch (_) {} return; }
       this._foundryEnvTexture = texture;
-      this._bakeEnv();
+      // A late arrival (fetch outliving the whole boot) must not run the
+      // PMREM convolve inside a presented surface — flight OR menu (the menu's
+      // live rAF bricked the same way on the flight-only gate). Arm it for the
+      // next veiled context: enterLoadingMode's transition head drains it, as
+      // do the cook seams and the post-opening pass. The frozen-opening path
+      // still banks inside _bakeEnv and is promoted at unfreeze.
+      if ((this.state && this.state.mode) !== 'loading') {
+        this._foundryEnvPending = true;
+      } else {
+        this._bakeEnv();
+      }
     });
-    this._foundryIblPromise.catch(() => {});
+    this._foundryIblPromise.catch((error) => {
+      console.warn('[render] foundry IBL load failed', error);
+    });
+  },
+
+  // Runs an armed foundry bake at a seam/pass head — one bounded convolve in a
+  // context that already tolerates paced spend, instead of a presented frame.
+  _drainFoundryEnvPending() {
+    if (this._foundryEnvPending !== true) return;
+    this._foundryEnvPending = false;
+    this._bakeEnv();
   },
 
   _bakeEnv(options = {}) {
@@ -21550,7 +23432,16 @@ export const render = {
       if (options.force !== true
           && this._envMapTarget != null
           && earlyIblSource === this._envMapSource) return;
-      const pmrem = new THREE.PMREMGenerator(renderer);
+      // The generator carries program/RT setup per mint — cache it across
+      // bakes inside one context epoch and re-mint on a GL restore (the cached
+      // chain is dead GL state there).
+      const pmremContextSeq = Number(state && state.contextRestoreSeq) || 0;
+      if (!this._pmremGenerator || this._pmremContextSeq !== pmremContextSeq) {
+        try { if (this._pmremGenerator) this._pmremGenerator.dispose(); } catch (_) { /* cleanup-only */ }
+        this._pmremGenerator = new THREE.PMREMGenerator(renderer);
+        this._pmremContextSeq = pmremContextSeq;
+      }
+      const pmrem = this._pmremGenerator;
       // Capture the IBL from the foundry HDRI when it has arrived, NOT from the live scene.
       //
       // The live scene is deliberately near-black, so convolving it produced an environment with
@@ -21584,9 +23475,7 @@ export const render = {
           { size: SPACE_REFLECTION_PMREM_CUBE_SIZE },
         );
       }
-      this._envMapSource = iblSource;
       const envMap = envTarget.texture;
-      pmrem.dispose();
       if (reflectionEnv) reflectionEnv.dispose();
       // The PMREM output is a render-target texture: Texture.dispose() reaches no listener for
       // those (initTexture never runs on isRenderTargetTexture), so only disposing the owning
@@ -21613,7 +23502,16 @@ export const render = {
       } else if (deferredEnvDispose) {
         try { deferredEnvDispose.dispose(); } catch (_) {}
       }
-    } catch (_) { /* env-map optional — chrome falls back to high-metalness matte */ }
+      // Stamped only after the env actually commits — a throw in the dispose/
+      // rebind window above must not leave the same-source guard claiming a
+      // source the live env never reached (every later non-force bake would
+      // early-out on the phantom source).
+      this._envMapSource = iblSource;
+    } catch (error) {
+      // env-map is optional — chrome falls back to high-metalness matte — but
+      // a failed bake is a quality deficit worth a line of telemetry.
+      console.warn('[render] env bake failed', error);
+    }
   },
 
   // Self-healing entity<->mesh reconciliation. Guarantees every alive, renderable entity has a
@@ -21723,7 +23621,7 @@ export const render = {
             reconcileScanOpts);
         if (!e || e.alive === false || mismatched || residencyEvict) {
           if (residencyEvict) noteOnGlassResidencyEviction(state, e);
-          this._unbindPresentationMesh(id, m);
+          this._unbindPresentationMesh(id, m, true);
           releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
           // GL disposal rides the bounded despawn queue (drained ~2 ms/frame by the residency
           // service): a different-sector restore would otherwise pay the whole kept working
@@ -21732,7 +23630,6 @@ export const render = {
           if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
           this._despawnDisposeQueue.push(m);
           this._meshes.delete(id); this._meshesVersion += 1;
-          noteShadowMeshRemoved(this, m);
           clearEntityMeshReference(e, m);
         }
       }
@@ -21897,7 +23794,7 @@ export const render = {
           && !isEntityRenderRelevant(entity, state, evictRadius, residencyScanOpts);
         if (!entity || entity.alive === false || residencyEvict) {
           if (residencyEvict) noteOnGlassResidencyEviction(state, entity);
-          this._unbindPresentationMesh(id, mesh);
+          this._unbindPresentationMesh(id, mesh, true);
           releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
           this.scene.remove(mesh);
           // Dead-class evicts are deliberately not gated by the shell latch — ghost meshes
@@ -21909,7 +23806,6 @@ export const render = {
           this._despawnDisposeQueue.push(mesh);
           this._meshes.delete(id);
           this._meshesVersion += 1;
-          noteShadowMeshRemoved(this, mesh);
           clearEntityMeshReference(entity, mesh);
           stats.evicted++;
           continue;
@@ -22266,9 +24162,20 @@ export const render = {
     const steps = typeof this._drainMeshBuildQueueSteps === 'function'
       ? this._drainMeshBuildQueueSteps : render._drainMeshBuildQueueSteps;
     const iterator = steps.call(this, buildBudget);
-    let step = iterator.next();
-    while (!step.done) step = iterator.next();
-    return step.value;
+    this._drainBuildSeen = 0;
+    try {
+      let step = iterator.next();
+      while (!step.done) step = iterator.next();
+      return step.value;
+    } catch (drainError) {
+      // Row builds are already quarantined per-row (_meshBuildLastError /
+      // _noMesh); a throw here is the generator skeleton itself — letting it
+      // through the residency pump would re-throw every frame while the
+      // queue stays non-empty. Report the rows it provably drained instead.
+      try { iterator.return?.(); } catch (_) { /* already torn */ }
+      console.warn('[render] mesh build queue drain faulted mid-walk', drainError);
+      return Math.max(0, this._drainBuildSeen | 0);
+    }
   },
 
   // Stepped twin: one yield per examined queue row so the outer generators'
@@ -22359,9 +24266,19 @@ export const render = {
     // is post-census — re-run the census's own union predicate and admit the survivors.
     const firstFlightIds = this.state && this.state.render
       && this.state.render.liveSectorFirstFlightIds;
+    // Membership only changes on spawn ticks, but this drain runs ~3-4 times
+    // per presented pass while the latches arm — the O(entityList) census
+    // belongs once per pass (per ids set), not once per drain call. A spawn
+    // landing mid-pass waits the frame — the bounded-late direction the
+    // resume comment below already allows.
+    const newcomerCensusDue = !(this._newcomerCensusSeq === this._viewSyncSeq
+      && this._newcomerCensusIds === firstFlightIds);
     if (firstFlightIds && typeof firstFlightIds.has === 'function'
         && (this.state.render.liveSectorGpuAdmission === true
-          || this.state.render.sectorShellAdmission === true)) {
+          || this.state.render.sectorShellAdmission === true)
+        && newcomerCensusDue) {
+      this._newcomerCensusSeq = this._viewSyncSeq;
+      this._newcomerCensusIds = firstFlightIds;
       const newcomerOpts = { bypassShellGates: true, scan: drainScan };
       let newcomersSeen = 0;
       const newcomerList = this.state.entityList || [];
@@ -22454,7 +24371,11 @@ export const render = {
         // off-glass backlog — hoist it to the head once per drain so the
         // on-glass overflow arm above can finish it inside this slice instead
         // of leaving a hole for the rest of the window.
-        if (hoistedDeadlineBuilds || !(yield* driveHoist(this))) break;
+        // Ordering-only work — on a spent ledger the O(queue-tail) scan is
+        // forced cost on the exact frame the ledger said no to. Skip it there;
+        // rows still drain in queue order.
+        if (hoistedDeadlineBuilds || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+            || !(yield* driveHoist(this))) break;
         hoistedDeadlineBuilds = true;
         continue;
       }
@@ -22471,7 +24392,8 @@ export const render = {
         // work buried behind a skip prefix otherwise waits ~prefix-length calls.
         // Hoist it once per drain — ordering only; later calls still bound the
         // builds through this same slice check.
-        if (!hoistedDeadlineBuilds) {
+        if (!hoistedDeadlineBuilds
+            && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) {
           hoistedDeadlineBuilds = true;
           yield* driveHoist(this);
         }
@@ -22664,6 +24586,9 @@ export const render = {
       }
       noteShadowMeshAdded(this, m);
       built++;
+      // The sync driver reads this on a skeleton fault — its own return has to
+      // report rows provably built, not the dequeue delta (skips count too).
+      this._drainBuildSeen = built;
     }
     if (this._meshBuildQueueHead >= this._meshBuildQueue.length) {
       this._meshBuildQueue.length = 0;
@@ -22724,7 +24649,6 @@ export const render = {
         // Same traverse+dispose class as a despawn corpse — ride the bounded per-frame
         // drain instead of paying the GL tail inside the appearanceChanged emit.
         this._despawnDisposeQueue.push(old);
-        noteShadowMeshRemoved(this, old);
         this._queueAssetResidencyDiagnosticsPublish();
       }
     }
@@ -22915,7 +24839,7 @@ export const render = {
     const fence = this._snapshotFence;
     const snapshot = fence && fence.latestSnapshot();
     const previous = !currentOnly && fence ? fence.previousSnapshot() : null;
-    if (!snapshot) return false;
+    if (!snapshotHasEntityGeneration(snapshot, world.entityIds[slot], world.slotGenerations?.[slot])) return false;
     const poseBeforeX = mesh.position.x;
     const poseBeforeZ = mesh.position.z;
     const applied = applySnapshotPoseToMesh(
@@ -22952,13 +24876,25 @@ export const render = {
     const world = this._presentationWorld;
     const snapshot = this._snapshotFence && this._snapshotFence.latestSnapshot();
     if (!world || !snapshot || world.entityIds[slot] !== entityId) return false;
-    return snapshotIndexOf(snapshot, entityId) >= 0;
+    return snapshotHasEntityGeneration(snapshot, entityId, world.slotGenerations?.[slot]);
   },
 
   syncEntityViews(alpha) {
+    const iter = this.syncEntityViewsSteps(alpha);
+    let step = iter.next();
+    while (!step.done) step = iter.next();
+    return step.value;
+  },
+
+  // Stepped twin: same pass, yields at 128-row strides inside the two counted
+  // loops so an async drive (the opening publish) can pace the ~665-line
+  // block across beats. The sync driver above exhausts it inline — the
+  // presented-frame path stays byte-identical.
+  *syncEntityViewsSteps(alpha) {
     // Per-pass sequence stamp: the shadow light census memo keys on it so a frame's
     // N withhold-gate evaluations share one whole-scene traverse.
     this._viewSyncSeq = (this._viewSyncSeq || 0) + 1;
+    resetDrawnCullPassBudget(notePacedFrameSpend);
     // Opt-in CPU attribution only — no performance.now()/ring write when disabled.
     const useCpu = !!(this.state && this.state.perfRuntime
       && this.state.perfRuntime.renderWorkEnabled
@@ -23035,6 +24971,7 @@ export const render = {
     // A root crossing out of the retained visible set receives one final authoritative current pose.
     // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
     for (let index = 0; index < query.hiddenCount; index++) {
+      if ((index & 127) === 127) yield;
       const slot = query.hiddenSlots[index];
       const generation = query.hiddenGenerations[index];
       if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
@@ -23056,13 +24993,7 @@ export const render = {
           mesh.userData.asteroidInstanceViewCulled = true;
         }
         world.clearDirty(slot);
-        const doomedCullData = mesh.userData || (mesh.userData = {});
-        if (mesh.matrixAutoUpdate === true) {
-          mesh.matrixAutoUpdate = false;
-          mesh.updateMatrix();
-          doomedCullData.sfHiddenFrozen = true;
-          freezeHiddenSubtreeMatrices(mesh);
-        }
+        this._queueHiddenSubtreeFreeze(mesh);
         transformed++;
         continue;
       }
@@ -23114,16 +25045,16 @@ export const render = {
       // the force it propagates through the subtree are dead work. Frozen roots still refresh
       // their matrixWorld when a moved ancestor forces the walk, and hidden pose writers all
       // run the matrixAutoUpdate === false hook — output is identical, the compose is gone.
-      // Compose before freezing: the pose write skipped the hook while the flag was true.
-      const cullData = mesh.userData || (mesh.userData = {});
-      if (mesh.matrixAutoUpdate === true) {
-        mesh.matrixAutoUpdate = false;
-        mesh.updateMatrix();
-        cullData.sfHiddenFrozen = true;
-        freezeHiddenSubtreeMatrices(mesh);
-      }
+      this._queueHiddenSubtreeFreeze(mesh);
       transformed++;
     }
+
+    // The mint itself is O(subtree); a cull storm (the opening picture's
+    // syncEntityViews, a sector transition) sums it to O(scene) inside one
+    // presented pass, so freeze roots ride the queue minted a few per pass.
+    // Deferral is correctness-safe: an unfrozen culled subtree keeps paying
+    // the updateMatrixWorld compose it always paid.
+    this._drainHiddenFreezeQueue();
 
     const innerView = viewHalfExtents(
       this.state.camera && this.state.camera.zoom,
@@ -23145,6 +25076,7 @@ export const render = {
     }
 
     for (let index = 0; index < query.visibleCount; index++) {
+      if ((index & 127) === 127) yield;
       const slot = query.visibleSlots[index];
       const generation = query.visibleGenerations[index];
       if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
@@ -23158,10 +25090,19 @@ export const render = {
       // Roots frozen while culled rejoin the live compose path here — mount-frozen static
       // roots carry no stamp and are left alone.
       if (userData.sfHiddenFrozen === true) {
-        userData.sfHiddenFrozen = false;
+        // The ~2x-subtree interior restore rides the bounded drain instead of
+        // landing inside this pass — queue while the flag still reads true.
+        // The flag now STAYS set until the restore mint consumes it: a
+        // sub-dwell re-hide early-outs the freeze queue and dead-drops this
+        // restore for zero walks, while the vendored updateMatrixWorld
+        // force-descend keeps the pose correct through the window. The show
+        // seq below still feeds the freeze side's flap hysteresis.
+        this._queueHiddenSubtreeUnfreeze(mesh);
         mesh.matrixAutoUpdate = true;
-        unfreezeHiddenSubtreeMatrices(mesh);
       }
+      // Every visible row stamps the last-show seq: a first-time flapper (hide
+      // right after a show) dwell-defers too, not only rows that once froze.
+      userData.sfHiddenFreezeLastShowSeq = this._viewSyncSeq || 0;
       // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
       if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
       if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
@@ -23510,6 +25451,11 @@ export const render = {
       }
       world.clearDirty(slot);
     }
+
+    // Deferred interior restores mint a few roots per pass alongside the
+    // freeze queue — mass re-shows amortize instead of paying 2x O(subtree)
+    // per root inside this pass.
+    this._drainHiddenUnfreezeQueue();
 
     if (!slipstreamSeen) writeSlipstreamState(this.state, false, 0);
 
@@ -23894,12 +25840,26 @@ export const render = {
     const publication = this._presentationPublisher && typeof this._presentationPublisher.consume === 'function'
       ? this._presentationPublisher.consume()
       : null;
-    if (publication && publication.rebuilt) yield* this._rebindPresentationMeshesSteps();
-    else if (publication) {
-      yield* this._bindPublishedPresentationMeshesSteps(
-        publication.spawnedSlots
-          ? publication.spawnedSlots.slice(0, publication.spawnedCount)
-          : null);
+    // Bind obligations are durable latches, not one-shot consume flags: a leg
+    // torn mid-walk would otherwise never re-mint (the next consume reports
+    // nothing), leaving world.meshRefs null and doomed bits set on the first
+    // presented frame. Latches clear only on leg completion.
+    if (publication && publication.rebuilt === true) this._openingRebindOwed = true;
+    if (publication && publication.spawnedSlots && publication.spawnedCount > 0) {
+      const announced = publication.spawnedSlots.slice(0, publication.spawnedCount);
+      this._openingSpawnedBindPending = this._openingSpawnedBindPending
+        ? this._openingSpawnedBindPending.concat(announced) : announced;
+    }
+    if (this._openingRebindOwed === true) {
+      yield* this._rebindPresentationMeshesSteps();
+      this._openingRebindOwed = false;
+      // A whole-set rebind covers every announced spawned row.
+      this._openingSpawnedBindPending = null;
+    } else if (this._openingSpawnedBindPending && this._openingSpawnedBindPending.length) {
+      const pendingList = this._openingSpawnedBindPending;
+      yield* this._bindPublishedPresentationMeshesSteps(pendingList);
+      // Identity check: rows announced after this leg minted are still owed.
+      if (this._openingSpawnedBindPending === pendingList) this._openingSpawnedBindPending = null;
     }
 
     if (this._snapshotFence && this._presentationWorld) {
@@ -23937,7 +25897,7 @@ export const render = {
     // This is the same pose/visibility seam as prepareFrame(), intentionally without residency
     // service, background clocks, or any simulation advance. The loading DOM remains the only
     // visible surface; drawPreparedFrame() still refuses to submit while mode=loading.
-    this.syncEntityViews(1);
+    yield* this.syncEntityViewsSteps(1);
     if (state && state.render) state.render.interpolationAlpha = 1;
     if (state && state.render && typeof state.render.prepareOpeningVfxFrame === 'function') {
       state.render.prepareOpeningVfxFrame();
@@ -23951,9 +25911,13 @@ export const render = {
     ensureShipAuxPoolCapacityForFrame(this._shipAuxPool, this._entityFrame, this._meshes);
     tickShieldShellClock(this._shipAuxPool, this.state);
     syncShipAuxPools(this._shipAuxPool, this._entityFrame);
+    // The pool/shadow band's calls write disjoint pools — suspending between
+    // their groups keeps one dense band from being a single frozen-bar leg.
+    yield;
     const openingShadowRadius = liveShadowCastRadius(state);
     this._frameShadowCastRadius = openingShadowRadius;
     this._syncAuthoredInstanceSubmission(openingShadowRadius);
+    yield;
     this._syncShadowMapEnabled();
     if (this._syncKeyLightShadowFrustum(openingShadowRadius)) this._shadowMapDirty = true;
     if (this._updateShadowFollow(true)) this._shadowMapDirty = true;
@@ -24099,13 +26063,31 @@ export const render = {
       // Each settle pass's leg chain (entity sync, forced compose, pool/shadow
       // band, second compose) runs one atomic span — drive the stepped twin so
       // the legs pace between browser beats like the upgrade-promises walk.
+      // A torn step used to reject the whole settle loop and fail the boot:
+      // re-mint once (every leg is idempotent across the 8-pass envelope), then
+      // degrade to the sync twin — degraded-but-alive over dead boot.
       const drivePublishFirstPicture = async () => {
-        const iter = this._publishOpeningFirstPictureSteps();
-        for (;;) {
-          const publishStep = iter.next();
-          if (publishStep.done) return publishStep.value;
-          await yieldToBrowser();
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          const iter = this._publishOpeningFirstPictureSteps();
+          for (;;) {
+            let publishStep;
+            try {
+              publishStep = iter.next();
+            } catch (publishError) {
+              closeCookStepsIter(iter);
+              if (attempt === 0) {
+                console.warn('[boot] opening first-picture publish step faulted; re-minting', publishError);
+                break;
+              }
+              console.warn('[boot] opening first-picture publish step faulted twice; degrading to sync twin', publishError);
+              return runCookSyncTwin('opening-first-picture-publish',
+                () => this._publishOpeningFirstPicture(), true);
+            }
+            if (publishStep.done) return publishStep.value;
+            await yieldToBrowser();
+          }
         }
+        return false;
       };
       for (let pass = 0; pass < 8; pass++) {
         if (!(await drivePublishFirstPicture())) {
@@ -24113,14 +26095,30 @@ export const render = {
         }
         // Each settle pass pays a shadow-candidate census + the _meshes wait-set
         // walk — drive the stepped twin so a big scene does not freeze the last
-        // loading stretch between presenter beats.
+        // loading stretch between presenter beats. The same re-mint-once belt
+        // applies; a walk that faults twice skips the settle wait ([] answers
+        // "no pending upgrades") instead of failing the boot.
         const driveUpgradePromises = async () => {
-          const iter = this._openingFirstPictureUpgradePromisesSteps();
-          for (;;) {
-            const driveStep = iter.next();
-            if (driveStep.done) return driveStep.value;
-            await yieldToBrowser();
+          for (let attempt = 0; attempt < 2; attempt += 1) {
+            const iter = this._openingFirstPictureUpgradePromisesSteps();
+            for (;;) {
+              let driveStep;
+              try {
+                driveStep = iter.next();
+              } catch (upgradeError) {
+                closeCookStepsIter(iter);
+                if (attempt === 0) {
+                  console.warn('[boot] opening upgrade-promise walk faulted; re-minting', upgradeError);
+                  break;
+                }
+                console.warn('[boot] opening upgrade-promise walk faulted twice; skipping the settle wait', upgradeError);
+                return [];
+              }
+              if (driveStep.done) return driveStep.value;
+              await yieldToBrowser();
+            }
           }
+          return [];
         };
         const pending = await driveUpgradePromises();
         if (pending === null) throw new Error('opening first-picture camera unavailable');
@@ -24262,8 +26260,30 @@ export const render = {
     // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
     // because the GPU is temporarily unavailable.
     const publication = this._presentationPublisher.consume(presentationFrame);
+    // A rebind drive that faulted parks on the service epoch like the residency
+    // lanes — the heavy O(_meshes) re-mint suppresses until the next
+    // enter/context-restore instead of rethrowing out of prepareFrame every
+    // frame under publication churn. The cheap spawned-slot leg is NOT parked:
+    // it is independent, per-row idempotent, and is the only bind path for rows
+    // announced while their sweep bind hasn't run.
+    // The park carries the standard bounded in-epoch retry (<=3 drives, >=1 s
+    // between mints) — a transient throw inside the longest leg used to drop
+    // the whole tail until the next enter.
+    const rebindFaulted = this._rebindFaultEpoch === serviceFaultEpoch(this.state)
+      && ((this._rebindFaultRetries | 0) >= 3 || Date.now() < (this._rebindRetryAt || 0));
     if (publication.remapped === true
       || (publication.rebuilt && publication.appliedDelta !== 0)) {
+      this._openingRebindOwed = true;
+    }
+    if (publication && publication.spawnedSlots && publication.spawnedCount > 0) {
+      const announced = publication.spawnedSlots.slice(0, publication.spawnedCount);
+      this._openingSpawnedBindPending = this._openingSpawnedBindPending
+        ? this._openingSpawnedBindPending.concat(announced) : announced;
+    }
+    // Mint on the durable latch — the consume flags that armed it are gone by
+    // the next pass, and a rebuilt+0-delta feed (which never armed it) keeps
+    // skipping the re-mint like before.
+    if (!rebindFaulted && this._openingRebindOwed === true) {
       // A REMAP (world.clear() or rebuildFromEntities) drops every mesh
       // binding by construction — the whole-_meshes rebind must mint — and a
       // fallback diff-apply with real alloc/retire churn needs it too (those
@@ -24278,18 +26298,29 @@ export const render = {
       if (priorRebind && typeof priorRebind.return === 'function') {
         try { priorRebind.return(); } catch (_) { /* fresh walk supersedes */ }
       }
-      this._presentationRebindIter = this._rebindPresentationMeshesSteps();
-    } else if (publication && publication.spawnedCount > 0) {
+      const owner = this;
+      // The latch clears only when the rebind leg completes — a torn walk
+      // keeps the obligation minted so the next consume-free pass re-runs it.
+      this._presentationRebindIter = (function* () {
+        yield* owner._rebindPresentationMeshesSteps();
+        owner._openingRebindOwed = false;
+        owner._openingSpawnedBindPending = null;
+      })();
+    } else if (this._openingSpawnedBindPending && this._openingSpawnedBindPending.length) {
       // A parked walk still owns unbound tail rows the new publication does not
       // cover — chain it behind the spawned range instead of dropping them.
       // Spawned rows bind FIRST: during a suspended rebuild the parked tail
       // can stretch across presents, and fresh spawns near the player would
       // pop in late waiting behind it. Per-row lazy checks make the tail
       // order non-load-bearing and re-binding is idempotent.
-      const spawnedIter = this._bindPublishedPresentationMeshesSteps(
-        publication.spawnedSlots
-          ? publication.spawnedSlots.slice(0, publication.spawnedCount)
-          : null);
+      const owner = this;
+      const pendingList = this._openingSpawnedBindPending;
+      const spawnedIter = (function* () {
+        yield* owner._bindPublishedPresentationMeshesSteps(pendingList);
+        if (owner._openingSpawnedBindPending === pendingList) {
+          owner._openingSpawnedBindPending = null;
+        }
+      })();
       this._presentationRebindIter = this._presentationRebindIter
         ? this._chainPresentationBindIters(spawnedIter, this._presentationRebindIter)
         : spawnedIter;
@@ -24302,13 +26333,23 @@ export const render = {
         ? performance.now()
         : Date.now();
       for (;;) {
+        // Ledger consult at loop top: a spent pass parks the walk instead of
+        // stepping it (worst frame cost, so first to yield).
+        if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
         const iter = this._presentationRebindIter;
         let step;
         try {
           step = iter.next();
         } catch (err) {
-          this._presentationRebindIter = null;
-          throw err;
+          closeCookStepsIter(iter);
+          if (this._presentationRebindIter === iter) this._presentationRebindIter = null;
+          const rebindEpoch = serviceFaultEpoch(this.state);
+          if (this._rebindFaultEpoch !== rebindEpoch) this._rebindFaultRetries = 0;
+          this._rebindFaultEpoch = rebindEpoch;
+          this._rebindFaultRetries = (this._rebindFaultRetries | 0) + 1;
+          this._rebindRetryAt = Date.now() + 1000;
+          console.warn('[render] presentation rebind drive failed; retrying under cooldown', err);
+          break;
         }
         if (step.done) {
           if (this._presentationRebindIter === iter) this._presentationRebindIter = null;
@@ -24319,6 +26360,9 @@ export const render = {
           : Date.now();
         if (rebindNow - rebindStart >= 4) break;
       }
+      notePacedFrameSpend(
+        (typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()) - rebindStart);
     }
     // PresentationRunner publishes a caller-owned completed-tick record, not the tick number
     // itself. Its sequence is the immutable simulation publication boundary; falling back to the
@@ -24348,7 +26392,12 @@ export const render = {
         }
         pendingPack = this._fencePackPending = null;
       }
-      if ((snapshotNeedsPack || pendingPack) && this._snapshotFence && this._presentationWorld) {
+      // A pack that faulted parks its own re-mints after 3 tries on the same
+      // epoch — a persistent fault must not re-mint+throw every frame.
+      const packFaulted = this._fencePackFaultEpoch === packEpoch
+        && (this._fencePackFaults | 0) >= 3;
+      if ((snapshotNeedsPack || pendingPack) && this._snapshotFence && this._presentationWorld
+          && !packFaulted) {
         if (!pendingPack) {
           pendingPack = this._fencePackPending = {
             iter: typeof packPresentationWorldToFenceSteps === 'function'
@@ -24366,7 +26415,32 @@ export const render = {
           const packStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
             ? performance.now() : Date.now();
           for (;;) {
-            const step = pendingPack.iter.next();
+            // Shared ledger consult at loop top + measured debit at exit:
+            // a whole-world copy on a spent pass parks instead of stacking
+            // un-metered work on the magic frame.
+            if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+            let step;
+            try {
+              step = pendingPack.iter.next();
+            } catch (packError) {
+              // A thrown pack must NOT stamp _snapshotSourceTick — the dead
+              // iter would read done next frame, publish undefined stats, and
+              // leave the fence serving stale poses indefinitely.
+              closeCookStepsIter(pendingPack.iter);
+              this._fencePackPending = null;
+              if (this._fencePackFaultEpoch !== packEpoch) {
+                this._fencePackFaultEpoch = packEpoch;
+                this._fencePackFaults = 0;
+                this._fencePackFaultSince = 0;
+              }
+              this._fencePackFaults = (this._fencePackFaults | 0) + 1;
+              if (this._fencePackFaults >= 3 && !this._fencePackFaultSince) {
+                this._fencePackFaultSince = typeof performance !== 'undefined' && typeof performance.now === 'function'
+                  ? performance.now() : Date.now();
+              }
+              console.warn('[render] presentation fence pack drive failed; re-minting next frame', packError);
+              break;
+            }
             if (step.done) {
               this._snapshotSourceTick = pendingPack.sourceTick;
               this._publishSnapshotFenceStats(step.value);
@@ -24377,6 +26451,9 @@ export const render = {
               ? performance.now() : Date.now();
             if (packNow - packStart >= 4) break;
           }
+          notePacedFrameSpend(
+            (typeof performance !== 'undefined' && typeof performance.now === 'function'
+              ? performance.now() : Date.now()) - packStart);
         } else {
           const packed = packPresentationWorldToFence(
             this._presentationWorld,
@@ -24387,6 +26464,26 @@ export const render = {
           this._snapshotSourceTick = completedTick;
           this._publishSnapshotFenceStats(packed);
           this._fencePackPending = null;
+        }
+      } else if (packFaulted && snapshotNeedsPack && this._snapshotFence
+          && this._presentationWorld && this._fencePackDegradedEpoch !== packEpoch) {
+        // A pose epoch whose pack is permanently faulted freezes every
+        // interpolated pose world-wide — strictly worse than one atomic pack.
+        // After ~1 s parked, run the sync twin ONCE per epoch, latched like
+        // the keepGpu degrade.
+        const degradeNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now();
+        if (degradeNow - (this._fencePackFaultSince || 0) >= 1000) {
+          this._fencePackDegradedEpoch = packEpoch;
+          runCookSyncTwin('presentation fence pack', () => {
+            const packed = packPresentationWorldToFence(
+              this._presentationWorld,
+              this._snapshotFence,
+              this.state && this.state.simTime,
+              packEpoch);
+            this._snapshotSourceTick = completedTick;
+            this._publishSnapshotFenceStats(packed);
+          });
         }
       }
     }
@@ -24648,7 +26745,15 @@ export const render = {
           );
           this._openingFirstDrawIdentityResult = undefined;
         }
-        const censusStep = this._openingFirstDrawIdentityIter.next();
+        // A traverse/material read inside the census must not abort the
+        // presented frame — drop the iterator and let the declared sync
+        // fallback or the timer-gap drain pick the baseline up.
+        let censusStep;
+        try {
+          censusStep = this._openingFirstDrawIdentityIter.next();
+        } catch (_) {
+          censusStep = { done: true, value: undefined };
+        }
         if (censusStep.done) {
           this._openingFirstDrawIdentityResult = censusStep.value;
           this._openingFirstDrawIdentityIter = null;
@@ -24998,9 +27103,14 @@ export const render = {
         );
         if (openingFirstDrawIdentityBefore === undefined && this._openingFirstDrawIdentityIter) {
           const drainDeadline = gapNow() + OPENING_FIRST_DRAW_CENSUS_DRAIN_MS;
-          let censusStep = this._openingFirstDrawIdentityIter.next();
-          while (!censusStep.done && gapNow() < drainDeadline) {
+          let censusStep;
+          try {
             censusStep = this._openingFirstDrawIdentityIter.next();
+            while (!censusStep.done && gapNow() < drainDeadline) {
+              censusStep = this._openingFirstDrawIdentityIter.next();
+            }
+          } catch (_) {
+            censusStep = { done: true, value: undefined };
           }
           if (censusStep.done) openingFirstDrawIdentityBefore = censusStep.value;
         }
@@ -25175,10 +27285,20 @@ export const render = {
           })}`,
           validation,
         );
-        this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
-          this.scene,
-          this.state.render.openingSubmissionPlan,
-        );
+        // O(scene) traverseVisible census — failure-path diagnostic state only,
+        // so land it in a timer gap like the rest of the deferred first-draw
+        // diagnostics instead of inside this presented beat.
+        const armedPlanForPbr = this.state.render.openingSubmissionPlan;
+        const stampLatePbr = () => {
+          if (this.state.render.openingSubmissionPlan !== armedPlanForPbr) return;
+          this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
+            this.scene,
+            armedPlanForPbr,
+          );
+        };
+        if (this._rendererLifecycle) {
+          this._rendererLifecycle.setTimeout(this._rendererLifecycle.guard(stampLatePbr), 0);
+        } else setTimeout(stampLatePbr, 0);
       } else if (!Number.isFinite(this.state.render.openingSubmissionFirstDrawSubmittedAt)) {
         this.state.render.openingSubmissionFirstDrawSubmittedAt = typeof performance !== 'undefined'
           ? performance.now()
@@ -25324,10 +27444,17 @@ export const render = {
             })}`,
             validation,
           );
-          this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
-            this.scene,
-            this.state.render.openingSubmissionPlan,
-          );
+          const armedPlanForPbr = this.state.render.openingSubmissionPlan;
+          const stampLatePbr = () => {
+            if (this.state.render.openingSubmissionPlan !== armedPlanForPbr) return;
+            this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
+              this.scene,
+              armedPlanForPbr,
+            );
+          };
+          if (this._rendererLifecycle) {
+            this._rendererLifecycle.setTimeout(this._rendererLifecycle.guard(stampLatePbr), 0);
+          } else setTimeout(stampLatePbr, 0);
         } else if (!Number.isFinite(this.state.render.openingSubmissionFirstDrawSubmittedAt)) {
           this.state.render.openingSubmissionFirstDrawSubmittedAt = typeof performance !== 'undefined'
             ? performance.now()
@@ -25495,6 +27622,17 @@ export const render = {
    * syncs never pay the signature walk.
    */
   _syncShadowCasterPolicyChecked(root, lodLevel, entity, extra = null) {
+    // A remounted mid-teardown despawn corpse carries partially-written
+    // castShadow flags (disposeObjectNode clears them per visited node) that
+    // the dirtySeq early-outs below would wrongly skip — force one re-traverse.
+    if (root && root.userData && root.userData.sfDespawnPartialTeardown === true) {
+      delete root.userData.sfDespawnPartialTeardown;
+      invalidateShadowCasterPolicy(root);
+      // A mid-teardown light drop never reached the census mutation hook —
+      // re-mint the lightSig memo unconditionally on remount so the remounted
+      // tree's lights can't serve a stale signature.
+      noteShadowCensusLightMutation();
+    }
     const opts = this._shadowPolicyOptions(entity, root);
     // A packaged mount passes syncScope=addedSubtree: the flag traverse and the
     // unstaged collect cover only the new subtree (the rest of the root carries
@@ -26150,6 +28288,15 @@ export const render = {
       }
     }
     if (memo.pendingIter) {
+      // ~15 call sites consult this per presented pass — the drain wallet must
+      // be per PASS, not per call site, or a mid-walk light storm pays ~4 ms
+      // × every site inside one frame. The first site per sync pass drives;
+      // later sites serve the in-flight signature (the memo's conservative
+      // direction already).
+      if (memo.sig != null && memo.lastDrainSeq === this._viewSyncSeq) {
+        return memo.sig;
+      }
+      memo.lastDrainSeq = this._viewSyncSeq;
       const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now();
       const deadline = memo.sig == null ? Number.POSITIVE_INFINITY : startedAt + 4;
@@ -26159,7 +28306,23 @@ export const render = {
       while (memo.sig == null
         || ((typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now()) < deadline)) {
-        step = memo.pendingIter.next();
+        // A spent pass serves the in-flight signature instead of stepping —
+        // the first-ever mint keeps draining (nothing to serve yet).
+        if (memo.sig != null && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+        try {
+          step = memo.pendingIter.next();
+        } catch (censusError) {
+          // A torn signature walk must not rethrow through a presented call
+          // (and a dead iter left parked would read done next call, paying the
+          // whole-scene sync traverse it exists to amortize). Count the abandon
+          // toward the storm cap and serve the last signature — already the
+          // memo's conservative direction.
+          closeCookStepsIter(memo.pendingIter);
+          memo.pendingIter = null;
+          memo.superseded = (memo.superseded | 0) + 1;
+          console.warn('[render] shadow light-census drive faulted; serving last signature', censusError);
+          break;
+        }
         if (step.done) break;
       }
       if (step && step.done === true) {
@@ -26173,11 +28336,31 @@ export const render = {
           memo.superseded = (memo.superseded | 0) + 1;
         }
       }
+      notePacedFrameSpend(
+        (typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()) - startedAt);
     }
     if (memo.sig == null) {
       // Eval-harness envs lack the Steps twin — the sync walk is the fallback.
-      memo.sig = lightCensusSignature(scene);
-      memo.epoch = shadowCensusEpoch();
+      // A persistent sync-side fault would otherwise retry the whole O(scene)
+      // walk on EVERY census call of the epoch (several per presented pass):
+      // park after 3 tries, keyed to the epoch so a fresh census re-arms it.
+      const sigEpochNow = shadowCensusEpoch();
+      const sigParked = memo.sigFaultEpoch === sigEpochNow && (memo.sigFaults | 0) >= 3;
+      if (!sigParked) {
+        try {
+          memo.sig = lightCensusSignature(scene);
+          memo.sigFaults = 0;
+        } catch (sigError) {
+          if (memo.sigFaultEpoch !== sigEpochNow) memo.sigFaults = 0;
+          memo.sigFaultEpoch = sigEpochNow;
+          memo.sigFaults = (memo.sigFaults | 0) + 1;
+          // A double fault serves null (every caller treats an unsigned frame
+          // conservatively) rather than aborting the presented call.
+          console.warn('[render] shadow light-census signature walk faulted', sigError);
+        }
+      }
+      memo.epoch = sigEpochNow;
     }
     return memo.sig;
   },
@@ -26264,13 +28447,17 @@ export const render = {
       // already spent, defer a frame — withheld casters tolerate the delay (that
       // is the withhold contract). The aging cap mirrors the glTF compile drain's
       // so a permanently-busy frame stream can't starve the drain.
-      if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
-          && (this._depthStageLedgerSkips | 0) < SHADOW_DEPTH_LEDGER_MAX_SKIPS) {
-        this._depthStageLedgerSkips = (this._depthStageLedgerSkips | 0) + 1;
+      const armPacedSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+      if (armPacedSpent
+          && ((this._depthStageLedgerSkips | 0) < SHADOW_DEPTH_LEDGER_MAX_SKIPS
+            || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+        this._depthStageLedgerSkips = Math.min(
+          (this._depthStageLedgerSkips | 0) + 1, SHADOW_DEPTH_LEDGER_MAX_SKIPS);
         this._armDepthStage();
         return;
       }
       this._depthStageLedgerSkips = 0;
+      const armForcedRun = armPacedSpent;
       let slice = null;
       let restoreIdx = -1;
       try {
@@ -26695,7 +28882,9 @@ export const render = {
         }
         // The arm's whole cost lands adjacent to the next presented frame — debit
         // the shared paced ledger so the frame's slicers see the spend, throw or not.
-        notePacedFrameSpend(armNow() - armStartedAt);
+        const armElapsed = armNow() - armStartedAt;
+        notePacedFrameSpend(armElapsed);
+        if (armForcedRun) noteForcedFrameSpend(armElapsed);
         // The re-arm lives in finally: a throw mid-slice must not leave
         // _depthStageScheduled === true with live pending entries — the queue
         // would wedge permanently and withheld casters stay dark forever.
@@ -26867,7 +29056,24 @@ export const render = {
       // Root-scoped either way: a pending stepped recount records the delta under
       // the root's visit stamp instead of superseding — note storms converge in
       // one walk. A caller-measured delta skips the tally's own subtree count.
-      this._shadowReceiverTally.noteAdded(root, measuredReceivers);
+      // An unmeasured note arriving while dirty can't beat the recount already
+      // being paid — mark and let that walk settle the subtree instead of
+      // stacking an inline O(subtree) count on the churn frame.
+      if (!Number.isFinite(measuredReceivers)) {
+        // Quiet-tally storm gate: the first K unmeasured notes of this pass
+        // count exactly; the K-th+ defers to the paced recount instead of
+        // stacking another inline countShadowReceivers walk on the churn frame.
+        if (this._shadowReceiverTally.dirty
+            || this._unmeasuredShadowNotePass() > UNMEASURED_SHADOW_NOTE_EXACT_PER_PASS) {
+          this._shadowReceiverTally.markDirty();
+        } else {
+          const measured = countShadowReceivers(root, null, UNMEASURED_SHADOW_NOTE_NODE_MAX);
+          if (measured < 0) this._shadowReceiverTally.markDirty();
+          else this._shadowReceiverTally.noteAdded(root, measured);
+        }
+      } else {
+        this._shadowReceiverTally.noteAdded(root, measuredReceivers);
+      }
     } else this._shadowReceiversDirty = true;
   },
 
@@ -26875,8 +29081,36 @@ export const render = {
     if (this._shadowReceiverTally) {
       // A caller that already walked the subtree settles exactly — paying the
       // tally's second countShadowReceivers traverse just re-measures the same set.
-      this._shadowReceiverTally.noteRemoved(root, measuredReceivers);
+      // Under a dirty tally the settled count is already superseded — mark and
+      // let the in-flight recount absorb the removal instead of counting inline.
+      if (!Number.isFinite(measuredReceivers)) {
+        if (this._shadowReceiverTally.dirty
+            || this._unmeasuredShadowNotePass() > UNMEASURED_SHADOW_NOTE_EXACT_PER_PASS) {
+          this._shadowReceiverTally.markDirty();
+        } else {
+          const measured = countShadowReceivers(root, null, UNMEASURED_SHADOW_NOTE_NODE_MAX);
+          if (measured < 0) this._shadowReceiverTally.markDirty();
+          else this._shadowReceiverTally.noteRemoved(root, measured);
+        }
+      } else {
+        this._shadowReceiverTally.noteRemoved(root, measuredReceivers);
+      }
     } else this._shadowReceiversDirty = true;
+  },
+
+  // Counts unmeasured shadow-mesh notes inside the current view-sync pass —
+  // the window key resets each time syncEntityViews bumps _viewSyncSeq, and
+  // notes landing between passes keep accumulating under the latest seq so a
+  // sustained storm across one long frame still trips the threshold.
+  _unmeasuredShadowNotePass() {
+    const seq = this._viewSyncSeq || 0;
+    if (this._unmeasuredShadowNoteSeq !== seq) {
+      this._unmeasuredShadowNoteSeq = seq;
+      this._unmeasuredShadowNoteCount = 0;
+    }
+    const count = (this._unmeasuredShadowNoteCount || 0) + 1;
+    this._unmeasuredShadowNoteCount = count;
+    return count;
   },
 
   _markShadowReceiversDirty() {
@@ -26908,7 +29142,10 @@ export const render = {
         this._shadowReceiverTally.markDirty();
       }
       if (this._shadowReceiverTally.dirty) {
-        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene);
+        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene, {
+          spendGate: () => pacedFrameSpend() < PACED_FRAME_BUDGET_MS,
+          debit: notePacedFrameSpend,
+        });
         this._shadowReceiversDirty = false;
       } else {
         this._shadowReceiverCount = this._shadowReceiverTally.count;
@@ -28006,17 +30243,33 @@ function drainSceneEnvRebindQueue(owner) {
   if (!queue || queue.length === 0) return;
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
-  if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
-      && (owner._envRebindLedgerSkips | 0) < ENV_REBIND_LEDGER_MAX_SKIPS) {
-    owner._envRebindLedgerSkips = (owner._envRebindLedgerSkips | 0) + 1;
+  const pacedSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+  if (pacedSpent
+      && ((owner._envRebindLedgerSkips | 0) < ENV_REBIND_LEDGER_MAX_SKIPS
+        || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+    owner._envRebindLedgerSkips = Math.min(
+      (owner._envRebindLedgerSkips | 0) + 1, ENV_REBIND_LEDGER_MAX_SKIPS);
     return;
   }
   owner._envRebindLedgerSkips = 0;
+  const forcedRun = pacedSpent;
   const startedAt = now();
   const deadline = startedAt + 4;
   while (queue.length > 0) {
     const head = queue[0];
-    const step = head.iter.next();
+    let step;
+    try {
+      step = head.iter.next();
+    } catch (driveError) {
+      // A torn head (poisoned material/userData getter mid-walk) would
+      // otherwise rethrow into every presented frame forever — drop it like
+      // a done head so the rest of the service tail survives.
+      try { head.iter.return?.(); } catch (_) { /* already torn */ }
+      console.warn('[render] env rebind walk failed; dropping the entry', driveError);
+      queue.shift();
+      if (head.disposeTarget) { try { head.disposeTarget.dispose(); } catch (_) {} }
+      continue;
+    }
     if (step.done) {
       queue.shift();
       // The released env target frees only once nothing still samples it —
@@ -28028,7 +30281,10 @@ function drainSceneEnvRebindQueue(owner) {
     if (now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
   }
   const elapsed = now() - startedAt;
-  if (elapsed > 0) notePacedFrameSpend(elapsed);
+  if (elapsed > 0) {
+    notePacedFrameSpend(elapsed);
+    if (forcedRun) noteForcedFrameSpend(elapsed);
+  }
 }
 
 // Stepped policy-sync lane: a parked iterator per root lets a fat subtree's
@@ -28056,16 +30312,31 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
   }
   if (!slot) {
     const out = { receiverDelta: 0 };
-    slot = {
-      iter: syncShadowCasterPolicySteps(walkRoot, lodLevel, { ...opts, out }),
-      out,
-      sig,
-      carriedDelta,
-    };
+    try {
+      slot = {
+        iter: syncShadowCasterPolicySteps(walkRoot, lodLevel, { ...opts, out }),
+        out,
+        sig,
+        carriedDelta,
+      };
+    } catch (mintError) {
+      console.warn('[render] shadow policy steps mint failed; root stays dirty for the next eval', mintError);
+      return null;
+    }
     parkedMap.set(root, slot);
   }
   for (;;) {
-    const step = slot.iter.next();
+    let step;
+    try {
+      step = slot.iter.next();
+    } catch (driveError) {
+      // Drop the parked slot so the next eval re-mints fresh — a dead iter
+      // would read done and stamp a verdict + LOD level over a half-applied
+      // walk while clearing the root's dirty latch.
+      parkedMap.delete(root);
+      console.warn('[render] shadow policy steps drive failed; root stays dirty for the next eval', driveError);
+      return null;
+    }
     if (step.done) {
       parkedMap.delete(root);
       // A completed walk records the drive's live LOD — the level minted with
