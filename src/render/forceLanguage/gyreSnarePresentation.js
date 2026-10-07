@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { resolveVfxAccessibilityProfile } from '../vfxAccessibility.js';
+import { GYRE_SNARE } from '../../data/gyreSnare.js';
 
 /**
  * Gyre Snare presentation — the held-verb telekinetic katamari lash.
@@ -180,7 +181,10 @@ export class GyreSnarePresentation {
     this._clumpRadius = 0;
     this._discKick = 0;
 
-    const glass = 0xdff1ff, hot = 0xf6fcff;
+    // The authored palette in src/data/gyreSnare.js is the single source of truth —
+    // hex literals here drifted from it once already (maw disc vs palette.maw).
+    const P = GYRE_SNARE.palette;
+    const glass = P.glass, hot = P.rim;
 
     // ── beam group: origin at the nose, +X along the beam ───────────────────
     this._beam = new THREE.Group();
@@ -219,7 +223,7 @@ export class GyreSnarePresentation {
     // Mouth glow — soft disc behind the ring.
     this._discMat = new THREE.ShaderMaterial({
       vertexShader: DISC_VERT, fragmentShader: DISC_FRAG,
-      uniforms: { uCol: { value: new THREE.Color(0xe8f4ff) }, uAlpha: { value: 0.8 }, uTime: { value: 0 } },
+      uniforms: { uCol: { value: new THREE.Color(P.maw) }, uAlpha: { value: 0.8 }, uTime: { value: 0 } },
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
     this._disc = new THREE.Mesh(new THREE.CircleGeometry(1, 32), this._discMat);
@@ -259,7 +263,7 @@ export class GyreSnarePresentation {
     for (let i = 0; i < MAX_BURSTS; i++) {
       const mat = new THREE.ShaderMaterial({
         vertexShader: BURST_VERT, fragmentShader: BURST_FRAG,
-        uniforms: { uCol: { value: new THREE.Color(hot) }, uT: { value: 1 } },
+        uniforms: { uCol: { value: new THREE.Color(P.hot) }, uT: { value: 1 } },
         transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
       });
       const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
@@ -277,7 +281,7 @@ export class GyreSnarePresentation {
     let mat = this._lumpMats[type];
     if (!mat) {
       mat = new THREE.MeshStandardMaterial({
-        color: LUMP_TINT[type] || 0xbccbd8,
+        color: LUMP_TINT[type] || P.lump,
         roughness: 0.35, metalness: 0.25,
         transparent: true, opacity: 0.85,
         emissive: 0x9fc4e0, emissiveIntensity: 0.22,

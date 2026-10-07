@@ -30,7 +30,9 @@ export const GYRE_SNARE = Object.freeze({
   noseGap: 14,               // wu — apex sits this far in front of the hull skin
   // The cone's drawn mouth MUST match the pull basin — the wide end is the gravity well,
   // so the visual rim marks the exact edge of the yank zone (≈86 wu at mawDist).
-  coneHalfAngleRad: 0.42,    // ≈24° — end radius ≈ (mawDist-noseGap)·tan ≈ 83 wu ≈ basinRadius
+  coneHalfAngleRad: 0.42,    // ≈24° — reference hull lands ≈86 wu ≈ basinRadius; the publish
+                           // floors endRadius at basinRadius so a hull-radius noseGap can't
+                           // shrink the drawn rim inside the pull zone
   // ── Pull phase (no core yet) ──────────────────────────────────────────────────────
   basinRadius: 86,           // wu — hard pull zone around the maw (the "increased gravity")
   basinAccel: 620,           // wu/s² — reference accel on a ref-mass body in the basin
@@ -46,7 +48,9 @@ export const GYRE_SNARE = Object.freeze({
   pullMaxAccel: 900,         // wu/s² — absolute accel ceiling on any single body
   // ── Hold phase (core tethered) ────────────────────────────────────────────────────
   orbitRadiusMin: 9,         // wu — core orbits the maw at max(this, coreRadius*orbitScale)
-  orbitRadiusScale: 0.9,
+  // >1 so a grown clump orbits AROUND the maw point instead of swallowing it — at 0.9 a
+  // 60 wu ball circles a spot inside its own skin and the mouth glow drowns inside the katamari.
+  orbitRadiusScale: 1.2,
   orbitRate: 0.85,           // rad/s — the loose zero-G revolve
   orbitWobbleRad: 0.22,      // rad — deterministic wander layered on the orbit angle
   orbitWobbleRate: 0.37,     // rad/s
@@ -84,7 +88,9 @@ export const GYRE_SNARE = Object.freeze({
   // (6.75× base drain), which beats the starter hull's regen — the bigger the katamari,
   // the shorter the fuse.
   capMassDrainRef: 60,       // t of clump mass per additional ×1 hold drain
-  // ── Presentation palette (glassy white) ───────────────────────────────────────────
+  // ── Presentation palette (glassy white) — the single source of truth read by
+  // src/render/forceLanguage/gyreSnarePresentation.js: cone body 'glass', rim/maw ring
+  // 'rim', launch burst 'hot', mouth glow disc 'maw', katamari lump fallback 'lump'.
   palette: Object.freeze({
     glass: '#dff1ff',
     rim: '#f6fcff',

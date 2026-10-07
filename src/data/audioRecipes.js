@@ -3083,6 +3083,18 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.18, sustain: 0.35, release: 1.4 },
     filterType: 'bandpass', filterFreq: 720, filterQ: 0.9,
   },
+  // Strain: rising glass tension when the tethered clump nears the slip point — the beam's
+  // shimmer sibling stretched slower and higher so "about to lose it" has its own voice.
+  {
+    id: 'sfx_gyre_strain',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 520, freqSweep: [520, 1420], sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.05, sustain: 0.0, release: 0.55 },
+    filterType: 'bandpass', filterFreq: 1600, filterQ: 1.8,
+    pitchRange: [0.94, 1.04],
+  },
   // Beam wake: a soft rising glass shimmer as the cone ignites — lighter than the snag bite
   // (which is the grip landing). The lash switching on, not the catch.
   {

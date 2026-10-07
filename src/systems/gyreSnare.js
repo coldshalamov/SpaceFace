@@ -86,6 +86,7 @@ function freshRuntime() {
     ballAbsorbs: 0,        // total absorbed count frozen at launch (HUD's ×N stays honest)
     totalAbsorbed: 0,      // absorbs ever merged into this clump — NOT bounded by the VFX ledger
     lastAbsorbCueS: -1e9,  // simTime of the last absorb tick — gates the glass-tick cue rate
+    strainCueLatched: false, // gyre_snare_strain fires once per strain excursion
     orbitSeed: 0,          // per-clump phase so successive balls don't share a start angle
   };
 }
@@ -649,7 +650,10 @@ export const gyreSnare = {
     const maw = this._maw(player, this._pubMaw || (this._pubMaw = { x: 0, z: 0 }));
     pub.maw.x = maw.x; pub.maw.z = maw.z;
     pub.coneLen = Math.hypot(maw.x - pub.nose.x, maw.z - pub.nose.z);
-    pub.endRadius = pub.coneLen * Math.tan(D.coneHalfAngleRad);
+    // The drawn rim may over-cover the basin (short apex on a capital hull widens the
+    // mouth past the pull zone) but never under-cover it — the cone edge is the physics
+    // edge, so the visual radius floors at basinRadius.
+    pub.endRadius = Math.max(pub.coneLen * Math.tan(D.coneHalfAngleRad), D.basinRadius);
     pub.coreId = rt.coreId;
     pub.clumpMass = rt.clumpMass;
     pub.clumpRadius = rt.clumpRadius;
@@ -667,6 +671,14 @@ export const gyreSnare = {
         0, 1,
       );
     } else pub.strain01 = 0;
+    // Strain gets its own voice on the same hysteresis the HUD uses: the glass tension
+    // rises the tick the clump strains, and latches quiet again once it reels back in.
+    if (!rt.strainCueLatched && pub.strain01 > 0.4) {
+      rt.strainCueLatched = true;
+      if (this.bus) this.bus.emit('audio:cue', { id: 'gyre_snare_strain', gain: 0.7 });
+    } else if (pub.strain01 < 0.25) {
+      rt.strainCueLatched = false;
+    }
     return pub;
   },
 

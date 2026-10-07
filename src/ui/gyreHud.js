@@ -49,6 +49,7 @@ export const gyreHud = {
     this._lastClass = '';
     this._visible = false;
     this._laneSeat = '';
+    this._strainOn = false; // hysteresis: enter at 0.40, exit at 0.25 — no boundary flapping
   },
 
   destroy() {
@@ -89,7 +90,10 @@ export const gyreHud = {
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;
       const mass = Math.round(g.clumpMass || 0);
-      if ((g.strain01 || 0) > 0.35) {
+      const s = g.strain01 || 0;
+      if (s > 0.4) this._strainOn = true;
+      else if (s < 0.25) this._strainOn = false;
+      if (this._strainOn) {
         return { text: `GYRE — STRAIN ${mass}t`, cls: 'gyre-strain' };
       }
       return { text: `GYRE — ×${count} · ${mass}t`, cls: 'gyre-holding' };
