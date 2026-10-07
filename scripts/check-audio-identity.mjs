@@ -387,6 +387,9 @@ const EMITTED_CUES = {
   // Gyre coil draw — a thin rising shimmer on the first windup tick beside the pad
   // rumble (gyreSnare.js launchWindup countdown → sfx_gyre_windup).
   gyre_snare_windup: { distinct: true },
+  // Gyre strain break — the verb's biggest loss beat: ball-death clink + harsh white
+  // dust, distinct from the polite release's drop fizzle (gyreSnare.js _drop → sfx_gyre_tear).
+  gyre_snare_tear: { distinct: true },
   // Iron Maw prow tear (tacticalAI) — propulsion wind-down voice; boss moment stinger.
   'combat.subsystem.disabled': { distinct: true },
   'moment.stinger': { distinct: true },

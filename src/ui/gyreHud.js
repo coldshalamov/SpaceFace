@@ -65,6 +65,7 @@ export const gyreHud = {
     this._strainOn = false; // hysteresis: enter at 0.40, exit at 0.25 — no boundary flapping
     this._bowlUntil = -1;   // simTime deadline — the BOWL read holds ~0.8 s past the 5-tick burst
     this._bowlMass = 0;
+    this._bowlN = 0;        // member count at the throw — the katamari payoff stays legible through BOWL
   },
 
   destroy() {
@@ -129,7 +130,7 @@ export const gyreHud = {
         // The launch beat lands first: BOWL survives ~0.8 s past the burst ticks before
         // the pill flips to BALL AWAY — the verb's biggest beat stays readable.
         if (now < this._bowlUntil) {
-          return { text: `GYRE — BOWL ${this._bowlMass}t`, cls: 'gyre-launched' };
+          return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t`, cls: 'gyre-launched' };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
@@ -158,7 +159,10 @@ export const gyreHud = {
     if (g.phase === 'launching') {
       this._bowlUntil = now + 0.8;
       this._bowlMass = Math.round(g.clumpMass || 0);
-      return { text: `GYRE — BOWL ${this._bowlMass}t${ballTxt}`, cls: 'gyre-launched' };
+      // HOLD showed ×N a tick earlier and BALL AWAY will show it again — the biggest
+      // beat keeps the member count too (same +1 core convention as the HOLD read).
+      this._bowlN = (g.absorbs || 0) + 1;
+      return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t${ballTxt}`, cls: 'gyre-launched' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;

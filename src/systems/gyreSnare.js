@@ -31,6 +31,7 @@ import {
 import {
   recordImpulseProvenance,
   holdImpulseProvenance,
+  clearImpulseProvenance,
 } from '../combat/impulseKernel.js';
 import { queryAsteroidField, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { GYRE_SNARE, GYRE_EVENTS, GYRE_ABSORBABLE_TYPES } from '../data/gyreSnare.js';
@@ -273,7 +274,9 @@ export const gyreSnare = {
       // (a save/sector swap shouldn't talk).
       if (!quiet) {
         this.bus.emit('audio:cue', {
-          id: emitId != null ? 'gyre_snare_drop' : 'gyre_snare_off',
+          // A strain break is the verb's biggest loss beat — it gets its own clink +
+          // harsh-dust TEAR voice, not the polite release's descending fizzle.
+          id: emitId != null ? (reason === 'strained' ? 'gyre_snare_tear' : 'gyre_snare_drop') : 'gyre_snare_off',
           gain: emitId != null ? 0.9 : 0.5,
         });
         // A strain break is the verb's biggest loss beat — land it in the body too
@@ -342,6 +345,12 @@ export const gyreSnare = {
   // authored scale comes back rather than vanishing with the mark.
   _handBack(ball) {
     delete ball.data.gyreLaunched;
+    // The launch provenance record rides launch tick + ~launchProvenanceHoldS on a
+    // WeakMap — deleting the mark doesn't touch it, so an adopted body would still
+    // credit wpn_gyre_snare inside the window. The hand-back contract says no lash
+    // credit rides the adopter's body: clear it here (NOT in _disarmBall — the
+    // evicted-but-still-marked path deliberately keeps credit to its own TTL).
+    clearImpulseProvenance(ball);
     // Symmetric with _restoreLifetime on drop, but future-only: the authored deadlines
     // the ball carried before the lash caught it come back ONLY while still in the
     // future and only when the new owner left despawnAt unset — a stale stash or a
@@ -903,8 +912,10 @@ export const gyreSnare = {
       const admission = ingestionReason(e, remainingMass);
       const absorbable = admission === null;
       if (admission === 'too-heavy') {
+        // Too heavy to EAT — not too heavy to feel: falls through to the courtesy tug
+        // below so the strongest gravity zone (inside owned.r, where the basin lane is
+        // suppressed) has no dead spot for a heavy rock hovering at the skin.
         if (remainingMass > 0) rt.tooHeavyCount += 1;
-        continue; // no leech held against a full ball, and no partial-body disappearance
       }
       const dx = core.pos.x - e.pos.x;
       const dz = core.pos.z - e.pos.z;

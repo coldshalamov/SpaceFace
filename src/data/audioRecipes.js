@@ -3123,6 +3123,26 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.7 },
     filterType: 'bandpass', filterFreq: 950, filterQ: 1.2,
   },
+  // Strain break: the lash's biggest loss beat — ball-death's bright clink over a harsher
+  // white dust burst, so the TEAR reads chromatic vs a polite release's descending fizzle
+  // (sfx_gyre_drop) and the thrown ball's muffled grave (sfx_gyre_ball_death). The clink
+  // layer is shared: the clump's glass shatter is the same object either way.
+  {
+    id: 'sfx_gyre_tear',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_ball_death_clink', 'sfx_gyre_tear_dust'],
+    gainMult: 0.9,
+    pitchRange: [0.9, 1.0],
+  },
+  {
+    id: 'sfx_gyre_tear_dust',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.004, sustain: 0.06, release: 0.45 },
+    filterType: 'bandpass', filterFreq: 2400, filterQ: 0.8,
+  },
   // Strain: rising glass tension when the tethered clump nears the slip point — the beam's
   // shimmer sibling stretched slower and higher so "about to lose it" has its own voice.
   {

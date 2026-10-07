@@ -492,8 +492,12 @@ export class GyreSnarePresentation {
     (slot.basePos || (slot.basePos = new THREE.Vector3())).copy(m.position);
     // Fly-in: the lump enters along the direction its victim approached from, starting
     // on the clump's rim and easing into its seat — the stick is a motion, not a pop.
-    slot.fromX = finite(member.nx, 0) * finite(this._clumpRadius) * 0.95;
-    slot.fromZ = finite(member.nz, 0) * finite(this._clumpRadius) * 0.95;
+    // Seed at the contact point, not inside the silhouette: the sim removed the victim
+    // at clumpRadius + memberRadius + absorbEpsilonWu, so the lump pops in where the
+    // body actually vanished — a capped ball doesn't teleport the meal ~16 wu inward.
+    const touch = finite(this._clumpRadius) + finite(member.radius, 0) + GYRE_SNARE.absorbEpsilonWu;
+    slot.fromX = finite(member.nx, 0) * touch;
+    slot.fromZ = finite(member.nz, 0) * touch;
     slot.bobPhase = i * 2.39;
     slot.bobRate = 1.15 + ((i * 0.61803398875) % 1) * 0.9;
     // Loose zero-G debris also TUMBLES — a slow per-lump spin rate staggered on the
@@ -709,7 +713,9 @@ export class GyreSnarePresentation {
       this._spiral.visible = true;
       // Strain hurries the funnel too — the glass shivers and the clump trembles,
       // so the spiral's metronome pace would otherwise betray the about-to-tear read.
-      if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strain * 1.5);
+      // `spent` slows the funnel with the glass it feeds — a dead lane that still
+      // inhales at full gulp speed through the ~0.2 s LAUNCH betrays the thrown read.
+      if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strain * 1.5) * spent;
       this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = drawLen;
       this._spiralMat.uniforms.uRad.value = endR * spent; // the funnel narrows with the spent lash
@@ -738,7 +744,7 @@ export class GyreSnarePresentation {
         aimT.set(0, 0, 0);
       }
       this._spiralMat.uniforms.uAim.value.lerp(aimT, 1 - Math.exp(-sdt * 8));
-      this._spiralMat.uniforms.uFade.value = 1;
+      this._spiralMat.uniforms.uFade.value = spent; // motes die with the glass's spent dim too
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
       // down over ~0.25 s instead of popping — the collapse is part of the payoff.

@@ -435,8 +435,9 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // the bowl the hard crack, an absorb a small tap, a dropped clump a mid thud.
   'gyre:beamOn':            { strong: 0.25, weak: 0.35, ms: 60 },
   'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
-  // No `gyre:launched` pulse: it fires at the release edge one tick before `gyre:windup`,
-  // so its 5-tick min-gap silently ate the 140 ms draw rumble — the sling's richest beat.
+  // No `gyre:launched` pulse: it fires at the release edge in the SAME tick `gyre:windup`
+  // emits (`_launch` then the LAUNCH block decrements the coil), so its 5-tick min-gap
+  // silently ate the 140 ms draw rumble — the sling's richest beat — on every launch.
   // `gyre:windup` marks coil-engage and `gyre:thrown` marks the throw; nothing is lost.
   'gyre:windup':            { strong: 0.15, weak: 0.50, ms: 140 }, // the draw — a low rumble under the coil
   'gyre:thrown':            { strong: 0.90, weak: 0.70, ms: 160 }, // the throw — biggest beat in the pad vocabulary
