@@ -99,6 +99,7 @@ function freshRuntime() {
     strainCueLatched: false, // gyre_snare_strain fires once per strain excursion
     orbitSeed: 0,          // per-clump phase so successive balls don't share a start angle
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
+    suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
   };
 }
@@ -183,6 +184,7 @@ export const gyreSnare = {
     // ball's absorb count (or reuse its orbit phase) while it searches for a new core.
     rt.totalAbsorbed = 0;
     rt.basinCount = 0;
+    rt.suckCount = 0;
     rt.orbitSeed = 0;
     // A boundary drop also forgets the flying ball — its entity is about to vanish with the
     // sector anyway, and stale ballPos would leak a dead clump overlay into the next scene.
@@ -625,6 +627,10 @@ export const gyreSnare = {
     if (!queryRadius) return;
     const suckR = rt.clumpRadius + D.suckBandWidth;
     const cands = queryRadius(core.pos, suckR, this._scratch);
+    // The annulus's own inbound count: meals the clump is already vacuuming but that sit
+    // OUTSIDE the drawn glass still belong in the "×N IN NET" read — as clumpRadius grows
+    // toward the cap the annulus reaches well past the basin, so basin-only under-reports.
+    rt.suckCount = 0;
     const shipVx = finite(player && player.vel && player.vel.x);
     const shipVz = finite(player && player.vel && player.vel.z);
     for (let i = 0; i < cands.length; i++) {
@@ -659,6 +665,7 @@ export const gyreSnare = {
         }
         continue;
       }
+      if (rt.clumpMass < D.maxClumpMass) rt.suckCount += 1;
       // Surface contact → merge into the ball (mass union; radius by volume, capped). The
       // meal sticks the moment its skin crosses the clump's — katamari stick-on-touch, not a
       // nested overlap, so a fast spiral can't orbit forever inside the band.
@@ -829,18 +836,11 @@ export const gyreSnare = {
         id: 'gyre_snare_launch',
         position: { x: core.pos.x, z: core.pos.z },
       });
-      // The throw is the weapon's biggest kinetic beat — a mass-scaled kick sells it in
-      // the body, not just the ears/hands. Player-scoped (own weapon at the nose): no
-      // position, full strength like player-hit/drill shakes.
-      this.bus.emit('camera:shake', { amount: 0.3 + 0.25 * Math.min(1, rt.clumpMass / D.maxClumpMass) });
     }
-    // Newton: throwing a small moon pushes back. A gentle mass-scaled counter-Δv
-    // (capped 6 wu/s — a nudge, not a knockback) physically sells the heave.
-    const recoilDv = Math.min(6, 1.2 + rt.clumpMass / 500);
-    const shipMass = entityMass(player);
-    queuePhysicsImpulse(player, {
-      x: -dir.x * recoilDv * shipMass, y: 0, z: -dir.z * recoilDv * shipMass,
-    }, this._evidence(state.tick));
+    // The kinetic payoff (shake + Newton kick) does NOT land here — it rides the first
+    // burst tick in update() so the biggest beat hits the moment the coil RELEASES the
+    // ball, not while it's still winding back. The launch whoosh's attack already spans
+    // the ~100 ms coil gap.
   },
 
   _finishLaunch(state) {
@@ -861,6 +861,7 @@ export const gyreSnare = {
     // it is the payload's own bookkeeping, not the beam's.
     rt.totalAbsorbed = 0;
     rt.basinCount = 0;
+    rt.suckCount = 0;
     rt.orbitSeed = 0;
     rt.lastAbsorbCueS = -1e9;
     rt.strainCueLatched = false;
@@ -946,7 +947,7 @@ export const gyreSnare = {
     }
     if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballClumpRadius = 0; }
     pub.launchedId = rt.ballId;
-    pub.basinCount = rt.basinCount || 0;
+    pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {
       pub.coreId = null; pub.strain01 = 0;
@@ -1104,6 +1105,22 @@ export const gyreSnare = {
           x: rt.launchDir.x * j, y: 0, z: rt.launchDir.z * j,
         }, this._evidence(state.tick));
         rt.launchLeft -= 1;
+        if (rt.launchLeft === D.launchTicks - 1) {
+          // First burst tick = the coil release: the weapon's biggest kinetic beat lands
+          // HERE — the throw is over, not while the ball was still winding back.
+          if (this.bus) {
+            this.bus.emit('camera:shake', {
+              amount: 0.3 + 0.25 * Math.min(1, rt.ballMass / D.maxClumpMass),
+            });
+          }
+          // Newton: throwing a small moon pushes back. A gentle mass-scaled counter-Δv
+          // (capped 6 wu/s — a nudge, not a knockback) physically sells the heave.
+          const recoilDv = Math.min(6, 1.2 + rt.ballMass / 500);
+          const shipMass = entityMass(player);
+          queuePhysicsImpulse(player, {
+            x: -rt.launchDir.x * recoilDv * shipMass, y: 0, z: -rt.launchDir.z * recoilDv * shipMass,
+          }, this._evidence(state.tick));
+        }
       } else {
         rt.launchLeft = 0;
         rt.launchWindup = 0;

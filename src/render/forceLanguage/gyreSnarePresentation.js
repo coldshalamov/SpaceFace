@@ -460,15 +460,19 @@ export class GyreSnarePresentation {
       const mz = finite(mirror.maw && mirror.maw.z);
       const nL = this.toLocal(nx, nz, this._nose);
       const mL = this.toLocal(mx, mz, this._mawPt);
-      const dx = mL.x - nL.x, dz = mL.z - nL.z;
+      let dx = mL.x - nL.x, dz = mL.z - nL.z;
       let len = Math.max(1, Math.hypot(dx, dz));
       const endR = Math.max(0.5, finite(mirror.endRadius, len * 0.25));
       if (phase === 'launching' && mirror.launchedId != null && mirror.ballPos) {
-        // The lash follows through: as the clump exits, the maw chases its tail along
-        // the beam axis so launch reads as one motion instead of a hard cut to OFF.
-        const inv = 1 / Math.max(1e-6, Math.hypot(dx, dz));
+        // The lash follows through: as the clump exits, the beam pins to the FROZEN launch
+        // heading and the maw chases the ball's tail along it — a mid-throw yaw can't
+        // visibly diverge the glass from the streak the ball is actually flying.
+        const dir = mirror.launchDir;
+        const dl = Math.hypot(finite(dir && dir.x, 1), finite(dir && dir.z, 0)) || 1;
+        dx = finite(dir && dir.x, 1) / dl;
+        dz = finite(dir && dir.z, 0) / dl;
         const bL = this.toLocal(finite(mirror.ballPos.x), finite(mirror.ballPos.z), this._ballPt);
-        const axial = (bL.x - nL.x) * dx * inv + (bL.z - nL.z) * dz * inv;
+        const axial = (bL.x - nL.x) * dx + (bL.z - nL.z) * dz;
         if (axial > len) len = axial;
       }
 
@@ -627,19 +631,25 @@ export class GyreSnarePresentation {
         this._clump.position.x += (Math.sin(this.time * 47) * 0.7 + Math.sin(this.time * 31 + 1.7) * 0.3) * tremble * 1.4;
         this._clump.position.z += Math.cos(this.time * 41 + 0.6) * tremble * 1.1;
       }
-      if (mirror.launchedId != null) {
-        // Flight ribbon: stretched flat quad hanging off the ball's tail along launchDir.
+      if (mirror.launchedId != null && mirror.ballPos) {
+        // Flight ribbon: stretched flat quad hanging off the ball's tail along launchDir —
+        // anchored at the BALL's own position, not p (cx is the held core while holding,
+        // so a re-snag mid-flight would steal the streak onto a stale heading).
+        const bp = this.toLocal(mirror.ballPos.x, mirror.ballPos.z, this._ballPt);
         const dir = mirror.launchDir;
         const dl = Math.hypot(finite(dir && dir.x, 1), finite(dir && dir.z, 0)) || 1;
         const dx = finite(dir && dir.x, 1) / dl, dz = finite(dir && dir.z, 0) / dl;
-        const trailLen = Math.max(30, this._clumpRadius * 3.2);
-        this._trail.position.set(p.x - dx * trailLen * 0.5, 0.55, p.z - dz * trailLen * 0.5);
+        const ballR = finite(mirror.ballClumpRadius, this._clumpRadius);
+        const trailLen = Math.max(30, ballR * 3.2);
+        this._trail.position.set(bp.x - dx * trailLen * 0.5, 0.55, bp.z - dz * trailLen * 0.5);
         this._trail.rotation.y = Math.atan2(-dz, dx);
-        this._trail.scale.set(trailLen, 1, Math.max(3, this._clumpRadius * 1.15));
+        this._trail.scale.set(trailLen, 1, Math.max(3, ballR * 1.15));
         // Expiry fade: the streak dims through its last ~1.1 s so the ribbon telegraphs
         // the grave before the burst takes it (ttl01 stays 1 while despawnAt is unset).
         const ttl01 = Math.max(0, Math.min(1, finite(mirror.ballTtl01, 1)));
-        this._trailMat.uniforms.uAlpha.value = 0.3 * flashCalm * (0.3 + 0.7 * Math.min(1, ttl01 / 0.12));
+        // No streak during the coil — the ribbon gathers as the wind-up releases.
+        const wind = finite(mirror.launchWindup01);
+        this._trailMat.uniforms.uAlpha.value = 0.3 * flashCalm * (1 - wind) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.12));
         this._trail.visible = true;
       } else if (this._trail.visible) {
         this._trail.visible = false;

@@ -833,6 +833,8 @@ test('launching the clump kicks the ship a small counter-Δv', async () => {
   for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   const vxBefore = t.player.vel.x;
   release(t);
+  // The kick lands when the coil RELEASES — the first burst tick, not the release edge.
+  for (let i = 0; i < T.launchWindupTicks; i++) t.sim.step();
   assert.ok(t.player.vel.x < vxBefore, `recoil pushes off the +x nose (vx ${vxBefore.toFixed(2)}→${t.player.vel.x.toFixed(2)})`);
   assert.ok(Math.abs(t.player.vel.x - vxBefore) <= 6.5, 'the kick stays a nudge, not a knockback');
   t.cleanup();

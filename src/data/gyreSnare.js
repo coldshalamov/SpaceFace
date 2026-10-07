@@ -83,7 +83,8 @@ export const GYRE_SNARE = Object.freeze({
   launchTicks: 5,            // ticks the launch impulse is spread over (slingshot feel)
   launchWindupTicks: 6,      // ~100 ms coil before the burst — the slingshot needs a beat
                            // of anticipation, not just mechanical ticks
-  launchWindupPullWu: 7,     // wu — the clump drags aft of the maw during the coil
+  launchWindupPullWu: 13,    // wu — the clump drags aft of the maw during the coil; at ~7 the
+                           // gather was invisible against a 200 wu beam — 13 reads at a glance
   launchWindupSpringK: 110,  // 1/s² — spring to the coil point (strong, short reach)
   launchWindupDamping: 9,    // 1/s — coil damping vs the ship's frame
   ballTtlS: 9,               // s — the bowling ball despawns after this flight window
