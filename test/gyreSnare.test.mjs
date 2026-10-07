@@ -786,6 +786,15 @@ test('a string-id body cores and holds — the orbit seed never goes NaN', async
   for (let i = 0; i < 45; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.coreId, 'wreck_site_cathedral', 'string-id body cores the clump');
   assert.ok(Number.isFinite(t.sys._rt.orbitSeed), 'orbit seed stays finite for any id shape');
+  assert.ok(t.sys._rt.orbitDir === 1 || t.sys._rt.orbitDir === -1,
+    'orbit direction stays a ±1 sign for any id shape');
+  // Determinism: the same id must always revolve the same way (and a different id
+  // may flip it — that's the point of the second hash bit).
+  const dirA = t.sys._rt.orbitDir;
+  const e2 = rock(t.sim, T.mawDist, 0, 6, 4, 'wreck');
+  e2.id = 'wreck_site_cathedral'; // same id → same hash → same dir
+  const h = (function (s) { let x = 0; for (let i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) >>> 0; return x; })(String(e2.id));
+  assert.equal((h & 0x10000) !== 0 ? 1 : -1, dirA, 'orbitDir comes off the same stable id hash as orbitSeed');
   const d = dist(e, t.player);
   assert.ok(d < T.mawDist + 80, `the hold actually grips it — a NaN seed left it free-floating (d=${d.toFixed(1)})`);
   t.cleanup();

@@ -630,9 +630,12 @@ export const gyreSnare = {
         if (distMaw > 1e-4) {
           ax -= (dx / distMaw) * pull;
           az -= (dz / distMaw) * pull;
-          // Tangential swirl — the basin spirals bodies in rather than ray-shooting them.
-          ax += (dz / distMaw) * D.mawSwirlAccel * couple;
-          az -= (dx / distMaw) * D.mawSwirlAccel * couple;
+          // Tangential swirl — the basin spirals bodies in rather than ray-shooting
+          // them — keyed to the held core's revolution direction (orbitDir): the
+          // funnel stirs the same way the clump circles, so nothing betrays
+          // "each clump is its own system". Pre-snag orbitDir is 1 (the reset).
+          ax += (dz / distMaw) * D.mawSwirlAccel * this._rt.orbitDir * couple;
+          az -= (dx / distMaw) * D.mawSwirlAccel * this._rt.orbitDir * couple;
         }
         // Frame damping inside the basin: settle relative to the ship so captures stick.
         ax -= (finite(e.vel && e.vel.x) - shipVx) * D.basinDamping;
@@ -746,9 +749,10 @@ export const gyreSnare = {
         tick: state.tick,
       });
       // Mass-graded snag voice: a pebble cracks bright, a rock the size of a
-      // building thumps — same convention as the launch cue below.
+      // building thumps — same convention as the launch cue below. The grip
+      // shake grades by mass too — coring a wreck lands heavier than a pebble.
       this.bus.emit('audio:cue', { id: 'gyre_snare_snag', rate: 1.08 - Math.min(0.3, rt.clumpMass / 500) });
-      this.bus.emit('camera:shake', { amount: 0.12 });
+      this.bus.emit('camera:shake', { amount: 0.10 + 0.10 * Math.min(1, rt.clumpMass / D.maxClumpMass) });
     }
     return true;
   },

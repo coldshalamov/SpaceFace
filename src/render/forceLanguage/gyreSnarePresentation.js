@@ -783,6 +783,8 @@ export class GyreSnarePresentation {
     // kept the live body) get no ring — the shatter must not bloom under a live ball.
     if (this._ballId != null && mirror.launchedId == null && this._lastBall) {
       if (mirror.ballGrave !== false) {
+        // r is frozen at the last tracked tick — correct, not a bug: the launch
+        // freezes the clump ledger, so a flying ball can never outgrow its ring.
         this._fireBurst(this._lastBall.x, this._lastBall.z, Math.max(6, this._lastBall.r * 1.6), flashCalm);
       }
       this._lastBall = null;
@@ -1032,8 +1034,14 @@ export class GyreSnarePresentation {
           }
         }
         // The whole group tumbles like the primary's rubble — levitating debris,
-        // not a rigid wheel (frozen under reduced-motion like everything else).
+        // not a rigid wheel — and each lump drifts on its own index-seeded axes
+        // so the rubble doesn't rotate as one body (frozen under reduced-motion).
         this._secGroup.rotation.y += sdt * 2.6 * calm;
+        for (let i = 0; i < this._secLumps.length; i++) {
+          if (!this._secLumps[i].visible) continue;
+          this._secLumps[i].rotation.y += sdt * (0.35 + i * 0.17) * calm;
+          this._secLumps[i].rotation.x += sdt * (0.21 + i * 0.11) * calm;
+        }
         this._secGroup.visible = true;
       } else if (this._secGroup.visible) {
         this._secGroup.visible = false;
