@@ -2104,3 +2104,34 @@ test('launch speed sags with throw mass — a heavy katamari bowls slower', asyn
   assert.ok(v < T.launchSpeed - 30, 'the mass penalty is real — below authored speed');
   t.cleanup();
 });
+
+test('soak: two live balls + a dry capacitor mid-second-launch retires cleanly', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) {
+    t.state.input.actions.gyreSnare = false; t.sim.step();
+  }
+  assert.equal(t.sys._rt.ballId, a.id, 'A is away');
+  // Second hold on a fresh rock while A flies — then starve the capacitor and bowl B.
+  t.player.cap = 100;
+  const b = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding', 'B is the held clump');
+  t.player.cap = 0; // dry BEFORE the launch begins — the burst ticks on an empty tank
+  release(t);
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 4; i++) {
+    t.state.input.actions.gyreSnare = false; t.sim.step();
+  }
+  // The dry check is HOLD/BEAM-gated — a launch in progress always completes its bowl.
+  // Both balls stay watched free bodies; the beam is off with nothing wedged behind.
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.equal(t.state.gyreSnare.liveBalls, 2, 'both bowls stay watched');
+  assert.ok(a.data.gyreLaunched && b.data.gyreLaunched, 'both carry the mark');
+  assert.ok(t.sys._rt.ballIds.includes(a.id) && t.sys._rt.ballIds.includes(b.id),
+    'watch list holds both ids through the dry launch');
+  t.cleanup();
+});

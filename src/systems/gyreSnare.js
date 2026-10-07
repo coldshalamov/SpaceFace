@@ -87,8 +87,8 @@ function freshRuntime() {
     launchWindup: 0,       // ticks of the pre-burst coil (anticipation) still owed
     launchCarry: 0,        // aft-velocity the coil left on the ball — repaid inside the burst
                            // so authored launchSpeed is the FINAL flight speed, not the impulse sum
-    launchSpeedEff: 0,     // wu/s — launchSpeed after the throw-mass penalty; computed on the
-                           // first burst tick (ballMass is frozen by then), reset in _finishLaunch
+    launchSpeedEff: 0,     // wu/s — launchSpeed after the throw-mass penalty; computed in
+                           // _launch off the frozen ballMass, reset in _finishLaunch
     launchDir: { x: 1, z: 0 },
     launchedId: null,      // the ball in flight (TTL/telemetry only — it is a free body)
     ballId: null,          // survives LAUNCH→OFF until the thrown clump despawns (mirror track)
@@ -1024,9 +1024,14 @@ export const gyreSnare = {
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
-    rt.launchSpeedEff = 0; // recomputed on the first burst tick from the frozen ballMass
     rt.basinSpots.length = 0;
     rt.ballMass = rt.clumpMass;
+    // The floor itself sags with throw mass: a capped moon bowls ~22% slower than a
+    // pebble — heavy reads heavy in the ARC, not just growl/recoil. Computed HERE,
+    // off the frozen ballMass, so provenance/kill-credit magnitude sees the real
+    // thrown Δv and the burst just consumes it.
+    rt.launchSpeedEff = D.launchSpeed
+      * (1 - D.launchMassPenalty * Math.min(1, rt.ballMass / D.maxClumpMass));
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
     // clump overlay keeps riding the ball through its whole flight instead of shedding at OFF.
     rt.ballMembers = rt.members.slice();
@@ -1062,7 +1067,7 @@ export const gyreSnare = {
       weaponId: WEAPON_ID,
       tag: 'gyre_launch',
       appliedTick: state.tick | 0,
-      magnitude: rt.clumpMass * D.launchSpeed,
+      magnitude: rt.clumpMass * rt.launchSpeedEff,
     });
     holdImpulseProvenance(core, (state.tick | 0) + Math.round(D.launchProvenanceHoldS * 60), state.tick | 0);
     // Serializable shadow of the WeakMap record: a save:loaded ball keeps despawnAt +
@@ -1072,7 +1077,7 @@ export const gyreSnare = {
       actorId: state.playerId == null ? null : state.playerId,
       weaponId: WEAPON_ID,
       tag: 'gyre_launch',
-      magnitude: rt.clumpMass * D.launchSpeed,
+      magnitude: rt.clumpMass * rt.launchSpeedEff,
       holdUntilSim: core.data.despawnAt,
       clumpRadius: rt.clumpRadius,
       // The absorb ledger serializes too — a re-adopted ball republishes its real
@@ -1538,10 +1543,8 @@ export const gyreSnare = {
           const fwd = finite(core.vel && core.vel.x) * rt.launchDir.x
             + finite(core.vel && core.vel.z) * rt.launchDir.z;
           rt.launchCarry = Math.max(0, -fwd);
-          // The floor itself sags with throw mass: a capped moon bowls ~22% slower
-          // than a pebble — heavy reads heavy in the ARC, not just growl/recoil.
-          rt.launchSpeedEff = D.launchSpeed
-            * (1 - D.launchMassPenalty * Math.min(1, rt.ballMass / D.maxClumpMass));
+          // launchSpeedEff was frozen in _launch off ballMass — the burst just
+          // repays coil carry on top of it.
         }
         // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = vEff.
         const j = ((rt.launchSpeedEff + rt.launchCarry) * mass) / D.launchTicks;
