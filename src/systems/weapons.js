@@ -128,6 +128,13 @@ function weaponHeatDissipScale(state, entity) {
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
 
+// SF-2b #6: a continuous beam pays the target's flat armor once per BEAM_ARMOR_PACKET_S, not once
+// per tick. The damage router deducts armorFlat once per packet and a beam emits one packet per
+// tick, so at 60 Hz a 60-dps beam lands 1-damage packets and flat 1 erased nearly all of them (Beam
+// Laser M did 1.9 dps to a Bruiser and could not kill 7 of 16 enemy types in 60 s). 0.25 s = the
+// beam reads to armor like a 4-rps gun: flat 3 still costs it 12 of its 60 dps.
+export const BEAM_ARMOR_PACKET_S = 0.25;
+
 // Enemy mount roles (authored in enemies.js as `occasional`/`defensiveOnly`, preserved by
 // combat.resolveEnemyWeapon). `occasional` opens a deterministic sim-time window — a seeded
 // phase per mount so twin racks don't volley in lockstep — and `defensiveOnly` answers only
@@ -1169,7 +1176,13 @@ export const weapons = {
     }
     capLeft -= energyCost * dt;
     w._heat = (w._heat || 0) + heatPerSec * dt;
-    if (w._heat >= heatMax) w._heat = heatMax;
+    if (w._heat >= heatMax) {
+      w._heat = heatMax;
+      // SF-2b #6: trip the forced vent here, like the projectile paths do. The vent check in
+      // _tickWeapons runs after the next tick's dissipation, which always pulled a clamped beam
+      // back under heatMax first, so a beam never vented and held full damage forever.
+      this._beginVent(e, state, w);
+    }
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
     const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
@@ -1200,7 +1213,7 @@ export const weapons = {
         from: { x: origin.x, z: origin.z }, to,
         dmgType: damageType,
         dpsThisTick: damage,
-        damagePacket: buildWeaponDamagePacket(w, def, damage, damageType),
+        damagePacket: beamDamagePacket(w, def, damage, damageType, dt),
         beamKey,
         opticFamilyId: beamMeta.opticFamilyId,
       });
@@ -2535,6 +2548,13 @@ function resetWeaponDiagnostics(diag) {
   if (!diag) return;
   diag.autoFireSpatialQueries = 0;
   diag.autoFireCandidates = 0;
+}
+
+/** One tick of a continuous beam: the authored packet plus its share of the armor window. */
+export function beamDamagePacket(w, def, damage, damageType, dt) {
+  const packet = buildWeaponDamagePacket(w, def, damage, damageType);
+  if (dt > 0) packet.armorFlatScale = Math.min(1, dt / BEAM_ARMOR_PACKET_S);
+  return packet;
 }
 
 export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) {
