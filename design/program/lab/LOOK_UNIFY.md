@@ -157,3 +157,61 @@ vg         cockpit_dome_i c  0.0 s  0.0 L0.28 | place_cargo_po c  0.0 s  0.0 L0.
   and ignores `material.envMapIntensity`. So every authored and role-band env value is dead in the live renderer.
 - **Cockpit dome: emissive causes it.** Glass is emissive #d3eaff × 2.2. Emissive × 0 (vc) takes the dome from clip 70% to 3%.
 - No unlit or toon path is involved: every hull runs through the illustrated physical shader.
+
+## Pass 2: fix and rendered result
+**Fix (shared layer, no bloom.js/renderer.js edits):**
+- `illustratedSurface.js`: hulls now honour the authored/role `envMapIntensity` under `scene.environment`, through a per-material
+  `sfAuthoredEnv` uniform, and scale it by a new Look value `surface.sceneEnv` (`look.js`, `lookMoods.js`).
+  LOOK_BASE `sceneEnv` is 0.18, picked from an A/B sweep (1.0 / 0.35 / 0.20 / 0.10). Moods can override it. Program key is unchanged.
+- `materialRoleBands.js`: glass emissive is capped at 0.25. The cockpit dome now reads as glass, not as a glow blob.
+- Signal and drive emissive are untouched, so glow parts still bloom. Livery colour factors are untouched (livery test passes).
+  Exposure and tone mapping are untouched.
+
+**Rendered, 286 models × 2 views, master → pass 2:**
+```
+models 286
+meanL      0.464±0.153 -> 0.357±0.140
+clipPct    5.583±9.400 -> 2.399±4.591
+specPct    10.395±15.692 -> 0.748±3.702
+bloomHalo  0.005±0.002 -> 0.004±0.002
+contrast   0.742±0.149 -> 0.586±0.161
+sat        0.367±0.110 -> 0.437±0.117
+outliers 57 -> 7
+still: cockpit_dome fin_crystalline place_station_billboard place_traffic_signal pod_utility weapon_heavy_cannon weapon_railgun
+per dominant role: meanL sd / spec mean  before -> after
+  accent      n= 13 L sd 0.127->0.140  spec  14.8->  0.3  clip  15.6->  9.1
+  ceramic     n=  9 L sd 0.088->0.068  spec   4.6->  0.1  clip   2.0->  0.2
+  geology     n= 13 L sd 0.120->0.108  spec   4.1->  0.1  clip   1.6->  0.4
+  hull        n= 84 L sd 0.169->0.157  spec  18.1->  1.1  clip   5.3->  1.9
+  mechanical  n= 71 L sd 0.149->0.135  spec   9.0->  1.3  clip   7.0->  2.0
+  service     n= 12 L sd 0.056->0.059  spec   6.0->  0.1  clip   0.5->  0.0
+  signal      n= 80 L sd 0.112->0.093  spec   5.5->  0.2  clip   4.9->  3.2
+worst12 spec+clip:
+  place_utility_module 152.0 -> 11.2
+  cockpit_dome 138.7 -> 66.4
+  place_cargo_pod_hazmat 101.6 -> 7.7
+  place_comms_array 94.8 -> 27.4
+  place_habitat_pod 90.8 -> 8.1
+  place_construction_frame 88.2 -> 1.4
+  engine_plasma_ring 86.8 -> 2.4
+  place_cargo_pod_standard_breached 85.5 -> 4.9
+  place_habitat_pod_derelict 81.2 -> 7.3
+  engine_vector 81.0 -> 15.9
+  pod_utility 78.3 -> 79.0
+  place_parts_rack 78.0 -> 2.3
+```
+Targets:
+- outliers ≤ 10: **met** (57 → 7).
+- spec halved: **met** (10.4 → 0.75%).
+- clip ≤ 1.5%: **missed** (5.58 → 2.40%). The remainder is mostly emissive glow (accent 9.1%, signal 3.2%), which the brief keeps bright.
+  Hull 1.9%, mechanical 2.0%.
+- meanL 0.38–0.42: **slightly under** (0.357).
+
+The remaining 7 outliers are the cockpit_dome glass rim highlights, glow-heavy parts (pod_utility, place_traffic_signal,
+place_station_billboard, fin_crystalline) and two weapons.
+
+**Known side effect:** cream paint used to get its warmth from the warm foundry IBL. With that IBL cut, pale hulls read cool grey or
+lavender under the Look's blue shadow tint (see worst12_before_after2.png). Raising `sceneEnv` to about 0.25, or warming
+`surface.shadowTint`, should also bring meanL into 0.38–0.42. That change is not rendered yet.
+
+Sheets (box): `/workspace/look-unify/all_after2.png`, `/workspace/look-unify/worst12_before_after2.png` (BEFORE = master).
