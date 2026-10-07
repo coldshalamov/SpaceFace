@@ -866,3 +866,39 @@ seam reproduces it. Tests: `test/target-lock-cursor-pick.test.mjs` 7 (5 fail on 
 **Candidates (not changed):** pad/stick aim still picks nearest (needs a bearing score of its own); Tab cycle is
 distance-ordered; with a 0.40 s reaction the grace is too short (58%).
 
+### 10.7 #7 collision response / ram consequences: PROVEN against its contracts, no PR
+
+**Bench.** `node scripts/lab/run.mjs collision` (`scripts/lab/benches/collision.mjs`). Real rapier-dynamic +
+collisionConsequences + impulseKernel + tumbleStates. Impact grid: mover (wasp, corsair, reaver, bruiser, player) x
+target (static asteroid r22, loose 60-mass rock, bruiser, wasp) x 20–300 wu/s x 0/30/60/80° incidence. The mover is
+carried kinematically (pose + velocity written after each step) until first contact, then released — a helmed hull's
+flight cap would otherwise clamp the approach to its maxSpeed. Plus `cruise|v` (player lane through a rock field) and
+`field|wasp|mixed|sparse|dense` (live AI pack fights an invulnerable circling player inside a seeded field for 60 s;
+counts NPC rock contacts, tumbles, collision kills and who caused them). Table: `results/collision-2b/coltab.mjs <dir> [angle|all]`.
+Seam (off by default): `setCollisionLab({ selfCrashCap })`.
+
+**Findings (baseline, results/collision-2b/grid, field).**
+- Damage vs closing speed is monotone with no spikes, but it SATURATES early: the terrain crumple law (threshold 30,
+  cap 400·clamp(16/m)) reaches each hull's cap at ~56 wu/s, so 60 and 300 wu/s rock hits do the same damage
+  (corsair 38%, reaver 44%, bruiser 14% of toughness).
+- Light hulls die to any head-on rock hit at >= 50 wu/s (a Wasp at 48% of its 105 combat speed). This meets the
+  authored B6 "terrain is lethal" contract (`test/terrain-slam.test.mjs`: light hostile at 50% of cruise loses
+  >= 60%, dies at 75%), so it is by design.
+- Live dense field: 6 NPC deaths in 40 fights x 60 s (one per ~6.7 min), all `direct_contact` crediting the NPC
+  itself (its own piloting), none player-caused. Sparse field: 0.
+- NPC bounce: normal restitution 0.05–0.3 off rock (scraping material), spin 0–6 rad/s; terrain hits >= 18 dv tumble.
+- Player: zero hull damage at any speed (contract: impact damage is NPC-only); head-on into a static rock the player
+  stops dead (restitution 0.00 at 20–300 wu/s, no spin); off a loose rock 0.2–0.36, off a wasp 0.4–0.6. Helm never
+  lost; cruise at 80–260 wu/s: 0 deaths, 0 helm-loss.
+- Grazes (60–80°) carry radial closing only (~30 wu/s at 150): no damage, restitution ~0.8. Correct.
+
+**Probe: self-crash cap** (one self-piloted crash takes at most k x full toughness). Field kills 6 -> 0 at k 0.25/0.35,
+2 at 0.5. But it breaks 10 contract test files (terrain-slam B6, terrain-damage-law, kill machines, sling-throw,
+field-routes …) even narrowed to `direct_contact` self only, because the contracts author terrain as lethal. Not
+shipped; kept as `results/collision-2b/selfcrash-candidate.patch` (+ test) for Robin.
+
+**Candidates for Robin (not changed):** (1) NPC self-crash deaths (~1 per 7 min in dense fields) — keep B6 or cap
+self-piloted crashes (patch ready, k 0.35); (2) damage saturates at ~56 wu/s, so a 300 wu/s ram reads the same as a
+60 wu/s bump — a wider crumple ramp would make speed matter; (3) the player stops dead on rock (no bounce/spin) — the
+scraping material + give rule is deliberate, but the intent line asks for "bounce, spin".
+
