@@ -694,7 +694,9 @@ export class GyreSnarePresentation {
       // The mouth rides the same ignition ramp + dying-cap dim as the glass — a ring
       // that pops at full alpha a frame early or stays bright under a dying fuse
       // contradicts the telegraph the cone is making.
-      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * flashCalm * fuseDim * wakeEase);
+      // `spent` joins the lash's LAUNCH dim so the mouth fades with the glass it sits on
+      // through the post-thrownBeat burst instead of glowing on a dead funnel.
+      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * spent * flashCalm * fuseDim * wakeEase);
       // Net anticipation: absorbables already inside the cone make the mouth glow
       // brighter before the catch — "×N IN NET" through the glass itself.
       const net = Math.min(3, finite(mirror.basinCount, 0));

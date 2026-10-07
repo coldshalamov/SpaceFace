@@ -817,8 +817,8 @@ export const gyreSnare = {
       || mass * rt.clumpRadius * rt.clumpRadius * 0.4;
     queuePhysicsTorqueImpulse(core, { x: 0, y: inertia * spinErr * D.tumbleTorqueK * dt, z: 0 }, this._evidence(state.tick));
 
-    // The beam keeps sweeping the basin into the ball: bodies near the maw get a pull
-    // retargeted onto the CORE (the clump is what "increases gravity" now).
+    // The beam keeps sweeping the basin toward the maw — still the funnel throat while
+    // the suck lane owns the clump annulus (the clump is what "increases gravity" there).
     // towCount resets above BOTH lanes — a local reset inside _pullPass would wipe
     // the suck lane's annulus count from the same tick.
     rt.towCount = 0;
