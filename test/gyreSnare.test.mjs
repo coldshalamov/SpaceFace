@@ -1127,11 +1127,12 @@ test('a same-state destroy→init reload re-seeds the ball watch list', async ()
   assert.equal(a.data.gyreLaunched, undefined, 'the adopted ball is unmarked post-reload');
   assert.equal(a.physicsBody.impactDamageScale, 0.2, 'the authored scale is restored');
   assert.equal(a.data.despawnAt, 9999, 'a still-future authored data deadline comes back too');
-  // The countdown channel has no absolute-time test: resuming a nearly-exhausted
-  // authored ttl would assassinate the adopter's body the same way a stale despawnAt
-  // did before wave-19 — the stash is consumed and the adopter owns the deadline.
-  assert.equal(a.ttl, Infinity, `the adopter owns the countdown wholesale (got ${a.ttl})`);
-  assert.equal(a.data.gyrePrevTtl, undefined, 'the ttl stash is consumed, not resumed');
+  // The countdown channel is RELATIVE — it can't go stale like an absolute despawnAt,
+  // so hand-back resumes it symmetrically: an adopted body released into the world
+  // decays on its authored schedule instead of living forever as residue.
+  assert.ok(Number.isFinite(a.ttl) && a.ttl > 0 && a.ttl <= 8888,
+    `the handed-back ball resumes its authored countdown (got ${a.ttl})`);
+  assert.equal(a.data.gyrePrevTtl, undefined, 'the ttl stash is consumed on restore');
   t.cleanup();
 });
 
@@ -1898,5 +1899,64 @@ test('a body spiraling into the clump glows like a basin victim (suck-lane spots
   );
   assert.ok(spot, `the in-flight meal publishes a pull glow (spots=${JSON.stringify(t.state.gyreSnare.basinSpots)})`);
   assert.ok(spot.k > 0.05, 'glow rides a real grip share');
+  t.cleanup();
+});
+
+test('liveBalls republishes while the lash is OFF — a retired ball clears the +N', async () => {
+  const t = await bootPhysics();
+  const ball = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step();
+  for (let i = 0; i < 12 && t.sys._rt.phase !== 'off'; i++) t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.equal(t.state.gyreSnare.liveBalls, 1, 'the flying ball publishes while OFF');
+  // Quiet expiry through the real sweep — the count must follow the retirement even
+  // though the mirror's live path never runs again while the beam is closed.
+  ball.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 8; i++) t.sim.step();
+  assert.equal(t.sys._rt.ballId, null, 'the sweep retired the ball');
+  assert.equal(t.state.gyreSnare.liveBalls, 0,
+    `a dead ball can't pin a phantom +N on the HUD (got ${t.state.gyreSnare.liveBalls})`);
+  t.cleanup();
+});
+
+test('a core parked in the strain band publishes strain01 without dropping', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  // Park inside (holdStrainDist, holdBreakDist): the lash groans but never tears —
+  // the band itself was previously only covered by its break-side edge.
+  core.pos.x = T.mawDist + T.holdStrainDist + 80; // 560 wu off the maw → strain 0.5
+  core.pos.z = 0;
+  core.vel.x = 0; core.vel.z = 0;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const s = t.state.gyreSnare.strain01;
+  assert.ok(s > 0.3 && s < 0.7, `in-band strain reads ~0.5 (got ${s.toFixed(2)})`);
+  assert.equal(t.sys._rt.phase, 'holding', 'the band strains without tearing');
+  assert.ok(!t.events.some((e) => e.name === 'gyre:dropped'), 'no drop inside the band');
+  assert.equal(t.sys._rt.coreId, core.id, 'the clump is still tethered');
+  t.cleanup();
+});
+
+test('save:loaded mid-hold dies the member ledger — a re-beam inherits nothing', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const meal = rock(t.sim, core.pos.x + 20, core.pos.z, 4, 3);
+  t.sim.step(); // spatial index registers the meal
+  for (let i = 0; i < 40 && t.sys._rt.members.length === 0; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.ok(t.sys._rt.members.length > 0 || !meal.alive,
+    'the meal merged before the boundary');
+  t.bus.emit('save:loaded', {});
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'the boundary drops the beam');
+  assert.equal(t.sys._rt.members.length, 0, 'the member ledger is runtime-only — never serialized');
+  assert.equal(t.state.gyreSnare.absorbs, 0, 'a fresh beam inherits no dead clump count');
+  assert.equal(t.state.gyreSnare.clumpMass, 0, 'nor its mass');
   t.cleanup();
 });

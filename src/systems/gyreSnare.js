@@ -260,11 +260,14 @@ export const gyreSnare = {
       }
     }
     if (e.data.gyrePrevTtl !== undefined) {
-      // The countdown channel has no absolute-time test — under futureOnly the new
-      // owner takes the body's deadline wholesale: resuming a nearly-exhausted
-      // authored ttl would assassinate it exactly like a stale despawnAt.
-      if (futureOnly) delete e.data.gyrePrevTtl;
-      else { e.ttl = e.data.gyrePrevTtl; delete e.data.gyrePrevTtl; }
+      // The countdown channel is RELATIVE — frozen at snag, it can't go stale like an
+      // absolute despawnAt. Resuming it under futureOnly is the honest authored state:
+      // an adopter keeping the body strips deadlines itself, and a released hand-back
+      // must not leave immortal debris. A non-positive stash restores nothing.
+      if (futureOnly) {
+        if (Number.isFinite(e.data.gyrePrevTtl) && e.data.gyrePrevTtl > 0) e.ttl = e.data.gyrePrevTtl;
+        delete e.data.gyrePrevTtl;
+      } else { e.ttl = e.data.gyrePrevTtl; delete e.data.gyrePrevTtl; }
     }
   },
 
@@ -1248,6 +1251,10 @@ export const gyreSnare = {
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
     pub.towCount = rt.towCount || 0;
+    // Live-ball count publishes on EVERY phase incl. OFF — the HUD's '+N' counts balls
+    // still flying while the lash is closed; freezing it here would pin a phantom
+    // extra-ball pip until the next beam opened.
+    pub.liveBalls = rt.ballIds.length;
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {
       pub.coreId = null; pub.strain01 = 0;
@@ -1257,9 +1264,14 @@ export const gyreSnare = {
         pub.clumpMass = rt.ballMass;
         pub.clumpRadius = rt.ballClumpRadius;
         pub.absorbs = rt.ballAbsorbs;
+        const lm = rt.ballMembers && rt.ballMembers.length
+          ? rt.ballMembers[rt.ballMembers.length - 1] : null;
+        pub.absorbDir.x = lm ? finite(lm.nx) : 0;
+        pub.absorbDir.z = lm ? finite(lm.nz) : 0;
       } else {
         pub.members = null;
         pub.clumpMass = 0; pub.clumpRadius = 0; pub.absorbs = 0;
+        pub.absorbDir.x = 0; pub.absorbDir.z = 0;
       }
       return pub;
     }
@@ -1321,7 +1333,6 @@ export const gyreSnare = {
     } else { pub.strain01 = 0; pub.coreAngVel = 0; }
     // The newest member's approach direction — the gulp dips toward the side the mass
     // actually hit instead of reading omnidirectional. nx/nz ride the member ledger.
-    pub.liveBalls = rt.ballIds.length;
     const lastM = pub.members && pub.members.length ? pub.members[pub.members.length - 1] : null;
     pub.absorbDir.x = lastM ? finite(lastM.nx) : 0;
     pub.absorbDir.z = lastM ? finite(lastM.nz) : 0;

@@ -192,6 +192,25 @@ test('the RB combat-state layer chords independently of the LB layer', () => {
   press(BTN.r1, false); press(BTN.dDown, false);
 });
 
+test('RB+Y holds the Gyre Snare lash — the chord edges both ways', () => {
+  const gp = createGamepad({ bus: createBus() });
+  const state = makeState();
+  gp.tick(1 / 60, state);
+  press(BTN.r1, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  press(BTN.alt, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.pressed, true, 'RB+Y is the lash edge');
+  assert.equal(gp.actions.gyreSnare.held, true, 'the chord holds the beam open');
+  assert.equal(gp.actions.boost.held, true, 'RB keeps its own verb while chorded');
+  // Releasing Y is the bowl — a falling edge the sim turns into the launch.
+  press(BTN.alt, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.released, true, 'releasing Y bowls the clump');
+  assert.equal(gp.actions.gyreSnare.held, false);
+  press(BTN.r1, false);
+});
+
 test('remap capture resolves a held modifier + tapped key into a chord name', () => {
   const gp = createGamepad({ bus: createBus() });
   const state = makeState();

@@ -425,3 +425,50 @@ test('a hold-to-toggle verb held through a dock does not re-latch on the way bac
     dom.restore();
   }
 });
+
+test('a pad-held gyre chord survives a screen opening — acts.gyreSnare stays latched', () => {
+  const dom = installFakeInputDom();
+  const host = Object.create(input);
+  const state = makeDomInputState();
+  state.ui = { screenStack: [] };
+  state.input.mouseNdc = { x: 0, y: 0 };
+  state.input.aimWorld = { x: 0, z: 0 };
+  state.input.aimAngle = 0;
+  state.input.aimIntentActive = false;
+  state.input.autoTargetVector = { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
+  state.input.autoTargetPath = { points: [], active: false };
+  const ctx = { state, bus: { emit() {} }, helpers: {} };
+  try {
+    host.init(ctx);
+    // The RB+Y chord reports held only through the pad's actions table — the keyboard
+    // side never touched Quote. Same modal-preservation contract as the held key.
+    host.gamepad = {
+      isConnected: () => true,
+      actions: { gyreSnare: { held: false, pressed: false, released: false, value: 0 } },
+      axes: { leftX: 0, leftY: 0, rightX: 0, rightY: 0 },
+      tick() {},
+      _resetState() {},
+    };
+    host.update(1 / 60, state); // connected neutral sample — clears the init quarantine
+    assert.equal(host._gamepadLifecycleActionAllowed('gyreSnare'), true,
+      'a connected neutral sample re-arms the chord');
+    host.gamepad.actions.gyreSnare.held = true;
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true, 'pad-held chord runs the lash');
+
+    state.ui.screenStack.push('station');
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true,
+      'a screen preserves the pad-held chord — zeroing would bowl the clump mid-modal');
+
+    state.ui.screenStack.pop();
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true, 'the still-held chord rides on the way back');
+    host.gamepad.actions.gyreSnare.held = false;
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, false, 'releasing the chord drops the beam');
+    host.destroy();
+  } finally {
+    dom.restore();
+  }
+});
