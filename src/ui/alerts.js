@@ -133,7 +133,7 @@ export function isVoiceOwnedAlertToast(text) {
 export function createAlerts(ctx) {
   const { bus } = ctx;
   const root = document.getElementById('alerts');
-  const map = new Map(); // key -> { key, sev, text, ttl(ms)|Infinity, born, el }
+  const map = new Map(); // key -> { key, sev, text, ttl(ms)|Infinity, born, expiresAt, el, wasShown }
   const expiredKeys = [];
   let nextExpiryAt = Infinity;
   let blockedMills = new Set();
@@ -181,6 +181,24 @@ export function createAlerts(ctx) {
     recomputeNextExpiry();
   }
 
+  // Anti-flap law for the stack: a record's element is mounted for the record's LIFETIME and
+  // hidden with [hidden] (ui.css: [hidden]{display:none !important}) while it sits outside the
+  // top 3. Removing/re-appending pills on every re-sort is what made the top-center stack
+  // flicker: each remove shifted the pills below, every re-add replayed the 160ms entrance,
+  // and a pill that dropped out re-entered at the append point instead of its sorted slot.
+  // Only clear()/tick() (end of life) and a genuine order change may move a node now.
+  function suppressEntrance(el) {
+    // A hidden→shown toggle restarts CSS animations, and the entrance fade lives on the base
+    // .sf-alert class (not a class we can re-add selectively), so pin animation-name inline to
+    // everything except sf-alert-in: the danger throb survives, and reduced-motion / skin
+    // animation:none stays truthful because the list is read from the live computed style.
+    // Suppression is sticky per element — only a record's FIRST show ever fades in.
+    const names = String(getComputedStyle(el).animationName || '')
+      .split(',').map((s) => s.trim())
+      .filter((n) => n && n !== 'none' && n !== 'sf-alert-in');
+    el.style.animationName = names.length ? names.join(', ') : 'none';
+  }
+
   function render() {
     if (!root) return;
     // sort: severity desc, then most-recent first; show top 3
@@ -191,10 +209,29 @@ export function createAlerts(ctx) {
       const el = ensureEl(rec);
       if (rec._txt.textContent !== rec.text) rec._txt.textContent = rec.text;
       if (shownSet.has(rec)) {
-        if (el.parentNode !== root) root.appendChild(el);
-      } else if (el.parentNode) {
-        el.parentNode.removeChild(el);
+        // A pill that has been on screen before must not replay its entrance on re-show.
+        if (rec.wasShown && el.hidden) suppressEntrance(el);
+        if (el.hidden) el.hidden = false;
+        rec.wasShown = true;
+      } else if (!el.hidden) {
+        el.hidden = true;
       }
+      if (el.parentNode !== root) root.appendChild(el);
+    }
+    // Sorted order, enforced only when it actually differs: appendChild moves restart
+    // animations, so touch nothing while the shown pills already sit in sort order. Hidden
+    // pills take no flex slot and the floor carries order:-1, so only the shown pills'
+    // relative DOM order matters.
+    const shownEls = new Set(shown.map((rec) => rec.el));
+    let wrongAt = -1;
+    let seen = 0;
+    for (const child of root.children) {
+      if (!shownEls.has(child)) continue;
+      if (seen >= shown.length || shown[seen].el !== child) { wrongAt = seen; break; }
+      seen++;
+    }
+    if (wrongAt !== -1) {
+      for (let i = wrongAt; i < shown.length; i++) root.appendChild(shown[i].el);
     }
   }
 
@@ -338,6 +375,11 @@ export function createAlerts(ctx) {
     floorEl._txt.textContent = p.text;
     floorSpokenText = p.text;
     if (floorEl.parentNode !== root) root.appendChild(floorEl);
+    // The floor slot is RESERVED: the element stays mounted for the session and only turns
+    // visible between voices. Toggling visibility (not display, not append/remove) keeps its
+    // layout box, so the persistent pills below never shift ~30-40px when a voice surfaces or
+    // clears; `sf-alert--floor`'s order:-1 keeps it atop the stack wherever it sits.
+    floorEl.style.visibility = 'visible';
     ensureFloorAnnouncers();
     if (sev === 'danger') {
       politeLive.textContent = '';
@@ -352,7 +394,10 @@ export function createAlerts(ctx) {
     if (!floorEl) return;
     // Ignore a stale clear for a floor already replaced by a newer surface.
     if (p && p.id != null && String(p.id) !== floorId) return;
-    if (floorEl.parentNode) floorEl.parentNode.removeChild(floorEl);
+    // Slot stays reserved: keep the element mounted and its layout box (text included, so the
+    // height is exact) and only turn it invisible — the pills below never move. A hidden
+    // visibility box is dropped from the accessibility tree, so the line truly goes silent.
+    floorEl.style.visibility = 'hidden';
     if (politeLive) politeLive.textContent = '';
     if (dangerLive) dangerLive.textContent = '';
     floorId = null;
@@ -484,9 +529,11 @@ export function createAlerts(ctx) {
     else announce({ key: 'incoming', sev: 'warn', text: 'TAKING FIRE', ttl: 1.5 });
   }, { presentation: true });
   // Missile lock is a condition-bound STATUS light (raised on lock, cleared on unlock) — it must
-  // stay visible while the lock holds, so it stays a pill, not a one-shot voice.
+  // stay visible while the lock holds, so it stays a pill, not a one-shot voice. The emitter
+  // fires only on lock CHANGE, so the pill carries ttl:Infinity; clear('lock') on unlock is
+  // the only exit (a finite ttl let it expire mid-lock and blink on jittery re-acquire).
   bus.on('combat:lockChanged', ({ locked }) => {
-    if (locked) raise({ key: 'lock', sev: 'danger', text: 'MISSILE LOCK', ttl: 2 });
+    if (locked) raise({ key: 'lock', sev: 'danger', text: 'MISSILE LOCK', ttl: Infinity });
     else clear('lock');
   });
   // cargo-full: arbiter owns the short status line. floatingText may still emit a parallel
@@ -504,35 +551,18 @@ export function createAlerts(ctx) {
     else raise(command);
   });
 
-  // ECON-05: sink charge posts a receipt line naming the kind (SESSION_SINK_KINDS word).
-  bus.on('economy:sinkCharged', (payload) => {
-    const text = sinkChargeAlertText(payload);
-    if (!text) return;
-    raise({
-      key: `sink:${payload && payload.id != null ? payload.id : (payload && payload.kind || 'charge')}`,
-      sev: 'info',
-      text,
-      ttl: 3,
-    });
-  });
-
-  // ECON-04: salvage intake that the market absorbed posts a one-line receipt.
-  bus.on('economy:salvageIntakeApplied', (payload) => {
-    const text = salvageIntakeAlertText(payload);
-    if (!text) return;
-    raise({
-      key: `salvage:${payload && (payload.intakeId || payload.lotId) || 'intake'}`,
-      sev: 'info',
-      text,
-      ttl: 3,
-    });
-  });
+  // ECON-04/ECON-05 receipt lines are announced ONCE, through the arbiter floor above
+  // (economy:salvageIntakeApplied / economy:sinkCharged). Earlier parallel raise() bindings
+  // here painted a second near-identical pill beside the floor line — removed; the module
+  // header's routing rule stands: transient one-shots go through the arbiter only.
 
   // low-shield/hull driven from the HUD per-frame check via these helpers (status pills):
   return { raise, clear, tick };
 }
 
-/** ECON-05: Flight-HUD alert text for session sink charges. */
+/** ECON-05: Flight-HUD formatting contract for session sink charges (pinned by
+ *  test/economy-sink-charged-alert.test.mjs). The live wiring announces through the arbiter
+ *  floor above; this pure formatter stays the tested word/amount contract for the HUD lane. */
 export function sinkChargeAlertText(payload) {
   if (!payload) return null;
   const amount = Math.floor(Number(payload.amount) || 0);
@@ -542,7 +572,9 @@ export function sinkChargeAlertText(payload) {
   return `${word} · ${amount} CR`;
 }
 
-/** ECON-04: Flight-HUD alert text for absorbed salvage intake. */
+/** ECON-04: Flight-HUD formatting contract for absorbed salvage intake (pinned by
+ *  test/economy-sink-charged-alert.test.mjs). The live wiring announces through the arbiter
+ *  floor above; this pure formatter stays the tested value/qty contract for the HUD lane. */
 export function salvageIntakeAlertText(payload) {
   if (!payload) return null;
   const qty = Math.floor(Number(payload.qty) || 0);
