@@ -24,7 +24,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { gyreSnare } from '../src/systems/gyreSnare.js';
 import { physics } from '../src/core/physics.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
-import { readRecentImpulseProvenance } from '../src/combat/impulseKernel.js';
+import { readRecentImpulseProvenance, clearImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { GYRE_SNARE } from '../src/data/gyreSnare.js';
 
 const DT = SIM_DT;
@@ -1282,5 +1282,77 @@ test('releasing while HOLD with a vanished core drops launch_without_core, never
   assert.equal(t.sys._rt.phase, 'off');
   assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'launch_without_core'));
   assert.equal(t.events.some((e) => e.name === 'gyre:launched'), false);
+  t.cleanup();
+});
+
+// ── wave-17 coverage ────────────────────────────────────────────────────────────
+test('a deliberate bowl never rings the strain bell — strain reads zero through LAUNCH', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  // Strain excursion under HOLD: pin past the 320 strain floor (under the 640 break).
+  for (let i = 0; i < 5; i++) {
+    core.pos.x = t.player.pos.x + T.mawDist + 520; core.pos.z = t.player.pos.z;
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain').length, 1,
+    'the HOLD excursion latched its strain voice once');
+  // Bowl while still strained — the coil/burst must not fire a second strain beat.
+  release(t);
+  assert.equal(t.sys._rt.phase, 'launching');
+  const strainsBefore = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain').length;
+  for (let i = 0; i < T.launchWindupTicks + T.launchTicks + 2; i++) {
+    core.pos.x = t.player.pos.x + T.mawDist + 520; core.pos.z = t.player.pos.z;
+    t.sim.step();
+    assert.equal(t.state.gyreSnare.strain01, 0, 'LAUNCH never publishes strain');
+  }
+  assert.equal(
+    t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain').length,
+    strainsBefore, 'no phantom strain beat on a deliberate bowl',
+  );
+  t.cleanup();
+});
+
+test('a reloaded ball keeps kill credit and re-adopts the HUD ball mirror', async () => {
+  const t = await bootPhysics();
+  const ball = rock(t.sim, T.mawDist, 0, 8, 4);
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  assert.equal(t.sys._rt.ballId, ball.id);
+  assert.equal(ball.data.gyreLaunched, true);
+  // A real save:load rebuilds entities — the WeakMap record keyed on the OLD object is
+  // gone. Simulate that here: same entity, provenance slot cleared (what a true
+  // deserialization would look like to the kernel).
+  clearImpulseProvenance(ball);
+  t.sys.destroy();
+  t.sys.init({ state: t.state, bus: t.bus, helpers: t.helpers, registry: t.sim.registry });
+  assert.ok(ball.data.gyreLaunchMeta, 'launch serialized its credit meta');
+  const rec = readRecentImpulseProvenance(ball, t.state.tick);
+  assert.ok(rec && rec.tag === 'gyre_launch' && rec.actorId === t.state.playerId,
+    'boundary sweep re-stamps kill credit from the serialized meta');
+  assert.equal(t.sys._rt.ballId, ball.id, 'the sweep re-adopts the flying ball into the HUD mirror');
+  assert.ok(t.sys._rt.ballMass > 0 && t.sys._rt.ballClumpRadius > 0, 'mirror mass/radius restored');
+  t.sim.step();
+  assert.equal(t.state.gyreSnare.launchedId, ball.id, 'HUD sees the ball live again');
+  t.cleanup();
+});
+
+test('the cap-crossing absorb donates only its absorbed fraction of volume', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 8, 4);
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const rt = t.sys._rt;
+  rt.clumpMass = T.maxClumpMass - 5; // one meal from the cap
+  const meal = rock(t.sim, T.mawDist + 2, 0, 50, 30);
+  const rBefore = rt.clumpRadius;
+  t.state.input.actions.gyreSnare = true; t.sim.step(); t.sim.step(); t.sim.step();
+  const expected = Math.cbrt(rBefore ** 3 + 30 ** 3 * (5 / 50));
+  assert.ok(Math.abs(rt.clumpRadius - expected) < 0.5,
+    `radius grew by the absorbed 10% of the meal (got ${rt.clumpRadius.toFixed(2)}, expected ~${expected.toFixed(2)})`);
+  assert.ok(rt.clumpRadius < Math.cbrt(rBefore ** 3 + 30 ** 3) - 1,
+    'the crossing absorb donated a fraction of the meal volume, not all of it');
   t.cleanup();
 });

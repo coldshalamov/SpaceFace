@@ -250,6 +250,7 @@ export const gyreSnare = {
   // authored scale comes back rather than vanishing with the mark.
   _handBack(ball) {
     delete ball.data.gyreLaunched;
+    delete ball.data.gyreLaunchMeta; // the adopter owns the body now — no lash credit rides it
     // Symmetric with _restoreLifetime on drop: the authored deadlines the ball carried
     // before the lash caught it come back instead of leaving it immortal unless the
     // adopter deadlined it themselves.
@@ -286,6 +287,38 @@ export const gyreSnare = {
       // them symmetric with the drop contract.
       if (e && e.data && e.data.gyreLaunched) {
         this._trackBall(e.id);
+        // The kill-credit record lives in a WeakMap keyed on the entity OBJECT — a real
+        // load rebuilds entities, so the post-load ball is provenance-blind and its impact
+        // kills go unattributed. Re-stamp from the serialized meta; the ball's despawnAt
+        // is the honest outer bound for the hold (a dead ball can't kill anyway).
+        const meta = e.data.gyreLaunchMeta;
+        if (meta && this.state) {
+          const rec = recordImpulseProvenance(e, {
+            actorId: meta.actorId, weaponId: meta.weaponId, tag: meta.tag,
+            appliedTick: this.state.tick | 0, magnitude: meta.magnitude,
+          });
+          if (rec && Number.isFinite(meta.holdUntilSim) && Number.isFinite(this.state.simTime)) {
+            const rem = Math.max(0, meta.holdUntilSim - this.state.simTime);
+            holdImpulseProvenance(e, (this.state.tick | 0) + Math.round(rem * 60), this.state.tick | 0);
+          }
+        }
+        // Re-adopt the flying ball into the HUD/clump mirror: a destroy()->init() cycle
+        // on a same-timeline reload left ballId null while the body still flew, so the
+        // "ball live" dot and glass-clump overlay died under it. The member ledger never
+        // serialized — the overlay falls back to the collider silhouette (members=null).
+        if (e.alive !== false && e.pos) {
+          const rt = this._rt;
+          rt.ballId = e.id;
+          rt.launchedId = e.id;
+          rt.ballMass = entityMass(e);
+          // The thrown clump may have outgrown its core's collider — the launch-time
+          // radius serialized in the meta is the honest silhouette; entity radius is the
+          // floor for balls launched before the field existed.
+          rt.ballClumpRadius = meta && Number.isFinite(meta.clumpRadius)
+            ? meta.clumpRadius : entityRadius(e);
+          rt.ballMembers = null;
+          rt.ballAbsorbs = 0;
+        }
       }
     });
   },
@@ -697,10 +730,14 @@ export const gyreSnare = {
     if (rt.clumpMass >= D.maxClumpMass) return; // capped — still eats nothing
     const em = entityMass(e);
     const er = entityRadius(e);
+    const massBefore = rt.clumpMass;
     rt.clumpMass = Math.min(D.maxClumpMass, rt.clumpMass + em);
+    // The cap-crossing meal donates only its absorbed fraction of volume — granting the
+    // whole er^3 at a partial mass-add over-inflates the last grow step.
+    const frac = em > 0 ? (rt.clumpMass - massBefore) / em : 0;
     rt.clumpRadius = Math.min(
       D.maxClumpRadius,
-      Math.cbrt(rt.clumpRadius ** 3 + er ** 3),
+      Math.cbrt(rt.clumpRadius ** 3 + er ** 3 * frac),
     );
     // Member ledger for the VFX lumps — bounded, keeps the approach direction so lumps
     // land where the mass actually hit. totalAbsorbed stays unbounded so the HUD's ×N
@@ -825,6 +862,17 @@ export const gyreSnare = {
       magnitude: rt.clumpMass * D.launchSpeed,
     });
     holdImpulseProvenance(core, (state.tick | 0) + Math.round(D.launchProvenanceHoldS * 60), state.tick | 0);
+    // Serializable shadow of the WeakMap record: a save:loaded ball keeps despawnAt +
+    // weapon scale but loses its entity-keyed provenance — the boundary sweep re-stamps
+    // kill credit from this meta. holdUntilSim rides despawnAt, the flight's outer bound.
+    core.data.gyreLaunchMeta = {
+      actorId: state.playerId == null ? null : state.playerId,
+      weaponId: WEAPON_ID,
+      tag: 'gyre_launch',
+      magnitude: rt.clumpMass * D.launchSpeed,
+      holdUntilSim: core.data.despawnAt,
+      clumpRadius: rt.clumpRadius,
+    };
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(core);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.launched, {
@@ -995,15 +1043,18 @@ export const gyreSnare = {
       pub.corePos.x = core.pos.x; pub.corePos.z = core.pos.z;
       // The held body's real spin — the VFX lumps ride it instead of an authored rate.
       pub.coreAngVel = finite(core.angVel);
-      pub.strain01 = clamp(
+      // Strain is a HOLD-only read: rt.coreId stays set through the launch coil/burst
+      // (cleared at _finishLaunch), so a clump released already-strained would publish a
+      // phantom "beam tearing" beat on a deliberate bowl. LAUNCH reports zero like BEAM.
+      pub.strain01 = rt.phase === PHASE.HOLD ? clamp(
         (Math.hypot(core.pos.x - maw.x, core.pos.z - maw.z) - D.holdStrainDist)
           / Math.max(1, D.holdBreakDist - D.holdStrainDist),
         0, 1,
-      );
+      ) : 0;
     } else { pub.strain01 = 0; pub.coreAngVel = 0; }
     // Strain gets its own voice on the same hysteresis the HUD uses: the glass tension
     // rises the tick the clump strains, and latches quiet again once it reels back in.
-    if (!rt.strainCueLatched && pub.strain01 > 0.4) {
+    if (rt.phase === PHASE.HOLD && !rt.strainCueLatched && pub.strain01 > 0.4) {
       rt.strainCueLatched = true;
       if (this.bus) this.bus.emit('audio:cue', { id: 'gyre_snare_strain', gain: 0.7 });
       // Strain reaches the hands too — one warning pulse on the latch edge, not a rumble
