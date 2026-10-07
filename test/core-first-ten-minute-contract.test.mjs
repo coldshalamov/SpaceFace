@@ -774,7 +774,7 @@ await check('objective exposes one action, destination, distance, and distinctiv
   );
   assert.equal(wp.markerId, 'onboarding:wake', 'objective marker id must be deterministic and beat-stable');
   assert.equal(wp.markerKind, 'mission-objective', 'objective marker kind must be canonical across UI surfaces');
-  assert.equal(wp.mapLabel, '◆ AMBER DIAMOND', 'objective marker map label must match the HUD/radar key');
+  assert.equal(wp.mapLabel, '◆ Objective', 'objective marker map label must match the HUD/radar key');
   // Soft live story beat still exists as fallback context after tutorial.
   assert.ok(STORY_BEATS && STORY_BEATS.length > 0, 'STORY_BEATS table is live');
 

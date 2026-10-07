@@ -594,9 +594,9 @@ function glowSprite(rgb, radius) {
       if (sg && typeof sg.createRadialGradient === 'function') {
         const grad = sg.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2);
         if (grad && typeof grad.addColorStop === 'function') {
-          grad.addColorStop(0, `rgba(${rgb},0.92)`);
-          grad.addColorStop(0.2, `rgba(${rgb},0.5)`);
-          grad.addColorStop(0.55, `rgba(${rgb},0.14)`);
+          grad.addColorStop(0, `rgba(${rgb},0.7)`);
+          grad.addColorStop(0.2, `rgba(${rgb},0.36)`);
+          grad.addColorStop(0.55, `rgba(${rgb},0.1)`);
           grad.addColorStop(1, `rgba(${rgb},0)`);
           sg.fillStyle = grad;
           sg.fillRect(0, 0, px, px);
@@ -1364,6 +1364,19 @@ function createRadarFrame(size, center, radius) {
   };
 }
 
+/* Contact colour key shown under the dial while no objective is set. Dots borrow the same palette
+   the glyphs paint with, so the key can never drift from the scope; the longer explanation for
+   each class rides the chip's hover title instead of the plate (a one-line colour-word dump —
+   "YOU HULL · RED HOSTILE · …" — was a memory test, not a key). */
+const RADAR_LEGEND_ITEMS = [
+  { label: 'YOU', colour: TACTICAL_MAP_PALETTE.player, title: 'You are the lit hull at the centre of the dial.' },
+  { label: 'HOSTILE', colour: TACTICAL_MAP_PALETTE.hostile, title: 'Red — ships hostile to you. Always on the dial; the nearest one past the rim becomes an edge chevron.' },
+  { label: 'STATION', colour: TACTICAL_MAP_PALETTE.station, title: 'Cyan hex — stations you can dock and trade at. Read sector-wide, even past the rim.' },
+  { label: 'GATE', colour: TACTICAL_MAP_PALETTE.gate, title: 'Violet ring — jump gates. Read sector-wide, even past the rim.' },
+  { label: 'ALLY', colour: TACTICAL_MAP_PALETTE.friendly, title: 'Green — allied faction ships.' },
+  { label: 'TRAFFIC', colour: TACTICAL_MAP_PALETTE.neutral, title: 'Blue-grey — nearby traffic. Ordinary ships resolve only in the close band (half the dial radius); your target, mission contacts and capitals always show.' },
+];
+
 const PING_HIT_PX = 14;
 
 /** Unresolved scanner pings in the current sector, as named courses. No exact wreck position. */
@@ -1482,6 +1495,25 @@ export function createRadar(ctx) {
   const objectiveKey = document.createElement('div');
   objectiveKey.className = 'sf-radar-objective-key sf-radar-semantic-key mono';
   objectiveKey.hidden = false;
+  // The key plate serves two masters: the objective readout while a course is set, otherwise the
+  // contact legend. Both live here so the plate never changes size or position.
+  const objectiveReadout = document.createElement('span');
+  objectiveReadout.className = 'sf-radar-objective-readout';
+  const legendRow = document.createElement('span');
+  legendRow.className = 'sf-radar-legend';
+  legendRow.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:1px 12px;';
+  for (const item of RADAR_LEGEND_ITEMS) {
+    const chip = document.createElement('span');
+    chip.className = 'sf-radar-legend-item';
+    chip.title = item.title;
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:5px;white-space:nowrap;';
+    const dot = document.createElement('i');
+    dot.className = 'sf-radar-legend-dot';
+    dot.style.cssText = `display:inline-block;width:7px;height:7px;border-radius:50%;flex:none;background:${item.colour};box-shadow:0 0 5px ${item.colour}59;`;
+    chip.append(dot, document.createTextNode(item.label));
+    legendRow.appendChild(chip);
+  }
+  objectiveKey.append(objectiveReadout, legendRow);
   wrap.append(dial, objectiveKey);
 
   const parityTeardown = installMapParityBridge();
@@ -1733,24 +1765,30 @@ export function createRadar(ctx) {
     return radarQueryScratch;
   }
 
+  let objectiveKeyMode = '';
+  function setObjectiveKeyMode(mode) {
+    if (objectiveKeyMode === mode) return;
+    objectiveKeyMode = mode;
+    const legendOn = mode === 'legend';
+    legendRow.style.display = legendOn ? 'flex' : 'none';
+    objectiveReadout.style.display = legendOn ? 'none' : '';
+    objectiveKey.dataset.mode = mode;
+  }
+
   function updateObjectiveKey(waypoint, cue) {
     if (waypoint) {
       const label = waypointLabel(waypoint);
-      const wpLabel = label;
-      const legacyIdentity = `◆ AMBER DIAMOND · ${wpLabel}`;
       const distance = cue && cue.resolved ? formatRadarDistance(cue.distance) : 'ROUTE PENDING';
       // The diamond alone keys the objective: the corner-bracket glyphs meant to picture the
       // scope's four-corner bracket rendered as stray marks at caption size.
-      const nextText = `◆  OBJ  ${distance}  ·  ${label}`;
-      if (objectiveKey.textContent !== nextText) objectiveKey.textContent = nextText;
-      objectiveKey.title = `${legacyIdentity} · FOUR-CORNER BRACKET · ROUTE CORRIDOR`;
-      objectiveKey.dataset.mode = 'objective';
+      const nextText = `◆  OBJECTIVE  ${distance}  ·  ${label}`;
+      if (objectiveReadout.textContent !== nextText) objectiveReadout.textContent = nextText;
+      objectiveKey.title = `The amber diamond marks your objective (${label}). ${distance}.`;
+      setObjectiveKeyMode('objective');
       return;
     }
-    const legend = 'YOU HULL · RED HOSTILE · CYAN STATION · VIOLET GATE · GREEN ALLY · GREY TRAFFIC CLOSE ONLY';
-    if (objectiveKey.textContent !== legend) objectiveKey.textContent = legend;
-    objectiveKey.removeAttribute('title');
-    objectiveKey.dataset.mode = 'legend';
+    objectiveKey.title = 'Contact key — colours match the dial. Hover an entry for detail.';
+    setObjectiveKeyMode('legend');
   }
 
   function draw() {
@@ -1959,20 +1997,20 @@ export function createRadar(ctx) {
         const mark = hostileMarks[i];
         if (!mark.entity) continue;
         const sel = mark.entity.id === targetId;
-        drawGlow(g, mark.x, mark.y, sel ? 24 : 20, GLOW_RGB.hostile, 0.72 + flareOf(mark.x, mark.y) * 0.3 + (sel ? 0.2 : 0));
+        drawGlow(g, mark.x, mark.y, sel ? 18 : 15, GLOW_RGB.hostile, 0.5 + flareOf(mark.x, mark.y) * 0.15 + (sel ? 0.12 : 0));
       }
       for (let i = 0; i < neutralMarks.length; i += 1) {
         const mark = neutralMarks[i];
         if (!mark.entity) continue;
-        if (mark.type === 'pickup') { drawGlow(g, mark.x, mark.y, 14, GLOW_RGB.objective, 0.6); continue; }
+        if (mark.type === 'pickup') { drawGlow(g, mark.x, mark.y, 12, GLOW_RGB.objective, 0.5); continue; }
         if (mark.type === 'wreck') { drawGlow(g, mark.x, mark.y, 11, GLOW_RGB.wreck, 0.34); continue; }
         const rgb = glowRgbOf(contactColor(mark.entity, playerTeam, colorblindMode, state, hostileOf));
-        drawGlow(g, mark.x, mark.y, mark.named ? 17 : 14, rgb, 0.42 + flareOf(mark.x, mark.y) * 0.4);
+        drawGlow(g, mark.x, mark.y, mark.named ? 15 : 12, rgb, 0.32 + flareOf(mark.x, mark.y) * 0.25);
       }
       const infraGlowCount = Math.min(infrastructureMarks.length, MAX_SEMANTIC_INFRASTRUCTURE);
       for (let i = 0; i < infraGlowCount; i += 1) {
         const mark = infrastructureMarks[i];
-        drawGlow(g, mark.x, mark.y, 18, mark.gate ? GLOW_RGB.gate : GLOW_RGB.station, mark.offRange ? 0.4 : 0.7);
+        drawGlow(g, mark.x, mark.y, 15, mark.gate ? GLOW_RGB.gate : GLOW_RGB.station, mark.offRange ? 0.32 : 0.5);
       }
     }
 
@@ -2198,7 +2236,7 @@ export function createRadar(ctx) {
 
     drawObjectiveCorridor(g, cue);
     if (cue) {
-      drawGlow(g, cue.x, cue.y, cue.offRange ? 15 : 22, GLOW_RGB.objective, 0.55 + (reducedMotion ? 0 : 0.2 * Math.sin(now * 0.0042)));
+      drawGlow(g, cue.x, cue.y, cue.offRange ? 13 : 18, GLOW_RGB.objective, 0.45 + (reducedMotion ? 0 : 0.15 * Math.sin(now * 0.0042)));
       if (cue.offRange) drawWaypointEdgeArrow(g, cue, now, reducedMotion);
       else drawWaypointDiamond(g, cue, now, reducedMotion);
       if (expanded || cue.resolved === false) drawObjectiveLabel(g, cue);

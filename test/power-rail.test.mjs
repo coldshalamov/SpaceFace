@@ -66,9 +66,17 @@ test('codeToLabel renders the key a player recognises, not the DOM code', () => 
   assert.equal(codeToLabel('Digit4'), '4');
   assert.equal(codeToLabel('Numpad7'), 'Num7');
   assert.equal(codeToLabel('KeyB'), 'B');
-  assert.equal(codeToLabel('CapsLock'), 'CapsLock');
+  assert.equal(codeToLabel('CapsLock'), 'Caps Lock');
   assert.equal(codeToLabel(''), '');
   assert.equal(codeToLabel(null), '');
+});
+
+test('codeToLabel never leaks a raw DOM code — modifier and punctuation keys get friendly names', () => {
+  assert.equal(codeToLabel('MetaLeft'), 'L-Meta');
+  assert.equal(codeToLabel('Semicolon'), ';');
+  assert.equal(codeToLabel('NumpadEnter'), 'Num Enter');
+  assert.equal(codeToLabel('PageUp'), 'Pg Up');
+  assert.equal(codeToLabel('IntlRo'), 'Intl Ro');
 });
 
 test('labels come from the live binding table, so a rebind moves the label', () => {

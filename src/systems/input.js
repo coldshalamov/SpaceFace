@@ -458,6 +458,7 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
   if (!code) return '';
   if (/^Key[A-Z]$/.test(code)) return code.slice(3);
   if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (/^Numpad\d$/.test(code)) return `Num ${code.slice(6)}`;
   if (code.startsWith('Arrow')) {
     const table = arrows === 'word' ? ARROW_WORDS : ARROW_GLYPHS;
     return table[code] || code;
@@ -478,9 +479,38 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
   if (code === 'BracketRight') return ']';
   if (code === 'Comma') return ',';
   if (code === 'Period') return '.';
+  if (code === 'Minus') return '-';
+  if (code === 'Equal') return '=';
+  if (code === 'Semicolon') return ';';
+  if (code === 'Quote') return "'";
+  if (code === 'Slash') return '/';
+  if (code === 'MetaLeft') return 'L-Meta';
+  if (code === 'MetaRight') return 'R-Meta';
+  if (code === 'Enter') return 'Enter';
+  if (code === 'NumpadEnter') return 'Num Enter';
+  if (code === 'NumpadAdd') return 'Num +';
+  if (code === 'NumpadSubtract') return 'Num -';
+  if (code === 'NumpadMultiply') return 'Num *';
+  if (code === 'NumpadDivide') return 'Num /';
+  if (code === 'NumpadDecimal') return 'Num .';
+  if (code === 'PageUp') return 'Pg Up';
+  if (code === 'PageDown') return 'Pg Dn';
+  if (code === 'Insert') return 'Ins';
+  if (code === 'Delete') return 'Del';
+  if (code === 'Home') return 'Home';
+  if (code === 'End') return 'End';
+  if (code === 'Tab') return 'Tab';
+  if (code === 'Escape') return 'Esc';
+  if (code === 'Backspace') return 'Bksp';
+  if (code === 'PrintScreen') return 'PrtSc';
+  if (code === 'ScrollLock') return 'ScrLk';
+  if (code === 'Pause') return 'Pause';
+  if (code === 'ContextMenu') return 'Menu';
   if (code === 'Mouse0' || code === 'mouse0') return MOUSE_ACTION_LABELS.fire;
   if (code === 'Mouse2' || code === 'mouse2') return MOUSE_ACTION_LABELS.mine;
-  return code;
+  // Last resort is never the raw DOM code: strip the mechanical prefix and split the camel case
+  // ('NumpadEnter' never reaches here, 'IntlRo' → 'Ro', 'LaunchApp1' → 'Launch App').
+  return code.replace(/^(Key|Digit|Numpad)/, '').replace(/([a-z])([A-Z])/g, '$1 $2') || code;
 }
 
 /**

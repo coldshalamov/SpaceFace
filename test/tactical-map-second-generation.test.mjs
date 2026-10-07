@@ -144,7 +144,7 @@ test('the public radar is a native crisp renderer, not a blurred legacy canvas c
   assert.match(radar, /index\.radarContacts/);
   assert.match(radar, /index\.radarAsteroids/);
   assert.match(radar, /prefersReducedMotion\(\)/);
-  assert.match(radar, /`◆ AMBER DIAMOND · \$\{wpLabel\}`/);
+  assert.match(radar, /The amber diamond marks your objective/);
 
   // Radar text is set through canvasFont(weight, size, role) (src/ui/canvasFonts.js), which also
   // clamps to 12px itself; literal CSS/canvas font strings are still read the old way.

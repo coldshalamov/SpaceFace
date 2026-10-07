@@ -52,7 +52,9 @@ import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 export const BAND_DRIVE = 'DRIVE';
 export const BAND_ORDNANCE = 'ORDNANCE';
-export const BAND_FIELDWORK = 'FIELDWORK';
+// The band under this label is Seed / Well / Repel — deployed mass fields, not the field-science
+// activity the research labels call "fieldwork". Name the devices, not the discipline.
+export const BAND_FIELDWORK = 'FIELDS';
 export const BAND_RIG = 'RIG';
 export const BAND_BAY = 'BAY';
 
@@ -135,9 +137,31 @@ export function codeToLabel(code) {
   if (numpad) return `Num${numpad[1]}`;
   if (raw === 'Comma') return ',';
   if (raw === 'Period') return '.';
+  if (raw === 'Minus') return '-';
+  if (raw === 'Equal') return '=';
+  if (raw === 'Semicolon') return ';';
+  if (raw === 'Quote') return "'";
+  if (raw === 'Slash') return '/';
+  if (raw === 'MetaLeft') return 'L-Meta';
+  if (raw === 'MetaRight') return 'R-Meta';
+  if (raw === 'NumpadEnter') return 'Num Enter';
+  if (raw === 'NumpadAdd') return 'Num +';
+  if (raw === 'NumpadSubtract') return 'Num -';
+  if (raw === 'NumpadMultiply') return 'Num *';
+  if (raw === 'NumpadDivide') return 'Num /';
+  if (raw === 'NumpadDecimal') return 'Num .';
+  if (raw === 'PageUp') return 'Pg Up';
+  if (raw === 'PageDown') return 'Pg Dn';
+  if (raw === 'Insert') return 'Ins';
+  if (raw === 'Delete') return 'Del';
+  if (raw === 'PrintScreen') return 'PrtSc';
+  if (raw === 'ContextMenu') return 'Menu';
+  if (raw === 'Escape') return 'Esc';
+  if (raw === 'Backspace') return 'Bksp';
   const letter = /^Key([A-Z])$/.exec(raw);
   if (letter) return letter[1];
-  return raw;
+  // Last resort is never the raw DOM code — split the camel case at least ('IntlRo' → 'Ro').
+  return raw.replace(/^(Key|Digit|Numpad)/, '').replace(/([a-z])([A-Z])/g, '$1 $2') || raw;
 }
 
 /**
@@ -546,7 +570,7 @@ function escapeRailText(value) {
 
 /** A key cap is two or three characters wide: long key names print short (the accessible name keeps
  *  the full one). SPACE touched the socket's glyph. */
-const KEY_CAP_SHORT = Object.freeze({ SPACE: 'SPC', SHIFT: 'SHF', 'L-SHIFT': 'LSH', 'R-SHIFT': 'RSH', CTRL: 'CTL', ENTER: 'ENT', ESCAPE: 'ESC', BACKSPACE: 'BSP', DELETE: 'DEL', CAPSLOCK: 'CAP' });
+const KEY_CAP_SHORT = Object.freeze({ SPACE: 'SPC', SHIFT: 'SHF', 'L-SHIFT': 'LSH', 'R-SHIFT': 'RSH', CTRL: 'CTL', 'L-CTRL': 'LCT', 'R-CTRL': 'RCT', ENTER: 'ENT', ESCAPE: 'ESC', BACKSPACE: 'BSP', BKSP: 'BSP', DELETE: 'DEL', CAPSLOCK: 'CAP', 'NUM LOCK': 'NLK', 'CAPS LOCK': 'CAP', 'L-META': 'LMT', 'R-META': 'RMT', 'PG UP': 'PGU', 'PG DN': 'PGD', 'NUM ENTER': 'NEN', 'PRINT SCREEN': 'PRT', 'CONTEXT MENU': 'MENU', 'SCR LK': 'SLK', TAB: 'TAB' });
 function capLabel(label) {
   const text = String(label || '');
   if (text.length <= 3) return text;

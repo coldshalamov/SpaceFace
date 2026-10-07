@@ -29,7 +29,7 @@ import { createFlightCluster } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
-const GROUP_NAME = Object.freeze({ ORDNANCE: 'Ordnance', FIELDWORK: 'Fieldwork', RIG: 'Rig', BAY: 'Bay' });
+const GROUP_NAME = Object.freeze({ ORDNANCE: 'Ordnance', FIELDWORK: 'Fields', RIG: 'Rig', BAY: 'Bay' });
 const GROUP_ICON = Object.freeze({ Ordnance: 'weapon', Fieldwork: 'well', Rig: 'cone', Bay: 'munitions' });
 // The rail's 24-px glyph names → the 48-px kit icon file names the Cluster masks.
 const SLOT_ICON = Object.freeze({ munitions: 'munitions', blast: 'fire', tether: 'line', seed: 'seed', well: 'well', repel: 'repel', cone: 'cone', skim: 'skim', weapon: 'munitions' });
