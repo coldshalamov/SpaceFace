@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { runScenario, V4, SCENARIOS } from '../benches/tetherSpin.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.resolve(HERE, '../../../design/program/lab/results/tether-2a');
+const OUT = process.env.LAB_OUT || path.resolve(HERE, '../../../design/program/lab/results/tether-2a');
 fs.mkdirSync(OUT, { recursive: true });
 
 export const MAIN_SCENARIOS = ['spin-plain', 'spin-plain-left', 'spin-boost-hold', 'spin-boost-taps', 'spin-short-line',

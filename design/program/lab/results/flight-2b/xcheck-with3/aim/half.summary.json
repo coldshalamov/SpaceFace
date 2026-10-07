@@ -1,0 +1,20 @@
+{
+ "variant": "half",
+ "runs": 75,
+ "fired": 3581,
+ "outcomes": {
+  "hit": 2978,
+  "target-maneuver": 450,
+  "dispersion": 4,
+  "target-contact": 70,
+  "out-of-range": 6,
+  "unreachable": 24,
+  "occluded": 28,
+  "pd-intercepted": 21
+ },
+ "hitPct": 83.16,
+ "unblockedHitPct": 86.77,
+ "aimErrDegMax": 0.5768,
+ "roundsOver0p5deg": 1,
+ "leadErrorPct": 0
+}

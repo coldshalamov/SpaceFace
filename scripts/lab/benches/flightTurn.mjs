@@ -21,6 +21,19 @@ export const SCENARIOS = {
   'strafe-yaw-ED': { desc: 'W+E strafe + D yaw (turning toward the strafe side) held 4 s', accel: ['KeyW'], turn: ['KeyW', 'KeyE', 'KeyD'], accelS: 6, turnS: 4, strafeYaw: 1 },
 };
 
+export const DEFAULT_SCENARIOS = Object.keys(SCENARIOS);
+// run.mjs flight --variant sf2b3 : the PR #231 behaviour through the lab seam (fractions + floor + command slip).
+export const VARIANTS = { sf2b3: { turnLab: { yawFrac: true, commandSlip: true } }, 'sf2b3-strict': { turnLab: { yawFrac: true, commandSlip: true, legacyFloor: false } } };
+export const COLUMNS = [
+  { label: 'scenario', key: 'scenario' }, { label: 'hull', key: 'shipId' }, { label: 'seed', key: 'seed' },
+  { label: 'pathFrac', key: 'pathFrac' }, { label: 'radius', key: 'radius' }, { label: 'decay', key: 'decay' },
+  { label: 'uturnS', key: 'uturnS' }, { label: 'turnSign', key: 'turnSign' },
+];
+export function summarizeRuns(runs) {
+  return runs.map((r) => ({ scenario: r.scenario, shipId: r.shipId, seed: r.seed, pathFrac: r.early ? r.early.pathFrac : null,
+    radius: r.early ? r.early.radius : null, decay: r.decay ?? null, uturnS: r.uturnS ?? null, turnSign: r.pathNet != null ? Math.sign(r.pathNet) : null }));
+}
+
 const mean = (xs) => { const v = xs.filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
 const pct = (xs, p) => { const v = xs.filter(Number.isFinite).sort((a, b) => a - b); return v.length ? v[Math.min(v.length - 1, Math.floor(p * v.length))] : null; };
 const r4 = (x) => (x == null ? null : +x.toFixed(4));
@@ -82,9 +95,7 @@ export async function runScenario(name, { seed = 1, shipId = 'ship_kestrel', par
     if (sc.strafeYaw) {
       // The nose must turn the way the yaw key asks: count ticks it turns the other way, the
       // largest wrong-way excursion, and the largest single-tick jump.
-      const want = sc.strafeYaw * side * 0 + sc.strafeYaw; // A = +turn? resolved below from cruise sign
       out.noseTrace = T.filter((_, i) => i % 15 === 0).map((r) => r4(r.rot));
-      out._rates = T.map((r) => r.noseRate);
       out.noseNet = r4(wrapAngle(T[T.length - 1].rot - rows[accelTicks - 1].rot));
       out.maxJumpRadS = r4(Math.max(...T.map((r) => Math.abs(r.noseRate || 0))));
       out.pathNet = r4(T.reduce((a, r) => a + r.pathRate * SIM_DT, 0));

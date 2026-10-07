@@ -1,0 +1,19 @@
+{
+ "verify": {
+  "runs": 90,
+  "configs": 1,
+  "passing": 1,
+  "top": [
+   {
+    "cfg": "shipped",
+    "n": 90,
+    "fails": [],
+    "worstNose": 3.26,
+    "minEff": 1.0012,
+    "meanEff": 1.1555,
+    "maxPump": 1.611,
+    "meanSettle": 1.627
+   }
+  ]
+ }
+}

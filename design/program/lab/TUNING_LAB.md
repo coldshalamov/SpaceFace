@@ -481,11 +481,11 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here, 2026-10-06 23:50 ET):** #5 sling throw SHIPPED as PR #230
-(`lab2b/sling-release`, not merged; see 10.3). Accepted (queued) throw presses that missed went from 14/101
-to 3/101, and the hit window from 135.1 to 147.1 ms per revolution. The 90 ms window dial is unchanged.
-#4 shipped earlier as PR #229 (10.2). Next: #3 flight-assist turn authority (bench `flight` and the kernel
-seam `FLIGHT_TURN_LAB` are drafted in 10.4), then #6, #8, #7, #9, #10.
+**Status (restart from here, 2026-10-07 00:20 ET):** #3 flight turn authority SHIPPED as PR #231
+(`lab2b/flight-turn`, not merged; see 10.4). Kestrel cruise W+turn went from 0.33 to 0.58 of max yaw (222 → 128 wu),
+boost from 0.21 to 0.375 (543 → 305 wu, no decay), and Q/E+W+yaw now turns with the yaw key. `legacyFloor` keeps
+every hull at or above master. #5 shipped as PR #230 (10.3) and #4 as PR #229 (10.2). Next: #6 weapon balance
+(TTK/heat), then #8, #7, #9, #10.
 
 ### 10.1 #4 NPC evasion + engagement spacing
 
@@ -681,60 +681,93 @@ Wider windows are Robin's feel call and are listed in the PR.
 **Tests.** The deadline test pins entry+1. A new test (a window that opens one tick late still releases
 on solution) fails on master. Massline suites pass 430/430.
 
-### 10.4 #3 flight-assist turn authority: in progress (draft bench, seam and first numbers)
+### 10.4 #3 flight-assist turn authority: shipped as PR #231 (`lab2b/flight-turn`)
 
-**Bench.** `flight` (`scripts/lab/benches/flightTurn.mjs`). Player-only world, pilot scheme (A/D yaw, Q/E
-strafe), 15 hulls. Scenarios:
-- cruise-turn: W to cruise, then W+D for 8 s.
+**Bench.** `flight` (`scripts/lab/benches/flightTurn.mjs`; `run.mjs flight [--variant sf2b3|sf2b3-strict]`).
+Player-only world, pilot scheme (A/D yaw, Q/E strafe), 15 hulls. Scenarios:
+- cruise-turn: W to cruise (6 s), then W+D for 8 s.
 - boost-turn: W+Shift to the boost cap, then W+Shift+D for 12 s. Early (1–3 s) vs late (9–12 s) gives the
   decay.
-- coast-turn: release W, hold D.
+- coast-turn.
 - uturn-cruise / uturn-boost.
-- strafe-yaw: W+E+A, W+Q+D and W+E+D, for the nose-snap report.
+- strafe-yaw: W+E+A, W+Q+D and W+E+D.
 
-Every rate is also given as a fraction of the hull's max yaw (`profile.maxYawRate` after the feel envelope).
-
-**Seam.** `FLIGHT_TURN_LAB` in `propulsionKernel.js`. Empty = master; with the seam empty the bench matches
-master byte-for-byte on Kestrel. Keys:
-- `yawFrac:true` selects the yaw-fraction schedule:
-  - `restYawFrac` / `cruiseYawFrac` / `boostYawFrac` are anchored at rest, the combat cap and the boost cap,
-    with the rate following speed between them.
-  - Above the boost cap, lateral acceleration is held constant.
-  - The rate is scaled by the drive's share of its nominal forward authority, and the old forward-authority
-    clamp is dropped.
-- `commandSlip:true` makes the lead bound measure nose + strafe offset against the trail.
+Every rate is also given as a fraction of the hull's max yaw. The all-hull helper is
+`results/flight-2b/quick.mjs` and the table helper is `tab.mjs`.
 
 **Root causes (Kestrel).**
-- Cruise W+turn is authority-limited: the vectoring force is clamped to `limits.forward` (168 wu/s²), which
-  gives 0.88 rad/s = 0.33 of max yaw at 195 wu/s, saturated 100% of the time.
-- Boost at the cap is the same: 0.556 rad/s = 0.21 of max yaw. On a long hold at the cap it is steady
-  (decay 1.00). The "decay" seen earlier is the rate falling as speed builds.
-- Nose snap: with Q/E held, the hull-vs-trail slip reads the requested ~45° crab as excess lead. Under W+E+A
-  the excess-lead correction then drives the nose the *opposite* way to A at about 1.27 rad/s for the whole
-  hold.
+- Cruise W+turn: the vectoring force was clamped to `limits.forward`. That gave 0.88 rad/s = 0.33 of max
+  yaw at 195 wu/s, saturated 100% of the time.
+- Boost at the cap: 0.556 rad/s = 0.21 of max yaw, steady on a 12 s hold. The "decay" seen earlier is the
+  rate falling as speed builds toward the cap.
+- Nose snap: with Q/E held, the nose-vs-trail lead bound read the requested ~45° crab as excess lead. On
+  master, W+E+A turns the nose +3.94 rad *against* A in 3 s (kernel test).
 
-**Draft numbers (seed 1):**
+**Change (the defaults are the dials).** In `VELOCITY_VECTORING_DEFAULTS`:
+- `restYawFrac` 0.60, `cruiseYawFrac` 0.57 (combat cap), `boostYawFrac` 0.375 (boost cap).
+- The rate follows speed between the anchors, with constant lateral acceleration above the boost cap.
+- The rate is scaled by the drive's share of its nominal forward authority.
+- `legacyFloor` true: never below the pre-#3 rate. The floor only binds on the slow-yaw torch hulls
+  Hawser, Colossus and Leviathan. Applied strictly, the fractions would slow those hulls by about 40%
+  (colossus could no longer finish the cruise U-turn in 8 s).
+- When Q/E is held, the lead bound measures nose + strafe offset against the trail. Telemetry still
+  reports hull vs trail.
+- Packets that pass `rateLowRadS`/`rateCapRadS` explicitly keep the legacy schedule.
 
-| hull | cruise frac (r wu), master → candidate | boost frac (r wu), master → candidate | U-turn cruise / boost s, master → candidate | W+E+A nose |
+The lab seam `FLIGHT_TURN_LAB` is empty = master (byte-identical on the bench). `{yawFrac, commandSlip,
+legacyFloor, *YawFrac}` selects the new behaviour.
+
+**Production verify (all hulls, seed 1).** Results in `results/flight-2b/verify-prod/table.txt`; they are
+identical to the lab candidate.
+
+| hull | cruise frac (r) | boost frac early/late (r) | U-turn cruise/boost s | W+E+A |
 |---|---|---|---|---|
-| kestrel | 0.33 (222) → 0.58 (128) | 0.21 (543) → 0.375 (305) | 3.62/5.68 → 2.12/3.22 | wrong way → follows A |
-| wasp | 0.27 (220) → 0.58 (100) | 0.23 (412) → 0.38 (249) | 3.33/3.88 → 1.55/2.37 | wrong way → follows A |
+| kestrel | 0.33 (222) → 0.58 (128) | 0.21/0.21 (543) → 0.375/0.375 (305) | 3.62/5.68 → 2.12/3.22 | against → with |
+| wasp | 0.27 (220) → 0.58 (100) | 0.23 (412) → 0.38 (249) | 3.33/3.88 → 1.55/2.37 | against → with |
+| pelican | 0.30 (311) → 0.57 (165) | 0.19 (757) → 0.38 (391) | 5.05/7.83 → 2.72/4.12 | against → with |
+| drifter | 0.30 (303) → 0.57 (158) | 0.19 (736) → 0.38 (374) | 4.92/7.58 → 2.60/3.93 | against → with |
+| mule | 0.44 (339) → 0.58 (261) | 0.39/0.30 → 0.44/0.38 (580) | 6.32/7.85 → 4.90/6.65 | against → with |
+| atlas | 0.44 (339) → 0.58 (261) | 0.43/0.23 → 0.43/0.29 (980) | 6.32/7.33 → 4.90/6.92 | against → with |
+| hawser / colossus / leviathan | unchanged (floor) | unchanged | unchanged | against → with |
+| hornet, bastion, warden, saucer | unchanged (non-vectoring drives) | | | already with |
 
-The candidate is 0.60/0.57/0.375 with commandSlip.
+- Speed kept through a U-turn: 1.00.
+- Coast: unchanged.
+- Held-turn slip p95: 6.5–7°.
+- Atlas passes its boost cap on a long boost (travel burn at 320 wu/s) and rides the floor there.
 
-Speed kept through a U-turn: 1.00. Coast is unchanged (1.19 × max yaw nose, no path turn). Full table:
-`results/flight-2b/draft-table.txt`.
+**Interaction re-checks** (production checkout, with the other PR's `src` applied; results in
+`results/flight-2b/xcheck-before/` and `xcheck-with3/`):
+- **#227 tether**, verify 18 scenarios × 5 seeds: worst nose 3.26°, min eff 1.0012, pump 1.611, settle
+  1.627 s. All pass, identical to #227 alone (the orbit assist owns the tethered turn).
+- **#228 aim**, 25 scenarios × 3 seeds, `scripts/lab/sweeps/aimRun.mjs`:
+  - Full size: 90.78 / 94.11 → 92.18 / 95.50 (hit / unblocked), aim error max 0.43° → 0.47°.
+  - Half size: 84.31 / 87.79 → 83.16 / 86.77. The extra misses are target-maneuver (11.6% → 12.6% of
+    rounds; the player fires 9% more rounds).
+  - Half-size aim errors over 0.5°: 4 → 1 (max 1.03° → 0.58°).
+  - Lead-error misses: 0 throughout.
+- **#229 NPC (with #228)**, verify 18 × 5:
+  - Egress legs that open range: 91.6% → 94.5%. Dives: 2 → 1.
+  - **The player turns harder, so hit rate rises.** Reaver goes 96.7 → 97.7 (band 70–97) and bruiser
+    95.1 → 98.0 (band 80–97), just over #229's upper bands.
+  - Other archetypes: wasp 76.0 → 78.8, corsair 82.6 → 84.0, lancer 87.5 → 85.1, dart 78.4 → 78.3,
+    ghost 73.8 → 72.9, jackal 87.1 → 90.4.
+  - This is flagged in PR #231. Follow-up: widen those bands or add a little reaver/bruiser evasion.
 
-**Open issues before the PR:**
-- The torch hulls (hawser, colossus, leviathan, max yaw 0.48–0.76) are nose-limited on master at about
-  0.99 of max yaw. Strict fractions would make them turn about 40% slower (colossus can no longer finish the
-  cruise U-turn in 8 s). Plan: floor the new rate at master's rate, so no hull turns slower than it does
-  today, and flag this in the PR as a dial for Robin.
-- Gravimetric, pulse-plate, field-sail and inertialess hulls (hornet, bastion, warden, ironback, ranger,
-  saucer) do not use the vectoring path, so this change leaves them untouched. ironback and ranger show
-  almost no W+turn path turn (ranger 0): note this, but it is out of scope.
-- Still to do: the tests that pin the old schedule (`velocity-vectoring`, `vectoring-lead-correction`), and
-  re-checking tether (#227) and aim (#228/#229) under the new rates.
+**Tests.**
+- `velocity-vectoring`: the schedule assertions now follow the yaw-fraction contract; the authority-bound
+  test covers the legacy variant.
+- Three new tests (targets, floor, nose snap) all fail on master.
+- `lg-turn-radius`: the in-game turn line already comes from the kernel. Only the guard against the old
+  yaw-cap guess moves (≥ 100 → ≥ 40).
+- Flight/kernel suites 966/995 and UI turn-text suites 32/33. All remaining failures also fail on clean
+  master.
 
-Production patch generator: `results/flight-2b/patch_pk.py` (`python3 patch_pk.py <master propulsionKernel.js> <out> prod|lab`); helper scripts probe/quick/tab.mjs are alongside it.
+**Candidate follow-up (not fixed here): Ironback and Ranger W+turn path.**
+- Neither hull bends its path under W+turn on master or on this PR. Ironback (pulse-plate drive): cruise
+  path 0.01 of max yaw, radius ~24,000 wu, no cruise U-turn in 8 s. Ranger (field-sail drive): 0.
+- Both also turn against the yaw key under W+E+A.
+- `test/lg-turn-radius.test.mjs` pins their in-game turn line as empty (radius 0), so this looks
+  authored rather than a bug. Still, a sail or pulse barge that cannot be steered by W+turn at all is
+  worth a feel review with Robin.
 

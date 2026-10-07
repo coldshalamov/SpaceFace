@@ -1,0 +1,94 @@
+{
+ "verify": {
+  "runs": 90,
+  "configs": 1,
+  "passing": 1,
+  "top": [
+   {
+    "cfg": "shipped",
+    "config": {
+     "shipped": true
+    },
+    "n": 90,
+    "fails": [],
+    "egOpenPct": 91.6,
+    "dive": 2,
+    "egN": 286,
+    "perType": {
+     "wasp": {
+      "ubHit": 76,
+      "nearHit": null,
+      "farMan": 37,
+      "farN": 368,
+      "egN": 89,
+      "egOpen": 93.3,
+      "dive": 0
+     },
+     "corsair": {
+      "ubHit": 82.6,
+      "nearHit": null,
+      "farMan": 17.5,
+      "farN": 418,
+      "egN": 49,
+      "egOpen": 85.7,
+      "dive": 1
+     },
+     "reaver": {
+      "ubHit": 96.7,
+      "nearHit": null,
+      "farMan": 3.6,
+      "farN": 477,
+      "egN": 42,
+      "egOpen": 97.6,
+      "dive": 0
+     },
+     "lancer": {
+      "ubHit": 87.5,
+      "nearHit": null,
+      "farMan": 13.2,
+      "farN": 401,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "bruiser": {
+      "ubHit": 95.1,
+      "nearHit": null,
+      "farMan": 5.5,
+      "farN": 328,
+      "egN": 35,
+      "egOpen": 91.4,
+      "dive": 0
+     },
+     "dart": {
+      "ubHit": 78.4,
+      "nearHit": 100,
+      "farMan": 29.3,
+      "farN": 191,
+      "egN": 30,
+      "egOpen": 86.7,
+      "dive": 1
+     },
+     "ghost": {
+      "ubHit": 73.8,
+      "nearHit": null,
+      "farMan": 28.3,
+      "farN": 159,
+      "egN": 0,
+      "egOpen": null,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 87.1,
+      "nearHit": null,
+      "farMan": 13.7,
+      "farN": 307,
+      "egN": 40,
+      "egOpen": 92.5,
+      "dive": 0
+     }
+    }
+   }
+  ]
+ }
+}

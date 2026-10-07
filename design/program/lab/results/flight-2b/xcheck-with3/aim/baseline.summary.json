@@ -1,0 +1,19 @@
+{
+ "variant": "baseline",
+ "runs": 75,
+ "fired": 3569,
+ "outcomes": {
+  "hit": 3290,
+  "target-maneuver": 154,
+  "dispersion": 1,
+  "target-contact": 45,
+  "unreachable": 20,
+  "occluded": 39,
+  "pd-intercepted": 20
+ },
+ "hitPct": 92.18,
+ "unblockedHitPct": 95.5,
+ "aimErrDegMax": 0.4716,
+ "roundsOver0p5deg": 0,
+ "leadErrorPct": 0
+}
