@@ -1,5 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="sf-title sf-desc">
-  <title id="sf-title">SpaceFace emblem — The Unclosed Eye</title>
-  <desc id="sf-desc">One-color SpaceFace emblem. All three parts use warm bone; the gaps are truly transparent.</desc>
-  <path fill="#EAE6DF" d="M303 40C158 56 69 172 85 301C94 381 153 438 224 459C169 416 151 361 165 311C179 257 225 227 293 197C358 168 386 111 363 68L336 116C307 157 277 170 234 185C219 135 246 83 303 40Z M389 98C450 174 452 285 399 365C361 423 304 454 247 458L272 393C325 368 358 326 362 277C364 244 350 214 330 198L369 163Z M231 276C248 245 277 232 305 235C290 259 266 278 231 276Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="sf-title">
+  <title id="sf-title">SpaceFace emblem (reverse)</title>
+  <defs></defs><mask id="m-face" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+    <path d="M256 40L176 48L104 78L50 138L70 200L80 284L136 360L192 438L228 472L256 472L284 472L320 438L376 360L432 284L442 200L462 138L408 78L336 48Z" fill="#fff"/><path d="M256 6L288 52L256 44L224 52Z" fill="#fff"/><path d="M90 170L240 236L232 264L106 224Z" fill="#000"/><path d="M406 224L280 264L272 236L422 170Z" fill="#000"/><path d="M196 360L256 394L316 360L304 380L256 420L208 380Z" fill="#000"/><path d="M256 140L271 236L256 330L241 236Z" fill="#000"/><path d="M318 20L342 20L446 446L424 446Z" fill="#000"/><path d="M364 20L382 20L468 384L452 384Z" fill="#000"/>
+  </mask>
+  <rect width="512" height="512" fill="#EFE9DD" mask="url(#m-face)"/>
 </svg>

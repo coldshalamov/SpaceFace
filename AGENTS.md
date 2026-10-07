@@ -94,6 +94,22 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
   reverted, re-land the content additively; if your own change breaks the app (a bad import, a red
   core path), fix it or revert your own hunk in the same turn. Awareness of other lanes is
   background, never permission: a live row on paths you are not editing blocks nothing.
+- **Track the published line — never let this checkout drift from `origin/master`.** Cloud
+  agents and the owner land commits on the remote while local work is in flight, so `HEAD` goes
+  stale silently. At session start, and again before you commit a finished unit, run
+  `git fetch --prune origin` and read the divergence (`git status -sb`,
+  `git rev-list --left-right --count master...origin/master`). When the remote has advanced,
+  integrate it before continuing — merge is the repo convention (`pull.rebase=false`; never
+  rebase or reset a checkout holding other agents' work). Preserve dirty foreign work first
+  (an exact-path patch or scoped stash), resolve conflicts by content — `origin/master` is
+  authoritative for what it already shipped, but a local lane can be the same subsystem evolved
+  further, so merge hunks, don't blanket-take a side — and leave foreign hunks unstaged on top.
+- **Master commits are done; pull requests are lanes in flight.** Anything on `origin/master`
+  is landed: integrate it, build on it, never redo it. An open PR belongs to the cloud agent
+  that owns it — do not merge, close, absorb, or "tidy" its branch, and do not treat its
+  content as shipped no matter how finished it looks. When a PR merges (the owner or its cloud
+  agent merges it), the result arrives as ordinary `origin/master` commits — sync them in on
+  the next fetch, as above.
 - **Cloud agents work the remote — pull their results regularly.** A quiet VM runs the
   performance program and pushes job folders to branch `vm-drop` (all under
   `design/program/vm-drop/<job>/`; finished folders carry `DONE.md`, `IMPORT.md`, and a
@@ -102,6 +118,13 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
   `design/program/vm-drop/` tree wholesale (that path is remote-authoritative — never write
   under it locally). `vm-drop/IMPORT_DIGEST/` is the running ledger of pending patch imports;
   importing a finished patch job onto master is normal work, done per-folder on purpose.
+  **Those lane files are also the standing coordination surface with cloud agents** — cloud
+  agents watch their lane for instructions, so direction for a cloud lane goes in its folder
+  (`design/program/vm-drop/<job>/` or [`design/program/VM_LANES.md`](./design/program/VM_LANES.md)),
+  not in chat notes or by absorbing its work. A cloud agent that needs something this box has
+  — a real GPU, a capture host — records a requisition in its lane files; a local agent that
+  wants a clean-VM run records the request the same way. Check a lane's files before touching
+  paths it claims, and never delete a cloud lane's artifacts because it looks idle.
   Full contract: [`design/program/VM_LANES.md`](./design/program/VM_LANES.md).
 
 Detail: [`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md).

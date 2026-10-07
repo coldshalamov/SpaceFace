@@ -63,6 +63,8 @@ const context = await browser.newContext({
   viewport: { width: W, height: H }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
   userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36',
 });
+// --lefty: a returning player's saved setting, in place before the game boots (the same profile key the game writes)
+if (argv.lefty) await context.addInitScript(() => { try { localStorage.setItem('sf.settings.profile.v1', JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), settings: { controls: { touch: { layout: 'lefty' } } } })); } catch (e) { /* storage blocked: the run proceeds right-handed */ } });
 const page = await context.newPage();
 page.on('pageerror', (e) => console.log('  pageerror:', String(e.message).slice(0, 200)));
 const cdp = await context.newCDPSession(page);
@@ -210,7 +212,7 @@ try {
   await overlaps('HUD text keeps off the deck controls (idle)');
   // anything at all (not only text) standing in the powers handle's column, for the record
   writeFileSync(join(OUT, 'edge-column.txt'), (await page.evaluate(() => { const h = document.querySelector('.mf-edge').getBoundingClientRect(); return [...document.querySelectorAll('body *')].filter((e) => !e.closest('#sf-touch-overlay')).map((e) => ({ e, r: e.getBoundingClientRect() })).filter(({ r }) => r.width > 2 && r.height > 2 && r.right > h.left && r.left < h.right && r.bottom > h.top && r.top < h.bottom).map(({ e, r }) => `${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}.${String(e.className).split(' ').slice(0, 3).join('.')} [${[r.left, r.top, r.width, r.height].map(Math.round)}] ${getComputedStyle(e).position}`).slice(0, 25); })).join('\n'));
-  const stickAt = { x: Math.round(W * 0.3), y: Math.round(H * (LAND ? 0.6 : 0.66)) };
+  const stickAt = { x: Math.round(W * (argv.lefty ? 0.7 : 0.3)), y: Math.round(H * (LAND ? 0.6 : 0.66)) };
   const radius = await page.evaluate(() => Math.min(innerWidth, innerHeight) * 0.19 < 54 ? 54 : Math.min(86, Math.min(innerWidth, innerHeight) * 0.19));
   const before = await snap();
   // stick: push up-right at ~70% and hold
@@ -334,7 +336,7 @@ try {
       const x = Math.round((i + 0.5) * innerWidth / cols), y = Math.round((j + 0.5) * innerHeight / rows);
       const el = document.elementFromPoint(x, y);
       if (!el) continue;
-      if (el.closest('[data-role]') || el.closest('.mf-edge') || el.closest('.mf-pause') || el.closest('.mf-dock')) continue; // the keys and the handle are controls on purpose
+      if (el.closest('[data-role]') || el.closest('.mf-edge') || el.closest('.mf-pause') || el.closest('.mf-dock') || el.closest('.sf-radar-wrap')) continue; // the keys, the handle and the radar dial (a tap sets a course) are controls on purpose
       if (el.closest(UI) || el.closest(NOFLY)) out.push({ x, y, el: el.tagName.toLowerCase() + '.' + String(el.className).split(' ')[0], inUI: !!el.closest(UI) });
     }
     return out;
@@ -403,8 +405,8 @@ try {
 
   // left hand
   if (argv.lefty) {
-    await page.evaluate(() => { const st = window.SF.state; st.settings.controls.touch = { ...(st.settings.controls.touch || {}), layout: 'lefty' }; window.SF.ctx.touch.applyOverlayConfig(); });
-    await sleep(500);
+    // the whole run used the saved left-hand setting; confirm the deck really mirrored and keep a picture
+    check('the saved left-hand setting mirrors the deck', await page.evaluate(() => document.documentElement.dataset.sfMobileLefty === '1' && document.querySelector('#sf-touch-overlay').dataset.lefty === '1'));
     await shot('30-flight-lefty');
   }
 } catch (error) {

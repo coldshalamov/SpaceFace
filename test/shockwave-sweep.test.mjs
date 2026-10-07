@@ -72,35 +72,47 @@ test('sweep creation is degenerate-safe and a replacement front resets in place'
 
 test('the tumble threshold grades the wave shove: tumble, wobble, silence', () => {
   const sweep = createShockwaveSweep({ bombId: 9, x: 0, z: 0, blastRadius: 130, passImpulseWu: 300 });
-  // One front position per read, like the sim's per-tick pass.
+  // One front position per read, like the sim's per-tick pass. Small bodies pin the
+  // area coupling at its 0.2 floor, keeping the grade far under the saturation cap.
   const front = 34; // just past the light and heavy bodies (30/25 WU + radius)
-  // Light body: life = 1 - 34/145.6, so 300 * life / 16 ≈ 14.4 WU/s — a tumble kick.
-  const light = body(101, { pos: { x: 30, z: 0 } });
+  const life = (d) => Math.pow(1 - d / sweep.maxRadius, SHOCKWAVE_SWEEP_LAW.lifeCurve);
+  const area = (r) => Math.min(SHOCKWAVE_SWEEP_LAW.areaFactorMax,
+    Math.max(SHOCKWAVE_SWEEP_LAW.areaFactorMin, (r / SHOCKWAVE_SWEEP_LAW.waveRefRadius) ** 2));
+  // Light body: 300·18·0.2·life(28)/16 ≈ 58 WU/s — a tumble kick.
+  const light = body(101, { pos: { x: 30, z: 0 }, radius: 2 });
   const kick = resolveSweepPass(sweep, light, front);
   assert.ok(kick, 'light body inside the front is passed');
   assert.equal(kick.level, 'tumble');
-  near(kick.deltaV, 300 * Math.pow(1 - 30 / sweep.maxRadius, SHOCKWAVE_SWEEP_LAW.lifeCurve) / 16);
+  near(kick.deltaV, 300 * SHOCKWAVE_SWEEP_LAW.waveAreaGain * area(2) * life(28) / 16);
   assert.equal(kick.dirX, 1, 'push reads outward along the radial');
   near(kick.dirZ, 0);
-  near(kick.contact.x, 30 - 8, 1e-9);
+  near(kick.contact.x, 30 - 2, 1e-9);
   // Spin obeys ω = spinPerDeltaV·ΔV·2·lever/R, clamped, and the parity biases sign it.
   const expectedSpin = Math.max(-SHOCKWAVE_SWEEP_LAW.maxSpinRadPerS, Math.min(
     SHOCKWAVE_SWEEP_LAW.maxSpinRadPerS,
-    SHOCKWAVE_SWEEP_LAW.spinPerDeltaV * kick.deltaV * 2 * kick.lever / 8,
+    SHOCKWAVE_SWEEP_LAW.spinPerDeltaV * kick.deltaV * 2 * kick.lever / light.radius,
   ));
   near(kick.spinYaw, expectedSpin);
 
-  // Heavy body: 300 / 60 = 5 WU/s — a wobble, never a tumble.
-  const heavy = body(103, { mass: 60, pos: { x: 0, z: 25 } });
+  // Heavy body: ~15.9 WU/s at the area floor vs 60 mass — a wobble, never a tumble.
+  const heavy = body(103, { mass: 110, radius: 2, pos: { x: 0, z: 25 } });
   const wobble = resolveSweepPass(sweep, heavy, front);
   assert.ok(wobble);
   assert.equal(wobble.level, 'wobble');
 
-  // Very heavy body: ~300 * 0.59 / 200 ≈ 0.9 WU/s at its own front — below the wobble
-  // floor, and permanently passed.
-  const massif = body(105, { mass: 200, pos: { x: 0, z: 40 } });
+  // Very heavy body: ~2.2 WU/s at its own front — below the wobble floor, and
+  // permanently passed.
+  const massif = body(105, { mass: 400, radius: 2, pos: { x: 0, z: 40 } });
   assert.equal(resolveSweepPass(sweep, massif, 60), null);
   assert.equal(resolveSweepPass(sweep, massif, sweep.maxRadius), null, 'a sub-wobble body is not re-read');
+
+  // THE review-blocking case: a real field rock (mass 400, radius 8) near a concussion
+  // blast must visibly tumble — the area coupling is what gives the wave purchase on
+  // heavy, large-section matter.
+  const fieldRock = body(106, { mass: 400, radius: 8, pos: { x: 28, z: 0 } });
+  const rockKick = resolveSweepPass(createShockwaveSweep({ bombId: 12, x: 0, z: 0, blastRadius: 130, passImpulseWu: 300 }), fieldRock, 40);
+  assert.equal(rockKick.level, 'tumble', 'a mass-400 radius-8 rock near the blast tumbles');
+  near(rockKick.deltaV, 300 * SHOCKWAVE_SWEEP_LAW.waveAreaGain * area(8) * life(20) / 400, 1e-9);
 
   // A body the front has not reached yet is untouched and unmarked.
   const far = body(107, { pos: { x: 400, z: 0 } });
@@ -173,7 +185,8 @@ test('a detonation sweeps the field: nearest loose body answered first, craft un
       assert.ok(rockIdx >= 0 && junkIdx >= 0, 'rock and wreck both answered');
       assert.ok(rockIdx < junkIdx, 'the wave arrives nearest first');
       assert.equal(passes.find((p) => p.targetId === rock.id).level, 'tumble');
-      assert.equal(passes.find((p) => p.targetId === junk.id).level, 'wobble');
+      assert.equal(passes.find((p) => p.targetId === junk.id).level, 'tumble',
+        'the wreck is light for its radius (area coupling): the wave tumbles it too');
       // The front's momentum is real: dynamic loose bodies take a shockwave_sweep impulse.
       const sweepImpulses = t.impulses.filter((r) => r.reason === 'shockwave_sweep');
       const targets = new Set(sweepImpulses.map((r) => r.entityId));
@@ -237,6 +250,109 @@ test('a refused sweep impulse still reaches physics authority but writes no prov
       assert.ok(hits.length >= 1, 'the pass attempt reached physics authority');
       assert.equal(readRecentImpulseProvenance(rock, t.state.tick), null,
         'a refused push leaves no kill-credit record on the body');
+    } finally { t.close(); }
+  });
+});
+
+test('the singularity opening births no wave; its collapse does', () => {
+  withTumbleFling(true, () => {
+    const t = bombScenario();
+    try {
+      const cues = [];
+      const passes = [];
+      t.bus.on('presentation:vfxCue', (p) => { if (p.id === 'combat.shockwaveSweep') cues.push(p); });
+      t.bus.on('combat:shockwavePass', (p) => passes.push(p));
+      t.spawn({ type: 'asteroid', mass: 400, radius: 8, pos: { x: -40, z: 0 } });
+      const bomb = t.drop('bomb_singularity');
+      t.tick(31);
+      t.system.commandDetonate(t.player.id);
+      t.tick(6);
+      assert.equal(cues.length, 0, 'impulse-0 opening: no wave, no ring');
+      // The field decays for 2.8 s, then the collapse detonation fires with its authored
+      // collapseImpulse — the only live wave this payload ever births.
+      t.tick(240);
+      assert.equal(t.events('detonated').filter((p) => p.trigger === 'collapse').length, 1, 'the collapse fired');
+      assert.equal(cues.length, 1, 'the collapse births exactly one wave');
+      assert.ok(passes.length >= 1, 'the collapse front answered the nearby rock');
+    } finally { t.close(); }
+  });
+});
+
+test('the live cap evicts only for a NEW bomb and never for a zero-impulse one', () => {
+  withTumbleFling(true, () => {
+    const t = bombScenario();
+    try {
+      const def = { id: 'bomb_concussion', radius: 130, impulse: 1800 };
+      const gooDef = { id: 'bomb_goo', radius: 120, impulse: 0 };
+      const sweepAt = (i) => t.system._spawnSweep(
+        { id: 9000 + i, data: { ownerId: 1 } }, i === 99 ? gooDef : def,
+        { x: i * 10, z: 0 }, t.state,
+      );
+      for (let i = 0; i < 4; i++) sweepAt(i);
+      assert.equal(t.system._sweeps.length, 4);
+      const oldestId = t.system._sweeps[0].bombId;
+      sweepAt(4);
+      assert.equal(t.system._sweeps.length, 4, 'the cap holds');
+      assert.ok(!t.system._sweeps.some((s) => s.bombId === oldestId), 'the oldest front made room');
+      // A re-detonation replaces in place: nothing else is evicted.
+      const before = t.system._sweeps.map((s) => s.bombId);
+      sweepAt(2);
+      assert.equal(t.system._sweeps.length, 4);
+      assert.deepEqual(t.system._sweeps.map((s) => s.bombId), before, 'replacement never evicts');
+      // A zero-impulse payload at a full cap births nothing and evicts nothing.
+      sweepAt(99);
+      assert.equal(t.system._sweeps.length, 4);
+      assert.deepEqual(t.system._sweeps.map((s) => s.bombId), before);
+    } finally { t.close(); }
+  });
+});
+
+test('a passed body is never re-passed by the same front (dedup on success)', () => {
+  const sweep = createShockwaveSweep({ bombId: 31, x: 0, z: 0, blastRadius: 130, passImpulseWu: 300 });
+  const rock = body(112, { pos: { x: 12, z: 0 } });
+  const first = resolveSweepPass(sweep, rock, 30);
+  assert.ok(first, 'first read passes');
+  assert.equal(resolveSweepPass(sweep, rock, 60), null, 'second read, even at full reach: null');
+  assert.equal(resolveSweepPass(sweep, rock, sweep.maxRadius), null);
+});
+
+test('the per-tick pass budget bounds side effects and defers the farthest bodies', () => {
+  withTumbleFling(true, () => {
+    const t = bombScenario();
+    try {
+      // Sixty eligible rocks spread along the push axis: one front cannot answer them
+      // all inside one tick's 48-pass budget.
+      for (let i = 0; i < 60; i++) {
+        t.spawn({ type: 'asteroid', mass: 400, radius: 8, pos: { x: -30 - i * 2, z: 0 } });
+      }
+      t.drop('bomb_concussion');
+      t.tick(31);
+      t.system.commandDetonate(t.player.id);
+      const before = t.impulses.filter((r) => r.reason === 'shockwave_sweep').length;
+      t.tick(1);
+      const inTick = t.impulses.filter((r) => r.reason === 'shockwave_sweep').length - before;
+      assert.ok(inTick <= SHOCKWAVE_SWEEP_LAW.maxPassesPerTick, `one tick respects the budget (saw ${inTick})`);
+    } finally { t.close(); }
+  });
+});
+
+test('the applied impulse is the receipt truth: no floor-mass launch on light pickups', () => {
+  withTumbleFling(true, () => {
+    const t = bombScenario();
+    try {
+      // A mass-0.1 pickup near the blast: the grade floors at 2 for threshold
+      // stability, but the DELIVERED momentum must be receipt.deltaV x 0.1, so the
+      // real deltaV is the receipt's (<= 60), never floor/0.1 = 1200.
+      const pickup = t.spawn({ type: 'pickup', mass: 0.1, radius: 2, pos: { x: -40, z: 0 } });
+      t.drop('bomb_concussion');
+      t.tick(31);
+      t.system.commandDetonate(t.player.id);
+      t.tick(30);
+      const applied = t.impulses.filter((r) => r.entityId === pickup.id && r.reason === 'shockwave_sweep');
+      assert.ok(applied.length >= 1, 'the pickup was overtaken');
+      const worst = Math.max(...applied.map((r) => Math.hypot(r.impulse.x, r.impulse.z) / 0.1));
+      assert.ok(worst <= SHOCKWAVE_SWEEP_LAW.maxPassDeltaV + 1e-6,
+        `real deltaV on a 0.1-mass body stays at the cap (saw ${worst})`);
     } finally { t.close(); }
   });
 });

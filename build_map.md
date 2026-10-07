@@ -616,11 +616,12 @@ rows carry commits and focused suites. NXI-024's evidence was re-anchored on its
 
 ### Handoff — stock take (2026-10-06)
 
-Published line is GitHub `master`. The checkout that recorded this note was diverged and already held other dirty work, and was not reset onto this line.
+Published line is GitHub `master`. The checkout that recorded this note was diverged and already held other dirty work, and was not reset onto this line. The shared checkout integrated that line by merge (no reset, no rebase): local `master` still carries local commits and other agents' dirty work ahead of it. Do not reset this checkout onto the published line — sync by merging `origin/master` into it.
 
 - RUCKUS is in the game. Pull request #223 is merged (`96d37229a`).
 - Frame optimizations from pull request #220, waves 60–100, are on GitHub master as snapshot `24d5375fa`. That commit matches branch `devin/1791064509-perf-w60` at `73b275a0` and does not merge the pull request. #220 stays open for further waves. Do not close it, and do not retake those waves.
 - GitHub `check` is red on master (recent runs hit the 30-minute cap) and red on #220 at this tip: static, sim, feel, and browser groups failed, and draw-flight failed one pin (Flight V3 must not contain an automatic orbit/follow controller). That is the published state. This note does not open a repair campaign.
+
 ### A. Recover — finished work stranded in the tree
 
 | # | ID | Work | Kind | Status |

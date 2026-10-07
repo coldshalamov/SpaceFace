@@ -11,7 +11,7 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import {
   SHOCKWAVE_PASS_EVENT, SHOCKWAVE_SWEEP_LAW,
-  advanceSweepFront, createShockwaveSweep, resolveSweepPass,
+  advanceSweepFront, createShockwaveSweep, resolveSweepPass, sweptMassOf,
 } from '../combat/shockwaveSweep.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
@@ -163,10 +163,13 @@ function bombTargetBuckets(index) {
 function pushBombTarget(out, e) {
   if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e) || faunaBlastEligible(e))) out.push(e);
 }
-// Shockwave-sweep eligibility: the loose matter a wave pushes (craft keep their tuned
-// instant-shove economy) plus dynamic-body fauna, mirroring blastShoveEligible minus craft.
+// Shockwave-sweep eligibility: the loose DYNAMIC matter a wave can actually move (the
+// physics authority would refuse fixed landmark rocks, and a pass it cannot push must not
+// spend the tick's pass budget or flash a receipt) plus dynamic-body fauna, mirroring
+// blastShoveEligible minus craft.
 function pushSweepBody(out, e) {
-  if (e?.alive && e.pos && !craft(e) && (LOOSE_TYPES.has(e?.type) || faunaShoveEligible(e))) out.push(e);
+  if (e?.alive && e.pos && !craft(e) && (LOOSE_TYPES.has(e?.type) || faunaShoveEligible(e))
+    && isDynamicPhysicsBodyEntity(e)) out.push(e);
 }
 // ---- fitted rack (PQ-205.03) ----------------------------------------------------------
 // state.bombs is the player's one bomb-bay bag, additive over the pre-rack shape:
@@ -1223,14 +1226,17 @@ export const bombs = {
     const impulseBudget = Math.max(0, Number(impulseOverride != null ? impulseOverride : def.impulse) || 0)
       * SHOCKWAVE_SWEEP_LAW.passImpulseFrac;
     if (!(impulseBudget > 0)) return;
-    if (this._sweeps.length >= SHOCKWAVE_SWEEP_LAW.maxLiveSweeps) this._sweeps.shift();
+    // Replacement before eviction: a re-detonation reuses its own record in place and
+    // must never push the oldest unrelated front out of the cap.
+    const existing = this._sweeps.find((s) => s.bombId === bomb.id);
+    if (!existing && this._sweeps.length >= SHOCKWAVE_SWEEP_LAW.maxLiveSweeps) this._sweeps.shift();
     const sweep = createShockwaveSweep({
       bombId: bomb.id,
       ownerId: bomb.data && bomb.data.ownerId,
       weaponId: def.id,
       passImpulseWu: impulseBudget,
       x: pos.x, z: pos.z, blastRadius: def.radius,
-      existing: this._sweeps.find((s) => s.bombId === bomb.id),
+      existing,
     });
     if (sweep && !this._sweeps.includes(sweep)) this._sweeps.push(sweep);
     this._bombsQuiet = null;
@@ -1256,15 +1262,23 @@ export const bombs = {
       if (passBudget <= 0) break;
       const sweep = this._sweeps[i];
       const front = advanceSweepFront(sweep, dt);
-      // Resolve the final annulus BEFORE retiring: the last tick's 5.7 WU band plus body
-      // radii is a real pass the outermost bodies are owed.
+      // Resolve the final annulus BEFORE retiring: the last tick's band plus body
+      // radii is a real pass the outermost bodies are owed. Distance order keeps the
+      // wave nearest-first within a tick AND makes budget deferral fall on the farthest
+      // bodies deterministically (bucket insertion order must never decide physics).
+      candidates.sort((x, y) => this._sweepDist2(x, sweep) - this._sweepDist2(y, sweep));
       for (const ent of candidates) {
         if (passBudget <= 0) break;
         const pass = resolveSweepPass(sweep, ent, front.radius);
         if (!pass) continue;
         passBudget--;
-        if (isDynamicPhysicsBodyEntity(ent) && physics && typeof physics.applyImpulse === 'function') {
-          const mag = pass.deltaV * massOf(ent);
+        if (physics && typeof physics.applyImpulse === 'function') {
+          // The applied impulse is the graded deltaV TIMES THE BODY'S REAL MASS: the
+          // floor belongs to the grade (threshold stability), never to the delivery —
+          // a floor-mass impulse divided by a real 0.1-mass pickup would deliver a
+          // 60 WU/s receipt as a 1200 WU/s launch. sweptMassOf is the same read the
+          // grade used, so the receipt is the physical truth.
+          const mag = pass.deltaV * sweptMassOf(ent);
           const provenance = {
             actorId: sweep.ownerId == null ? null : sweep.ownerId,
             weaponId: sweep.weaponId,
@@ -1281,6 +1295,12 @@ export const bombs = {
       }
       if (!front.alive) this._sweeps.splice(i, 1);
     }
+  },
+
+  _sweepDist2(entity, sweep) {
+    const dx = (entity.pos && entity.pos.x) - sweep.x;
+    const dz = (entity.pos && entity.pos.z) - sweep.z;
+    return dx * dx + dz * dz;
   },
 
   // Loose matter the wave can touch: the movable family minus craft, plus dynamic-body

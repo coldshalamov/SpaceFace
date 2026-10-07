@@ -996,11 +996,11 @@ export const aftermathWrecks = {
       this.bus.on('physics:impact', this._onLooseImpact);
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
       // drains the same _onSectorEnter under its slice clock in listener order.
-      this.bus.on('sector:enter', (p) => {
+      this._onSectorEnterWrapped = (p) => {
         if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
         this._onSectorEnter(p);
-      });
-      this.bus.on('sector:exit', this._onSectorExit);
+      };
+      this.bus.on('sector:enter', this._onSectorEnterWrapped);
       // Census arm: sector-dust wrecks materialize inside the cook, not on emit order.
       // The cook drives the chunked steps across its slice clock; the emit listener
       // drains the same steps synchronously, so both paths mint the identical field.
@@ -1010,6 +1010,7 @@ export const aftermathWrecks = {
       });
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);
+      this.bus.on('sector:exit', this._onSectorExit);
       this.bus.on('salvage:completed', this._onSalvageCompleted);
       this.bus.on('encounter:resolved', this._onEncounterResolved);
       this.bus.on('dock:docked', this._onDocked);
@@ -2780,6 +2781,11 @@ export const aftermathWrecks = {
       if (this._onDestroyed) this.bus.off('entity:destroyed', this._onDestroyed);
       if (this._onFieldSource) this.bus.off('wreckField:source', this._onFieldSource);
       if (this._onLooseImpact) this.bus.off('physics:impact', this._onLooseImpact);
+      if (this._onSectorEnterWrapped) this.bus.off('sector:enter', this._onSectorEnterWrapped);
+      if (this._cookProvider && this.helpers && Array.isArray(this.helpers.sectorCookProviders)) {
+        const at = this.helpers.sectorCookProviders.indexOf(this._cookProvider);
+        if (at >= 0) this.helpers.sectorCookProviders.splice(at, 1);
+      }
       if (this._onSectorEnter) this.bus.off('sector:enter', this._onSectorEnter);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
       if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);
