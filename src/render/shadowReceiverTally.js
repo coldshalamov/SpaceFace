@@ -43,54 +43,128 @@ const RECOUNT_STORM_QUIET_RESOLVES = 8;
 
 /** Iterative pre-order twin of the recount traverse — same receiver test, yields
  * every `nodesPerSlice` visited nodes so resolve() can pace the fallback walk
- * across presented beats instead of paying one atomic O(scene) pass. */
+ * across presented beats instead of paying one atomic O(scene) pass.
+ *
+ * Frame stack: each frame is pushed when its node is first touched and popped
+ * when the node's subtree is exhausted, so the stack is exactly the open
+ * ancestor chain of the walk cursor. That shape is what makes the noted
+ * walk's probes cheap: detached membership propagates through frame.dead
+ * (marked once per resume over the chain instead of an O(depth) parent walk
+ * per pop), and "root's subtree finished" is an openSet membership test.
+ * Graph mutations can only land while the generator is suspended at a yield,
+ * so all staleness checks run in a single O(depth) resume pass:
+ *  - a frame whose node sits in the detached set (a noteRemoved root) kills
+ *    its whole suffix — every deeper member is under it;
+ *  - a broken parent link (f.node.parent !== parentFrame.node) is resolved
+ *    once with the legacy ancestry probe — live means the node reparented
+ *    inside the scene and still counts, dead means un-noted detach;
+ *  - a sibling splice (children[idx] drifted off the frame's node) re-indexes
+ *    the parent's cursor via indexOf so an already-visited sibling's removal
+ *    can't skip an unvisited subtree.
+ */
 function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_SLICE, notedWalk = null) {
   let receivers = 0;
   if (!scene) return receivers;
   const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
-  const stack = [scene];
+  const detached = notedWalk ? notedWalk.detached : null;
+  const openSet = notedWalk ? notedWalk.openSet : null;
+  const stack = [{
+    node: scene,
+    idx: -1,
+    dead: detached && detached.size > 0 && detached.has(scene) ? 1 : 0,
+    visited: false,
+  }];
+  if (openSet) openSet.add(scene);
   let sinceYield = 0;
   while (stack.length > 0) {
-    const object = stack.pop();
-    if (!object) continue;
-    // A subtree detached after being pushed is dead: it must not count toward
-    // the fresh measurement — its removal note settles the served count.
-    if (notedWalk && notedWalk.detached && notedWalk.detached.size > 0) {
-      let live = false;
-      for (let p = object; p; p = p.parent) {
-        if (notedWalk.detached.has(p)) break;
-        if (p === scene) { live = true; break; }
-      }
-      if (!live) continue;
+    const frame = stack[stack.length - 1];
+    if (frame.dead !== 0) {
+      stack.pop();
+      if (openSet) openSet.delete(frame.node);
+      continue;
     }
-    if ((++sinceYield % every) === 0) yield;
-    if (object.receiveShadow === true) receivers += 1;
-    // Every live-popped object gets a visit stamp, not just noted roots: a note
-    // landing later can only decide "did the walk already measure this root?"
-    // if the walk recorded its own measurement unconditionally.
-    if (notedWalk) {
-      notedWalk.seq += 1;
-      // lastPopped is the finished-subtree probe for noteRemoved — the check
-      // must see the true latest pop, so it stays unconditional (a lone ref
-      // write, unlike the Map entry F2's arm gate exists to skip).
-      notedWalk.lastPopped = object;
-      // visits has subscribers only while a note or detached root can name a
-      // popped node — gate the per-pop Map write so a clean walk pays zero
-      // churn. A lazy miss errs over-count: unvisited roots skip the -delta
-      // write entirely and add-notes re-stamp, both conservative-on.
-      if (notedWalk.notes.size > 0 || notedWalk.detached.size > 0) {
-        notedWalk.visits.set(object, notedWalk.seq);
-        // FIFO-evict past the cap — a missing stamp only ever converts to the
-        // conservative side (pending notes stamp their delta; bare removals
-        // skip the retraction), so the cap bounds storm-frame map churn
-        // without an unsafe drop direction.
-        while (notedWalk.visits.size > NOTED_WALK_VISITS_CAP) {
-          notedWalk.visits.delete(notedWalk.visits.keys().next().value);
+    const object = frame.node;
+    if (!frame.visited) {
+      frame.visited = true;
+      sinceYield += 1;
+      if (sinceYield >= every) {
+        sinceYield = 0;
+        yield;
+        if (detached) {
+          // Mutations landed inside the suspend: re-verify the open chain once
+          // per resume rather than probing ancestry per visited node.
+          let deadAt = -1;
+          for (let i = 1; i < stack.length; i += 1) {
+            const f = stack[i];
+            if (f.dead !== 0 || (detached.size > 0 && detached.has(f.node))) {
+              deadAt = i;
+              break;
+            }
+            const parentFrame = stack[i - 1];
+            if (f.node.parent !== parentFrame.node) {
+              // Un-noted detach or reparent — decide once per break with the
+              // probe the flat stack paid per pop.
+              let live = false;
+              for (let p = f.node; p; p = p.parent) {
+                if (detached.has(p)) break;
+                if (p === scene) { live = true; break; }
+              }
+              if (!live) { deadAt = i; break; }
+            } else if (parentFrame.node.children
+                && parentFrame.node.children[parentFrame.idx] !== f.node) {
+              const shifted = parentFrame.node.children.indexOf(f.node);
+              if (shifted < 0) deadAt = i;
+              else parentFrame.idx = shifted;
+              if (deadAt >= 0) break;
+            }
+          }
+          if (deadAt >= 0) {
+            for (let k = deadAt; k < stack.length; k += 1) stack[k].dead = 1;
+          }
+          if (frame.dead !== 0) {
+            stack.pop();
+            if (openSet) openSet.delete(object);
+            continue;
+          }
+        }
+      }
+      if (object.receiveShadow === true) receivers += 1;
+      // Every visited object gets a visit stamp, not just noted roots: a note
+      // landing later can only decide "did the walk already measure this
+      // root?" if the walk recorded its own measurement unconditionally.
+      if (notedWalk) {
+        notedWalk.seq += 1;
+        // visits has subscribers only while a note or detached root can name a
+        // visited node — gate the per-visit Map write so a clean walk pays
+        // zero churn. A lazy miss errs over-count: unvisited roots skip the
+        // -delta write entirely and add-notes re-stamp, both conservative-on.
+        if (notedWalk.notes.size > 0 || detached.size > 0) {
+          notedWalk.visits.set(object, notedWalk.seq);
+          // FIFO-evict past the cap — a missing stamp only ever converts to
+          // the conservative side (pending notes stamp their delta; bare
+          // removals skip the retraction), so the cap bounds storm-frame map
+          // churn without an unsafe drop direction.
+          while (notedWalk.visits.size > NOTED_WALK_VISITS_CAP) {
+            notedWalk.visits.delete(notedWalk.visits.keys().next().value);
+          }
         }
       }
     }
     const children = object.children;
-    if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    if (children && frame.idx + 1 < children.length) {
+      frame.idx += 1;
+      const child = children[frame.idx];
+      stack.push({
+        node: child,
+        idx: -1,
+        dead: detached && detached.size > 0 && detached.has(child) ? 1 : 0,
+        visited: false,
+      });
+      if (openSet) openSet.add(child);
+    } else {
+      stack.pop();
+      if (openSet) openSet.delete(object);
+    }
   }
   return receivers;
 }
@@ -117,11 +191,13 @@ export function createShadowReceiverTally() {
   // attribute a root to) — over-counting errs conservative-on, matching the
   // tally's boolean consumers. This converges `dirty` in ONE walk under
   // sustained note storms instead of discarding bounded slices forever.
-  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0, detached: new Set(), lastPopped: null };
+  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0, detached: new Set(), openSet: new Set() };
   const resetNotedWalk = () => {
     notedWalk.seq = 0;
-    notedWalk.lastPopped = null;
     notedWalk.visits.clear();
+    // The open chain belongs to a single minted walk — a superseded or
+    // abandoned walk's chain can never stand in for the next mint's.
+    notedWalk.openSet.clear();
     // A re-minted walk re-measures every node post-mutation: notes pending from
     // an earlier walk are now absorbed iff the fresh walk visits the root at
     // all (visit seqs start at 1, so a demoted seq-0 note is unabsorbed only
@@ -134,23 +210,20 @@ export function createShadowReceiverTally() {
   };
   const clearNotedWalk = () => {
     notedWalk.seq = 0;
-    notedWalk.lastPopped = null;
     notedWalk.visits.clear();
+    notedWalk.openSet.clear();
     notedWalk.notes.clear();
     notedWalk.loose = 0;
     notedWalk.detached.clear();
   };
-  // DFS pops a subtree contiguously, so a -delta retraction is exact only once
-  // the walk has left the root's subtree entirely: lastPopped still inside it
-  // means only a prefix was measured and retracting the full delta would
-  // under-count below truth. Skipping the note leaves the measured prefix in
-  // the served count — over-count errs conservative-on, the legal direction.
-  const notedWalkRootFinished = (root) => {
-    for (let p = notedWalk.lastPopped; p; p = p.parent) {
-      if (p === root) return false;
-    }
-    return true;
-  };
+  // DFS visits a subtree contiguously, so a -delta retraction is exact only
+  // once the walk has left the root's subtree entirely: a root still on the
+  // open frame chain has only a measured prefix and retracting the full delta
+  // would under-count below truth. Skipping the note leaves the measured
+  // prefix in the served count — over-count errs conservative-on, the legal
+  // direction. (Sites only consult this for roots with a visit stamp, so a
+  // pushed-but-unvisited node in openSet can never masquerade as measured.)
+  const notedWalkRootFinished = (root) => !notedWalk.openSet.has(root);
 
   return {
     get count() { return count; },

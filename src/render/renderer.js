@@ -2155,6 +2155,10 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
       // A torn walk leaves a partial measurement — settle the tally with the
       // dirty recount path (null) instead of under-subtracting.
       if (iter) iter._measure = null;
+      // The corpse is consumed mid-teardown: the same torn castShadow prefix
+      // the remount head-check flags — stamp it so a mesh re-mounted later
+      // re-arms the policy sync instead of skipping on the dirtySeq memo.
+      if (m && m.userData) m.userData.sfDespawnPartialTeardown = true;
       iterDone = true;
     }
     if (iterDone) {
@@ -18422,10 +18426,45 @@ export const render = {
     // froze the loading shell's rAF. It now drives as a paced drain that yields
     // between ~8ms slices, with the drain itself in _rosterPrewarmPending so the
     // cook's shell hold still covers the full cohort.
-    const drain = this._drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines)
-      .catch((error) => {
-        console.warn('[render] survival roster prewarm drain failed', error);
-      });
+    if (this._rosterPrewarmCohortDrain) {
+      // A drain is already in flight: hand the emit to its tail re-drive rather
+      // than minting a second concurrent drain — the re-drive rebuilds the
+      // exemplar concat and the ledger skips every row the in-flight pass
+      // already covered, so a same-payload re-emit queues zero new census-hold
+      // work under the existing pending member.
+      (this._rosterPrewarmEmitQueue || (this._rosterPrewarmEmitQueue = []))
+        .push({ specs, compilePipelines });
+      return;
+    }
+    // The drive chain covers this mint plus every tail-queued re-emit under one
+    // pending entry — the census hold sees queued emits too.
+    const emitQueue = this._rosterPrewarmEmitQueue
+      || (this._rosterPrewarmEmitQueue = []);
+    const drive = (async () => {
+      for (let emit = { specs, compilePipelines, exemplarSpecs }; emit;) {
+        const list = emit.exemplarSpecs || emit.specs.concat(
+          wreckVisualExemplarSpecs(),
+          combatSpawnableExemplarSpecs(),
+          asteroidVisualExemplarSpecs(),
+        );
+        try {
+          await this._drainRosterPrewarmCohort(list, emit.specs, emit.compilePipelines);
+        } catch (error) {
+          console.warn('[render] survival roster prewarm drain failed', error);
+        }
+        emit = emitQueue.shift() || null;
+        if (!emit) {
+          // The empty-queue read and the stamp clear are synchronous, so an
+          // emit either lands in the shift above or finds a null stamp and
+          // mints its own drive — nothing strands on an exited chain.
+          this._rosterPrewarmCohortDrain = null;
+        }
+      }
+    })();
+    this._rosterPrewarmCohortDrain = drive;
+    const drain = drive.catch((error) => {
+      console.warn('[render] survival roster prewarm drive failed', error);
+    });
     if (this._rosterPrewarmPending) {
       this._rosterPrewarmPending.add(drain);
       observePipelineAdmission(drain.finally(() => {
@@ -20871,6 +20910,10 @@ export const render = {
     if (this._rosterPrewarmIds) this._rosterPrewarmIds.clear();
     if (this._rosterPrewarmWeaponIds) this._rosterPrewarmWeaponIds.clear();
     if (this._rosterPrewarmPending) this._rosterPrewarmPending.clear();
+    // Queued re-emits and the in-flight stamp die with the run: a fresh run
+    // mints its own drive rather than consuming emits under the old chain.
+    this._rosterPrewarmEmitQueue = [];
+    this._rosterPrewarmCohortDrain = null;
     if (this._rosterPartCatalogRoot) {
       const catalog = this._rosterPartCatalogRoot;
       this._rosterPartCatalogRoot = null;
@@ -20900,7 +20943,8 @@ export const render = {
     for (const root of roots) {
       if (!root) continue;
       try {
-        if (root.parent) {
+        const wasMounted = !!root.parent;
+        if (wasMounted) {
           root.parent.remove(root);
           // Queued corpses settle the tally from the teardown's own measured
           // walk; a contextLost corpse never queues, so it notes inline — and
@@ -20915,9 +20959,20 @@ export const render = {
         if (this._contextLost === true) continue;
         // Whole composed warm trees pace across the despawn drain's parked
         // per-corpse iterators instead of paying an atomic teardown inside the
-        // run:ended emit — the detach/shadow bookkeeping above stays immediate.
-        if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
-        this._warmDisposeQueue.push(root);
+        // run:ended emit — but a root that never mounted paid no mount-time
+        // tally note, so queueing it would burn a drain slot on a measured -K
+        // walk that nets to nothing. Mounted roots queue; unmounted roots
+        // dispose inline — same contract as teardownWarm's tail.
+        if (!disposePreparedAuthoredBoundary(root)) {
+          if (wasMounted) {
+            if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+            this._warmDisposeQueue.push(root);
+          } else {
+            disposeObject(root);
+          }
+        } else if (wasMounted) {
+          this._noteShadowMeshRemoved?.(root);
+        }
       } catch (error) {
         console.warn('[render] survival roster prewarm release failed', reason, error);
       }
@@ -21339,7 +21394,21 @@ export const render = {
   _queueHiddenSubtreeFreeze(mesh) {
     if (!mesh || mesh.matrixAutoUpdate !== true) return;
     const ud = mesh.userData || (mesh.userData = {});
-    if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true) return;
+    if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true) {
+      // The kept sfHiddenFrozen flag also marks the show->restore window: a
+      // re-hide inside it cancels the pending restore outright, so a
+      // sub-dwell cull->show->cull flap costs zero subtree walks. The drain's
+      // abandon check would kill a parked restore iterator a pass later via
+      // sfHiddenFreezeQueued anyway — stamp-killing it here is just earlier.
+      delete ud.sfHiddenUnfreezeQueued;
+      delete ud.sfHiddenUnfreezeQueuedSeq;
+      const parkedUnfreeze = ud.sfHiddenUnfreezeIter || null;
+      if (parkedUnfreeze) {
+        try { parkedUnfreeze.return(); } catch (_) { /* discard proceeds */ }
+        delete ud.sfHiddenUnfreezeIter;
+      }
+      return;
+    }
     ud.sfHiddenFreezeQueued = true;
     // Queue age feeds the drain's flap dwell: a mint must only fire after the
     // root stays culled across the whole dwell window, or a first-cycle
@@ -21461,12 +21530,19 @@ export const render = {
     const ud = mesh.userData || {};
     if (ud.sfHiddenFrozen !== true || ud.sfHiddenUnfreezeQueued === true) return;
     ud.sfHiddenUnfreezeQueued = true;
+    // Queue age feeds the drain's restore-side dwell: the mint must only run
+    // after the root stays shown for the whole dwell window, or a first-cycle
+    // cull->show flap pays the ~3-walk restore for ~zero hidden frames. The
+    // queue stamp is the show epoch — sfHiddenFreezeLastShowSeq re-stamps on
+    // every visible pass and so can never serve as a dwell base.
+    ud.sfHiddenUnfreezeQueuedSeq = this._viewSyncSeq || 0;
     (this._pendingHiddenUnfreeze || (this._pendingHiddenUnfreeze = [])).push(mesh);
   },
 
   _drainHiddenUnfreezeQueue() {
     const pending = this._pendingHiddenUnfreeze;
     if (!pending || pending.length === 0) return;
+    const viewSeq = this._viewSyncSeq || 0;
     let minted = 0;
     let scanned = 0;
     let visited = 0;
@@ -21489,12 +21565,24 @@ export const render = {
         // storm can't park live restores.
         if (ud.sfHiddenUnfreezeQueued !== true) continue;
         scanned += 1;
+        // Restore-side flap dwell — the freeze mint's mirror image. The kept
+        // sfHiddenFrozen flag early-outs the freeze queue on a sub-dwell
+        // re-hide and this entry dead-drops at the flag check for zero walks;
+        // a period>=4 flapper used to pay ~7 subtree walks per cycle for ~3
+        // hidden frames of compose savings.
+        if (viewSeq - (ud.sfHiddenUnfreezeQueuedSeq || 0) < HIDDEN_FREEZE_FLAP_DWELL) {
+          pending[w++] = mesh;
+          continue;
+        }
         delete ud.sfHiddenUnfreezeQueued;
-        // A re-culled root (pending or minted freeze) drops its restore: the
-        // freeze queue owns the subtree's marks now. A detached or re-frozen
-        // root likewise drops out.
-        if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true
+        delete ud.sfHiddenUnfreezeQueuedSeq;
+        // Re-culled rows dead-drop above (the kept flag's freeze-queue
+        // early-out deleted this entry's flag); a detached or externally
+        // re-frozen root drops here. sfHiddenFrozen is not a drop signal on
+        // this path — it stays true until the mint below consumes it.
+        if (ud.sfHiddenFreezeQueued === true
             || mesh.matrixAutoUpdate !== true || !mesh.parent) continue;
+        ud.sfHiddenFrozen = false;
         iter = unfreezeHiddenSubtreeMatricesSteps(mesh);
       } else {
         scanned += 1;
@@ -21705,6 +21793,7 @@ export const render = {
       delete mesh.userData.sfHiddenFreezeQueuedSeq;
       delete mesh.userData.sfHiddenFreezeLastShowSeq;
       delete mesh.userData.sfHiddenUnfreezeQueued;
+      delete mesh.userData.sfHiddenUnfreezeQueuedSeq;
       // A parked mid-mint iterator must not resume against a row the world no
       // longer owns — kill it here; the subtree's stamped prefix heals via the
       // sfHiddenFrozen branch's restore below (partial prefixes unfreeze
@@ -23735,12 +23824,12 @@ export const render = {
       if (userData.sfHiddenFrozen === true) {
         // The ~2x-subtree interior restore rides the bounded drain instead of
         // landing inside this pass — queue while the flag still reads true.
-        // The root itself resumes composing below, and the vendored
-        // updateMatrixWorld descends marked subtrees under force, so the
-        // pose stays correct while the restore waits. The show seq also feeds
-        // the freeze queue's flap hysteresis.
+        // The flag now STAYS set until the restore mint consumes it: a
+        // sub-dwell re-hide early-outs the freeze queue and dead-drops this
+        // restore for zero walks, while the vendored updateMatrixWorld
+        // force-descend keeps the pose correct through the window. The show
+        // seq below still feeds the freeze side's flap hysteresis.
         this._queueHiddenSubtreeUnfreeze(mesh);
-        userData.sfHiddenFrozen = false;
         mesh.matrixAutoUpdate = true;
       }
       // Every visible row stamps the last-show seq: a first-time flapper (hide
