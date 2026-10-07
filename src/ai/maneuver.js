@@ -18,6 +18,7 @@ import {
 import { createSquadFrameDirector } from './squadFrame.js';
 import { temperamentFor } from './temperament.js';
 import {
+  REFLEX_KIND,
   emptyReflexState,
   evaluateReflexes,
   reflexAllowedForIntent,
@@ -193,6 +194,15 @@ const DEFAULTS = Object.freeze({
   escapeSpeed: MANEUVER_SPEED_CAPS.escapeSpeed,
   clearDeadlockSpeed: 82,
   maxOrbitClosingSpeed: 24,
+  // SF-2b (#4): the 24 WU/s orbit closing cap is a ring-keeping brake. Applied to a hull far
+  // outside its ring it parked strikers at ~290 WU for the whole strike window, so beyond
+  // ring + orbitFarClosingMargin the orbit closes at intercept pace (x orbitFarClosingScale).
+  orbitFarClosingMargin: 60,
+  orbitFarClosingScale: 1.5,
+  // SF-2b (#4): a lateral burst reflex (volley jink / hit weave) owns the strafe channel at this
+  // authority. At the kind's own authority (0.24 intercept) and with the x0.35 closing-brake cut a
+  // jink moved the hull ~3 WU, so a dodge never made a shot miss.
+  reflexStrafeAuthority: 0.7,
   maxApproachClosingSpeed: 34,
   friendlySeparationRadius: 118,
   friendlySeparationWeight: 0.82,
@@ -501,6 +511,13 @@ export class ManeuverPlanner {
         }
       }
     }
+    if (kind === ManeuverKind.ORBIT && target) {
+      const ringRadius = Number.isFinite(intent.preferredRange) ? intent.preferredRange : this.config.orbitRadius;
+      if (distance2(selfPose.pos, target.pos) > ringRadius + this.config.orbitFarClosingMargin) {
+        envelope.maxClosingSpeed = this.config.interceptSpeed * this.config.orbitFarClosingScale *
+          (hullScale && hullScale.closing > 0 ? hullScale.closing : 1);
+      }
+    }
     const closing = target ? closingSpeed(selfPose, target) : 0;
     const localClosingLimit = target
       ? closeApproachLimit(kind, intent, selfPose, target, this.config, envelope.maxClosingSpeed)
@@ -522,19 +539,23 @@ export class ManeuverPlanner {
     const tracked = desired.control === 'track' && desired.desiredPos && kind !== ManeuverKind.CLEAR_DEADLOCK;
     let rawForward;
     let rawRight;
+    const lateralBurst = isLateralBurst(reflex);
+    const strafeAuthority = lateralBurst
+      ? Math.max(strafeAuthorityForKind(kind), this.config.reflexStrafeAuthority)
+      : strafeAuthorityForKind(kind);
     if (tracked) {
       const axes = desiredAxes(selfPose, desired, desiredUnit, hullScale, this.config);
       rawForward = allowReverse ? axes.forward : Math.max(0, axes.forward);
-      rawRight = axes.right * strafeAuthorityForKind(kind);
+      rawRight = axes.right * strafeAuthority;
       if (Math.abs(angleError) > turnGate) rawForward *= 0.35;
       if (envelope.maxSpeed > 0 && speed > envelope.maxSpeed) rawForward *= throttle;
     } else {
       rawForward = (allowReverse ? forwardDot : Math.max(0, forwardDot)) * throttle;
-      rawRight = rightDot * throttle * strafeAuthorityForKind(kind);
+      rawRight = rightDot * (lateralBurst ? Math.max(throttle, this.config.reflexStrafeAuthority) : throttle) * strafeAuthority;
     }
     if (speedLimited || (!intent.crossingLane && closingLimited)) {
       rawForward = Math.min(rawForward, speedLimited ? 0.04 : 0.18);
-      if (!intent.crossingLane) {
+      if (!intent.crossingLane && !lateralBurst) {
         rawRight *= 0.35;
       }
     }
@@ -557,7 +578,7 @@ export class ManeuverPlanner {
       forward: rawForward,
       right: rawRight,
       torqueYaw: rawTorqueYaw,
-    }, this.config, { emergency: emergencyManeuver, slew: hullScale.slew * poiseSlew });
+    }, this.config, { emergency: emergencyManeuver || lateralBurst, slew: hullScale.slew * poiseSlew });
 
     const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)
@@ -1230,6 +1251,11 @@ function motionEnvelope(kind, intent, arrival, formationDistance, formationBound
     maxSpeed: maxSpeed * speed,
     maxClosingSpeed: Number.isFinite(maxClosingSpeed) ? maxClosingSpeed * closing : maxClosingSpeed,
   };
+}
+
+function isLateralBurst(reflex) {
+  return !!reflex && (reflex.kind === REFLEX_KIND.VOLLEY_JINK || reflex.kind === REFLEX_KIND.HIT_WEAVE) &&
+    Math.abs(reflex.lateral || 0) >= 0.5;
 }
 
 function strafeAuthorityForKind(kind) {
