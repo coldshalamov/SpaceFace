@@ -1,3 +1,0 @@
-# Raw grid shards are ~6.5 MB and fully regenerable (resumable): node scripts/lab/sweeps/tetherSweep2a.mjs grid
-# grid-ranked.csv + report.json are the committed record.
-grid.w*.jsonl
