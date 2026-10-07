@@ -100,7 +100,7 @@ function freshRuntime() {
     lastAbsorbCueS: -1e9,  // simTime of the last absorb tick — gates the glass-tick cue rate
     strainCueLatched: false, // gyre_snare_strain fires once per strain excursion
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
-    orbitSeed: 0,          // per-clump phase so successive balls don't share a start angle
+    orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
@@ -148,9 +148,10 @@ export const gyreSnare = {
     // then sweep untracked residue — a held body left marked is pull/snag/suck-immune
     // forever, and a stashless ex-core is immortal debris.
     this._clearCoreMark();
-    if (this._rt) this._rt.ballIds.length = 0; // same alias risk as the boundary drop — clear before the re-seed
-    this._sweepBoundaryResidue();
     this._rt = freshRuntime();
+    // Sweep AFTER the fresh runtime: the sweep re-adopts live marked balls into
+    // rt.ballIds/ballId — sweeping first seeded the discarded runtime instead.
+    this._sweepBoundaryResidue();
   },
 
   // ── entry points used by tests / other systems ─────────────────────────────────
@@ -812,8 +813,14 @@ export const gyreSnare = {
       // r:0 when the clump is capped — the suck lane is disabled then, so the basin
       // lane owns the annulus again rather than leaving a dead zone around the ball.
       r: rt.clumpMass < D.maxClumpMass
-        ? rt.clumpRadius * (1 + D.suckBandMassGain) + D.suckBandWidth : 0,
+        ? this._suckRadius(rt) : 0,
     });
+  },
+
+  /** The clump's own gravity well: it widens with the payload but stays bounded —
+   * a capped katamari out-reaches the beam's basin deliberately, never ~2× past it. */
+  _suckRadius(rt) {
+    return Math.min(D.basinRadius * 1.5, rt.clumpRadius * (1 + D.suckBandMassGain) + D.suckBandWidth);
   },
 
   /** Drag absorbables onto the clump and merge the ones that touch. */
@@ -823,9 +830,10 @@ export const gyreSnare = {
     // Reset above the guard — a helper-less host must not publish a frozen +N read forever.
     rt.suckCount = 0;
     if (!queryRadius) return;
-    // The band widens with the ball — a capped 60 wu katamari is hungrier than a fresh
-    // snag (katamari escalation legibility; the presentation halo draws the same reach).
-    const suckR = rt.clumpRadius * (1 + D.suckBandMassGain) + D.suckBandWidth;
+    // The band widens with the ball — a capped katamari is hungrier than a fresh
+    // snag (katamari escalation legibility; the presentation halo draws the same
+    // reach), but stays bounded: ~1.5× the beam's own basin, never ~2× past it.
+    const suckR = this._suckRadius(rt);
     const cands = queryRadius(core.pos, suckR, this._scratch);
     const shipVx = finite(player && player.vel && player.vel.x);
     const shipVz = finite(player && player.vel && player.vel.z);
@@ -1013,6 +1021,7 @@ export const gyreSnare = {
     rt.basinCount = 0; // the "N in net" read is basin-only — a flying ball owns none
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
+    rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
     rt.basinSpots.length = 0;
     rt.ballMass = rt.clumpMass;
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
@@ -1081,20 +1090,11 @@ export const gyreSnare = {
         speed: D.launchSpeed, dir: { x: dir.x, z: dir.z }, members: rt.members.length,
         tick: state.tick,
       });
-      // Mass-graded launch voice: a pebble cracks bright, a capped moon bowls
-      // low and heavy — rate falls and gain swells as clumpMass approaches the cap.
-      const launchFrac = Math.min(1, rt.clumpMass / D.maxClumpMass);
-      this.bus.emit('audio:cue', {
-        id: 'gyre_snare_launch',
-        position: { x: core.pos.x, z: core.pos.z },
-        rate: 1.05 - 0.45 * launchFrac,
-        gain: 0.7 + 0.5 * launchFrac,
-      });
     }
-    // The kinetic payoff (shake + Newton kick) does NOT land here — it rides the first
-    // burst tick in update() so the biggest beat hits the moment the coil RELEASES the
-    // ball, not while it's still winding back. The launch whoosh's attack already spans
-    // the ~100 ms coil gap.
+    // The kinetic payoff (shake + Newton kick + the launch crack itself) does NOT land
+    // here — it rides the first burst tick in update() so the biggest beat hits the
+    // moment the coil RELEASES the ball, not while it's still winding back. The crack's
+    // recipe attack is 1 ms: emitted here it would fire a beat early, against the design.
   },
 
   _finishLaunch(state) {
@@ -1109,6 +1109,8 @@ export const gyreSnare = {
     rt.clumpRadius = 0;
     rt.members.length = 0;
     rt.launchWindup = 0;
+    rt.launchCarry = 0; // consumed by the burst — the one launch-ledger field that
+                      // would otherwise outlive its phase
     // The beam ended in a THROW, not a release or a tear — a previous lash's 'strained'
     // must not dress a clean bowl's close ramp as a slip.
     rt.dropReason = 'launched';
@@ -1541,6 +1543,16 @@ export const gyreSnare = {
             this.bus.emit(GYRE_EVENTS.thrown, { tick: state && state.tick });
             this.bus.emit('camera:shake', {
               amount: 0.3 + 0.25 * Math.min(1, rt.ballMass / D.maxClumpMass),
+            });
+            // Mass-graded launch voice lands ON the release tick with the rest of the
+            // throw language — a pebble cracks bright, a capped moon bowls low and
+            // heavy (emitted at the release edge before, ~100 ms ahead of the sling).
+            const launchFrac = Math.min(1, rt.ballMass / D.maxClumpMass);
+            this.bus.emit('audio:cue', {
+              id: 'gyre_snare_launch',
+              position: { x: core.pos.x, z: core.pos.z },
+              rate: 1.05 - 0.45 * launchFrac,
+              gain: 0.7 + 0.5 * launchFrac,
             });
           }
           // Newton: throwing a small moon pushes back. A gentle mass-scaled counter-Δv

@@ -2056,3 +2056,24 @@ test('a forward-moving ship bowls hotter — launchSpeed is a floor, not a cap',
     `forward residual rides the throw — Δv beyond the authored floor (vx=${core.vel.x})`);
   t.cleanup();
 });
+
+test('an aft-moving ship still bowls exactly launchSpeed — the burst repays coil carry', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t); // stamps launch; the coil begins next tick
+  // Back the ship away through the whole coil — the ball chases a receding maw and
+  // arrives at the burst with strong AFT residual. The burst repays it so the throw
+  // lands at authored speed, not ~300 wu/s short.
+  for (let i = 0; i < 7; i++) {
+    t.player.vel.x = -300; t.player.vel.z = 0;
+    t.player.pos.x -= 300 / 60;
+    t.state.input.actions.gyreSnare = false; t.sim.step();
+  }
+  for (let i = 0; i < 6; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'off', 'burst finished');
+  assert.ok(core.vel.x > T.launchSpeed - 80 && core.vel.x < T.launchSpeed + 80,
+    `aft residual repaid — ball lands at authored pace (vx=${core.vel.x})`);
+  t.cleanup();
+});

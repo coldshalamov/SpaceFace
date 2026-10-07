@@ -131,13 +131,10 @@ export const gyreHud = {
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
         // "×1" would claim it ate nothing. Show mass only until the ledger exists.
         const count = g.members == null ? null : (g.absorbs || 0) + 1;
-        // The thrown ball's 9 s flight is otherwise silent — the same ·Ns countdown
-        // the fuse uses telegraphs the quiet-TTL grave before the ribbon just dims.
-        const ttlS = g.ballTtlS || 0;
-        const ttlTxt = ttlS > 0 && ttlS < GYRE_SNARE.ballTtlWarnS
-          ? ` · ball ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(ttlS)))}s` : '';
+        // The thrown ball's 9 s flight is otherwise silent — ballTxt carries the
+        // primary's ·Ns countdown plus any secondaries still flying (· +N balls Ns).
         const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t` : `GYRE — BALL AWAY · ${mass}t`) : 'GYRE — BALL AWAY';
-        return { text: label + ttlTxt, cls: 'gyre-ball' };
+        return { text: label + ballTxt, cls: 'gyre-ball' };
       }
       return { text: '', cls: '' };
     }

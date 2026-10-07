@@ -74,12 +74,16 @@ void main() {
   vec3 V = normalize(cameraPosition - vW);
   float ndv = abs(dot(normalize(vN), V));
   float fres = pow(1.0 - ndv, 2.3);
+  // Glass needs a hard specular cue, not just shimmer: a sharper grazing lobe plus
+  // a thin glint streak traveling around the skin (vUv.x is the cone's angle).
+  float lobe = pow(1.0 - ndv, 6.0);
+  float glint = pow(abs(sin(vUv.x * 6.2832 - uTime * 2.4 * uCalm)), 24.0);
   float band = 0.5 + 0.5 * sin(vUv.y * 34.0 - uTime * 13.0 * uCalm);
   float band2 = 0.5 + 0.5 * sin(vUv.y * 71.0 - uTime * 23.0 * uCalm);
   float rim = smoothstep(0.80, 1.0, vUv.y);
   float apex = smoothstep(0.20, 0.0, vUv.y);
-  float a = uAlpha * (0.05 + fres * 0.38 + band * band2 * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.22);
-  vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + uPulse * 0.4, 0.0, 1.0));
+  float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + band * band2 * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.22);
+  vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4, 0.0, 1.0));
   gl_FragColor = vec4(col, a);
 }
 `;
@@ -890,9 +894,12 @@ export class GyreSnarePresentation {
       // ring would advertise a dead well.
       const capFade = Math.max(0, 1 - finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1)));
       if (phase === 'holding' && capFade > 0.03) {
-        // Drawn reach must track the sim's suck annulus exactly — band + mass gain.
-        const suckR = this._clumpRadius * (1 + finite(GYRE_SNARE.suckBandMassGain, 0.5))
-          + finite(GYRE_SNARE.suckBandWidth, 88);
+        // Drawn reach must track the sim's suck annulus exactly — band + mass gain,
+        // clamped at 1.5× the basin like _suckRadius so the halo never advertises more.
+        const suckR = Math.min(
+          finite(GYRE_SNARE.basinRadius, 86) * 1.5,
+          this._clumpRadius * (1 + finite(GYRE_SNARE.suckBandMassGain, 0.5))
+            + finite(GYRE_SNARE.suckBandWidth, 88));
         this._halo.position.set(p.x, 0.42, p.z);
         this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
         this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6);
