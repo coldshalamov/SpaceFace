@@ -481,11 +481,11 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here, 2026-10-06 23:30 ET):** #4 NPC evasion/spacing SHIPPED as PR #229
-(`lab2b/npc-evasion`, not merged; see 10.2). Egress legs that open range went from 43.4% to 91.6%, and
-dives from 119/389 to 2/286. Player hit rate with the #228 locked aim is now 74-97% by hull (was 75-99.5%).
-Next: #5 massline throw / sling (based on `lab2a/tether-spin`), then #6, #8, #7, #9, #10. #3 is skipped
-(Robin's call).
+**Status (restart from here, 2026-10-07 00:10 ET):** #5 sling throw SHIPPED as PR #230
+(`lab2b/sling-release`, not merged; see 10.3). Accepted (queued) throw presses that missed went from 14/101
+to 3/101, and the hit window from 135.1 to 147.1 ms per revolution. The 90 ms window dial is unchanged.
+#4 shipped earlier as PR #229 (10.2). Next: #3 flight-assist turn authority (bench `flight` and the kernel
+seam `FLIGHT_TURN_LAB` are drafted in 10.4), then #6, #8, #7, #9, #10.
 
 ### 10.1 #4 NPC evasion + engagement spacing
 
@@ -625,4 +625,59 @@ Wasp extend (sampled legs): mean range 182 -> 184 wu with own radial -6 wu on ma
 
 Re-run: `LAB_OUT=/tmp/npc-verify node scripts/lab/sweeps/npcSweep4.mjs verify --workers 6`, on a checkout of
 the PR (+ #228) with `scripts/lab` from this branch.
+
+### 10.3 #5 massline throw / sling release: shipped as PR #230 (`lab2b/sling-release`)
+
+**Bench.** `sling` (`scripts/lab/benches/slingThrow.mjs`):
+- Each press is a fresh world. A Space tap latches the payload; the spin is W+D (with Shift for boost)
+  under the PR #227 orbit lock.
+- The cursor aims at the target, and RMB `throwArm` is forced at the press tick.
+- Presses sweep from 5.0 s every 2 ticks for 120 ticks, which covers 1–2 revolutions.
+- Scenarios: light (20) or pair (60) payload; target at 300 or 150 wu; a small r10 target moving at
+  40 wu/s; boost; and a long pair spin. Seeds 1–3.
+
+Sweep: `scripts/lab/sweeps/slingSweep5.mjs` (phases baseline / grid / verify / report).
+
+**Baseline (master throw on the #227 spin):**
+- Hit window: 135.1 ms per revolution. Early tolerance −74.6 ms, late +15.1 ms.
+- Snap cuts hit 97.7% (100% on static targets).
+- Exit speed kept: min 0.977 (a pure cut).
+- Latch failures: 0.
+- **14 of 101 queued presses missed.**
+
+**Root cause.** The snap queue forecast models a coasting swing. Under thrust the real window opens
+0–1 ticks *after* the forecast:
+- Light payload under thrust: {0: 33, 1: 11}.
+- Pair payload under thrust: {0: 9, 1: 33}.
+
+The fixed deadline, floor(90 ms) = 5 ticks, then cut an accepted press one tick early, off solution.
+
+**Fix.** Deadline = forecast entry tick (ceil) + `SNAP_DEADLINE_SLACK_TICKS` (1). The window dial is
+unchanged. Grid results (ms/rev, queued misses), master deadline → entry+1:
+
+| window | master deadline | entry+1 |
+|---|---|---|
+| 90 ms | 135.1 (14) | 147.1 (3) |
+| 120 ms | 175.3 (15) | 187.3 (4) |
+| 150 ms | 209.6 (11) | 217.5 (4) |
+| 200 ms | 275.7 (14) | 284.4 (6) |
+
+Wider windows are Robin's feel call and are listed in the PR.
+
+**Production verify.** Results are in `results/sling-2b/verify-*/` (each with `table.txt`).
+- On the #227 spin, master → PR:
+  - ms/rev: 135.1 → 147.1
+  - queued misses: 14 → 3
+  - snap hit rate: 97.7% → 97.9%
+  - exit speed kept: 0.977 both
+  - latch failures: 0 both
+- The verify reproduces the lab numbers exactly.
+- On master's spin: queued misses 4 → 3 of 15. Most scenarios produce no hits at all on that spin, which
+  is #227's problem, not the throw's.
+
+**Residual.** The 3 remaining misses are all light-300-small seed 2 (moving r10 target, missed by
+0.52 wu). The forecast does not model target motion.
+
+**Tests.** The deadline test pins entry+1. A new test (a window that opens one tick late still releases
+on solution) fails on master. Massline suites pass 430/430.
 

@@ -1,0 +1,9 @@
+scenario | hit% | ms/rev | snapN | snapHit% | queued | qMiss | exitEff min | latchFails
+light-150        0 0 0 - 0 0 0.951 0
+light-300        0 0 0 - 0 0 0.951 0
+light-300-boost  6.1 135 11 100.0 6 0 0.981 0
+light-300-small  5 104 9 100.0 1 0 0.951 0
+pair-150         0 0 0 - 0 0 0.962 0
+pair-300         0 0 0 - 0 0 0.962 0
+pair-300-long    4.4 100.2 12 66.7 8 3 0.976 0
+ALL ms/rev 48.5 snap 32 87.5% queued 15 qMiss 3
