@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 // Freeze local matrices on static children.
 //
 // The root still poses every frame (position/rotation writes + matrixAutoUpdate). Interior plates,
@@ -68,6 +70,47 @@ export function freezeStaticChildMatrices(root) {
   return frozen;
 }
 
+// Stepped twin: same pre-order freeze pass + post-order mark, driven iteratively
+// so a packaged-size subtree yields at stride boundaries inside a paced commit
+// leg instead of landing both walks atomically. Sync callers keep the frozen
+// traverse above (identical output).
+export function* freezeStaticChildMatricesSteps(root) {
+  if (!root || typeof root.traverse !== 'function') return 0;
+  let frozen = 0;
+  const order = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const object = stack.pop();
+    order.push(object);
+    if (shouldFreezeStaticChild(object, root)) {
+      object.matrixAutoUpdate = false;
+      if (typeof object.updateMatrix === 'function') object.updateMatrix();
+      frozen += 1;
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    if ((order.length % 1024) === 0) yield;
+  }
+  // Reverse of the pre-order list is a valid post-order for the mark pass: every
+  // descendant is evaluated before its ancestors, same as the recursive version.
+  for (let i = order.length - 1; i >= 0; i -= 1) {
+    const node = order[i];
+    let frozenSubtree = node.matrixAutoUpdate === false;
+    const children = node.children || [];
+    for (let j = 0; j < children.length; j++) {
+      const ud = children[j].userData;
+      if (!(ud && ud.sfMatrixFrozen === true)) { frozenSubtree = false; break; }
+    }
+    if (node.userData) {
+      if (frozenSubtree) node.userData.sfMatrixFrozen = true;
+      else if (node.userData.sfMatrixFrozen) node.userData.sfMatrixFrozen = false;
+    }
+    if ((i % 1024) === 0) yield;
+  }
+  remarkStaticMatrixAncestors(root);
+  return frozen;
+}
+
 // For entity roots whose local transform is written only at mount/seat/repose (stations, wrecks,
 // asteroids, planet sites, place boundaries): stop the per-frame compose as well so the subtree
 // below can actually prune out of the walk. Every transform writer on such a root must call
@@ -80,6 +123,78 @@ export function freezeStaticTransformRoot(root) {
   remarkStaticMatrixAncestors(root);
 }
 
+// Same output as freezeStaticTransformRoot for callers that just ran a
+// freezeStaticChildMatrices pass on this root: every descendant's sfMatrixFrozen
+// stamp is already current, so the root's own mark resolves from its children's
+// flags — O(degree) instead of a second whole-subtree post-order walk.
+export function freezeStaticTransformRootMarked(root) {
+  if (!root) return;
+  root.matrixAutoUpdate = false;
+  if (typeof root.updateMatrix === 'function') root.updateMatrix();
+  const children = root.children || [];
+  let frozen = root.matrixAutoUpdate === false;
+  for (let i = 0; i < children.length; i++) {
+    const ud = children[i].userData;
+    if (!(ud && ud.sfMatrixFrozen === true)) { frozen = false; break; }
+  }
+  if (root.userData) {
+    if (frozen) root.userData.sfMatrixFrozen = true;
+    else if (root.userData.sfMatrixFrozen) root.userData.sfMatrixFrozen = false;
+  }
+  remarkStaticMatrixAncestors(root);
+}
+
+// Cull-time twin of freezeStaticChildMatrices for sfHiddenFrozen mints: the hidden root's
+// subtree keeps matrixAutoUpdate === true on every descendant otherwise, so the per-frame
+// scene.updateMatrixWorld walks a culled hull's whole ~50-200-node subtree recomposing local
+// matrices nobody writes until re-entry. Freezable descendants get the sfCullFrozen restore
+// stamp — mount-frozen nodes (already matrixAutoUpdate === false) carry no stamp, so un-hide
+// restores exactly what this pass froze. Sockets/lights/animated/updater-tagged nodes stay
+// live via shouldFreezeStaticChild and defeat their ancestors' mark — the walk still reaches
+// them while skipping the frozen branches.
+export function freezeHiddenSubtreeMatrices(root) {
+  if (!root || typeof root.traverse !== 'function') return 0;
+  let frozen = 0;
+  root.traverse((object) => {
+    if (!shouldFreezeStaticChild(object, root)) return;
+    if (object.matrixAutoUpdate === false) return;
+    object.matrixAutoUpdate = false;
+    if (typeof object.updateMatrix === 'function') object.updateMatrix();
+    const userData = object.userData || (object.userData = {});
+    userData.sfCullFrozen = true;
+    frozen += 1;
+  });
+  markStaticMatrixSubtrees(root);
+  remarkStaticMatrixAncestors(root);
+  return frozen;
+}
+
+// Un-hide twin: restores every descendant the cull freeze stamped, clears the sfMatrixFrozen
+// marks its subtree minted, and walks the ancestor chain so a shared parent can't keep a
+// stale prune over the now-live branch (same clear-and-remark-later contract the vendored
+// add()/attach() hooks run). matrixWorldNeedsUpdate on the root forces the world-matrix
+// refresh through the subtree on the next walk — restored matrices can't serve stale poses.
+export function unfreezeHiddenSubtreeMatrices(root) {
+  if (!root) return 0;
+  let restored = 0;
+  if (typeof root.traverse === 'function') {
+    root.traverse((object) => {
+      const userData = object.userData;
+      if (!(userData && userData.sfCullFrozen === true)) return;
+      object.matrixAutoUpdate = true;
+      delete userData.sfCullFrozen;
+      if (userData.sfMatrixFrozen) userData.sfMatrixFrozen = false;
+      restored += 1;
+    });
+  }
+  for (let node = root.parent; node; node = node.parent) {
+    const userData = node.userData;
+    if (userData && userData.sfMatrixFrozen === true) userData.sfMatrixFrozen = false;
+  }
+  root.matrixWorldNeedsUpdate = true;
+  return restored;
+}
+
 // Explicit dirty() for the rare move of a node inside a frozen subtree: recompose its local
 // matrix and refresh it plus every descendant's world matrix immediately — the per-frame walk
 // will skip the subtree again once all needsUpdate flags are consumed.
@@ -87,4 +202,51 @@ export function refreshStaticTransform(node) {
   if (!node) return;
   if (typeof node.updateMatrix === 'function') node.updateMatrix();
   if (typeof node.updateWorldMatrix === 'function') node.updateWorldMatrix(false, true);
+}
+
+// Stepped twin of Object3D#updateMatrixWorld: identical per-node semantics — auto
+// matrix compose, needsUpdate-or-force world recompute with flag clear, force
+// propagation — walked iteratively so a forced whole-scene refresh yields at
+// stride boundaries instead of landing atomically inside the boot census.
+// Subclass overrides (SkinnedMesh bind, Camera inverse) own their subtree
+// atomically; sibling world updates are order-independent, so delegating them at
+// push time preserves the result.
+export function* updateMatrixWorldSteps(root, force) {
+  if (!root) return;
+  const base = THREE && THREE.Object3D && THREE.Object3D.prototype
+    ? THREE.Object3D.prototype.updateMatrixWorld
+    : null;
+  if (typeof root.updateMatrixWorld !== 'function' || !base || root.updateMatrixWorld !== base) {
+    root.updateMatrixWorld(force);
+    return;
+  }
+  const stack = [[root, force === true]];
+  let visited = 0;
+  while (stack.length > 0) {
+    const [object, entryForce] = stack.pop();
+    if ((++visited % 2048) === 0) yield;
+    if (object.matrixAutoUpdate) object.updateMatrix();
+    let childForce = entryForce;
+    if (object.matrixWorldNeedsUpdate || entryForce) {
+      if (object.matrixWorldAutoUpdate === true) {
+        if (!object.parent) object.matrixWorld.copy(object.matrix);
+        else object.matrixWorld.multiplyMatrices(object.parent.matrixWorld, object.matrix);
+      }
+      object.matrixWorldNeedsUpdate = false;
+      childForce = true;
+    }
+    const children = object.children;
+    if (!Array.isArray(children)) continue;
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      const child = children[i];
+      if (!child || typeof child.updateMatrixWorld !== 'function') continue;
+      // Vendored frozen-subtree elision: under !childForce a clean sfMatrixFrozen
+      // subtree's world matrices are already final, so the descent is skippable
+      // (the vendored override documents identical output either way).
+      if (!childForce && child.matrixWorldNeedsUpdate === false
+          && child.userData && child.userData.sfMatrixFrozen === true) continue;
+      if (child.updateMatrixWorld !== base) child.updateMatrixWorld(childForce);
+      else stack.push([child, childForce]);
+    }
+  }
 }

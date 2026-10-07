@@ -176,7 +176,12 @@ export function getAsteroidFieldRock(state, id) {
   return field.byId.get(id) || null;
 }
 
-export function queryAsteroidField(state, pos, radius, out = []) {
+// Chunked twin: yields per grid column (cell path) or per `batchRows` scanned
+// keys (oversize-disc path) so a corridor-wide refill can ride a slice clock.
+// `out` accumulates across suspensions; the caller commits its memo key only
+// on completion. Row order (therefore `out` contents) is identical to the
+// sync drain.
+export function* queryAsteroidFieldSteps(state, pos, radius, out = [], batchRows = 1024) {
   out.length = 0;
   const field = state && state.world && state.world.asteroidField;
   if (!field || !pos || !Number.isFinite(radius) || !(radius > 0)) return out;
@@ -202,17 +207,23 @@ export function queryAsteroidField(state, pos, radius, out = []) {
     }
   };
   const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
+  const batch = Number.isFinite(batchRows) ? Math.max(1, batchRows | 0) : Infinity;
   if (!Number.isSafeInteger(minC) || !Number.isSafeInteger(maxC)
       || !Number.isSafeInteger(minR) || !Number.isSafeInteger(maxR)
       || !Number.isFinite(cellSpan) || cellSpan > grid.size) {
     const keys = [];
+    let scanned = 0;
     for (const key of grid.keys()) {
       const cx = Math.floor(key / CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
       const cz = (key % CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
       if (cx >= minC && cx <= maxC && cz >= minR && cz <= maxR) keys.push(key);
+      if (++scanned % batch === 0) yield;
     }
     keys.sort((a, b) => a - b);
-    for (let i = 0; i < keys.length; i++) inspectBucket(grid.get(keys[i]));
+    for (let i = 0; i < keys.length; i++) {
+      inspectBucket(grid.get(keys[i]));
+      if ((i + 1) % batch === 0) yield;
+    }
     return out;
   }
   for (let cx = minC; cx <= maxC; cx++) {
@@ -221,6 +232,15 @@ export function queryAsteroidField(state, pos, radius, out = []) {
     for (let cz = minR; cz <= maxR; cz++) {
       inspectBucket(grid.get(rowBase + cz));
     }
+    yield;
+  }
+  return out;
+}
+
+export function queryAsteroidField(state, pos, radius, out = []) {
+  const iterator = queryAsteroidFieldSteps(state, pos, radius, out, Infinity);
+  for (;;) {
+    if (iterator.next().done) break;
   }
   return out;
 }

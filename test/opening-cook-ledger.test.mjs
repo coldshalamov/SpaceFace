@@ -144,8 +144,12 @@ test('the live-sector cook flushes the admission lane while it waits', async () 
   assert.ok(start >= 0 && end > start);
   const cook = renderer.slice(start, end);
   assert.match(cook, /const flushPipelinesBehindShell = \(\) =>/);
-  assert.match(cook, /if \(recook \|\| liveSectorPipelineFlush/);
-  for (const timeout of ['12000', '6000', '8000']) {
+  assert.match(cook, /if \(cookStale\(\) \|\| recook \|\| liveSectorPipelineFlush/);
+  for (const timeout of ['12000', '8000']) {
     assert.match(cook, new RegExp(`timeoutMs: Math\\.min\\(${timeout}, remainingMs\\(\\)\\),\\s*yieldToMain: yieldAndFlushLiveSectorGpu`));
   }
+  // PR #218 moved the stale-material settle onto the sliced lane: its cap is a
+  // deadlineMs argument and the yield is the createSlicedYield twin.
+  assert.match(cook, /deadlineMs: Math\.min\(6000, remainingMs\(\)\)/);
+  assert.match(cook, /createSlicedYield\(yieldAndFlushLiveSectorGpu\)/);
 });

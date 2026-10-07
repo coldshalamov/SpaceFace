@@ -1,0 +1,1829 @@
+{
+  "schema": "spaceface.sf20.plan-crosswalk.v1",
+  "not_a_dispatch_queue": true,
+  "source_task_count": 125,
+  "source_concept_count": 20,
+  "slice_family_count": 14,
+  "first_six": [
+    "SF20-19",
+    "SF20-01",
+    "SF20-03",
+    "SF20-07",
+    "SF20-18",
+    "SF20-05"
+  ],
+  "concepts": [
+    {
+      "id": "SF20-01",
+      "name": "Latch Nine",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P07",
+      "adjacent_packets": [
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "harbor_clearance",
+      "source_dependencies": [],
+      "source_dossier": "concepts/01_latch_nine.md",
+      "source_dossier_sha256": "c83e9c76edc7854621a1ee45cad88fd5dd05260c6444e19cf0fe8ea90bb66f6d",
+      "outcome": "Show actual docking clearance; acknowledge repeat arrival; original docking survives tender loss",
+      "source_overlap_constraint": "Extend dockingCorridor and stationBroadcast; do not replace their authority. BRACKET already occupies the funny yard-robot role, so Latch is a working harbor instrument, never a ball-game host. The earlier exploratory gantry image is not a shipping model.",
+      "acceptance_cases": [
+        "Deny docking while an animation is opening: the UI and corridor still deny it.",
+        "Disable the character: every original docking route remains usable.",
+        "Ram from three bearings: the visible body and collision proxy agree.",
+        "Load after a completed arrival: no duplicate bark or reward.",
+        "Recognize HOLD and CLEAR with grayscale, sound muted, and reduced motion enabled."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-02",
+      "name": "Sable Venn & the Patchwork",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P06",
+      "adjacent_packets": [
+        "P07",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "fitting_and_market",
+      "source_dependencies": [
+        "SF20-19"
+      ],
+      "source_dossier": "concepts/02_sable_venn.md",
+      "source_dossier_sha256": "99db0be95cfe3dd2862fb4f94323da766a699fa9416d882871c2438f7dd86c5d",
+      "outcome": "Demonstrate isolated actual fits; compare/cancel/commit without live-state mutation",
+      "source_overlap_constraint": "Reuse ships, buildIdentity, crafting and ORRERY. Sable offers diagnoses and demonstrations, not another fitting database or independent stat writer. Her workshop is not MORROW’s rescue automaton.",
+      "acceptance_cases": [
+        "Preview ten modules and cancel: live fit, credits and RNG state remain byte-equivalent.",
+        "Commit after inventory changes: revalidation refuses the stale quote.",
+        "Compare displayed impulse and heat with measured values in the same preview configuration.",
+        "Open/close preview fifty times: no retained meshes, listeners or physics worlds.",
+        "Keyboard and controller can select, compare, confirm and return without a hover-only action."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-03",
+      "name": "Tally-3, Claim Assessor",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P07",
+      "adjacent_packets": [
+        "P03",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "claims_and_recovery",
+      "source_dependencies": [],
+      "source_dossier": "concepts/03_tally_3.md",
+      "source_dossier_sha256": "6014364f62def90fec0b01e7e51a08660ba8796e38529edcbd3808a235c1f89f",
+      "outcome": "Disclose owned/disputed/unclaimed evidence; deliver one actual crate exactly once",
+      "source_overlap_constraint": "Extend salvage, claims and provenanceLedger. BRACKET sorts scrap into a sport; Tally examines legal claim evidence. Its weighing gesture is presentation, not a second economy algorithm.",
+      "acceptance_cases": [
+        "Tow an owned crate without confirming: no sale occurs.",
+        "Replay the delivery collision ten times: one transfer and one payment.",
+        "Change claimant before confirming: the old offer invalidates.",
+        "Load with a tethered crate: body, owner and receiver still agree.",
+        "Destroy assessor: station fallback still resolves the contract."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-04",
+      "name": "Ilex Seed Ark",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P08",
+      "adjacent_packets": [
+        "P07",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "convoy_and_mutual_aid",
+      "source_dependencies": [
+        "SF20-03"
+      ],
+      "source_dossier": "concepts/04_ilex_seed_ark.md",
+      "source_dossier_sha256": "33910d158c0d0a558b6819721e943c2b3d82c5ec16834731315c2d634528a14e",
+      "outcome": "Six finite separable seed vaults; 0/1/5/6 delivered branches; later greenhouse consequence",
+      "source_overlap_constraint": "Reuse escort missions, fragileCargo, traffic and cargo ownership. This is cultivated human seed stock, not a second alien infection, and not an extension of the Vethari mythology.",
+      "acceptance_cases": [
+        "Sever a rotating pod: velocity matches the rigid-body point velocity.",
+        "Save during severance and reload: no duplicate capsule or lost mass.",
+        "Deliver 0,1,5,6 pods: all outcomes lead somewhere coherent.",
+        "Escort exits sector while player tows: route and destination remain resolvable.",
+        "One NPC damages a pod: provenance does not blame the player."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-05",
+      "name": "Red Kite",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P09",
+      "adjacent_packets": [
+        "P06",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "courier_relay",
+      "source_dependencies": [],
+      "source_dossier": "concepts/05_red_kite.md",
+      "source_dossier_sha256": "9af5275557cf8945301b85db999b6859f01860faf9b8b5c0b426e782fa24a404",
+      "outcome": "Optional force-driven ordered-gate relay; honest loss, interruption and persistent recognition",
+      "source_overlap_constraint": "The repo already has nemesis, aceMemory and Orra. Red Kite does not learn a counter-build or occupy that arc. Reuse route following and stunt evidence; no new racing control scheme.",
+      "acceptance_cases": [
+        "Run identical inputs at 30/60/144 render FPS: finish tick is equal.",
+        "Cross gate backward or twice: no illegitimate advancement.",
+        "Block a course with a heavy wreck: race aborts cleanly rather than teleporting.",
+        "Trigger combat on the last gate: no simultaneous win and refund.",
+        "Inspect a losing opponent: its thrust and speed stay within the same authored definition."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-06",
+      "name": "The Towline Table",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P07",
+      "adjacent_packets": [
+        "P04",
+        "P08",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "convoy_and_mutual_aid",
+      "source_dependencies": [
+        "SF20-01",
+        "SF20-03"
+      ],
+      "source_dossier": "concepts/06_towline_table.md",
+      "source_dossier_sha256": "ed87943c4d6d2394a9f89c56d3fbd7a0f29c7061d437cf7c409aec409d6fef1d",
+      "outcome": "Three distinct workers; actual claimed assistance and witnessed reciprocal obligations",
+      "source_overlap_constraint": "A named occupational circle inside faction_free, not a new ninth political faction or separate reputation scale. Existing Morrow handles a singular rescue encounter; this crew coordinates several ordinary working ships and records reciprocal obligations.",
+      "acceptance_cases": [
+        "Two helpers claim one job in the same tick: exactly one tow owner.",
+        "A job resolves before approach: tug releases the reservation and returns.",
+        "Kill a crew member and reload: identity remains absent and dialogue changes.",
+        "Request help without a free slot: explanation is truthful, with no phantom ship.",
+        "Repeat the same favor receipt: no accumulating free service."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-07",
+      "name": "Scissorwake",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P05",
+      "adjacent_packets": [
+        "P02",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "engineered_cutter",
+      "source_dependencies": [],
+      "source_dossier": "concepts/07_scissorwake.md",
+      "source_dossier_sha256": "a8c878b67597e4da4034334bc58dcf821175cd2956a67b5c01310df475d5d2b9",
+      "outcome": "One line-cut specialist; committed swept pass, two physical counters, single detach",
+      "source_overlap_constraint": "Not a replacement for tether_control_raider. The GDD explicitly protects ordinary Massline strength: a cut is a named engineered attack, never a silent tension nerf. First reuse any shipped cutter attack discovered during rebase; add its distinctive model and encounter before inventing a second kernel.",
+      "acceptance_cases": [
+        "Move the line outside the swept corridor during windup: no cut.",
+        "Render at 15 FPS: damage/cut still occurs on the identical fixed tick.",
+        "Throw the cutter backward: it cannot cut a line it never intersects.",
+        "Release manually on the impact tick: exactly one detach, no exception.",
+        "Turn off effects/audio: shape and textual threat still expose the counterplay."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-08",
+      "name": "Kilnback",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P05",
+      "adjacent_packets": [
+        "P15",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "industrial_and_decoy_specialists",
+      "source_dependencies": [
+        "SF20-07"
+      ],
+      "source_dossier": "concepts/08_kilnback.md",
+      "source_dossier_sha256": "af5b8174acc4e8c0c8a63c38b4c197e4c39eaa348482a7714cb121840af0c495",
+      "outcome": "Capped-turn burn and finite detachable coolant casks; observed cover/cooling counterplay",
+      "source_overlap_constraint": "Not the Mirrorjaw Foreman or Forge Regent: no reflective prow, no enlarged boss health bar. Reuse volatileExposure, fields and damage owners for a coolant/heat interaction, with a data-defined new recipe only where existing primitives cannot express it.",
+      "acceptance_cases": [
+        "Disable VFX: the same field tests produce the same damage and cancellation.",
+        "Break cask during save/load boundary: only one field appears.",
+        "Hide behind authored cover: the jet respects the chosen occlusion contract.",
+        "Move cask after detachment: no remaining parent collider blocks it.",
+        "Provoke the first burn from every approach: warning always precedes damage."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-09",
+      "name": "Pallet Jack",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P02",
+      "adjacent_packets": [
+        "P05",
+        "P07",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "cargo_theft_and_switchyard",
+      "source_dependencies": [
+        "SF20-03"
+      ],
+      "source_dossier": "concepts/09_pallet_jack.md",
+      "source_dossier_sha256": "c77fcf7207be41f78f310993d3ed8f3ed0eb4cd7ec20d211b7879f338cc26fd3",
+      "outcome": "Staged visible lift-and-escape of the same cargo; contested tow, drop/parley/recovery",
+      "source_overlap_constraint": "Mine-Layer Jackal already prefers cargo/wreck claims. Pallet Jack must add the actual staged lift-and-escape interaction and broad physical fork silhouette; do not merely duplicate that preference in a new stats row.",
+      "acceptance_cases": [
+        "Move the pallet during grab: clamp misses honestly.",
+        "Destroy thief carrying cargo: one surviving pallet, no duplicate loot item.",
+        "Contest with Massline: established attachment arbitration stays deterministic.",
+        "Cross-sector escape and reload: exactly the same cargo provenance returns.",
+        "No eligible cargo: no useless thief spawn."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-10",
+      "name": "Mothlight",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P05",
+      "adjacent_packets": [
+        "P15",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "industrial_and_decoy_specialists",
+      "source_dependencies": [
+        "SF20-07"
+      ],
+      "source_dossier": "concepts/10_mothlight.md",
+      "source_dossier_sha256": "bc24163a4af5ed1bb018056b813cea6c1a7a302ec06141c570ca62a1e4973626",
+      "outcome": "Visible real shutter plus finite physical decoys; no spoofed critical UI or invisible attacker",
+      "source_overlap_constraint": "Quiet Ghost already supplies stealthy ranged repositioning. Mothlight is a visible decoy-deploying tender, never cloaked and never an omniscient sniper. Its decoys are real destructible entities with cheap behavior.",
+      "acceptance_cases": [
+        "No scanner or audio: player can still distinguish real shutter geometry.",
+        "Kill all lamps and reload: stock does not replenish.",
+        "Change render FPS: local sequence and attack tick stay equal.",
+        "Push a lamp: it drifts physically rather than snapping back.",
+        "Hide the actual weapon behind cover: its shot respects occlusion."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-11",
+      "name": "Tethys Switchyard",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P08",
+      "adjacent_packets": [
+        "P07",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "cargo_theft_and_switchyard",
+      "source_dependencies": [
+        "SF20-03",
+        "SF20-09"
+      ],
+      "source_dossier": "concepts/11_tethys_switchyard.md",
+      "source_dossier_sha256": "7bc9498bf2921cd6df08e6a2561c7d34b5a19077b5c82e7bb32ade719e944168",
+      "outcome": "Three receivers, one gantry, finite jobs; physical jam, truthful restart and usable bypass",
+      "source_overlap_constraint": "Reuse npcJobsRuntime, environmentalMachinery and actual cargo transfers. No decorative orbiting traffic, no substitute route engine, and no new magnetic force law when the existing field machinery suffices.",
+      "acceptance_cases": [
+        "Add zone in nonzero-origin sector: atlas position round-trips exactly.",
+        "Jam gantry with a player ship: machinery stops, never tunnels.",
+        "Resolve cargo by another route: waiting job updates instead of hanging.",
+        "Save a reserved berth: one reservation and one cargo survive.",
+        "Destroy yard: bypass is usable and no credits/stock are fabricated."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-12",
+      "name": "The Borrowed Sun",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P07",
+      "adjacent_packets": [
+        "P08",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "fitting_and_market",
+      "source_dependencies": [
+        "SF20-01",
+        "SF20-02"
+      ],
+      "source_dossier": "concepts/12_borrowed_sun.md",
+      "source_dossier_sha256": "38943ff8d59d2b963e123f579669f3d8a3cc6e6e9a420a888e3dd656fc39317c",
+      "outcome": "Scheduled visiting market, fixed safe berth first; actual services and safe closing",
+      "source_overlap_constraint": "Use existing market, traffic, station services and ORRERY. Not a replacement station shell or a new pricing algorithm. Visit schedule is simulated and inspectable, never real-world FOMO or a daily-login timer.",
+      "acceptance_cases": [
+        "Buy on closing tick: exactly one accepted transaction or one clear denial.",
+        "Remain docked past planned departure: no forced teleport or lost ship.",
+        "Restart app after a long wall-clock gap: visit changes only under intended sim/offline rules.",
+        "Remove GLB from test server: chart and fallback service remain usable.",
+        "Inspect folded and open colliders: no invisible petal walls."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-13",
+      "name": "The Thimble Door",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P09",
+      "adjacent_packets": [
+        "P03",
+        "P04",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "honest_passages",
+      "source_dependencies": [
+        "SF20-01",
+        "SF20-03"
+      ],
+      "source_dossier": "concepts/13_thimble_door.md",
+      "source_dossier_sha256": "9bb15eb618e4d4be520a211fa8512072a77f9c91dce7ac7e2314082d9f82868f",
+      "outcome": "True compound-collider opening, hull-and-tow clearance, camera-safe bypass and recorder",
+      "source_overlap_constraint": "Existing places and physics already support obstacles. This is a deliberately authored alternate route, not a new traversal system. Do not release it until camera clipping and corridor collision tests pass.",
+      "acceptance_cases": [
+        "Sweep smallest and largest hulls across all rim directions: contacts match visible ribs.",
+        "Tow a wide crate through and around: no false CLEAR result.",
+        "Place camera inside every rim quadrant: player and exit remain legible.",
+        "Save while partly inside: reload never ejects or duplicates bodies.",
+        "Recover recorder after an interrupted attempt: objective remains reachable."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-14",
+      "name": "Anvil Storm Orchard",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P01",
+      "adjacent_packets": [
+        "P02",
+        "P08",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "stormshift_orchard",
+      "source_dependencies": [
+        "SF20-04",
+        "SF20-11"
+      ],
+      "source_dossier": "concepts/14_anvil_storm_orchard.md",
+      "source_dossier_sha256": "894d155235490f081ce72e416afe59f1144d559b55e479340330cc4aff0e7bb9",
+      "outcome": "Three finite harvest pods and readable local forecast through current field owner",
+      "source_overlap_constraint": "Extend zone_tethys_anvil, planets and planetRuntime. Do not add a second planet with identical sling/skim behavior, and never change the canonical planet field just to fit this content.",
+      "acceptance_cases": [
+        "Compare forecast direction with applied force at multiple points.",
+        "Load one tick before gust: full remaining warning is truthful.",
+        "Harvest the same pod twice: second request refuses.",
+        "Leave and return midcycle: resource and phase do not reset for profit.",
+        "Maximal tow length and large hull: safe pocket actually remains safe."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-15",
+      "name": "Veil-Ray Nursery",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P10",
+      "adjacent_packets": [
+        "P11",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "ecology_and_retained_signal",
+      "source_dependencies": [],
+      "source_dossier": "concepts/15_veil_ray_nursery.md",
+      "source_dossier_sha256": "7e8d9de524ee512d9586ceafa101b37694222d7d91e522a3ab80ee3912fbd3d0",
+      "outcome": "Existing veil_ray noncombat stimulus response; three adults and aggregate juveniles",
+      "source_overlap_constraint": "Use existing veil_ray species and its sensitivity to scans/weapons. Do not invent another parasite, retcon Vethari canon, or turn these fauna into tactical enemies. Cinder Nursery already exists; this is a small satellite encounter, not a replacement biome.",
+      "acceptance_cases": [
+        "Active scan disperses formation through existing stimulus rules.",
+        "Passive observation succeeds without hidden input sequence.",
+        "Mute sound and reduce motion: behavior and survey cues still understandable.",
+        "Exit/reenter repeatedly: no population or survey-reward duplication.",
+        "Use maximum graphics quality: juvenile aggregation does not create dozens of AI updates."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-16",
+      "name": "Borrowed Voice",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P11",
+      "adjacent_packets": [
+        "P10",
+        "P13",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "ecology_and_retained_signal",
+      "source_dependencies": [
+        "SF20-15",
+        "SF20-18"
+      ],
+      "source_dossier": "concepts/16_borrowed_voice.md",
+      "source_dossier_sha256": "165593639b95503c871d01b6ac9206e9babcdf2fbf0bce5c4c2af0513fad3d10",
+      "outcome": "Three recoverable signal sources; gated evidence, partial knowledge and actual disposition",
+      "source_overlap_constraint": "Keep the Vethari → fungus → host/ecology → shared-memory chain. Understory remains the technical namespace. This is damaged retained signal, not proof the hive has a human personality, not a new species and not the off-frame creators appearing as an NPC.",
+      "acceptance_cases": [
+        "Before revelation gate: no captions or journal titles spoil readable content.",
+        "Move recorder through the threshold repeatedly: one fragment and one reward.",
+        "Destroy one source: partial conclusion and journal remain valid.",
+        "Render-only animation changes: signal score is unchanged.",
+        "Reload after quarantine: no restored emission or new biology spawn."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-17",
+      "name": "The Open-Hand Lock",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P12",
+      "adjacent_packets": [
+        "P09",
+        "P13",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "honest_passages",
+      "source_dependencies": [
+        "SF20-13",
+        "SF20-16"
+      ],
+      "source_dossier": "concepts/17_open_hand_lock.md",
+      "source_dossier_sha256": "3ea0f71bd4a3c33e54ef327300a2d72ab743dd5c363e45bee9e14c2ad7ee360c",
+      "outcome": "Actual courier token accepted by protocol; safe swept gate, refusal and outer bypass",
+      "source_overlap_constraint": "Use existing auditor, courier and conservator roles, and protocol states—not faction reputation. No mystical riddle machine, no new precursor race, no revelation of the creators.",
+      "acceptance_cases": [
+        "Present wrong token-shaped object: no access.",
+        "Occupy gate at closure: collider waits safely.",
+        "Retain token: outside route and main story remain valid.",
+        "Load mid-open: same protocol and safe gate state return.",
+        "Before the applicable revelation: machine behavior stays within current canon gates."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-18",
+      "name": "The Last Shift",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P03",
+      "adjacent_packets": [
+        "P07",
+        "P13",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "wreck_evidence",
+      "source_dependencies": [
+        "SF20-03"
+      ],
+      "source_dossier": "concepts/18_last_shift.md",
+      "source_dossier_sha256": "a14cc64efc359d65c1dc44671e7148fb193db8da9d31c5f5744875bb82d03927",
+      "outcome": "Three physical clues, six discovery orders, truthful partial archive and finite salvage",
+      "source_overlap_constraint": "Reuse aftermathWrecks, uniqueWrecks, salvage and the chronicler/provenance ledger. This is authored evidence for those owners, not a new universal story engine or omniscient replay system.",
+      "acceptance_cases": [
+        "Recover clues in all six orders: final evidence set agrees.",
+        "Destroy each clue separately: partial report remains truthful and accessible.",
+        "Publish twice: only one archive receipt per evidence revision.",
+        "Scan a towed recorder: no identity loss or duplicate object.",
+        "Turn off reconstruction: all essential information remains in accessible journal text."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-19",
+      "name": "Pip & Spanner",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P19",
+      "adjacent_packets": [
+        "P17",
+        "P18",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "crucible_pit",
+      "source_dependencies": [],
+      "source_dossier": "concepts/19_pip_and_spanner.md",
+      "source_dossier_sha256": "fc9b56649d76b47e42f7c298fa5efc2f52717efee70f74055a5dbeee23d8e815",
+      "outcome": "One pre-run purchase plus one milestone repair; readable item/cost/mount and exact receipt",
+      "source_overlap_constraint": "Compose the existing ORRERY UI, survivalDraft, swarmSupply and runSession. No second inventory, no campaign leakage, no independent frontend redesign. Crew choreography decorates a truthful transaction; it never decides the result.",
+      "acceptance_cases": [
+        "Double-confirm one offer: one debit and one item.",
+        "Close/reopen at every transaction state: displayed build equals authoritative run build.",
+        "Fail the GLB load: SVG and text allow full selection and launch.",
+        "Keyboard/gamepad-only walk reaches every option, compare, back and launch.",
+        "Finish or abort run: zero unintended change to campaign credits, inventory or kills."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    },
+    {
+      "id": "SF20-20",
+      "name": "The Hundred-Hand Mile",
+      "status": "AUTHORIZED_SCOPE_NOT_IMPLEMENTATION_ACCEPTED",
+      "primary_packet": "P08",
+      "adjacent_packets": [
+        "P04",
+        "P13",
+        "P00"
+      ],
+      "adjacent_packets_are_not_blanket_prerequisites": true,
+      "slice_family": "route_restoration",
+      "source_dependencies": [
+        "SF20-03",
+        "SF20-04",
+        "SF20-06",
+        "SF20-11",
+        "SF20-18"
+      ],
+      "source_dossier": "concepts/20_hundred_hand_mile.md",
+      "source_dossier_sha256": "6ce47602d26359638a834240667ca86890969bc615fe9b6828255721c58b6792",
+      "outcome": "Five finite receipt-backed chapters; partial/restitution branches and real final convoy",
+      "source_overlap_constraint": "Compose existing mission/story/provenance/chronicler systems and concepts 3,4,6,11,18. This is not a second campaign spine or a universal procedural story generator. Keep the main story intact.",
+      "acceptance_cases": [
+        "Complete milestones in permitted alternate orders: graph reaches coherent branch.",
+        "Lose Ilex cargo or a Last Shift clue: partial branch still completes.",
+        "Install while another ship occupies the volume: action waits or denies safely.",
+        "Replay all receipts after save/load: no duplicate modules or payments.",
+        "Destroy and rebuild: costs/rewards conserve the intended resource budget."
+      ],
+      "evidence": {
+        "source": "not_started",
+        "asset": "not_started",
+        "integration": "not_started",
+        "functional": "not_started",
+        "visual": "not_started",
+        "performance": "not_started"
+      }
+    }
+  ],
+  "task_crosswalk": [
+    {
+      "source_id": "SF20-S01",
+      "original_depends_on": [],
+      "destination": "P00/shared-intake-and-verification",
+      "stage": "shared_support"
+    },
+    {
+      "source_id": "SF20-S02",
+      "original_depends_on": [
+        "SF20-S01"
+      ],
+      "destination": "P00/shared-intake-and-verification",
+      "stage": "shared_support"
+    },
+    {
+      "source_id": "SF20-S03",
+      "original_depends_on": [
+        "SF20-S01"
+      ],
+      "destination": "P00/shared-intake-and-verification",
+      "stage": "shared_support"
+    },
+    {
+      "source_id": "SF20-S04",
+      "original_depends_on": [
+        "SF20-S01"
+      ],
+      "destination": "P00/shared-intake-and-verification",
+      "stage": "shared_support"
+    },
+    {
+      "source_id": "SF20-S05",
+      "original_depends_on": [
+        "SF20-S01"
+      ],
+      "destination": "P00/shared-intake-and-verification",
+      "stage": "shared_support"
+    },
+    {
+      "source_id": "SF20-01-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P07/harbor_clearance",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-01-B",
+      "original_depends_on": [
+        "SF20-01-A",
+        "SF20-S02"
+      ],
+      "destination": "P07/harbor_clearance",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-01-C",
+      "original_depends_on": [
+        "SF20-01-A",
+        "SF20-S04"
+      ],
+      "destination": "P07/harbor_clearance",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-01-D",
+      "original_depends_on": [
+        "SF20-01-B",
+        "SF20-01-C"
+      ],
+      "destination": "P07/harbor_clearance",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-01-E",
+      "original_depends_on": [
+        "SF20-01-D"
+      ],
+      "destination": "P07/harbor_clearance",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-01-F",
+      "original_depends_on": [
+        "SF20-01-E",
+        "SF20-S05"
+      ],
+      "destination": "P07/harbor_clearance",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-02-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P06/fitting_and_market",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-02-B",
+      "original_depends_on": [
+        "SF20-02-A",
+        "SF20-S02"
+      ],
+      "destination": "P06/fitting_and_market",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-02-C",
+      "original_depends_on": [
+        "SF20-02-A",
+        "SF20-S04"
+      ],
+      "destination": "P06/fitting_and_market",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-02-D",
+      "original_depends_on": [
+        "SF20-02-B",
+        "SF20-02-C"
+      ],
+      "destination": "P06/fitting_and_market",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-02-E",
+      "original_depends_on": [
+        "SF20-02-D",
+        "SF20-19-F"
+      ],
+      "destination": "P06/fitting_and_market",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-02-F",
+      "original_depends_on": [
+        "SF20-02-E",
+        "SF20-S05"
+      ],
+      "destination": "P06/fitting_and_market",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-03-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P07/claims_and_recovery",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-03-B",
+      "original_depends_on": [
+        "SF20-03-A",
+        "SF20-S02"
+      ],
+      "destination": "P07/claims_and_recovery",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-03-C",
+      "original_depends_on": [
+        "SF20-03-A",
+        "SF20-S04"
+      ],
+      "destination": "P07/claims_and_recovery",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-03-D",
+      "original_depends_on": [
+        "SF20-03-B",
+        "SF20-03-C"
+      ],
+      "destination": "P07/claims_and_recovery",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-03-E",
+      "original_depends_on": [
+        "SF20-03-D"
+      ],
+      "destination": "P07/claims_and_recovery",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-03-F",
+      "original_depends_on": [
+        "SF20-03-E",
+        "SF20-S05"
+      ],
+      "destination": "P07/claims_and_recovery",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-04-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P08/convoy_and_mutual_aid",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-04-B",
+      "original_depends_on": [
+        "SF20-04-A",
+        "SF20-S02"
+      ],
+      "destination": "P08/convoy_and_mutual_aid",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-04-C",
+      "original_depends_on": [
+        "SF20-04-A",
+        "SF20-S04"
+      ],
+      "destination": "P08/convoy_and_mutual_aid",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-04-D",
+      "original_depends_on": [
+        "SF20-04-B",
+        "SF20-04-C"
+      ],
+      "destination": "P08/convoy_and_mutual_aid",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-04-E",
+      "original_depends_on": [
+        "SF20-04-D",
+        "SF20-03-F"
+      ],
+      "destination": "P08/convoy_and_mutual_aid",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-04-F",
+      "original_depends_on": [
+        "SF20-04-E",
+        "SF20-S05"
+      ],
+      "destination": "P08/convoy_and_mutual_aid",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-05-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P09/courier_relay",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-05-B",
+      "original_depends_on": [
+        "SF20-05-A",
+        "SF20-S02"
+      ],
+      "destination": "P09/courier_relay",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-05-C",
+      "original_depends_on": [
+        "SF20-05-A",
+        "SF20-S04"
+      ],
+      "destination": "P09/courier_relay",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-05-D",
+      "original_depends_on": [
+        "SF20-05-B",
+        "SF20-05-C"
+      ],
+      "destination": "P09/courier_relay",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-05-E",
+      "original_depends_on": [
+        "SF20-05-D"
+      ],
+      "destination": "P09/courier_relay",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-05-F",
+      "original_depends_on": [
+        "SF20-05-E",
+        "SF20-S05"
+      ],
+      "destination": "P09/courier_relay",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-06-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P07/convoy_and_mutual_aid",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-06-B",
+      "original_depends_on": [
+        "SF20-06-A",
+        "SF20-S02"
+      ],
+      "destination": "P07/convoy_and_mutual_aid",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-06-C",
+      "original_depends_on": [
+        "SF20-06-A",
+        "SF20-S04"
+      ],
+      "destination": "P07/convoy_and_mutual_aid",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-06-D",
+      "original_depends_on": [
+        "SF20-06-B",
+        "SF20-06-C"
+      ],
+      "destination": "P07/convoy_and_mutual_aid",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-06-E",
+      "original_depends_on": [
+        "SF20-06-D",
+        "SF20-01-F",
+        "SF20-03-F"
+      ],
+      "destination": "P07/convoy_and_mutual_aid",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-06-F",
+      "original_depends_on": [
+        "SF20-06-E",
+        "SF20-S05"
+      ],
+      "destination": "P07/convoy_and_mutual_aid",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-07-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P05/engineered_cutter",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-07-B",
+      "original_depends_on": [
+        "SF20-07-A",
+        "SF20-S02"
+      ],
+      "destination": "P05/engineered_cutter",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-07-C",
+      "original_depends_on": [
+        "SF20-07-A",
+        "SF20-S04"
+      ],
+      "destination": "P05/engineered_cutter",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-07-D",
+      "original_depends_on": [
+        "SF20-07-B",
+        "SF20-07-C"
+      ],
+      "destination": "P05/engineered_cutter",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-07-E",
+      "original_depends_on": [
+        "SF20-07-D"
+      ],
+      "destination": "P05/engineered_cutter",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-07-F",
+      "original_depends_on": [
+        "SF20-07-E",
+        "SF20-S05"
+      ],
+      "destination": "P05/engineered_cutter",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-08-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-08-B",
+      "original_depends_on": [
+        "SF20-08-A",
+        "SF20-S02"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-08-C",
+      "original_depends_on": [
+        "SF20-08-A",
+        "SF20-S04"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-08-D",
+      "original_depends_on": [
+        "SF20-08-B",
+        "SF20-08-C"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-08-E",
+      "original_depends_on": [
+        "SF20-08-D",
+        "SF20-07-F"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-08-F",
+      "original_depends_on": [
+        "SF20-08-E",
+        "SF20-S05"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-09-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P02/cargo_theft_and_switchyard",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-09-B",
+      "original_depends_on": [
+        "SF20-09-A",
+        "SF20-S02"
+      ],
+      "destination": "P02/cargo_theft_and_switchyard",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-09-C",
+      "original_depends_on": [
+        "SF20-09-A",
+        "SF20-S04"
+      ],
+      "destination": "P02/cargo_theft_and_switchyard",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-09-D",
+      "original_depends_on": [
+        "SF20-09-B",
+        "SF20-09-C"
+      ],
+      "destination": "P02/cargo_theft_and_switchyard",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-09-E",
+      "original_depends_on": [
+        "SF20-09-D",
+        "SF20-03-F"
+      ],
+      "destination": "P02/cargo_theft_and_switchyard",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-09-F",
+      "original_depends_on": [
+        "SF20-09-E",
+        "SF20-S05"
+      ],
+      "destination": "P02/cargo_theft_and_switchyard",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-10-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-10-B",
+      "original_depends_on": [
+        "SF20-10-A",
+        "SF20-S02"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-10-C",
+      "original_depends_on": [
+        "SF20-10-A",
+        "SF20-S04"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-10-D",
+      "original_depends_on": [
+        "SF20-10-B",
+        "SF20-10-C"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-10-E",
+      "original_depends_on": [
+        "SF20-10-D",
+        "SF20-07-F"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-10-F",
+      "original_depends_on": [
+        "SF20-10-E",
+        "SF20-S05"
+      ],
+      "destination": "P05/industrial_and_decoy_specialists",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-11-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P08/cargo_theft_and_switchyard",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-11-B",
+      "original_depends_on": [
+        "SF20-11-A",
+        "SF20-S02"
+      ],
+      "destination": "P08/cargo_theft_and_switchyard",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-11-C",
+      "original_depends_on": [
+        "SF20-11-A",
+        "SF20-S04"
+      ],
+      "destination": "P08/cargo_theft_and_switchyard",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-11-D",
+      "original_depends_on": [
+        "SF20-11-B",
+        "SF20-11-C"
+      ],
+      "destination": "P08/cargo_theft_and_switchyard",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-11-E",
+      "original_depends_on": [
+        "SF20-11-D",
+        "SF20-03-F",
+        "SF20-09-F"
+      ],
+      "destination": "P08/cargo_theft_and_switchyard",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-11-F",
+      "original_depends_on": [
+        "SF20-11-E",
+        "SF20-S05"
+      ],
+      "destination": "P08/cargo_theft_and_switchyard",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-12-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P07/fitting_and_market",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-12-B",
+      "original_depends_on": [
+        "SF20-12-A",
+        "SF20-S02"
+      ],
+      "destination": "P07/fitting_and_market",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-12-C",
+      "original_depends_on": [
+        "SF20-12-A",
+        "SF20-S04"
+      ],
+      "destination": "P07/fitting_and_market",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-12-D",
+      "original_depends_on": [
+        "SF20-12-B",
+        "SF20-12-C"
+      ],
+      "destination": "P07/fitting_and_market",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-12-E",
+      "original_depends_on": [
+        "SF20-12-D",
+        "SF20-01-F",
+        "SF20-02-F"
+      ],
+      "destination": "P07/fitting_and_market",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-12-F",
+      "original_depends_on": [
+        "SF20-12-E",
+        "SF20-S05"
+      ],
+      "destination": "P07/fitting_and_market",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-13-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P09/honest_passages",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-13-B",
+      "original_depends_on": [
+        "SF20-13-A",
+        "SF20-S02"
+      ],
+      "destination": "P09/honest_passages",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-13-C",
+      "original_depends_on": [
+        "SF20-13-A",
+        "SF20-S04"
+      ],
+      "destination": "P09/honest_passages",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-13-D",
+      "original_depends_on": [
+        "SF20-13-B",
+        "SF20-13-C"
+      ],
+      "destination": "P09/honest_passages",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-13-E",
+      "original_depends_on": [
+        "SF20-13-D",
+        "SF20-01-F",
+        "SF20-03-F"
+      ],
+      "destination": "P09/honest_passages",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-13-F",
+      "original_depends_on": [
+        "SF20-13-E",
+        "SF20-S05"
+      ],
+      "destination": "P09/honest_passages",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-14-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P01/stormshift_orchard",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-14-B",
+      "original_depends_on": [
+        "SF20-14-A",
+        "SF20-S02"
+      ],
+      "destination": "P01/stormshift_orchard",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-14-C",
+      "original_depends_on": [
+        "SF20-14-A",
+        "SF20-S04"
+      ],
+      "destination": "P01/stormshift_orchard",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-14-D",
+      "original_depends_on": [
+        "SF20-14-B",
+        "SF20-14-C"
+      ],
+      "destination": "P01/stormshift_orchard",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-14-E",
+      "original_depends_on": [
+        "SF20-14-D",
+        "SF20-04-F",
+        "SF20-11-F"
+      ],
+      "destination": "P01/stormshift_orchard",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-14-F",
+      "original_depends_on": [
+        "SF20-14-E",
+        "SF20-S05"
+      ],
+      "destination": "P01/stormshift_orchard",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-15-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P10/ecology_and_retained_signal",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-15-B",
+      "original_depends_on": [
+        "SF20-15-A",
+        "SF20-S02"
+      ],
+      "destination": "P10/ecology_and_retained_signal",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-15-C",
+      "original_depends_on": [
+        "SF20-15-A",
+        "SF20-S04"
+      ],
+      "destination": "P10/ecology_and_retained_signal",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-15-D",
+      "original_depends_on": [
+        "SF20-15-B",
+        "SF20-15-C"
+      ],
+      "destination": "P10/ecology_and_retained_signal",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-15-E",
+      "original_depends_on": [
+        "SF20-15-D"
+      ],
+      "destination": "P10/ecology_and_retained_signal",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-15-F",
+      "original_depends_on": [
+        "SF20-15-E",
+        "SF20-S05"
+      ],
+      "destination": "P10/ecology_and_retained_signal",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-16-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P11/ecology_and_retained_signal",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-16-B",
+      "original_depends_on": [
+        "SF20-16-A",
+        "SF20-S02"
+      ],
+      "destination": "P11/ecology_and_retained_signal",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-16-C",
+      "original_depends_on": [
+        "SF20-16-A",
+        "SF20-S04"
+      ],
+      "destination": "P11/ecology_and_retained_signal",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-16-D",
+      "original_depends_on": [
+        "SF20-16-B",
+        "SF20-16-C"
+      ],
+      "destination": "P11/ecology_and_retained_signal",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-16-E",
+      "original_depends_on": [
+        "SF20-16-D",
+        "SF20-15-F",
+        "SF20-18-F"
+      ],
+      "destination": "P11/ecology_and_retained_signal",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-16-F",
+      "original_depends_on": [
+        "SF20-16-E",
+        "SF20-S05"
+      ],
+      "destination": "P11/ecology_and_retained_signal",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-17-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P12/honest_passages",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-17-B",
+      "original_depends_on": [
+        "SF20-17-A",
+        "SF20-S02"
+      ],
+      "destination": "P12/honest_passages",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-17-C",
+      "original_depends_on": [
+        "SF20-17-A",
+        "SF20-S04"
+      ],
+      "destination": "P12/honest_passages",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-17-D",
+      "original_depends_on": [
+        "SF20-17-B",
+        "SF20-17-C"
+      ],
+      "destination": "P12/honest_passages",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-17-E",
+      "original_depends_on": [
+        "SF20-17-D",
+        "SF20-13-F",
+        "SF20-16-F"
+      ],
+      "destination": "P12/honest_passages",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-17-F",
+      "original_depends_on": [
+        "SF20-17-E",
+        "SF20-S05"
+      ],
+      "destination": "P12/honest_passages",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-18-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P03/wreck_evidence",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-18-B",
+      "original_depends_on": [
+        "SF20-18-A",
+        "SF20-S02"
+      ],
+      "destination": "P03/wreck_evidence",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-18-C",
+      "original_depends_on": [
+        "SF20-18-A",
+        "SF20-S04"
+      ],
+      "destination": "P03/wreck_evidence",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-18-D",
+      "original_depends_on": [
+        "SF20-18-B",
+        "SF20-18-C"
+      ],
+      "destination": "P03/wreck_evidence",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-18-E",
+      "original_depends_on": [
+        "SF20-18-D",
+        "SF20-03-F"
+      ],
+      "destination": "P03/wreck_evidence",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-18-F",
+      "original_depends_on": [
+        "SF20-18-E",
+        "SF20-S05"
+      ],
+      "destination": "P03/wreck_evidence",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-19-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P19/crucible_pit",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-19-B",
+      "original_depends_on": [
+        "SF20-19-A",
+        "SF20-S02"
+      ],
+      "destination": "P19/crucible_pit",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-19-C",
+      "original_depends_on": [
+        "SF20-19-A",
+        "SF20-S04"
+      ],
+      "destination": "P19/crucible_pit",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-19-D",
+      "original_depends_on": [
+        "SF20-19-B",
+        "SF20-19-C"
+      ],
+      "destination": "P19/crucible_pit",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-19-E",
+      "original_depends_on": [
+        "SF20-19-D"
+      ],
+      "destination": "P19/crucible_pit",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-19-F",
+      "original_depends_on": [
+        "SF20-19-E",
+        "SF20-S05"
+      ],
+      "destination": "P19/crucible_pit",
+      "stage": "acceptance"
+    },
+    {
+      "source_id": "SF20-20-A",
+      "original_depends_on": [
+        "SF20-S01",
+        "SF20-S03"
+      ],
+      "destination": "P08/route_restoration",
+      "stage": "intake_contract"
+    },
+    {
+      "source_id": "SF20-20-B",
+      "original_depends_on": [
+        "SF20-20-A",
+        "SF20-S02"
+      ],
+      "destination": "P08/route_restoration",
+      "stage": "behavior"
+    },
+    {
+      "source_id": "SF20-20-C",
+      "original_depends_on": [
+        "SF20-20-A",
+        "SF20-S04"
+      ],
+      "destination": "P08/route_restoration",
+      "stage": "authored_asset"
+    },
+    {
+      "source_id": "SF20-20-D",
+      "original_depends_on": [
+        "SF20-20-B",
+        "SF20-20-C"
+      ],
+      "destination": "P08/route_restoration",
+      "stage": "presentation"
+    },
+    {
+      "source_id": "SF20-20-E",
+      "original_depends_on": [
+        "SF20-20-D",
+        "SF20-03-F",
+        "SF20-04-F",
+        "SF20-06-F",
+        "SF20-11-F",
+        "SF20-18-F"
+      ],
+      "destination": "P08/route_restoration",
+      "stage": "normal_route_integration"
+    },
+    {
+      "source_id": "SF20-20-F",
+      "original_depends_on": [
+        "SF20-20-E",
+        "SF20-S05"
+      ],
+      "destination": "P08/route_restoration",
+      "stage": "acceptance"
+    }
+  ]
+}

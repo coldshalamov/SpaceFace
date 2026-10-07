@@ -1,0 +1,173 @@
+{
+  "sourceSha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+  "meshes": [
+    {
+      "name": "MITE_continuous_ventral_core",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 2112
+    },
+    {
+      "name": "MITE_abdominal_carapace",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 1348
+    },
+    {
+      "name": "MITE_thoracic_saddle",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 1608
+    },
+    {
+      "name": "MITE_cheliceral_muscle_PORT",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 604
+    },
+    {
+      "name": "MITE_cheliceral_coxa_PORT",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 604
+    },
+    {
+      "name": "MITE_contact_fang_PORT",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 788
+    },
+    {
+      "name": "MITE_hip_collar_PORT",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 360
+    },
+    {
+      "name": "MITE_fin_femur_PORT",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 596
+    },
+    {
+      "name": "MITE_fin_membrane_PORT",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 596
+    },
+    {
+      "name": "MITE_fin_leading_cartilage_PORT",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 616
+    },
+    {
+      "name": "MITE_foreleg_PORT",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 596
+    },
+    {
+      "name": "MITE_cheliceral_muscle_STARBOARD",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 604
+    },
+    {
+      "name": "MITE_cheliceral_coxa_STARBOARD",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 604
+    },
+    {
+      "name": "MITE_contact_fang_STARBOARD",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 788
+    },
+    {
+      "name": "MITE_hip_collar_STARBOARD",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 360
+    },
+    {
+      "name": "MITE_fin_femur_STARBOARD",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 596
+    },
+    {
+      "name": "MITE_fin_membrane_STARBOARD",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 596
+    },
+    {
+      "name": "MITE_fin_leading_cartilage_STARBOARD",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 616
+    },
+    {
+      "name": "MITE_foreleg_STARBOARD",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 596
+    },
+    {
+      "name": "MITE_oral_floor",
+      "nonManifoldEdges": 0,
+      "zeroAreaFaces": 0,
+      "finite": true,
+      "triangles": 412
+    }
+  ],
+  "sockets": {
+    "PORT": {
+      "tipToSocketWU": 0.0026659462319682608,
+      "unchanged": true
+    },
+    "STARBOARD": {
+      "tipToSocketWU": 0.0026659462319682608,
+      "unchanged": true
+    },
+    "SOCKET_BROOD_TETHER_DORSAL": {
+      "surfaceHit": true,
+      "suggestedPositionGLB": [
+        -2.549999952316284,
+        1.7409992218017578,
+        -0.0
+      ]
+    },
+    "SOCKET_BROOD_SIGNAL": {
+      "surfaceHit": true,
+      "suggestedPositionGLB": [
+        1.399999976158142,
+        0.3369789123535156,
+        -0.0
+      ]
+    }
+  },
+  "runtimeLook": false,
+  "noTopologyErrors": true
+}

@@ -1,0 +1,125 @@
+{
+  "status": "optional future illustration refinement; actual procedural art is already included",
+  "briefs": [
+    {
+      "concept_id": "SF20-01",
+      "reference": "01_latch_nine.png",
+      "prompt": "Original SpaceFace production concept painting for Latch Nine. Low offset goalpost in plan view; one thick crossbar, three paddles projecting from its starboard side, a single rectangular optical shutter. No face or humanoid legs. Amber bands, dark machinery and restrained ivory armor. An orbital signal gantry whose three semaphore arms teach docking by physically showing where it is safe to go. Its affection is expressed as extremely precise traffic control. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-02",
+      "reference": "02_sable_venn.png",
+      "prompt": "Original SpaceFace production concept painting for Sable Venn & the Patchwork. Three parallel hulls joined by two visible crossbeams. Central office has warm windows, port pontoon stores dark tool wells, starboard pontoon carries a folded orange arm. One cobalt identity stripe; workshop orange appears only as standardized hazard paint. A human shipwright flying a three-hulled workshop. She demonstrates the behavior of a proposed module on a captive test sled, then lets the player fit the real item through the existing service. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-03",
+      "reference": "03_tally_3.png",
+      "prompt": "Original SpaceFace production concept painting for Tally-3, Claim Assessor. Long dark spine and two unequal perpendicular balance beams; amber circular stamp at the stern. Distinct T shape seen overhead. Pale slate panels with a single ochre band, unlike Latch\u2019s three-paddle signal gantry. A narrow tug with two folding balance arms and a large circular stamp mechanism. It is obsessed with evidence, but willing to correct the ledger\u2014including in the player\u2019s favor. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-04",
+      "reference": "04_ilex_seed_ark.png",
+      "prompt": "Original SpaceFace production concept painting for Ilex Seed Ark. Six oval conservatory pods around a blunt seed-shaped central hull, in two rows of three. Broad dark connecting struts and lime identity bands. Warm speckled windows suggest cultivation without rendering thousands of plants. A slow seed-bank ship carrying six detachable botanical vaults. Each vault is physically recoverable, so losing the hull does not erase every meaningful objective. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-05",
+      "reference": "05_red_kite.png",
+      "prompt": "Original SpaceFace production concept painting for Red Kite. Thin red dart with one large triangular sail-fin to port and a short counterbalancing engine pod to starboard. A sharply visible dark fork at the stern distinguishes it from ordinary wasps. No feather motif. A red asymmetrical courier whose deliveries become optional head-to-head relay challenges. It will race your ship, not your statistics, and will never cheat by teleporting ahead. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-06",
+      "reference": "06_towline_table.png",
+      "prompt": "Original SpaceFace production concept painting for The Towline Table. Three compact work-hull variations: a broad clamp tug, a narrow winch tug, and a flat rescue skiff. Shared white slash cut into orange/teal working paint; otherwise deliberately different silhouettes. The crew\u2019s emblem is a three-ended knot, not a human organization\u2019s logo. Three mismatched civilian tugs share a common white diagonal stripe and a habit: nobody finishes a shift with a colleague still drifting. Membership is enacted through work, not purchased through a menu. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-07",
+      "reference": "07_scissorwake.png",
+      "prompt": "Original SpaceFace production concept painting for Scissorwake. Long open V from two cream ceramic cutting spars, small dark fuselage behind them, a single sodium-orange dorsal spool. The V must remain identifiable when the unit is 40\u201360 px wide. A lean raider with two long forward ceramic blades. It turns toward the visible cable, spreads its jaws, paints a short crossing corridor, then commits to a cut that the player can dodge, interrupt or exploit. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-08",
+      "reference": "08_kilnback.png",
+      "prompt": "Original SpaceFace production concept painting for Kilnback. Short, wide furnace body with a rectangular dorsal radiator comb and two pale cylindrical casks on external brackets. Dark red lacquer identity stripe; hot machinery remains localized amber-white. A stolen furnace tug carries two vulnerable coolant casks and a broad dorsal radiator. Its powerful burn commits it to a hot interval; the casks can be shot or displaced to change where the danger occurs. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-09",
+      "reference": "09_pallet_jack.png",
+      "prompt": "Original SpaceFace production concept painting for Pallet Jack. Squat forklift H-shape with two thick forward tines separated by a large rectangular gap; cargo clamp bridges them. The silhouette visibly changes when loaded. Mustard stripe with dark steel and a small asymmetric cockpit. A pirate forklift in space: two broad tines, a crosswise cargo clamp and an exposed reverse-thrust bank. It grabs a valuable loose pallet and flees awkwardly with the mass visible on its nose. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-10",
+      "reference": "10_mothlight.png",
+      "prompt": "Original SpaceFace production concept painting for Mothlight. A shallow triangular black-copper hull with two large dish-wing recesses and a clearly visible central iris. Lamp drones are small four-fin needles without engine bells. The real hull is always physically larger. A triangular tender releases two small lamp drones that imitate a firing charge. The real weapon has a unique physical shutter opening, while decoys lack engines and drift. Reading motion defeats the illusion. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-11",
+      "reference": "11_tethys_switchyard.png",
+      "prompt": "Original SpaceFace production concept painting for Tethys Switchyard. A Y-shaped lattice yard with three blunt receiving mouths, a central triangular transfer platform and a single off-axis rotating gantry. Clear negative space between arms; amber lane lights mark direction. Three freight lanes meet at a rotating service fork. The player can clear a jam, redirect a floating pallet into the correct receiving berth, or deliberately cause a diversion\u2014and see the downstream shipment change. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-12",
+      "reference": "12_borrowed_sun.png",
+      "prompt": "Original SpaceFace production concept painting for The Borrowed Sun. Six broad gold reflector petals attached around a dark hexagonal hub, one long warm-lit service spine crossing the center. Asymmetric cargo pods beneath one quadrant keep it from resembling a magic flower. A dark merchant carrier unfolds six gold reflector petals around a warm central service spine. From a distance it looks like a small borrowed sunrise; up close it is a fleet of people trading in its reflected light. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-13",
+      "reference": "13_thimble_door.png",
+      "prompt": "Original SpaceFace production concept painting for The Thimble Door. An enormous oblong broken hull around a clear oval hole. Two missing panels expose ribs; a single cyan survey lamp illuminates the opening rim. The void is the central shape, not a dark tunnel with invisible hazards. A broken freighter forms a giant sewing-eye silhouette. Small ships can thread a broad side opening; a towed load may need to be reoriented or taken around the outside. Nothing important is locked behind a ship-size purchase. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-14",
+      "reference": "14_anvil_storm_orchard.png",
+      "prompt": "Original SpaceFace production concept painting for Anvil Storm Orchard. Three enormous crescent fins on sparse dark trusses, each with a bright amber condensate pod at its base. The planet fills part of the background but never becomes a second solid shell clipping through the camera. A crescent chain of atmospheric harvest kites hangs above Anvil\u2019s storm band. Each kite collects a volatile condensate pod that can be retrieved between visibly forecast gust intervals. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-15",
+      "reference": "15_veil_ray_nursery.png",
+      "prompt": "Original SpaceFace production concept painting for Veil-Ray Nursery. A pale mineral crescent cradling three translucent-looking but mostly opaque kite-shaped rays. Broad membrane wings, dark center keels and small warm filaments. Juveniles read as sparse smaller silhouettes rather than particle fog. A sheltered arc of mineral ribs contains a few adult veil-rays and tiny juvenile silhouettes. Their motion opens a passage only when the player stops disturbing the waterless dark. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-16",
+      "reference": "16_borrowed_voice.png",
+      "prompt": "Original SpaceFace production concept painting for Borrowed Voice. A broken industrial recorder ring stitched by pale fungal fans. Three hard-edged memory boxes sit at unequal points around it, each with a distinct damaged antenna shape. Cyan device traces contrast with muted ivory growth; no giant glowing face. Three colonized recorder housings repeat fragments of a lost work shift. Moving the housings into a clean relay geometry improves intelligibility, but never turns inference into certainty. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-17",
+      "reference": "17_open_hand_lock.png",
+      "prompt": "Original SpaceFace production concept painting for The Open-Hand Lock. Three tall but broad radial fingers, each built from dark stacked prismatic slabs, with a central empty passage. One clean cyan seam per finger. A small asymmetrical receiving cradle makes the action legible from above. Three enormous dark stone fingers surround an open aperture. A retained courier token must be physically returned to a matching cradle before the lock grants a temporary transit interval. The machine is exact, not malevolent. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-18",
+      "reference": "18_last_shift.png",
+      "prompt": "Original SpaceFace production concept painting for The Last Shift. A split industrial carrier with a missing stern drive and a dramatically bent lateral tow fairlead. A detached orange cargo rack and a small black recorder form two distinct nearby points. Composition is readable as a three-object problem. A damaged ore carrier contains a dead transmitter, a detached load and a surviving tug log. Their positions tell a story: the crew cut cargo loose to keep a towline from dragging two ships into a collision. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-19",
+      "reference": "19_pip_and_spanner.png",
+      "prompt": "Original SpaceFace production concept painting for Pip & Spanner. Pip is a small tetrahedral optic with one tiny stabilizer fan. Spanner is a wide two-claw service sled with a rectangular central worklight. Cream/dark machinery with one shared teal band; not humanoid mechanics or cartoon faces. A tiny precision drone and a broad clamp robot run the Crucible pit. Pip presents the selected module; Spanner holds its actual mounting location. Selecting a different item changes the object, not just a line of text. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    },
+    {
+      "concept_id": "SF20-20",
+      "reference": "20_hundred_hand_mile.png",
+      "prompt": "Original SpaceFace production concept painting for The Hundred-Hand Mile. Two dark freight pylons and a staggered chain of modular amber lamps. New sections use recognizable salvaged parts from earlier objects; a central small bridge has conspicuously mismatched but well-fitted panels. Not a triumphal statue of the player. A damaged freight mile is rebuilt from things the player actually helped recover. Over five optional chapters, its silhouette grows from two dead pylons into a modest working chain of lights. Every installed piece has a history. Preserve every named mechanical part and the top-down silhouette in the reference. Full subject, three-quarter view plus top orthographic inset, controlled emissive effects, manufactured materials, clear negative space; no invented logos, no extra characters, no text inside the object. Art is reference, not evidence of implementation.",
+      "negative": "Generic franchise robot; humanoid face on machine; mystical precursor oracle; unrelated names; text replacing the requested object; floating unsupported parts; overly dense bloom."
+    }
+  ]
+}

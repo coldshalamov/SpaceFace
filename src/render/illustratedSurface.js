@@ -195,6 +195,36 @@ export function canonicalizeObjectSurfaceProgramKeys(root) {
   return changed;
 }
 
+// Stepped twin: explicit-stack pre-order DFS identical to traverse, yielding per
+// 512 nodes so the packaged-commit leg paces instead of landing as one span.
+export function* canonicalizeObjectSurfaceProgramKeysSteps(root) {
+  if (!root) return 0;
+  const visitObject = (object) => {
+    let changed = 0;
+    const list = Array.isArray(object.material) ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of list) {
+      if (canonicalizeInstalledSurfaceProgramKey(material)) changed += 1;
+    }
+    return changed;
+  };
+  if (typeof root.traverse !== 'function') return visitObject(root);
+  let changed = 0;
+  const stack = [root];
+  let visited = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if ((++visited % 512) === 0) yield;
+    changed += visitObject(object);
+    const children = object && object.children;
+    if (!Array.isArray(children)) continue;
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      if (children[i]) stack.push(children[i]);
+    }
+  }
+  return changed;
+}
+
 /** Chain existing packed-ORM/breakup hooks. One version key for every colour and hull. */
 export function installIllustratedSurface(material) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)

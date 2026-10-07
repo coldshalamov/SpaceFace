@@ -1,0 +1,49 @@
+{
+  "candidate": "A6 v12 authored LOD/source handoff",
+  "frozen": true,
+  "sourceHighDetailSHA256": "a9371077b518747467bfef18b7f95bb9bfc85644936451dd2d2c832989b2870e",
+  "sourceSealSHA256": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+  "bodyMapSHA256": "5ecea300388c13b524887cfb6aed837d01a7d054a0e77c0380d021577ba5e541",
+  "activeSheets": {
+    "v12-threshold-equivalent-source-read.png": "3430bff87c9722692cac35d14f66081648b4d746395e56e8c609040c8ec29666",
+    "v12-matched-close-comparison.png": "a5fb50afb3f31555e7313de880bd23cb5f43f2f72e8bfe20fe2d68e9b22f568e",
+    "v12-rigid-state-and-split-verified.png": "48331ee6f0f5beeade1f7c93986ae2d8e2223cf39f09d80e6658d30aec45d803",
+    "v12-fixed-envelope-state-170px-verified.png": "bf091b3849d7b2dbdf4cc3c7fa817284d12313b6700273aefaa412b884b3c629",
+    "v12-mouth-clearance-verified.png": "723d3455ec545b53c6d2221e85ef9cd958b25afc59b7cbdffef1e29a1feff711",
+    "v12-severance-surfaces.png": "f38eed1c31dec9914464069be3971236497e8ddd35731872605a3202edb98dcb"
+  },
+  "rejectedSheets": {
+    "v12-rigid-state-and-split.png": "Imported quaternion-mode pivots ignored Euler-only posing; all intact panels stayed at rest. Superseded by -verified sheet.",
+    "v12-mouth-clearance.png": "Same unverified pose render issue; geometry clearance test was separately correct.",
+    "v12-fixed-envelope-state-170px.png": "Same unverified pose render issue."
+  },
+  "verifiedPoseFrames": {
+    "lod0-state-closed.png": "d18128895cd2eab7692afd56eb5b10c7a04fb06083f6977d1ba550af8360a662",
+    "lod2-state-rest.png": "7ac82ac0f2f6e15f02e2760bda2078e3989c8d4f23aea0a3a410350a18b53c77",
+    "lod2-low-front-closed.png": "49b92aabab25ff0df71dc5788e71988b0564408288cddd1b09eec054060d28ab",
+    "lod0-state-open.png": "8d6a308b307ec75d03a02c87d2a447282ace5a852f53c87d5f07138de988701c",
+    "lod2-state-open.png": "5a2d671737c2e1320c57d566f112a811db247c3ff84d834361f5692dc7c17133",
+    "lod2-state-closed.png": "ffabf1f9af02ce9a2440daa0b873683453f417e08e5a439f78689e5f8c75a2b0",
+    "lod0-low-front-closed.png": "a9f88c8670e03386e6574f7029ce0d1e402c916cb1dc28e2e73e50e4f29c6245",
+    "lod2-low-front-open.png": "04e301124e6de8768536ed9d183e4ebbc7c1b0274dd5281f0ceeb4e649a87fee",
+    "lod0-low-front-open.png": "94ff2983cc9038c131b11f77bc0b425250e50d5a864fb4eb69bf9ead5a7d746a",
+    "lod0-state-rest.png": "37123d230f87740f8a4f0849551df17f28a2537bc3ed5c753c7367fb13a629b2"
+  },
+  "scope": "Source-camera/LOD anatomy review. Actual runtime appearance, resident LOD transitions and target-GPU performance remain separate.",
+  "reviewDecision": {
+    "status": "accepted-bounded-static-and-lod-visual-gate",
+    "reviewer": "root independent image review",
+    "recordedUTC": "2026-10-03T22:49:25Z",
+    "acceptedScope": [
+      "static silhouette at intended thresholds",
+      "authored rigid jaw endpoint clearance",
+      "separated tissue surfaces"
+    ],
+    "notAcceptedByThisGate": [
+      "runtime jaw animation",
+      "dynamic colliders",
+      "target-GPU performance",
+      "actual runtime camera/material appearance"
+    ]
+  }
+}

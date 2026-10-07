@@ -4,6 +4,8 @@
 // and a station merge-upload are both "one item". The drain always completes at least one item
 // so work makes progress, then spills the rest once the target milliseconds are spent.
 
+import { pacedFrameSpend, PACED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
+
 export const ADMISSION_SLICE_TARGET_MS = 3;
 export const ADMISSION_SLICE_HARD_MS = 8;
 export const ADMISSION_SLICE_MIN_ITEMS = 1;
@@ -23,13 +25,17 @@ export function normalizeAdmissionSliceOptions(options = {}) {
 
 /**
  * Whether another admission item may start on this turn.
- * Loading-mode Infinity budgets skip the clock entirely.
+ * Loading-mode Infinity budgets skip the clock entirely. `usePacedLedger` opts
+ * the continue-check into the shared paced ledger — a frame whose paced budget
+ * is already spent (compiles, residency slices, despawn drains) doesn't also get
+ * this slicer's whole private wallet. Checked after minItems so nothing starves.
  */
 export function shouldContinueAdmissionSlice(options = {}) {
   if (options.unlimited === true || options.buildBudget === Infinity) return true;
   const { targetMs, minItems } = normalizeAdmissionSliceOptions(options);
   const itemsDone = Math.max(0, Math.floor(Number(options.itemsDone) || 0));
   if (itemsDone < minItems) return true;
+  if (options.usePacedLedger === true && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) return false;
   const startedAtMs = Number(options.startedAtMs);
   const nowMs = Number(options.nowMs);
   if (!Number.isFinite(startedAtMs) || !Number.isFinite(nowMs)) return itemsDone < minItems;

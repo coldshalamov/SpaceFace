@@ -579,16 +579,41 @@ function nodeHasVisibleMesh(node) {
   return found;
 }
 
-function collectNodesByName(root, name) {
-  const found = [];
+function collectNodesByNameMap(root) {
+  const byName = new Map();
   const stack = [...(root.children || [])];
   while (stack.length) {
     const node = stack.pop();
     if (!node) continue;
-    if (node.name === name) found.push(node);
+    const name = node.name;
+    if (name) {
+      let list = byName.get(name);
+      if (!list) byName.set(name, list = []);
+      list.push(node);
+    }
     for (const child of node.children || []) stack.push(child);
   }
-  return found;
+  return byName;
+}
+
+// Stepped twin — same DFS walk, yields at stride boundaries so the collect can
+// pace inside a commit leg instead of landing atomically.
+function* collectNodesByNameMapSteps(root, byName) {
+  const stack = [...(root.children || [])];
+  let visited = 0;
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node) continue;
+    if ((++visited % 512) === 0) yield;
+    const name = node.name;
+    if (name) {
+      let list = byName.get(name);
+      if (!list) byName.set(name, list = []);
+      list.push(node);
+    }
+    for (const child of node.children || []) stack.push(child);
+  }
+  return byName;
 }
 
 /**
@@ -605,10 +630,25 @@ function collectNodesByName(root, name) {
  */
 export function bindAuthoredMotion(root, bank, options = {}) {
   const checked = validateMotionBank(bank);
+  const nodesByName = collectNodesByNameMap(root);
+  return finishAuthoredMotionBind(checked, nodesByName);
+}
+
+// Stepped twin: identical bind semantics, but the O(subtree) name-map collect
+// yields at stride boundaries. Group/binding application is index-order and the
+// controller mints only after the collect completes, so a suspended walk never
+// surfaces a half-bound rig.
+export function* bindAuthoredMotionSteps(root, bank, options = {}) {
+  const checked = validateMotionBank(bank);
+  const nodesByName = yield* collectNodesByNameMapSteps(root, new Map());
+  return finishAuthoredMotionBind(checked, nodesByName);
+}
+
+function finishAuthoredMotionBind(checked, nodesByName) {
   const groups = new Map();
   for (const binding of checked.bindings) {
     const nodeName = binding.node || motionNodeNameFor(binding.id);
-    const matches = collectNodesByName(root, nodeName);
+    const matches = nodesByName.get(nodeName) || [];
     const restT = binding.restPose.translation;
     const restQ = binding.restPose.rotation;
     const nodes = [];

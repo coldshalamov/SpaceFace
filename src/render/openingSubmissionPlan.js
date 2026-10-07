@@ -307,20 +307,32 @@ function leafBodyContributes(object, frustum, options = {}) {
 
 // Depth-first, self then children — the same order as Object3D.traverse. A hidden node
 // contributes nothing and neither do its descendants, so the walk does not enter them.
-function walkOpeningLeaves(object, frustum, options, out) {
+// Paced twin of the walk: identical visit order and output; yields every 512
+// visited nodes so a ~21k-node live walk can pace under a slice clock.
+function* walkOpeningLeavesSteps(object, frustum, options, out, pace) {
   if (!object || object.visible === false) return;
+  pace.count += 1;
+  if (pace.count % 512 === 0) yield;
   if (isDrawable(object) && hasDrawableInstance(object) && leafBodyContributes(object, frustum, options)) {
     out.push(object);
   }
   const children = object.children;
   if (!children || children.length === 0) return;
   for (let i = 0, n = children.length; i < n; i += 1) {
-    walkOpeningLeaves(children[i], frustum, options, out);
+    yield* walkOpeningLeavesSteps(children[i], frustum, options, out, pace);
   }
 }
 
 /** Return the flat production draw leaves in stable traversal order. Every call walks. */
 export function collectOpeningSubmissionLeaves(root, options = {}) {
+  const iterator = collectOpeningSubmissionLeavesSteps(root, options);
+  let step = iterator.next();
+  while (!step.done) step = iterator.next();
+  return step.value;
+}
+
+// Stepped twin: same leaf set and order; sync callers keep the drained result above.
+export function* collectOpeningSubmissionLeavesSteps(root, options = {}) {
   if (!root) return Object.freeze([]);
   // `live` is accepted so receipt callers stay explicit. It no longer bypasses a cache:
   // there is no leaf cache to bypass.
@@ -333,7 +345,7 @@ export function collectOpeningSubmissionLeaves(root, options = {}) {
   const camera = options.camera || null;
   const out = [];
   const frustum = includeOffscreen ? null : makeFrustum(camera);
-  walkOpeningLeaves(root, frustum, options, out);
+  yield* walkOpeningLeavesSteps(root, frustum, options, out, { count: 0 });
   return Object.freeze(out);
 }
 
@@ -426,10 +438,12 @@ function receiptProgramMaterials(plan, options = {}) {
   return entries;
 }
 
-function requiredProgramBindings(renderer, plan, options = {}) {
+function* requiredProgramBindingsSteps(renderer, plan, options = {}) {
   const keys = new Set();
   const failures = [];
+  let visited = 0;
   for (const { material, label } of receiptProgramMaterials(plan, options)) {
+    if ((++visited % 32) === 0) yield;
     const binding = materialProgramBinding(renderer, material, label);
     for (const key of binding.keys) keys.add(key);
     if (binding.failure) failures.push(binding.failure);
@@ -1139,6 +1153,17 @@ export function createOpeningSubmissionPlan(options = {}) {
 }
 
 export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
+  const iterator = createOpeningSubmissionReceiptSteps(renderer, plan, options);
+  let step = iterator.next();
+  while (!step.done) step = iterator.next();
+  return step.value;
+}
+
+// Stepped twin: the receipt pays a live full-scene leaf walk and an
+// O(subjects×materials) binding probe twice per boot — yields split the legs so
+// async callers can pace it under their slice clocks. The sync driver above
+// exhausts it inline for identical receipt content.
+export function* createOpeningSubmissionReceiptSteps(renderer, plan, options = {}) {
   const info = renderer && renderer.info || {};
   const memory = info.memory || {};
   const resourceIdentitySets = plan && plan.resourceIdentitySets
@@ -1162,7 +1187,7 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
   // plan's frozen resourceIdentitySets were captured. Validation re-walks the live scene, so
   // `before` must name those already-resident identities or the first-draw gate reports
   // uncaptured-first-draw-resource and fail-opens. Required stays plan-bound (exact leaves).
-  const liveResources = currentPlanResourceIdentitySets(plan);
+  const liveResources = yield* currentPlanResourceIdentitySetsSteps(plan);
   const before = {
     programCacheKeys: rendererProgramKeys(renderer),
     geometryBufferIds: [...unionSet(
@@ -1181,7 +1206,8 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
       liveResources.shadowResourceIds,
     )].sort(),
   };
-  const programBindings = requiredProgramBindings(renderer, plan, options);
+  yield;
+  const programBindings = yield* requiredProgramBindingsSteps(renderer, plan, options);
   const required = {
     // Keep `before` as the broad cache census for strict no-new-program detection. Required keys
     // must instead be bound to the exact opening leaves (and active post materials): unrelated
@@ -1245,10 +1271,10 @@ function difference(actual, allowed) {
   return [...actual].filter((item) => !allowed.has(item)).sort();
 }
 
-function currentPlanResourceIdentitySets(plan) {
+function* currentPlanResourceIdentitySetsSteps(plan) {
   const leaves = new Set(Array.isArray(plan && plan.compileSubjects) ? plan.compileSubjects : []);
   if (plan && plan.scene) {
-    const sceneLeaves = collectOpeningSubmissionLeaves(plan.scene, {
+    const sceneLeaves = yield* collectOpeningSubmissionLeavesSteps(plan.scene, {
       camera: plan.camera,
       live: true,
     });
@@ -1260,6 +1286,13 @@ function currentPlanResourceIdentitySets(plan) {
     ...(Array.isArray(plan && plan.textureRefs) ? plan.textureRefs : []),
   ].filter((texture) => texture && texture.isTexture === true);
   return collectResourceIdentitySets([...leaves], plan && plan.route || {}, explicitTextures);
+}
+
+function currentPlanResourceIdentitySets(plan) {
+  const iterator = currentPlanResourceIdentitySetsSteps(plan);
+  let step = iterator.next();
+  while (!step.done) step = iterator.next();
+  return step.value;
 }
 
 function objectReachesScene(object, scene) {

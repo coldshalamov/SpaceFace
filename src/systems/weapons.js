@@ -32,6 +32,7 @@ import {
   masslineOwnsGuns,
 } from '../combat/tetherFireControl.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import {
@@ -377,23 +378,43 @@ export const weapons = {
         this.bus.emit('weapons:inertialShunt', applied);
       }
     });
-    on('sector:enter', () => {
-      handlePayloadSectorTransition(this.state, this.helpers);
-      clearAllMomentumSinkPlants(this.state);
-      if (this._shuntCooldown) this._shuntCooldown.clear();
-      if (this._opticFamilies) this._opticFamilies.clear();
-      // sector:enter fires after materialization, so cells the durable ledger restored dark
-      // are live entities here — pick their ids up for the rekindle watch.
-      this._opticSpent = collectOpticSpentIds(this.state);
-      // Review fix: a boundary transition can land a fresh version lineage under a
-      // latched membership — drop the quiet latch so the first tick re-evaluates.
-      this._weaponsQuiet = null;
+    on('sector:enter', (p) => {
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the
+      // entity-list walks below otherwise run atomic inside the presented
+      // transition frame's emit tail. The deferred drain steps the legs under
+      // its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, () => this._onSectorEnterSteps())) return;
+      this._onSectorEnter();
     });
     this._playerIncomingLock = false;
     this._opticSpent = new Set();
     on('game:new', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
     on('game:started', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
     on('save:loaded', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
+  },
+
+  _onSectorEnter() {
+    handlePayloadSectorTransition(this.state, this.helpers);
+    clearAllMomentumSinkPlants(this.state);
+    if (this._shuntCooldown) this._shuntCooldown.clear();
+    if (this._opticFamilies) this._opticFamilies.clear();
+    // sector:enter fires after materialization, so cells the durable ledger restored dark
+    // are live entities here — pick their ids up for the rekindle watch.
+    this._opticSpent = collectOpticSpentIds(this.state);
+    // Review fix: a boundary transition can land a fresh version lineage under a
+    // latched membership — drop the quiet latch so the first tick re-evaluates.
+    this._weaponsQuiet = null;
+  },
+
+  *_onSectorEnterSteps() {
+    handlePayloadSectorTransition(this.state, this.helpers);
+    yield;
+    clearAllMomentumSinkPlants(this.state);
+    yield;
+    if (this._shuntCooldown) this._shuntCooldown.clear();
+    if (this._opticFamilies) this._opticFamilies.clear();
+    this._opticSpent = collectOpticSpentIds(this.state);
+    this._weaponsQuiet = null;
   },
 
   update(dt, state) {

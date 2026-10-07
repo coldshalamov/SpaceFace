@@ -1,0 +1,750 @@
+{
+  "schema": "spaceface.chargerConvexProposal.v1",
+  "sourceGlbSHA256": "fd9ecb4da9d69b4b55066edc4afa24dd54f1f76e049648364cc3d96b6627615b",
+  "status": "source-derived proposal, runtime not admitted",
+  "pieces": [
+    {
+      "vertices": [
+        [
+          0.65,
+          -4.066993
+        ],
+        [
+          0.65,
+          -7.342475
+        ],
+        [
+          0.716448,
+          -7.404156
+        ],
+        [
+          3.067589,
+          -8.133986
+        ],
+        [
+          5.066879,
+          -8.03758
+        ],
+        [
+          5.825,
+          -7.757348
+        ],
+        [
+          5.825,
+          -4.31083
+        ],
+        [
+          4.59745,
+          -4.066993
+        ]
+      ],
+      "initialOverfillWU": 0.04326661530556787,
+      "proposalDerivation": "chargerbaaa",
+      "id": "charger_convex_01",
+      "kind": "convex",
+      "minimumSupportWidthWU": 4.066993
+    },
+    {
+      "vertices": [
+        [
+          3.610588,
+          -4.066993
+        ],
+        [
+          4.104019,
+          -4.066993
+        ],
+        [
+          4.104019,
+          -3.862793
+        ],
+        [
+          3.904204,
+          -3.558619
+        ],
+        [
+          3.610588,
+          -3.558619
+        ]
+      ],
+      "initialOverfillWU": 0.012,
+      "proposalDerivation": "chargerbaabababaa",
+      "id": "charger_convex_02",
+      "kind": "convex",
+      "minimumSupportWidthWU": 0.4934310000000002
+    },
+    {
+      "vertices": [
+        [
+          4.104019,
+          -4.066993
+        ],
+        [
+          4.59745,
+          -4.066993
+        ],
+        [
+          4.104019,
+          -3.862793
+        ]
+      ],
+      "initialOverfillWU": 0.024,
+      "proposalDerivation": "chargerbaabababab",
+      "id": "charger_convex_03",
+      "kind": "convex",
+      "minimumSupportWidthWU": 0.18868131150085343
+    },
+    {
+      "vertices": [
+        [
+          0.65,
+          -2.033497
+        ],
+        [
+          3.548099,
+          -2.033497
+        ],
+        [
+          3.35,
+          0.0
+        ],
+        [
+          0.65,
+          0.0
+        ]
+      ],
+      "initialOverfillWU": 0.048,
+      "proposalDerivation": "chargerbaabb",
+      "id": "charger_convex_04",
+      "kind": "convex",
+      "minimumSupportWidthWU": 2.033497
+    },
+    {
+      "vertices": [
+        [
+          3.35,
+          0.0
+        ],
+        [
+          3.548099,
+          2.033497
+        ],
+        [
+          0.65,
+          2.033497
+        ],
+        [
+          0.65,
+          0.0
+        ]
+      ],
+      "initialOverfillWU": 0.048,
+      "proposalDerivation": "chargerbbaaa",
+      "id": "charger_convex_05",
+      "kind": "convex",
+      "minimumSupportWidthWU": 2.033497
+    },
+    {
+      "vertices": [
+        [
+          3.610588,
+          4.066993
+        ],
+        [
+          3.610588,
+          3.558619
+        ],
+        [
+          3.904204,
+          3.558619
+        ],
+        [
+          4.104019,
+          3.862793
+        ],
+        [
+          4.104019,
+          4.066993
+        ]
+      ],
+      "initialOverfillWU": 0.012,
+      "proposalDerivation": "chargerbbaabbbbba",
+      "id": "charger_convex_06",
+      "kind": "convex",
+      "minimumSupportWidthWU": 0.4934310000000002
+    },
+    {
+      "vertices": [
+        [
+          4.104019,
+          3.862793
+        ],
+        [
+          4.59745,
+          4.066993
+        ],
+        [
+          4.104019,
+          4.066993
+        ]
+      ],
+      "initialOverfillWU": 0.033941125496954286,
+      "proposalDerivation": "chargerbbaabbbbbb",
+      "id": "charger_convex_07",
+      "kind": "convex",
+      "minimumSupportWidthWU": 0.18868131150085343
+    },
+    {
+      "vertices": [
+        [
+          5.825,
+          4.31083
+        ],
+        [
+          5.825,
+          7.757348
+        ],
+        [
+          5.066879,
+          8.03758
+        ],
+        [
+          3.067589,
+          8.133986
+        ],
+        [
+          0.716448,
+          7.404156
+        ],
+        [
+          0.65,
+          7.342475
+        ],
+        [
+          0.65,
+          4.066993
+        ],
+        [
+          4.59745,
+          4.066993
+        ]
+      ],
+      "initialOverfillWU": 0.04326661530556787,
+      "proposalDerivation": "chargerbbab",
+      "id": "charger_convex_08",
+      "kind": "convex",
+      "minimumSupportWidthWU": 4.066993
+    },
+    {
+      "vertices": [
+        [
+          -4.525,
+          -2.753428
+        ],
+        [
+          -4.525,
+          -3.671238
+        ],
+        [
+          -3.878125,
+          -3.671238
+        ],
+        [
+          -3.23125,
+          -3.212333
+        ],
+        [
+          -3.23125,
+          -2.753428
+        ]
+      ],
+      "initialOverfillWU": 0.0,
+      "proposalDerivation": "chargeraabbaaaaa_chargeraabbaaaabb",
+      "id": "charger_convex_09",
+      "kind": "convex",
+      "minimumSupportWidthWU": 0.9178099999999998
+    },
+    {
+      "vertices": [
+        [
+          -4.525,
+          2.753428
+        ],
+        [
+          -3.23125,
+          2.753428
+        ],
+        [
+          -3.23125,
+          3.212333
+        ],
+        [
+          -3.878125,
+          3.671238
+        ],
+        [
+          -4.525,
+          3.671238
+        ]
+      ],
+      "initialOverfillWU": 0.0,
+      "proposalDerivation": "chargerabbaababa_chargerabbaababba",
+      "id": "charger_convex_10",
+      "kind": "convex",
+      "minimumSupportWidthWU": 0.9178099999999998
+    },
+    {
+      "vertices": [
+        [
+          -8.8,
+          -5.865
+        ],
+        [
+          -8.15,
+          -6.25
+        ],
+        [
+          -7.2,
+          -6.36
+        ],
+        [
+          -6.1,
+          -6.16
+        ],
+        [
+          -5.0,
+          -5.58
+        ],
+        [
+          -4.0,
+          -4.54
+        ],
+        [
+          -3.462386,
+          -3.406876
+        ],
+        [
+          -3.554687,
+          -3.212333
+        ],
+        [
+          -5.202632,
+          -3.18
+        ],
+        [
+          -7.2,
+          -4.5
+        ],
+        [
+          -8.15,
+          -5.21
+        ],
+        [
+          -8.8,
+          -5.795
+        ]
+      ],
+      "initialOverfillWU": 0.016970562748477143,
+      "proposalDerivation": "chargeraaaa_chargeraabaaa_chargeraabbaaaabaa_chargeraabbaaaababa",
+      "id": "charger_convex_11",
+      "kind": "convex",
+      "minimumSupportWidthWU": 2.1139822826743937
+    },
+    {
+      "vertices": [
+        [
+          9.896829,
+          -4.856169
+        ],
+        [
+          7.11875,
+          -4.244409
+        ],
+        [
+          5.825,
+          -4.31083
+        ],
+        [
+          5.825,
+          -7.757348
+        ],
+        [
+          6.606294,
+          -7.468552
+        ],
+        [
+          7.84198,
+          -6.689173
+        ],
+        [
+          8.819629,
+          -5.861521
+        ],
+        [
+          9.643298,
+          -5.100499
+        ]
+      ],
+      "initialOverfillWU": 0.024,
+      "proposalDerivation": "chargerbababa_chargerbabaa_chargerbabba",
+      "id": "charger_convex_12",
+      "kind": "convex",
+      "minimumSupportWidthWU": 3.0876496229667305
+    },
+    {
+      "vertices": [
+        [
+          -7.2,
+          6.36
+        ],
+        [
+          -8.15,
+          6.25
+        ],
+        [
+          -8.8,
+          5.865
+        ],
+        [
+          -8.8,
+          5.795
+        ],
+        [
+          -8.15,
+          5.21
+        ],
+        [
+          -7.2,
+          4.5
+        ],
+        [
+          -5.202632,
+          3.18
+        ],
+        [
+          -3.554687,
+          3.212333
+        ],
+        [
+          -3.462386,
+          3.406876
+        ],
+        [
+          -4.0,
+          4.54
+        ],
+        [
+          -5.0,
+          5.58
+        ],
+        [
+          -6.1,
+          6.16
+        ]
+      ],
+      "initialOverfillWU": 0.02683281572999748,
+      "proposalDerivation": "chargerabab_chargerabbbaa_chargerabbaababbba_chargerabbaababbbbb",
+      "id": "charger_convex_13",
+      "kind": "convex",
+      "minimumSupportWidthWU": 2.1139822826743937
+    },
+    {
+      "vertices": [
+        [
+          5.825,
+          7.757348
+        ],
+        [
+          5.825,
+          4.31083
+        ],
+        [
+          7.11875,
+          4.244409
+        ],
+        [
+          9.896829,
+          4.856169
+        ],
+        [
+          9.643298,
+          5.100499
+        ],
+        [
+          8.819629,
+          5.861521
+        ],
+        [
+          7.84198,
+          6.689173
+        ],
+        [
+          6.606294,
+          7.468552
+        ]
+      ],
+      "initialOverfillWU": 0.036000000000000004,
+      "proposalDerivation": "chargerbbbaaa_chargerbbbab_chargerbbbbb",
+      "id": "charger_convex_14",
+      "kind": "convex",
+      "minimumSupportWidthWU": 3.0876496229667305
+    },
+    {
+      "vertices": [
+        [
+          -1.9375,
+          -3.212333
+        ],
+        [
+          -1.9375,
+          3.212333
+        ],
+        [
+          -2.422656,
+          3.517256
+        ],
+        [
+          -5.8,
+          3.1
+        ],
+        [
+          -7.5,
+          2.52
+        ],
+        [
+          -9.0,
+          1.25
+        ],
+        [
+          -9.7,
+          0.1
+        ],
+        [
+          -9.7,
+          -0.1
+        ],
+        [
+          -9.0,
+          -1.25
+        ],
+        [
+          -7.5,
+          -2.52
+        ],
+        [
+          -5.8,
+          -3.1
+        ],
+        [
+          -2.422656,
+          -3.517256
+        ]
+      ],
+      "initialOverfillWU": 0.048,
+      "proposalDerivation": "chargerabbaababbbba_chargeraabbaaaababb_chargerabbaabbba_chargerabbaabbbba_chargerabbaabbbbbaa_chargerabbaabbbbbaba_chargeraabbaababaab_chargeraabbaababb_chargerabbaabaa_chargerabbaabba_chargeraabbaaab_chargeraabbaabb_chargeraabbab_chargerabbaaa_chargeraabbaabaa_chargeraabbaababaaaa_chargeraaab_chargerabaa",
+      "id": "charger_convex_15",
+      "kind": "convex",
+      "minimumSupportWidthWU": 6.981433167131755
+    },
+    {
+      "vertices": [
+        [
+          0.65,
+          4.066993
+        ],
+        [
+          0.65,
+          2.033497
+        ],
+        [
+          3.548099,
+          2.033497
+        ],
+        [
+          3.904204,
+          3.558619
+        ],
+        [
+          3.610588,
+          4.066993
+        ]
+      ],
+      "initialOverfillWU": 0.04947726750741193,
+      "proposalDerivation": "chargerbbaabbbba_chargerbbaabba_chargerbbaaba_chargerbbaabbba",
+      "id": "charger_convex_16",
+      "kind": "convex",
+      "minimumSupportWidthWU": 2.033496
+    },
+    {
+      "vertices": [
+        [
+          -2.422656,
+          3.517256
+        ],
+        [
+          -2.422656,
+          -3.517256
+        ],
+        [
+          -1.161714,
+          -5.660721
+        ],
+        [
+          0.65,
+          -7.342475
+        ],
+        [
+          3.610588,
+          -4.066993
+        ],
+        [
+          3.904204,
+          -3.558619
+        ],
+        [
+          3.548099,
+          -2.033497
+        ],
+        [
+          0.65,
+          7.342475
+        ],
+        [
+          -1.161714,
+          5.660721
+        ]
+      ],
+      "initialOverfillWU": 0.06,
+      "proposalDerivation": "chargeraabbaababaaab_chargerabbaabbbbbabb_chargerbaabababb_chargeraabaab_chargeraabab_chargerbaababb_chargerabbbab_chargerbaabaa_chargerbaababaa_chargerabbbb_chargerabbaabbbbbb_chargeraabbaababab_chargeraabbb_chargerabbab",
+      "id": "charger_convex_17",
+      "kind": "convex",
+      "minimumSupportWidthWU": 6.142636033913431
+    },
+    {
+      "vertices": [
+        [
+          7.11875,
+          -4.244409
+        ],
+        [
+          7.11875,
+          -5.854409
+        ],
+        [
+          8.4125,
+          -5.854409
+        ],
+        [
+          9.896829,
+          -4.856169
+        ],
+        [
+          11.0,
+          -3.929952
+        ],
+        [
+          11.0,
+          -3.8
+        ],
+        [
+          10.999017,
+          -3.763613
+        ],
+        [
+          10.997823,
+          -3.719429
+        ],
+        [
+          10.996488,
+          -3.670048
+        ],
+        [
+          10.568547,
+          -3.506152
+        ],
+        [
+          9.892843,
+          -3.518543
+        ]
+      ],
+      "initialOverfillWU": 0.06462197768561405,
+      "proposalDerivation": "chargerbababb_chargerbabbb",
+      "id": "charger_convex_18",
+      "kind": "convex",
+      "minimumSupportWidthWU": 1.8850587942171284
+    },
+    {
+      "vertices": [
+        [
+          7.11875,
+          5.854409
+        ],
+        [
+          7.11875,
+          4.244409
+        ],
+        [
+          9.892843,
+          3.518543
+        ],
+        [
+          10.568547,
+          3.506152
+        ],
+        [
+          10.996488,
+          3.670048
+        ],
+        [
+          10.997823,
+          3.719429
+        ],
+        [
+          10.999017,
+          3.763613
+        ],
+        [
+          11.0,
+          3.8
+        ],
+        [
+          11.0,
+          3.929952
+        ],
+        [
+          9.896829,
+          4.856169
+        ],
+        [
+          8.4125,
+          5.854409
+        ]
+      ],
+      "initialOverfillWU": 0.06462197768561405,
+      "proposalDerivation": "chargerbbbaab_chargerbbbba",
+      "id": "charger_convex_19",
+      "kind": "convex",
+      "minimumSupportWidthWU": 1.8850587942171284
+    }
+  ],
+  "pieceCount": 19,
+  "maxVertices": 12,
+  "rasterStepWU": 0.012,
+  "initialConservativeAllowanceWU": 0.033941125496954286,
+  "nativePlaneSlabY": [
+    -1.05,
+    0.12
+  ],
+  "clearVolumeHeadFork": {
+    "min": [
+      3.65,
+      -6,
+      -1.1
+    ],
+    "max": [
+      11.8,
+      6,
+      1.1
+    ]
+  }
+}

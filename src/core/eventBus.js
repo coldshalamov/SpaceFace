@@ -6,6 +6,12 @@
 // enterSector, leftover presentation listeners drain after present. Default budget 0
 // keeps every emit fully synchronous (tests, boot, Continue).
 
+import {
+  notePacedFrameSpend,
+  pacedFrameSpend,
+  PACED_FRAME_BUDGET_MS,
+} from '../render/decodeTaskBudget.js';
+
 export const SECTOR_ENTER_LISTENER_BUDGET = 32;
 export const SECTOR_ENTER_DRAIN_BUDGET = 4;
 // Presentation-tier listeners (bus.on(event, fn, { presentation: true })): burst events like
@@ -63,6 +69,11 @@ export function createBus() {
   // Sliced emits that arrived while a predecessor tail still lived past its
   // wall-clock cap — started in order when that tail finishes.
   const pendingSlicedEmits = [];
+  // The frame-loop owner suspends slicing while no presented frame exists to
+  // protect (loading, hidden, suspended): slicing's only purpose is to bound a
+  // task inside a frame, so while suspended emits deliver inline and anything
+  // already parked flushes at the transition.
+  let emitSliceSuspended = false;
   // Bumped by clear(): a flush mid-stack that captured its batch pre-teardown must not deliver
   // the rest of it into listeners bound on the new bus.
   let generation = 0;
@@ -262,12 +273,42 @@ export function createBus() {
   }
 
   function emit(event, payload) {
-    const budget = sliceBudgets.get(event) | 0;
+    const budget = emitSliceSuspended ? 0 : sliceBudgets.get(event) | 0;
     if (budget > 0 && (event === 'sector:enter' || event === 'save:loaded')) {
       startEmitSlice(event, payload, budget);
       return;
     }
     emitAll(event, payload);
+  }
+
+  // Non-presenting tasks have no frame deadline to overrun, so unlike
+  // drainEmitSlice this ignores the paced ledger and runs each tail to
+  // completion — the point is to finish before the caller's task ends.
+  function flushSlicedEmits() {
+    let guard = 0;
+    while (emitSlice || pendingSlicedEmits.length) {
+      if (guard++ > 64) break; // a listener that keeps re-emitting can't wedge the flush
+      if (emitSlice) {
+        const slice = emitSlice;
+        while (emitSlice === slice && slice.index < slice.fns.length) {
+          const fn = slice.fns[slice.index];
+          slice.index += 1;
+          try { fn(slice.payload, slice.event); }
+          catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
+        }
+        if (emitSlice === slice) emitSlice = null;
+        else break; // clear() or a re-entrant sliced emit swapped the global — stop here
+      }
+      if (pendingSlicedEmits.length) {
+        const next = pendingSlicedEmits.shift();
+        emitAll(next.event, next.payload);
+      }
+    }
+  }
+
+  function setEmitSliceSuspended(suspended) {
+    emitSliceSuspended = suspended === true;
+    if (emitSliceSuspended) flushSlicedEmits();
   }
 
   function setEmitSliceBudget(event, budget) {
@@ -295,6 +336,7 @@ export function createBus() {
     const deadline = Number.isFinite(maxMs) && maxMs > 0
       ? performance.now() + maxMs
       : Infinity;
+    const drainStart = performance.now();
     let ran = 0;
     while (emitSlice === slice && ran < limit && slice.index < slice.fns.length) {
       const fn = slice.fns[slice.index];
@@ -302,8 +344,11 @@ export function createBus() {
       ran += 1;
       try { fn(slice.payload, slice.event); }
       catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
-      if (performance.now() >= deadline) break;
+      // The caller's deadline plus the shared paced ledger — a frame that already
+      // spent its paced budget doesn't also get this drain's whole wallet.
+      if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }
+    if (ran > 0) notePacedFrameSpend(performance.now() - drainStart);
     if (emitSlice === slice && slice.index >= slice.fns.length) {
       emitSlice = null;
       if (pendingSlicedEmits.length) {
@@ -344,6 +389,7 @@ export function createBus() {
     const deadline = Number.isFinite(maxMs) && maxMs > 0
       ? performance.now() + maxMs
       : Infinity;
+    const drainStart = performance.now();
     let ran = 0;
     // Bounded interleave: strict priority let a sustained destroyed burst starve the
     // cosmetic lane for the burst's whole duration. After PRIORITY_INTERLEAVE consecutive
@@ -367,8 +413,9 @@ export function createBus() {
       try { fn(head.payload, head.event); }
       catch (err) { console.error(`[bus] presentation handler error for "${head.event}":`, err); }
       if (head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
-      if (performance.now() >= deadline) break;
+      if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }
+    if (ran > 0) notePacedFrameSpend(performance.now() - drainStart);
     return ran;
   }
 
@@ -434,6 +481,7 @@ export function createBus() {
   return {
     on, off, once, emit, queue, flush, clear,
     setEmitSliceBudget, drainEmitSlice, pendingEmitSliceCount,
+    setEmitSliceSuspended, flushSlicedEmits,
     claimPresentationDrain, drainPresentationTail, pendingPresentationCount,
     setPayloadSnapshot,
     _listeners: listeners,

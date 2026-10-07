@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "scope": "Design-package validation only; no gameplay or performance tests run",
+  "concepts": 20,
+  "concept_dossier_words": 25573,
+  "procedural_png_plates": 20,
+  "svg_plan_studies": 20,
+  "nonshipping_glb_blockouts": 20,
+  "glb_meshes_total": 696,
+  "authored_dialogue_lines": 100,
+  "proposed_agent_packets": 125,
+  "task_graph": "acyclic, all dependencies resolve",
+  "offline_html_images": 20,
+  "fonts_distributed": 0,
+  "pdf_pages": 98,
+  "pdf_text_outside_page": 0,
+  "visual_review": "All 20 concept plates inspected in contact sheet; PDF cover, concept/recipe pages and a vector blueprint inspected in renderer.",
+  "full_report_word_count": 30360
+}

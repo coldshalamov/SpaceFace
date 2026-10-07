@@ -28,6 +28,7 @@ import {
   resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec } from './physicsAuthority.js';
+import { rapierRuntimeBlocked, rapierRuntimeBlockedRemainingMs } from './rapierCompatRuntime.js';
 // FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
 // perfRuntime (perfNow) rather than touching wall time from a simulation owner.
 import { perfNow } from './perfRuntime.js';
@@ -135,6 +136,7 @@ export const physics = {
     this._rapierToken = 0;
     this._sg02 = null;
     this._sg02Init = null;
+    this._sg02InitArmedAt = 0;
     this._sg02Token = 0;
     this._pendingSg02Snapshot = null;
     this._sg02CombatPhysics = createDeferredSg02CombatPhysicsPort(this);
@@ -360,18 +362,82 @@ export const physics = {
       // even though a live owner absorbed the load boundary first.
       this._pendingSg02Snapshot = options.sg02Snapshot;
     }
-    if (reset) this._disableSg02DynamicAuthority();
+    const initTimeoutMs = Number.isFinite(options.initTimeoutMs)
+      ? Math.max(0, options.initTimeoutMs)
+      : SG02_INIT_PREPARE_TIMEOUT_MS;
+    // Waits that attach to a pending init get the init's remaining envelope, not
+    // a fresh window: a promise already past its own bound is treated as dead
+    // instead of re-paying the full timeout on a stale capture.
+    const sg02InitJoinMs = () => {
+      const armedAt = this._sg02InitArmedAt;
+      if (!Number.isFinite(armedAt) || armedAt <= 0) return initTimeoutMs;
+      return Math.max(0, initTimeoutMs - (Date.now() - armedAt));
+    };
+    // An explicit prepare is bounded by user action — a backoff residual short enough
+    // to fit inside the init envelope is worth waiting out so the prepare mints a real
+    // attempt instead of fast-answering `false` on a skipped mint. Per-tick callers
+    // still see the refusal via rapierRuntimeBlocked (that's what the window exists for).
+    // Reset prepares wait too: in this state (`!_sg02Init && !_sg02`) the reset's
+    // _disableSg02DynamicAuthority is a pure no-op — no live authority, no token bump —
+    // so the exclusion only bought an instant PHYSICS_BACKEND_UNAVAILABLE bounce.
+    if (!this._sg02Init && !this._sg02) {
+      const remainingMs = rapierRuntimeBlockedRemainingMs();
+      if (remainingMs > 0 && remainingMs <= initTimeoutMs) {
+        const sg02TokenAtDefer = this._sg02Token;
+        await new Promise((resolve) => { setTimeout(resolve, remainingMs + 1); });
+        if (sg02TokenAtDefer !== this._sg02Token) {
+          // A concurrent prepare minted while this one waited out the window —
+          // the fresher call owns the race, but a `false` here is what the live
+          // caller's waitForPhysics reads as backend-failure → the deterministic
+          // backend bounce under overlapping Continue+reset clicks. Adopt the
+          // winner's in-flight init on the same envelope instead.
+          if (this._sg02Init) {
+            let adoptTimer = null;
+            const adopted = await Promise.race([
+              Promise.resolve(this._sg02Init).then(() => true, () => true),
+              new Promise((resolve) => { adoptTimer = setTimeout(() => resolve(false), sg02InitJoinMs()); }),
+            ]);
+            if (adoptTimer !== null) clearTimeout(adoptTimer);
+            if (!adopted) return false;
+            this._updateSg02DynamicAuthority(0, state);
+            this._diag.tickMs = 0;
+            this._publishRuntime(state);
+            return this._diag.sg02Ready === true;
+          }
+          return false;
+        }
+      }
+    }
+    if (reset) {
+      // A reset prepare while an init is still pending used to stamp a new token
+      // and mint a second concurrent wasm world-init (the loser ran to
+      // completion before dispose). Await the pending init's settle on the same
+      // envelope so N overlapping clicks can't fan out N inits.
+      if (this._sg02Init) {
+        let settleTimer = null;
+        await Promise.race([
+          Promise.resolve(this._sg02Init).then(() => true, () => true),
+          new Promise((resolve) => { settleTimer = setTimeout(() => resolve(false), sg02InitJoinMs()); }),
+        ]);
+        if (settleTimer !== null) clearTimeout(settleTimer);
+      }
+      this._disableSg02DynamicAuthority();
+    }
     this._updateSg02DynamicAuthority(0, state);
     if (this._sg02Init) {
-      const initTimeoutMs = Number.isFinite(options.initTimeoutMs)
-        ? Math.max(0, options.initTimeoutMs)
-        : SG02_INIT_PREPARE_TIMEOUT_MS;
       let timer = null;
+      const sg02TokenAtPrepare = this._sg02Token;
       const settled = await Promise.race([
         Promise.resolve(this._sg02Init).then(() => true, () => true),
-        new Promise((resolve) => { timer = setTimeout(() => resolve(false), initTimeoutMs); }),
+        // A mint issued by this call keeps the full bring-up envelope even when
+        // the caller plumbed a shorter budget for the joins above.
+        new Promise((resolve) => { timer = setTimeout(() => resolve(false), SG02_INIT_PREPARE_TIMEOUT_MS); }),
       ]);
       if (timer !== null) clearTimeout(timer);
+      // A retry/reset that landed during the wait owns the authority now: this stale
+      // tail must not run an out-of-schedule step, drain the new owner's contact
+      // receipts early, or stomp its runtime diagnostics.
+      if (sg02TokenAtPrepare !== this._sg02Token) return false;
       if (!settled) {
         console.warn('[physics] SG-02 dynamic authority init did not settle within'
           + ` ${Math.round(initTimeoutMs)} ms; startup fails closed to a retryable state instead of`
@@ -503,7 +569,9 @@ export const physics = {
   _updateSg02DynamicAuthority(dt, state) {
     this._disableRapierBackend();
     this._diag.backend = 'rapier-dynamic';
-    if (!this._sg02Init && !this._sg02) {
+    // Init is in failure backoff — retry when the window expires instead of
+    // minting a doomed attempt (and its warn) every tick.
+    if (!this._sg02Init && !this._sg02 && !rapierRuntimeBlocked()) {
       const token = ++this._sg02Token;
       const init = createSg02DynamicBodyOwner({
         mode: 'rapier-dynamic',
@@ -550,6 +618,7 @@ export const physics = {
           return null;
         });
       this._sg02Init = init;
+      this._sg02InitArmedAt = Date.now();
     }
 
     if (!this._sg02) {
@@ -704,6 +773,7 @@ export const physics = {
     if (this._sg02 && typeof this._sg02.dispose === 'function') this._sg02.dispose();
     this._sg02 = null;
     this._sg02Init = null;
+    this._sg02InitArmedAt = 0;
     this._diag.sg02Ready = false;
     this._diag.sg02Bodies = 0;
     this._diag.sg02DynamicBodies = 0;
@@ -1257,6 +1327,9 @@ export const physics = {
       return;
     }
     if (!this._rapierInit) {
+      // Init is in failure backoff — retry when the window expires instead of
+      // minting a doomed attempt (and its warn) every tick.
+      if (rapierRuntimeBlocked()) return;
       const token = ++this._rapierToken;
       this._rapierInit = import('./rapierCollisionWorld.js')
         .then((m) => m.createRapierCollisionWorld())
