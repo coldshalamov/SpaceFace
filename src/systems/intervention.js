@@ -242,16 +242,17 @@ export const intervention = {
       ? 'Raiders picked the wreck — one still circles it.'
       : 'Hold largely intact — work it before the jumpers do.';
     const arrived = job.arrived === true;
+    const kindLower = kindLabel.toLowerCase();
     this.bus.emit('alert', {
       key: 'intervention-' + rec.id,
       sev: 'warn',
-      text: kindLabel.toUpperCase() + (arrived ? ' RECOVERY SITE — SALVAGE AVAILABLE' : ' LOST — SALVAGE AVAILABLE'),
+      text: (arrived ? `${kindLabel} WRECK ON SITE` : `${kindLabel} LOST`) + ' — SALVAGE AVAILABLE',
       ttl: ALERT_TTL,
     });
     this.bus.emit('toast', {
       text: arrived
-        ? `Recovery site: your lost ${rec.kind}'s wreck. ${causeLine} (${rec.recoverable}u recoverable).`
-        : `${kindLabel} lost. ${causeLine} (${rec.recoverable}u recoverable).`,
+        ? `Recovery site: the wreck of your lost ${kindLower}. ${causeLine} (${rec.recoverable}u recoverable).`
+        : `${kindLabel} lost — its wreck can be salvaged. ${causeLine} (${rec.recoverable}u recoverable).`,
       kind: 'warn',
       ttl: 6,
     });

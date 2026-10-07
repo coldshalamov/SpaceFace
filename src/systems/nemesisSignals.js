@@ -9,7 +9,7 @@ export function createNemesisSignals() {
       this.destroy(); this._offs = [];
       const on = (name, fn) => this._offs.push(ctx.bus.on(name, fn));
       on('nemesis:announced', (p) => ctx.bus.emit('toast', {
-        text: `COUNTEREXAMPLE INBOUND — ${p.tell} Counterplay: ${p.opening}`, kind: 'warn',
+        text: `COUNTEREXAMPLE INBOUND — ${p.tell} ${p.opening}`, kind: 'warn',
       }));
       on('nemesis:voice', (p) => {
         const voice = ctx.helpers && ctx.helpers.voice;
@@ -19,7 +19,7 @@ export function createNemesisSignals() {
         });
       });
       on('nemesis:surrenderOffered', (p) => ctx.bus.emit('toast', {
-        text: 'COUNTEREXAMPLE SURRENDERS — Orra has ceased fire. Hold fire and accept the surrender in comms, or finish the fight.',
+        text: 'COUNTEREXAMPLE SURRENDERS — Orra has ceased fire. Hold fire and answer its surrender on comms, or finish the fight.',
         kind: 'info',
       }));
       on('nemesis:resolved', (p) => ctx.bus.emit('news:headline', {

@@ -1356,7 +1356,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       ? 'STATUS · WEAPONS AUTHORIZED. HEAVE TO.'
       : 'STATUS · HOLD FIRE. FLY CLEAN.';
   } else if (offer.kind === 'patrol' && id === 'identify') {
-    line = `${callsign(target)} · LAWFUL PATROL · ACTIVE BEAT`;
+    line = `${callsign(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
   } else if (offer.kind === 'worker' && id === 'status') {
     line = workerStatusText(target, state);
   } else if (offer.kind === 'worker' && id === 'identify') {
@@ -1375,7 +1375,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
         .find((candidate) => candidate && candidate.sectorId === CERES_ACTIVITY_SECTOR_ID
           && candidate.state === 'open' && !candidate.reservationId)
       : null;
-    line = opportunity ? `HELP · RICH SEAM +${opportunity.bonusU}u · MINER TAKING THE HOT CUT` : 'HELP · NO OPEN SEAM';
+    line = opportunity ? `HELP · RICH SEAM · +${opportunity.bonusU}u BONUS ON OFFER` : 'HELP · NO OPEN SEAM';
   } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_TOW_ASSIST) {
     const hire = authority.towAssist || {};
     if (hire.granted === true) {
@@ -1388,7 +1388,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
   } else if (offer.kind === 'worker'
     && [CONTACT_HAIL_ACTION_RECOVER, CONTACT_HAIL_ACTION_STEAL, CONTACT_HAIL_ACTION_ABANDON].includes(id)) {
     const disabled = ceresDisabledHaulerTruth(state, target);
-    if (!disabled) line = `${id.toUpperCase()} · RECOVERY WINDOW CLOSED.`;
+    if (!disabled) line = 'TOO LATE · THE RECOVERY WINDOW HAS CLOSED.';
     else if (id === CONTACT_HAIL_ACTION_RECOVER) line = 'RECOVER · MASSLINE THE HULL TO LAWFUL COVER.';
     else if (id === CONTACT_HAIL_ACTION_STEAL) line = 'STEAL · MANIFEST JETTISON REQUESTED.';
     else line = 'ABANDON · DISTRESS RELAY CLOSED.';

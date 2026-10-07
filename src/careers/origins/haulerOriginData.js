@@ -187,8 +187,8 @@ export const HAULER_ORIGIN_OFFER_COPY = Object.freeze({
   body: 'Three yard runs. Risk, bond, and real market numbers. Decline freely.',
   acceptLabel: 'Take hauler path',
   declineLabel: 'Not now',
-  toastOffer: 'Hauler origin posted at dock. Optional.',
-  toastDecline: 'Hauler path declined. Still open later.',
+  toastOffer: 'Freight work posted at this dock — three yard runs, no obligation.',
+  toastDecline: 'Offer declined — you can take the hauler path later.',
   toastComplete: 'Hauler origin complete. Freight ticket stamped.',
 });
 

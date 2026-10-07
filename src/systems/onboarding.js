@@ -358,7 +358,7 @@ const ORE_PREFIXES = [
 
 export const ONBOARDING_OBJECTIVE_MARKER = Object.freeze({
   markerKind: 'mission-objective',
-  mapLabel: '◆ AMBER DIAMOND',
+  mapLabel: '◆ Objective',
 });
 
 // Canonical live waypoint builder shared with headless first-ten-minute acceptance. Marker identity

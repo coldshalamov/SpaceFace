@@ -7525,7 +7525,7 @@ export const missions = {
           if (params.orderWarnGate !== ahead) {
             params.orderWarnGate = ahead;
             this.bus.emit('toast', {
-              text: `${m.title}: gates run in order — gate ${next + 1}/${gateCount} first.`,
+              text: `${m.title}: race gates in order — gate ${next + 1} of ${gateCount} first.`,
               kind: 'warn',
               ttl: 3,
             });
@@ -7612,8 +7612,8 @@ export const missions = {
           text: authored
             ? (authored.brief || 'Finish the physical job — two ways through')
             : t === 'tow_recovery'
-              ? 'Yard: latch the slag core and tow it in, or sling it into the berth'
-              : 'Dock: a life pod has to be on the line',
+              ? 'Yard: latch the slag core on your tow line and bring it in'
+              : 'Dock with the life pod still on your tow line',
           kind: 'warn',
           ttl: 3,
         });
@@ -8117,7 +8117,7 @@ export const missions = {
       state.story.flags.contract_47a_payment_withheld = true;
       state.story.flags.contract_47a_pending = true;
       this.bus.emit('toast', {
-        text: 'PAYMENT WITHHELD — CONTRACT 47-A STATUS: PENDING / OPEN',
+        text: 'PAYMENT WITHHELD — CONTRACT 47-A IS STILL PENDING',
         kind: 'warn',
         ttl: 5,
       });

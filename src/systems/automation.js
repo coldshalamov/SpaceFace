@@ -2000,7 +2000,7 @@ export const automation = {
     this.bus.emit('automation:assetRepossessed', {
       kind: pick.kind, id: pick.inst.id, ...(breakdown ? { breakdown } : {}),
     });
-    this.bus.emit('toast', { text: `Asset repossessed (unpaid upkeep): ${pick.kind}`, kind: 'error', ttl: 4 });
+    this.bus.emit('toast', { text: `${assetLabel(pick.kind)} repossessed — its upkeep went unpaid`, kind: 'error', ttl: 4 });
   },
 
   // ------------------------------------------------------------------------------------------
@@ -2171,8 +2171,8 @@ export const automation = {
   assignProgram(droneId, templateId) {
     const g = this.state.automation.drones.find((x) => x.id === droneId);
     if (!g) return false;
-    if (!templateId) { clearTemplate(g); this.toast('Drone program cleared (legacy mode)', 'info'); return true; }
-    if (!TEMPLATES[templateId]) { this.toast('Unknown program: ' + templateId, 'error'); return false; }
+    if (!templateId) { clearTemplate(g); this.toast('Drone program cleared — the drone returns to default mining', 'info'); return true; }
+    if (!TEMPLATES[templateId]) { this.toast('That drone program is not available at this deck', 'error'); return false; }
     assignTemplate(g, templateId);
     this.bus.emit('automation:programAssigned', {
       kind: 'drone', id: g.id, defId: g.defId, templateId,
@@ -2497,7 +2497,7 @@ export const automation = {
       sectorId: sectorId || null,
       shipDefId,
     });
-    this.bus.emit('toast', { text: `${kind} lost${sectorId ? ' in ' + prettySector(sectorId) : ''}`, kind: 'error', ttl: 4 });
+    this.bus.emit('toast', { text: `${assetLabel(kind)} lost${sectorId ? ` in ${prettySector(sectorId)}` : ''}`, kind: 'error', ttl: 4 });
   },
 
   // ------------------------------------------------------------------------------------------
@@ -2821,7 +2821,7 @@ export const automation = {
     const hrs = (elapsed / 3600).toFixed(1);
     if (credited > 0 || cycles > 0 || lost > 0 || distressed) {
       this.bus.emit('toast', {
-        text: `While away (${hrs}h): +${credited} cr, ${cycles} cycles${lost ? `, ${lost} lost` : ''}`,
+        text: `While away (${hrs}h): earned +${credited} cr over ${cycles} production runs${lost ? `, ${lost} asset${lost === 1 ? '' : 's'} lost` : ''}`,
         kind: 'info',
         ttl: 6,
       });
@@ -3413,6 +3413,15 @@ function titleCaseWords(value) {
 function prettySector(id) {
   const sector = SECTOR_BY_ID.get(id);
   return (sector && sector.name) || titleCaseWords(String(id || '').replace(/^sector_/, ''));
+}
+
+// Player-facing word for an automated asset kind ('trader' → 'Trader'), never the raw slug.
+const ASSET_LABEL = {
+  drone: 'Drone', mining_drone: 'Mining drone', trader: 'Trade hauler',
+  outpost: 'Outpost', automation_outpost: 'Outpost',
+};
+function assetLabel(kind) {
+  return ASSET_LABEL[kind] || titleCaseWords(String(kind || 'asset'));
 }
 
 function routeLabel(route) {

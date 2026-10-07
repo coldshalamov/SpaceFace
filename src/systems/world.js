@@ -754,8 +754,11 @@ export const world = {
     const days = Math.max(1, Math.floor((Number(p.elapsedSimT) || 0) / DAY_SECONDS));
     const factionId = signal.dominantFactionId || signal.ownerId || null;
     const faction = FACTION_SHORT_NAMES.get(factionId) || null;
-    this.bus.emit('toast', {
-      text: `While away (${days}d): ${p.sectorName || sectorId} — ${laneDangerPhrase(Math.max(0, Math.min(1, signal.danger)))}${faction ? `; ${faction} holds the lane` : ''}.`,
+      // The id fallback is a last resort — humanize it ('sector_io_reach' → 'Io Reach'), never print the slug.
+      const sectorLabel = p.sectorName
+        || String(sectorId).replace(/^sector_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      this.bus.emit('toast', {
+        text: `While away (${days}d): ${sectorLabel} — ${laneDangerPhrase(Math.max(0, Math.min(1, signal.danger)))}${faction ? `; ${faction} holds the lane` : ''}.`,
       kind: 'info',
       ttl: 6,
     });
@@ -4291,7 +4294,7 @@ export const world = {
     while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
     this.bus.emit('frontierRumor:acquired', { ...record, bearingCenter: { ...record.bearingCenter } });
     const sourceLabel = record.source === 'sensor_post' ? 'Sensor Post intel' : record.kindLabel;
-    this.bus.emit('toast', { text: `${sourceLabel} added · approximate search only`, kind: 'info', ttl: 4 });
+    this.bus.emit('toast', { text: `${sourceLabel} added — the search area is approximate`, kind: 'info', ttl: 4 });
     return true;
   },
 
@@ -5681,7 +5684,7 @@ export const world = {
     this.bus.emit('scan:completed', { targetId: null });
     const fieldLead = this._scanFieldLead(state);
     this.bus.emit('toast', {
-      text: `Sector scanned: ${stationCount} stations, ${fieldCount} fields, ${revealedPois} POIs`
+      text: `Sector scanned: ${stationCount} stations, ${fieldCount} fields, ${revealedPois} landmarks`
         + (fieldLead ? ` — ${fieldLead}` : ''),
       kind: 'info', ttl: 4,
     });
@@ -5773,7 +5776,14 @@ export const world = {
               type: p.type,
             });
           }
-          this.bus.emit('toast', { text: `POI identified: ${(entData && entData.name) || p.poiId}`, kind: 'info', ttl: 4 });
+          // Never show a raw internal id ('poi_kettle_stern') — humanize the slug when the entity
+          // carries no authored name.
+          const fallbackName = String(p.poiId || '')
+            .replace(/^poi_/, '')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase())
+            .trim();
+          this.bus.emit('toast', { text: `Landmark identified: ${(entData && entData.name) || fallbackName || 'unidentified contact'}`, kind: 'info', ttl: 4 });
         }
       }
     }

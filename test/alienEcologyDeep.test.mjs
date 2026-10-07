@@ -153,9 +153,9 @@ test('domain threshold fires once per sector at C5-class fields', () => {
   const c = pointContaminationAt(state, 'sector_ashfall_reach', 800, 800);
   assert.ok(c >= DOMAIN_THRESHOLD.minC, `point contamination ${c} >= ${DOMAIN_THRESHOLD.minC}`);
   tickAlienEcology(world, 0.5);
-  assert.equal(emitLog.filter((e) => e.type === 'toast' && e.p.text.includes('DOMAIN THRESHOLD')).length, 1);
+  assert.equal(emitLog.filter((e) => e.type === 'toast' && e.p.text.includes('domain-threshold field')).length, 1);
   tickAlienEcology(world, 0.5);
-  assert.equal(emitLog.filter((e) => e.type === 'toast' && e.p.text.includes('DOMAIN THRESHOLD')).length, 1);
+  assert.equal(emitLog.filter((e) => e.type === 'toast' && e.p.text.includes('domain-threshold field')).length, 1);
 });
 
 test("wren's field recognition lands once per save in C0.6+ space", () => {

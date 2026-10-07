@@ -2557,7 +2557,7 @@ export const ships = {
     ), 0);
     if (hullPresetCount >= LOADOUT_PRESET_CAP_PER_HULL) {
       this.bus.emit('toast', {
-        text: `${LOADOUT_PRESET_CAP_PER_HULL} of ${LOADOUT_PRESET_CAP_PER_HULL} builds on this hull`,
+        text: `All ${LOADOUT_PRESET_CAP_PER_HULL} build banks are full on this hull — delete one to save another`,
         kind: 'error',
         ttl: 3,
       });

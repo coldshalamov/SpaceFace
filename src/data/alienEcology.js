@@ -1372,7 +1372,7 @@ export const DEEP_FILTER_GATE = Object.freeze({
 // identity + mapKnowledge note). Fires once per sector visit.
 export const DOMAIN_THRESHOLD = Object.freeze({
   minC: 0.8,
-  toast: 'The scanner flattens — returns resolve late, pale, in ranks. DOMAIN THRESHOLD field.',
+  toast: 'The scanner flattens — returns resolve late, pale, in ranks. A domain-threshold field: instruments degrade at this density.',
   knowledge: 'domain-threshold field: instrument discipline degrades at this density',
 });
 

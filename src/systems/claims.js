@@ -445,7 +445,7 @@ export const claims = {
     };
     this.state.claims.bodies.push(body);
     this._applyPoiLabel(body);
-    this.bus.emit('toast', { text: 'Claimed ' + body.name + ' · ' + body.slots + ' module slots', kind: 'good', ttl: 4 });
+    this.bus.emit('toast', { text: `Claimed ${body.name} — ${body.slots} module slots`, kind: 'good', ttl: 4 });
     this.bus.emit('claim:claimed', { body });
     this.bus.emit('audio:cue', { id: 'confirm' });
     return true;
@@ -553,7 +553,7 @@ export const claims = {
       return false;
     }
     if (body.spec && (sumStore(body.spec.store.input) + sumStore(body.spec.store.output) > 0 || body.spec.convoy)) {
-      this.bus.emit('toast', { text: 'Empty site storage before re-commissioning ' + body.name, kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: `Clear the site's storage before re-commissioning ${body.name}`, kind: 'error', ttl: 3 });
       return false;
     }
     if (!body.modules.includes(def.requiresModule)) {
@@ -612,7 +612,7 @@ export const claims = {
     const ask0 = Math.floor(Number(qty) || 0);
     if (!body || !def || ask0 <= 0) return 0;
     if (def.id === 'spec_bastion') {
-      this.bus.emit('toast', { text: 'The garrison takes no freight', kind: 'info', ttl: 3 });
+      this.bus.emit('toast', { text: 'The bastion garrison accepts no freight', kind: 'info', ttl: 3 });
       return 0;
     }
     if (def.id === 'spec_refinery' && !REFINE_MAP[goodId]) {

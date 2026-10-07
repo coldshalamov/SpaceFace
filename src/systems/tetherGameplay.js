@@ -167,6 +167,10 @@ const CUT_DENIAL_COPY = Object.freeze({
   physics_port_unavailable: 'winch unavailable',
   cut_rejected: 'the line holds',
 });
+// Fallback when a denial reason has no authored line: a readable phrase, never a raw slug.
+function humanizeReasonSlug(reason) {
+  return String(reason).replaceAll('_', ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+}
 const NO_REEL_RESULT = Object.freeze({ changed: false, reason: null, attachment: null });
 
 /** The player's own spool is dead. A hull with no spool subsystem is not blocked. */
@@ -1583,7 +1587,7 @@ export const tetherGameplay = {
     });
     const verb = direction === 'reel_in' ? 'reel-in' : 'pay-out';
     this.bus.emit('toast', {
-      text: `Massline ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || String(reason).replaceAll('_', ' ')}`,
+      text: `Massline ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
       kind: 'warn',
       ttl: 2,
     });
@@ -1901,7 +1905,7 @@ export const tetherGameplay = {
       if (this._lastCutDenial !== key) {
         this._lastCutDenial = key;
         this.bus.emit('toast', {
-          text: `Massline cut refused: ${CUT_DENIAL_COPY[reason] || String(reason).replaceAll('_', ' ')}`,
+          text: `Massline cut refused: ${CUT_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
           kind: 'warn',
           ttl: 2,
         });

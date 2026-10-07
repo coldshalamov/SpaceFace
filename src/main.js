@@ -83,12 +83,12 @@ function installGlobalErrorBoundary() {
     // Debounce the toast: at most one per second, and collapse a burst into a count.
     const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     if (now - lastToastAt < 1000) { toastCount++; return; }
-    const burst = toastCount > 0 ? ` (${toastCount + 1} errors)` : '';
+    const burst = toastCount > 0 ? ` ${toastCount + 1} errors were logged.` : ' The error was logged.';
     toastCount = 0; lastToastAt = now;
     try {
       const sf = window.SF;
       if (sf && sf.bus && typeof sf.bus.emit === 'function') {
-        sf.bus.emit('toast', { text: 'Something went wrong — see console.' + burst, kind: 'warn', ttl: 5 });
+        sf.bus.emit('toast', { text: 'Something went wrong.' + burst, kind: 'warn', ttl: 5 });
       }
     } catch (_) { /* game may not be up yet; the console log is enough */ }
   };

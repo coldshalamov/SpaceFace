@@ -428,7 +428,7 @@ export function createRescuedWorkerReturn(owner) {
     });
     bus.emit('toast', {
       kind: 'info', ttl: 5,
-      text: `${ROLE_LABELS[record.role] || 'Worker'} you rescued is back on the job.`,
+      text: `The ${ROLE_LABELS[record.role] || 'worker'} you rescued is back on the job.`,
     });
   }
 
