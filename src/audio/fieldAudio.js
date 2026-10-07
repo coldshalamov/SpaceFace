@@ -64,7 +64,10 @@ export function isFieldLoopKey(key) {
 export function collectFieldLoopSpecs(state, out = []) {
   out.length = 0;
   const active = state && state.fields && state.fields.active;
-  if (!Array.isArray(active) || !active.length) return out;
+  // The early-out covers the field-record scan only — the Gyre Snare spec below must
+  // still evaluate on an empty belt, or the beam hum is silent until another field
+  // loop happens to be running.
+  if (Array.isArray(active) && active.length) {
   const entities = state.entities;
   const player = playerPos(state);
   const px = player ? player.x : 0;
@@ -94,6 +97,75 @@ export function collectFieldLoopSpecs(state, out = []) {
       position: pos,
     });
     if (out.length >= FIELD_LOOP_CAP) break;
+  }
+  }
+  // The Gyre Snare lash isn't a field record, but it owns the same sustained-voice
+  // contract: a live beam gets one quiet glassy loop anchored on the maw, envelope
+  // riding strain01 so the hum tightens as the clump nears the slip point.
+  const gyre = state && state.gyreSnare;
+  if (gyre && gyre.phase && gyre.phase !== 'off' && out.length < FIELD_LOOP_CAP) {
+    const strain = Number.isFinite(gyre.strain01) ? gyre.strain01 : 0;
+    // Katamari escalation arc: the loop's envelope (which also drives its pitch — a
+    // winding field spins up) rides clump mass, so the hum swells and sharpens as
+    // the ball grows instead of mass staying ear-invisible until the FULL chime.
+    const massFrac = Number.isFinite(gyre.clumpMass) && Number.isFinite(gyre.maxClumpMass) && gyre.maxClumpMass > 0
+      ? Math.min(1, gyre.clumpMass / gyre.maxClumpMass) : 0;
+    const pos = gyre.maw && Number.isFinite(gyre.maw.x) ? gyre.maw : null;
+    if (pos) {
+      out.push({
+        key: FIELD_LOOP_PREFIX + 'gyre',
+        fieldId: -1,
+        kind: 'gyre',
+        recipeId: 'sfx_field_loop_gyre',
+        gain: 0.2,
+        // Track the ship, not the maw: an untracked positional loop freezes its pan at
+        // beam-on heading (the maw rides ~200 wu out, exactly the pan-radius boundary),
+        // so a 90° turn would leave the hum in the wrong ear. A nose-mounted lash hums
+        // centered on the hull — honest, and it dies with the player like any track.
+        trackId: state.playerId,
+        envelope: Math.min(1, 0.35 + 0.65 * strain + 0.22 * massFrac),
+        phase: 'active',
+        position: pos,
+      });
+    }
+  }
+  // A launched ball keeps its own voice after the beam closes: a low rumble tracked to
+  // the flying entity, so the arc reads at range for its whole TTL and dies with the
+  // body (the grave burst covers the death moment itself).
+  if (gyre && gyre.launchedId != null && gyre.ballPos && Number.isFinite(gyre.ballPos.x)
+      && out.length < FIELD_LOOP_CAP) {
+    const mass = Number.isFinite(gyre.ballMass) ? gyre.ballMass : 0;
+    out.push({
+      key: FIELD_LOOP_PREFIX + 'gyreBall',
+      fieldId: -2,
+      kind: 'gyreBall',
+      recipeId: 'sfx_field_loop_gyre_ball',
+      gain: 0.24,
+      trackId: gyre.launchedId,
+      envelope: Math.min(1, 0.5 + mass / 2400),
+      phase: 'active',
+      position: gyre.ballPos,
+    });
+  }
+  // Secondary bowls get the same flight voice, keyed by entity id so each rumble
+  // dies with its own ball — a second launch was silent for its whole flight.
+  if (gyre && Array.isArray(gyre.balls)) {
+    for (let i = 0; i < gyre.balls.length && out.length < FIELD_LOOP_CAP; i++) {
+      const b = gyre.balls[i];
+      if (!b || b.id == null || b.id === gyre.launchedId || !Number.isFinite(b.x)) continue;
+      const mass = Number.isFinite(b.mass) ? b.mass : 0;
+      out.push({
+        key: FIELD_LOOP_PREFIX + 'gyreBall' + String(b.id),
+        fieldId: -2,
+        kind: 'gyreBall',
+        recipeId: 'sfx_field_loop_gyre_ball',
+        gain: 0.2,
+        trackId: b.id,
+        envelope: Math.min(1, 0.45 + mass / 2400),
+        phase: 'active',
+        position: { x: b.x, z: b.z },
+      });
+    }
   }
   return out;
 }

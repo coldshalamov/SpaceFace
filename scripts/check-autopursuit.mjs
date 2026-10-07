@@ -45,8 +45,14 @@ check('weapon lead stays independent from ship steering', () => {
 check('auto-target keeps ordinary ship physics and no orbit controller', () => {
   assertSource(/applyAutoTargetHelmProfile/, flightSource,
     'Flight V3 must retain the responsive auto-target helm profile');
-  assertNoSource(/AUTOPURSUIT_FOLLOW_DIST|pursuitFollowPoint|stepPursuitSlotAssist/, flightSource,
+  assertNoSource(/AUTOPURSUIT_FOLLOW_DIST|pursuitFollowPoint/, flightSource,
     'Flight V3 must not contain an automatic orbit/follow controller');
+  // FB-001 (83461978d) ships an opt-in pursuit-slot assist — manual flight only, gated behind
+  // gameplay.pursuitSlotAssist === true, and it queues one bounded impulse through the physics
+  // membrane. That is a player-elected lane, not the banned automatic orbit/follow controller;
+  // guard the gate instead of the symbol name.
+  assertSource(/pursuitSlotAssist !== true/, flightSource,
+    'pursuit-slot assist must stay opt-in behind the gameplay.pursuitSlotAssist setting');
 });
 
 const failed = checks.filter((entry) => !entry.ok);

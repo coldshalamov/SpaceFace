@@ -3001,6 +3001,240 @@ export const RECIPES = [
     gainMult: 1.0,
     pitchRange: [0.96, 1.1],
   },
+  // --- Gyre Snare (held-verb katamari lash) ---------------------------------
+  // Snag: a crystalline "grip" — a rising glassy fifth into a sub bite, the lash
+  // locking onto mass. Distinct from lock_acquired (UI) and masslineLatch (rope):
+  // this is the gravity tool taking hold.
+  {
+    id: 'sfx_gyre_snag',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_snag_glass', 'sfx_gyre_snag_bite'],
+    gainMult: 0.9,
+    pitchRange: [0.97, 1.06],
+  },
+  {
+    id: 'sfx_gyre_snag_glass',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 620, freqSweep: [620, 1240], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_gyre_snag_bite',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.05 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.9,
+    subBass: { startFreq: 110, endFreq: 46, dur: 0.12, gain: 0.6 },
+  },
+  // Absorb: the small glassy tick of a swallowed mass clicking into the clump.
+  // Quiet on purpose — it can fire several times a second while the maw feeds.
+  {
+    id: 'sfx_gyre_absorb',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 480, freqSweep: [480, 900], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 1700, filterQ: 2.2,
+    pitchRange: [0.9, 1.25],
+  },
+  // Launch: the bowling-ball release — a whip-crack transient over a big falling
+  // sub whoosh. The single loudest voice in the weapon's vocabulary.
+  {
+    id: 'sfx_gyre_launch',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_launch_crack', 'sfx_gyre_launch_body', 'sfx_gyre_ball_whoosh'],
+    gainMult: 1.0,
+    pitchRange: [0.92, 1.05],
+  },
+  {
+    id: 'sfx_gyre_launch_crack',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.05 },
+    filterType: 'highpass', filterFreq: 1800, filterQ: 0.8,
+    transientClick: { gain: 0.85 },
+  },
+  {
+    id: 'sfx_gyre_launch_body',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 520, freqSweep: [520, 90], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 2400, filterQ: 0.7,
+    subBass: { startFreq: 170, endFreq: 34, dur: 0.32, gain: 0.7 },
+  },
+  // Ball flight: a soft airy whoosh tailing the launch transient — the katamari mass reads
+  // at distance instead of going silent the moment it leaves the maw. Rides inside the
+  // launch layer so it needs no per-tick loop plumbing.
+  {
+    id: 'sfx_gyre_ball_whoosh',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.18, sustain: 0.35, release: 1.4 },
+    filterType: 'bandpass', filterFreq: 720, filterQ: 0.9,
+  },
+  // Windup: the ~120 ms coil's voice — a thin rising glass draw for the slingshot's
+  // pull-back, shorter and reedier than the strain rise so the two never collide.
+  {
+    id: 'sfx_gyre_windup',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 430, freqSweep: [430, 960], sweepTimeS: 0.11,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.15 },
+    filterType: 'bandpass', filterFreq: 1250, filterQ: 1.7,
+    pitchRange: [0.96, 1.05],
+  },
+  // Ball death: the clump's quiet grave — a muffled glass shatter for a ball expiring in
+  // open space (impacts already sing through collision audio; this covers the silent TTL).
+  // A bright clink leads the dust poof so it reads as breaking glass, not a cough.
+  {
+    id: 'sfx_gyre_ball_death',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_ball_death_clink', 'sfx_gyre_ball_death_dust'],
+    gainMult: 0.85,
+    pitchRange: [0.94, 1.05],
+  },
+  {
+    id: 'sfx_gyre_ball_death_clink',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 880, freqSweep: [880, 1760], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 1800, filterQ: 2.0,
+  },
+  {
+    id: 'sfx_gyre_ball_death_dust',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.7 },
+    filterType: 'bandpass', filterFreq: 950, filterQ: 1.2,
+  },
+  // Strain: rising glass tension when the tethered clump nears the slip point — the beam's
+  // shimmer sibling stretched slower and higher so "about to lose it" has its own voice.
+  {
+    id: 'sfx_gyre_strain',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 520, freqSweep: [520, 1420], sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.05, sustain: 0.0, release: 0.55 },
+    filterType: 'bandpass', filterFreq: 1600, filterQ: 1.8,
+    pitchRange: [0.94, 1.04],
+  },
+  // Lash loop: the beam's sustained glassy hum while it's live — a quiet presence voice
+  // beside the field loops; envelope rides strain01 so a straining clump tightens it.
+  {
+    id: 'sfx_field_loop_gyre',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'sine',
+    baseFreq: 300, freqSweep: [300, 336], sweepTimeS: 4.5,
+    gainEnvelope: { attack: 0.3, sustain: 1.0, release: 0.4, peak: 0.2 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.1,
+    lfoRate: 0.9, lfoDepth: 0.12,
+  },
+  // Ball rumble: the thrown clump's flight voice — a low bandpassed groan tracking the
+  // body so the destructive arc reads at range until the grave burst. Envelope rides
+  // the thrown mass.
+  {
+    id: 'sfx_field_loop_gyre_ball',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'sine',
+    baseFreq: 82, freqSweep: [82, 96], sweepTimeS: 3.2,
+    gainEnvelope: { attack: 0.15, sustain: 1.0, release: 0.5, peak: 0.24 },
+    filterType: 'bandpass', filterFreq: 260, filterQ: 1.0,
+    lfoRate: 0.7, lfoDepth: 0.15,
+  },
+  // Saturation: one bright glass chime over a sub thump when the clump first crosses the
+  // mass cap — the FULL flag lands through the ear, not just the HUD.
+  {
+    id: 'sfx_gyre_full',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 990], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.01, sustain: 0.3, release: 0.5 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.2,
+    pitchRange: [0.97, 1.03],
+  },
+  // Fuse-low: the capacitor's dying gasp — a low falling thrum, latched once per hold
+  // ~3 s before the dry auto-bowl so the lash firing itself lands attributed.
+  {
+    id: 'sfx_gyre_fuse_low',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 210, freqSweep: [210, 130], sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.04, sustain: 0.15, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 700, filterQ: 1.0,
+    pitchRange: [0.98, 1.02],
+  },
+  // Beam wake: a soft rising glass shimmer as the cone ignites — lighter than the snag bite
+  // (which is the grip landing). The lash switching on, not the catch.
+  {
+    id: 'sfx_gyre_beam',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 340, freqSweep: [340, 980], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.02, sustain: 0.0, release: 0.24 },
+    filterType: 'bandpass', filterFreq: 1100, filterQ: 1.4,
+    pitchRange: [0.96, 1.08],
+  },
+  // Lash release: the beam letting go without a launch — a short descending glass fizzle
+  // over a quick sub exhale. Fired at low gain for an empty-beam close and fuller when a
+  // clump slips the beam (strain break / forced drop).
+  {
+    id: 'sfx_gyre_drop',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_drop_glass', 'sfx_gyre_drop_tail'],
+    gainMult: 0.8,
+    pitchRange: [0.94, 1.07],
+  },
+  {
+    id: 'sfx_gyre_drop_glass',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 980, freqSweep: [980, 260], sweepTimeS: 0.14,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 1300, filterQ: 1.6,
+  },
+  {
+    id: 'sfx_gyre_drop_tail',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 220, freqSweep: [220, 70], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.16 },
+    filterType: 'lowpass', filterFreq: 800, filterQ: 0.7,
+    subBass: { startFreq: 90, endFreq: 40, dur: 0.14, gain: 0.45 },
+  },
+  // Beam power-down: the quiet tail for releasing an empty beam (or losing the pilot) — a
+  // single falling tone, no bite. Distinct id so the HUD can tell "nothing held" apart from
+  // "the ball escaped".
+  {
+    id: 'sfx_gyre_off',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 620, freqSweep: [620, 180], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.2,
+    pitchRange: [0.96, 1.06],
+  },
   // Capacitor spool: the rising whine a spinal railgun / siege lance makes while its capacitors
   // recharge for the next shot. Heard on the cooldown tail so the released round feels charged.
   {

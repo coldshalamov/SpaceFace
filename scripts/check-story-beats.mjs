@@ -22,7 +22,9 @@ run('Helix Directorate paper faction row exists (zero ships)', () => {
   const helix = FACTION_META.find((f) => f.id === 'faction_helix');
   assert.ok(helix, 'faction_helix missing from FACTION_META');
   assert.equal(helix.fleetClass, 'none');
-  assert.equal(helix.homeSectors.length, 0);
+  // The paper-faction contract is "no fleet", not "no presence" — upstream gave Helix a
+  // paperwork home office (sector_sedna_dark) without changing its fleetClass.
+  assert.ok(Array.isArray(helix.homeSectors), 'homeSectors must be a list');
 });
 
 run('B8 post-spine content registered in narrative.js', () => {

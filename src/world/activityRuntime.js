@@ -1684,7 +1684,11 @@ function classifyWorld(state, runtime) {
     // it) instead of aggregating into anonymous population.
     const combatPostured = !!(ai && (ai.combatant === true || ai.engagementTrigger != null
       || ai.huntPlayer === true || ai.forcePlayerTarget === true
-      || (ai.activity && ai.activity.kind === 'attack_run')));
+      || (ai.activity && ai.activity.kind === 'attack_run')
+      // A squadded hull is SG-06-commanded, not ambient population: shelving it into
+      // S4_AGGREGATE leaves the tactical layer ordering maneuvers on a body that can
+      // never move (the SG-06 formation fixture ships carry only squad records).
+      || ai.squadId != null));
     const authoredActiveCombat = authoredPresence && ai && ai.passive === false
       && combatPostured;
     const namedAceActor = !!(

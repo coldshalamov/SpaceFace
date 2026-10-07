@@ -1127,7 +1127,13 @@ export const save = {
       // that dropped every in-flight shot would silently lose real combat state. Restore keeps
       // their finite ttl and leaves them transient.
       const liveProjectile = e.type === 'projectile';
-      if (!isPlayer && !liveProjectile && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
+      // A live gyre ball is the same class: a player-launched in-flight damage dealer
+      // carrying its own data.despawnAt deadline (plus gyreLaunchMeta kill credit) — a
+      // continue that dropped it would silently lose a 2400t bowling ball mid-flight.
+      // (Held/mid-hold clumps are intentionally NOT serialized: a save is allowed to
+      // interrupt the beam — the snagged body resumes its authored life on continue.)
+      const gyreBall = !!(e.data && e.data.gyreLaunched);
+      if (!isPlayer && !liveProjectile && !gyreBall && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
       out.push(plainEntity(e, isPlayer));
     }
     return {
@@ -5660,10 +5666,14 @@ export const save = {
         delete spec.id;
       }
       const isProjectile = spec.type === 'projectile';
-      if (!isProjectile && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;
+      // A restored gyre ball is transient too — it's a different type but the same
+      // class of in-flight damage dealer, and the whole sim (snag/pull/suck guards,
+      // sector regen wipe) relies on live bodies never carrying flags.persistent.
+      const isGyreBall = !!(spec.data && spec.data.gyreLaunched);
+      if (!isProjectile && !isGyreBall && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;
       // A restored round stays transient: it must not survive sector regeneration outlive its
       // clock, and a repeat save re-admits it through the same live-projectile clause.
-      spec.flags = Object.assign({}, spec.flags, { persistent: !isProjectile, noInterp: true });
+      spec.flags = Object.assign({}, spec.flags, { persistent: !isProjectile && !isGyreBall, noInterp: true });
       if (isProjectile && entityIdRemap) {
         const mappedOwner = spec.ownerId != null ? entityIdRemap.get(String(spec.ownerId)) : null;
         if (mappedOwner != null) spec.ownerId = mappedOwner;

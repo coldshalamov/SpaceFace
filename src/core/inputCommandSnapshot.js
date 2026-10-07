@@ -23,6 +23,7 @@ const ACTION_KEYS = Object.freeze([
   'deployRepulsor',
   'toggleClearingCone',
   'toggleSkimCollector',
+  'gyreSnare',
   'siteBeam',
   'aimedMine',
 ]);

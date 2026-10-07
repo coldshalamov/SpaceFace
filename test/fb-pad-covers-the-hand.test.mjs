@@ -192,6 +192,25 @@ test('the RB combat-state layer chords independently of the LB layer', () => {
   press(BTN.r1, false); press(BTN.dDown, false);
 });
 
+test('RB+Y holds the Gyre Snare lash — the chord edges both ways', () => {
+  const gp = createGamepad({ bus: createBus() });
+  const state = makeState();
+  gp.tick(1 / 60, state);
+  press(BTN.r1, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  press(BTN.alt, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.pressed, true, 'RB+Y is the lash edge');
+  assert.equal(gp.actions.gyreSnare.held, true, 'the chord holds the beam open');
+  assert.equal(gp.actions.boost.held, true, 'RB keeps its own verb while chorded');
+  // Releasing Y is the bowl — a falling edge the sim turns into the launch.
+  press(BTN.alt, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.released, true, 'releasing Y bowls the clump');
+  assert.equal(gp.actions.gyreSnare.held, false);
+  press(BTN.r1, false);
+});
+
 test('remap capture resolves a held modifier + tapped key into a chord name', () => {
   const gp = createGamepad({ bus: createBus() });
   const state = makeState();
@@ -276,6 +295,7 @@ test('each new pad verb merges into state.input.actions like a stock pad verb', 
     ['cloak', 'edge', 'cloakToggle'],
     ['bulletTime', 'held', 'bulletTime'],
     ['siteBeam', 'held', 'siteBeam'],
+    ['gyreSnare', 'held', 'gyreSnare'],
   ];
   for (const [verb, kind, act] of cases) {
     gp.actions = nullActions();
@@ -289,4 +309,98 @@ test('each new pad verb merges into state.input.actions like a stock pad verb', 
     assert.equal(state.input.actions[act], false, `pad ${verb} release clears actions.${act}`);
     state.tick += 1;
   }
+});
+
+test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', () => {
+  const bus = createBus();
+  const gp = createGamepad({ bus });
+  const state = makeState();
+  gp.tick(1 / 60, state);
+  assert.equal(gp.isConnected(), true);
+
+  // Hold RB (its solo verb is boost — it stays live under the chord), tap Y: the lash
+  // holds while Y's own verb (deployRepulsor) stays suppressed for the hold.
+  press(BTN.r1, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  press(BTN.alt, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, true, 'RB+Y holds the lash');
+  assert.equal(gp.actions.deployRepulsor.held, false, 'the chorded Y solo stays silent');
+  assert.equal(gp.actions.boost.held, true, 'the modifier keeps boost');
+
+  press(BTN.alt, false); press(BTN.r1, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, false, 'releasing Y sets the lash down');
+
+  // Key-first order stays the solo verbs: Y down BEFORE RB is the repulsor, not the
+  // lash — the chord only binds when the modifier (RB) leads.
+  press(BTN.alt, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  press(BTN.r1, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, false, 'Y-first never forms the lash chord');
+  assert.equal(gp.actions.deployRepulsor.held, true, 'the Y-first press stays the repulsor');
+  press(BTN.alt, false); press(BTN.r1, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+
+  // Gyre events pulse the pad's haptic frame: a queued pulse sets the frame's
+  // magnitude to the spec value on the next tick (idle baseline stays near 0).
+  const drain = (n = 15) => { for (let i = 0; i < n; i++) { state.tick += 1; gp.tick(1 / 60, state); } };
+  drain();
+  assert.ok(gp.haptics.strong < 0.4, `idle baseline is quiet (strong=${gp.haptics.strong})`);
+  const pulseAt = (ev, want) => {
+    bus.emit(ev, { coreId: 9 });
+    state.tick += 1; gp.tick(1 / 60, state);
+    assert.ok(gp.haptics.strong >= want, `${ev} pulses strong>=${want} (got ${gp.haptics.strong})`);
+    drain();
+  };
+  pulseAt('gyre:snagged', 0.70);
+  pulseAt('gyre:full', 0.65);
+  pulseAt('gyre:thrown', 0.90);
+  pulseAt('gyre:absorbTick', 0.30);
+
+  // Meal size lerps the absorb thump: mass 160 → t=1 → strong 0.30 + 0.25·1 = 0.55 —
+  // a wreck in the mouth lands near the drop thud, a pebble stays a flick.
+  bus.emit('gyre:absorbTick', { coreId: 9, mass: 160 });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong >= 0.55,
+    `heavy absorbTick scales the thump (strong=${gp.haptics.strong})`);
+  drain();
+
+  // A boundary-flagged drop is a context reset, not a player verb — the pad stays silent.
+  bus.emit('gyre:dropped', { boundary: true });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong < 0.45, `boundary drop does not pulse (strong=${gp.haptics.strong})`);
+  // An empty beam closing is the soft flick (droppedEmpty 0.20), not the clump thud (0.45).
+  bus.emit('gyre:dropped', {});
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong >= 0.18 && gp.haptics.strong < 0.4,
+    `empty beam close gets the soft flick (strong=${gp.haptics.strong})`);
+  drain();
+  // A launch-phase drop carries coreId: null — the ball already flew, nothing tore —
+  // so it lands the same soft flick, not the clump thud (the emitId contract, end-to-end).
+  bus.emit('gyre:dropped', { coreId: null });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong >= 0.18 && gp.haptics.strong < 0.4,
+    `launch-phase drop keeps the soft flick (strong=${gp.haptics.strong})`);
+  drain();
+  // The quiet flag (docking, mode flips, player loss) silences like a boundary —
+  // context resets don't pulse even when a reason string rides along.
+  bus.emit('gyre:dropped', { coreId: 9, quiet: true, reason: 'player_lost' });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong < 0.45, `quiet drop does not pulse (strong=${gp.haptics.strong})`);
+  drain();
+  // But 'strained' wins over the null coreId — a tear is never an empty drop.
+  bus.emit('gyre:dropped', { coreId: null, reason: 'strained' });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong >= 0.55, `a tear beats the empty key (strong=${gp.haptics.strong})`);
+  drain();
+  // A clump TORN off the lash (reason 'strained') is the verb's biggest loss beat —
+  // heavier than a released drop (0.45), short of the throw crack (0.90).
+  bus.emit('gyre:dropped', { coreId: 9, reason: 'strained' });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong >= 0.65,
+    `strain break lands the tear pulse (strong=${gp.haptics.strong})`);
+  drain();
+  pulseAt('gyre:dropped', 0.45);
 });

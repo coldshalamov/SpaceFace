@@ -86,7 +86,7 @@ test('FB-113: players who leave the option off keep the shipped physical hold', 
 
 test('FB-113: every whitelisted verb latches; the winch latches the reel direction', () => {
   assert.deepEqual([...HOLD_TO_TOGGLE_ACTIONS].sort(),
-    ['boost', 'brake', 'bulletTime', 'massline', 'reelIn', 'reelOut'].sort());
+    ['boost', 'brake', 'bulletTime', 'gyreSnare', 'massline', 'reelIn', 'reelOut'].sort());
 
   const state = flightState({ brake: true, bulletTime: true, reelIn: true });
   const host = makeHost();
@@ -108,6 +108,21 @@ test('FB-113: every whitelisted verb latches; the winch latches the reel directi
   assert.equal(state.input.actions.scanPulse, true, 'edge verbs still edge');
   host._keys.KeyC = false; step(host, state);
   assert.equal(state.input.actions.scanPulse, false);
+});
+
+test('FB-113: the Gyre Snare latch is tap-to-open, tap-to-bowl', () => {
+  const state = flightState({ gyreSnare: true });
+  const host = makeHost();
+
+  // First tap opens the lash: the verb reads held well past the key release.
+  host._keys.Quote = true; step(host, state); host._keys.Quote = false;
+  step(host, state, 3);
+  assert.equal(state.input.actions.gyreSnare, true, 'the latch holds the beam open');
+
+  // Second tap is the bowl: the latch drops and the falling edge reaches the verb.
+  host._keys.Quote = true; step(host, state); host._keys.Quote = false;
+  step(host, state, 3);
+  assert.equal(state.input.actions.gyreSnare, false, 'the second tap bowls the clump');
 });
 
 test('FB-113: dock/screen drops every latch — the context, not the pilot, released it', () => {

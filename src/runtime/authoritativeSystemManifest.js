@@ -31,7 +31,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
+  'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
   // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
   'capitalBossEncounters',
@@ -58,7 +58,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
   // miningHud: the mining beam's vent/rich-core/seam instrument — event-mirrored, DOM-guarded,
   // ticks only to place the world-anchored dial (same posture as the sibling HUDs).
-  'massSeedHud', 'fieldHud', 'planetHud', 'miningHud', 'survivalHud', 'swarmJuiceHud', 'crucibleFocus', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
+  'massSeedHud', 'fieldHud', 'gyreHud', 'planetHud', 'miningHud', 'survivalHud', 'swarmJuiceHud', 'crucibleFocus', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
   'hazardHints', 'noFireAdvisory', 'bulkHaulTag', 'dangerGradient', 'causeLedger', 'customsPrompt',
   // impoundPayPrompt, moralTrapPrompt and wreckChoicePrompt are event-only like customsPrompt —
   // init order matters (bus subscriptions); all are deliberately absent from
@@ -91,7 +91,9 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
-  'survivalArena', 'fields', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'physics', 'combat',
+  // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
+  // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
+  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'physics', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
@@ -125,7 +127,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // precede the HUDs' readout this tick.
   'swarmElites',
   'heat', 'traffic', 'drill', 'claims', 'chronicler',
-  'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud', 'miningHud',
+  'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'gyreHud', 'planetHud', 'miningHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
   // and census this tick advanced to; DOM-guarded so Node no-ops.
   'survivalHud',
@@ -172,6 +174,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   killcamRecorder: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'run' }),
   massSeedHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   fieldHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
+  gyreHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   planetHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   miningHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   voiceArbiter: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'voice' }),
@@ -335,7 +338,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Combat/contact owners and damage single-writers.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs',
   'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'environmentalMachinery',
+  'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery',
   // Anchored set-pieces queue physics impulses every tick.
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus',
   // Combat island: damage/attachment/custody owners at combat cadence.

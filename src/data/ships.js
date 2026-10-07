@@ -47,7 +47,7 @@ export const SHIPS = [
     // never surface "Kestrel" in UI copy — grep player strings for Hitch only.
     id: 'ship_kestrel', name: 'Hitch', role: 'starter', tier: 0,
     hull: 140, shield: 55, baseShieldRegen: 7, cargo: 250, mass: 18, handling: 1.05,
-    outfitSpace: 20, weaponCapacity: 4, engineCapacity: 9, designMass: 32,
+    outfitSpace: 20, weaponCapacity: 4, engineCapacity: 9, designMass: 35,
     bankFactor: 0.55,   // how aggressively the hull rolls into a turn (0..1.2) — lower = less pin-spin
     driveId: 'drive_reaction_m',  // baseline vector reaction drive — momentum-conserving, no hidden drag
     energyCap: 80, energyRegen: 12, collisionRadius: 14, price: 0, buyback: 8000,

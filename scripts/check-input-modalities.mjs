@@ -247,6 +247,8 @@ function installDom({ width = 1280, height = 800, touchDevice = true } = {}) {
 
   const fire = (map, type, event) => { for (const fn of map.get(type) || []) fn(event); };
   const overlay = () => doc.getElementById('sf-touch-overlay');
+  let lastMoveX = NaN;
+  let lastMoveY = NaN;
 
   return {
     doc,
@@ -263,7 +265,15 @@ function installDom({ width = 1280, height = 800, touchDevice = true } = {}) {
         preventDefault() {}, stopPropagation() {},
       });
     },
-    move(x, y, movementX = 1, movementY = 1) {
+    move(x, y, movementX = null, movementY = null) {
+      // Browsers report movementX/Y as the delta between successive pointer packets. Emit the
+      // real delta — the dynamic combat stick's deadzone recenter (SFQ-B011) bleeds sub-deadzone
+      // packets, so a constant 1px-per-event stream can never accumulate into a command.
+      if (!Number.isFinite(lastMoveX)) { lastMoveX = x; lastMoveY = y; }
+      if (!Number.isFinite(movementX)) movementX = x - lastMoveX;
+      if (!Number.isFinite(movementY)) movementY = y - lastMoveY;
+      lastMoveX = x;
+      lastMoveY = y;
       fire(winListeners, 'mousemove', {
         type: 'mousemove', clientX: x, clientY: y, movementX, movementY, target: body,
         preventDefault() {}, stopPropagation() {},

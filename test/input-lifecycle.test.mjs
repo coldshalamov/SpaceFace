@@ -227,6 +227,9 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
     cloak: true,
     chargeThrow: true,
     jettisonLot: true,
+    // The Gyre Snare pad chord (RB+Y) is a held verb: a grip carried across a dock or
+    // tab-hide stays quarantined until a connected neutral sample.
+    gyreSnare: true,
   });
   assert.deepEqual(host._edgePrev, { cruise: false, tether: false });
   assert.deepEqual(grammarResetBlocks, [undefined]);
@@ -375,6 +378,132 @@ test('pointer cancel drops a held fire and the committed thrust before the next 
     assert.equal(state.input.moveZ, 0);
     assert.equal(state.input.fire, false);
     assert.equal(state.input.brake, false);
+    host.destroy();
+  } finally {
+    dom.restore();
+  }
+});
+
+test('a hold-to-toggle verb held through a dock does not re-latch on the way back', () => {
+  const dom = installFakeInputDom();
+  const host = Object.create(input);
+  const state = makeDomInputState();
+  state.ui = { screenStack: [] };
+  state.input.mouseNdc = { x: 0, y: 0 };
+  state.input.aimWorld = { x: 0, z: 0 };
+  state.input.aimAngle = 0;
+  state.input.aimIntentActive = false;
+  state.input.autoTargetVector = { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
+  state.input.autoTargetPath = { points: [], active: false };
+  state.settings.accessibility = { holdToToggle: { gyreSnare: true } };
+  const ctx = { state, bus: { emit() {} }, helpers: {} };
+  try {
+    host.init(ctx);
+    // Quote held BEFORE the screen opens — not a press that wants a toggle.
+    dom.windowTarget.dispatch('keydown', { code: 'Quote', target: null });
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true, 'held key runs the lash');
+
+    state.ui.screenStack.push('station');
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true,
+      'a screen preserves a physically held key — zeroing would synthesize a falling edge ' +
+      'that bowls the clump (massline modal-preservation parity)');
+    assert.equal(host._holdToggleEdges.gyreSnare, true,
+      'the still-held key pins the toggle edge so it cannot re-arm as a fresh press');
+
+    state.ui.screenStack.pop();
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true,
+      'the still-held key is a hold, not a new edge — the verb rides the physical sample');
+    dom.windowTarget.dispatch('keyup', { code: 'Quote', target: null });
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, false,
+      'releasing after the dock actually drops the beam — no phantom latch left behind');
+    host.destroy();
+  } finally {
+    dom.restore();
+  }
+});
+
+test('a pad-held gyre chord survives a screen opening — acts.gyreSnare stays latched', () => {
+  const dom = installFakeInputDom();
+  const host = Object.create(input);
+  const state = makeDomInputState();
+  state.ui = { screenStack: [] };
+  state.input.mouseNdc = { x: 0, y: 0 };
+  state.input.aimWorld = { x: 0, z: 0 };
+  state.input.aimAngle = 0;
+  state.input.aimIntentActive = false;
+  state.input.autoTargetVector = { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
+  state.input.autoTargetPath = { points: [], active: false };
+  const ctx = { state, bus: { emit() {} }, helpers: {} };
+  try {
+    host.init(ctx);
+    // The RB+Y chord reports held only through the pad's actions table — the keyboard
+    // side never touched Quote. Same modal-preservation contract as the held key.
+    host.gamepad = {
+      isConnected: () => true,
+      actions: { gyreSnare: { held: false, pressed: false, released: false, value: 0 } },
+      axes: { leftX: 0, leftY: 0, rightX: 0, rightY: 0 },
+      tick() {},
+      _resetState() {},
+    };
+    host.update(1 / 60, state); // connected neutral sample — clears the init quarantine
+    assert.equal(host._gamepadLifecycleActionAllowed('gyreSnare'), true,
+      'a connected neutral sample re-arms the chord');
+    host.gamepad.actions.gyreSnare.held = true;
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true, 'pad-held chord runs the lash');
+
+    state.ui.screenStack.push('station');
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true,
+      'a screen preserves the pad-held chord — zeroing would bowl the clump mid-modal');
+
+    state.ui.screenStack.pop();
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true, 'the still-held chord rides on the way back');
+    host.gamepad.actions.gyreSnare.held = false;
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, false, 'releasing the chord drops the beam');
+    host.destroy();
+  } finally {
+    dom.restore();
+  }
+});
+
+test('a keyboard-held gyre verb survives a screen opening — preserve is not toggle-only', () => {
+  const dom = installFakeInputDom();
+  const host = Object.create(input);
+  const state = makeDomInputState();
+  state.ui = { screenStack: [] };
+  state.input.mouseNdc = { x: 0, y: 0 };
+  state.input.aimWorld = { x: 0, z: 0 };
+  state.input.aimAngle = 0;
+  state.input.aimIntentActive = false;
+  state.input.autoTargetVector = { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
+  state.input.autoTargetPath = { points: [], active: false };
+  const ctx = { state, bus: { emit() {} }, helpers: {} };
+  try {
+    host.init(ctx);
+    // Plain hold (no holdToToggle): the modal-preserve contract must keep the
+    // physically held key — zeroing would bowl the clump out from under it.
+    dom.windowTarget.dispatch('keydown', { code: 'Quote', target: null });
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true, 'held key runs the lash');
+
+    state.ui.screenStack.push('station');
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true,
+      'a screen preserves a physically held key — the falling edge would be a phantom bowl');
+
+    state.ui.screenStack.pop();
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true, 'the still-held key rides on the way back');
+    dom.windowTarget.dispatch('keyup', { code: 'Quote', target: null });
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, false, 'releasing drops the beam');
     host.destroy();
   } finally {
     dom.restore();

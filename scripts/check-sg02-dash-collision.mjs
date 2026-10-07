@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
-import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
+import { createSg02DynamicBodyOwner, resolveCraftProportions } from '../src/core/sg02DynamicBodyOwner.js';
 
 const DT = 1 / 60;
 const CASES = 1000;
@@ -32,7 +32,14 @@ for (let base = 0; base < CASES; base += BATCH) {
 
     for (const [ship, rock] of pairs) {
       assertFinite(ship);
-      const minX = rock.pos.x - rock.radius - ship.radius - 0.75;
+      // Craft colliders are axial capsules (length*R_ref long), not balls of entity.radius —
+      // the check's reach is the capsule nose along +x, matching buildCraftCapsuleColliderDesc.
+      // CCD is also speed-gated now, so a dash rests at the contact rather than stopping at
+      // TOI distance: the assert holds a 0.75 penetration slack instead of the old 0.75 early-stop
+      // margin the ball-collider/CCD-always era required.
+      const proportions = resolveCraftProportions(ship, ship.physicsBody);
+      const noseExtent = Math.max(0.1, proportions.length * ship.physicsBody.radius) * 0.5;
+      const minX = rock.pos.x - rock.radius - noseExtent + 0.75;
       assert(ship.pos.x <= minX,
         `dash collision tunneled through obstacle for ship ${ship.id}: x=${ship.pos.x}, limit=${minX}`);
       completed++;

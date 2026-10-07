@@ -178,7 +178,7 @@ const DETONATOR_REFORM_TICKS = 50;
 // Identity doctrines own their engagement band: factionBehavior.preferredRange would otherwise
 // re-flatten every identity onto its faction's sampled range and re-collapse the vocabulary.
 // The boss choreographies are staged the same way — the act table owns the standoff.
-const IDENTITY_OWNED_RANGE_DOCTRINES = new Set([
+export const IDENTITY_OWNED_RANGE_DOCTRINES = new Set([
   CombatDoctrineId.INTERCEPTOR_FLYBY,
   CombatDoctrineId.BRAWLER_COMMIT,
   CombatDoctrineId.SWARM_PACK,

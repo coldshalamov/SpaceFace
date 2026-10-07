@@ -127,6 +127,10 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   cruise: Object.freeze(['r1+dRight']),           // RB layer: the long-burn state, rightward = forward
   deployBeacon: Object.freeze(['r1+view']),       // RB+View: mark the claim while running
   jettisonLot: Object.freeze(['r1+home']),        // RB+Guide: dump the hold lot while running
+  // The Gyre Snare is a HELD verb: RB+Y (the combat layer's last free chord — Y is the
+  // repulsor hand solo, and holding it under the boost finger reads as "grip the mass").
+  // Hold to beam and hold the clump; let go to bowl it.
+  gyreSnare: Object.freeze(['r1+alt']),           // RB+Y: hold the lash, release to bowl
   // The hull burst (Gravity Bumper / Fire Lance / Grip Bumper) has no pad verb (owner principle
   // 2026-09-30): the fitted boost upgrade rides the boost button itself, fired by the hullBurst
   // system polling the player's boost flag. There is nothing to bind.
@@ -312,6 +316,7 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   cruise: 'flight',
   deployBeacon: 'flight',
   jettisonLot: 'flight',
+  gyreSnare: 'flight',
   cancel: 'modal',
   tabPrev: 'modal',
   tabNext: 'modal',
@@ -426,6 +431,27 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // blade severing one of the player's lines is a warning jolt; the whip's stored snap is a crack.
   'massline:playerLineCut': { strong: 0.55, weak: 0.35, ms: 120 },
   'tether:whipSnap':        { strong: 0.70, weak: 0.30, ms: 100 },
+  // Gyre Snare: the wake is a soft hum (the lash switching on), the snag a solid bite,
+  // the bowl the hard crack, an absorb a small tap, a dropped clump a mid thud.
+  'gyre:beamOn':            { strong: 0.25, weak: 0.35, ms: 60 },
+  'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
+  'gyre:launched':          { strong: 0.30, weak: 0.25, ms: 60 },  // coil engages — the sling tautens
+  'gyre:windup':            { strong: 0.15, weak: 0.50, ms: 140 }, // the draw — a low rumble under the coil
+  'gyre:thrown':            { strong: 0.90, weak: 0.70, ms: 160 }, // the throw — biggest beat in the pad vocabulary
+  'gyre:absorbTick':        { strong: 0.30, weak: 0.20, ms: 50 },
+  'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
+  'gyre:droppedEmpty':      { strong: 0.20, weak: 0.15, ms: 50 },
+  // Pseudo-key (like droppedEmpty — not a bus event): a 'strained' gyre:dropped is
+  // the verb's biggest loss beat — between the strain rattle and the throw crack.
+  'gyre:torn':              { strong: 0.70, weak: 0.55, ms: 140 },
+  'gyre:strained':          { strong: 0.50, weak: 0.40, ms: 120 },
+  'gyre:full':              { strong: 0.65, weak: 0.55, ms: 150 },
+  // The capacitor's ~3 s warning — a low rolling pulse, gentler than the strain
+  // rattle: "the lash is about to fire itself" lands in the hands, not just the pill.
+  'gyre:fuseLow':           { strong: 0.30, weak: 0.55, ms: 170 },
+  // The thrown ball's quiet-TTL grave — a light dying tap that closes the arc:
+  // the katamari lived, flew, and is gone. Impact deaths rumble through collision.
+  'gyre:ballGrave':         { strong: 0.25, weak: 0.20, ms: 60 },
 });
 // Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
 export const HAPTIC_RELEASE_PULSES = Object.freeze({
@@ -811,6 +837,37 @@ export function createGamepad(ctx) {
     // is the player's own stored release. Both pulse through the same one-live-pulse gate.
     bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
     bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
+    bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
+    bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
+    bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
+    bus.on('gyre:windup', () => startPulse(HAPTIC_VERB_PULSES['gyre:windup'], 'gyre:windup'));
+    bus.on('gyre:thrown', () => startPulse(HAPTIC_VERB_PULSES['gyre:thrown'], 'gyre:thrown'));
+    bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
+    bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
+    bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));
+    bus.on('gyre:absorbTick', (payload) => {
+      // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the
+      // drop thud — lerped on min(1, mass/80) so katamari escalation is felt, not just seen.
+      // The tick is sim-rate-gated (shares absorbCueMinGapS): a dense feed reads as
+      // discrete thumps, not a continuous buzz. gyre:absorbed stays per-meal for HUD.
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 80);
+      const base = HAPTIC_VERB_PULSES['gyre:absorbTick'];
+      startPulse({ strong: base.strong + 0.25 * t, weak: base.weak + 0.1 * t, ms: base.ms + 40 * t }, 'gyre:absorbTick');
+    });
+    bus.on('gyre:dropped', (payload) => {
+      // A save/sector boundary drop is a context reset, not a player verb — stay silent like the
+      // audio cue does instead of buzzing through a transition. A clump slipping the lash is the
+      // full thud; an empty beam closing is a soft flick — audio already splits those voices.
+      if (payload && (payload.boundary || payload.quiet)) return;
+      let spec = payload && payload.coreId != null ? 'gyre:dropped' : 'gyre:droppedEmpty';
+      // A clump torn off the lash is the loss beat — heavier than a released drop,
+      // short of the throw crack: the tear lands in the hands like it does on screen.
+      // The reason wins over the id key — a launch-phase 'strained' emit carries
+      // coreId: null (the ball already flew), but a tear is never an empty drop.
+      if (payload && payload.reason === 'strained') spec = 'gyre:torn';
+      startPulse(HAPTIC_VERB_PULSES[spec], spec);
+    });
+    bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));
   }
 
   const gp = {
