@@ -666,6 +666,8 @@ const EMPTY_ON_GLASS_PENDING_IDS = Object.freeze([]);
 const _cullLocalXZ = { x: 0, z: 0 };
 const _shadowLocalXZ = { x: 0, z: 0 };
 const _w2sLocalXZ = { x: 0, z: 0 };
+// worldToScreen camera-space scratch: one Vector3, reused per call, never retained.
+const _w2sCamSpace = new THREE.Vector3();
 const _rayGlobalXZ = { x: 0, z: 0 };
 const _rayLocalXZ = { x: 0, z: 0 };
 
@@ -678,14 +680,17 @@ function writePlaneXZ(out, x, z) {
   return { x, z };
 }
 
-function writeScreenProjection(out, x, y, onScreen) {
+function writeScreenProjection(out, x, y, onScreen, behind = false) {
   if (out && typeof out === 'object') {
     out.x = x;
     out.y = y;
     out.onScreen = onScreen;
+    // Behind the camera the w<0 perspective divide MIRRORS x/y — consumers deriving an edge
+    // direction from the raw signs land on the opposite screen edge without this flag.
+    out.behind = behind;
     return out;
   }
-  return { x, y, onScreen };
+  return { x, y, onScreen, behind };
 }
 const _socketGlobalXZ = { x: 0, z: 0 };
 const _worldSiteA11y = { reducedMotion: false, reducedFlash: false };
@@ -25113,6 +25118,19 @@ export const render = {
       // or the root renders displaced by exactly (dx,dz) until its next seat.
       if (m.matrixAutoUpdate === false) m.updateMatrix();
     }
+    // Parked rebuild bridges left _meshes (that removal is what parks them) but
+    // still draw at their last committed pose. A rebase that skipped them
+    // displaced each one by exactly (dx,dz) backwards along the flight path —
+    // the "shadow ship" frozen behind the hull — until the bridge released.
+    if (this._rebuildBridges && this._rebuildBridges.size) {
+      for (const slot of this._rebuildBridges.values()) {
+        const m = slot && slot.mesh;
+        if (!m || !m.position) continue;
+        m.position.x += dx;
+        m.position.z += dz;
+        if (m.matrixAutoUpdate === false) m.updateMatrix();
+      }
+    }
     // Hazard zone discs/rings are render-owned local anchors (not rebuilt every frame).
     if (this._hazardVisuals && this._hazardVisuals.length) {
       for (const obj of this._hazardVisuals) {
@@ -29663,16 +29681,20 @@ export const render = {
       ? membrane.toLocal(v, _w2sLocalXZ)
       : { x: v.x, z: v.z };
     const yWorld = Number.isFinite(v.y) ? v.y : 0;
-    _pt.set(local.x, yWorld, local.z).project(cam);
+    _pt.set(local.x, yWorld, local.z);
+    // Camera-space depth decides "behind" BEFORE the perspective divide mirrors the coordinates.
+    _w2sCamSpace.copy(_pt).applyMatrix4(cam.matrixWorldInverse);
+    const behind = _w2sCamSpace.z > 0;
+    _pt.project(cam);
     if (!Number.isFinite(_pt.x) || !Number.isFinite(_pt.y) || !Number.isFinite(_pt.z)) {
-      return writeScreenProjection(out, 0, 0, false);
+      return writeScreenProjection(out, 0, 0, false, behind);
     }
     const width = typeof window !== 'undefined' && Number.isFinite(window.innerWidth) ? window.innerWidth : 0;
     const height = typeof window !== 'undefined' && Number.isFinite(window.innerHeight) ? window.innerHeight : 0;
     const x = (_pt.x * 0.5 + 0.5) * width;
     const y = (-_pt.y * 0.5 + 0.5) * height;
-    const onScreen = _pt.z < 1 && Math.abs(_pt.x) <= 1 && Math.abs(_pt.y) <= 1;
-    return writeScreenProjection(out, x, y, onScreen);
+    const onScreen = !behind && _pt.z < 1 && Math.abs(_pt.x) <= 1 && Math.abs(_pt.y) <= 1;
+    return writeScreenProjection(out, x, y, onScreen, behind);
   },
 
   // Plane pick returns authoritative galactic-global XZ (input systems keep global aimWorld).
