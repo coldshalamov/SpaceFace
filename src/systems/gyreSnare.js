@@ -448,7 +448,7 @@ export const gyreSnare = {
     const rt = this._rt;
     if (!rt) return; // destroy() before init() — nothing to watch
     if (!rt.ballIds.includes(id)) rt.ballIds.push(id);
-    while (rt.ballIds.length > 8) {
+    while (rt.ballIds.length > D.ballWatchMax) {
       // Dead/already-unmarked slots retire first. When EVERY slot is a live marked
       // ball, evict the oldest WITHOUT _handBack — stripping gyreLaunched mid-flight
       // would drop its pull/snag immunity + launch kill-credit while it still flies.
@@ -565,7 +565,10 @@ export const gyreSnare = {
     // towCount resets at the two callers: _suckPass runs before this lane in HOLD and
     // its annulus tow would be wiped by a local reset here.
     this._rt.basinSpots.length = 0; //
-    if (!queryRadius) return;
+    // On the helper-less early return only: clear the scratch so spots _suckPass
+    // staged can't publish a tick late beside the next run's basin glows. (Not
+    // unconditional — the scratch is the suck lane's publish channel in HOLD.)
+    if (!queryRadius) { this._spotScratch.length = 0; return; }
     const ownedCore = owned && owned.core && owned.core.pos ? owned.core : null;
     const ownedR2 = ownedCore && owned.r > 0 ? owned.r * owned.r : 0;
     const reach = D.mawDist + D.basinRadius + D.queryReachWu;
@@ -849,8 +852,8 @@ export const gyreSnare = {
       || mass * rt.clumpRadius * rt.clumpRadius * 0.4;
     queuePhysicsTorqueImpulse(core, { x: 0, y: inertia * spinErr * D.tumbleTorqueK * dt, z: 0 }, this._evidence(state.tick));
 
-    // The beam keeps sweeping the basin into the ball: bodies near the maw get a pull
-    // retargeted onto the CORE (the clump is what "increases gravity" now).
+    // The beam keeps sweeping the basin toward the maw — still the funnel throat while
+    // the suck lane owns the clump annulus (the clump is what "increases gravity" there).
     // towCount resets above BOTH lanes — a local reset inside _pullPass would wipe
     // the suck lane's annulus count from the same tick.
     rt.towCount = 0;
@@ -932,7 +935,6 @@ export const gyreSnare = {
         }
         continue;
       }
-      if (rt.clumpMass < D.maxClumpMass) rt.suckCount += 1;
       // Surface contact → merge into the ball (mass union; radius by volume, capped). The
       // meal sticks the moment its skin crosses the clump's — katamari stick-on-touch, not a
       // nested overlap, so a fast spiral can't orbit forever inside the band.
@@ -943,6 +945,9 @@ export const gyreSnare = {
         this._absorb(state, rt, core, e, dx, dz, dist);
         continue;
       }
+      // Below the merge check: a body absorbed THIS tick is the clump's mass, not
+      // incoming mass — counting it would publish it in the +N read for one frame.
+      if (rt.clumpMass < D.maxClumpMass) rt.suckCount += 1;
       if (dist > 1e-4) {
         // A FULL clump can't keep another gram — stop vacuuming meals it will never
         // merge. Same gate _absorb enforces at contact, extended to the pull lane so a
@@ -1037,9 +1042,10 @@ export const gyreSnare = {
         this.bus.emit(GYRE_EVENTS.absorbTick, { coreId: core.id, mass: em, clumpMass: rt.clumpMass, tick: state.tick });
       }
       // Escalation reaches the camera too — swallowing a wreck should feel physically
-      // different from swallowing a pebble, so heavy meals carry a micro-shake while
-      // belt gravel stays silent.
-      if (em >= 80) this.bus.emit('camera:shake', { amount: 0.04 });
+      // different from swallowing a pebble: heavy meals shake, mid meals get a
+      // micro-shake (30-80t is the most common satisfying meal — it shouldn't be silent),
+      // and belt gravel stays quiet.
+      if (em >= 30) this.bus.emit('camera:shake', { amount: em >= 80 ? 0.04 : 0.02 });
       // Saturation beat: the absorb that first crosses the cap gets its own voice so
       // the FULL moment lands through the ear, not just the HUD flag.
       if (rt.clumpMass >= D.maxClumpMass && !rt.fullCueLatched) {

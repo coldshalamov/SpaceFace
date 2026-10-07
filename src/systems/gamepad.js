@@ -435,7 +435,9 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // the bowl the hard crack, an absorb a small tap, a dropped clump a mid thud.
   'gyre:beamOn':            { strong: 0.25, weak: 0.35, ms: 60 },
   'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
-  'gyre:launched':          { strong: 0.30, weak: 0.25, ms: 60 },  // coil engages — the sling tautens
+  // No `gyre:launched` pulse: it fires at the release edge one tick before `gyre:windup`,
+  // so its 5-tick min-gap silently ate the 140 ms draw rumble — the sling's richest beat.
+  // `gyre:windup` marks coil-engage and `gyre:thrown` marks the throw; nothing is lost.
   'gyre:windup':            { strong: 0.15, weak: 0.50, ms: 140 }, // the draw — a low rumble under the coil
   'gyre:thrown':            { strong: 0.90, weak: 0.70, ms: 160 }, // the throw — biggest beat in the pad vocabulary
   'gyre:absorbTick':        { strong: 0.30, weak: 0.20, ms: 50 },
@@ -839,7 +841,6 @@ export function createGamepad(ctx) {
     bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
     bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
     bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
-    bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
     bus.on('gyre:windup', () => startPulse(HAPTIC_VERB_PULSES['gyre:windup'], 'gyre:windup'));
     bus.on('gyre:thrown', () => startPulse(HAPTIC_VERB_PULSES['gyre:thrown'], 'gyre:thrown'));
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
