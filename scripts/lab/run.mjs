@@ -15,6 +15,7 @@ const BENCHES = {
   npc: () => import('./benches/npcEvasion.mjs'),
   sling: () => import('./benches/slingThrow.mjs'),
   flight: () => import('./benches/flightTurn.mjs'),
+  lock: () => import('./benches/targetLock.mjs'),
 };
 
 function parseArgs(argv) {

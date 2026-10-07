@@ -1829,6 +1829,20 @@ function isDeliberateNonHostilePick(player, state, entity) {
   return !isHostileToPlayer(entity, player.team, state);
 }
 
+// SF-2b #8 lab seam. mode null = master (nearest hostile by range). mode 'cursor' = when the
+// player has live aim intent (pointer on the canvas / right stick), the pick minimises
+// |hostile - aim point| + rangeWeight * |hostile - player|: the contact under the cursor wins,
+// range breaks ties. No aim intent -> nearest, as master.
+// reacquireGraceS: after a lock is lost with live aim intent, wait this long before the quiet
+// refresh picks again, so the cursor can travel to the next contact first (0 = master: immediate).
+export const TARGET_LOCK_LAB = { mode: null, rangeWeight: 0.5, reacquireGraceS: 0 };
+const LOCK_MEMO = new WeakMap(); // state -> { id: last seen lock, lostAt }
+const TARGET_LOCK_LAB_DEFAULTS = Object.freeze({ ...TARGET_LOCK_LAB });
+export function setTargetLockLab(overrides = {}) {
+  Object.assign(TARGET_LOCK_LAB, TARGET_LOCK_LAB_DEFAULTS, overrides || {});
+  return TARGET_LOCK_LAB;
+}
+
 function targetNearestHostileToPlayer(state, bus, options = {}) {
   if (state.input?.targetAssistDisabled === true) return;
   const player = state.entities.get(state.playerId);
@@ -1838,6 +1852,7 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
   if (curId != null) {
     const cur = state.entities.get(curId);
     if (isScannerHostileLock(player, state, cur)) {
+      if (TARGET_LOCK_LAB.reacquireGraceS > 0) LOCK_MEMO.set(state, { id: curId, lostAt: null });
       if (quiet) return;
     } else if (quiet && explicitObjectSelectionAlive(state, curId)) {
       return;
@@ -1859,6 +1874,14 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
   } else if (quiet) {
     // No lock yet — quiet refresh may acquire the nearest hostile.
   }
+  if (TARGET_LOCK_LAB.mode === 'cursor' && quiet && TARGET_LOCK_LAB.reacquireGraceS > 0
+      && state.input && state.input.aimIntentActive === true && state.input.autoFire !== true) {
+    const memo = LOCK_MEMO.get(state) || { id: null, lostAt: null };
+    LOCK_MEMO.set(state, memo);
+    const now = Number(state.simTime) || 0;
+    if (memo.id != null && memo.lostAt == null) memo.lostAt = now;
+    if (memo.lostAt != null && now - memo.lostAt < TARGET_LOCK_LAB.reacquireGraceS) return;
+  }
   // Past the quiet early-out, so a Tab/radar pick is never stomped by the 0.12s refresh.
   if (state.ui) state.ui.objectSelection = null;
   const tethered = tetheredHostileLock(player, state);
@@ -1871,6 +1894,10 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
   }
   let best = null;
   let bestD2 = Infinity;
+  const inp = state.input;
+  const aim = TARGET_LOCK_LAB.mode === 'cursor' && inp && inp.aimIntentActive === true && inp.aimWorld
+    && Number.isFinite(inp.aimWorld.x) && Number.isFinite(inp.aimWorld.z) ? inp.aimWorld : null;
+  const rangeWeight = Number(TARGET_LOCK_LAB.rangeWeight) || 0;
   for (const e of indexedShipLikeScan(state)) {
     if (!e || e.alive === false || e === player || !e.pos) continue;
     if (e.type !== 'ship' && e.type !== 'drone') continue;
@@ -1880,9 +1907,10 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
     if (d2 > SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE) continue;
-    if (d2 < bestD2) {
+    const cost = aim ? Math.hypot(e.pos.x - aim.x, e.pos.z - aim.z) + rangeWeight * Math.sqrt(d2) : d2;
+    if (cost < bestD2) {
       best = e;
-      bestD2 = d2;
+      bestD2 = cost;
     }
   }
   if (!best) {
@@ -1891,6 +1919,7 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     return;
   }
   state.player.targetId = best.id;
+  if (TARGET_LOCK_LAB.reacquireGraceS > 0) LOCK_MEMO.set(state, { id: best.id, lostAt: null });
   if (bus && !quiet) bus.emit('toast', { text: 'Target: ' + targetLabel(best), kind: 'info', ttl: 2 });
 }
 
