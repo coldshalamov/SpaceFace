@@ -7,6 +7,7 @@ import test from 'node:test';
 import { readCustomsWeir } from '../src/presentation/customsWeir.js';
 import { JETTISONED_CARGO_PAYLOAD_TYPE } from '../src/systems/lootShards.js';
 import { customsPrompt } from '../src/ui/customsPrompt.js';
+import { ENCOUNTER_SCRIPTS } from '../src/systems/encounterScripts.js';
 import { factions } from '../src/systems/factions.js';
 import { heat } from '../src/systems/heat.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
@@ -510,4 +511,26 @@ test('a hull that outruns the funnel bolts unread, and the disc outside the funn
   const other = harness('sector_dione_lane', inDiscOnly);
   other.sys._updateCustomsWeir(0.5, other.state);
   assert.equal(readCustomsWeir(other.state).seen, false);
+});
+
+test('a gate or cone pod read can never be adopted as the patrol offer result (D180)', () => {
+  // The offer routes contrabandScanned into live.data.scan only while its scan is live.
+  // A weir pod read or a field-cone pod read belongs to the gate/scanner that dwelled
+  // it — letting one in resolved the offer 'fined' at 0 credits on evidence the
+  // patrol never took. The legitimate channel (patrol:proximity → economy.runScan)
+  // carries no source and must still adopt.
+  const live = { data: { scan: null } };
+  const script = ENCOUNTER_SCRIPTS.patrolScan;
+  for (const source of ['customs_scan_cone', 'customs_weir', 'customs_weir_bolt', 'dock', 'jump']) {
+    live.data.scan = null;
+    script.event(null, live, null, 'contrabandScanned', { found: true, source, podId: 'pod-1', units: 4 });
+    assert.equal(live.data.scan, null, `${source} must not be adopted as the offer's own scan`);
+  }
+  // The patrol's own cargo scan emits without a source — the one adoptable channel.
+  script.event(null, live, null, 'contrabandScanned', { found: true, fine: 340, units: 4 });
+  assert.equal(live.data.scan && live.data.scan.fine, 340, 'the source-less patrol scan still routes');
+  // An unrelated event never writes the scan slot either.
+  live.data.scan = null;
+  script.event(null, live, null, 'somethingElse', { found: true });
+  assert.equal(live.data.scan, null);
 });

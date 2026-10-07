@@ -454,8 +454,13 @@ const patrolScan = {
   event(d, live, state, name, p) {
     // routed only while this scan is live; a berth-sourced bust belongs to the checkpoint
     // that docked the player, a weir-bolt bust belongs to the gate that flagged the runner,
-    // and a jump-gate bust belongs to the jump — none is this patrol's own scan result.
-    if (name === 'contrabandScanned' && !(p && (p.source === 'dock' || p.source === 'customs_weir_bolt' || p.source === 'jump'))) live.data.scan = p;
+    // a jump-gate bust belongs to the jump, and a weir/cone pod read belongs to the gate
+    // or scanner that dwelled it — none is this patrol's own scan result (D179/D180: an
+    // adopted gate read resolved the offer 'fined' at 0 credits).
+    if (name === 'contrabandScanned' && !(p && (
+      p.source === 'dock' || p.source === 'customs_weir_bolt' || p.source === 'jump'
+      || p.source === 'customs_weir' || p.source === 'customs_scan_cone'
+    ))) live.data.scan = p;
   },
 };
 
