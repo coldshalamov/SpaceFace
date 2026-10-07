@@ -16,7 +16,7 @@ export const MATERIAL_ROLE_BANDS = Object.freeze({
   ceramic: Object.freeze({ roughness: [0.62, 0.95], metalness: [0, 0.1], env: [0.6, 0.8] }),
   rubber: Object.freeze({ roughness: [0.7, 1], metalness: [0, 0.05], env: [0.4, 0.6] }),
   geology: Object.freeze({ roughness: [0.8, 1], metalness: [0, 0.15], env: [0.7, 1.0] }),
-  glass: Object.freeze({ roughness: [0.04, 0.22], metalness: [0, 0.1], env: [0.6, 1.1] }),
+  glass: Object.freeze({ roughness: [0.04, 0.22], metalness: [0, 0.1], env: [0.6, 1.1], emissive: [0, 0.25] }),
   drive: Object.freeze({ emissive: [1.4, 6.0] }),
   signal: Object.freeze({ emissive: [0.45, 6.0] }),
 });
