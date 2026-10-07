@@ -18,7 +18,7 @@ import {
   detachedTextureUploadPending,
   rehydrateDetachedTextures,
 } from './packageCpuDetach.js';
-import { collectStartupTextures } from './startupGpuResidency.js';
+import { collectStartupTextures, collectStartupTexturesSteps } from './startupGpuResidency.js';
 
 /**
  * A package texture whose CPU mirror was released after its proven upload still reaches three's
@@ -33,7 +33,20 @@ import { collectStartupTextures } from './startupGpuResidency.js';
 async function reattachDetachedAdmissionTextures(subjects, renderer, yieldToMain) {
   const properties = renderer && renderer.properties;
   if (!properties || typeof properties.get !== 'function') return;
-  const pending = collectStartupTextures(subjects)
+  // The collect walks every cohort subtree — O(roots x nodes) inside the paced
+  // admit loop — so drive the Steps twin under the caller's yield contract.
+  let collected = null;
+  if (typeof collectStartupTexturesSteps === 'function' && typeof yieldToMain === 'function') {
+    const it = collectStartupTexturesSteps(subjects);
+    for (;;) {
+      const step = it.next();
+      if (step.done) { collected = step.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    collected = collectStartupTextures(subjects);
+  }
+  const pending = collected
     .filter((texture) => detachedTextureUploadPending(texture, properties));
   if (pending.length === 0) return;
   let receipt = null;
@@ -458,6 +471,27 @@ export function drawableHideSession(scene) {
     scene.traverse((object) => {
       if (isDrawable(object)) drawables.push(object);
     });
+  }
+  return { scene, drawables, keep: new Set() };
+}
+
+// Stepped twin of the session mint: the O(scene) enumeration yields at stride
+// boundaries so a lazy mid-cook mint paces across presents instead of landing
+// atomic inside the admit leg. Reversed-children push reproduces traverse's
+// pre-order exactly (drawables order is cosmetic — the hide pass only reads
+// membership).
+export function* drawableHideSessionSteps(scene, sliceEvery = 4096) {
+  const drawables = [];
+  if (scene) {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (isDrawable(object)) drawables.push(object);
+      const children = object.children || [];
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      if ((++visited % sliceEvery) === 0) yield;
+    }
   }
   return { scene, drawables, keep: new Set() };
 }

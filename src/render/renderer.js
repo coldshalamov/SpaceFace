@@ -448,6 +448,7 @@ import {
   describeOpeningAdmissionIdentityDelta,
   describeOpeningAdmissionIdentityDeltaSteps,
   drawableHideSession,
+  drawableHideSessionSteps,
   materialHasCompiledProgram,
   materialList,
   touchSubjectOnExactTarget,
@@ -882,6 +883,10 @@ const FIRST_PLAYABLE_PAINT_REARM_MS = 2000;
 // presents while the compositor's idle window sits unspent. Racing the resume against a
 // tighter bound keeps ≥40 fps behavior identical — rAF always wins — and drains below it.
 const FLIGHT_ADMISSION_PRESENT_BOUND_MS = 24;
+
+// Culled-root subtree freeze mints drain this many roots per syncEntityViews
+// pass (see _queueHiddenSubtreeFreeze) so a cull storm amortizes over frames.
+const HIDDEN_FREEZE_MINT_ROOTS_PER_PASS = 6;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -10728,6 +10733,20 @@ export const render = {
       return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene, { drawableSession });
     };
     const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
+    // The session mint is an O(scene) drawable enumeration — pace its Steps twin
+    // under the admission yield contract so a mid-cook mint slices across
+    // presents instead of landing atomic inside the touch leg.
+    const mintTouchDrawableSession = async (targetScene) => {
+      if (typeof drawableHideSessionSteps === 'function') {
+        const it = drawableHideSessionSteps(targetScene);
+        for (;;) {
+          const step = it.next();
+          if (step.done) return step.value;
+          await admissionPaceYield();
+        }
+      }
+      return drawableHideSession(targetScene);
+    };
     // A package texture whose CPU mirror was released after its proven upload still reaches
     // three's uploader when the next bind re-enters it — a moved version, a different
     // upload-cache key on the shared dedupe Source, or a properties record recreated after
@@ -13341,10 +13360,12 @@ export const render = {
                     // the pacing driver resumes a suspended touch while the
                     // live scene keeps presenting, so an early restore re-hides
                     // the subjects mid-draw and the whole batch no-ops.
+                    // Mint the session before the reveal: the paced mint suspends,
+                    // and reveals must not be held across presented frames.
+                    poolSealTouchSession = poolSealTouchSession || (await mintTouchDrawableSession(scene));
                     const restores = [];
                     try {
                       for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                      poolSealTouchSession = poolSealTouchSession || drawableHideSession(scene);
                       return await touchExactTargetSubjects(drawable, poolSealTouchSession);
                     } finally {
                       for (let i = restores.length - 1; i >= 0; i--) restores[i]();
@@ -14973,10 +14994,11 @@ export const render = {
                   const drawable = subjects.filter(touchCanDraw);
                   touchesSkippedHidden += subjects.length - drawable.length;
                   if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
+                  // Mint the session before the reveal (paced mint suspends).
+                  rockTouchSession = rockTouchSession || (await mintTouchDrawableSession(scene));
                   const restores = [];
                   try {
                     for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                    rockTouchSession = rockTouchSession || drawableHideSession(scene);
                     return await touchExactTargetSubjects(drawable, rockTouchSession);
                   } finally {
                     for (let i = restores.length - 1; i >= 0; i--) restores[i]();
@@ -16000,10 +16022,11 @@ export const render = {
             // one touch each was ~6 ms of whole-scene hide/render/restore — ~20 s of the launch.
             // Loading only; the same shell-less path keeps one subject per touch.
             touchMany: state.mode === 'loading'
-              ? (subjects) => whileRevealedGroup(subjects, () => {
-                lateTouchSession = lateTouchSession || drawableHideSession(scene);
-                return touchExactTargetSubjects(subjects, lateTouchSession);
-              })
+              ? async (subjects) => {
+                // Mint the session before the reveal (paced mint suspends).
+                lateTouchSession = lateTouchSession || (await mintTouchDrawableSession(scene));
+                return whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects, lateTouchSession));
+              }
               : null,
             touchBatchSize: 24,
             yieldToMain: yieldToBrowser,
@@ -16164,10 +16187,11 @@ export const render = {
             },
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
             touchMany: state.mode === 'loading'
-              ? (subjects) => whileRevealedGroup(subjects, () => {
-                rescanTouchSession = rescanTouchSession || drawableHideSession(scene);
-                return touchExactTargetSubjects(subjects, rescanTouchSession);
-              })
+              ? async (subjects) => {
+                // Mint the session before the reveal (paced mint suspends).
+                rescanTouchSession = rescanTouchSession || (await mintTouchDrawableSession(scene));
+                return whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects, rescanTouchSession));
+              }
               : null,
             touchBatchSize: 24,
             yieldToMain: yieldToBrowser,
@@ -20983,6 +21007,43 @@ export const render = {
 
   // Burst-safe variant: a bus flush carrying N corpse events rebuilds the canonical sort once
   // at the microtask boundary instead of O(assets) per corpse.
+  // Culled roots freeze their subtree matrices so the per-frame walk stops
+  // recomposing them, but the freeze mint itself is O(subtree) — a cull storm
+  // (the opening picture's syncEntityViews, a sector transition) sums it to
+  // O(scene) inside one presented pass. The freeze is benefit-only, so mints
+  // ride this queue drained a few roots per sync pass; an unfrozen culled
+  // subtree keeps paying the compose it always paid.
+  _queueHiddenSubtreeFreeze(mesh) {
+    if (!mesh || mesh.matrixAutoUpdate !== true) return;
+    const ud = mesh.userData || (mesh.userData = {});
+    if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true) return;
+    ud.sfHiddenFreezeQueued = true;
+    if (!this._pendingHiddenFreeze) this._pendingHiddenFreeze = [];
+    this._pendingHiddenFreeze.push(mesh);
+  },
+
+  _drainHiddenFreezeQueue() {
+    const pending = this._pendingHiddenFreeze;
+    if (!pending || pending.length === 0) return;
+    let minted = 0;
+    while (pending.length > 0 && minted < HIDDEN_FREEZE_MINT_ROOTS_PER_PASS) {
+      const mesh = pending.shift();
+      const ud = mesh.userData || {};
+      delete ud.sfHiddenFreezeQueued;
+      // A row re-shown, detached, or restored mid-queue drops out instead of
+      // minting a freeze on a subtree that is live again.
+      if (ud.sfHiddenFrozen === true || mesh.matrixAutoUpdate !== true
+          || mesh.visible === true || !mesh.parent) continue;
+      // Compose before freezing: writers skip the hook once the flag is true,
+      // so the local matrix for the last pose exists only after this compose.
+      mesh.matrixAutoUpdate = false;
+      mesh.updateMatrix();
+      ud.sfHiddenFrozen = true;
+      freezeHiddenSubtreeMatrices(mesh);
+      minted += 1;
+    }
+  },
+
   _queueAssetResidencyDiagnosticsPublish() {
     if (this._assetResidencyDiagnosticsPublishQueued === true) return;
     this._assetResidencyDiagnosticsPublishQueued = true;
@@ -21032,17 +21093,11 @@ export const render = {
     // descendant) is dead work until first submit. Freeze it here; syncEntityViews restores
     // matrixAutoUpdate on entry. Every root transform writer composes through the
     // matrixAutoUpdate === false hook (PERF-59), so the freeze cannot stale a live write.
-    // Compose once now: writers skip the hook while the flag is still true, so the local
-    // matrix for the just-written bind pose only exists after this updateMatrix().
-    if (mesh.matrixAutoUpdate === true) {
-      mesh.matrixAutoUpdate = false;
-      mesh.updateMatrix();
-      mesh.userData.sfHiddenFrozen = true;
-      // Without the subtree freeze the per-frame walk still descends this culled
-      // root's whole subtree recomposing local matrices nobody writes until
-      // re-entry — stamp-boundary freeze + sfMatrixFrozen marks prune it out.
-      freezeHiddenSubtreeMatrices(mesh);
-    }
+    // The subtree freeze is benefit-only, so its O(subtree) mint rides the
+    // bounded queue instead of landing inside this bind — the drain composes
+    // the just-written bind pose (writers skip the hook once the flag is true)
+    // before freezing, same as the inline form did.
+    this._queueHiddenSubtreeFreeze(mesh);
     const lanes = this._persistentSubmitLanes;
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
@@ -21156,7 +21211,9 @@ export const render = {
       }
     }
     // A culled-frozen root leaving the presentation world goes back to whatever owns the
-    // object next (dispose, pool reuse, rebuild) in its build-time state.
+    // object next (dispose, pool reuse, rebuild) in its build-time state. A queued-but-
+    // unminted freeze stamp drops with the row so a pooled reuse can't inherit it.
+    if (mesh && mesh.userData) delete mesh.userData.sfHiddenFreezeQueued;
     if (mesh && mesh.userData && mesh.userData.sfHiddenFrozen === true) {
       mesh.userData.sfHiddenFrozen = false;
       mesh.matrixAutoUpdate = true;
@@ -23079,13 +23136,7 @@ export const render = {
           mesh.userData.asteroidInstanceViewCulled = true;
         }
         world.clearDirty(slot);
-        const doomedCullData = mesh.userData || (mesh.userData = {});
-        if (mesh.matrixAutoUpdate === true) {
-          mesh.matrixAutoUpdate = false;
-          mesh.updateMatrix();
-          doomedCullData.sfHiddenFrozen = true;
-          freezeHiddenSubtreeMatrices(mesh);
-        }
+        this._queueHiddenSubtreeFreeze(mesh);
         transformed++;
         continue;
       }
@@ -23137,16 +23188,16 @@ export const render = {
       // the force it propagates through the subtree are dead work. Frozen roots still refresh
       // their matrixWorld when a moved ancestor forces the walk, and hidden pose writers all
       // run the matrixAutoUpdate === false hook — output is identical, the compose is gone.
-      // Compose before freezing: the pose write skipped the hook while the flag was true.
-      const cullData = mesh.userData || (mesh.userData = {});
-      if (mesh.matrixAutoUpdate === true) {
-        mesh.matrixAutoUpdate = false;
-        mesh.updateMatrix();
-        cullData.sfHiddenFrozen = true;
-        freezeHiddenSubtreeMatrices(mesh);
-      }
+      this._queueHiddenSubtreeFreeze(mesh);
       transformed++;
     }
+
+    // The mint itself is O(subtree); a cull storm (the opening picture's
+    // syncEntityViews, a sector transition) sums it to O(scene) inside one
+    // presented pass, so freeze roots ride the queue minted a few per pass.
+    // Deferral is correctness-safe: an unfrozen culled subtree keeps paying
+    // the updateMatrixWorld compose it always paid.
+    this._drainHiddenFreezeQueue();
 
     const innerView = viewHalfExtents(
       this.state.camera && this.state.camera.zoom,
