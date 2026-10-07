@@ -89,8 +89,13 @@ function enqueueGeometryResidencyBatches(renderer, work, options = {}) {
   return run;
 }
 
-function materialTextures(material, textures) {
+function materialTextures(material, textures, seenMaterials) {
   if (!material || typeof material !== 'object') return;
+  // Cloned ship parts and pooled VFX share materials. Census each material once per pass:
+  // walking every mesh otherwise repeats its full property/uniform scan, even though the
+  // texture set already deduplicates the result. Keep this local so later passes see edits.
+  if (seenMaterials.has(material)) return;
+  seenMaterials.add(material);
   for (const value of Object.values(material)) {
     if (value && value.isTexture) textures.add(value);
   }
@@ -108,6 +113,7 @@ function subjectRoots(subjects) {
 
 export function collectStartupTextures(subjects) {
   const textures = new Set();
+  const seenMaterials = new Set();
   const roots = subjectRoots(subjects);
   for (const root of roots) {
     if (root && root.isTexture === true) {
@@ -119,7 +125,7 @@ export function collectStartupTextures(subjects) {
       const materials = Array.isArray(object.material)
         ? object.material
         : object.material ? [object.material] : [];
-      for (const material of materials) materialTextures(material, textures);
+      for (const material of materials) materialTextures(material, textures, seenMaterials);
     });
   }
   return [...textures];
@@ -133,6 +139,7 @@ export function collectStartupTextures(subjects) {
  */
 export function* collectStartupTexturesSteps(subjects, sliceEvery = 256) {
   const textures = new Set();
+  const seenMaterials = new Set();
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   let visited = 0;
   for (const root of subjectRoots(subjects)) {
@@ -149,7 +156,7 @@ export function* collectStartupTexturesSteps(subjects, sliceEvery = 256) {
       const materials = Array.isArray(object.material)
         ? object.material
         : object.material ? [object.material] : [];
-      for (const material of materials) materialTextures(material, textures);
+      for (const material of materials) materialTextures(material, textures, seenMaterials);
       const children = object.children;
       if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
     }

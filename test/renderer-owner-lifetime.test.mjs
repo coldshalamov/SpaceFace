@@ -331,10 +331,12 @@ test('the opening publication gate refuses a foreign generation and settles for 
     );
 
     const gate = waitForOpeningGraphPublicationRelease({ expectedRender: fixture.render });
+    fixture.render.openingGraphPublicationFrozen = false;
     released.resolve('released');
     assert.equal(await gate, 'released');
 
     const stale = deferred();
+    fixture.render.openingGraphPublicationFrozen = true;
     fixture.render.waitForOpeningGraphPublicationRelease = () => stale.promise;
     const staleGate = waitForOpeningGraphPublicationRelease({ expectedRender: fixture.render });
     fixture.render.admissionRunGeneration = 9;
