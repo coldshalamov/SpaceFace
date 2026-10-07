@@ -351,19 +351,21 @@ async function boot() {
       if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
     });
 
+    const recoverRuntimeFailure = (failure) => {
+      const receipt = closeRuntime();
+      if (receipt.errorCount > 0) {
+        console.error('[SpaceFace] runtime teardown completed with errors:', receipt.errors);
+      }
+      failurePresenter.show(failure);
+    };
     loopController = startLoop(state, registry, {
       presentationJournal,
       // Gates that pay a paint boundary only need one when nothing has drawn
       // recently — the runner's accepted presents are exactly that evidence,
       // while its suspended/restoring window correctly stops stamping.
       onPresented() { lastPaintAt = nowMs(); },
-      onSimulationFailure(failure) {
-        const receipt = closeRuntime();
-        if (receipt.errorCount > 0) {
-          console.error('[SpaceFace] runtime teardown completed with errors:', receipt.errors);
-        }
-        failurePresenter.show(failure);
-      },
+      onSimulationFailure: recoverRuntimeFailure,
+      onPresentationFailure: recoverRuntimeFailure,
     });
     ctx.simStep = () => loopController.stepOnce();
     const loopDebug = {

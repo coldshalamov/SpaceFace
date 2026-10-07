@@ -21,6 +21,7 @@ import { createTimeEffects } from './timeEffects.js';
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
 // that a player who is looking at a frozen world has not been looking at it for long.
 const PRESENTATION_STALL_FRAMES = 30;
+const GRAPHICS_RECOVERY_TIMEOUT_MS = 60_000;
 
 const _stepCapArgs = { frameDt: 0, fixedDt: LOOP_FIXED_DT, maxSteps: 0 };
 const _frameCapArgs = { cap: 0, vsync: true, displayHz: 60 };
@@ -191,6 +192,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const onSimulationFailure = typeof deps.onSimulationFailure === 'function'
     ? deps.onSimulationFailure
     : null;
+  const onPresentationFailure = typeof deps.onPresentationFailure === 'function'
+    ? deps.onPresentationFailure
+    : null;
   const measureNow = deps.perfNow || perfNow;
   const presentationJournal = deps.presentationJournal
     || registry?.ctx?.presentationJournal
@@ -239,6 +243,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   let destroyed = false;
+  let contextOutageStartedAt = null;
   let transportClosed = false;
   let frameHandle = null;
   let last = nowMs();
@@ -360,6 +365,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     consecutiveFrameErrors: 0,
     presentationStalled: false,
     presentationStallCount: 0,
+    presentationFailureNotified: false,
+    presentationFailure: null,
   };
 
   const readWitnessSample = (into) => collectRuntimeWitnessSample(state, {
@@ -441,6 +448,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       try {
         inputResumeTarget.removeEventListener('pointerdown', onInputResume, true);
         inputResumeTarget.removeEventListener('keydown', onInputResume, true);
+        inputResumeTarget.removeEventListener('touchstart', onInputResume, true);
       } catch (error) {
         recordTeardownError('removeInputResumeListener', error, errors);
       }
@@ -543,6 +551,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   function enterRestoring(target, reason) {
+    // Time spent hidden or suspended is not a failed foreground recovery attempt.
+    contextOutageStartedAt = null;
     restoreTarget = target;
     diagnostics.restoreTarget = target;
     if (lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
@@ -602,13 +612,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   function onWindowFocus() {
-    if (destroyed) return;
-    try { syncFocusLossHold(state, false); } catch (_) { /* resume is idempotent */ }
+    onInputResume();
   }
 
   function onInputResume() {
-    if (destroyed || !suspended) return;
+    if (destroyed) return;
     if (shellState === LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED) return;
+    // Browsers can deliver blur without a matching focus on return. Active interaction proves
+    // focus even when rAF kept running: otherwise the focus pause freezes the world indefinitely.
+    // Clear only that owner's hold; loading, menus and context recovery retain theirs.
+    try { syncFocusLossHold(state, false); } catch (_) { /* resume is idempotent */ }
+    if (!suspended) return;
     documentHidden = false;
     diagnostics.visibilityState = 'visible';
     synchronizeLifecycle('input-resume');
@@ -669,6 +683,40 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       } catch (error) {
         console.error('[loop] onSimulationFailure callback failed:', error);
       }
+    }
+  }
+
+  function notifyPresentationFailure(code, message) {
+    if (destroyed || diagnostics.presentationFailureNotified || !onPresentationFailure) return;
+    const failure = Object.freeze({
+      code, message, tick: state.tick, simTime: state.simTime,
+      headline: 'Graphics interrupted',
+      fills: 'The flight picture could not recover safely.',
+      detail: 'Restart from the main menu to recover. Progress since your last save may be lost.',
+      verbLabel: 'Restart to main menu',
+    });
+    diagnostics.presentationFailureNotified = true;
+    diagnostics.presentationFailure = failure;
+    try { stop(); }
+    catch (error) { console.error('[loop] presentation stop after graphics failure:', error); }
+    try { onPresentationFailure(failure); }
+    catch (error) { console.error('[loop] onPresentationFailure callback failed:', error); }
+  }
+
+  function checkGraphicsRecovery(now) {
+    const render = state.render;
+    const recovery = render?.contextRecovery;
+    if (recovery?.terminal === true) {
+      notifyPresentationFailure('GRAPHICS_RECOVERY_FAILED', recovery.lastError || 'Graphics recovery failed');
+      return;
+    }
+    if (render?.contextLost !== true && recovery?.pending !== true) {
+      contextOutageStartedAt = null;
+      return;
+    }
+    if (contextOutageStartedAt === null) contextOutageStartedAt = now;
+    if (now - contextOutageStartedAt >= GRAPHICS_RECOVERY_TIMEOUT_MS) {
+      notifyPresentationFailure('GRAPHICS_RECOVERY_TIMED_OUT', recovery?.lastError || 'Graphics recovery timed out');
     }
   }
 
@@ -1242,6 +1290,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
           diagnostics.presentationStallEvidence);
       }
       notifySimulationFailure();
+      if (diagnostics.presentationStalled) {
+        notifyPresentationFailure('PRESENTATION_FAILED', diagnostics.lastFrameError);
+      }
     } finally {
       if (perf && typeof perf.recordFrameCallback === 'function') {
         perf.recordFrameCallback(measureNow() - callbackStart);
@@ -1259,6 +1310,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       captureWitness();
     }
 
+    if (!destroyed && !suspended) checkGraphicsRecovery(now);
     // renderUpdate may synchronously trigger the full terminal closer. Never complete a restore
     // transition after its audio/listener/transport owners have already been destroyed.
     if (!mustRescheduleAfterFrame({ destroyed })) return;
@@ -1287,6 +1339,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   if (inputResumeTarget && typeof inputResumeTarget.addEventListener === 'function') {
     inputResumeTarget.addEventListener('pointerdown', onInputResume, true);
     inputResumeTarget.addEventListener('keydown', onInputResume, true);
+    inputResumeTarget.addEventListener('touchstart', onInputResume, { capture: true, passive: true });
   }
   if (lifecyclePort && typeof lifecyclePort.subscribe === 'function') {
     const unsubscribe = lifecyclePort.subscribe(onShellLifecycle);
