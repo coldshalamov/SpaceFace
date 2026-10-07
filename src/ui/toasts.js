@@ -208,11 +208,22 @@ export function createToasts(ctx) {
         }
         const decay = r.el.querySelector ? r.el.querySelector(':scope > .sf-toast__decay') : null;
         if (decay && decay.style) {
-          decay.style.animation = 'none';
-          void decay.offsetWidth; // reflow so the re-armed animation restarts from full
-          decay.style.animation = '';
+          if (typeof decay.getAnimations === 'function') {
+            // WAAPI restart — no forced reflow: cancel yanks the run, play re-arms it from full
+            // under the refreshed --sf-toast-ttl. Empty set (reduced motion hides the bar) no-ops.
+            const anims = decay.getAnimations();
+            for (const a of anims) { a.cancel(); a.play(); }
+          } else {
+            decay.style.animation = 'none';
+            void decay.offsetWidth; // reflow so the re-armed animation restarts from full
+            decay.style.animation = '';
+          }
         }
+        // Fresh TTL window ends any tail fade early: hand opacity back to CSS for this window —
+        // tick re-arms --jsfade when (and only when) the ramp owns the property again.
         r.el.style.opacity = '';
+        r._sfOpacity = null;
+        r.el.classList.remove('sf-toast--jsfade');
         if (!r.badge) {
           const badge = document.createElement('span');
           badge.className = 'sf-toast__count';
@@ -282,7 +293,9 @@ export function createToasts(ctx) {
         if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
       } else {
         // The tick's inline opacity ramp would pin the card mid-fade; hand the exit to the class.
+        // --jsfade goes with it: its transition:none would kill the exit beat armed just below.
         rec.el.style.opacity = '';
+        rec.el.classList.remove('sf-toast--jsfade');
         rec.el.classList.remove('sf-toast--in');
         rec.el.classList.add('sf-toast--out');
         // The exit fade is real: removal waits one transition beat so a click-dismiss reads as a
@@ -310,6 +323,10 @@ export function createToasts(ctx) {
       if (left < 300) {
         const nextOpacity = String(Math.max(0, left / 300));
         if (rec._sfOpacity !== nextOpacity) {
+          // The base class carries `transition: opacity .16s ease`, which would lag this per-frame
+          // ramp — on the first write of a fade window, sf-toast--jsfade (hudStyles) suspends it
+          // while JS owns opacity. Regroup in push() and the dismiss exit drop the class again.
+          if (rec._sfOpacity == null) rec.el.classList.add('sf-toast--jsfade');
           rec._sfOpacity = nextOpacity;
           rec.el.style.opacity = nextOpacity;
         }
