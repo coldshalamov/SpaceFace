@@ -358,14 +358,15 @@ test('swing coordination reads swing magnitude and fails open', () => {
 
 test('Flight V3 shapes forward thrust while the orbit outruns yaw authority', () => {
   // Same ship, same speed, same chord — only the rope differs. The long rope tracks; the short
-  // rope's swing needs far more yaw than any hull carries, so the coordinator must hold thrust
-  // back to keep the nose on the tangent.
+  // rope's swing needs more yaw than even the line-locked ceiling allows (7.5 rad/s against the
+  // physics owner's 6.0), so the coordinator must hold thrust back to keep the nose on the tangent.
+  // (A 30 WU rope at 150 WU/s, 5 rad/s, is now trackable: the line lends the hull its yaw rate.)
   const trackable = makeFlightHarness();
   const saturated = makeFlightHarness();
   trackable.player.vel = { x: 0, z: 150 };
   saturated.player.vel = { x: 0, z: 150 };
-  saturated.anchor.pos = { x: 90, z: 0 };
-  saturated.state.player.tether.restLength = 30;
+  saturated.anchor.pos = { x: 100, z: 0 };
+  saturated.state.player.tether.restLength = 20;
   const forwardForce = (harness) => {
     const system = Object.create(flightV3Module.flightV3);
     system.init({ state: harness.state, bus: harness.bus });

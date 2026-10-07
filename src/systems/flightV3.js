@@ -25,7 +25,7 @@ import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propuls
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry, computeSweptHullAdvisory, SWEPT_HULL_DEFAULTS } from '../core/flight/flightTelemetry.js';
-import { orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+import { orbitHeadingThrustGate, orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // FB-001: the authored pursuit-slot chase assist. Pure module; flightV3 is its only caller and
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
@@ -365,8 +365,31 @@ export const flightV3 = {
       orbitAssist = craftOrbitAssistStep(
         state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt,
       );
+      // Direction latch memory lives on the entity and is written only after this steering call,
+      // so the pre-boost probe and this call read the same previous-tick latch (both stay pure).
+      entity._orbitDirectionLatch = orbitAssist.active ? (orbitAssist.telemetry.latchedDirection || 0) : 0;
       if (orbitAssist.active) {
         input = orbitAssist.input;
+        // Line-locked yaw: the taut line already carries the hull round at the orbital rate, so
+        // the helper may ask for more than the hull's own maxYawRate (up to the physics ceiling).
+        // Lend that rate, and scale yaw accel/brake by the same ratio, for this tick only.
+        const lent = orbitAssist.telemetry.lentYawRate;
+        if (lent && lent > positive(profile.maxYawRate, 1)) {
+          const ratio = lent / positive(profile.maxYawRate, 1);
+          const yawAccel = positive(profile.yawAccel, 8);
+          profile = {
+            ...profile,
+            maxYawRate: lent,
+            yawAccel: yawAccel * ratio,
+            yawBrake: positive(profile.yawBrake, yawAccel * 1.4) * ratio,
+          };
+        }
+        // A nose still swinging onto the tangent must not thrust across (or against) the orbit
+        // it is chasing: forward throttle follows cos(heading error) while the assist steers.
+        const headingGate = orbitHeadingThrustGate(orbitAssist.telemetry);
+        if (headingGate < 1 && input.throttle > 0) {
+          input = { ...input, throttle: input.throttle * headingGate };
+        }
         // Swing/yaw coordination: the yaw helper is exact only while the nose can turn as fast
         // as the line swings. Past that (short rope, boost, fast hull) an unthrottled orbit pegs
         // yaw at the envelope while the nose lags 100°+ behind the tangent — uncontrolled
@@ -665,6 +688,15 @@ export const flightV3 = {
         imp *= SWING_DRIVE_GAIN;
         swung = true;
       }
+    }
+    if (!swung && tether && tether.active && tether.targetId != null) {
+      // On a live line a dash may only lift the speed along its direction to the boosted speed
+      // cap. Chord-break dashes (release the turn key, tap boost, re-press) otherwise pumped a
+      // tethered spin to 2x+ what the drive can sustain. The swing-drive verb is exempt.
+      const dashProfile = resolvePropulsionProfile(e, state);
+      const vAlong = finite(e.vel && e.vel.x) * dirX + finite(e.vel && e.vel.z) * dirZ;
+      const dashCap = positive(dashProfile.combatSpeed, 150) * positive(dashProfile.boostSpeedMult, 1.55);
+      imp = Math.min(imp, Math.max(0, dashCap - vAlong));
     }
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
     // Rapier authority path: queue the impulse (mass-scaled so delta-v is `imp` units/s),
@@ -1062,7 +1094,9 @@ function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, teth
     flightIntent: {
       forward: finite(rawInput && (rawInput.moveZ ?? rawInput.throttle)),
       lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
+      lateralFromAim: !!(rawInput && rawInput.turnIntentFromAim),
     },
+    latchedDirection: entity._orbitDirectionLatch || 0,
     input,
     profile,
     strength: state.settings && state.settings.gameplay
