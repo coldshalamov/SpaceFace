@@ -481,7 +481,7 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here, 2026-10-07 00:20 ET):** #3 flight turn authority SHIPPED as PR #231
+**Status (restart from here, 2026-10-07 00:06 ET):** #3 flight turn authority SHIPPED as PR #231
 (`lab2b/flight-turn`, not merged; see 10.4). Kestrel cruise W+turn went from 0.33 to 0.58 of max yaw (222 → 128 wu),
 boost from 0.21 to 0.375 (543 → 305 wu, no decay), and Q/E+W+yaw now turns with the yaw key. `legacyFloor` keeps
 every hull at or above master. #5 shipped as PR #230 (10.3) and #4 as PR #229 (10.2). Next: #6 weapon balance
@@ -766,7 +766,7 @@ identical to the lab candidate.
 **Candidate follow-up (not fixed here): Ironback and Ranger W+turn path.**
 - Neither hull bends its path under W+turn on master or on this PR. Ironback (pulse-plate drive): cruise
   path 0.01 of max yaw, radius ~24,000 wu, no cruise U-turn in 8 s. Ranger (field-sail drive): 0.
-- Both also turn against the yaw key under W+E+A.
+- Under W+E+A both drift slightly the wrong way, but they barely turn at all, so this is near noise.
 - `test/lg-turn-radius.test.mjs` pins their in-game turn line as empty (radius 0), so this looks
   authored rather than a bug. Still, a sail or pulse barge that cannot be steered by W+turn at all is
   worth a feel review with Robin.
