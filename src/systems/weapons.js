@@ -1368,7 +1368,12 @@ export const weapons = {
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
       let fixedAim = mountGate ? mountGate.angle : (aimAngle != null ? aimAngle : e.rot);
       if (!mountGate && forceTarget && forceTarget.pos) {
-        fixedAim = this._leadAngle(e, forceTarget, mountProjSpeed);
+        // A locked player shot leaves the real muzzle, not the hull centre: solve from there with
+        // the same muzzle + launch-model solve G mode uses. Hull-centre lead put off-axis mounts
+        // 3-10 deg wide of the solution. NPC aim keeps the hull-centre lead (balance unchanged).
+        fixedAim = isPlayer
+          ? this._arcadeMountAngle(e, w, forceTarget, mountProjSpeed)
+          : this._leadAngle(e, forceTarget, mountProjSpeed);
       }
       // G trades manual barrel alignment for independent dodging. Use the same physical shot
       // model, but no cone clamp or random aim error on this explicit hostile solution.
@@ -1489,9 +1494,9 @@ export const weapons = {
     // bullets INHERIT the shooter's full velocity too — weighty strafing runs at the cost of aim-true
     // fire. A deliberate feel inversion kept behind a default-off flag so the golden (and normal play)
     // are unchanged; enable it only for playtesting.
-    const vel = (isMissile || combatFlag('momentumInherit'))
+    const vel = isMissile
       ? { x: cf * launchSpeed + e.vel.x, z: sf * launchSpeed + e.vel.z }
-      : aimTrueProjectileVelocity(dir, launchSpeed, e.vel);
+      : launchVelocity(dir, launchSpeed, e.vel);
 
     // Engagement range stays on maxDistance for AI, locks, and the targeting computer.
     // The body itself keeps a long flight budget so a shot can leave the frame, hit,
@@ -1962,6 +1967,12 @@ export const weapons = {
       angle = speed > 0 ? this._leadAngle({ pos: origin, vel: e.vel }, target, speed)
         : Math.atan2(target.pos.z - origin.z, target.pos.x - origin.x);
     }
+    // The relative-frame lead assumes the round leaves at projSpeed relative to the shooter.
+    // The real launch (_spawnProjectile) only compensates lateral shooter velocity while that
+    // is below projSpeed; a hull sliding sideways faster than its own rounds (boost, dash) gets
+    // a round at projSpeed in WORLD space instead, and the relative solve misses by degrees.
+    // Re-solve against the round's actual world velocity until the two agree.
+    if (speed > 0) angle = refineLeadForLaunch(angle, speed, e.vel, target, (a) => this._muzzle(e, w, a));
     return angle;
   },
 
@@ -2057,6 +2068,34 @@ function liveVectorMineList(state) {
 // the returned angle points at the target's WORLD future position because spawned bullets travel on
 // that world-space line (aimTrueProjectileVelocity). Returning the relative-frame angle here made a
 // strafing player's rounds lead in the opposite direction and miss moving targets by whole hulls.
+/** World velocity of a bullet launched along `angle` (the model _spawnProjectile uses). */
+export function launchVelocity(angle, projSpeed, shooterVel) {
+  if (combatFlag('momentumInherit')) {
+    const v = shooterVel || { x: 0, z: 0 };
+    return { x: Math.cos(angle) * projSpeed + (v.x || 0), z: Math.sin(angle) * projSpeed + (v.z || 0) };
+  }
+  return aimTrueProjectileVelocity(angle, projSpeed, shooterVel);
+}
+
+/**
+ * Fixed-point refinement of a lead angle against the real launch model: solve the intercept in
+ * the world frame at the round's actual world speed (and heading offset, if momentum is
+ * inherited) from the muzzle that angle implies. Exact where the relative solve already is
+ * (lateral shooter speed below projSpeed); fixes it where the launch stops compensating.
+ */
+export function refineLeadForLaunch(angle, projSpeed, shooterVel, target, muzzleAt, iterations = 4) {
+  let a = angle;
+  for (let i = 0; i < iterations; i++) {
+    const origin = muzzleAt(a);
+    const u = launchVelocity(a, projSpeed, shooterVel);
+    const worldSpeed = Math.hypot(u.x, u.z);
+    if (!(worldSpeed > 1e-6)) break;
+    const offset = wrapAngle(Math.atan2(u.z, u.x) - a);
+    a = solveLeadAngle({ pos: origin, vel: { x: 0, z: 0 } }, target, worldSpeed) - offset;
+  }
+  return a;
+}
+
 export function solveLeadAngle(shooter, tgt, projSpeed) {
   const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
   const sv = (shooter && shooter.vel) || { x: 0, z: 0 };
