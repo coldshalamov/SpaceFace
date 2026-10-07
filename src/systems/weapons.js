@@ -1176,7 +1176,13 @@ export const weapons = {
     }
     capLeft -= energyCost * dt;
     w._heat = (w._heat || 0) + heatPerSec * dt;
-    if (w._heat >= heatMax) w._heat = heatMax;
+    if (w._heat >= heatMax) {
+      w._heat = heatMax;
+      // SF-2b #6: trip the forced vent here, like the projectile paths do. The vent check in
+      // _tickWeapons runs after the next tick's dissipation, which always pulled a clamped beam
+      // back under heatMax first, so a beam never vented and held full damage forever.
+      this._beginVent(e, state, w);
+    }
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
     const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);

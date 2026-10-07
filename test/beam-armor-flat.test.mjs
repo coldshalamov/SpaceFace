@@ -9,14 +9,17 @@ import { weapons, BEAM_ARMOR_PACKET_S } from '../src/systems/weapons.js';
 import { combat } from '../src/systems/combat.js';
 import { normalizeDamagePacket, scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { SIM_DT } from '../src/core/sim.js';
+import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
 
 // SF-2b #6: flat armor is deducted once per damage packet. A continuous beam emits one packet per
 // tick (60 dps -> 1-damage packets at 60 Hz), so before this fix a target's armorFlat was paid 60
 // times a second and flat 1-3 erased the beam (Beam Laser M: 1.9 dps on a Bruiser, 8 of 16 enemy
 // types unkillable in 60 s). The beam now pays the flat once per BEAM_ARMOR_PACKET_S.
 
-function bootWorld(seed = 9032) {
+function bootWorld(seed = 9032, { production = false } = {}) {
   const state = createGameState(seed);
+  // The production profile runs the forced heat vent; the process default (legacy 47-A) does not.
+  if (production) state.runtime = Object.freeze({ ...(state.runtime || {}), profileId: 'production', features: PRODUCTION_FEATURES });
   state.mode = 'flight';
   state.meta.seed = seed;
   const bus = createBus();
@@ -119,4 +122,43 @@ test('a projectile hit still pays the full flat armor', () => {
   assert.ok(platedDamage < bare * 0.75, `flat 3 bites an 8-damage shot (${platedDamage} of ${bare})`);
   assert.equal(dealt(3, { armorFlatScale: 1 }), platedDamage, 'no scale == a full packet');
   assert.ok(dealt(3, { armorFlatScale: 0 }) > platedDamage, 'the scale is what the router reads');
+});
+
+// SF-2b #6 (heat): a beam clamps at heatMax, and the vent check in _tickWeapons runs after the next
+// tick's dissipation, which always pulled it back under heatMax first. A beam never vented: Beam
+// Laser M (55 heat/s against 25.3 dissipation) held full damage forever. It now trips the vent the
+// tick it pegs, like the projectile paths.
+test('a held beam pegs, vents every mount, then comes back (production profile)', () => {
+  const env = bootWorld(9033, { production: true });
+  const ship = shooter(env, { defId: 'wpn_beam_laser_m', slotIndex: 0 });
+  plated(env, 0);
+  const vents = [];
+  env.bus.on('weapons:vent', (ev) => { if (ev.phase === 'start') vents.push(env.state.simTime); });
+  let firedTicks = 0, firstVentTick = null, firedDuringVent = 0;
+  const ticks = Math.round(10 / SIM_DT);
+  for (let i = 0; i < ticks; i++) {
+    const venting = env.state.simTime < (ship.data.weaponVentUntil || 0);
+    tick(env);
+    const fired = env.state.combat.beams.length > 0;
+    if (fired) firedTicks++;
+    if (fired && venting) firedDuringVent++;
+    if (firstVentTick == null && vents.length) firstVentTick = i;
+  }
+  const duty = firedTicks / ticks;
+  console.log(`[beam-vent] first vent at ${(firstVentTick * SIM_DT).toFixed(2)} s, vents ${vents.length} in 10 s, duty ${duty.toFixed(3)}`);
+  assert.ok(firstVentTick != null, 'a held beam pegs heatMax and vents');
+  assert.ok(firstVentTick * SIM_DT > 2.5 && firstVentTick * SIM_DT < 4.5, 'pegs after ~3.4 s of fire (100 / (55 - 25.3))');
+  assert.equal(firedDuringVent, 0, 'no beam ray while the vent holds');
+  assert.ok(vents.length >= 2, 'fires again after the vent and pegs again');
+  assert.ok(duty > 0.6 && duty < 0.85, `sustained duty inside the 60-80 % band (${duty.toFixed(3)})`);
+});
+
+test('legacy 47-A profile keeps the vent off for beams too', () => {
+  const env = bootWorld(9034);
+  const ship = shooter(env, { defId: 'wpn_beam_laser_m', slotIndex: 0 });
+  plated(env, 0);
+  let firedTicks = 0;
+  for (let i = 0; i < 300; i++) { tick(env); if (env.state.combat.beams.length) firedTicks++; }
+  assert.equal(ship.data.weaponVentUntil || 0, 0);
+  assert.equal(firedTicks, 300);
 });
