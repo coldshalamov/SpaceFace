@@ -5,7 +5,9 @@
 // on the same frames that already built meshes. The tally is exact when callers report
 // add/remove; recount() is the dirty fallback.
 
-export function countShadowReceivers(root, out = null) {
+const COUNT_CAP_ABORT = { capAbort: true };
+
+export function countShadowReceivers(root, out = null, maxNodes = 0) {
   if (!root) return 0;
   let receivers = 0;
   let nodes = 1;
@@ -14,10 +16,26 @@ export function countShadowReceivers(root, out = null) {
   if (children && children.length && typeof root.traverse === 'function') {
     // traverse visits root itself, so the node count restarts at 0 here.
     nodes = 0;
-    root.traverse((object) => {
-      nodes += 1;
-      if (object && object !== root && object.receiveShadow === true) receivers += 1;
-    });
+    if (maxNodes > 0) {
+      // Past the cap the whole subtree cost was already the thing being
+      // bounded — bail so the caller falls to the paced recount instead.
+      try {
+        root.traverse((object) => {
+          nodes += 1;
+          if (nodes > maxNodes) throw COUNT_CAP_ABORT;
+          if (object && object !== root && object.receiveShadow === true) receivers += 1;
+        });
+      } catch (error) {
+        if (error !== COUNT_CAP_ABORT) throw error;
+        if (out) out.nodes = nodes;
+        return -1;
+      }
+    } else {
+      root.traverse((object) => {
+        nodes += 1;
+        if (object && object !== root && object.receiveShadow === true) receivers += 1;
+      });
+    }
   }
   if (out) out.nodes = nodes;
   return receivers;
@@ -391,9 +409,16 @@ export function createShadowReceiverTally() {
       if (options.force === true) return this.recount(scene);
       if (!dirty) return count;
       // Dirty: pace the stepped recount inside this call's bounded slice and
-      // keep serving the last count until a clean walk settles.
+      // keep serving the last count until a clean walk settles. The caller's
+      // frame wallet gates step minting — a spent presented frame parks the
+      // walk untouched, and the slice's real spend is debited on the way out
+      // so every paced lane sees the same budget.
       const start = tallyNow();
+      const spendGate = typeof options.spendGate === 'function' ? options.spendGate : null;
+      const debit = typeof options.debit === 'function' ? options.debit : null;
+      try {
       while (dirty) {
+        if (spendGate && !spendGate()) return count;
         // Supersede at first detection, not just at completion — a dirty bump
         // mid-walk makes the remaining slices guaranteed-stale work.
         if (pendingRecount && pendingRecount.seq !== dirtySeq
@@ -448,6 +473,9 @@ export function createShadowReceiverTally() {
           continue;
         }
         if (tallyNow() - start >= RECOUNT_SLICE_MS) return count;
+      }
+      } finally {
+        if (debit) debit(tallyNow() - start);
       }
       return count;
     },

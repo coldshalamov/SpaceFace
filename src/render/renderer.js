@@ -172,6 +172,7 @@ import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
 import {
   clearWaveHullRunwayKeys,
+  collectMeshPresentationEntities,
   collectMeshPresentationEntitiesChunked,
   warmNearbyLedgerRows,
   warmNearbyLedgerRowsSteps,
@@ -2025,12 +2026,36 @@ const DESPAWN_DISPOSE_DRAIN_MAX = 8;
 // serve errs conservative-on — exactly the churn-frame brick class the tally
 // exists to prevent.
 const UNMEASURED_SHADOW_NOTE_EXACT_PER_PASS = 2;
+// A lone unmeasured note inside the exact-count budget still must not pay an
+// unbounded subtree walk — a spaced trickle of torn hulks would ride under
+// the per-pass cap while paying O(hulk) twice per pass. Past the node cap
+// the count defers to the paced recount, same legal-direction serve.
+const UNMEASURED_SHADOW_NOTE_NODE_MAX = 128;
 
 const DESPAWN_DISPOSE_BUDGET_MS = 2;
 // Sustained busy frames can't defer GL reclaim forever: after this many skipped
 // drains the lane runs its bounded min-item slice anyway — same aging contract
 // the glTF compile drain and the depth arm already carry.
 const DESPAWN_DISPOSE_LEDGER_MAX_SKIPS = 2;
+
+// Cook drive guard: the cook's outer try only carries a finally, so a throwing
+// stepped iterator used to reject the whole cook — muting every section after
+// it with no log and landing the arrival meshless. A throwing step must close
+// its iterator, log once, and degrade just its own section (sync twin where one
+// exists, section-skip otherwise) instead of propagating.
+function closeCookStepsIter(iter) {
+  try { if (iter && typeof iter.return === 'function') iter.return(); } catch (_) { /* cleanup-only */ }
+}
+// The sync twin a degraded drive falls back to can throw on the same pathology
+// that killed the stepped walk — it is the pre-Steps code, not new logic. Log
+// once and keep the caller's partial result instead of letting the twin's
+// throw take the whole cook tail down.
+function runCookSyncTwin(label, run, fallback = undefined) {
+  try { return run(); } catch (syncError) {
+    console.warn(`[render] ${label} sync twin failed; keeping the partial result`, syncError);
+    return fallback;
+  }
+}
 
 function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
   return drainDisposeQueueLane(owner, '_despawnDisposeQueue', '_despawnDisposeHead',
@@ -9930,7 +9955,16 @@ export const render = {
               // microtask alone (recompile loop + depth-subject list below).
               const censusIter = collectInstancePoolCompileRootsAndSubjectsSteps(liveScene, 256);
               for (;;) {
-                const censusStep = censusIter.next();
+                let censusStep;
+                try {
+                  censusStep = censusIter.next();
+                } catch (driveError) {
+                  closeCookStepsIter(censusIter);
+                  console.warn('[render] pool compile census drive failed; running the sync twin', driveError);
+                  poolCompileRoots = runCookSyncTwin('pool compile census',
+                    () => collectInstancePoolCompileRoots(liveScene), []);
+                  break;
+                }
                 if (censusStep.done) {
                   poolCompileRoots = censusStep.value ? censusStep.value.roots : [];
                   break;
@@ -10177,9 +10211,15 @@ export const render = {
         if (paceBootQueue) await paceBootQueue();
         if (!lifecycle.isActive()) return;
         if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-          for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
-            if (!lifecycle.isActive()) return;
-            if (paceBootQueue) await paceBootQueue();
+          try {
+            for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+              if (!lifecycle.isActive()) return;
+              if (paceBootQueue) await paceBootQueue();
+            }
+          } catch (driveError) {
+            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('light-budget', () =>
+              syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
           }
         } else {
           syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -10203,7 +10243,16 @@ export const render = {
         let leaves = null;
         const leavesIter = collectOpeningSubmissionLeavesSteps(scene, { includeOffscreen: true });
         for (;;) {
-          const leafStep = leavesIter.next();
+          let leafStep;
+          try {
+            leafStep = leavesIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(leavesIter);
+            console.warn('[render] opening leaf census drive failed; running the sync twin', driveError);
+            leaves = runCookSyncTwin('opening leaf census',
+              () => collectOpeningSubmissionLeaves(scene, { includeOffscreen: true }), []);
+            break;
+          }
           if (leafStep.done) { leaves = leafStep.value; break; }
           await yieldToBrowser();
         }
@@ -10216,7 +10265,16 @@ export const render = {
         };
         const firstFlightRootsIter = collectFirstFlightEffectRootsSteps(scene);
         for (;;) {
-          const rootStep = firstFlightRootsIter.next();
+          let rootStep;
+          try {
+            rootStep = firstFlightRootsIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(firstFlightRootsIter);
+            console.warn('[render] first-flight root census drive failed; running the sync twin', driveError);
+            for (const root of runCookSyncTwin('first-flight root census',
+                () => collectFirstFlightEffectRoots(scene), [])) addExtraVfx(root);
+            break;
+          }
           if (rootStep.done) {
             for (const root of rootStep.value) addExtraVfx(root);
             break;
@@ -10838,8 +10896,13 @@ export const render = {
       const envMap = this._envMap;
       if (!envMap || !subject) return;
       if (typeof bindEnvironmentToStandardMaterialsSteps === 'function') {
-        for (const _ of bindEnvironmentToStandardMaterialsSteps(subject, envMap)) {
-          await admissionPaceYield();
+        try {
+          for (const _ of bindEnvironmentToStandardMaterialsSteps(subject, envMap)) {
+            await admissionPaceYield();
+          }
+        } catch (driveError) {
+          console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+          runCookSyncTwin('env-bind', () => bindEnvironmentToStandardMaterials(subject, envMap));
         }
       } else {
         bindEnvironmentToStandardMaterials(subject, envMap);
@@ -10887,7 +10950,16 @@ export const render = {
         if (typeof drawableHideSessionSteps === 'function') {
           const it = drawableHideSessionSteps(targetScene);
           for (;;) {
-            const step = it.next();
+            let step;
+            try {
+              step = it.next();
+            } catch (driveError) {
+              closeCookStepsIter(it);
+              console.warn('[render] drawable census drive failed; running the sync twin', driveError);
+              drawables = runCookSyncTwin('drawable census',
+                () => drawableHideSession(targetScene).drawables, []);
+              break;
+            }
             if (step.done) { drawables = step.value.drawables; break; }
             await admissionPaceYield();
           }
@@ -10918,7 +10990,15 @@ export const render = {
       }
       const it = collectStartupTexturesSteps(subjects);
       for (;;) {
-        const step = it.next();
+        let step;
+        try {
+          step = it.next();
+        } catch (driveError) {
+          closeCookStepsIter(it);
+          console.warn('[render] startup-texture collect drive failed; running the sync twin', driveError);
+          return runCookSyncTwin('startup-texture collect',
+            () => detachedSubjectUploadsPending(subjects), []);
+        }
         if (step.done) {
           return step.value.filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
         }
@@ -11940,8 +12020,14 @@ export const render = {
       // Env/light/shadow cardinality is part of the driver key. Bake before capture, not here:
       // replacing scene.environment after the opening plan is frozen fails the first-draw gate.
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-        for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
-          if (typeof yieldToBrowser === 'function') await yieldToBrowser();
+        try {
+          for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+            if (typeof yieldToBrowser === 'function') await yieldToBrowser();
+          }
+        } catch (driveError) {
+          console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+          runCookSyncTwin('light-budget', () =>
+            syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
         }
       } else {
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -12307,7 +12393,12 @@ export const render = {
         // syncEntityViews keeps queueing roots under the veil, and the drain
         // is dwell-gated + self-capped, so the idle gap is exactly the right
         // place for it (providerYield seams inherit it through this helper).
+        // The unfreeze twin rides the same seam: a mass re-show backlog
+        // otherwise retires only inside presented passes (≤6 mints on a quiet
+        // frame, ~1 under pressure) while freeze drains at full caps here.
         this._drainHiddenFreezeQueue?.();
+        this._drainHiddenUnfreezeQueue?.();
+        this._drainFoundryEnvPending?.();
       };
       // Infinity drain skipped the admission clock and blocked New Game at gpu-resources
       // (RAF/timeout never ran). Slice the queue so the loading shell can present.
@@ -12359,8 +12450,18 @@ export const render = {
           const headBefore = this._meshBuildQueueHead;
           const buildStarted = prepareNow();
           if (drainIter) {
-            const drainStep = drainIter.next();
-            if (drainStep.done) {
+            let drainStep = null;
+            try {
+              drainStep = drainIter.next();
+            } catch (driveError) {
+              // A throwing drain step abandons the stepped twin — the loop
+              // degrades to the per-call drain it wraps instead of taking
+              // the whole cook tail down with it.
+              closeCookStepsIter(drainIter);
+              console.warn('[render] mesh-build drain drive failed; degrading to the per-call drain', driveError);
+              drainIter = null;
+            }
+            if (drainStep && drainStep.done) {
               built += Number(drainStep.value) || 0;
               // An early-returning drain (refused gate, exhausted slice check)
               // closes the iterator with rows still queued — re-mint like the
@@ -12471,14 +12572,24 @@ export const render = {
         shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
         debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
       });
-      for (const _ of enqueueMissingMeshBuildsSteps(
-        openingEntities,
-        this._meshes,
-        this._meshBuildQueuedIds,
-        this._meshBuildQueue,
-      )) {
-        if (cookStale()) return cookSuperseded;
-        await openingEnqueueYield(false);
+      try {
+        for (const _ of enqueueMissingMeshBuildsSteps(
+          openingEntities,
+          this._meshes,
+          this._meshBuildQueuedIds,
+          this._meshBuildQueue,
+        )) {
+          if (cookStale()) return cookSuperseded;
+          await openingEnqueueYield(false);
+        }
+      } catch (driveError) {
+        console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+        runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+          openingEntities,
+          this._meshes,
+          this._meshBuildQueuedIds,
+          this._meshBuildQueue,
+        ));
       }
       if (cookStale()) return cookSuperseded;
       await drainMeshBuildsBehindShell();
@@ -12586,7 +12697,15 @@ export const render = {
         let rockDone = false;
         let rockPromotesSinceYield = 0;
         while (!rockDone && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP) {
-          if (rockEmit.next().done) rockDone = true;
+          try {
+            if (rockEmit.next().done) rockDone = true;
+          } catch (driveError) {
+            // A throwing emit abandons its tail — the collected prefix is a
+            // legal partial promotion set (unpromoted rocks stay instanced).
+            closeCookStepsIter(rockEmit);
+            console.warn('[render] rock emit drive failed; promoting the collected prefix', driveError);
+            rockDone = true;
+          }
           for (; rockCursor < rockHits.length
               && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP; rockCursor += 1) {
             const rec = rockHits[rockCursor];
@@ -12699,7 +12818,16 @@ export const render = {
               if (typeof censusIter.return === 'function') { try { censusIter.return(); } catch { /* cleanup-only */ } }
               return cookSuperseded;
             }
-            const censusStep = censusIter.next();
+            let censusStep;
+            try {
+              censusStep = censusIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(censusIter);
+              console.warn('[render] first-flight census drive failed; running the sync twin', driveError);
+              firstFlightEntities = runCookSyncTwin('first-flight census',
+                () => collectFirstFlightCookEntities(state), firstFlightEntities);
+              break;
+            }
             if (censusStep.done) { firstFlightEntities = censusStep.value; break; }
             if (openingProviderNow() - censusSliceStart >= 8
                 || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
@@ -12766,7 +12894,16 @@ export const render = {
           if (field) {
             const reachIter = queryAsteroidFieldNearestSteps(state, player.pos, reach);
             for (;;) {
-              const reachStep = reachIter.next();
+              let reachStep;
+              try {
+                reachStep = reachIter.next();
+              } catch (driveError) {
+                // A throwing emit abandons its tail — the collected prefix is a
+                // legal partial coverage set (unreached records stay instanced).
+                closeCookStepsIter(reachIter);
+                console.warn('[render] survival field emit drive failed; covering the collected prefix', driveError);
+                break;
+              }
               if (reachStep.done) break;
               if (cookStale()) {
                 try { reachIter.return(); } catch { /* cleanup-only */ }
@@ -12814,14 +12951,24 @@ export const render = {
               shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
               debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
             });
-            for (const _ of enqueueMissingMeshBuildsSteps(
-              promotedRocks,
-              this._meshes,
-              this._meshBuildQueuedIds,
-              this._meshBuildQueue,
-            )) {
-              if (cookStale()) return cookSuperseded;
-              await promotedEnqueueYield(false);
+            try {
+              for (const _ of enqueueMissingMeshBuildsSteps(
+                promotedRocks,
+                this._meshes,
+                this._meshBuildQueuedIds,
+                this._meshBuildQueue,
+              )) {
+                if (cookStale()) return cookSuperseded;
+                await promotedEnqueueYield(false);
+              }
+            } catch (driveError) {
+              console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+              runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+                promotedRocks,
+                this._meshes,
+                this._meshBuildQueuedIds,
+                this._meshBuildQueue,
+              ));
             }
             for (const entity of promotedRocks) firstFlightEntities.push(entity);
           }
@@ -12872,7 +13019,15 @@ export const render = {
               if (typeof warmIterator.return === 'function') { try { warmIterator.return(); } catch { /* cleanup-only */ } }
               return cookSuperseded;
             }
-            const warmStep = warmIterator.next();
+            let warmStep;
+            try {
+              warmStep = warmIterator.next();
+            } catch (driveError) {
+              closeCookStepsIter(warmIterator);
+              console.warn('[render] warm ledger refill drive failed; running the sync twin', driveError);
+              runCookSyncTwin('warm ledger refill', () => warmNearbyLedgerRows(state));
+              break;
+            }
             if (warmStep.done) break;
             if (openingProviderNow() - widenSliceStart >= 8
                 || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
@@ -12891,7 +13046,16 @@ export const render = {
         {
           const collectIterator = collectMeshPresentationEntitiesChunked(state, presentation);
           for (;;) {
-            const step = collectIterator.next();
+            let step;
+            try {
+              step = collectIterator.next();
+            } catch (driveError) {
+              closeCookStepsIter(collectIterator);
+              console.warn('[render] presentation collect drive failed; running the sync twin', driveError);
+              runCookSyncTwin('presentation collect',
+                () => collectMeshPresentationEntities(state, presentation));
+              break;
+            }
             if (step.done) break;
             if (openingProviderNow() - widenSliceStart >= 8
                 || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
@@ -13010,14 +13174,24 @@ export const render = {
         shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
         debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
       });
-      for (const _ of enqueueMissingMeshBuildsSteps(
-        firstFlightEntities,
-        this._meshes,
-        this._meshBuildQueuedIds,
-        this._meshBuildQueue,
-      )) {
-        if (cookStale()) return cookSuperseded;
-        await leftoverEnqueueYield(false);
+      try {
+        for (const _ of enqueueMissingMeshBuildsSteps(
+          firstFlightEntities,
+          this._meshes,
+          this._meshBuildQueuedIds,
+          this._meshBuildQueue,
+        )) {
+          if (cookStale()) return cookSuperseded;
+          await leftoverEnqueueYield(false);
+        }
+      } catch (driveError) {
+        console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+        runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+          firstFlightEntities,
+          this._meshes,
+          this._meshBuildQueuedIds,
+          this._meshBuildQueue,
+        ));
       }
       recordOpeningCookStep(state.render, 'live.rocksAndLeftoverMeshes', liveStepStarted, 'resolved', {
         firstFlightEntities: firstFlightEntities.length,
@@ -13458,7 +13632,19 @@ export const render = {
                   if (typeof sealCensusIter.return === 'function') { try { sealCensusIter.return(); } catch { /* cleanup-only */ } }
                   return cookSuperseded;
                 }
-                const censusStep = sealCensusIter.next();
+                let censusStep;
+                try {
+                  censusStep = sealCensusIter.next();
+                } catch (driveError) {
+                  closeCookStepsIter(sealCensusIter);
+                  console.warn('[render] pool seal census drive failed; running the sync twin', driveError);
+                  sealCensus = {
+                    roots: runCookSyncTwin('pool seal census',
+                      () => collectInstancePoolCompileRoots(scene), []),
+                    subjects: null,
+                  };
+                  break;
+                }
                 if (censusStep.done) { sealCensus = censusStep.value; break; }
                 await sealPace();
               }
@@ -13469,7 +13655,19 @@ export const render = {
                   if (typeof poolRootsIt.return === 'function') { try { poolRootsIt.return(); } catch { /* cleanup-only */ } }
                   return cookSuperseded;
                 }
-                const poolRootsStep = poolRootsIt.next();
+                let poolRootsStep;
+                try {
+                  poolRootsStep = poolRootsIt.next();
+                } catch (driveError) {
+                  closeCookStepsIter(poolRootsIt);
+                  console.warn('[render] pool roots census drive failed; running the sync twin', driveError);
+                  sealCensus = {
+                    roots: runCookSyncTwin('pool roots census',
+                      () => collectInstancePoolCompileRoots(scene), []),
+                    subjects: null,
+                  };
+                  break;
+                }
                 if (poolRootsStep.done) { sealCensus = { roots: poolRootsStep.value, subjects: null }; break; }
                 await sealPace();
               }
@@ -13857,7 +14055,18 @@ export const render = {
             let sweepSegStart = prepareNow();
             for (;;) {
               if (cookStale()) return cookSuperseded;
-              const sweepStep = sweepIter.next();
+              let sweepStep;
+              try {
+                sweepStep = sweepIter.next();
+              } catch (driveError) {
+                // A throwing sweep step degrades to still-pending — the settle
+                // loop retries on a fresh iterator or ends by deadline rather
+                // than releasing the shell on a half-counted census.
+                closeCookStepsIter(sweepIter);
+                console.warn('[render] boundary settle sweep drive failed; treating as still-pending', driveError);
+                pendingBoundaryCount = 1;
+                break;
+              }
               if (sweepStep.done) {
                 pendingBoundaryCount = sweepStep.value || 0;
                 break;
@@ -13904,7 +14113,18 @@ export const render = {
               let stragglersSegStart = prepareNow();
               while (!stragglersDone) {
                 if (cookStale()) return cookSuperseded;
-                const stragglersStep = stragglersIter.next();
+                let stragglersStep;
+                try {
+                  stragglersStep = stragglersIter.next();
+                } catch (driveError) {
+                  // A throwing census abandons the straggler admit this pass —
+                  // unadmitted roots draw through the bloom lane later exactly
+                  // as they did before this sweep existed.
+                  closeCookStepsIter(stragglersIter);
+                  console.warn('[render] never-linked census drive failed; skipping the straggler admit', driveError);
+                  stragglersDone = true;
+                  continue;
+                }
                 if (stragglersStep.done) {
                   stragglersDone = true;
                   stragglers.push(...(stragglersStep.value || []));
@@ -14045,7 +14265,17 @@ export const render = {
         let settledPlanSegStart = prepareNow();
         for (;;) {
           if (cookStale()) return cookSuperseded;
-          const settledPlanStep = settledPlanIter.next();
+          let settledPlanStep;
+          try {
+            settledPlanStep = settledPlanIter.next();
+          } catch (driveError) {
+            // A throwing plan build abandons the recapture — the receipt keeps
+            // its pre-settle stamp (the same state the gate ran on before this
+            // recapture existed) instead of taking the whole cook down.
+            closeCookStepsIter(settledPlanIter);
+            console.warn('[render] settled plan rebuild drive failed; keeping the pre-settle receipt', driveError);
+            break;
+          }
           if (settledPlanStep.done) {
             settledPlan = settledPlanStep.value;
             break;
@@ -14075,7 +14305,21 @@ export const render = {
           let settledReceiptSegStart = prepareNow();
           for (;;) {
             if (cookStale()) return cookSuperseded;
-            const settledReceiptStep = settledReceiptIter.next();
+            let settledReceiptStep;
+            try {
+              settledReceiptStep = settledReceiptIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(settledReceiptIter);
+              console.warn('[render] settled receipt drive failed; running the sync twin', driveError);
+              state.render.openingSubmissionReceipt = runCookSyncTwin('settled receipt',
+                () => createOpeningSubmissionReceipt(renderer, settledPlan, {
+                  scene,
+                  programMaterials: settledPostMaterials,
+                  shadowProgramKeys: this._openingShadowAdmission?.programCacheKeys,
+                  shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
+                }), state.render.openingSubmissionReceipt);
+              break;
+            }
             if (settledReceiptStep.done) {
               state.render.openingSubmissionReceipt = settledReceiptStep.value;
               break;
@@ -14203,7 +14447,16 @@ export const render = {
       const firstFlightRootsIter = collectFirstFlightEffectRootsSteps(scene);
       let firstFlightRoots = null;
       for (;;) {
-        const rootsStep = firstFlightRootsIter.next();
+        let rootsStep;
+        try {
+          rootsStep = firstFlightRootsIter.next();
+        } catch (driveError) {
+          closeCookStepsIter(firstFlightRootsIter);
+          console.warn('[render] first-flight roots drive failed; running the sync twin', driveError);
+          firstFlightRoots = runCookSyncTwin('first-flight roots',
+            () => collectFirstFlightEffectRoots(scene), []);
+          break;
+        }
         if (rootsStep.done) { firstFlightRoots = rootsStep.value; break; }
         if (cookStale()) return cookSuperseded;
         await yieldToBrowser();
@@ -14218,27 +14471,50 @@ export const render = {
             shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
             debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
           });
-        for (const _ of bindEnvironmentToStandardMaterialsSteps(scene, scene.environment)) {
-          if (cookStale()) return cookSuperseded;
-          await envBindYield(false);
-        }
-        for (const root of firstFlightRoots) {
-          for (const _ of bindEnvironmentToStandardMaterialsSteps(root, scene.environment)) {
+        const envBindDrive = (root) => bindEnvironmentToStandardMaterialsSteps(root, scene.environment);
+        const envBindSync = (root) => bindEnvironmentToStandardMaterials(root, scene.environment);
+        try {
+          for (const _ of envBindDrive(scene)) {
             if (cookStale()) return cookSuperseded;
             await envBindYield(false);
           }
+        } catch (driveError) {
+          console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+          runCookSyncTwin('env-bind', () => envBindSync(scene));
+        }
+        for (const root of firstFlightRoots) {
+          try {
+            for (const _ of envBindDrive(root)) {
+              if (cookStale()) return cookSuperseded;
+              await envBindYield(false);
+            }
+          } catch (driveError) {
+            console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('env-bind', () => envBindSync(root));
+          }
         }
         for (const root of preparedRoots) {
-          for (const _ of bindEnvironmentToStandardMaterialsSteps(root, scene.environment)) {
-            if (cookStale()) return cookSuperseded;
-            await envBindYield(false);
+          try {
+            for (const _ of envBindDrive(root)) {
+              if (cookStale()) return cookSuperseded;
+              await envBindYield(false);
+            }
+          } catch (driveError) {
+            console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('env-bind', () => envBindSync(root));
           }
         }
       }
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-        for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
-          if (cookStale()) return cookSuperseded;
-          await yieldToBrowser();
+        try {
+          for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+            if (cookStale()) return cookSuperseded;
+            await yieldToBrowser();
+          }
+        } catch (driveError) {
+          console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+          runCookSyncTwin('light-budget', () =>
+            syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
         }
       } else {
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -14258,7 +14534,15 @@ export const render = {
               mintStep = revealMint.next();
             } catch (err) {
               if (String(err && err.message) === 'cook-superseded') return cookSuperseded;
-              throw err;
+              // A stepped mint that throws for any other reason abandons the
+              // stepped reveal — the sync mint re-reveals the whole scene so
+              // the compile tail still sees every drawable.
+              closeCookStepsIter(revealMint);
+              console.warn('[render] stepped reveal mint failed; running the sync twin', err);
+              restoreReveal = runCookSyncTwin('reveal mint',
+                () => revealSubjectForCompile(scene), () => {});
+              restoreRevealSteps = null;
+              break;
             }
             if (mintStep.done) {
               restoreReveal = mintStep.value.restore;
@@ -14314,7 +14598,17 @@ export const render = {
         restoreShadows();
         if (restoreRevealSteps) {
           for (;;) {
-            const step = restoreRevealSteps.next();
+            let step;
+            try {
+              step = restoreRevealSteps.next();
+            } catch (restoreError) {
+              // A dead restore iterator inside the finally must not mask an
+              // in-flight error or strand the minted reveal half-restored —
+              // the sync tail re-runs the same idempotent row restores.
+              console.warn('[render] stepped reveal restore failed; running the sync tail', restoreError);
+              restoreReveal();
+              break;
+            }
             if (step.done) break;
             await yieldToBrowser();
           }
@@ -14370,7 +14664,17 @@ export const render = {
         let cookPictureSegStart = cookNow();
         for (;;) {
           if (cookStale()) return cookSuperseded;
-          const cookPictureStep = cookPicturePlanIter.next();
+          let cookPictureStep;
+          try {
+            cookPictureStep = cookPicturePlanIter.next();
+          } catch (driveError) {
+            // A throwing plan build abandons the picture census — the compile
+            // tail still warms every rostered root directly (subjects list
+            // degrades to the opening-roots-only cohort).
+            closeCookStepsIter(cookPicturePlanIter);
+            console.warn('[render] cook picture plan drive failed; warming rostered roots only', driveError);
+            break;
+          }
           if (cookPictureStep.done) {
             cookPicturePlan = cookPictureStep.value;
             break;
@@ -14405,7 +14709,16 @@ export const render = {
           const cookCensusIter = collectInstancePoolCompileRootsAndSubjectsSteps(scene, 256);
           for (;;) {
             if (cookStale()) return cookSuperseded;
-            const censusStep = cookCensusIter.next();
+            let censusStep;
+            try {
+              censusStep = cookCensusIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(cookCensusIter);
+              console.warn('[render] cook census drive failed; running the sync twin', driveError);
+              cookPoolRootsMemo = runCookSyncTwin('cook census',
+                () => collectInstancePoolCompileRoots(scene), []);
+              break;
+            }
             if (censusStep.done) {
               const censusValue = censusStep.value || {};
               if (Array.isArray(censusValue.roots)) cookPoolRootsMemo = censusValue.roots;
@@ -14481,7 +14794,16 @@ export const render = {
             const lateIt = collectLateAdmittedCompileRootsSteps(this._meshes, openingSubjects);
             for (;;) {
               if (cookStale()) return cookSuperseded;
-              const lateStep = lateIt.next();
+              let lateStep;
+              try {
+                lateStep = lateIt.next();
+              } catch (driveError) {
+                closeCookStepsIter(lateIt);
+                console.warn('[render] late-admitted census drive failed; running the sync twin', driveError);
+                lateAdmittedCohort = runCookSyncTwin('late-admitted census',
+                  () => collectLateAdmittedCompileRoots(this._meshes, openingSubjects), []);
+                break;
+              }
               if (lateStep.done) { lateAdmittedCohort = lateStep.value; break; }
               await paceCookStretch();
             }
@@ -15065,7 +15387,19 @@ export const render = {
         let poolCensus;
         for (;;) {
           if (cookStale()) return cookSuperseded;
-          const censusStep = poolCensusIter.next();
+          let censusStep;
+          try {
+            censusStep = poolCensusIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(poolCensusIter);
+            console.warn('[render] pool census drive failed; running the sync twin', driveError);
+            poolCensus = {
+              roots: runCookSyncTwin('pool census',
+                () => collectInstancePoolCompileRoots(scene), []),
+              subjects: [],
+            };
+            break;
+          }
           if (censusStep.done) { poolCensus = censusStep.value; break; }
           await paceCookStretch();
         }
@@ -15386,7 +15720,11 @@ export const render = {
         }
         // Same drain-ride as the opening cook — the departed-sector sweep's
         // providerYield seams inherit it through the shared yield helper.
+        // Unfreeze rides too: the depart sweep's hide wave + the new sector's
+        // bound restores queue re-show rows the whole cook long.
         this._drainHiddenFreezeQueue?.();
+        this._drainHiddenUnfreezeQueue?.();
+        this._drainFoundryEnvPending?.();
       };
       state.render.liveSectorGpuAdmission = true;
       // A second sector:enter inside a yield gap makes this cook stale: it captured S1 while
@@ -15412,9 +15750,15 @@ export const render = {
             shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
             debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
           });
-          for (const _ of bindEnvironmentToStandardMaterialsSteps(scene, scene.environment)) {
-            if (cookStale()) return cookSuperseded;
-            await jumpEnvBindYield(false);
+          try {
+            for (const _ of bindEnvironmentToStandardMaterialsSteps(scene, scene.environment)) {
+              if (cookStale()) return cookSuperseded;
+              await jumpEnvBindYield(false);
+            }
+          } catch (driveError) {
+            console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('env-bind', () =>
+              bindEnvironmentToStandardMaterials(scene, scene.environment));
           }
         }
         const player = state.entities && typeof state.entities.get === 'function'
@@ -15435,7 +15779,15 @@ export const render = {
           let rockDone = false;
           let rockPromotesSinceYield = 0;
           while (!rockDone && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP) {
-            if (rockEmit.next().done) rockDone = true;
+            try {
+              if (rockEmit.next().done) rockDone = true;
+            } catch (driveError) {
+              // A throwing emit abandons its tail — the collected prefix is a
+              // legal partial promotion set (unpromoted rocks stay instanced).
+              closeCookStepsIter(rockEmit);
+              console.warn('[render] rock emit drive failed; promoting the collected prefix', driveError);
+              rockDone = true;
+            }
             for (; rockCursor < rockHits.length
                 && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP; rockCursor += 1) {
               const rec = rockHits[rockCursor];
@@ -15661,7 +16013,16 @@ export const render = {
               if (typeof firstFlightEntitiesIter.return === 'function') { try { firstFlightEntitiesIter.return(); } catch { /* cleanup-only */ } }
               return cookSuperseded;
             }
-            const censusStep = firstFlightEntitiesIter.next();
+            let censusStep;
+            try {
+              censusStep = firstFlightEntitiesIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(firstFlightEntitiesIter);
+              console.warn('[render] first-flight census drive failed; running the sync twin', driveError);
+              firstFlightEntities = runCookSyncTwin('first-flight census',
+                () => collectFirstFlightCookEntities(state), []);
+              break;
+            }
             if (censusStep.done) { firstFlightEntities = censusStep.value; break; }
             if (providerSliceDue()) {
               const superseded = await providerYield();
@@ -15699,7 +16060,15 @@ export const render = {
                 if (typeof warmIterator.return === 'function') { try { warmIterator.return(); } catch { /* cleanup-only */ } }
                 return cookSuperseded;
               }
-              const warmStep = warmIterator.next();
+              let warmStep;
+              try {
+                warmStep = warmIterator.next();
+              } catch (driveError) {
+                closeCookStepsIter(warmIterator);
+                console.warn('[render] warm ledger refill drive failed; running the sync twin', driveError);
+                runCookSyncTwin('warm ledger refill', () => warmNearbyLedgerRows(state));
+                break;
+              }
               if (warmStep.done) break;
               if (providerSliceDue()) {
                 const superseded = await providerYield();
@@ -15723,7 +16092,16 @@ export const render = {
                 if (typeof collectIterator.return === 'function') { try { collectIterator.return(); } catch { /* cleanup-only */ } }
                 return cookSuperseded;
               }
-              const step = collectIterator.next();
+              let step;
+              try {
+                step = collectIterator.next();
+              } catch (driveError) {
+                collectDone = true;
+                console.warn('[render] presentation collect drive failed; running the sync twin', driveError);
+                runCookSyncTwin('presentation collect',
+                  () => collectMeshPresentationEntities(state, presentation));
+                break;
+              }
               if (step.done) { collectDone = true; break; }
               if (providerSliceDue()) {
                 const superseded = await providerYield();
@@ -15811,16 +16189,26 @@ export const render = {
         } finally {
           this._meshReleaseBatchEnd?.();
         }
-        for (const _ of enqueueMissingMeshBuildsSteps(
-          firstFlightEntities,
-          this._meshes,
-          this._meshBuildQueuedIds,
-          this._meshBuildQueue,
-        )) {
-          if (providerSliceDue()) {
-            const superseded = await providerYield();
-            if (superseded) return superseded;
+        try {
+          for (const _ of enqueueMissingMeshBuildsSteps(
+            firstFlightEntities,
+            this._meshes,
+            this._meshBuildQueuedIds,
+            this._meshBuildQueue,
+          )) {
+            if (providerSliceDue()) {
+              const superseded = await providerYield();
+              if (superseded) return superseded;
+            }
           }
+        } catch (driveError) {
+          console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+          runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+            firstFlightEntities,
+            this._meshes,
+            this._meshBuildQueuedIds,
+            this._meshBuildQueue,
+          ));
         }
         const jumpBuildsStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now();
@@ -15993,8 +16381,14 @@ export const render = {
         return postSuperseded();
       };
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-        for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
-          if (await postPace()) return postSupersededResult();
+        try {
+          for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+            if (await postPace()) return postSupersededResult();
+          }
+        } catch (driveError) {
+          console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+          runCookSyncTwin('light-budget', () =>
+            syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
         }
       } else {
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -16018,7 +16412,16 @@ export const render = {
           if (typeof collectInstancePoolCompileRootsSteps === 'function') {
             const rootsIt = collectInstancePoolCompileRootsSteps(scene);
             for (;;) {
-              const rootsStep = rootsIt.next();
+              let rootsStep;
+              try {
+                rootsStep = rootsIt.next();
+              } catch (driveError) {
+                closeCookStepsIter(rootsIt);
+                console.warn('[render] pool roots census drive failed; running the sync twin', driveError);
+                fallbackRoots = runCookSyncTwin('pool roots census',
+                  () => collectInstancePoolCompileRoots(scene), []);
+                break;
+              }
               if (rootsStep.done) { fallbackRoots = rootsStep.value; break; }
               if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
             }
@@ -16028,7 +16431,16 @@ export const render = {
           if (typeof collectLateAdmittedCompileRootsSteps === 'function') {
             const lateIt = collectLateAdmittedCompileRootsSteps(this._meshes, openingSubjects);
             for (;;) {
-              const lateStep = lateIt.next();
+              let lateStep;
+              try {
+                lateStep = lateIt.next();
+              } catch (driveError) {
+                closeCookStepsIter(lateIt);
+                console.warn('[render] late-admitted census drive failed; running the sync twin', driveError);
+                fallbackLateEntities = runCookSyncTwin('late-admitted census',
+                  () => collectLateAdmittedCompileRoots(this._meshes, openingSubjects), []);
+                break;
+              }
               if (lateStep.done) { fallbackLateEntities = lateStep.value; break; }
               if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
             }
@@ -16038,7 +16450,16 @@ export const render = {
           if (typeof collectUncompiledSceneDrawablesSteps === 'function') {
             const uncompiledIt = collectUncompiledSceneDrawablesSteps(scene, openingSubjects);
             for (;;) {
-              const uncompiledStep = uncompiledIt.next();
+              let uncompiledStep;
+              try {
+                uncompiledStep = uncompiledIt.next();
+              } catch (driveError) {
+                closeCookStepsIter(uncompiledIt);
+                console.warn('[render] uncompiled census drive failed; running the sync twin', driveError);
+                fallbackUncompiled = runCookSyncTwin('uncompiled census',
+                  () => collectUncompiledSceneDrawables(scene, openingSubjects), []);
+                break;
+              }
               if (uncompiledStep.done) { fallbackUncompiled = uncompiledStep.value; break; }
               if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
             }
@@ -16054,7 +16475,22 @@ export const render = {
         }
         let census = null;
         for (;;) {
-          const censusStep = censusIter.next();
+          let censusStep;
+          try {
+            censusStep = censusIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(censusIter);
+            console.warn('[render] late-admission census drive failed; running the sync collectors', driveError);
+            return {
+              roots: runCookSyncTwin('pool roots census',
+                () => collectInstancePoolCompileRoots(scene), []),
+              lateEntities: runCookSyncTwin('late-admitted census',
+                () => collectLateAdmittedCompileRoots(this._meshes, openingSubjects), []),
+              uncompiled: runCookSyncTwin('uncompiled census',
+                () => collectUncompiledSceneDrawables(scene, openingSubjects), []),
+              subjects: null,
+            };
+          }
           if (censusStep.done) { census = censusStep.value; break; }
           if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
         }
@@ -16357,7 +16793,16 @@ export const render = {
           const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
           let precollected = null;
           for (;;) {
-            const collectStep = collectIter.next();
+            let collectStep;
+            try {
+              collectStep = collectIter.next();
+            } catch (driveError) {
+              // A throwing caster pre-collect just skips the optimization —
+              // the ceremony's own census collects the same list internally.
+              closeCookStepsIter(collectIter);
+              console.warn('[render] caster pre-collect drive failed; letting the ceremony collect', driveError);
+              break;
+            }
             if (collectStep.done) { precollected = collectStep.value; break; }
             if (await postPace()) {
               return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
@@ -16368,7 +16813,17 @@ export const render = {
         for (let attempt = 0; attempt < 4; attempt += 1) {
           const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
           for (;;) {
-            const depthStep = depthIter.next();
+            let depthStep;
+            try {
+              depthStep = depthIter.next();
+            } catch (driveError) {
+              // A throw is not light drift — a re-mint hits the same fault, so
+              // skip the pass (the next admission re-arm retries it wholesale)
+              // instead of burning the four drift attempts on the dead drive.
+              closeCookStepsIter(depthIter);
+              console.warn('[render] depth compile drive failed; skipping the depth pass', driveError);
+              return { skipped: true, reason: 'depth-compile-drive-failed', subjects: 0 };
+            }
             if (depthStep.done) {
               lastRetryResult = depthStep.value;
               if (lastRetryResult && (lastRetryResult.stale === true
@@ -16507,6 +16962,9 @@ export const render = {
       };
     };
     state.render.preparePostOpeningPipelines = () => {
+      // An armed late-foundry bake retires at the pass head — the paced
+      // ledger already tolerates this spend, the presented frame didn't.
+      this._drainFoundryEnvPending?.();
       // Both the software warmup chain and the KHR live-sector barrier can reach this pass in
       // the same loading window; the released flag only lands at the end, so a second caller
       // must join the in-flight run rather than double the shadow-map prime and compiles.
@@ -16591,14 +17049,24 @@ export const render = {
         if (!plan) {
           const planIter = buildOpeningSubmissionPlanSteps.call(this);
           for (;;) {
-            const planStep = planIter.next();
+            let planStep;
+            try {
+              planStep = planIter.next();
+            } catch (driveError) {
+              // A throwing plan build degrades to plan-incomplete — the
+              // documented refuse path below already enters flight and keeps
+              // admitting behind the first picture.
+              closeCookStepsIter(planIter);
+              console.warn('[render] opening plan drive failed; degrading to plan-incomplete', driveError);
+              break;
+            }
             if (planStep.done) {
               plan = planStep.value;
               break;
             }
             await yieldToBrowser();
           }
-          stampProducerReceipt(plan);
+          if (plan) stampProducerReceipt(plan);
         }
         if (!plan || plan.complete !== true
           || !plan.firstPlayablePipelineSet
@@ -16754,7 +17222,23 @@ export const render = {
           shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
         });
         for (;;) {
-          const receiptStep = receiptIter.next();
+          let receiptStep;
+          try {
+            receiptStep = receiptIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(receiptIter);
+            console.warn('[render] opening receipt drive failed; running the sync twin', driveError);
+            if (!openingStale()) {
+              state.render.openingSubmissionReceipt = runCookSyncTwin('opening receipt',
+                () => createOpeningSubmissionReceipt(renderer, plan, {
+                  scene,
+                  programMaterials: openingPostMaterials,
+                  shadowProgramKeys: this._openingShadowAdmission?.programCacheKeys,
+                  shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
+                }), state.render.openingSubmissionReceipt);
+            }
+            break;
+          }
           if (receiptStep.done) {
             // A prepare superseded mid-receipt must not stamp the dead scene's
             // census over the live baseline the first-draw gate validates.
@@ -17930,10 +18414,13 @@ export const render = {
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
-        // Nothing in flight awaits this stored promise — suppress the rejection the way
-        // the sibling assignment does, or a failed cook surfaces as an uncaught page
-        // error while ordinary residency keeps drawing the sector.
-        pipelinePrecompile.catch(() => {});
+        // Nothing in flight awaits this stored promise — suppress the unhandled
+        // rejection the way the sibling assignment does, but keep the failure
+        // loud: a cook that rejected mid-tail leaves the sector meshless and
+        // needs a breadcrumb, not a silent swallow.
+        pipelinePrecompile.catch((error) => {
+          console.warn('[render] pipeline precompile rejected', error);
+        });
         this._publishAssetResidencyDiagnostics();
         return;
       }
@@ -17972,7 +18459,9 @@ export const render = {
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
-        pipelinePrecompile.catch(() => {});
+        pipelinePrecompile.catch((error) => {
+          console.warn('[render] pipeline precompile rejected', error);
+        });
         this._publishAssetResidencyDiagnostics();
         return;
       }
@@ -22429,9 +22918,26 @@ export const render = {
       if (!texture) return;
       if (!this._rendererLifecycle) { try { texture.dispose(); } catch (_) {} return; }
       this._foundryEnvTexture = texture;
-      this._bakeEnv();
+      // A late arrival (fetch outliving the whole boot) must not run the
+      // PMREM convolve inside a presented flight frame — arm it and bake at
+      // the next cook seam or post-opening pass, where the paced ledger
+      // already tolerates the spend. The frozen-opening path still banks
+      // inside _bakeEnv and is promoted at unfreeze.
+      if ((this.state && this.state.mode) === 'flight') {
+        this._foundryEnvPending = true;
+      } else {
+        this._bakeEnv();
+      }
     });
     this._foundryIblPromise.catch(() => {});
+  },
+
+  // Runs an armed foundry bake at a seam/pass head — one bounded convolve in a
+  // context that already tolerates paced spend, instead of a presented frame.
+  _drainFoundryEnvPending() {
+    if (this._foundryEnvPending !== true) return;
+    this._foundryEnvPending = false;
+    this._bakeEnv();
   },
 
   _bakeEnv(options = {}) {
@@ -24860,9 +25366,13 @@ export const render = {
     ensureShipAuxPoolCapacityForFrame(this._shipAuxPool, this._entityFrame, this._meshes);
     tickShieldShellClock(this._shipAuxPool, this.state);
     syncShipAuxPools(this._shipAuxPool, this._entityFrame);
+    // The pool/shadow band's calls write disjoint pools — suspending between
+    // their groups keeps one dense band from being a single frozen-bar leg.
+    yield;
     const openingShadowRadius = liveShadowCastRadius(state);
     this._frameShadowCastRadius = openingShadowRadius;
     this._syncAuthoredInstanceSubmission(openingShadowRadius);
+    yield;
     this._syncShadowMapEnabled();
     if (this._syncKeyLightShadowFrustum(openingShadowRadius)) this._shadowMapDirty = true;
     if (this._updateShadowFollow(true)) this._shadowMapDirty = true;
@@ -27828,7 +28338,9 @@ export const render = {
             || this._unmeasuredShadowNotePass() > UNMEASURED_SHADOW_NOTE_EXACT_PER_PASS) {
           this._shadowReceiverTally.markDirty();
         } else {
-          this._shadowReceiverTally.noteAdded(root, measuredReceivers);
+          const measured = countShadowReceivers(root, null, UNMEASURED_SHADOW_NOTE_NODE_MAX);
+          if (measured < 0) this._shadowReceiverTally.markDirty();
+          else this._shadowReceiverTally.noteAdded(root, measured);
         }
       } else {
         this._shadowReceiverTally.noteAdded(root, measuredReceivers);
@@ -27847,7 +28359,9 @@ export const render = {
             || this._unmeasuredShadowNotePass() > UNMEASURED_SHADOW_NOTE_EXACT_PER_PASS) {
           this._shadowReceiverTally.markDirty();
         } else {
-          this._shadowReceiverTally.noteRemoved(root, measuredReceivers);
+          const measured = countShadowReceivers(root, null, UNMEASURED_SHADOW_NOTE_NODE_MAX);
+          if (measured < 0) this._shadowReceiverTally.markDirty();
+          else this._shadowReceiverTally.noteRemoved(root, measured);
         }
       } else {
         this._shadowReceiverTally.noteRemoved(root, measuredReceivers);
@@ -27899,7 +28413,10 @@ export const render = {
         this._shadowReceiverTally.markDirty();
       }
       if (this._shadowReceiverTally.dirty) {
-        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene);
+        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene, {
+          spendGate: () => pacedFrameSpend() < PACED_FRAME_BUDGET_MS,
+          debit: notePacedFrameSpend,
+        });
         this._shadowReceiversDirty = false;
       } else {
         this._shadowReceiverCount = this._shadowReceiverTally.count;
