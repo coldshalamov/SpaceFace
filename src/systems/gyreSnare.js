@@ -39,8 +39,9 @@ const PHASE = Object.freeze({ OFF: 'off', BEAM: 'beaming', HOLD: 'holding', LAUN
 const ABSORBABLE = new Set(GYRE_ABSORBABLE_TYPES);
 // Types the beam's gravity never touches at all (the pull pass is for loose world mass).
 // Deliberately absent: 'projectile' — incoming fire eats the courtesy tug and bends into
-// the maw (~couple 1.35 · wedgeAccel). Emergent point-defense is part of the weapon's
-// identity: you can sweep a volley aside while winding up the ball, at cap cost.
+// the maw (wedge ≈ wedgeAccel·couple·wedgeFalloff·(1−lipT) ≈ ≤100 wu/s²; basin ≈ 380).
+// Emergent point-defense is part of the weapon's identity: you can sweep a volley aside
+// while winding up the ball, at cap cost.
 const PULL_SKIP_TYPES = new Set(['ship', 'station', 'fx', 'fieldEmitter', 'massSeed', 'masslineSnareAnchor']);
 // …except drones, which DO get tugged lightly (coupling-shrugged) — they're listed in neither set.
 const WEAPON_ID = 'wpn_gyre_snare';
@@ -622,6 +623,9 @@ export const gyreSnare = {
     if (rt.ballId != null && state && state.entities) {
       const ball = state.entities.get(rt.ballId);
       if (!ball || ball.alive === false || !ball.data || !ball.data.gyreLaunched || !ball.pos) {
+        // The ball met its grave — impact (collision audio covers) or quiet TTL expiry in
+        // open space. Give the quiet death a voice at the spot the burst VFX fires on.
+        if (this.bus) this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: pub.ballPos.x, z: pub.ballPos.z } });
         rt.ballId = null;
         rt.ballMass = 0;
         rt.ballMembers = null;
@@ -683,6 +687,9 @@ export const gyreSnare = {
     if (!rt.strainCueLatched && pub.strain01 > 0.4) {
       rt.strainCueLatched = true;
       if (this.bus) this.bus.emit('audio:cue', { id: 'gyre_snare_strain', gain: 0.7 });
+      // Strain reaches the hands too — one warning pulse on the latch edge, not a rumble
+      // the whole excursion (the sustained voice + HUD carry that).
+      if (this.bus) this.bus.emit(GYRE_EVENTS.strained, { tick: state && state.tick });
     } else if (pub.strain01 < 0.25) {
       rt.strainCueLatched = false;
     }

@@ -109,4 +109,5 @@ export const GYRE_EVENTS = Object.freeze({
   absorbed: 'gyre:absorbed',
   launched: 'gyre:launched',
   dropped: 'gyre:dropped',
+  strained: 'gyre:strained',
 });

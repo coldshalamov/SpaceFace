@@ -181,6 +181,8 @@ export class GyreSnarePresentation {
     this._lastBall = null;   // last tracked ballPos + radius — feeds the ball-death burst
     this._clumpRadius = 0;
     this._discKick = 0;
+    this._wakeRamp = 1;      // 0→1 over ~150 ms on the OFF→beam edge — the glass "opens" with the shimmer
+    this._beamWasOn = false;
 
     // The authored palette in src/data/gyreSnare.js is the single source of truth —
     // hex literals here drifted from it once already (maw disc vs palette.maw).
@@ -377,9 +379,18 @@ export class GyreSnarePresentation {
 
       const holding = phase === 'holding';
       const strain = clamp01(finite(mirror.strain01));
+      // OFF→beam edge: ease the cone in over ~150 ms instead of popping full-alpha in one
+      // frame — the glass opens with the wake shimmer, plus a small pulse bump.
+      if (!this._beamWasOn) {
+        this._beamWasOn = true;
+        this._wakeRamp = 0;
+        this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.4);
+      }
+      this._wakeRamp = Math.min(1, this._wakeRamp + dt / 0.15);
+      const wakeEase = this._wakeRamp * this._wakeRamp * (3 - 2 * this._wakeRamp); // smoothstep
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
-      this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm;
+      this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm * wakeEase;
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
       // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
       this._coneMat.uniforms.uPulse.value = Math.max(
@@ -402,6 +413,7 @@ export class GyreSnarePresentation {
       this._spiralMat.uniforms.uRad.value = endR;
     } else {
       this._beam.visible = false;
+      this._beamWasOn = false;
     }
 
     // ── clump ────────────────────────────────────────────────────────────────

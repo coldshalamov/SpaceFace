@@ -438,6 +438,8 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   'gyre:launched':          { strong: 0.90, weak: 0.70, ms: 160 },
   'gyre:absorbed':          { strong: 0.30, weak: 0.20, ms: 50 },
   'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
+  'gyre:droppedEmpty':      { strong: 0.20, weak: 0.15, ms: 50 },
+  'gyre:strained':          { strong: 0.50, weak: 0.40, ms: 120 },
 });
 // Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
 export const HAPTIC_RELEASE_PULSES = Object.freeze({
@@ -829,10 +831,13 @@ export function createGamepad(ctx) {
     bus.on('gyre:absorbed', () => startPulse(HAPTIC_VERB_PULSES['gyre:absorbed'], 'gyre:absorbed'));
     bus.on('gyre:dropped', (payload) => {
       // A save/sector boundary drop is a context reset, not a player verb — stay silent like the
-      // audio cue does instead of buzzing through a transition.
+      // audio cue does instead of buzzing through a transition. A clump slipping the lash is the
+      // full thud; an empty beam closing is a soft flick — audio already splits those voices.
       if (payload && payload.boundary) return;
-      startPulse(HAPTIC_VERB_PULSES['gyre:dropped'], 'gyre:dropped');
+      const spec = payload && payload.coreId != null ? 'gyre:dropped' : 'gyre:droppedEmpty';
+      startPulse(HAPTIC_VERB_PULSES[spec], spec);
     });
+    bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));
   }
 
   const gp = {

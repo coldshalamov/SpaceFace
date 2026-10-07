@@ -3083,6 +3083,16 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.18, sustain: 0.35, release: 1.4 },
     filterType: 'bandpass', filterFreq: 720, filterQ: 0.9,
   },
+  // Ball death: the clump's quiet grave — a muffled glass shatter for a ball expiring in
+  // open space (impacts already sing through collision audio; this covers the silent TTL).
+  {
+    id: 'sfx_gyre_ball_death',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.7 },
+    filterType: 'bandpass', filterFreq: 950, filterQ: 1.2,
+  },
   // Strain: rising glass tension when the tethered clump nears the slip point — the beam's
   // shimmer sibling stretched slower and higher so "about to lose it" has its own voice.
   {

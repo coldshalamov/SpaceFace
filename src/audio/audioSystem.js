@@ -1533,10 +1533,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'massline.release': 'sfx_massline_release',
   'massline.bridle': 'sfx_massline_bridle_chord',
   // Gyre Snare (held-verb katamari lash): wake shimmer, snag latch, per-absorb glass tick,
-  // strain tension, launch bowl, lash release, beam power-down.
+  // strain tension, launch bowl, lash release, beam power-down, ball-death grave shatter.
   gyre_snare_beam: 'sfx_gyre_beam', gyre_snare_snag: 'sfx_gyre_snag',
   gyre_snare_absorb: 'sfx_gyre_absorb', gyre_snare_launch: 'sfx_gyre_launch',
-  gyre_snare_strain: 'sfx_gyre_strain',
+  gyre_snare_strain: 'sfx_gyre_strain', gyre_snare_ball_death: 'sfx_gyre_ball_death',
   gyre_snare_drop: 'sfx_gyre_drop', gyre_snare_off: 'sfx_gyre_off',
   // Rung-10 threat warning (massline.threat / massline.counter_tether.* presentation cues): the
   // low growl authored beside the other massline recipes — a live line under load, not a break.

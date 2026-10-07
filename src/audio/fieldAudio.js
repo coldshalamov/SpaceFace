@@ -109,7 +109,11 @@ export function collectFieldLoopSpecs(state, out = []) {
         kind: 'gyre',
         recipeId: 'sfx_field_loop_gyre',
         gain: 0.2,
-        trackId: null,
+        // Track the ship, not the maw: an untracked positional loop freezes its pan at
+        // beam-on heading (the maw rides ~200 wu out, exactly the pan-radius boundary),
+        // so a 90° turn would leave the hum in the wrong ear. A nose-mounted lash hums
+        // centered on the hull — honest, and it dies with the player like any track.
+        trackId: state.playerId,
         envelope: Math.min(1, 0.35 + 0.65 * strain),
         phase: 'active',
         position: pos,
