@@ -398,8 +398,6 @@ export const claims = {
       // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
       this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
       this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {}));
-      // The chart's raid marker is the emitter. Ignore settles this warning only.
-      this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {}));
       // Physical relay convoys: traffic manifests and routes the carrier hull; claims owns the
       // leg ledger. Manifestation flips the leg onto the physical track; a berth unload settles
       // the sale; a hull kill arrives through the ordinary freight:loss ledger.
@@ -1720,22 +1718,6 @@ export const claims = {
     defense.requestedAt = this.state.simTime || 0;
     this.bus.emit('claim:defenseStarted', { ...payload, encounterId: defense.encounterId });
     return { ok: true, encounterId: defense.encounterId };
-  },
-
-  _onDefenseIgnore(payload) {
-    const defenseId = payload && payload.defenseId;
-    const bodyId = payload && (payload.bodyId || payload.claimId);
-    if (!defenseId && !bodyId) return false;
-    const bodies = (this.state.claims && this.state.claims.bodies) || [];
-    const body = bodies.find((candidate) => {
-      const defense = candidate && candidate.spec && candidate.spec.defense;
-      if (!defense || defense.phase !== 'warning') return false;
-      if (defenseId && defense.id !== defenseId) return false;
-      if (bodyId && candidate.id !== bodyId) return false;
-      return true;
-    });
-    if (!body) return false;
-    return this._settleDefense(body, 'ignored');
   },
 
   _onDefenseEncounterResolved(payload) {

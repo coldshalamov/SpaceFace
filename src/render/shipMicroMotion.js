@@ -520,7 +520,6 @@ export function createShipMicroMotionTracker() {
 
         // Aerospace locomotion: observed-motion history for actuator fallback synthesis
         prevRot: null,
-        prevBank: 0,
         prevFwdV: 0,
         prevLatV: 0,
         prevYawRate: 0,

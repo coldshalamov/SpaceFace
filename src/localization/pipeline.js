@@ -387,7 +387,6 @@ const GLOSSARY = Object.freeze({
   more: L('más', 'plus', 'mehr', 'mais'),
   out: L('fuera', 'hors', 'raus', 'fora'),
   off: L('apagado', 'arrêt', 'aus', 'desligado'),
-  on: L('en', 'sur', 'auf', 'em'),
   still: L('aún', 'encore', 'noch', 'ainda'),
   only: L('solo', 'seulement', 'nur', 'só'),
   now: L('ahora', 'maintenant', 'jetzt', 'agora'),

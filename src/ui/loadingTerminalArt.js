@@ -1812,7 +1812,6 @@ export function createTerminalArtwork({
         } catch {}
         if (target === canvas) { canvas.width = w; canvas.height = h; }
         const hostMain = {
-          post: () => {},
           raf: (fn) => (typeof globalThis.requestAnimationFrame === 'function'
             ? globalThis.requestAnimationFrame(fn)
             : setTimeout(() => fn(Date.now()), 16)),

@@ -85,6 +85,18 @@ function emitted(h, name) {
   return h.bus.log.filter((event) => event.name === name);
 }
 
+test('a stand-down intent reaches the claims owner exactly once', () => {
+  const h = boot();
+  const settle = h.sys._onDefenseIgnore.bind(h.sys);
+  let calls = 0;
+  h.sys._onDefenseIgnore = (payload) => { calls += 1; return settle(payload); };
+  h.sys.beginRaidDefense(h.body.id, { attackerCount: 3 });
+  const defense = h.body.spec.defense;
+  h.bus.emit('claim:defenseIgnore', { claimId: h.body.id, defenseId: defense.id });
+  assert.equal(calls, 1);
+  assert.equal(emitted(h, 'claim:defenseResolved').length, 1);
+});
+
 test('the marker verb emits claim:defenseIgnore and settles the warning as ignored', () => {
   const h = boot();
   h.sys.beginRaidDefense(h.body.id, { attackerCount: 3 });
