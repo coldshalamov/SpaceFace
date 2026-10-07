@@ -18,6 +18,8 @@ const BENCHES = {
   lock: () => import('./benches/targetLock.mjs'),
   collision: () => import('./benches/collision.mjs'),
   dock: () => import('./benches/dock.mjs'),
+  mining: () => import('./benches/mining.mjs'),
+  miningLoop: () => import('./benches/miningLoop.mjs'),
 };
 
 function parseArgs(argv) {

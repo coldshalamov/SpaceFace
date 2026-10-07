@@ -3016,9 +3016,15 @@ export function richCoreWindowPctForTier(tier) {
   return RICH_CORE_WINDOW_HI + (RICH_CORE_WINDOW_LO - RICH_CORE_WINDOW_HI) * t;
 }
 
+// Tuning-lab seam (Phase 2b #10): richPick 'cheapest' breaks the within-tier tie by base value
+// instead of id; null = master (alphabetical: cmdty_gem_emerald wins every tier 0–3 core).
+const MINING_LAB = { richPick: null };
+export function setMiningLab(next = {}) { MINING_LAB.richPick = next.richPick || null; }
 function richOreForTier(tier) {
   const target = Math.max(1, Math.floor(Number(tier) || 0) + 1);
-  const sorted = ORES.slice().sort((a, b) => (a.tier - b.tier) || a.id.localeCompare(b.id));
+  const byValue = MINING_LAB.richPick === 'cheapest';
+  const sorted = ORES.slice().sort((a, b) => (a.tier - b.tier)
+    || (byValue ? (Number(a.baseValue) || 0) - (Number(b.baseValue) || 0) : 0) || a.id.localeCompare(b.id));
   const rare = sorted.find((ore) => ore.tier >= target && ore.tags && ore.tags.includes('rare'));
   const tiered = sorted.find((ore) => ore.tier >= target);
   return (rare || tiered || sorted[sorted.length - 1] || { id: 'cmdty_ore_iron' }).id;
