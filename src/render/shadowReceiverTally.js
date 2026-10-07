@@ -65,12 +65,12 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
     }
     if ((++sinceYield % every) === 0) yield;
     if (object.receiveShadow === true) receivers += 1;
-    // Notes recorded while this walk was mid-flight get a per-root visit stamp:
-    // a noted root measured post-note is already folded into `receivers`, so the
-    // stamp only re-adds deltas of roots the walk never visited post-note.
+    // Every live-popped object gets a visit stamp, not just noted roots: a note
+    // landing later can only decide "did the walk already measure this root?"
+    // if the walk recorded its own measurement unconditionally.
     if (notedWalk) {
       notedWalk.seq += 1;
-      if (notedWalk.notes.has(object)) notedWalk.visits.set(object, notedWalk.seq);
+      notedWalk.visits.set(object, notedWalk.seq);
     }
     const children = object.children;
     if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
@@ -151,7 +151,10 @@ export function createShadowReceiverTally() {
           // Removing it now drops both sides of the pair.
           notedWalk.notes.delete(root);
         } else if (note) {
-          note.delta = note.delta - delta;
+          // The prior note was already folded into the walk's measurement
+          // (visits stamped it): the removal must retract exactly the
+          // receivers the walk measured, not net against the absorbed add.
+          note.delta = -delta;
           note.seq = notedWalk.seq;
         } else {
           notedWalk.notes.set(root, { delta: -delta, seq: notedWalk.seq });

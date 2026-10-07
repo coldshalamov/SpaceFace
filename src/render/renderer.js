@@ -891,6 +891,10 @@ const HIDDEN_FREEZE_MINT_ROOTS_PER_PASS = 6;
 // dead entries ahead of live ones, and a full-length scan inside one pass is
 // itself the in-frame burst this queue exists to prevent.
 const HIDDEN_FREEZE_SCAN_PER_PASS = 256;
+// Boundary flap hysteresis: a mint+restore pair costs ~4 subtree visits vs ~1
+// compose-visit/frame saved, so a hull re-shown within this many passes never
+// mints — it keeps paying the unfrozen compose it always paid.
+const HIDDEN_FREEZE_FLAP_DWELL = 3;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -2056,8 +2060,13 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
     if (iter && m && iter._corpse !== m) iter = owner._despawnDisposeIter = null;
     if (!iter && m) {
       try {
-        iter = owner._despawnDisposeIter = disposeObjectSteps(m);
+        // The teardown already walks the whole subtree — measure its receiver
+        // tally mid-walk so the removal note lands exact instead of paying a
+        // second standalone countShadowReceivers traverse per corpse.
+        const corpseMeasure = { receivers: 0 };
+        iter = owner._despawnDisposeIter = disposeObjectSteps(m, corpseMeasure);
         iter._corpse = m;
+        iter._measure = corpseMeasure;
       } catch (error) {
         // A torn-dispose corpse is the accepted failure mode of every paced
         // lane — log bounded, advance, don't take the frame's whole residency
@@ -2081,12 +2090,22 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
       iterDone = iter.next().done === true;
     } catch (error) {
       console.info('[render] despawn dispose iterator step failed', error);
+      // A torn walk leaves a partial measurement — settle the tally with the
+      // dirty recount path (null) instead of under-subtracting.
+      if (iter) iter._measure = null;
       iterDone = true;
     }
     if (iterDone) {
       owner._despawnDisposeIter = null;
       owner._despawnDisposeHead += 1;
       drained += 1;
+      // Corpses pushed without an upfront note settle the receiver tally here
+      // with the teardown's own measurement (conservative-on: receivers hold
+      // in the count only until this corpse's dispose completes). A corpse
+      // flagged sfDespawnNoted already paid its note at push time.
+      const ud = m && m.userData;
+      if (ud && ud.sfDespawnNoted === true) delete ud.sfDespawnNoted;
+      else if (m) owner._noteShadowMeshRemoved?.(m, iter._measure ? iter._measure.receivers : null);
     }
     if (drained >= limit || now() > deadline) break;
   }
@@ -2156,7 +2175,6 @@ function releaseRebuildBridge(owner, id, slot) {
   const mesh = slot.mesh;
   if (mesh.parent) mesh.parent.remove(mesh);
   owner._despawnDisposeQueue.push(mesh);
-  noteShadowMeshRemoved(owner, mesh);
   owner._queueAssetResidencyDiagnosticsPublish();
 }
 
@@ -8141,9 +8159,9 @@ function noteShadowMeshAdded(owner, root) {
   if (owner) owner._shadowReceiversDirty = true;
 }
 
-function noteShadowMeshRemoved(owner, root) {
+function noteShadowMeshRemoved(owner, root, measuredReceivers = null) {
   if (owner && typeof owner._noteShadowMeshRemoved === 'function') {
-    owner._noteShadowMeshRemoved(root);
+    owner._noteShadowMeshRemoved(root, measuredReceivers);
     return;
   }
   if (owner) owner._shadowReceiversDirty = true;
@@ -12750,10 +12768,27 @@ export const render = {
           this._unbindPresentationMesh(id, mesh);
           releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
           this.scene.remove(mesh);
-          disposeObject(mesh);
+          // A fat leftover corpse's GL teardown is the same brick class this
+          // loop already slices — drive its stepped twin under the same leg
+          // clock and settle the tally from the teardown's own measurement.
+          const leftoverMeasure = { receivers: 0 };
+          const leftoverDispose = disposeObjectSteps(mesh, leftoverMeasure);
+          for (;;) {
+            if (leftoverDispose.next().done === true) break;
+            if (openingProviderNow() - leftoverSliceStart >= 8
+                || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+              if (leftoverSliceArmed) {
+                notePacedFrameSpend(openingProviderNow() - leftoverSliceStart);
+              }
+              await yieldLiveSectorGpu();
+              leftoverSliceStart = openingProviderNow();
+              leftoverSliceArmed = state.mode === 'flight';
+              if (cookStale()) return cookSuperseded;
+            }
+          }
           this._meshes.delete(id);
           this._meshesVersion += 1;
-          noteShadowMeshRemoved(this, mesh);
+          noteShadowMeshRemoved(this, mesh, leftoverMeasure.receivers);
           clearEntityMeshReference(entity, mesh);
           if (openingProviderNow() - leftoverSliceStart >= 8
               || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
@@ -15530,10 +15565,18 @@ export const render = {
             this._unbindPresentationMesh(id, mesh);
             releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
             this.scene.remove(mesh);
-            disposeObject(mesh);
+            const departMeasure = { receivers: 0 };
+            const departDispose = disposeObjectSteps(mesh, departMeasure);
+            for (;;) {
+              if (departDispose.next().done === true) break;
+              if (providerSliceDue()) {
+                const superseded = await providerYield();
+                if (superseded) return superseded;
+              }
+            }
             this._meshes.delete(id);
             this._meshesVersion += 1;
-            noteShadowMeshRemoved(this, mesh);
+            noteShadowMeshRemoved(this, mesh, departMeasure.receivers);
             clearEntityMeshReference(entity, mesh);
             if (providerSliceDue()) {
               const superseded = await providerYield();
@@ -16581,7 +16624,6 @@ export const render = {
         // tail is presentation-only — the corpse is already off-scene — so it queues for the
         // bounded per-frame drain instead of hitching the whole despawn into one task.
         this._despawnDisposeQueue.push(m);
-        this._noteShadowMeshRemoved?.(m);
         this._queueAssetResidencyDiagnosticsPublish();
       }
     }, { presentation: true });
@@ -18024,7 +18066,13 @@ export const render = {
     if (Array.isArray(this._despawnDisposeQueue)) {
       for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
         const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
-        if (queued && queued.parent == null) disposeObject(queued);
+        if (queued && queued.parent == null) {
+          const flushMeasure = { receivers: 0 };
+          disposeObject(queued, flushMeasure);
+          const queuedUd = queued.userData;
+          if (queuedUd && queuedUd.sfDespawnNoted === true) delete queuedUd.sfDespawnNoted;
+          else this._noteShadowMeshRemoved?.(queued, flushMeasure.receivers);
+        }
       }
       this._despawnDisposeQueue.length = 0;
       this._despawnDisposeHead = 0;
@@ -20589,7 +20637,13 @@ export const render = {
       try {
         if (root.parent) {
           root.parent.remove(root);
-          this._noteShadowMeshRemoved?.(root);
+          // Queued corpses settle the tally from the teardown's own measured
+          // walk; a contextLost corpse never queues, so it notes inline — and
+          // flags the mesh so the drain can't double-count it.
+          if (this._contextLost === true) {
+            this._noteShadowMeshRemoved?.(root);
+            if (root.userData) root.userData.sfDespawnNoted = true;
+          }
         }
         // A lost context already owns those buffers: detach the root but never invoke the
         // old context's disposers (the same abandon contract the rest of teardown obeys).
@@ -21029,19 +21083,33 @@ export const render = {
   _drainHiddenFreezeQueue() {
     const pending = this._pendingHiddenFreeze;
     if (!pending || pending.length === 0) return;
+    const viewSeq = this._viewSyncSeq || 0;
     let minted = 0;
-    let consumed = 0;
-    while (consumed < pending.length && minted < HIDDEN_FREEZE_MINT_ROOTS_PER_PASS
-        && consumed < HIDDEN_FREEZE_SCAN_PER_PASS) {
-      const mesh = pending[consumed++];
+    let scanned = 0;
+    let w = 0;
+    for (let r = 0; r < pending.length; r += 1) {
+      const mesh = pending[r];
+      if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS) {
+        pending[w++] = mesh;
+        continue;
+      }
+      scanned += 1;
       const ud = mesh.userData || {};
       // Unbind clears the flag precisely so its entry cannot mint: honor it
       // before any other check or a pooled reuse inherits a full subtree
-      // freeze the world no longer owns. A row re-shown, detached, or
-      // restored mid-queue drops out instead of minting a freeze on a subtree
-      // that is live again.
+      // freeze the world no longer owns.
       if (ud.sfHiddenFreezeQueued !== true) continue;
+      // Boundary flap hysteresis: a root re-shown inside the dwell window
+      // would pay ~4 subtree visits minting+restoring a freeze that saves ~1
+      // compose-visit per hidden frame — defer the mint, never drop the entry.
+      const lastShow = ud.sfHiddenFreezeLastShowSeq;
+      if (lastShow != null && viewSeq - lastShow < HIDDEN_FREEZE_FLAP_DWELL) {
+        pending[w++] = mesh;
+        continue;
+      }
       delete ud.sfHiddenFreezeQueued;
+      // A row re-shown, detached, or restored mid-queue drops out instead of
+      // minting a freeze on a subtree that is live again.
       if (ud.sfHiddenFrozen === true || mesh.matrixAutoUpdate !== true
           || mesh.visible === true || !mesh.parent) continue;
       // Compose before freezing: writers skip the hook once the flag is true,
@@ -21052,10 +21120,50 @@ export const render = {
       freezeHiddenSubtreeMatrices(mesh);
       minted += 1;
     }
-    // Head-index walk + one splice: per-entry shift() costs O(length) each,
-    // which turns a fully-stale storm queue into O(n²) element moves inside a
-    // single sync pass.
-    pending.splice(0, consumed);
+    pending.length = w;
+  },
+
+  // The unfreeze rides the same bounded-drain shape as the freeze: a mass
+  // re-show (sector re-entry, camera snap over a culled fleet, zoom-in across
+  // the cull boundary) otherwise pays ~2x O(subtree) restore walks per root
+  // inside one presented pass — the atomic O(scene) class relocated from the
+  // cull edge to the un-cull edge. Deferral is correctness-safe: the root's
+  // pose write sets matrixWorldNeedsUpdate, and the vendored updateMatrixWorld
+  // descends marked subtrees under force, so the re-shown subtree keeps paying
+  // the unfrozen compose it paid pre-W100 until its restore mints.
+  _queueHiddenSubtreeUnfreeze(mesh) {
+    if (!mesh) return;
+    const ud = mesh.userData || {};
+    if (ud.sfHiddenFrozen !== true || ud.sfHiddenUnfreezeQueued === true) return;
+    ud.sfHiddenUnfreezeQueued = true;
+    (this._pendingHiddenUnfreeze || (this._pendingHiddenUnfreeze = [])).push(mesh);
+  },
+
+  _drainHiddenUnfreezeQueue() {
+    const pending = this._pendingHiddenUnfreeze;
+    if (!pending || pending.length === 0) return;
+    let minted = 0;
+    let scanned = 0;
+    let w = 0;
+    for (let r = 0; r < pending.length; r += 1) {
+      const mesh = pending[r];
+      if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS) {
+        pending[w++] = mesh;
+        continue;
+      }
+      scanned += 1;
+      const ud = mesh.userData || {};
+      if (ud.sfHiddenUnfreezeQueued !== true) continue;
+      delete ud.sfHiddenUnfreezeQueued;
+      // A re-culled root (pending or minted freeze) drops its restore: the
+      // freeze queue owns the subtree's marks now. A detached or re-frozen
+      // root likewise drops out.
+      if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true
+          || mesh.matrixAutoUpdate !== true || !mesh.parent) continue;
+      unfreezeHiddenSubtreeMatrices(mesh);
+      minted += 1;
+    }
+    pending.length = w;
   },
 
   _queueAssetResidencyDiagnosticsPublish() {
@@ -21227,7 +21335,13 @@ export const render = {
     // A culled-frozen root leaving the presentation world goes back to whatever owns the
     // object next (dispose, pool reuse, rebuild) in its build-time state. A queued-but-
     // unminted freeze stamp drops with the row so a pooled reuse can't inherit it.
-    if (mesh && mesh.userData) delete mesh.userData.sfHiddenFreezeQueued;
+    if (mesh && mesh.userData) {
+      delete mesh.userData.sfHiddenFreezeQueued;
+      delete mesh.userData.sfHiddenUnfreezeQueued;
+      // A mesh recycling out of a despawn-noted corpse must not carry the
+      // drain's note-skip flag into a fresh queue entry.
+      delete mesh.userData.sfDespawnNoted;
+    }
     if (mesh && mesh.userData && mesh.userData.sfHiddenFrozen === true) {
       mesh.userData.sfHiddenFrozen = false;
       mesh.matrixAutoUpdate = true;
@@ -21563,7 +21677,13 @@ export const render = {
     // Whole-tree teardown stays synchronous — flush the deferred corpse tail with it.
     for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
       const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
-      if (queued && queued.parent == null) disposeObject(queued);
+      if (queued && queued.parent == null) {
+        const flushMeasure = { receivers: 0 };
+        disposeObject(queued, flushMeasure);
+        const queuedUd = queued.userData;
+        if (queuedUd && queuedUd.sfDespawnNoted === true) delete queuedUd.sfDespawnNoted;
+        else this._noteShadowMeshRemoved?.(queued, flushMeasure.receivers);
+      }
     }
     this._despawnDisposeQueue.length = 0;
     this._despawnDisposeHead = 0;
@@ -21826,7 +21946,6 @@ export const render = {
           if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
           this._despawnDisposeQueue.push(m);
           this._meshes.delete(id); this._meshesVersion += 1;
-          noteShadowMeshRemoved(this, m);
           clearEntityMeshReference(e, m);
         }
       }
@@ -22003,7 +22122,6 @@ export const render = {
           this._despawnDisposeQueue.push(mesh);
           this._meshes.delete(id);
           this._meshesVersion += 1;
-          noteShadowMeshRemoved(this, mesh);
           clearEntityMeshReference(entity, mesh);
           stats.evicted++;
           continue;
@@ -22818,7 +22936,6 @@ export const render = {
         // Same traverse+dispose class as a despawn corpse — ride the bounded per-frame
         // drain instead of paying the GL tail inside the appearanceChanged emit.
         this._despawnDisposeQueue.push(old);
-        noteShadowMeshRemoved(this, old);
         this._queueAssetResidencyDiagnosticsPublish();
       }
     }
@@ -23246,9 +23363,16 @@ export const render = {
       // Roots frozen while culled rejoin the live compose path here — mount-frozen static
       // roots carry no stamp and are left alone.
       if (userData.sfHiddenFrozen === true) {
+        // The ~2x-subtree interior restore rides the bounded drain instead of
+        // landing inside this pass — queue while the flag still reads true.
+        // The root itself resumes composing below, and the vendored
+        // updateMatrixWorld descends marked subtrees under force, so the
+        // pose stays correct while the restore waits. The show seq also feeds
+        // the freeze queue's flap hysteresis.
+        this._queueHiddenSubtreeUnfreeze(mesh);
         userData.sfHiddenFrozen = false;
         mesh.matrixAutoUpdate = true;
-        unfreezeHiddenSubtreeMatrices(mesh);
+        userData.sfHiddenFreezeLastShowSeq = this._viewSyncSeq || 0;
       }
       // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
       if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
@@ -23598,6 +23722,11 @@ export const render = {
       }
       world.clearDirty(slot);
     }
+
+    // Deferred interior restores mint a few roots per pass alongside the
+    // freeze queue — mass re-shows amortize instead of paying 2x O(subtree)
+    // per root inside this pass.
+    this._drainHiddenUnfreezeQueue();
 
     if (!slipstreamSeen) writeSlipstreamState(this.state, false, 0);
 

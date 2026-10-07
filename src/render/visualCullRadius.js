@@ -63,6 +63,12 @@ function motionTravelPadFor(mesh) {
 // cheap cadence bound re-measures periodically, jittered by mesh id so a scene
 // of same-age roots doesn't expire on one frame.
 const DRAWN_CULL_REMEASURE_CALLS = 600;
+// Composition/lod oscillation (level A→B→A across camera churn) invalidates
+// the single memo record every flip, and each miss pays Box3.setFromObject
+// O(subtree) inside the per-slot cull test — landing exactly on transition
+// frames. A tiny per-mesh LRU of recent key→radius pairs absorbs the flip
+// pattern so only genuinely-new compositions measure.
+const DRAWN_CULL_LRU_SIZE = 3;
 
 function drawnCullRadiusForMesh(mesh) {
   const data = mesh && mesh.userData;
@@ -76,6 +82,39 @@ function drawnCullRadiusForMesh(mesh) {
     && cached.lodLevel === lodLevel && cached.childCount === childCount
     && ++cached.calls < DRAWN_CULL_REMEASURE_CALLS + ((mesh.id | 0) & 63)) {
     return cached.radius;
+  }
+  // Key moved (or cadence expired): before paying the Box3 walk, serve a
+  // radius this exact key already measured. Only meaningful when the memo
+  // holds a different key — a cadence expiry must re-measure regardless.
+  const keyMoved = !(cached && cached.assetState === assetState
+    && cached.compositionId === compositionId && cached.lodLevel === lodLevel
+    && cached.childCount === childCount);
+  if (keyMoved) {
+    const lru = data.drawnCullRadiusLru || (data.drawnCullRadiusLru = new Map());
+    const lruKey = assetState + '|' + compositionId + '|' + lodLevel + '|' + childCount;
+    const hit = lru.get(lruKey);
+    if (hit != null) {
+      const rec = cached || (data.drawnCullRadius = {});
+      rec.assetState = assetState;
+      rec.compositionId = compositionId;
+      rec.lodLevel = lodLevel;
+      rec.childCount = childCount;
+      // A restored radius is already stale — halve the cadence window so the
+      // next re-measure bounds its drift instead of granting a fresh cycle.
+      rec.calls = DRAWN_CULL_REMEASURE_CALLS >> 1;
+      rec.radius = hit;
+      // Refresh recency — the Map iterates in insertion order.
+      lru.delete(lruKey);
+      lru.set(lruKey, hit);
+      return hit;
+    }
+    // Stash the outgoing key so the next flip back hits instead of measuring.
+    if (cached && cached.radius != null) {
+      const outKey = cached.assetState + '|' + cached.compositionId + '|' + cached.lodLevel + '|' + cached.childCount;
+      lru.delete(outKey);
+      lru.set(outKey, cached.radius);
+      while (lru.size > DRAWN_CULL_LRU_SIZE) lru.delete(lru.keys().next().value);
+    }
   }
   _drawnCullBox.setFromObject(mesh);
   let radius = 0;
