@@ -6,7 +6,7 @@ import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
 import { pickDecodeRunwayCandidates, pickDecodeRunwayCandidatesSteps } from './decodeRunwayPick.js';
-import { entityVisualCullRadius } from './visualCullRadius.js';
+import { entityVisualCullRadius, resetDrawnCullPassBudget } from './visualCullRadius.js';
 import {
   clearPooledTransientMarks,
   noteSharedTextureConsumer,
@@ -891,6 +891,9 @@ const HIDDEN_FREEZE_MINT_ROOTS_PER_PASS = 6;
 // dead entries ahead of live ones, and a full-length scan inside one pass is
 // itself the in-frame burst this queue exists to prevent.
 const HIDDEN_FREEZE_SCAN_PER_PASS = 256;
+// Dead drops (unbind-cleared flags) cost ~2 field reads — exempt them from the
+// live-consult budget but still bound total pass length for a dead-entry storm.
+const HIDDEN_FREEZE_VISIT_PER_PASS = 1024;
 // Boundary flap hysteresis: a mint+restore pair costs ~4 subtree visits vs ~1
 // compose-visit/frame saved, so a hull re-shown within this many passes never
 // mints — it keeps paying the unfrozen compose it always paid.
@@ -10785,7 +10788,7 @@ export const render = {
         census = { scene: targetScene, generation: cookGeneration, drawables };
         this._touchDrawableCensus = census;
       }
-      return { scene: targetScene, drawables: census.drawables, keep: new Set() };
+      return { scene: targetScene, drawables: census.drawables };
     };
     // A package texture whose CPU mirror was released after its proven upload still reaches
     // three's uploader when the next bind re-enters it — a moved version, a different
@@ -12326,12 +12329,27 @@ export const render = {
         openingSeen.add(entity);
         openingEntities.push(entity);
       };
-      for (const entity of indexedShipLikeScan(state)) considerOpening(entity);
-      for (const entity of indexedTypeScan(state, 'stations')) considerOpening(entity);
-      for (const entity of indexedTypeScan(state, 'wrecks')) considerOpening(entity);
-      // On-runway tow bodies pin GLASS_ACTORS at the readiness gate (partsLibrary); they must
-      // enter this drain too or the gate waits on a mesh nobody schedules.
-      for (const entity of indexedTypeScan(state, 'payloads')) considerOpening(entity);
+      // The index buckets are already compact, but a same-dense-sector cook
+      // still walks four unclocked collects — one merged drive on the
+      // neighbors' slice clock, source order preserved.
+      const openingScanSources = [
+        indexedShipLikeScan(state),
+        indexedTypeScan(state, 'stations'),
+        indexedTypeScan(state, 'wrecks'),
+        // On-runway tow bodies pin GLASS_ACTORS at the readiness gate (partsLibrary); they must
+        // enter this drain too or the gate waits on a mesh nobody schedules.
+        indexedTypeScan(state, 'payloads'),
+      ];
+      let openingScanSinceYield = 0;
+      for (const source of openingScanSources) {
+        for (const entity of source) {
+          considerOpening(entity);
+          if ((++openingScanSinceYield % 256) === 0) {
+            if (cookStale()) return cookSuperseded;
+            await yieldLiveSectorGpu();
+          }
+        }
+      }
       // The enqueue is a generator slice on the same clock as the drains around
       // it — the two list-wide classify passes used to run atomic between census
       // and the shell drain.
@@ -12457,6 +12475,10 @@ export const render = {
           const drz = (Number(right && right.pos && right.pos.z) || 0) - pz;
           return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
         });
+        // The O(H log H) sort can't suspend — land the cook's slice seam
+        // between it and the promote burst's own pacing.
+        if (cookStale()) return cookSuperseded;
+        await yieldLiveSectorGpu();
         const seenRockKeys = new Set();
         let rockPromotesSinceYield = 0;
         for (const rec of rockHits) {
@@ -12783,9 +12805,17 @@ export const render = {
         for (const [id, mesh] of this._meshes) {
           const entity = resolveWorldPresentationEntity(state, id);
           if (entity && isEntityRenderRelevant(entity, state)) continue;
-          this._unbindPresentationMesh(id, mesh);
+          this._unbindPresentationMesh(id, mesh, true);
           releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
           this.scene.remove(mesh);
+          // Row bookkeeping lands before the first teardown yield: a fat corpse
+          // suspended mid-dispose would otherwise stay addressable through
+          // _meshes, letting a same-id entity:destroyed push it onto the
+          // despawn queue for a second concurrent teardown (+double receiver
+          // debit) — and letting the post-yield delete kill an id-reissue row.
+          this._meshes.delete(id);
+          this._meshesVersion += 1;
+          clearEntityMeshReference(entity, mesh);
           // A fat leftover corpse's GL teardown is the same brick class this
           // loop already slices — drive its stepped twin under the same leg
           // clock and settle the tally from the teardown's own measurement.
@@ -12802,12 +12832,13 @@ export const render = {
               leftoverSliceStart = openingProviderNow();
               leftoverSliceArmed = state.mode === 'flight';
               if (cookStale()) return cookSuperseded;
+              // The freeze backlog accrues for the whole cook — drain the
+              // bounded batch inside tail yield seams instead of leaving it
+              // all for the first presented passes.
+              this._drainHiddenFreezeQueue();
             }
           }
-          this._meshes.delete(id);
-          this._meshesVersion += 1;
           noteShadowMeshRemoved(this, mesh, leftoverMeasure.receivers);
-          clearEntityMeshReference(entity, mesh);
           if (openingProviderNow() - leftoverSliceStart >= 8
               || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
             if (leftoverSliceArmed) {
@@ -15580,9 +15611,15 @@ export const render = {
           for (const [id, mesh] of this._meshes) {
             const entity = resolveWorldPresentationEntity(state, id);
             if (entity && isEntityRenderRelevant(entity, state)) continue;
-            this._unbindPresentationMesh(id, mesh);
+            this._unbindPresentationMesh(id, mesh, true);
             releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
             this.scene.remove(mesh);
+            // Row bookkeeping before the first teardown yield — same race as
+            // the leftover sweep: a suspended corpse must not stay addressable
+            // for a double despawn push or an id-reissue delete.
+            this._meshes.delete(id);
+            this._meshesVersion += 1;
+            clearEntityMeshReference(entity, mesh);
             const departMeasure = { receivers: 0 };
             const departDispose = disposeObjectSteps(mesh, departMeasure);
             for (;;) {
@@ -15590,12 +15627,10 @@ export const render = {
               if (providerSliceDue()) {
                 const superseded = await providerYield();
                 if (superseded) return superseded;
+                this._drainHiddenFreezeQueue();
               }
             }
-            this._meshes.delete(id);
-            this._meshesVersion += 1;
             noteShadowMeshRemoved(this, mesh, departMeasure.receivers);
-            clearEntityMeshReference(entity, mesh);
             if (providerSliceDue()) {
               const superseded = await providerYield();
               if (superseded) return superseded;
@@ -16636,7 +16671,7 @@ export const render = {
       releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
       const m = this._meshes.get(id);
       if (m) {
-        this._unbindPresentationMesh(id, m);
+        this._unbindPresentationMesh(id, m, true);
         scene.remove(m); this._meshes.delete(id); this._meshesVersion += 1;
         // Kill bursts land the per-corpse traverse+dispose flush inside one sim step. The GL
         // tail is presentation-only — the corpse is already off-scene — so it queues for the
@@ -18917,11 +18952,26 @@ export const render = {
         this._earlyCrucibleWarmMenu = false;
       }
       try {
-        if (root.parent) {
-          root.parent.remove(root);
+        const wasMounted = !!root.parent;
+        if (root.parent) root.parent.remove(root);
+        if (this._contextLost === true) {
+          if (wasMounted) this._noteShadowMeshRemoved?.(root);
+          return;
+        }
+        // An installed authored disposer keeps its own teardown contract; the
+        // plain disposeObject fallback rides the bounded drain which settles
+        // the receiver note from its own measured walk. Unmounted roots were
+        // never counted, so they dispose inline with no note either way.
+        if (!disposePreparedAuthoredBoundary(root)) {
+          if (wasMounted) {
+            if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
+            this._despawnDisposeQueue.push(root);
+          } else {
+            disposeObject(root);
+          }
+        } else if (wasMounted) {
           this._noteShadowMeshRemoved?.(root);
         }
-        if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
       } catch (_) { /* teardown is best-effort */ }
     };
     // The exemplar build loops used to run as one synchronous ~120-250 ms block
@@ -19458,12 +19508,23 @@ export const render = {
     const index = list.indexOf(root);
     if (index >= 0) list.splice(index, 1);
     try {
-      if (root.parent) {
-        root.parent.remove(root);
+      const wasMounted = !!root.parent;
+      if (root.parent) root.parent.remove(root);
+      if (this._contextLost === true) {
+        if (wasMounted) this._noteShadowMeshRemoved?.(root);
+        if (root.userData) root.userData.sfDespawnNoted = true;
+        return;
+      }
+      if (!disposePreparedAuthoredBoundary(root)) {
+        if (wasMounted) {
+          if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
+          this._despawnDisposeQueue.push(root);
+        } else {
+          disposeObject(root);
+        }
+      } else if (wasMounted) {
         this._noteShadowMeshRemoved?.(root);
       }
-      if (this._contextLost === true) return;
-      if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
     } catch (_) { /* teardown is best-effort */ }
   },
 
@@ -20722,8 +20783,24 @@ export const render = {
       const catalog = this._rosterPartCatalogRoot;
       this._rosterPartCatalogRoot = null;
       try {
+        const catalogMounted = !!catalog.parent;
         if (catalog.parent) catalog.parent.remove(catalog);
-        if (this._contextLost !== true) disposeObject(catalog);
+        // The catalog accumulated receiveShadow parts while mounted — settle
+        // the tally exactly like the sibling warm roots do: measured note via
+        // the bounded drain (authored disposer first if one was installed).
+        if (this._contextLost === true) {
+          if (catalogMounted) this._noteShadowMeshRemoved?.(catalog);
+          if (catalog.userData) catalog.userData.sfDespawnNoted = true;
+        } else if (!disposePreparedAuthoredBoundary(catalog)) {
+          if (catalogMounted) {
+            if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
+            this._despawnDisposeQueue.push(catalog);
+          } else {
+            disposeObject(catalog);
+          }
+        } else if (catalogMounted) {
+          this._noteShadowMeshRemoved?.(catalog);
+        }
       } catch (error) {
         console.warn('[render] roster part catalog release failed', reason, error);
       }
@@ -21182,19 +21259,23 @@ export const render = {
     const viewSeq = this._viewSyncSeq || 0;
     let minted = 0;
     let scanned = 0;
+    let visited = 0;
     let w = 0;
     for (let r = 0; r < pending.length; r += 1) {
       const mesh = pending[r];
-      if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS) {
+      if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
+          || visited >= HIDDEN_FREEZE_VISIT_PER_PASS) {
         pending[w++] = mesh;
         continue;
       }
-      scanned += 1;
+      visited += 1;
       const ud = mesh.userData || {};
       // Unbind clears the flag precisely so its entry cannot mint: honor it
       // before any other check or a pooled reuse inherits a full subtree
-      // freeze the world no longer owns.
+      // freeze the world no longer owns. Dead drops are free — a mass-unbind
+      // storm can't starve live entries behind its own garbage.
       if (ud.sfHiddenFreezeQueued !== true) continue;
+      scanned += 1;
       // Boundary flap hysteresis: a root re-shown inside the dwell window
       // would pay ~4 subtree visits minting+restoring a freeze that saves ~1
       // compose-visit per hidden frame — defer the mint, never drop the entry.
@@ -21240,16 +21321,21 @@ export const render = {
     if (!pending || pending.length === 0) return;
     let minted = 0;
     let scanned = 0;
+    let visited = 0;
     let w = 0;
     for (let r = 0; r < pending.length; r += 1) {
       const mesh = pending[r];
-      if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS) {
+      if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
+          || visited >= HIDDEN_FREEZE_VISIT_PER_PASS) {
         pending[w++] = mesh;
         continue;
       }
-      scanned += 1;
+      visited += 1;
       const ud = mesh.userData || {};
+      // Dead drops (flag cleared mid-queue) are free — same exemption as the
+      // freeze drain so an unbind storm can't park live restores.
       if (ud.sfHiddenUnfreezeQueued !== true) continue;
+      scanned += 1;
       delete ud.sfHiddenUnfreezeQueued;
       // A re-culled root (pending or minted freeze) drops its restore: the
       // freeze queue owns the subtree's marks now. A detached or re-frozen
@@ -21356,7 +21442,7 @@ export const render = {
     globalLawArenaDressing.releaseMeshSet(pending);
   },
 
-  _unbindPresentationMesh(entityId, mesh = null) {
+  _unbindPresentationMesh(entityId, mesh = null, disposeBound = false) {
     if (mesh) {
       // The caller-match gate covers the release too: a stale caller id that
       // mismatches the mark must not strip the live mark-owner's claims — a
@@ -21433,6 +21519,7 @@ export const render = {
     // unminted freeze stamp drops with the row so a pooled reuse can't inherit it.
     if (mesh && mesh.userData) {
       delete mesh.userData.sfHiddenFreezeQueued;
+      delete mesh.userData.sfHiddenFreezeLastShowSeq;
       delete mesh.userData.sfHiddenUnfreezeQueued;
       // A mesh recycling out of a despawn-noted corpse must not carry the
       // drain's note-skip flag into a fresh queue entry.
@@ -21441,7 +21528,10 @@ export const render = {
     if (mesh && mesh.userData && mesh.userData.sfHiddenFrozen === true) {
       mesh.userData.sfHiddenFrozen = false;
       mesh.matrixAutoUpdate = true;
-      unfreezeHiddenSubtreeMatrices(mesh);
+      // A corpse-bound unbind's interior marks die with the subtree — the
+      // despawn drain's dispose walks flags, not matrixAutoUpdate, so the
+      // ~2x-subtree restore walk is dead work on every kill-burst row.
+      if (disposeBound !== true) unfreezeHiddenSubtreeMatrices(mesh);
     }
     // The submit-lane reservation is keyed by entity id, not by the world handle: it must
     // release even when the handle (or the world) is already gone, or the slot strands.
@@ -21806,7 +21896,7 @@ export const render = {
     try {
       for (const [id, m] of [...this._meshes]) {
         if (keepPlayer && id === this.state.playerId) continue;
-        this._unbindPresentationMesh(id, m);
+        this._unbindPresentationMesh(id, m, true);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
       }
@@ -22033,7 +22123,7 @@ export const render = {
             reconcileScanOpts);
         if (!e || e.alive === false || mismatched || residencyEvict) {
           if (residencyEvict) noteOnGlassResidencyEviction(state, e);
-          this._unbindPresentationMesh(id, m);
+          this._unbindPresentationMesh(id, m, true);
           releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
           // GL disposal rides the bounded despawn queue (drained ~2 ms/frame by the residency
           // service): a different-sector restore would otherwise pay the whole kept working
@@ -22206,7 +22296,7 @@ export const render = {
           && !isEntityRenderRelevant(entity, state, evictRadius, residencyScanOpts);
         if (!entity || entity.alive === false || residencyEvict) {
           if (residencyEvict) noteOnGlassResidencyEviction(state, entity);
-          this._unbindPresentationMesh(id, mesh);
+          this._unbindPresentationMesh(id, mesh, true);
           releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
           this.scene.remove(mesh);
           // Dead-class evicts are deliberately not gated by the shell latch — ghost meshes
@@ -23266,6 +23356,7 @@ export const render = {
     // Per-pass sequence stamp: the shadow light census memo keys on it so a frame's
     // N withhold-gate evaluations share one whole-scene traverse.
     this._viewSyncSeq = (this._viewSyncSeq || 0) + 1;
+    resetDrawnCullPassBudget();
     // Opt-in CPU attribution only — no performance.now()/ring write when disabled.
     const useCpu = !!(this.state && this.state.perfRuntime
       && this.state.perfRuntime.renderWorkEnabled
@@ -23468,8 +23559,10 @@ export const render = {
         this._queueHiddenSubtreeUnfreeze(mesh);
         userData.sfHiddenFrozen = false;
         mesh.matrixAutoUpdate = true;
-        userData.sfHiddenFreezeLastShowSeq = this._viewSyncSeq || 0;
       }
+      // Every visible row stamps the last-show seq: a first-time flapper (hide
+      // right after a show) dwell-defers too, not only rows that once froze.
+      userData.sfHiddenFreezeLastShowSeq = this._viewSyncSeq || 0;
       // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
       if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
       if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
@@ -27210,7 +27303,14 @@ export const render = {
       // Root-scoped either way: a pending stepped recount records the delta under
       // the root's visit stamp instead of superseding — note storms converge in
       // one walk. A caller-measured delta skips the tally's own subtree count.
-      this._shadowReceiverTally.noteAdded(root, measuredReceivers);
+      // An unmeasured note arriving while dirty can't beat the recount already
+      // being paid — mark and let that walk settle the subtree instead of
+      // stacking an inline O(subtree) count on the churn frame.
+      if (!Number.isFinite(measuredReceivers) && this._shadowReceiverTally.dirty) {
+        this._shadowReceiverTally.markDirty();
+      } else {
+        this._shadowReceiverTally.noteAdded(root, measuredReceivers);
+      }
     } else this._shadowReceiversDirty = true;
   },
 
@@ -27218,7 +27318,13 @@ export const render = {
     if (this._shadowReceiverTally) {
       // A caller that already walked the subtree settles exactly — paying the
       // tally's second countShadowReceivers traverse just re-measures the same set.
-      this._shadowReceiverTally.noteRemoved(root, measuredReceivers);
+      // Under a dirty tally the settled count is already superseded — mark and
+      // let the in-flight recount absorb the removal instead of counting inline.
+      if (!Number.isFinite(measuredReceivers) && this._shadowReceiverTally.dirty) {
+        this._shadowReceiverTally.markDirty();
+      } else {
+        this._shadowReceiverTally.noteRemoved(root, measuredReceivers);
+      }
     } else this._shadowReceiversDirty = true;
   },
 

@@ -460,7 +460,8 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
  * Reusable drawable-hide session for a batched touch loop. The scene's drawable
  * enumeration is O(scene) — mint it once per cook and share `drawables` across
  * the cook's legs. `keep` is per-CALL state (withOnlySubjectsDrawable mints it
- * per batch): session-accumulated keep re-drew every prior batch's subjects in
+ * per batch); session objects carry no keep set at all — re-drawing every prior
+ * batch's subjects in
  * each later absorbed pass. Under-hiding is safe by contract — a drawable the
  * session under-covers just draws inside the absorbed touch pass (which exists
  * to absorb links), never inside a presented frame; stale entries for detached
@@ -473,7 +474,7 @@ export function drawableHideSession(scene) {
       if (isDrawable(object)) drawables.push(object);
     });
   }
-  return { scene, drawables, keep: new Set() };
+  return { scene, drawables };
 }
 
 // Stepped twin of the session mint: the O(scene) enumeration yields at stride
@@ -494,7 +495,7 @@ export function* drawableHideSessionSteps(scene, sliceEvery = 4096) {
       if ((++visited % sliceEvery) === 0) yield;
     }
   }
-  return { scene, drawables, keep: new Set() };
+  return { scene, drawables };
 }
 
 export function withOnlySubjectsDrawable(scene, subjects, fn, session) {

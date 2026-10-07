@@ -67,8 +67,17 @@ const DRAWN_CULL_REMEASURE_CALLS = 600;
 // the single memo record every flip, and each miss pays Box3.setFromObject
 // O(subtree) inside the per-slot cull test — landing exactly on transition
 // frames. A tiny per-mesh LRU of recent key→radius pairs absorbs the flip
-// pattern so only genuinely-new compositions measure.
-const DRAWN_CULL_LRU_SIZE = 3;
+// pattern so only genuinely-new compositions measure. The composite-key domain
+// (assetState x compositionId x lodLevel x childCount) runs ~3-6 keys on a
+// demoting hull, so 8 covers a full LOD descent plus authored-state flips.
+const DRAWN_CULL_LRU_SIZE = 8;
+// Same-age fleets re-measure in near-lockstep once the jitter window compresses
+// under per-frame call fan-out — cap the Box3 walks a single syncEntityViews
+// pass may pay; a denied row serves its stale radius and retries inside a few
+// calls (the cadence exists to bound drift, not to promise a deadline).
+const DRAWN_CULL_REMEASURE_PER_PASS = 4;
+let _passRemeasureCount = 0;
+export function resetDrawnCullPassBudget() { _passRemeasureCount = 0; }
 
 function drawnCullRadiusForMesh(mesh) {
   const data = mesh && mesh.userData;
@@ -92,6 +101,16 @@ function drawnCullRadiusForMesh(mesh) {
   if (keyMoved) {
     const lru = data.drawnCullRadiusLru || (data.drawnCullRadiusLru = new Map());
     const lruKey = assetState + '|' + compositionId + '|' + lodLevel + '|' + childCount;
+    // Stash the outgoing key BEFORE consulting: the hit path returns early, so
+    // a stash placed after the consult leaves the flipped-away key uncached —
+    // the dominant A->B->A oscillation then re-measures every B-leg. keyMoved
+    // guarantees the outgoing key differs from the incoming one.
+    if (cached && cached.radius != null) {
+      const outKey = cached.assetState + '|' + cached.compositionId + '|' + cached.lodLevel + '|' + cached.childCount;
+      lru.delete(outKey);
+      lru.set(outKey, cached.radius);
+      while (lru.size > DRAWN_CULL_LRU_SIZE) lru.delete(lru.keys().next().value);
+    }
     const hit = lru.get(lruKey);
     if (hit != null) {
       const rec = cached || (data.drawnCullRadius = {});
@@ -108,14 +127,14 @@ function drawnCullRadiusForMesh(mesh) {
       lru.set(lruKey, hit);
       return hit;
     }
-    // Stash the outgoing key so the next flip back hits instead of measuring.
-    if (cached && cached.radius != null) {
-      const outKey = cached.assetState + '|' + cached.compositionId + '|' + cached.lodLevel + '|' + cached.childCount;
-      lru.delete(outKey);
-      lru.set(outKey, cached.radius);
-      while (lru.size > DRAWN_CULL_LRU_SIZE) lru.delete(lru.keys().next().value);
-    }
   }
+  // Cadence-expiry re-measures defer past the pass budget (a key-moved row
+  // still pays — its incoming key owns no stale radius to serve).
+  if (!keyMoved && cached && _passRemeasureCount >= DRAWN_CULL_REMEASURE_PER_PASS) {
+    cached.calls -= 8;
+    return cached.radius;
+  }
+  _passRemeasureCount += 1;
   _drawnCullBox.setFromObject(mesh);
   let radius = 0;
   if (!_drawnCullBox.isEmpty()) {
