@@ -2517,6 +2517,26 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         owner.reconcileMeshes({ keepResidentSet: true });
       }
     }
+    // A reconcile parked on the fault epoch inside this bounded window used to
+    // stay dead until the next enter — a gate-required mesh then reads
+    // 'missing' and the authored-visuals wait fails hard ~210 s later. After
+    // the banked dirty ages ~1 s behind the park, run the sync twin ONCE (the
+    // loading shell tolerates the atomic pass) then keep the park either way —
+    // a persistent fault must not re-mint+rethrow every service tick.
+    if (owner._meshReconcileDirty && !owner._reconcileIter
+        && owner._reconcileFaultEpoch === serviceFaultEpoch(st)) {
+      if (owner._keepGpuReconcileEpoch !== owner._reconcileFaultEpoch) {
+        owner._keepGpuReconcileEpoch = owner._reconcileFaultEpoch;
+        owner._keepGpuReconcileDegraded = false;
+        owner._keepGpuReconcileDirtySince = now();
+      }
+      if (!owner._keepGpuReconcileDegraded
+          && now() - owner._keepGpuReconcileDirtySince >= 1000) {
+        owner._keepGpuReconcileDegraded = true;
+        runCookSyncTwin('keep-gpu reconcile',
+          () => owner.reconcileMeshes({ keepResidentSet: true }));
+      }
+    }
     if (owner._reconcileIter) {
       const liveEpoch = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
       if (owner._reconcileEpoch !== liveEpoch) {
@@ -2835,8 +2855,14 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         try {
           step = iterator.next();
         } catch (err) {
+          closeCookStepsIter(iterator);
           owner._arrivalRosterIter = null;
-          throw err;
+          // The roster publish is telemetry-only, but the minted-once-per-enter
+          // tail owns the asteroid capacity reserve — flag a reserve-only pass
+          // so one transient fault can't strand it for the whole sector.
+          owner._arrivalReservePending = true;
+          console.warn('[render] arrival roster drive failed; flagging the capacity reserve', err);
+          break;
         }
         if (step.done) {
           if (owner._arrivalRosterIter === iterator) owner._arrivalRosterIter = null;
@@ -2852,6 +2878,43 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       try { owner._arrivalRosterIter.return(); } catch (_) { /* best effort */ }
       owner._arrivalRosterIter = null;
     }
+  }
+  // Reserve-only retry after a roster drive fault: the reserve tallies
+  // entities + field rocks directly — the roster result is telemetry, not an
+  // input — so it drives standalone under the same slice cadence, then parks
+  // for the enter on a second fault.
+  if (owner._arrivalReservePending) {
+    owner._arrivalReservePending = false;
+    const reserveEntities = Array.isArray(owner.state && owner.state.entityList)
+      ? owner.state.entityList : [];
+    if (typeof owner._reserveArrivalAsteroidCapacitySteps === 'function') {
+      owner._arrivalReserveIter = owner._reserveArrivalAsteroidCapacitySteps(reserveEntities);
+    } else {
+      runCookSyncTwin('arrival-asteroid-reserve',
+        () => owner._reserveArrivalAsteroidCapacity(reserveEntities));
+    }
+  }
+  if (owner._arrivalReserveIter) {
+    const reserveSliceStart = now();
+    for (;;) {
+      const iterator = owner._arrivalReserveIter;
+      if (!iterator) break;
+      let step;
+      try {
+        step = iterator.next();
+      } catch (err) {
+        owner._arrivalReserveIter = null;
+        console.warn('[render] arrival capacity reserve failed; parked for this enter', err);
+        break;
+      }
+      if (step.done) {
+        if (owner._arrivalReserveIter === iterator) owner._arrivalReserveIter = null;
+        break;
+      }
+      if (now() - reserveSliceStart >= 4
+          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+    }
+    notePacedFrameSpend(now() - reserveSliceStart);
   }
   // Both collectors ride staged generators across frames: a fat-sector walk
   // (sweep + chunked collect + classify + decode kick + ~20 warm scans) ran the
@@ -3307,6 +3370,11 @@ function residencyPruneSweepDue(owner) {
 function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
   const state = owner && owner.state;
   if (!owner || !state || !owner._meshes || !owner._meshBuildQueuedIds || !owner._meshBuildQueue) return 0;
+  // A faulted collect parks for the rest of the epoch — re-minting every
+  // 100 ms beat used to rethrow ~10 frame aborts/sec through the whole
+  // stream-hold/first-flight-hold window. The exempt collect is an
+  // optimization; the normal build-queue lanes keep builds flowing.
+  if (owner._holdExemptFaultEpoch === serviceFaultEpoch(state)) return 0;
   // Once per invocation: parked commit iterators read this stamp across yields to spot
   // resumes landing under a newer beat (their minted snapshot needs a refresh then).
   owner._holdExemptBeatStamp = (owner._holdExemptBeatStamp || 0) + 1;
@@ -3362,7 +3430,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         warmDone = warmIter.next().done === true;
       } catch (err) {
         abandonHoldExemptCollect(owner);
-        throw err;
+        owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+        console.warn('[render] hold-exempt warm refill failed; parked until the next enter', err);
+        return 0;
       }
       if (!warmDone) {
         if (now() - started >= sliceMs
@@ -3395,7 +3465,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
           // A throwing walk used to leave the closed iterator parked on the owner:
           // the next beat read done and committed the partial out as if complete.
           abandonHoldExemptCollect(owner);
-          throw err;
+          owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+          console.warn('[render] hold-exempt collect drive failed; parked until the next enter', err);
+          return 0;
         }
         if (step.done) { done = true; break; }
         if (now() - started >= sliceMs
@@ -3467,7 +3539,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         // Same abandon as the collect pump: a throwing step must not leave a dead
         // generator parked on the owner to be misread as done next beat.
         abandonHoldExemptCommit(owner);
-        throw err;
+        owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+        console.warn('[render] hold-exempt enqueue drive failed; parked until the next enter', err);
+        return 0;
       }
       commitSteps += 1;
       if (step.done) { cycleEnqueued = step.value || 0; owner._holdExemptEnqueueIter = null; }
@@ -3484,7 +3558,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         step = owner._holdExemptKickIter.next();
       } catch (err) {
         abandonHoldExemptCommit(owner);
-        throw err;
+        owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+        console.warn('[render] hold-exempt decode-kick drive failed; parked until the next enter', err);
+        return 0;
       }
       commitSteps += 1;
       if (step.done) { cycleKickStarted = step.value || 0; owner._holdExemptKickIter = null; }
@@ -4111,7 +4187,7 @@ function cameraClearanceBoxForMesh(mesh) {
       const box = rec.box || (rec.box = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 });
       box.minX = mesh.position.x - half; box.maxX = mesh.position.x + half;
       box.minZ = mesh.position.z - half; box.maxZ = mesh.position.z + half;
-      box.minY = -half; box.maxY = half;
+      box.minY = mesh.position.y - half; box.maxY = mesh.position.y + half;
       rec.assetState = assetState;
       rec.compositionId = compositionId;
       rec.posX = posX;
@@ -25948,8 +26024,12 @@ export const render = {
     // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
     // because the GPU is temporarily unavailable.
     const publication = this._presentationPublisher.consume(presentationFrame);
-    if (publication.remapped === true
-      || (publication.rebuilt && publication.appliedDelta !== 0)) {
+    // A rebind drive that faulted parks on the service epoch like the residency
+    // lanes — mints suppress until the next enter/context-restore instead of
+    // rethrowing out of prepareFrame every frame under publication churn.
+    const rebindFaulted = this._rebindFaultEpoch === serviceFaultEpoch(this.state);
+    if (!rebindFaulted && (publication.remapped === true
+      || (publication.rebuilt && publication.appliedDelta !== 0))) {
       // A REMAP (world.clear() or rebuildFromEntities) drops every mesh
       // binding by construction — the whole-_meshes rebind must mint — and a
       // fallback diff-apply with real alloc/retire churn needs it too (those
@@ -25965,7 +26045,7 @@ export const render = {
         try { priorRebind.return(); } catch (_) { /* fresh walk supersedes */ }
       }
       this._presentationRebindIter = this._rebindPresentationMeshesSteps();
-    } else if (publication && publication.spawnedCount > 0) {
+    } else if (!rebindFaulted && publication && publication.spawnedCount > 0) {
       // A parked walk still owns unbound tail rows the new publication does not
       // cover — chain it behind the spawned range instead of dropping them.
       // Spawned rows bind FIRST: during a suspended rebuild the parked tail
@@ -25993,8 +26073,11 @@ export const render = {
         try {
           step = iter.next();
         } catch (err) {
-          this._presentationRebindIter = null;
-          throw err;
+          closeCookStepsIter(iter);
+          if (this._presentationRebindIter === iter) this._presentationRebindIter = null;
+          this._rebindFaultEpoch = serviceFaultEpoch(this.state);
+          console.warn('[render] presentation rebind drive failed; parked until the next enter', err);
+          break;
         }
         if (step.done) {
           if (this._presentationRebindIter === iter) this._presentationRebindIter = null;
@@ -26034,7 +26117,12 @@ export const render = {
         }
         pendingPack = this._fencePackPending = null;
       }
-      if ((snapshotNeedsPack || pendingPack) && this._snapshotFence && this._presentationWorld) {
+      // A pack that faulted parks its own re-mints after 3 tries on the same
+      // epoch — a persistent fault must not re-mint+throw every frame.
+      const packFaulted = this._fencePackFaultEpoch === packEpoch
+        && (this._fencePackFaults | 0) >= 3;
+      if ((snapshotNeedsPack || pendingPack) && this._snapshotFence && this._presentationWorld
+          && !packFaulted) {
         if (!pendingPack) {
           pendingPack = this._fencePackPending = {
             iter: typeof packPresentationWorldToFenceSteps === 'function'
@@ -26052,7 +26140,23 @@ export const render = {
           const packStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
             ? performance.now() : Date.now();
           for (;;) {
-            const step = pendingPack.iter.next();
+            let step;
+            try {
+              step = pendingPack.iter.next();
+            } catch (packError) {
+              // A thrown pack must NOT stamp _snapshotSourceTick — the dead
+              // iter would read done next frame, publish undefined stats, and
+              // leave the fence serving stale poses indefinitely.
+              closeCookStepsIter(pendingPack.iter);
+              this._fencePackPending = null;
+              if (this._fencePackFaultEpoch !== packEpoch) {
+                this._fencePackFaultEpoch = packEpoch;
+                this._fencePackFaults = 0;
+              }
+              this._fencePackFaults = (this._fencePackFaults | 0) + 1;
+              console.warn('[render] presentation fence pack drive failed; re-minting next frame', packError);
+              break;
+            }
             if (step.done) {
               this._snapshotSourceTick = pendingPack.sourceTick;
               this._publishSnapshotFenceStats(step.value);
@@ -27886,7 +27990,20 @@ export const render = {
       while (memo.sig == null
         || ((typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now()) < deadline)) {
-        step = memo.pendingIter.next();
+        try {
+          step = memo.pendingIter.next();
+        } catch (censusError) {
+          // A torn signature walk must not rethrow through a presented call
+          // (and a dead iter left parked would read done next call, paying the
+          // whole-scene sync traverse it exists to amortize). Count the abandon
+          // toward the storm cap and serve the last signature — already the
+          // memo's conservative direction.
+          closeCookStepsIter(memo.pendingIter);
+          memo.pendingIter = null;
+          memo.superseded = (memo.superseded | 0) + 1;
+          console.warn('[render] shadow light-census drive faulted; serving last signature', censusError);
+          break;
+        }
         if (step.done) break;
       }
       if (step && step.done === true) {
@@ -27903,7 +28020,13 @@ export const render = {
     }
     if (memo.sig == null) {
       // Eval-harness envs lack the Steps twin — the sync walk is the fallback.
-      memo.sig = lightCensusSignature(scene);
+      try {
+        memo.sig = lightCensusSignature(scene);
+      } catch (sigError) {
+        // A double fault serves null (every caller treats an unsigned frame
+        // conservatively) rather than aborting the presented call.
+        console.warn('[render] shadow light-census signature walk faulted', sigError);
+      }
       memo.epoch = shadowCensusEpoch();
     }
     return memo.sig;
@@ -29843,16 +29966,31 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
   }
   if (!slot) {
     const out = { receiverDelta: 0 };
-    slot = {
-      iter: syncShadowCasterPolicySteps(walkRoot, lodLevel, { ...opts, out }),
-      out,
-      sig,
-      carriedDelta,
-    };
+    try {
+      slot = {
+        iter: syncShadowCasterPolicySteps(walkRoot, lodLevel, { ...opts, out }),
+        out,
+        sig,
+        carriedDelta,
+      };
+    } catch (mintError) {
+      console.warn('[render] shadow policy steps mint failed; root stays dirty for the next eval', mintError);
+      return null;
+    }
     parkedMap.set(root, slot);
   }
   for (;;) {
-    const step = slot.iter.next();
+    let step;
+    try {
+      step = slot.iter.next();
+    } catch (driveError) {
+      // Drop the parked slot so the next eval re-mints fresh — a dead iter
+      // would read done and stamp a verdict + LOD level over a half-applied
+      // walk while clearing the root's dirty latch.
+      parkedMap.delete(root);
+      console.warn('[render] shadow policy steps drive failed; root stays dirty for the next eval', driveError);
+      return null;
+    }
     if (step.done) {
       parkedMap.delete(root);
       // A completed walk records the drive's live LOD — the level minted with
