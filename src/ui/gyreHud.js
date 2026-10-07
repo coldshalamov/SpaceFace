@@ -109,7 +109,7 @@ export const gyreHud = {
     if (extraBalls > 0) {
       const soonest = Array.isArray(g.balls) && g.balls.length
         && Number.isFinite(g.balls[0].ttlS) ? g.balls[0].ttlS : 0;
-      ballTxt += ballTxt ? ` +${extraBalls}` : ` · +${extraBalls} ball${extraBalls > 1 ? 's' : ''}`;
+      ballTxt += ` · +${extraBalls} ball${extraBalls > 1 ? 's' : ''}`;
       if (soonest > 0 && soonest < GYRE_SNARE.ballTtlWarnS) {
         ballTxt += ` ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(soonest)))}s`;
       }

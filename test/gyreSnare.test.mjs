@@ -2035,3 +2035,24 @@ test('a second live ball publishes balls[] — trail, rumble, and countdown get 
   assert.ok(Number.isFinite(extra.x) && Number.isFinite(extra.ttl01), 'pos + ttl01 for the streak slot');
   t.cleanup();
 });
+
+test('a forward-moving ship bowls hotter — launchSpeed is a floor, not a cap', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t); // stamps launch; the coil begins next tick
+  // Drive the ship forward through the whole ~6-tick coil: the windup damps toward
+  // the ship's moving frame, so the core carries forward residual into the burst —
+  // the burst's Δv floor stacks on top instead of clamping it away.
+  for (let i = 0; i < 7; i++) {
+    t.player.vel.x = 300; t.player.vel.z = 0; // hold the drive — pinning, not drifting
+    t.player.pos.x += 300 / 60; // ship-frame motion is the player's own tick; mirror it
+    t.state.input.actions.gyreSnare = false; t.sim.step();
+  }
+  for (let i = 0; i < 6; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'off', 'burst finished');
+  assert.ok(core.vel.x > T.launchSpeed + 40,
+    `forward residual rides the throw — Δv beyond the authored floor (vx=${core.vel.x})`);
+  t.cleanup();
+});

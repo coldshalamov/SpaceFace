@@ -118,20 +118,24 @@ attribute float aSeed;
 varying float vFade;
 varying float vGulp;
 void main() {
-  float t = fract(aSeed * 7.13 + uTime * (0.35 + aSeed * 0.5));
+  // Two seed bands in one draw call: ~28% of motes ride a long, slow, dim band
+  // spanning nearly the whole glass so the suction reads down the funnel, not just
+  // inside the mouth's last 22% (the gulp language at the rim stays untouched).
+  float wide = step(0.72, aSeed);
+  float t = fract(aSeed * 7.13 + uTime * (0.35 + aSeed * 0.5) * mix(1.0, 0.55, wide));
   // Motes CONVERGE into the mouth: they spawn wide and up-beam of the maw, then run
   // inward/tight as t→1 — the funnel reads as matter being pulled to the gravity well.
-  float x = uLen * (0.78 + 0.22 * t);               // up-beam → maw plane as t advances
-  float r = uRad * (1.45 - 1.15 * t);               // wide orbit → tight at the mouth
-  float a = aSeed * 6.2832 + uTime * (1.6 + aSeed * 2.2);
+  float x = uLen * (mix(0.78, 0.15, wide) + mix(0.22, 0.85, wide) * t);
+  float r = uRad * (1.45 - 1.15 * t) * mix(1.0, 0.75, wide);
+  float a = aSeed * 6.2832 + uTime * (1.6 + aSeed * 2.2) * mix(1.0, 0.6, wide);
   vec3 p = vec3(x, cos(a) * r, sin(a) * r);
   // While a core is held the well it orbits is off-axis from the maw — bend the
   // funnel's last stretch toward it so the suction arrow points at the real mass.
-  p += uAim * smoothstep(0.55, 1.0, t);
-  vFade = smoothstep(0.0, 0.15, t);
+  p += uAim * smoothstep(0.55, 1.0, t) * (1.0 - wide);
+  vFade = smoothstep(0.0, 0.15, t) * mix(1.0, 0.45, wide);
   // Terminal gulp: the mote holds full bright, flashes as the mouth swallows it,
   // then snaps off AT the rim — the swallow beat was invisible when it faded early.
-  vGulp = smoothstep(0.82, 1.0, t);
+  vGulp = smoothstep(0.82, 1.0, t) * (1.0 - wide);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_PointSize = uSize * (280.0 / max(1.0, -mv.z));
   gl_Position = projectionMatrix * mv;
@@ -859,7 +863,12 @@ export class GyreSnarePresentation {
 
       // Grip-spoke: while the clump is held, draw the faint tether maw→clump so the
       // orbiting mass visibly rides a held point; strain visibly tightens the line.
-      if (phase === 'holding') {
+      // The ~100 ms coil keeps the spoke drawn — the slingshot's most taut beat was
+      // stretching a bare ball. The line thins + brightens as the wind-up peaks and
+      // cuts at thrownBeat (the burst's first tick), not when the phase flag drops.
+      const winding = phase === 'launching' && !mirror.thrownBeat;
+      if (phase === 'holding' || winding) {
+        const wind = winding ? clamp01(finite(mirror.launchWindup01)) : 0;
         const gL = this.toLocal(cx, cz, this._ballPt);
         const mL2 = this.toLocal(finite(mirror.maw && mirror.maw.x), finite(mirror.maw && mirror.maw.z), this._mawPt);
         const gx = gL.x - mL2.x, gz = gL.z - mL2.z;
@@ -868,8 +877,8 @@ export class GyreSnarePresentation {
         this._grip.rotation.y = Math.atan2(-gz, gx);
         const strain = clamp01(finite(mirror.strain01));
         // Grip width flickers under strain — the spoke trembles with the held rubble.
-        this._grip.scale.set(gd, 1, 2.2 * (1 + strain * 0.35 * Math.sin(this.time * 37) * calm));
-        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2) * flashCalm;
+        this._grip.scale.set(gd, 1, 2.2 * (1 + strain * 0.35 * Math.sin(this.time * 37) * calm) * (1 - wind * 0.45));
+        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2 + wind * 0.4) * flashCalm;
         this._grip.visible = true;
       } else if (this._grip.visible) {
         this._grip.visible = false;

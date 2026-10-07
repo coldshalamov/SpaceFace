@@ -1012,6 +1012,7 @@ export const gyreSnare = {
     rt.ballId = core.id; // outlives LAUNCH so render/HUD can track the bowling ball to its grave
     rt.basinCount = 0; // the "N in net" read is basin-only — a flying ball owns none
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
+    rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
     rt.basinSpots.length = 0;
     rt.ballMass = rt.clumpMass;
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
@@ -1291,7 +1292,12 @@ export const gyreSnare = {
     // sorted by ttl so the soonest-dying ball owns the extra slots deterministically.
     if (pub.balls === null) pub.balls = [];
     pub.balls.length = 0;
-    for (let i = 0; i < rt.ballIds.length && pub.balls.length < 4; i++) {
+    // Bound matches the ballIds watch list — every watched non-primary ball gets its
+    // streak/rumble/countdown slot. Collect ALL live non-primaries first, then sort by
+    // ttl: cap-before-sort would let a soonest-dying ball lose its slot to watch order.
+    const bTmp = this._ballScratch || (this._ballScratch = []);
+    bTmp.length = 0;
+    for (let i = 0; i < rt.ballIds.length; i++) {
       const id = rt.ballIds[i];
       if (id === rt.ballId) continue;
       const e = state && state.entities ? state.entities.get(id) : null;
@@ -1299,7 +1305,7 @@ export const gyreSnare = {
       const ttlS = e.data.despawnAt != null && Number.isFinite(state && state.simTime)
         ? Math.max(0, e.data.despawnAt - state.simTime) : 0;
       const meta = e.data.gyreLaunchMeta;
-      pub.balls.push({
+      bTmp.push({
         id, x: e.pos.x, z: e.pos.z,
         vx: finite(e.vel && e.vel.x), vz: finite(e.vel && e.vel.z),
         ttlS,
@@ -1308,7 +1314,8 @@ export const gyreSnare = {
         r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : entityRadius(e),
       });
     }
-    pub.balls.sort((a, b) => a.ttlS - b.ttlS);
+    bTmp.sort((a, b) => a.ttlS - b.ttlS);
+    for (let i = 0; i < bTmp.length && pub.balls.length < 8; i++) pub.balls.push(bTmp[i]);
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {
       pub.coreId = null; pub.strain01 = 0;
@@ -1488,8 +1495,12 @@ export const gyreSnare = {
           // slingshot pull-back is the feel-rich part, and silence undersold it.
           this.bus.emit(GYRE_EVENTS.windup, { tick: state.tick });
         }
-        const wx = maw.x - rt.launchDir.x * D.launchWindupPullWu;
-        const wz = maw.z - rt.launchDir.z * D.launchWindupPullWu;
+        // The coil draw-back is absolute 13 wu — ~20% of a capped 60 wu katamari's
+        // silhouette, where the bow nearly vanishes. Scale with the payload so a big
+        // moon still visibly rocks back before the burst.
+        const pullWu = Math.max(D.launchWindupPullWu, rt.clumpRadius * 0.4);
+        const wx = maw.x - rt.launchDir.x * pullWu;
+        const wz = maw.z - rt.launchDir.z * pullWu;
         const shipVx = finite(player.vel && player.vel.x);
         const shipVz = finite(player.vel && player.vel.z);
         let ax = (wx - core.pos.x) * D.launchWindupSpringK
@@ -1507,9 +1518,11 @@ export const gyreSnare = {
       } else if (core && core.alive !== false && rt.launchLeft > 0) {
         const mass = entityMass(core);
         if (rt.launchLeft === D.launchTicks) {
-          // The coil's residual aft-velocity is repaid by the burst: authored launchSpeed
-          // is the FINAL flight speed, not just the impulse sum — a heavier windup draw
-          // would otherwise leave the ball ~150 wu/s short of the read.
+          // The coil's residual AFT-velocity is repaid by the burst — launchSpeed is a
+          // FLOOR on launch-direction flight speed: an aft-moving ball still lands at
+          // authored pace (a heavy draw can't undercook the read), while forward
+          // residual — e.g. the ship translating into the throw — keeps riding. Δv
+          // floor semantics, not a hard cap: a moving ship bowls hotter.
           const fwd = finite(core.vel && core.vel.x) * rt.launchDir.x
             + finite(core.vel && core.vel.z) * rt.launchDir.z;
           rt.launchCarry = Math.max(0, -fwd);
