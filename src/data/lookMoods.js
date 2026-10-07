@@ -60,6 +60,11 @@ export const LOOK_BASE = deepFreeze({
     // Brightest a lit pigment may get (scene-linear luminance). Kept under the bloom
     // threshold of 1.0: paint never emits.
     paintCeiling: 0.74,
+    // Scale on the shared scene IBL (foundry HDRI) as seen by lit hulls, multiplied by each
+    // material's authored/role envMapIntensity. three.js ignores material.envMapIntensity when
+    // the env comes from scene.environment, so before this the IBL hit every hull at 1.0 and
+    // blew pale paint flat (LOOK_UNIFY.md pass 2).
+    sceneEnv: 1.0,
   },
   post: {
     // How hard the sector wears the grade below (0 = ungraded) and its corner darkening.

@@ -5,7 +5,7 @@
 // uniform owned by src/render/look.js (authored in src/data/lookMoods.js), and smooth paint
 // gains a clear coat — a sharp second specular lobe (sun glint + mirrored environment) and a
 // coloured grazing rim. The pastel albedo lift is gone: paint shows its authored value.
-import { Color, Vector3 } from 'three';
+import { Color, ShaderChunk, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
 export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v13';
@@ -241,6 +241,12 @@ export function installIllustratedSurface(material) {
     shader.uniforms ??= {};
     // Shared objects, not copies: look.js writes one value and every hull program reads it.
     Object.assign(shader.uniforms, LOOK_SURFACE_UNIFORMS);
+    // Honour the authored/role env intensity under scene.environment (three only applies
+    // material.envMapIntensity to an explicit material.envMap), scaled by the Look.
+    const hullMaterial = this;
+    shader.uniforms.sfAuthoredEnv = { get value() {
+      return hullMaterial.envMap ? 1 : (Number.isFinite(hullMaterial.envMapIntensity) ? hullMaterial.envMapIntensity : 1);
+    } };
     shader.uniforms.sfPaintPigment = { value: new Color(pigment?.color || '#ffffff') };
     shader.uniforms.sfPaintStrength = { value: pigment?.strength || 0 };
     const layout = this.userData?.spacefaceHullLayout;
@@ -253,7 +259,11 @@ export function installIllustratedSurface(material) {
       .replace('#include <common>', '#include <common>\nattribute vec3 sfHullPosition;\nvarying vec3 vSfHullPosition;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfHullPosition = sfHullPosition;');
     shader.fragmentShader = shader.fragmentShader
+      .replace('#include <envmap_physical_pars_fragment>',
+        ShaderChunk.envmap_physical_pars_fragment.replaceAll('* envMapIntensity', '* (envMapIntensity * sfAuthoredEnv * sfLookSceneEnv)'))
       .replace('#include <common>', `#include <common>
+        uniform float sfAuthoredEnv;
+        uniform float sfLookSceneEnv;
         uniform float sfLookAlbedoGamma;
         uniform float sfLookAlbedoSaturation;
         uniform float sfLookBandMix;
