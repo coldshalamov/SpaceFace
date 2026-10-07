@@ -1554,6 +1554,9 @@ function injectTravelTapeStyle() {
     .sf-vtape, .sf-vtape__fill, .sf-vtape__cap, .sf-vtape__arcstop, .sf-vtape__arcring { transition:none; }
     .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
   }
+  html.sf-reduce-motion .sf-vtape, html.sf-reduce-motion .sf-vtape__fill, html.sf-reduce-motion .sf-vtape__cap,
+  html.sf-reduce-motion .sf-vtape__arcstop, html.sf-reduce-motion .sf-vtape__arcring { transition:none; }
+  html.sf-reduce-motion .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
   /* The shared DRIVE gauge, while the burn is the consumer using it (W1-4 one-pool-one-gauge).
      The numeric readout also gains a ⟫ marker, so this is never colour-only. */
   .sf-bar--burn .sf-bar__fill { background:var(--k-signal); }

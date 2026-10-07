@@ -61,9 +61,12 @@ function installDom() {
   const byId = new Map();
 
   class FakeClassList {
-    constructor() { this.values = new Set(); }
-    add(...vs) { vs.forEach((v) => this.values.add(v)); }
-    remove(...vs) { vs.forEach((v) => this.values.delete(v)); }
+    constructor() { this.values = new Set(); this._owner = null; }
+    // DOM-faithful: classList mutations reflect in className (dismiss arms --out on the
+    // fading card while it lingers one transition beat before removal).
+    _sync() { if (this._owner) this._owner._className = [...this.values].join(' '); }
+    add(...vs) { vs.forEach((v) => this.values.add(v)); this._sync(); }
+    remove(...vs) { vs.forEach((v) => this.values.delete(v)); this._sync(); }
     contains(v) { return this.values.has(v); }
   }
 
@@ -75,6 +78,7 @@ function installDom() {
       this.parentNode = null;
       this.ownerDocument = null;
       this.classList = new FakeClassList();
+      this.classList._owner = this;
       this.attributes = new Map();
       this._listeners = new Map();
       this.style = {};

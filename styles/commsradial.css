@@ -389,10 +389,20 @@
 
 @media (prefers-reduced-motion: reduce) {
   #sf-commsfan,
+  .sf-commsfan__hub,
   .sf-commsfan__wedge,
+  .sf-commsfan__glyph,
   .sf-drawer--haildeck {
     transition: none;
   }
+}
+/* The in-game motion switch (html.sf-reduce-motion) cuts the same motion as the OS setting. */
+html.sf-reduce-motion #sf-commsfan,
+html.sf-reduce-motion .sf-commsfan__hub,
+html.sf-reduce-motion .sf-commsfan__wedge,
+html.sf-reduce-motion .sf-commsfan__glyph,
+html.sf-reduce-motion .sf-drawer--haildeck {
+  transition: none;
 }
 
 @media (forced-colors: active) {

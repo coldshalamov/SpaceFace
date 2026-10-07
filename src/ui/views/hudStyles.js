@@ -263,6 +263,10 @@ export function injectHudCss() {
   body.ui-modal-open .sf-toast { pointer-events:none; cursor:default; }
   .sf-toast--in { transform:none; opacity:1; }
   .sf-toast--out { transform:none; opacity:0; }
+  /* The card is a dismiss control (role=button, tabindex=0): keyboard arrivals need a visible
+     ring, and pointer hover brightens the line so clickability reads before the click. */
+  .sf-toast:hover .sf-toast__text { text-shadow:0 0 10px rgb(255 255 255 / .28); }
+  .sf-toast:focus-visible { outline:2px solid var(--hud-cyan); outline-offset:3px; border-radius:2px; }
   .sf-toast__icon { display:flex; align-items:center; font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-cyan); }
   /* Shared inline-SVG glyphs (src/ui/glyphs.js): sit on the text baseline like the marks they
      replaced and never stretch inside flex rows. */
@@ -303,11 +307,12 @@ export function injectHudCss() {
     font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-paper);
     background-color:transparent; border:none; border-radius:0; box-shadow:none;
     text-shadow:${INK_SHADOW};
-    ${bracketCss('var(--sf-brk-col, rgba(148,178,205,.42))')} }
+    ${bracketCss('var(--sf-brk-col, rgba(148,178,205,.42))')}
+    animation:sf-alert-in .16s ease-out 1; }
   .sf-alert--info { color:var(--hud-paper); ${bracketCss('var(--k-bone-62)')} }
   .sf-alert--warn { color:var(--hud-amber); ${bracketCss('var(--hud-amber)')} }
   .sf-alert--danger { color:var(--k-red); ${bracketCss('var(--k-red)')}
-    animation:sf-alertpulse .8s ease-in-out infinite alternate; }
+    animation:sf-alert-in .16s ease-out 1, sf-alertpulse .8s ease-in-out infinite alternate; }
   /* One-voice floor: the arbiter-surfaced attention line always sits atop the persistent status
      pills (dock/gate/lock/low-vitals) in the top-center slot, regardless of DOM insertion order. */
   .sf-alert--floor { order:-1; }
@@ -315,6 +320,11 @@ export function injectHudCss() {
     padding:12px 28px; ${bracketCss('var(--dp-lamp, #f2b950)', 14)} }
   @keyframes sf-alertpulse { from { transform:scale(1); }
     to { transform:scale(1.03); } }
+  /* Pills arrive with the family's 160ms fade (opacity-only: the danger pulse owns transform).
+     Reduced motion cuts both the entrance and the infinite throb — a steady lit pill instead. */
+  @keyframes sf-alert-in { from { opacity:0; } to { opacity:1; } }
+  @media (prefers-reduced-motion:reduce) { .sf-alert { animation:none; } }
+  html.sf-reduce-motion .sf-alert { animation:none; }
 
   /* ===== combat HUD overlay (lock-on instrument, weapon heat bars, target sigil) ===== */
 
@@ -608,6 +618,9 @@ export function injectHudCss() {
   }
   .sf-discovery-plate--in { transform:translateX(-14px); opacity:1; }
   .sf-discovery-plate--out { transform:translateX(104%); opacity:0; }
+  /* A 450ms slide is the family's longest entrance: reduced motion cuts it to a clean cut. */
+  @media (prefers-reduced-motion:reduce) { .sf-discovery-plate { transition:none; } }
+  html.sf-reduce-motion .sf-discovery-plate { transition:none; }
   .sf-discovery-plate__frame {
     padding:9px 16px 10px 14px;
     background:linear-gradient(180deg, rgba(10,18,28,.86), rgba(6,10,16,.9));

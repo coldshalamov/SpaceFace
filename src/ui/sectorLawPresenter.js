@@ -366,7 +366,8 @@ function injectStyle() {
     .sf-law__headline { font-size:12px; }
     .sf-law__detail { font-size:12px; }
   }
-  @media (prefers-reduced-motion:reduce) { #sf-sector-law { transition:none; } }`;
+  @media (prefers-reduced-motion:reduce) { #sf-sector-law { transition:none; } }
+  html.sf-reduce-motion #sf-sector-law { transition:none; }`;
   document.head.appendChild(style);
 }
 

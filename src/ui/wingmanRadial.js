@@ -487,19 +487,6 @@ function injectCss() {
     .sf-wradial__key, .sf-wradial__hub-scope { border-image:none; border:1px solid ButtonText; background:ButtonFace; color:ButtonText; }
     .sf-wradial__lamp { forced-color-adjust:none; background:Canvas; box-shadow:0 0 0 1px CanvasText; }
   }
-
-  @media (prefers-reduced-motion:reduce) { .sf-wradial, .sf-wradial__hub, .sf-wradial__wedge { transition:none; } }
-  html.sf-reduce-motion .sf-wradial, html.sf-reduce-motion .sf-wradial__hub, html.sf-reduce-motion .sf-wradial__wedge { transition:none; }
-  html.sf-high-contrast .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path { stroke:#fff; }
-  @media (forced-colors:active) {
-    .sf-wradial__bed, .sf-wradial__seg path { fill:Canvas; stroke:CanvasText; filter:none; }
-    .sf-wradial__bezel-edge, .sf-wradial__graticule { stroke:CanvasText; }
-    .sf-wradial__wedge { color:ButtonText; }
-    .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path { stroke:Highlight; }
-    .sf-wradial__hub { border:1px solid ButtonText; background:ButtonFace; color:ButtonText; box-shadow:none; }
-    .sf-wradial__key, .sf-wradial__hub-scope { border-image:none; border:1px solid ButtonText; background:ButtonFace; color:ButtonText; }
-    .sf-wradial__lamp { forced-color-adjust:none; background:Canvas; box-shadow:0 0 0 1px CanvasText; }
-  }
   /* A narrow window scales the whole dial; the legend size compensates so text holds 12px. */
   @media (max-width:760px), (max-height:560px) {
     .sf-wradial { transform:translate(-50%,-50%) scale(.72); --wr-type:16.7px; }
