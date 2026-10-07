@@ -10246,15 +10246,21 @@ export const render = {
         if (paceBootQueue) await paceBootQueue();
         if (!lifecycle.isActive()) return;
         if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-          try {
-            for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
-              if (!lifecycle.isActive()) return;
-              if (paceBootQueue) await paceBootQueue();
+          const lightBudgetIter = syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video);
+          for (;;) {
+            let lightStep;
+            try {
+              lightStep = lightBudgetIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(lightBudgetIter);
+              console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+              runCookSyncTwin('light-budget', () =>
+                syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+              break;
             }
-          } catch (driveError) {
-            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
-            runCookSyncTwin('light-budget', () =>
-              syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+            if (lightStep.done) break;
+            if (!lifecycle.isActive()) return;
+            if (paceBootQueue) await paceBootQueue();
           }
         } else {
           syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -10931,13 +10937,19 @@ export const render = {
       const envMap = this._envMap;
       if (!envMap || !subject) return;
       if (typeof bindEnvironmentToStandardMaterialsSteps === 'function') {
-        try {
-          for (const _ of bindEnvironmentToStandardMaterialsSteps(subject, envMap)) {
-            await admissionPaceYield();
+        const envBindIter = bindEnvironmentToStandardMaterialsSteps(subject, envMap);
+        for (;;) {
+          let envBindStep;
+          try {
+            envBindStep = envBindIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(envBindIter);
+            console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('env-bind', () => bindEnvironmentToStandardMaterials(subject, envMap));
+            break;
           }
-        } catch (driveError) {
-          console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
-          runCookSyncTwin('env-bind', () => bindEnvironmentToStandardMaterials(subject, envMap));
+          if (envBindStep.done) break;
+          await admissionPaceYield();
         }
       } else {
         bindEnvironmentToStandardMaterials(subject, envMap);
@@ -12055,14 +12067,20 @@ export const render = {
       // Env/light/shadow cardinality is part of the driver key. Bake before capture, not here:
       // replacing scene.environment after the opening plan is frozen fails the first-draw gate.
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-        try {
-          for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
-            if (typeof yieldToBrowser === 'function') await yieldToBrowser();
+        const lightBudgetIter = syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video);
+        for (;;) {
+          let lightStep;
+          try {
+            lightStep = lightBudgetIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(lightBudgetIter);
+            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('light-budget', () =>
+              syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+            break;
           }
-        } catch (driveError) {
-          console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
-          runCookSyncTwin('light-budget', () =>
-            syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+          if (lightStep.done) break;
+          if (typeof yieldToBrowser === 'function') await yieldToBrowser();
         }
       } else {
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -12614,24 +12632,30 @@ export const render = {
         shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
         debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
       });
-      try {
-        for (const _ of enqueueMissingMeshBuildsSteps(
-          openingEntities,
-          this._meshes,
-          this._meshBuildQueuedIds,
-          this._meshBuildQueue,
-        )) {
-          if (cookStale()) return cookSuperseded;
-          await openingEnqueueYield(false);
+      const openingEnqueueIter = enqueueMissingMeshBuildsSteps(
+        openingEntities,
+        this._meshes,
+        this._meshBuildQueuedIds,
+        this._meshBuildQueue,
+      );
+      for (;;) {
+        let enqueueStep;
+        try {
+          enqueueStep = openingEnqueueIter.next();
+        } catch (driveError) {
+          closeCookStepsIter(openingEnqueueIter);
+          console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+          runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+            openingEntities,
+            this._meshes,
+            this._meshBuildQueuedIds,
+            this._meshBuildQueue,
+          ));
+          break;
         }
-      } catch (driveError) {
-        console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
-        runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
-          openingEntities,
-          this._meshes,
-          this._meshBuildQueuedIds,
-          this._meshBuildQueue,
-        ));
+        if (enqueueStep.done) break;
+        if (cookStale()) return cookSuperseded;
+        await openingEnqueueYield(false);
       }
       if (cookStale()) return cookSuperseded;
       await drainMeshBuildsBehindShell();
@@ -12993,24 +13017,30 @@ export const render = {
               shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
               debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
             });
-            try {
-              for (const _ of enqueueMissingMeshBuildsSteps(
-                promotedRocks,
-                this._meshes,
-                this._meshBuildQueuedIds,
-                this._meshBuildQueue,
-              )) {
-                if (cookStale()) return cookSuperseded;
-                await promotedEnqueueYield(false);
+            const promotedEnqueueIter = enqueueMissingMeshBuildsSteps(
+              promotedRocks,
+              this._meshes,
+              this._meshBuildQueuedIds,
+              this._meshBuildQueue,
+            );
+            for (;;) {
+              let enqueueStep;
+              try {
+                enqueueStep = promotedEnqueueIter.next();
+              } catch (driveError) {
+                closeCookStepsIter(promotedEnqueueIter);
+                console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+                runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+                  promotedRocks,
+                  this._meshes,
+                  this._meshBuildQueuedIds,
+                  this._meshBuildQueue,
+                ));
+                break;
               }
-            } catch (driveError) {
-              console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
-              runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
-                promotedRocks,
-                this._meshes,
-                this._meshBuildQueuedIds,
-                this._meshBuildQueue,
-              ));
+              if (enqueueStep.done) break;
+              if (cookStale()) return cookSuperseded;
+              await promotedEnqueueYield(false);
             }
             for (const entity of promotedRocks) firstFlightEntities.push(entity);
           }
@@ -13216,24 +13246,30 @@ export const render = {
         shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
         debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
       });
-      try {
-        for (const _ of enqueueMissingMeshBuildsSteps(
-          firstFlightEntities,
-          this._meshes,
-          this._meshBuildQueuedIds,
-          this._meshBuildQueue,
-        )) {
-          if (cookStale()) return cookSuperseded;
-          await leftoverEnqueueYield(false);
+      const leftoverEnqueueIter = enqueueMissingMeshBuildsSteps(
+        firstFlightEntities,
+        this._meshes,
+        this._meshBuildQueuedIds,
+        this._meshBuildQueue,
+      );
+      for (;;) {
+        let enqueueStep;
+        try {
+          enqueueStep = leftoverEnqueueIter.next();
+        } catch (driveError) {
+          closeCookStepsIter(leftoverEnqueueIter);
+          console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+          runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+            firstFlightEntities,
+            this._meshes,
+            this._meshBuildQueuedIds,
+            this._meshBuildQueue,
+          ));
+          break;
         }
-      } catch (driveError) {
-        console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
-        runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
-          firstFlightEntities,
-          this._meshes,
-          this._meshBuildQueuedIds,
-          this._meshBuildQueue,
-        ));
+        if (enqueueStep.done) break;
+        if (cookStale()) return cookSuperseded;
+        await leftoverEnqueueYield(false);
       }
       recordOpeningCookStep(state.render, 'live.rocksAndLeftoverMeshes', liveStepStarted, 'resolved', {
         firstFlightEntities: firstFlightEntities.length,
@@ -14515,48 +14551,47 @@ export const render = {
           });
         const envBindDrive = (root) => bindEnvironmentToStandardMaterialsSteps(root, scene.environment);
         const envBindSync = (root) => bindEnvironmentToStandardMaterials(root, scene.environment);
-        try {
-          for (const _ of envBindDrive(scene)) {
+        const driveEnvBindSteps = async (root) => {
+          const envBindIter = envBindDrive(root);
+          for (;;) {
+            let envStep;
+            try {
+              envStep = envBindIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(envBindIter);
+              console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+              runCookSyncTwin('env-bind', () => envBindSync(root));
+              return 'drive-settled';
+            }
+            if (envStep.done) return 'drive-settled';
             if (cookStale()) return cookSuperseded;
             await envBindYield(false);
           }
-        } catch (driveError) {
-          console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
-          runCookSyncTwin('env-bind', () => envBindSync(scene));
-        }
+        };
+        if ((await driveEnvBindSteps(scene)) === cookSuperseded) return cookSuperseded;
         for (const root of firstFlightRoots) {
-          try {
-            for (const _ of envBindDrive(root)) {
-              if (cookStale()) return cookSuperseded;
-              await envBindYield(false);
-            }
-          } catch (driveError) {
-            console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
-            runCookSyncTwin('env-bind', () => envBindSync(root));
-          }
+          if ((await driveEnvBindSteps(root)) === cookSuperseded) return cookSuperseded;
         }
         for (const root of preparedRoots) {
-          try {
-            for (const _ of envBindDrive(root)) {
-              if (cookStale()) return cookSuperseded;
-              await envBindYield(false);
-            }
-          } catch (driveError) {
-            console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
-            runCookSyncTwin('env-bind', () => envBindSync(root));
-          }
+          if ((await driveEnvBindSteps(root)) === cookSuperseded) return cookSuperseded;
         }
       }
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-        try {
-          for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
-            if (cookStale()) return cookSuperseded;
-            await yieldToBrowser();
+        const lightBudgetIter = syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video);
+        for (;;) {
+          let lightStep;
+          try {
+            lightStep = lightBudgetIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(lightBudgetIter);
+            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('light-budget', () =>
+              syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+            break;
           }
-        } catch (driveError) {
-          console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
-          runCookSyncTwin('light-budget', () =>
-            syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+          if (lightStep.done) break;
+          if (cookStale()) return cookSuperseded;
+          await yieldToBrowser();
         }
       } else {
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -15792,15 +15827,21 @@ export const render = {
             shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
             debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
           });
-          try {
-            for (const _ of bindEnvironmentToStandardMaterialsSteps(scene, scene.environment)) {
-              if (cookStale()) return cookSuperseded;
-              await jumpEnvBindYield(false);
+          const jumpEnvBindIter = bindEnvironmentToStandardMaterialsSteps(scene, scene.environment);
+          for (;;) {
+            let envStep;
+            try {
+              envStep = jumpEnvBindIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(jumpEnvBindIter);
+              console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+              runCookSyncTwin('env-bind', () =>
+                bindEnvironmentToStandardMaterials(scene, scene.environment));
+              break;
             }
-          } catch (driveError) {
-            console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
-            runCookSyncTwin('env-bind', () =>
-              bindEnvironmentToStandardMaterials(scene, scene.environment));
+            if (envStep.done) break;
+            if (cookStale()) return cookSuperseded;
+            await jumpEnvBindYield(false);
           }
         }
         const player = state.entities && typeof state.entities.get === 'function'
@@ -16231,26 +16272,32 @@ export const render = {
         } finally {
           this._meshReleaseBatchEnd?.();
         }
-        try {
-          for (const _ of enqueueMissingMeshBuildsSteps(
-            firstFlightEntities,
-            this._meshes,
-            this._meshBuildQueuedIds,
-            this._meshBuildQueue,
-          )) {
-            if (providerSliceDue()) {
-              const superseded = await providerYield();
-              if (superseded) return superseded;
-            }
+        const providerEnqueueIter = enqueueMissingMeshBuildsSteps(
+          firstFlightEntities,
+          this._meshes,
+          this._meshBuildQueuedIds,
+          this._meshBuildQueue,
+        );
+        for (;;) {
+          let enqueueStep;
+          try {
+            enqueueStep = providerEnqueueIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(providerEnqueueIter);
+            console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+            runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
+              firstFlightEntities,
+              this._meshes,
+              this._meshBuildQueuedIds,
+              this._meshBuildQueue,
+            ));
+            break;
           }
-        } catch (driveError) {
-          console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
-          runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
-            firstFlightEntities,
-            this._meshes,
-            this._meshBuildQueuedIds,
-            this._meshBuildQueue,
-          ));
+          if (enqueueStep.done) break;
+          if (providerSliceDue()) {
+            const superseded = await providerYield();
+            if (superseded) return superseded;
+          }
         }
         const jumpBuildsStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now();
@@ -16423,14 +16470,20 @@ export const render = {
         return postSuperseded();
       };
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
-        try {
-          for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
-            if (await postPace()) return postSupersededResult();
+        const lightBudgetIter = syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video);
+        for (;;) {
+          let lightStep;
+          try {
+            lightStep = lightBudgetIter.next();
+          } catch (driveError) {
+            closeCookStepsIter(lightBudgetIter);
+            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            runCookSyncTwin('light-budget', () =>
+              syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+            break;
           }
-        } catch (driveError) {
-          console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
-          runCookSyncTwin('light-budget', () =>
-            syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
+          if (lightStep.done) break;
+          if (await postPace()) return postSupersededResult();
         }
       } else {
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -22988,17 +23041,20 @@ export const render = {
       if (!this._rendererLifecycle) { try { texture.dispose(); } catch (_) {} return; }
       this._foundryEnvTexture = texture;
       // A late arrival (fetch outliving the whole boot) must not run the
-      // PMREM convolve inside a presented flight frame — arm it and bake at
-      // the next cook seam or post-opening pass, where the paced ledger
-      // already tolerates the spend. The frozen-opening path still banks
-      // inside _bakeEnv and is promoted at unfreeze.
-      if ((this.state && this.state.mode) === 'flight') {
+      // PMREM convolve inside a presented surface — flight OR menu (the menu's
+      // live rAF bricked the same way on the flight-only gate). Arm it for the
+      // next veiled context: enterLoadingMode's transition head drains it, as
+      // do the cook seams and the post-opening pass. The frozen-opening path
+      // still banks inside _bakeEnv and is promoted at unfreeze.
+      if ((this.state && this.state.mode) !== 'loading') {
         this._foundryEnvPending = true;
       } else {
         this._bakeEnv();
       }
     });
-    this._foundryIblPromise.catch(() => {});
+    this._foundryIblPromise.catch((error) => {
+      console.warn('[render] foundry IBL load failed', error);
+    });
   },
 
   // Runs an armed foundry bake at a seam/pass head — one bounded convolve in a
@@ -23062,7 +23118,6 @@ export const render = {
           { size: SPACE_REFLECTION_PMREM_CUBE_SIZE },
         );
       }
-      this._envMapSource = iblSource;
       const envMap = envTarget.texture;
       pmrem.dispose();
       if (reflectionEnv) reflectionEnv.dispose();
@@ -23091,7 +23146,16 @@ export const render = {
       } else if (deferredEnvDispose) {
         try { deferredEnvDispose.dispose(); } catch (_) {}
       }
-    } catch (_) { /* env-map optional — chrome falls back to high-metalness matte */ }
+      // Stamped only after the env actually commits — a throw in the dispose/
+      // rebind window above must not leave the same-source guard claiming a
+      // source the live env never reached (every later non-force bake would
+      // early-out on the phantom source).
+      this._envMapSource = iblSource;
+    } catch (error) {
+      // env-map is optional — chrome falls back to high-metalness matte — but
+      // a failed bake is a quality deficit worth a line of telemetry.
+      console.warn('[render] env bake failed', error);
+    }
   },
 
   // Self-healing entity<->mesh reconciliation. Guarantees every alive, renderable entity has a
@@ -24431,6 +24495,17 @@ export const render = {
   },
 
   syncEntityViews(alpha) {
+    const iter = this.syncEntityViewsSteps(alpha);
+    let step = iter.next();
+    while (!step.done) step = iter.next();
+    return step.value;
+  },
+
+  // Stepped twin: same pass, yields at 128-row strides inside the two counted
+  // loops so an async drive (the opening publish) can pace the ~665-line
+  // block across beats. The sync driver above exhausts it inline — the
+  // presented-frame path stays byte-identical.
+  *syncEntityViewsSteps(alpha) {
     // Per-pass sequence stamp: the shadow light census memo keys on it so a frame's
     // N withhold-gate evaluations share one whole-scene traverse.
     this._viewSyncSeq = (this._viewSyncSeq || 0) + 1;
@@ -24511,6 +24586,7 @@ export const render = {
     // A root crossing out of the retained visible set receives one final authoritative current pose.
     // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
     for (let index = 0; index < query.hiddenCount; index++) {
+      if ((index & 127) === 127) yield;
       const slot = query.hiddenSlots[index];
       const generation = query.hiddenGenerations[index];
       if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
@@ -24615,6 +24691,7 @@ export const render = {
     }
 
     for (let index = 0; index < query.visibleCount; index++) {
+      if ((index & 127) === 127) yield;
       const slot = query.visibleSlots[index];
       const generation = query.visibleGenerations[index];
       if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
@@ -25421,7 +25498,7 @@ export const render = {
     // This is the same pose/visibility seam as prepareFrame(), intentionally without residency
     // service, background clocks, or any simulation advance. The loading DOM remains the only
     // visible surface; drawPreparedFrame() still refuses to submit while mode=loading.
-    this.syncEntityViews(1);
+    yield* this.syncEntityViewsSteps(1);
     if (state && state.render) state.render.interpolationAlpha = 1;
     if (state && state.render && typeof state.render.prepareOpeningVfxFrame === 'function') {
       state.render.prepareOpeningVfxFrame();
