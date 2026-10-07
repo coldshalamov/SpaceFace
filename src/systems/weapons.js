@@ -1369,7 +1369,9 @@ export const weapons = {
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
       let fixedAim = mountGate ? mountGate.angle : (aimAngle != null ? aimAngle : e.rot);
       if (!mountGate && forceTarget && forceTarget.pos) {
-        fixedAim = WEAPONS_AIM_LAB.muzzle && isPlayer
+        // A locked player shot leaves the real muzzle, not the hull centre: solve from there (the
+        // same muzzle solve G mode uses). Off-axis mounts were ~3 deg wide of the solution.
+        fixedAim = isPlayer && !WEAPONS_AIM_LAB.hullCentre
           ? this._arcadeMountAngle(e, w, forceTarget, mountProjSpeed)
           : this._leadAngle(e, forceTarget, mountProjSpeed);
       }
@@ -1492,9 +1494,9 @@ export const weapons = {
     // bullets INHERIT the shooter's full velocity too — weighty strafing runs at the cost of aim-true
     // fire. A deliberate feel inversion kept behind a default-off flag so the golden (and normal play)
     // are unchanged; enable it only for playtesting.
-    const vel = (isMissile || combatFlag('momentumInherit'))
+    const vel = isMissile
       ? { x: cf * launchSpeed + e.vel.x, z: sf * launchSpeed + e.vel.z }
-      : aimTrueProjectileVelocity(dir, launchSpeed, e.vel);
+      : launchVelocity(dir, launchSpeed, e.vel);
 
     // Engagement range stays on maxDistance for AI, locks, and the targeting computer.
     // The body itself keeps a long flight budget so a shot can leave the frame, hit,
@@ -1950,9 +1952,10 @@ export const weapons = {
   // Iterative lead/intercept (2 passes); falls back to aim-direct if the shot can't catch up.
   // Delegates to the module-level `solveLeadAngle` so the exact same solver feeds the player HUD lead
   // pip (via src/ai/gunnery.js) — one solver, never two (a second would drift from the sim and lie).
-  _leadAngle(shooter, tgt, projSpeed) {
-    if (WEAPONS_AIM_LAB.law === 'accel' && shooter && (shooter.isPlayer || shooter.id === this.state?.playerId)) {
-      return solveAccelLeadAngle(shooter, tgt, projSpeed);
+  _leadAngle(shooter, tgt, projSpeed, owner = shooter) {
+    if (WEAPONS_AIM_LAB.law && owner && (owner.isPlayer || owner.id === this.state?.playerId)) {
+      if (WEAPONS_AIM_LAB.law === 'accel') return solveAccelLeadAngle(shooter, tgt, projSpeed);
+      if (WEAPONS_AIM_LAB.law === 'intent') return solveIntentLeadAngle(shooter, tgt, projSpeed);
     }
     return solveLeadAngle(shooter, tgt, projSpeed);
   },
@@ -1965,8 +1968,23 @@ export const weapons = {
       : Math.atan2(target.pos.z - e.pos.z, target.pos.x - e.pos.x);
     for (let i = 0; i < 3; i++) {
       const origin = this._muzzle(e, w, angle);
-      angle = speed > 0 ? this._leadAngle({ pos: origin, vel: e.vel }, target, speed)
+      angle = speed > 0 ? this._leadAngle({ pos: origin, vel: e.vel }, target, speed, e)
         : Math.atan2(target.pos.z - origin.z, target.pos.x - origin.x);
+    }
+    // The relative-frame lead assumes the round leaves at projSpeed relative to the shooter.
+    // The real launch (_spawnProjectile) only compensates lateral shooter velocity while that
+    // is below projSpeed; a hull sliding sideways faster than its own rounds (boost, dash) gets
+    // a round at projSpeed in WORLD space instead, and the relative solve misses by degrees.
+    // Re-solve against the round's actual world velocity until the two agree.
+    if (speed > 0 && !WEAPONS_AIM_LAB.law && !WEAPONS_AIM_LAB.noLaunchModel) {
+      for (let i = 0; i < 4; i++) {
+        const origin = this._muzzle(e, w, angle);
+        const u = launchVelocity(angle, speed, e.vel);
+        const worldSpeed = Math.hypot(u.x, u.z);
+        if (!(worldSpeed > 1e-6)) break;
+        const offset = wrapAngle(Math.atan2(u.z, u.x) - angle);
+        angle = solveLeadAngle({ pos: origin, vel: { x: 0, z: 0 } }, target, worldSpeed) - offset;
+      }
     }
     return angle;
   },
@@ -2067,10 +2085,13 @@ function liveVectorMineList(state) {
  * Tuning-lab seam (design/program/lab/TUNING_LAB.md). Defaults leave the shipped aim untouched.
  *   law: 'accel'  player lead uses the target's commanded acceleration this tick (oracle: the
  *                 force its own flight step just wrote), integrated with its speed cap
- *   muzzle        non-G player fixed mounts solve from the real muzzle (G already does)
+ *   law: 'intent' as 'accel', but the thrust vector turns toward the AI's own targetHeading at its
+ *                 turn rate during the flight (intentOf(entity) -> {targetHeading, turnRate})
+ *   hullCentre    reproduce the pre-2a locked aim (lead solved from the hull centre)
+ *   noLaunchModel skip the launch-model refinement of the player muzzle solve (2a A/B)
  *   noSpread      player rounds carry no random spread (isolates aim error from dispersion)
  */
-export const WEAPONS_AIM_LAB = { law: null, muzzle: false, noSpread: false };
+export const WEAPONS_AIM_LAB = { law: null, hullCentre: false, noSpread: false, intentOf: null, noLaunchModel: false };
 const WEAPONS_AIM_LAB_DEFAULTS = Object.freeze({ ...WEAPONS_AIM_LAB });
 export function setWeaponsAimLab(overrides = {}) {
   Object.assign(WEAPONS_AIM_LAB, WEAPONS_AIM_LAB_DEFAULTS, overrides || {});
@@ -2078,40 +2099,83 @@ export function setWeaponsAimLab(overrides = {}) {
 }
 
 /** Straight-shot lead on a target predicted from its commanded acceleration (aim-true launch). */
-export function solveAccelLeadAngle(shooter, tgt, projSpeed) {
-  const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
-  const sv = (shooter && shooter.vel) || { x: 0, z: 0 };
+/**
+ * Lab oracle target predictor. Returns a function t -> {x,z} for the target's position under
+ * `law`: 'accel' = this tick's commanded force held (speed-capped); 'intent' = that body-frame
+ * thrust slewing toward the AI's own targetHeading at its turn rate. Snapshot taken at call time.
+ */
+export function labTargetPredictor(tgt, law) {
   const control = peekPhysicsControl(tgt);
   const mass = Math.max(1e-6, Number(tgt && tgt.physicsBody && tgt.physicsBody.mass) || Number(tgt && tgt.mass) || 1);
-  const ax = control && control.force ? (Number(control.force.x) || 0) / mass : 0;
-  const az = control && control.force ? (Number(control.force.z) || 0) / mass : 0;
+  const fx = control && control.force ? (Number(control.force.x) || 0) / mass : 0;
+  const fz = control && control.force ? (Number(control.force.z) || 0) / mass : 0;
   const vmax = control && Number.isFinite(control.maxSpeed) && control.maxSpeed > 0 ? control.maxSpeed : Infinity;
-  const ps = Math.max(1, Number.isFinite(projSpeed) ? projSpeed : 1);
-  if (!Number.isFinite(projSpeed)) return Math.atan2(tgt.pos.z - sp.z, tgt.pos.x - sp.x);
-  const predict = (t, out) => {
-    // Integrate at the sim step so the speed cap bends the path the way the solver would.
+  const intent = law === 'intent' && typeof WEAPONS_AIM_LAB.intentOf === 'function' ? WEAPONS_AIM_LAB.intentOf(tgt) : null;
+  const rot0 = Number(tgt.rot) || 0;
+  const c0 = Math.cos(rot0), s0 = Math.sin(rot0);
+  const aF = fx * c0 + fz * s0, aR = -fx * s0 + fz * c0;
+  const turnRate = intent ? Math.max(0, Number(intent.turnRate) || 0) : 0;
+  const goal = intent && Number.isFinite(intent.targetHeading) ? intent.targetHeading : rot0;
+  const x0 = tgt.pos.x, z0 = tgt.pos.z, vx0 = tgt.vel.x, vz0 = tgt.vel.z;
+  const v0 = Math.hypot(vx0, vz0);
+  const cap = Math.max(vmax, v0);
+  return (t, out = { x: 0, z: 0 }) => {
+    if (law !== 'accel' && law !== 'intent') { out.x = x0 + vx0 * t; out.z = z0 + vz0 * t; return out; }
     const h = 1 / 60;
-    let x = tgt.pos.x, z = tgt.pos.z, vx = tgt.vel.x, vz = tgt.vel.z;
+    let x = x0, z = z0, vx = vx0, vz = vz0, rot = rot0;
     let left = t;
     while (left > 1e-9) {
       const dt = Math.min(h, left);
+      let ax = fx, az = fz;
+      if (intent) {
+        const err = Math.atan2(Math.sin(goal - rot), Math.cos(goal - rot));
+        rot += Math.max(-turnRate * dt, Math.min(turnRate * dt, err));
+        const c = Math.cos(rot), s = Math.sin(rot);
+        ax = aF * c - aR * s; az = aF * s + aR * c;
+      }
       vx += ax * dt; vz += az * dt;
-      const s = Math.hypot(vx, vz);
-      if (s > vmax && s > Math.hypot(tgt.vel.x, tgt.vel.z)) { const k = Math.max(vmax, Math.hypot(tgt.vel.x, tgt.vel.z)) / s; vx *= k; vz *= k; }
+      const sp2 = Math.hypot(vx, vz);
+      if (sp2 > cap) { vx *= cap / sp2; vz *= cap / sp2; }
       x += vx * dt; z += vz * dt; left -= dt;
     }
     out.x = x; out.z = z;
     return out;
   };
+}
+
+function solveOracleLeadAngle(shooter, tgt, projSpeed, law) {
+  const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
+  const sv = (shooter && shooter.vel) || { x: 0, z: 0 };
+  if (!Number.isFinite(projSpeed)) return Math.atan2(tgt.pos.z - sp.z, tgt.pos.x - sp.x);
+  const ps = Math.max(1, projSpeed);
+  const predict = labTargetPredictor(tgt, law);
   const p = { x: 0, z: 0 };
+  // Same launch model as solveLeadAngle: meet time from the shooter-relative frame, aim at the
+  // target's world position at that time.
   let t = Math.hypot(tgt.pos.x - sp.x, tgt.pos.z - sp.z) / ps;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     predict(t, p);
-    const rx = p.x - sp.x - sv.x * t, rz = p.z - sp.z - sv.z * t;
-    t = Math.hypot(rx, rz) / ps;
+    t = Math.hypot(p.x - sp.x - sv.x * t, p.z - sp.z - sv.z * t) / ps;
   }
   predict(t, p);
   return Math.atan2(p.z - sp.z, p.x - sp.x);
+}
+
+/** Lab oracle: hold this tick's commanded acceleration (speed-capped). */
+export function solveAccelLeadAngle(shooter, tgt, projSpeed) { return solveOracleLeadAngle(shooter, tgt, projSpeed, 'accel'); }
+/** Lab oracle: commanded thrust whose direction slews to the AI's targetHeading at its turn rate. */
+export function solveIntentLeadAngle(shooter, tgt, projSpeed) {
+  const has = typeof WEAPONS_AIM_LAB.intentOf === 'function' && WEAPONS_AIM_LAB.intentOf(tgt);
+  return solveOracleLeadAngle(shooter, tgt, projSpeed, has ? 'intent' : 'accel');
+}
+
+/** World velocity of a bullet launched along `angle` (the model _spawnProjectile uses). */
+export function launchVelocity(angle, projSpeed, shooterVel) {
+  if (combatFlag('momentumInherit')) {
+    const v = shooterVel || { x: 0, z: 0 };
+    return { x: Math.cos(angle) * projSpeed + (v.x || 0), z: Math.sin(angle) * projSpeed + (v.z || 0) };
+  }
+  return aimTrueProjectileVelocity(angle, projSpeed, shooterVel);
 }
 
 export function solveLeadAngle(shooter, tgt, projSpeed) {

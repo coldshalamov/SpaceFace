@@ -3,7 +3,9 @@
 // ship actually revolves, how far the nose sits from the ideal tangent, and every wrong-way turn.
 import { createLabWorld, playerFlightProfile, digest, wrapAngle, SIM_DT } from '../labWorld.mjs';
 import { stats, r4 } from '../labMetrics.mjs';
-import { setOrbitAssistLab } from '../../../src/core/flight/orbitAssist.js';
+import * as orbitAssistModule from '../../../src/core/flight/orbitAssist.js';
+// The lab seam exists only on lab/tuning-phase1; on a production checkout every run is "shipped".
+const setOrbitAssistLab = orbitAssistModule.setOrbitAssistLab || (() => {});
 
 const HZ = Math.round(1 / SIM_DT);
 const s2t = (s) => Math.round(s * HZ);
@@ -109,11 +111,12 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
       const p = world.player();
       const rk = world.state.entities.get(rock.id);
       if (sc.cursor) { world.aim.x = sc.cursor.x; world.aim.z = sc.cursor.z; }
+      else if (sc.cursorOnRock && rk) { world.aim.x = rk.pos.x; world.aim.z = rk.pos.z; }
       else if (rk) { world.aim.x = rk.pos.x; world.aim.z = rk.pos.z; }
       // Latch aim always on the rock during a latch tap.
       const codes = sc.keys(t);
       if (codes.includes('Space') && rk) { world.aim.x = rk.pos.x; world.aim.z = rk.pos.z; }
-      world.keys(codes);
+      world.keys(codes, { pointer: sc.scheme === 'helm-assist' });
       world.step();
       const pl = world.player();
       const r = world.state.entities.get(rock.id);
@@ -129,7 +132,8 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
         boosting: !!(pl.flags && pl.flags.boosting), turnIn: world.state.input.turnIntent || 0,
         moveZ: world.state.input.moveZ || 0,
         oaActive: !!(oa && oa.active), oaSel: oa && oa.selectedDirection, oaScale: oa && oa.swingThrottleScale,
-        oaSat: !!(oa && oa.saturated), maxYaw: oa && oa.maxYawRate,
+        oaSat: !!(oa && oa.saturated), maxYaw: oa && oa.maxYawRate, fromAim: !!world.state.input.turnIntentFromAim,
+        rockVel: Math.hypot(r.vel.x, r.vel.z),
       });
       if (t % 6 === 0) kin.push([r4(pl.pos.x), r4(pl.pos.z), r4(pl.rot)]);
     }
@@ -156,7 +160,14 @@ export const VARIANTS = {
   'v3-capDash': { orbitLab: { comFrame: true, forwardCommit: true, thrustGate: true, tangentDash: true, lineLockYaw: true, dashSpeedCap: 'boost' } },
   // v3 = v2 + the line lends the hull yaw (nose locked to the tangent at any spin rate).
   v3: { orbitLab: { comFrame: true, forwardCommit: true, thrustGate: true, tangentDash: true, lineLockYaw: true } },
+  // Phase 2a: master f60eafe73 already suppresses the press-edge dash while the chord holds, so the
+  // tangent-dash prototype is inert; v4 = v3 core + a live-line dash cap + aim-direction latch.
+  v4: { orbitLab: V4() },
 };
+export function V4(o = {}) {
+  return { comFrame: true, forwardCommit: true, thrustGate: true, lineLockYaw: true, lineLockMargin: 1.1,
+    alignTimeS: null, lendYawAccelMult: 1, lineDashCap: true, directionLatch: 'aim', absYawCap: 6.0, lockGovernorMargin: 0.95, ...o };
+}
 
 function summarize(id, sc, rows, profile, world, player, rock, extra) {
   const pm = player.mass || 1;
@@ -164,10 +175,20 @@ function summarize(id, sc, rows, profile, world, player, rock, extra) {
   const maxYaw = Number(profile.maxYawRate) || null;
   const vcap = Number(profile.combatSpeed) || null;
   const boostMult = Number(profile.boostSpeedMult) || 1.55;
-  // Windows: "spin" ticks = tethered + forward held + a yaw key (or helm cursor) held.
+  // Windows. "spin" ticks = tethered + forward held. "steady" = the assist has owned the chord
+  // continuously for SETTLE_S (each engagement/re-grab gets its own capture allowance); the
+  // capture itself is reported as settleS (engagement -> nose stays within 5 deg).
   const spin = rows.filter((r) => r.tethered && r.moveZ > 0.05);
-  const settleT = spin.length ? spin[0].t + s2t(3) : Infinity;
-  const steady = spin.filter((r) => r.t >= settleT);
+  const SETTLE_S = 2.5;
+  // A change of the selected direction (keyboard reversal) is a new engagement too.
+  let runStart = -1; let prevT = -2; let prevSel = 0;
+  const engagedFor = new Map();
+  for (const r of rows) {
+    const on = r.tethered && r.moveZ > 0.05 && r.oaActive;
+    const sg = Math.sign(r.oaSel || 0);
+    if (on) { if (r.t !== prevT + 1 || (prevSel && sg && sg !== prevSel)) runStart = r.t; engagedFor.set(r.t, (r.t - runStart) / HZ); prevT = r.t; prevSel = sg; }
+  }
+  const steady = spin.filter((r) => (engagedFor.get(r.t) || 0) >= SETTLE_S);
   const sel = (r) => (r.oaSel ? Math.sign(r.oaSel) : Math.sign(r.turnIn));
   const derived = steady.map((r) => {
     const orbitSign = Math.sign(r.omega) || 1;
@@ -178,6 +199,21 @@ function summarize(id, sc, rows, profile, world, player, rock, extra) {
       wrongTurn: Math.abs(r.omega) > 0.4 && r.angVel * orbitSign < -0.3,
       reversed: r.oaActive && sel(r) !== 0 && Math.abs(r.omega) > 0.3 && sel(r) !== orbitSign };
   });
+  // Capture time per engagement: first tick after which |nose err| stays < 5 deg.
+  const settleTimes = [];
+  { let start = null; let lastBad = null; let prev = -2;
+    const flush = () => { if (start != null) settleTimes.push(lastBad == null ? 0 : (lastBad - start + 1) / HZ); };
+    let pSel = 0;
+    for (const r of spin) {
+      const sg = Math.sign(r.oaSel || 0);
+      if (r.t !== prev + 1 || (pSel && sg && sg !== pSel)) { flush(); start = r.t; lastBad = null; }
+      pSel = sg || pSel;
+      const orbitSign = Math.sign(r.omega) || 1;
+      const e = Math.abs(wrapAngle(r.rot - (r.theta + orbitSign * Math.PI / 2))) * 180 / Math.PI;
+      if (e >= 5) lastBad = r.t;
+      prev = r.t;
+    }
+    flush(); }
   const omegaAbs = derived.map((d) => Math.abs(d.omega));
   // Revolution periods from unwrapped theta over the steady window (plain, non-boost ticks).
   const periods = revolutionPeriods(steady);
@@ -200,12 +236,19 @@ function summarize(id, sc, rows, profile, world, player, rock, extra) {
     assistCapOmega: r4(maxYaw ? maxYaw * 0.9 : null),
     efficiencyPlain: null, efficiencyBoost: null,
     noseErrDeg: stats(derived.map((d) => d.absErrDeg)),
+    noseErrMax: r4(derived.reduce((m, d) => Math.max(m, d.absErrDeg), 0)),
+    noseErrP99: r4(quantile(derived.map((d) => d.absErrDeg), 0.99)),
+    settleS: stats(settleTimes),
+    theoryPhysPlain: r4(vcap && rShip ? vcap / rShip : null),
+    theoryPhysBoost: r4(vcap && rShip ? vcap * boostMult / rShip : null),
+    omegaP99: r4(quantile(omegaAbs, 0.99)),
     noseErrDegBoost: boostTicks.length ? stats(boostTicks.map((d) => d.absErrDeg)) : null,
     noseOff30Pct: pct(derived, (d) => d.absErrDeg > 30),
     noseOff90Pct: pct(derived, (d) => d.absErrDeg > 90),
     wrongTurnPct: pct(derived, (d) => d.wrongTurn),
     reversedPct: pct(derived, (d) => d.reversed),
     orbitFlips: countFlips(derived.map((d) => d.orbitSign)),
+    orbitFlipsAll: countFlips(spin.filter((r) => Math.abs(r.omega) > 0.3).map((r) => Math.sign(r.omega))),
     selectedFlips: countFlips(derived.map((d) => sel(d)).filter((s) => s !== 0)),
     saturatedPct: pct(derived, (d) => d.oaSat),
     throttleScaleMean: stats(derived.map((d) => d.oaScale)).mean,
@@ -213,6 +256,22 @@ function summarize(id, sc, rows, profile, world, player, rock, extra) {
     radiusSpread: r4((stats(steady.map((r) => r.rad)).p95 || 0) - (stats(steady.map((r) => r.rad)).min || 0)),
     trace: extra.trace,
   };
+  // Physical efficiency per tick: |omega| * r_ship / vcap (r_ship = this tick's arm about the
+  // pair's centre of mass), so release/re-grab at a new radius is judged at its own radius.
+  const armK = rm / (pm + rm);
+  const ratio = (d, mult) => (vcap ? Math.abs(d.omega) * d.rad * armK / (vcap * mult) : null);
+  res.effPhysPlain = r4(quantile(plainTicks.map((d) => ratio(d, 1)), 0.5));
+  res.effPhysBoost = boostTicks.length ? r4(quantile(boostTicks.map((d) => ratio(d, boostMult)), 0.5)) : null;
+  // Pump ratio: the fastest sustained spin (p99 over every steady tick) against the UNBOOSTED
+  // physical best at that radius. Legit sustained boost tops out at boostSpeedMult (1.55).
+  res.pumpRatio = r4(quantile(spin.map((d) => ratio(d, 1)), 0.99));
+  res.assistActivePct = pct(spin, (r) => r.oaActive);
+  // Does the final orbit go the way the pilot last asked? (keyboard: key sign; helm: n/a)
+  { const last = rows.filter((r) => r.tethered && r.moveZ > 0.05).slice(-30);
+    const want = sc.scheme === 'helm-assist' ? 0 : Math.sign(last.reduce((a, r) => a + (r.turnIn || 0), 0));
+    const got = Math.sign(last.reduce((a, r) => a + r.omega, 0));
+    res.followsIntent = want === 0 ? null : want === got; }
+  res.expectFlips = sc.expectFlips || 0;
   if (res.theoryOmegaPlain && res.omegaPlain.p50) res.efficiencyPlain = r4(res.omegaPlain.p50 / res.theoryOmegaPlain);
   if (res.theoryOmegaBoost && res.omegaBoost && res.omegaBoost.p50) res.efficiencyBoost = r4(res.omegaBoost.p50 / res.theoryOmegaBoost);
   return res;
@@ -239,6 +298,7 @@ function revolutionPeriods(rows) {
   return out;
 }
 
+function quantile(xs, q) { const v = xs.filter(Number.isFinite).sort((a, b) => a - b); if (!v.length) return null; return v[Math.min(v.length - 1, Math.floor(q * (v.length - 1)))]; }
 function pct(arr, f) { return arr.length ? r4(100 * arr.filter(f).length / arr.length) : null; }
 function countFlips(signs) { let n = 0; for (let i = 1; i < signs.length; i++) if (signs[i] !== signs[i - 1]) n++; return n; }
 export function mulberry32(a) {
@@ -252,6 +312,49 @@ SCENARIOS['spin-then-coast'] = {
   keys: (t) => [...(latchTicks(t, 2) ? ['Space'] : []), ...(t >= 20 && t < s2t(8) ? ['KeyW', 'KeyD'] : [])],
 };
 DEFAULT_SCENARIOS.push('spin-then-coast');
+
+// Dash-pump probe: break the chord for 3 ticks (D up) with a Shift tap inside the gap every 0.5 s,
+// which re-arms the press-edge dash master suppresses only while the chord holds.
+SCENARIOS['spin-dash-spam'] = {
+  desc: 'W+D, every 0.5 s from 4 s: D released 4 ticks with a 2-tick Shift tap inside (dash re-armed), then D again',
+  rock: { dist: 70, mass: 400, radius: 6 }, durationS: 16,
+  keys: (t) => {
+    const k = [...(latchTicks(t, 2) ? ['Space'] : [])];
+    if (t < 20) return k;
+    const ph = t >= s2t(4) ? (t - s2t(4)) % s2t(0.5) : 99;
+    k.push('KeyW');
+    if (!(ph < 4)) k.push('KeyD');
+    if (ph >= 1 && ph < 3) k.push('ShiftLeft');
+    return k;
+  },
+};
+DEFAULT_SCENARIOS.push('spin-dash-spam');
+
+// Keyboard reversal: W+D 8 s, then W+A in the same tick. A keyboard pilot's reversal is deliberate,
+// so the orbit must follow it (this is what an over-eager direction latch would break).
+SCENARIOS['spin-reverse'] = {
+  desc: 'W+D for 8 s then W+A (same tick): the orbit must reverse and settle the other way',
+  rock: { dist: 70, mass: 400, radius: 6 }, durationS: 16, expectFlips: 1,
+  keys: (t) => [...(latchTicks(t, 2) ? ['Space'] : []), ...(t >= 20 ? ['KeyW', t < s2t(8) ? 'KeyD' : 'KeyA'] : [])],
+};
+
+// Helm-direction scenarios (helm-assist scheme; the cursor-derived turn intent picks the side).
+export const HELM_SCENARIOS = ['helm-cursor-spin', 'helm-cursor-anchor', 'helm-cursor-far-left', 'helm-boost'];
+SCENARIOS['helm-cursor-anchor'] = {
+  desc: 'helm: W held, cursor parked ON the anchor (the classic "orbit what I point at")',
+  rock: { dist: 70, mass: 400, radius: 6 }, durationS: 16, scheme: 'helm-assist', cursorOnRock: true,
+  keys: (t) => [...(latchTicks(t, 2) ? ['Space'] : []), ...(t >= 20 ? ['KeyW'] : [])],
+};
+SCENARIOS['helm-cursor-far-left'] = {
+  desc: 'helm: W held, cursor far to the left (-600, 0)',
+  rock: { dist: 70, mass: 400, radius: 6 }, durationS: 16, scheme: 'helm-assist', cursor: { x: -600, z: 0 },
+  keys: (t) => [...(latchTicks(t, 2) ? ['Space'] : []), ...(t >= 20 ? ['KeyW'] : [])],
+};
+SCENARIOS['helm-boost'] = {
+  desc: 'helm: W held, cursor at (400,70), Shift held 6..12 s',
+  rock: { dist: 70, mass: 400, radius: 6 }, durationS: 16, scheme: 'helm-assist', cursor: { x: 400, z: 70 },
+  keys: (t) => [...(latchTicks(t, 2) ? ['Space'] : []), ...(t >= 20 ? ['KeyW'] : []), ...(t >= s2t(6) && t < s2t(12) ? ['ShiftLeft'] : [])],
+};
 
 /** Aggregate per (variant, scenario) across seeds. */
 export function summarizeRuns(results) {
@@ -277,6 +380,14 @@ export function summarizeRuns(results) {
       period: mean(rs.map((r) => r.periodS && r.periodS.p50)),
       noseErrP50: mean(rs.map((r) => r.noseErrDeg && r.noseErrDeg.p50)),
       noseErrP95: mean(rs.map((r) => r.noseErrDeg && r.noseErrDeg.p95)),
+      noseErrMax: rs.reduce((m, r) => Math.max(m, r.noseErrMax || 0), 0),
+      noseErrP99: mean(rs.map((r) => r.noseErrP99)),
+      settle: mean(rs.map((r) => r.settleS && r.settleS.max)),
+      theoryPhys: mean(rs.map((r) => r.theoryPhysPlain)),
+      effPhys: mean(rs.map((r) => r.effPhysPlain)),
+      effPhysBoost: mean(rs.map((r) => r.effPhysBoost)),
+      pump: rs.reduce((m, r) => Math.max(m, r.pumpRatio || 0), 0),
+      active: mean(rs.map((r) => r.assistActivePct)),
       off30: mean(rs.map((r) => r.noseOff30Pct)),
       off90: mean(rs.map((r) => r.noseOff90Pct)),
       wrongTurn: mean(rs.map((r) => r.wrongTurnPct)),
@@ -293,9 +404,10 @@ export function summarizeRuns(results) {
 export const COLUMNS = [
   { label: 'variant', key: 'variant' }, { label: 'scenario', key: 'scenario' },
   { label: 'r', key: 'radius' }, { label: 'ω p50', key: 'omega' }, { label: 'ω boost', key: 'omegaBoost' },
-  { label: 'ω* plain', key: 'theory' }, { label: 'ω* boost', key: 'theoryBoost' }, { label: 'eff', key: 'eff' },
+  { label: 'ω*yaw', key: 'theory' }, { label: 'ω*phys', key: 'theoryPhys' }, { label: 'effYaw', key: 'eff' },
+  { label: 'effPhys', key: 'effPhys' }, { label: 'effPhysB', key: 'effPhysBoost' }, { label: 'pump', key: 'pump' },
   { label: 'T rev s', key: 'period' }, { label: 'nose° p50', key: 'noseErrP50' }, { label: 'nose° p95', key: 'noseErrP95' },
-  { label: '>30°%', key: 'off30' }, { label: '>90°%', key: 'off90' }, { label: 'wrongTurn%', key: 'wrongTurn' },
-  { label: 'reversed%', key: 'reversed' }, { label: 'orbitFlips', key: 'orbitFlips' }, { label: 'selFlips', key: 'selFlips' },
-  { label: 'sat%', key: 'sat' },
+  { label: 'nose° max', key: 'noseErrMax' }, { label: 'settle s', key: 'settle' },
+  { label: '>90°%', key: 'off90' }, { label: 'wrongTurn%', key: 'wrongTurn' },
+  { label: 'active%', key: 'active' }, { label: 'orbitFlips', key: 'orbitFlips' }, { label: 'selFlips', key: 'selFlips' },
 ];

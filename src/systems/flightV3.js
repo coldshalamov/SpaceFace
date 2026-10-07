@@ -365,14 +365,16 @@ export const flightV3 = {
       orbitAssist = craftOrbitAssistStep(
         state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt,
       );
+      entity._orbitDirectionLatch = orbitAssist.active ? (orbitAssist.telemetry.latchedDirection || 0) : 0;
       if (orbitAssist.active) {
         input = orbitAssist.input;
         // Tuning-lab seam (ORBIT_ASSIST_LAB.lineLockYaw, off in the shipped game): the line lends
         // the hull the yaw rate it needs to keep the nose on the tangent.
         if (orbitAssist.telemetry.maxYawRateOverride) {
           const ratio = orbitAssist.telemetry.maxYawRateOverride / positive(profile.maxYawRate, 1);
+          const accelRatio = ratio * positive(ORBIT_ASSIST_LAB.lendYawAccelMult, 1);
           profile = { ...profile, maxYawRate: orbitAssist.telemetry.maxYawRateOverride,
-            yawAccel: positive(profile.yawAccel, 8) * ratio, yawBrake: positive(profile.yawBrake, positive(profile.yawAccel, 8) * 1.4) * ratio };
+            yawAccel: positive(profile.yawAccel, 8) * accelRatio, yawBrake: positive(profile.yawBrake, positive(profile.yawAccel, 8) * 1.4) * accelRatio };
         }
         // Swing/yaw coordination: the yaw helper is exact only while the nose can turn as fast
         // as the line swings. Past that (short rope, boost, fast hull) an unthrottled orbit pegs
@@ -697,6 +699,16 @@ export const flightV3 = {
         imp *= SWING_DRIVE_GAIN;
         swung = true;
       }
+    }
+    if (ORBIT_ASSIST_LAB.lineDashCap && !swung && tether && tether.active && tether.targetId != null) {
+      // Tuning-lab seam (off in the shipped game): on a live line a dash may only lift the speed
+      // along its direction to the boosted speed cap. Repeated chord-break dashes otherwise pump
+      // a tethered spin far past anything the drive can sustain.
+      const profileD = resolvePropulsionProfile(e, state);
+      const vAlong = finite(e.vel && e.vel.x) * dirX + finite(e.vel && e.vel.z) * dirZ;
+      const capD = positive(profileD.combatSpeed, 150) * positive(profileD.boostSpeedMult, 1.55)
+        * positive(ORBIT_ASSIST_LAB.dashCapMult, 1);
+      imp = Math.min(imp, Math.max(0, capD - vAlong));
     }
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
     // Rapier authority path: queue the impulse (mass-scaled so delta-v is `imp` units/s),
@@ -1094,7 +1106,9 @@ function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, teth
     flightIntent: {
       forward: finite(rawInput && (rawInput.moveZ ?? rawInput.throttle)),
       lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
+      lateralFromAim: !!(rawInput && rawInput.turnIntentFromAim),
     },
+    latchedDirection: entity._orbitDirectionLatch || 0,
     input,
     profile,
     strength: state.settings && state.settings.gameplay

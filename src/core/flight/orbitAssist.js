@@ -43,10 +43,15 @@ export const ORBIT_SWING_TRACK_MARGIN = 0.9;
  *   tangentDash     a dash on a live, assisted line goes along the held tangent, not the nose
  *   dashSpeedCap    'track': a line dash may only lift the swing to the trackable rate;
  *                   'boost': only to the boosted speed cap (null = uncapped, shipped)
+ *   lendYawAccelMult extra yaw-accel multiplier on top of the lent-rate ratio (flightV3 reads it)
+ *   directionLatch  'off' | 'aim' | 'all': hold the orbit direction picked at engagement for as
+ *                   long as the chord holds. 'aim' latches only an aim-derived turn intent (helm
+ *                   cursor / twin-stick aim), whose sign flips every half revolution by geometry.
  */
 export const ORBIT_ASSIST_LAB = {
   margin: null, alignTimeS: null, comFrame: false, forwardCommit: false, thrustGate: false,
   lineLockYaw: false, lineLockMargin: 1.1, tangentDash: false, dashSpeedCap: null,
+  lendYawAccelMult: 1, directionLatch: 'off', lineDashCap: false, absYawCap: null, lockGovernorMargin: 0.95, dashCapMult: 1,
 };
 const ORBIT_ASSIST_LAB_DEFAULTS = Object.freeze({ ...ORBIT_ASSIST_LAB });
 export function setOrbitAssistLab(overrides = {}) {
@@ -63,7 +68,17 @@ export function setOrbitAssistLab(overrides = {}) {
 export function orbitSwingThrottleScale(telemetry, commandedSpeed) {
   const t = telemetry || {};
   // lineLockYaw (lab): the nose can follow any swing, so there is nothing to hold back.
-  if (ORBIT_ASSIST_LAB.lineLockYaw) return 1;
+  if (ORBIT_ASSIST_LAB.lineLockYaw) {
+    // Even a lent yaw rate meets the physics owner's absolute yaw ceiling (sg02
+    // SANE_MAX_YAW_RATE). Hold the swing a margin under it so the nose can still trim.
+    const cap = positive(ORBIT_ASSIST_LAB.absYawCap, 0);
+    if (!(cap > 0)) return 1;
+    const shareL = clamp(positive(t.armShare, 1), 0.05, 1);
+    const trackableL = cap * positive(t.radius, 0) * positive(ORBIT_ASSIST_LAB.lockGovernorMargin, 0.95) * shareL;
+    const demandL = Math.max(Math.abs(finite(t.tangentialSpeed)) * shareL, Math.max(0, finite(commandedSpeed)));
+    if (!(trackableL > 1e-6) || !(demandL > trackableL)) return 1;
+    return clamp(trackableL / demandL, 0, 1);
+  }
   const margin = ORBIT_ASSIST_LAB.margin != null ? ORBIT_ASSIST_LAB.margin : ORBIT_SWING_TRACK_MARGIN;
   // comFrame (lab): the governor caps the hull's WORLD speed, which on a movable anchor is only
   // armShare of the line-relative swing. Compare like with like.
@@ -95,13 +110,26 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   }
 
   const forward = finite(options.flightIntent && options.flightIntent.forward);
-  const selectedDirection = Math.sign(finite(options.flightIntent && options.flightIntent.lateral));
+  const lab0 = ORBIT_ASSIST_LAB;
+  const latchMode = lab0.directionLatch === 'all' ? 'all'
+    : lab0.directionLatch === 'aim' && options.flightIntent && options.flightIntent.lateralFromAim ? 'aim' : null;
+  const priorLatch = latchMode ? Math.sign(finite(options.latchedDirection)) : 0;
+  let selectedDirection = Math.sign(finite(options.flightIntent && options.flightIntent.lateral));
+  if (priorLatch !== 0) selectedDirection = priorLatch;
   if (!(forward > ORBIT_ASSIST_TUNING_V1.minIntent)) return inactive('no-forward-intent');
   if (selectedDirection === 0) return inactive('no-lateral-intent');
   if (input.brake || options.controlsBlocked) return inactive('manual-override');
 
   const host = options.host;
   const anchor = options.anchor;
+  if (latchMode && priorLatch === 0) {
+    // Engagement: an orbit already swinging owns its direction; otherwise the intent picks it.
+    const ex = finite(host.pos.x) - finite(anchor.pos.x), ez = finite(host.pos.z) - finite(anchor.pos.z);
+    const er2 = ex * ex + ez * ez;
+    const eOmega = er2 > 1e-6 ? (ex * (finite(host.vel.z) - finite(anchor.vel.z)) - ez * (finite(host.vel.x) - finite(anchor.vel.x))) / er2 : 0;
+    const hullYaw = positive(options.profile && options.profile.maxYawRate, 1);
+    if (Math.abs(eOmega) > 0.25 * hullYaw) selectedDirection = Math.sign(eOmega);
+  }
   const rx = finite(host.pos.x) - finite(anchor.pos.x);
   const rz = finite(host.pos.z) - finite(anchor.pos.z);
   const radius = Math.hypot(rx, rz);
@@ -146,6 +174,7 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   let maxYawRateOverride = null;
   if (lab.lineLockYaw && Math.abs(orbitalYawRate) * lab.lineLockMargin > hullMaxYawRate) {
     maxYawRateOverride = Math.abs(orbitalYawRate) * lab.lineLockMargin;
+    if (positive(lab.absYawCap, 0) > 0) maxYawRateOverride = Math.min(maxYawRateOverride, lab.absYawCap);
     maxYawRate = maxYawRateOverride;
   }
   const rawDesiredYawRate = orbitalYawRate + alignmentYawRate;
@@ -189,6 +218,7 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       headingCommitted: committed,
       thrustGate,
       maxYawRateOverride,
+      latchedDirection: latchMode ? selectedDirection : 0,
       reason: String(options.tether.phase || 'slack') === 'slack' ? 'line-slack' : 'engaged',
     },
   };

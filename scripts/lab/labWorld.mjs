@@ -111,11 +111,15 @@ export async function createLabWorld({ seed = 1, bundle = 'focused', quiet = tru
       } finally { restoreFeatureMaps(prev); }
     },
     /** Set the held key set for this tick (codes like KeyW, KeyD, ShiftLeft, Space). */
-    keys(codes = [], { fire = false } = {}) {
+    // pointer: emulate a live mouse (DOM key/mouse events this interval + an active screen
+    // pointer), which helm-assist needs before the cursor may own the nose (input.js
+    // pointerOwnsHelm = helm && kbmRecent && _screen.active).
+    keys(codes = [], { fire = false, pointer = false } = {}) {
       const k = inputSys._keys;
       for (const c of Object.keys(k)) k[c] = false;
       for (const c of codes) k[c] = true;
       inputSys._m0 = !!fire;
+      if (pointer) { inputSys._kbmActivityPending = true; if (inputSys._screen) inputSys._screen.active = true; }
     },
     step() { return quiet ? silentConsole(() => runtime.step(SIM_DT)) : runtime.step(SIM_DT); },
     player() { return state.entities.get(state.playerId); },
