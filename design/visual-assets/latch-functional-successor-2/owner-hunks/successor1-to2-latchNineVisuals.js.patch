@@ -1,0 +1,13 @@
+--- a/src/render/latchNineVisuals.js
++++ b/src/render/latchNineVisuals.js
+@@ -5,8 +5,8 @@
+ import {cloneMaterialPreservingShaderHooks} from './materialClone.js';
+ export {isLatchActor,LATCH_PLACE_FILE,latchPlaceTransform};
+ const bindings=new WeakMap();
+-function inside(node,root){for(let n=node;n;n=n.parent){if(n===root)return true;if(n.visible===false)return false;}return false;}
+-function active(entity){const state=latchPropulsionState(entity);for(const b of bindings.get(entity)||[]){if(b.retired||b.life!==entity.occupantGeneration||!inside(b.root,entity.mesh))continue;let top=b.root;while(top.parent)top=top.parent;if(!state?.render?.scene||top!==state.render.scene)continue;return b;}return null;}
++function inside(node,root){for(let n=node;n;n=n.parent){if(n.visible===false)return false;if(n===root)return true;}return false;}
++function active(entity){const state=latchPropulsionState(entity);for(const b of bindings.get(entity)||[]){if(b.retired||b.life!==entity.occupantGeneration||!inside(b.root,entity.mesh))continue;let top=b.root,visible=true;while(top){if(top.visible===false)visible=false;if(!top.parent)break;top=top.parent;}if(!visible)continue;if(!state?.render?.scene||top!==state.render.scene)continue;return b;}return null;}
+ function sourceMatches(root){const source=root?.userData?.latchNineAuthoredSource;return source?.assetId==='SF_PLACE_LATCH_NINE'&&typeof source.file==='string'&&source.file.replace(/^.*assets\/ships\/(?:release\/)?parts\//,'')===LATCH_PLACE_FILE;}
+ export function createLatchNineVisualDriver(root,entity){
+  if(!isLatchActor(entity)||!sourceMatches(root))return null;

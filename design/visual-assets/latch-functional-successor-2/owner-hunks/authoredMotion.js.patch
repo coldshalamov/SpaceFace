@@ -1,0 +1,36 @@
+--- a/src/render/authoredMotion.js
++++ b/src/render/authoredMotion.js
+@@ -1,3 +1,4 @@
++import { isLatchActor, createLatchNineVisualDriver } from './latchNineVisuals.js';
+ import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
+ // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
+ //
+@@ -98,16 +99,17 @@
+   const live = (controllers || []).filter(Boolean);
+   const workfleetRole=ceresWorkfleetRole(entity);
+   const workfleet=!!workfleetRole;
+-  if (!root || (!live.length && !workfleet)) return null;
++  const latch=isLatchActor(entity);
++  if (!root || (!live.length && !workfleet && !latch)) return null;
+   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
+-  const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):null;
++  const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):latch?createLatchNineVisualDriver(root,entity):null;
+   const priorDriveUpdate=root.userData.updateDriveState;
+   const updatePropulsion=propulsion ? function updateCeresPropulsion(liveEntity,simNow) {
+     priorDriveUpdate?.(liveEntity,simNow);
+     propulsion.update(liveEntity);
+   } : null;
+   if(updatePropulsion)root.userData.updateDriveState=updatePropulsion;
+-  const updatePhysical = workfleet ? (liveEntity, a11y) => {
++  const updatePhysical = workfleet || latch ? (liveEntity, a11y) => {
+     updateWorkfleet?.(liveEntity);
+     propulsion?.update(liveEntity, a11y);
+   } : null;
+@@ -175,6 +177,7 @@
+     const spec = controller.motionPadSpec;
+     if (Array.isArray(spec)) motionPadSpec.push(...spec);
+   }
++  if(latch&&propulsion?.motionPadSpec)motionPadSpec.push(...propulsion.motionPadSpec);
+   if (motionPadSpec.length) root.userData.authoredMotionPadSpec = motionPadSpec;
+   else delete root.userData.authoredMotionPadSpec;
+   delete root.userData.__authoredMotionPad;

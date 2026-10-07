@@ -1,3 +1,4 @@
+import { CERES_WORKFLEET_CONTRACT as CERES_FLEET } from '../data/ceresWorkfleet.js';
 // PQ-017 — pure deterministic grammar/reducer for persistent World Sites.
 // No registry slot, bus access, ambient randomness, physics writes, or cross-domain state writes.
 
@@ -148,7 +149,7 @@ export function validateWorldSiteManifest(manifest) {
     dependencyGraph.set(operation.id, array(operation.dependsOn));
     if (!componentIds.has(operation.componentId)) add('operation-component-missing', `$.operations[${i}].componentId`);
     if (!['cut', 'repair', 'transfer', 'extract'].includes(operation.verb)) add('operation-verb-invalid', `$.operations[${i}].verb`);
-    if (!requestStreamIds.has(operation.requestStreamId)) add('operation-request-stream-missing', `$.operations[${i}].requestStreamId`);
+    if (!requestStreamIds.has(operation.requestStreamId) || array(operation.additionalRequestStreamIds).some(id=>!requestStreamIds.has(id))) add('operation-request-stream-missing', `$.operations[${i}].requestStreamId`);
     if (!(Number.isFinite(operation.threshold) && operation.threshold > 0)) add('operation-threshold-invalid', `$.operations[${i}].threshold`);
     if (!array(operation.from).length || !nonEmpty(operation.to)) add('operation-state-invalid', `$.operations[${i}]`);
     for (const depId of array(operation.dependsOn)) {
@@ -197,6 +198,22 @@ export function validateWorldSiteManifest(manifest) {
     if (!nonEmpty(payload.worldObjectId)) add('payload-world-id-missing', `$.payloads[${i}].worldObjectId`);
     const release = operations.find((operation) => operation.id === payload.releaseOperationId);
     if (release && release.payloadId !== payload.id) add('payload-release-binding-invalid', `$.payloads[${i}].releaseOperationId`);
+    if (payload.structural != null) {
+      const structural = payload.structural;
+      if (!isPlainObject(structural) || !(structural.halfX > 0) || !(structural.halfZ > 0)
+        || !componentIds.has(structural.supportComponentId) || !nonEmpty(structural.supportStatus)
+        || !(payload.radius > 0) || !(payload.mass > 0)) {
+        add('payload-structure-invalid', `$.payloads[${i}].structural`);
+      }
+      if (structural?.boxes != null && (!Array.isArray(structural.boxes)
+        || structural.boxes.length < 1 || structural.boxes.length > 8
+        || structural.boxes.some((box) => !finitePoint(box) || !(box.halfX > 0) || !(box.halfZ > 0)))) {
+        add('payload-structure-boxes-invalid', `$.payloads[${i}].structural.boxes`);
+      }
+      if (payload.releaseVelocity && (payload.releaseVelocity.x !== 0 || payload.releaseVelocity.z !== 0)) {
+        add('payload-structure-release-kick', `$.payloads[${i}].releaseVelocity`);
+      }
+    }
     if (payload.releaseVelocity != null && !finitePoint(payload.releaseVelocity)) {
       add('payload-release-velocity-invalid', `$.payloads[${i}].releaseVelocity`);
     }
@@ -330,7 +347,7 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
       const completed = value.completedOperations && value.completedOperations[operation.id];
       const component = next.components[operation.componentId];
       if (!isPlainObject(completed) || !nonEmpty(completed.receiptId) || !component) continue;
-      if (nonEmpty(completed.requestStreamId) && completed.requestStreamId !== operation.requestStreamId) continue;
+      if (nonEmpty(completed.requestStreamId) && !acceptsOperationStream(operation, completed.requestStreamId)) continue;
       const sequence = finiteSequence(completed.requestSequence == null ? completed.tick : completed.requestSequence);
       const cycle = boundedInt(completed.cycle, 0, Number.MAX_SAFE_INTEGER, component.cycle);
       if (sequence == null || cycle !== component.cycle) continue;
@@ -361,7 +378,7 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
         receiptId: completed.receiptId,
         tick: finiteTick(completed.tick),
         cycle,
-        requestStreamId: operation.requestStreamId,
+        requestStreamId: completed.requestStreamId || operation.requestStreamId,
         requestSequence: sequence,
         earnedAtS: finiteNonNegative(completed.earnedAtS, finiteTick(completed.tick) / 60),
         stateFrom: array(operation.from).includes(completed.stateFrom) ? completed.stateFrom : operation.from[0],
@@ -393,7 +410,16 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
   // close a receiver.
   for (const def of manifest.payloads) {
     const prior = value.payloads && value.payloads[def.id];
+    if (def.structural && prior?.destroyed === true) next.payloads[def.id].destroyed = true;
+    if (def.structural && Number.isFinite(prior?.remainingHull)) {
+      next.payloads[def.id].remainingHull = Math.max(0, Math.min(1000, prior.remainingHull));
+    }
     if (isPlainObject(prior)) next.payloads[def.id].motion = normalizeMotion(prior.motion, next.payloads[def.id].motion);
+    if(manifest.id===CERES_FLEET.siteId&&def.worldObjectId===CERES_FLEET.identities.payload
+      &&prior?.retained?.receiverWorldRecordId===CERES_FLEET.identities.cradle
+      &&next.completedOperations.release_long_plate_clamp&&finiteSequence(prior.retained.tick)!=null) {
+      next.payloads[def.id].retained={receiverWorldRecordId:CERES_FLEET.identities.cradle,tick:prior.retained.tick};
+    }
     const receiver = manifest.receivers.find((candidate) => candidate.acceptsPayloadIds.includes(def.id));
     const settlement = receiver && next.completedOperations[receiver.settlementOperationId];
     const release = next.completedOperations[def.releaseOperationId];
@@ -451,14 +477,11 @@ export function normalizeWorldSiteRecord(manifest, value, opts = {}) {
     boundedInt(value.completionCount, 0, Number.MAX_SAFE_INTEGER, 0),
   );
   const safeCursors = {};
-  for (const operation of manifest.operations) {
-    const prior = value.operationCursors && value.operationCursors[operation.id];
-    const sequence = prior && prior.requestStreamId === operation.requestStreamId
-      ? finiteSequence(prior.throughSequence)
-      : null;
-    const hasProgress = Number(next.components[operation.componentId].progress[operation.id]) > 0;
-    if (sequence != null && sequence <= next.updatedTick
-      && (hasProgress || next.completedOperations[operation.id])) safeCursors[operation.id] = prior;
+  for (const operation of manifest.operations) for (const stream of operationStreams(operation)) {
+    const key=operationCursorKey(operation,stream), prior=value.operationCursors?.[key];
+    const sequence=prior?.requestStreamId===stream?finiteSequence(prior.throughSequence):null;
+    const hasProgress=Number(next.components[operation.componentId].progress[operation.id])>0;
+    if(sequence!=null&&sequence<=next.updatedTick&&(hasProgress||next.completedOperations[operation.id]))safeCursors[key]=prior;
   }
   next.operationCursors = normalizeOperationCursors(manifest, safeCursors, next.receipts, next.completedOperations);
   const maxReceiptSequence = next.receipts.reduce((max, receipt) => Math.max(max, finiteSequence(receipt.sequence) || 0), 0);
@@ -475,8 +498,8 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
   if (!operation) return failed(record, 'unknown-operation');
   const requestStreamId = cleanId(request.requestStreamId) || operation.requestStreamId;
   const requestSequence = finiteSequence(request.requestSequence == null ? request.tick : request.requestSequence);
-  if (requestStreamId !== operation.requestStreamId || requestSequence == null) return failed(record, 'request-cursor-invalid');
-  const cursor = record.operationCursors && record.operationCursors[operation.id];
+  if (!acceptsOperationStream(operation, requestStreamId) || requestSequence == null) return failed(record, 'request-cursor-invalid');
+  const cursor = record.operationCursors && record.operationCursors[operationCursorKey(operation, requestStreamId)];
   if (cursor && cursor.requestStreamId === requestStreamId && requestSequence <= cursor.throughSequence) {
     return duplicate(record, 'request-replayed');
   }
@@ -486,6 +509,7 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
   for (const dependencyId of array(operation.dependsOn)) {
     if (!record.completedOperations || !record.completedOperations[dependencyId]) return failed(record, 'dependency-incomplete');
   }
+  if (structuralBraceUnavailable(manifest, record, operation)) return failed(record, 'section-already-cut');
   const live = record.components && record.components[operation.componentId];
   if (!live) return failed(record, 'component-missing');
   if (!array(operation.from).includes(live.status)) return failed(record, 'component-state');
@@ -501,7 +525,7 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
   if (!isPlainObject(next.evidenceReceiptsByPageId)) next.evidenceReceiptsByPageId = {};
   next.evidenceRevision = boundedInt(next.evidenceRevision, 0, Number.MAX_SAFE_INTEGER, 0);
   next.operationCursors = normalizeOperationCursors(manifest, next.operationCursors, [], next.completedOperations);
-  next.operationCursors[operation.id] = { requestStreamId, throughSequence: requestSequence };
+  next.operationCursors[operationCursorKey(operation, requestStreamId)] = { requestStreamId, throughSequence: requestSequence };
   const receiptId = operationReceiptId(manifest.id, operation.id, requestStreamId, requestSequence);
   const component = next.components[operation.componentId];
   const stateFrom = component.status;
@@ -530,7 +554,7 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
       // A stowed payload is authored against the dark stage, but release occurs after this
       // operation has advanced the site. Snapshot the resulting stage socket now so the first
       // physical materialization starts at the asset that is actually visible to the player.
-      next.payloads[payloadDef.id].motion = initialPayloadMotion(
+      if (!payloadDef.structural) next.payloads[payloadDef.id].motion = initialPayloadMotion(
         manifest,
         payloadDef,
         evaluateStage(manifest, next),
@@ -572,6 +596,20 @@ export function applyWorldSiteOperation(manifest, record, request = {}) {
   next.revision = boundedInt(next.revision, 0, Number.MAX_SAFE_INTEGER - 1, 0) + 1;
   next.stageId = evaluateStage(manifest, next);
   return { ok: true, duplicate: false, reason: null, record: next, receipt, intents, materializationChanged: complete };
+}
+
+/** Exact non-consuming retained section. All live contact evidence is checked by asteroidSites. */
+export function retainCeresWorkfleetPayload(manifest,record,request={}) {
+  if(manifest?.id!==CERES_FLEET.siteId||request.payloadWorldObjectId!==CERES_FLEET.identities.payload
+    ||request.receiverWorldRecordId!==CERES_FLEET.identities.cradle||!record?.completedOperations?.release_long_plate_clamp
+    ||record.payloads?.long_plate?.status!=='released'||record.payloads.long_plate.destroyed)return failed(record,'retained-section-ineligible');
+  const motion=request.motion;
+  if(![motion?.pos?.x,motion?.pos?.z,motion?.vel?.x,motion?.vel?.z,motion?.rot,motion?.angVel].every(Number.isFinite))return failed(record,'retained-motion-invalid');
+  const next=clonePlain(record);
+  next.payloads.long_plate.motion=clonePlain(motion);
+  next.payloads.long_plate.retained={receiverWorldRecordId:CERES_FLEET.identities.cradle,tick:finiteTick(request.tick)};
+  next.updatedTick=Math.max(next.updatedTick,finiteTick(request.tick));next.revision++;
+  return {ok:true,record:next,intents:[],duplicate:false};
 }
 
 export function applyWorldSiteFailure(manifest, record, request = {}) {
@@ -623,6 +661,10 @@ export function worldSiteOperationReadiness(manifest, record, componentId, verb 
     ? 'complete'
     : 'state-unavailable';
   for (const operation of operations) {
+    if (structuralBraceUnavailable(manifest, record, operation)) {
+      reason = 'section-already-cut';
+      continue;
+    }
     if (!array(operation.dependsOn).every((id) => record.completedOperations && record.completedOperations[id])) {
       if (reason === 'state-unavailable') reason = 'dependency-incomplete';
       continue;
@@ -667,7 +709,8 @@ export function planWorldSiteMaterialization(manifest, record) {
       : 18,
     presentation: projectWorldSitePresentation(stage, record),
   };
-  const components = manifest.components.map((component) => {
+  const components = manifest.components.filter((component) => !manifest.payloads.some((payload) =>
+    payload.structural && payload.componentId === component.id)).map((component) => {
     const proxy = manifest.proxies.find((candidate) => candidate.componentId === component.id);
     const offset = rotatedOffset(socketLocalOffset(binding, proxy, stage.scale), manifest.placement.rot);
     const live = record.components[component.id];
@@ -709,9 +752,11 @@ export function planWorldSiteMaterialization(manifest, record) {
     };
   });
   const payloads = manifest.payloads
-    .filter((payload) => record.payloads[payload.id] && record.payloads[payload.id].status === 'released')
+    .filter((payload) => record.payloads[payload.id] && (record.payloads[payload.id].status === 'released'
+      || payload.structural && record.payloads[payload.id].status === 'stowed'))
     .map((payload) => {
       const durable = record.payloads[payload.id];
+      if (payload.structural && durable.destroyed) return null;
       const mountProxy = manifest.proxies.find((candidate) => candidate.componentId === payload.componentId);
       const fallbackMotion = initialPayloadMotion(manifest, payload);
       const motion = normalizeMotion(durable.motion, fallbackMotion);
@@ -719,11 +764,23 @@ export function planWorldSiteMaterialization(manifest, record) {
       // aboard after partial harvest. An empty remainder means the pod is consumed — no respawn.
       const hasDurablePool = isPlainObject(durable.remainingPool);
       const pool = hasDurablePool ? durable.remainingPool : (payload.salvagePool || {});
-      if (hasDurablePool && Object.keys(pool).length === 0) return null;
+      if (!payload.structural && hasDurablePool && Object.keys(pool).length === 0) return null;
       return {
         worldRecordId: payload.worldObjectId,
         type: 'payload',
         payloadId: payload.id,
+        ...(payload.structural ? {
+          structural: clonePlain(payload.structural),
+          hull: Number.isFinite(durable.remainingHull) ? durable.remainingHull : 1000,
+          componentId: payload.componentId,
+          status: record.components[payload.componentId].status,
+          label: payload.label,
+          attached: durable.status === 'stowed',
+          supported: record.components[payload.structural.supportComponentId]?.status === payload.structural.supportStatus,
+          placeId: payload.structural.placeId || null,
+          rot: motion.rot,
+          angVel: motion.angVel,
+        } : {}),
         pos: clonePlain(motion.pos),
         vel: clonePlain(motion.vel),
         radius: payload.radius,
@@ -885,7 +942,7 @@ function validNormalizedReceipt(manifest, receipt, updatedTick) {
   const operation = manifest.operations.find((candidate) => candidate.id === receipt.operationId);
   const sequence = finiteSequence(receipt.requestSequence == null ? receipt.tick : receipt.requestSequence);
   return !!operation
-    && receipt.requestStreamId === operation.requestStreamId
+    && acceptsOperationStream(operation, receipt.requestStreamId)
     && sequence != null
     && sequence <= updatedTick;
 }
@@ -937,8 +994,9 @@ function collectIds(entries, family, add, plural = `${family}s`) {
 
 function validProxy(proxy) {
   return ['sensor', 'solid'].includes(proxy.bodyType)
-    && proxy.shape === 'circle'
-    && Number.isFinite(proxy.radius) && proxy.radius > 0
+    && (proxy.shape === 'circle' && Number.isFinite(proxy.radius) && proxy.radius > 0
+      || proxy.shape === 'box' && finitePoint(proxy.halfExtents)
+        && proxy.halfExtents.x > 0 && proxy.halfExtents.z > 0)
     && finitePoint(proxy.offset);
 }
 
@@ -1052,25 +1110,27 @@ function nonJsonPaths(value) {
   return paths;
 }
 
+function operationStreams(operation) {
+  return [operation.requestStreamId,...array(operation.additionalRequestStreamIds)];
+}
+function acceptsOperationStream(operation,stream) { return operationStreams(operation).includes(stream); }
+function operationCursorKey(operation,stream) {
+  return stream===operation.requestStreamId?operation.id:`${operation.id}::${stream}`;
+}
 function normalizeOperationCursors(manifest, value, receipts, completedOperations) {
   const out = {};
-  for (const operation of manifest.operations) {
-    const prior = value && value[operation.id];
-    let throughSequence = prior && prior.requestStreamId === operation.requestStreamId
-      ? finiteSequence(prior.throughSequence)
-      : null;
-    for (const receipt of array(receipts)) {
-      if (!receipt || receipt.operationId !== operation.id) continue;
-      const sequence = finiteSequence(receipt.requestSequence == null ? receipt.tick : receipt.requestSequence);
-      if (sequence != null) throughSequence = Math.max(throughSequence == null ? -1 : throughSequence, sequence);
+  for (const operation of manifest.operations) for (const stream of operationStreams(operation)) {
+    const key=operationCursorKey(operation,stream), prior=value?.[key];
+    let throughSequence=prior?.requestStreamId===stream?finiteSequence(prior.throughSequence):null;
+    for(const receipt of array(receipts)) {
+      if(receipt?.operationId!==operation.id||receipt.requestStreamId!==stream)continue;
+      const sequence=finiteSequence(receipt.requestSequence??receipt.tick);
+      if(sequence!=null)throughSequence=Math.max(throughSequence??-1,sequence);
     }
-    const completed = completedOperations && completedOperations[operation.id];
-    const completedSequence = completed && finiteSequence(completed.requestSequence == null ? completed.tick : completed.requestSequence);
-    if (completedSequence != null) throughSequence = Math.max(throughSequence == null ? -1 : throughSequence, completedSequence);
-    if (throughSequence != null) out[operation.id] = {
-      requestStreamId: operation.requestStreamId,
-      throughSequence,
-    };
+    const completed=completedOperations?.[operation.id];
+    const sequence=completed?.requestStreamId===stream?finiteSequence(completed.requestSequence??completed.tick):null;
+    if(sequence!=null)throughSequence=Math.max(throughSequence??-1,sequence);
+    if(throughSequence!=null)out[key]={requestStreamId:stream,throughSequence};
   }
   return out;
 }
@@ -1093,7 +1153,8 @@ function initialPayloadMotion(manifest, payload, stageId = null) {
   const stage = manifest.stages.find((candidate) => candidate.id === stageId) || manifest.stages[0];
   const binding = worldSiteAssetBinding(stage.placeId || manifest.visualRoot.placeId);
   const local = socketLocalOffset(binding, proxy, stage.scale);
-  const offset = rotatedOffset({ x: local.x + 8 * stage.scale, z: local.z + 4 * stage.scale }, manifest.placement.rot);
+  const offset = rotatedOffset(payload.structural ? local
+    : { x: local.x + 8 * stage.scale, z: local.z + 4 * stage.scale }, manifest.placement.rot);
   const velocity = rotatedOffset(payload.releaseVelocity || { x: 0, z: 0 }, manifest.placement.rot);
   return {
     pos: {
@@ -1101,6 +1162,7 @@ function initialPayloadMotion(manifest, payload, stageId = null) {
       z: manifest.placement.pos.z + offset.z,
     },
     vel: velocity,
+    ...(payload.structural ? { rot: finite(manifest.placement.rot), angVel: 0 } : {}),
   };
 }
 
@@ -1120,6 +1182,10 @@ function normalizeMotion(value, fallback) {
   return {
     pos: finitePoint(value && value.pos) ? { x: value.pos.x, z: value.pos.z } : { ...base.pos },
     vel: finitePoint(value && value.vel) ? { x: value.vel.x, z: value.vel.z } : { ...base.vel },
+    ...(base.rot != null || value?.rot != null ? {
+      rot: Number.isFinite(value?.rot) ? value.rot : finite(base.rot),
+      angVel: Number.isFinite(value?.angVel) ? value.angVel : finite(base.angVel),
+    } : {}),
   };
 }
 
@@ -1167,7 +1233,7 @@ function deepFreeze(value) {
 function proxyRadius(proxy) {
   if (!proxy) return 4;
   if (proxy.shape === 'circle') return proxy.radius;
-  return Math.max(proxy.halfExtents.x, proxy.halfExtents.z);
+  return Math.hypot(proxy.halfExtents.x, proxy.halfExtents.z);
 }
 
 function array(value) { return Array.isArray(value) ? value : []; }
@@ -1201,3 +1267,11 @@ export default {
   planWorldSiteMaterialization,
   projectWorldSite,
 };
+
+// A clamp can support an attached section, but cannot recapture a free mass remotely.
+function structuralBraceUnavailable(manifest, record, operation) {
+  return array(manifest.payloads).some((payload) => payload.structural
+    && payload.structural.supportComponentId === operation.componentId
+    && operation.to === payload.structural.supportStatus
+    && record.completedOperations?.[payload.releaseOperationId]);
+}

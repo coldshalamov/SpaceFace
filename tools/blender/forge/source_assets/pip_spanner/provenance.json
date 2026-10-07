@@ -1,0 +1,33 @@
+{
+  "assetId": "sf20_19_pip_spanner",
+  "sourceDate": "2026-10-05",
+  "sourceRepositoryHead": "89f5a5b183ba88cfa5c606b5fde66022f8df579c",
+  "blenderVersion": "4.3.2",
+  "origin": "Original authored reconstruction from user repository concept SF20-19. No third-party model or generated texture. Existing game Forge kit and shared texture sources copied into narrow packet unchanged.",
+  "referenceConcept": "design/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/concepts/19_pip_and_spanner.md",
+  "referenceArt": "design/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/art/19_pip_and_spanner.png",
+  "forgeSnapshotSha256": {
+    "forge/forge.py": "987500394bedd3875c916afa7eeff368c2c545e4ac7371592a9f02e3283e064d",
+    "forge/forge_export.py": "633016fb1fb2561ce2840cd295c6100983273264e2e2c6373b9fee620e9ecf46",
+    "forge/motion.py": "49ea1d5b90f6da57a427865ef6ebef74604609fc426001ca4be0e6305f8951ff",
+    "forge/textures/forge_machinery_albedo.png": "b7034060012660890ebae39f25f8cb3c2bee39fbe379a31aec87a9b2b5c42be2",
+    "forge/textures/forge_machinery_normal.png": "c61623ed9a9802aadb77535f9b6d25ab2a2cb8be9e0c3df1c0459fdd1771c0a8",
+    "forge/textures/forge_machinery_orm.png": "d44271a5eec7bd985154305a7d9a0afa959e8f81f3f56d93093a85eb49dd0685",
+    "forge/textures/forge_panel_albedo.png": "183556de2f6c9cc2e9ecd04b862b088fc460d70cee4e802e44a0acd8c99acecd",
+    "forge/textures/forge_panel_normal.png": "73d3b85713bf8e108699df6f9d6a20e5a6f3c856180ba94a906704925756932f",
+    "forge/textures/forge_panel_orm.png": "65178eb8bb8fdbeb3ca1525f81879b69c14d7119ca3b22ca557c1dd92c11cfdb"
+  },
+  "acceptance": "Art candidate; current-loader offline contract passed. Actual armory rendering, gameplay transaction authority and frame cost remain consumer-level checks.",
+  "successor": {
+    "version": 2,
+    "originalPacket": "pip-spanner-art-v1",
+    "originalPacketManifestSha256": "6b798a09b615cbc1dc9d08337b80e527cbcbdbbf2ee822d8983b28ccb69fb400",
+    "reason": "Current selected-place builder requires canonical-root spacefaceAsset; v1 had asset/scene only.",
+    "changeScope": "Root/scene/asset metadata only. No art, geometry, materials, buffers, transforms, image or animation content change.",
+    "failureLog": "evidence/v1-selected-release-build-failure.log",
+    "glbParity": "evidence/glb-metadata-parity.json",
+    "editableParity": "evidence/blend-metadata-parity.json",
+    "recipeStampExactByteReproduction": true,
+    "originalV1SealedInputsUnchanged": true
+  }
+}

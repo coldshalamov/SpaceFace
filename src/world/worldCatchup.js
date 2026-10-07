@@ -1,3 +1,4 @@
+import { ceresWorkfleetRecordHasCustody } from '../data/ceresWorkfleetHardware.js';
 // Pure catch-up kernels. No renderer, bus, or live-entity mutation.
 
 import { SIM_TIER } from './activityClassification.js';
@@ -167,6 +168,7 @@ export function advanceWorldRecord(record, fromT, toT, context = {}) {
   if (context.unresolvedPlayerCombat === true) {
     return { ...record, abstractTier: SIM_TIER.S0_EXACT };
   }
+  if(ceresWorkfleetRecordHasCustody(record))return {...record,lastExactT:b,lastObservedT:b};
   const intent = normalizeIntent(record.intent);
   let pos = record.pos && typeof record.pos === 'object' ? { x: finite(record.pos.x), z: finite(record.pos.z) } : { x: 0, z: 0 };
   let vel = record.vel && typeof record.vel === 'object' ? { x: finite(record.vel.x), z: finite(record.vel.z) } : { x: 0, z: 0 };
@@ -221,6 +223,7 @@ export function advanceWorldRecordInto(record, fromT, toT, context = {}) {
     record.abstractTier = SIM_TIER.S0_EXACT;
     return record;
   }
+  if(ceresWorkfleetRecordHasCustody(record)){record.lastExactT=b;record.lastObservedT=b;return record;}
   const pos = record.pos && typeof record.pos === 'object'
     ? record.pos
     : (record.pos = { x: 0, z: 0 });

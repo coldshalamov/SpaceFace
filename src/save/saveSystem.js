@@ -18,7 +18,9 @@ import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
-import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
+import { restoreCombatState, serializeCombatState, hasPendingCeresWorkfleetAttachments,
+  resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments,
+  ceresWorkfleetEntityRef, ceresWorkfleetRefKey, resolveCeresWorkfleetEntityRef, ceresWorkfleetHostileAttachmentOwners, ceresWorkfleetIncomingSavedOwnerIds } from '../combat/persistence.js';
 import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
@@ -247,6 +249,8 @@ export const save = {
   name: 'save',
 
   init(ctx) {
+    this._cancelCeresAttachmentRestore();
+    this._cancelCeresEntityReferenceRestore();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -1114,14 +1118,22 @@ export const save = {
   // Only the player entity (and any flags.persistent entity) serializes; stations/asteroids/NPCs
   // regenerate deterministically from the spawner on load (§4.5, §0.15). Positions as {x,z}, no mesh.
   _serializeEntities() {
+    this._ceresEntityReferenceRestore?.resume();
     const state = this.state;
     const out = [];
+    const ceresWorkfleetRefs = new Map();
     const stuntBodies = pendingStuntBodyIds(state);
+    const ceresHostileOwners = ceresWorkfleetHostileAttachmentOwners(state);
     for(const id of pendingProjectileBodyIds(state))stuntBodies.add(id);
     for (const e of state.entityList) {
       const isPlayer = e.id === state.playerId;
       // A defeated wreck must still serialize. Skipping it writes player:null and poisons the slot.
       if (!isPlayer && !e.alive && !stuntBodies.has(e.id)) continue;
+      const finiteRef = !isPlayer && ceresWorkfleetEntityRef(e);
+      if (finiteRef) {
+        ceresWorkfleetRefs.set(ceresWorkfleetRefKey(finiteRef), { saveId: String(e.id), ref: finiteRef });
+        continue;
+      }
       // Live projectiles ride the persistent list without being flagged persistent: the
       // ballistic flight budget keeps a round collidable for many seconds, so a save/continue
       // that dropped every in-flight shot would silently lose real combat state. Restore keeps
@@ -1133,12 +1145,17 @@ export const save = {
       // (Held/mid-hold clumps are intentionally NOT serialized: a save is allowed to
       // interrupt the beam — the snagged body resumes its authored life on continue.)
       const gyreBall = !!(e.data && e.data.gyreLaunched);
-      if (!isPlayer && !liveProjectile && !gyreBall && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
+      if (!isPlayer && !liveProjectile && !gyreBall && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id) && !ceresHostileOwners.has(e.id)) continue;
       out.push(plainEntity(e, isPlayer));
+    }
+    for (const entry of this._ceresEntityReferenceRestore?.pending?.values() || []) {
+      const key = ceresWorkfleetRefKey(entry.ref);
+      if (!ceresWorkfleetRefs.has(key)) ceresWorkfleetRefs.set(key, { saveId: entry.alias, ref: clonePlain(entry.ref) });
     }
     return {
       player: out.find((x) => x._isPlayer) || null,
       persistent: out.filter((x) => !x._isPlayer),
+      ceresWorkfleetRefs: [...ceresWorkfleetRefs.values()],
       simTime: state.simTime,
       tick: state.tick,
       // Entity-id allocator state. freeIds order is load-bearing: allocateEntityId pops from
@@ -2818,6 +2835,8 @@ export const save = {
   },
 
   _beginRunEpoch(_reason = 'run') {
+    this._cancelCeresEntityReferenceRestore();
+    this._cancelCeresAttachmentRestore();
     this._cancelActiveAutosave('superseded');
     const current = Number.isSafeInteger(this._runEpoch) ? this._runEpoch : 0;
     this._runEpoch = current + 1;
@@ -2841,6 +2860,8 @@ export const save = {
   },
 
   _beginRestoreSequence() {
+    this._cancelCeresEntityReferenceRestore();
+    this._cancelCeresAttachmentRestore();
     this._cancelActiveAutosave('superseded');
     const previous = Number.isSafeInteger(this._restoreSequence) ? this._restoreSequence : 0;
     this._restoreSequence = previous + 1;
@@ -4690,7 +4711,7 @@ export const save = {
     if (Array.isArray(savedPersistentList)) {
       for (const saved of savedPersistentList) {
         const recordId = saved && saved.data && saved.data.worldRecordId;
-        if (recordId != null) envelopeRecordIds.add(recordId);
+        if (recordId != null && !ceresWorkfleetEntityRef(saved)) envelopeRecordIds.add(recordId);
       }
     }
     state.restoreEnvelopeRecordIds = envelopeRecordIds.size ? envelopeRecordIds : null;
@@ -4757,7 +4778,7 @@ export const save = {
       yield 'deserialized-world';
       // Stash the SG-02 world snapshot: a fresh backend owner adopts it (boot-load, harness
       // reset); a live owner keeps its own world and the stash is dropped.
-      this._callDeserialize('physics', data.physics);
+      this.registry?.get?.('physics')?.deserialize?.(data.physics, { deferNative: true });
       // Regional/POI aftermath must restore before enterSector publishes its gameplay inputs.
       this._callDeserialize('regionalEcology', data.regionalEcology);
       yield 'deserialized-regional-ecology';
@@ -4860,7 +4881,13 @@ export const save = {
       // entities from the previous live sector. Spawn order (and therefore ids/entityList order)
       // is identical to the monolithic call — the batch window only inserts presentation
       // yields so a mature save's respawn does not freeze the loading bar in one chunk.
-      const savedPersistent = data.entities && data.entities.persistent;
+      const rawPersistent = data.entities && data.entities.persistent;
+      const transientCeresOwners=ceresWorkfleetIncomingSavedOwnerIds(data.combat);
+      // Older stunt saves carried finite owner bodies in the generic list. Treat those exact
+      // rows as references too; the incoming site/world records still own their body state.
+      const legacyFinite = Array.isArray(rawPersistent) ? rawPersistent.filter(e => ceresWorkfleetEntityRef(e)) : [];
+      const savedPersistent = Array.isArray(rawPersistent)
+        ? rawPersistent.filter(e => !ceresWorkfleetEntityRef(e)) : rawPersistent;
       if (Array.isArray(savedPersistent)) {
         let nextSpawnIndex = 0;
         do {
@@ -4868,6 +4895,7 @@ export const save = {
             startIndex: nextSpawnIndex,
             limit: RESTORE_PERSISTENT_SPAWN_BATCH,
             clearStale: nextSpawnIndex === 0,
+            transientCeresOwners,
           });
           this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
           yield 'persistent-spawned';
@@ -4878,6 +4906,8 @@ export const save = {
         yield 'persistent-spawned';
       }
       this._restoreEntityIdAllocator(data.entities);
+
+      this._restoreCeresEntityReferences(data.entities?.ceresWorkfleetRefs, legacyFinite, entityIdRemap);
 
       // 11. clear stale entity-id references (the saved targets belong to entities that no longer exist).
       this._clearStaleTargets();
@@ -4937,6 +4967,8 @@ export const save = {
       yield* this._callDeserializeChunked('claims', data.claims);
       yield 'claims-restored';
       yield* this._callDeserializeChunked('asteroidSites', data.sites);
+      this._resumeCeresEntityReferences();
+      this._resumeCeresAttachmentRestore();
       yield* this._callDeserializeChunked('asteroidFormations', data.formations);
       this._reportRestoreProgress(0.22, 'Restoring world memory');
       yield 'deserialized-tail';
@@ -5047,8 +5079,16 @@ export const save = {
       }
       yield 'fields-restored';
       const stuntOwner = this.registry?.get?.('stuntGrammar');
-      stuntOwner?.deserialize?.(data.stunts, entityIdRemap);
-
+      const restoreStunts = () => {
+        stuntOwner?.deserialize?.(data.stunts, entityIdRemap, {
+          pendingBodyRefs: [...(this._ceresEntityReferenceRestore?.pending?.values() || [])].map(entry => entry.alias),
+        });
+        if (this._ceresEntityReferenceRestore) this._ceresEntityReferenceRestore.observersReady = true;
+      };
+      // The site's normal save:loaded handler creates its semantic bodies. Wait for that
+      // frozen event drain, then restore this owner exactly once before gameplay can resume.
+      const deferredStunts = !!this._ceresEntityReferenceRestore?.pending.size;
+      if (!deferredStunts) restoreStunts();
       // 15. finalize.
       state.meta.version = CURRENT_VERSION;
       state.save.currentSlot = slot;
@@ -5095,6 +5135,13 @@ export const save = {
           saveLoadedDrainSince = nowMs();
         }
       }
+      this._resumeCeresEntityReferences();
+      if (deferredStunts) restoreStunts();
+      this._resumeCeresAttachmentRestore();
+      this.registry?.get?.('physics')?.completeRestore?.({
+        entityIdRemap,
+        pendingBodyRefs: [...(this._ceresEntityReferenceRestore?.pending?.values() || [])].map(entry => entry.alias),
+      });
       this.primeAutosaveCapture();
       if (finalizeLoadedGame) {
         let finalizerResult;
@@ -5133,6 +5180,8 @@ export const save = {
     let drainedRunTransition = null;
     let hadPendingRunTransition = false;
     if (restoreError == null && s.chunkError != null) restoreError = s.chunkError;
+    if (restoreError) this._cancelCeresAttachmentRestore();
+    if (restoreError) this._cancelCeresEntityReferenceRestore();
     // The epilogue always runs (the old finally{}): a failed chunk still releases the restore
     // freeze, clears the transition latch, and drains a newer queued route before surfacing.
     if (!s.finalizerPending) timeEffects.clear(restoreSource);
@@ -5147,6 +5196,9 @@ export const save = {
     delete state.restoreEnvelopeRecordIds;
     this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
     this._lastAutosavePlaytime = state.meta.playtimeS;
+    // Release this failed session's physics barrier before a newer queued route can
+    // install its native world. The older epilogue must not cancel that newer restore.
+    if (restoreError != null) this.registry?.get?.('physics')?.cancelRestore?.();
     if (pendingRunTransition) {
       try {
         drainedRunTransition = pendingRunTransition();
@@ -5222,7 +5274,11 @@ export const save = {
       state.nextEntityId = entities.nextEntityId;
     }
     if (Number.isSafeInteger(entities.nextOccupantGeneration) && entities.nextOccupantGeneration > 0) {
-      state.nextOccupantGeneration = entities.nextOccupantGeneration;
+      // Continue may reuse numeric entity IDs, but every newly constructed occupant
+      // needs a fresh lifetime. Replaying an older save must not rewind the fence.
+      const liveGeneration = Number.isSafeInteger(state.nextOccupantGeneration)
+        && state.nextOccupantGeneration > 0 ? state.nextOccupantGeneration : 1;
+      state.nextOccupantGeneration = Math.max(liveGeneration, entities.nextOccupantGeneration);
     }
   },
 
@@ -5341,11 +5397,121 @@ export const save = {
       if (ref.kind === 'player') return state.playerId || null;
       if (ref.kind === 'persistent') {
         const mapped = entityIdRemap && entityIdRemap.get(String(ref.saveId));
-        return mapped == null ? null : mapped;
+        return mapped != null && state.entities?.has(mapped) ? mapped : null;
       }
       return null;
     };
-    restoreCombatState(state, d, resolveEntityRef);
+    this._cancelCeresAttachmentRestore();
+    restoreCombatState(state, d, resolveEntityRef, { deferCeresAttachments: true });
+    if (!hasPendingCeresWorkfleetAttachments(state)) return;
+    const token = { state, combat: state.combat, sequence: this._restoreSequence,
+      runEpoch: this._runEpoch, ready: false, off: [] };
+    this._ceresAttachmentRestore = token;
+    const resume = () => {
+      if (this._ceresAttachmentRestore !== token || this.state !== token.state
+          || state.combat !== token.combat || this._restoreSequence !== token.sequence
+          || this._runEpoch !== token.runEpoch || !token.ready) return;
+      resumeCeresWorkfleetAttachments(state);
+      if (!hasPendingCeresWorkfleetAttachments(state)) this._cancelCeresAttachmentRestore();
+    };
+    token.resume = resume;
+    for (const event of ['entity:spawned', 'entity:destroyed', 'entity:killed',
+      'tether:attached', 'ceresWorkfleet:interrupted', 'save:loaded']) {
+      const off = this.bus?.on?.(event, resume);
+      if (typeof off === 'function') token.off.push(off);
+    }
+  },
+
+  _restoreCeresEntityReferences(savedRefs, legacyBodies, remap) {
+    this._cancelCeresEntityReferenceRestore();
+    if (savedRefs != null && (!Array.isArray(savedRefs) || savedRefs.length > 4)) {
+      throw new Error('invalid_ceres_reference_table');
+    }
+    const reject = saveId => {
+      if (saveId && !remap.has(saveId)) remap.set(saveId, `ceres-ref:rejected:${saveId}`);
+    };
+    const rows = [...(savedRefs || []),
+      ...legacyBodies.map(entity => ({ saveId: String(entity.id), ref: ceresWorkfleetEntityRef(entity) }))];
+    const ids = new Map(), keys = new Map(), candidates = new Map();
+    for (const row of rows) {
+      const key = ceresWorkfleetRefKey(row?.ref), saveId = String(row?.saveId ?? '');
+      const alias = `ceres-ref:${key}`;
+      if (!key || !(saveId === alias || /^[1-9]\d*$/.test(saveId) && Number.isSafeInteger(Number(saveId)))) {
+        reject(saveId); continue;
+      }
+      const pair = `${saveId}|${key}`;
+      if (candidates.has(pair)) continue;
+      ids.set(saveId, (ids.get(saveId) || 0) + 1); keys.set(key, (keys.get(key) || 0) + 1);
+      const ref = row.ref.kind === 'worldRecord' ? { kind: 'worldRecord', recordId: row.ref.recordId }
+        : { kind: 'worldSite', siteId: row.ref.siteId, payloadId: row.ref.payloadId, worldObjectId: row.ref.worldObjectId };
+      candidates.set(pair, { saveId, alias, ref });
+    }
+    const pending = new Map();
+    for (const entry of candidates.values()) {
+      const key = ceresWorkfleetRefKey(entry.ref);
+      if (ids.get(entry.saveId) !== 1 || keys.get(key) !== 1) { reject(entry.saveId); continue; }
+      if (remap.has(entry.saveId)) continue;
+      remap.set(entry.saveId, entry.alias);
+      pending.set(key, entry);
+    }
+    if (!pending.size) return;
+    const token = { state: this.state, sequence: this._restoreSequence, runEpoch: this._runEpoch,
+      pending, remap, ready: false, observersReady: false, off: [] };
+    this._ceresEntityReferenceRestore = token;
+    token.resume = () => {
+      if (this._ceresEntityReferenceRestore !== token || this.state !== token.state
+          || this._restoreSequence !== token.sequence || this._runEpoch !== token.runEpoch || !token.ready) return;
+      const rebound = new Map(), dropped = [];
+      for (const [key, entry] of pending) {
+        const entity = resolveCeresWorkfleetEntityRef(token.state, entry.ref);
+        if (entity == null) continue;
+        pending.delete(key);
+        if (entity === false) { dropped.push(entry.alias); continue; }
+        remap.set(entry.saveId, entity.id); remap.set(entry.alias, entity.id);
+        rebound.set(entry.alias, entity.id);
+      }
+      if (token.observersReady && (rebound.size || dropped.length)) {
+        this.registry?.get?.('stuntGrammar')?.resumeBodyReferences?.(rebound, dropped);
+      }
+      if (!pending.size) this._cancelCeresEntityReferenceRestore();
+    };
+    for (const event of ['entity:spawned', 'entity:destroyed', 'entity:killed', 'save:loaded']) {
+      const off = this.bus?.on?.(event, token.resume);
+      if (typeof off === 'function') token.off.push(off);
+    }
+  },
+
+  _resumeCeresEntityReferences() {
+    const token = this._ceresEntityReferenceRestore;
+    if (token) { token.ready = true; token.resume(); }
+  },
+
+  _cancelCeresEntityReferenceRestore() {
+    const token = this._ceresEntityReferenceRestore;
+    this._ceresEntityReferenceRestore = null;
+    for (const off of token?.off || []) off();
+    if (token?.observersReady && token.pending.size) {
+      this.registry?.get?.('stuntGrammar')?.resumeBodyReferences?.(new Map(),
+        [...token.pending.values()].map(entry => entry.alias));
+    }
+  },
+
+  _resumeCeresAttachmentRestore() {
+    const token = this._ceresAttachmentRestore;
+    if (token) { token.ready = true; token.resume(); }
+  },
+
+  _cancelCeresAttachmentRestore() {
+    const token = this._ceresAttachmentRestore;
+    this._ceresAttachmentRestore = null;
+    if (!token) return;
+    for (const off of token.off) off();
+    if (token.state.combat === token.combat) cancelPendingCeresWorkfleetAttachments(token.state);
+  },
+
+  destroy() {
+    this._cancelCeresAttachmentRestore();
+    this._cancelCeresEntityReferenceRestore();
   },
 
   /**
@@ -5674,6 +5840,8 @@ export const save = {
       // A restored round stays transient: it must not survive sector regeneration outlive its
       // clock, and a repeat save re-admits it through the same live-projectile clause.
       spec.flags = Object.assign({}, spec.flags, { persistent: !isProjectile && !isGyreBall, noInterp: true });
+      // A saved hostile constraint owner is included by its live attachment, not promoted to a durable actor.
+      if(batch?.transientCeresOwners?.has(String(saved.id))&&saved.flags?.persistent!==true)delete spec.flags.persistent;
       if (isProjectile && entityIdRemap) {
         const mappedOwner = spec.ownerId != null ? entityIdRemap.get(String(spec.ownerId)) : null;
         if (mappedOwner != null) spec.ownerId = mappedOwner;

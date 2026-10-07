@@ -1,0 +1,81 @@
+diff --git a/src/data/swarmMode.js b/src/data/swarmMode.js
+index 378af4f..c295d30 100644
+--- a/src/data/swarmMode.js
++++ b/src/data/swarmMode.js
+@@ -404,8 +404,7 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
+     trickId: 'shield-turtle',
+     packages: [
+       { enemyId: 'pd_screen_escort', count: 2, role: 'support', gateBias: 'near' },
+-      { enemyId: 'brood_splitter', role: 'pressure', fromWave: 17, weight: 2, name: 'Brood Splitter' },
+-  { enemyId: 'bruiser_brawler', count: 2, role: 'anchor', gateBias: 'far', distance: 240 },
++      { enemyId: 'bruiser_brawler', count: 2, role: 'anchor', gateBias: 'far', distance: 240 },
+     ],
+   },
+   {
+@@ -745,8 +744,7 @@ export const SWARM_ACT = freezeDeep({
+       { enemyId: 'wasp_swarmer', count: 7, gateIndex: 0, atTick: 0 },
+       { enemyId: 'choir_zealot', count: 6, gateIndex: 2, atTick: 12 },
+       { enemyId: 'reaver_pirate', count: 5, gateIndex: 4, atTick: 24 },
+-      { enemyId: 'brood_splitter', role: 'pressure', fromWave: 17, weight: 2, name: 'Brood Splitter' },
+-  { enemyId: 'bruiser_brawler', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
++      { enemyId: 'bruiser_brawler', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
+     ]),
+   },
+   26: {
+diff --git a/test/combat-doctrines.test.mjs b/test/combat-doctrines.test.mjs
+index ffde82a..adf75e6 100644
+--- a/test/combat-doctrines.test.mjs
++++ b/test/combat-doctrines.test.mjs
+@@ -35,9 +35,11 @@ const {
+ assert(Object.isFrozen(CombatDoctrineId), 'combat doctrine ids are an immutable typed vocabulary');
+ assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
+   'brawler_commit',
++  'brood_cell',
+   'brood_charge',
+   'brood_lunge',
+   'brood_spit',
++  'brood_split',
+   'capital_broadside',
+   'capital_broadside_ala',
+   'capital_broadside_tollman',
+diff --git a/test/swarm-specialist-debut.test.mjs b/test/swarm-specialist-debut.test.mjs
+index 3885917..beacab3 100644
+--- a/test/swarm-specialist-debut.test.mjs
++++ b/test/swarm-specialist-debut.test.mjs
+@@ -8,6 +8,8 @@ import assert from 'node:assert/strict';
+ import { planWave } from '../src/systems/survivalWavePlanner.js';
+ import {
+   SWARM_DEBUT_TICKS,
++  SWARM_ACT,
++  SWARM_BOSS_ROTATION,
+   SWARM_DEBUT_DISTANCE,
+   SWARM_ROSTER,
+   SWARM_RULESET,
+@@ -281,3 +283,27 @@ test('the stream cannot field the newcomer while its debut is owed, and a hold c
+     resetSwarmPressureState();
+   }
+ });
++
++
++test('Splitter roster admission leaves authored acts and champion recipes valid through their full cycle', () => {
++  const splitter = SWARM_ROSTER.filter(entry => entry.enemyId === 'brood_splitter');
++  assert.equal(splitter.length, 1, 'exactly one ordinary roster admission');
++  assert.equal(splitter[0].fromWave, 17);
++  for (const owner of [...Object.values(SWARM_ACT), ...SWARM_BOSS_ROTATION]) {
++    for (const pkg of owner.packages || []) {
++      assert.ok(Number.isInteger(pkg.count) && pkg.count > 0,
++        `authored ${owner.id} package ${pkg.enemyId} has a finite positive body count`);
++      assert.notEqual(pkg.enemyId, 'brood_splitter', 'the roster admission does not rewrite authored recipes');
++    }
++  }
++  // All existing authored waves, every champion in the rotation, and the unbounded tail.
++  // Wave 25 formerly received an accidental roster-shaped row with no package count.
++  for (const seed of [9, 47, 4242]) for (let wave = 1; wave <= 100; wave++) {
++    const plan = swarmPlan(wave, seed);
++    assert.ok(!plan.error, `seed ${seed}, wave ${wave}: ${JSON.stringify(plan.issues)}`);
++    assert.ok(plan.packages.every(pkg => Number.isInteger(pkg.count) && pkg.count > 0));
++    const debuts = plan.packages.filter(pkg => pkg.debut === true);
++    if (wave === 17) assert.deepEqual(debuts.map(pkg => pkg.enemyId), ['brood_splitter']);
++    if (!swarmNewcomerFor(wave) || swarmNewcomerFor(wave).fromWave !== wave) assert.equal(debuts.length, 0);
++  }
++});

@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {resolveForgePublishHooks} from '../tools/blender/forge/publishHooks.mjs';
+const none=()=>({asset:{extras:{broodBody:{schema:'spaceface.broodBody.v1',hooks:[]}}},nodes:[{name:'SOCKET_BROOD_SIGNAL',extras:{socket:true}},{name:'SOCKET_BROOD_TETHER_DORSAL',extras:{socket:true}}],materials:[{name:'Material_Hull_BroodCarapace',emissiveFactor:[0,0,0]}]});
+test('explicit zero-emissive Brood allows no shader hooks while retaining socket anchors',()=>assert.deepEqual(resolveForgePublishHooks({hooks:[]},none()),[]));
+test('omitted hooks still retain ordinary ship and place defaults',()=>{assert.deepEqual(resolveForgePublishHooks({},{}),['HOOK_DRIVE_CORE']);assert.deepEqual(resolveForgePublishHooks({layout:'place'},{}),[])});
+test('arbitrary empty hook lists and required-hook omissions remain rejected',()=>{assert.throws(()=>resolveForgePublishHooks({hooks:[]},{}),/explicit zero-emissive/);assert.throws(()=>resolveForgePublishHooks({hooks:['HOOK_DRIVE_CORE']},none()),/real render mesh/)});
+test('contradictory actual hook or emissive material cannot claim explicit none',()=>{let s=none();s.nodes.push({name:'LOD0_HOOK_BROOD_SIGNAL_Signal',mesh:0});assert.throws(()=>resolveForgePublishHooks({hooks:[]},s),/actual hook geometry/);s=none();s.materials[0].emissiveFactor=[1,0,0];assert.throws(()=>resolveForgePublishHooks({hooks:[]},s),/actual hook geometry/)});
+test('declared required channel cores remain mandatory even beside an empty Brood declaration',()=>{const s=none();s.asset.extras.ceresWorkfleet={propulsion:{channels:[{id:'main',coreHook:'HOOK_DRIVE_CORE',coreMeshes:['LOD0_HOOK_DRIVE_CORE_glow_drive','LOD1_HOOK_DRIVE_CORE_glow_drive','LOD2_HOOK_DRIVE_CORE_glow_drive']}]}};assert.throws(()=>resolveForgePublishHooks({hooks:[]},s),/omit an authored LOD core/)});

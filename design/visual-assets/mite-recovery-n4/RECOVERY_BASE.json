@@ -1,0 +1,194 @@
+{
+  "status": "NEW reconstruction candidate; not recovered Surface3 bytes",
+  "baseManifest": "cb16aae8a116af9448489f7f157bb3ddf110689118be75106b847b9817c588e8",
+  "baseRoot": "/workspace/scratch/d2415e46e35b/recovery-mite-20261004/recovered/r28-checkpoint/Brood-Mite-R28-Unfinished-Candidate",
+  "currentMaster": "9d304213135d5f2633bf4728b595b79d631aaf96",
+  "privateForgeOptIn": "R28 preservation branch only; current-master forge_export.py byte-identical",
+  "files": [
+    {
+      "path": "contracts/baseline-mite-contract.json",
+      "sha256": "251e3a1864891277835c736a18b1aeee38eb56c61a4820109ede375f63f3a485",
+      "bytes": 4581
+    },
+    {
+      "path": "contracts/collider-proposal-check.json",
+      "sha256": "9331b2a97df20ff9a0aab51bdecb45341cefe1c2b5c77c5857f3e9f3236b6613",
+      "bytes": 252
+    },
+    {
+      "path": "contracts/collision-piece-provenance.json",
+      "sha256": "a1d8455251676e420859788e7040a7bd2561ea00187c1ee80c8d4a20ac1bf125",
+      "bytes": 2221
+    },
+    {
+      "path": "contracts/lamellar-collision-canonical.json",
+      "sha256": "f8dcd7fddf5e9e9170cfbda41a9bb916b8913535c6227c9ae1a10c07869e5fa2",
+      "bytes": 12536
+    },
+    {
+      "path": "contracts/lamellar-collision-overlay.png",
+      "sha256": "f8e2626bd035c4d62c9131a17ab7751d2ca63516d8f96a5e964d6413c210384b",
+      "bytes": 214390
+    },
+    {
+      "path": "contracts/lamellar-collision-proposal.json",
+      "sha256": "0c66981559ce4858b8f469333677a3a44f34282741789cfb926cc68491a095bd",
+      "bytes": 16853
+    },
+    {
+      "path": "contracts/lamellar-mite-contract.json",
+      "sha256": "744db1bc251b597643c911f5576809508715c6f3e9fd5a222362ef9d66da5e28",
+      "bytes": 19566
+    },
+    {
+      "path": "contracts/lod-proxy-fit.json",
+      "sha256": "10a1c760819725ae9fe417bac198b1ed04347d1677adb584a0fe9e63f34b445a",
+      "bytes": 3795
+    },
+    {
+      "path": "package.json",
+      "sha256": "89c47db7851f89caec72da4f215ebc21cf1e294aeef3b45d2583562d846ab035",
+      "bytes": 33
+    },
+    {
+      "path": "scripts/lib/broodSourceSeal.mjs",
+      "sha256": "c48809639604bea1276cc3b0ef79c9b742b3d810d99b50f1dc7097108099f226",
+      "bytes": 5246
+    },
+    {
+      "path": "scripts/lib/broodSurfaceMetrics.mjs",
+      "sha256": "27419b1a79641b113f170e80d8a83cee7809817376480ee360a8359d81d88d60",
+      "bytes": 12328
+    },
+    {
+      "path": "src/core/convexHullQuery.js",
+      "sha256": "35c916f00eb1e00d9b0b7c69fa3bb491601b48b1dcaee8c5781af4b46ffbcc49",
+      "bytes": 4060
+    },
+    {
+      "path": "src/core/convexProxyGeometry.js",
+      "sha256": "3bc0598253bdf3ee210ef99fefc294370b6d3923f690a7c81a73bfaed8c00c64",
+      "bytes": 6127
+    },
+    {
+      "path": "src/core/planarProxyGeometry.js",
+      "sha256": "accf5e9bf424bd79dc250dfd6f03a0418b29f1bddcce993165781e8f151b3af2",
+      "bytes": 1563
+    },
+    {
+      "path": "tests/brood-surface-convex.test.mjs",
+      "sha256": "e23267a81d4c55a4078c5b08c880e8e0f0aac729fff38f8617beecc149da7af1",
+      "bytes": 3207
+    },
+    {
+      "path": "tests/build-authored-lods.py",
+      "sha256": "d94005dc50547fca1e57005492fe8dc38a3df2bdee3b7821fcce718d91b36593",
+      "bytes": 1843
+    },
+    {
+      "path": "tests/check-collider-proposal.mjs",
+      "sha256": "e50a2c954475857e3c1562759be93c9885aa772ac93e159f18390a6e9c7411cb",
+      "bytes": 1362
+    },
+    {
+      "path": "tests/forge-empty-brood-hooks.test.mjs",
+      "sha256": "93715d745ff8455ef3eb171f3a89603e827100ec0150fe31977d4ba6936ef82e",
+      "bytes": 1857
+    },
+    {
+      "path": "tests/forge-organic-adapters.py",
+      "sha256": "3915a8d2c9e30edbc7eda84c235b0f76af22fb6da6897db3b5ca0ab0d88a1333",
+      "bytes": 4932
+    },
+    {
+      "path": "tests/legacy-forge-publish-hooks.test.mjs",
+      "sha256": "931d37a0db4464c775e5e807ca1fc86ef3aec167fd462f393b9614f6a9cbbc0b",
+      "bytes": 2344
+    },
+    {
+      "path": "tests/publish-hooks-results.txt",
+      "sha256": "a34fac4ffce05c35bf419cdca0c9161e9859b080d04c60406be72854df5b50a7",
+      "bytes": 850
+    },
+    {
+      "path": "tools/blender/forge/animations/ANI_BROOD_MITE.py",
+      "sha256": "79e29268e7d1f3cec9d6980fc3227e4af913e96161ac8acffaf263ecfb53a97f",
+      "bytes": 675
+    },
+    {
+      "path": "tools/blender/forge/animations/motion_bank.py",
+      "sha256": "b0f0c16db14facc11bb7dcc6e4441693a756caa80300ed75fc3f6f463277bd45",
+      "bytes": 13295
+    },
+    {
+      "path": "tools/blender/forge/bake_brood_growth_trim.py",
+      "sha256": "ec54adbe2b07bad54873c7ee2864ff2f1e41eeb232714ee56d9646755370d9cd",
+      "bytes": 6341
+    },
+    {
+      "path": "tools/blender/forge/brood_anatomy_trim.py",
+      "sha256": "4cea29a1ae28ab736370d46b5fa930cf2d71136446d1646d71d9afa7df362ee6",
+      "bytes": 2990
+    },
+    {
+      "path": "tools/blender/forge/brood_kit.py",
+      "sha256": "41a720de36d3fe25d89edce3c069563e76a010d7c64683351d6e3254557180f9",
+      "bytes": 33051
+    },
+    {
+      "path": "tools/blender/forge/brood_lamellar_mite.py",
+      "sha256": "e6ad7194a51f1e27337177697b19d45c12f9742819a29592d06199f196884108",
+      "bytes": 26197
+    },
+    {
+      "path": "tools/blender/forge/forge.py",
+      "sha256": "4e9c7adff911cb8ef746b7259da727751069000f2d3f6e65b420dd689e08226c",
+      "bytes": 60021
+    },
+    {
+      "path": "tools/blender/forge/forge_export.py",
+      "sha256": "f9964988d97fef59ce764031091993178af96989be88c8e237f63d8da6c6b946",
+      "bytes": 23607
+    },
+    {
+      "path": "tools/blender/forge/motion.py",
+      "sha256": "49ea1d5b90f6da57a427865ef6ebef74604609fc426001ca4be0e6305f8951ff",
+      "bytes": 3973
+    },
+    {
+      "path": "tools/blender/forge/publishHooks.mjs",
+      "sha256": "8a2220ce0816e076aff78163a43ff0e58d41abe6f13b28736ca4d1f170879888",
+      "bytes": 2643
+    },
+    {
+      "path": "tools/blender/forge/ships/brood_mite_lamellar.py",
+      "sha256": "162d6c2120280530bdae07eb7c0324f4b4001535b5c3d40a0b441047d1f62fd3",
+      "bytes": 593
+    },
+    {
+      "path": "tools/blender/forge/textures/brood-shared-anatomy-normal.png",
+      "sha256": "3dc9b3444db5b489af882a3eec449f1adfee7b82a5cc587726d15ff29c2acc9c",
+      "bytes": 42586
+    },
+    {
+      "path": "tools/blender/forge/textures/brood-shared-anatomy-roughness.png",
+      "sha256": "27d668aad30756644951d38be841561dd469c6392dd5c83bdbdd0fb768e9a26b",
+      "bytes": 18732
+    },
+    {
+      "path": "tools/derive_lamellar_collision.py",
+      "sha256": "2072671b7028d6095b433d38f53153272ebe04ad2b2a634ca5040a13fa0c3a48",
+      "bytes": 8953
+    },
+    {
+      "path": "tools/gltf_geometry.py",
+      "sha256": "cfaa1b004f05b58c86591acf62cb947d00508849fc6d9a3cc04b8fff35dc4805",
+      "bytes": 1949
+    },
+    {
+      "path": "tools/measure_lod_proxy_fit.py",
+      "sha256": "d4a39248b6d199d1b79fb9c6df581ae8f2623d74dde1b9f150457cdb66c29555",
+      "bytes": 2016
+    }
+  ]
+}

@@ -200,6 +200,7 @@ export function createCombatKernel(ctx, options = {}) {
     repairCombatSubsystem: (request) => repair(request && request.entityId, request && request.subsystemId, request && request.amount, request && request.reason),
     getCombatCapabilities: (entityId) => capabilities(entityId),
     reconcileCombatPhysicsAttachments: () => reconcilePhysicsAttachments(),
+    describeCombatPhysicsAttachment: (attachmentId) => attachments.physicsContract(attachmentId),
   });
 
   const kernel = Object.freeze({

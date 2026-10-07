@@ -1,0 +1,31 @@
+prune: Removed types... Accessor (125)
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+quantize: Skipping TEXCOORD_0; out of [0,1] range.
+prune: Removed types... Accessor (25)
+[place-release] FAIL: Error: place release requires scene and canonical-root spacefaceAsset contracts; found scenes=1 nodes=0
+    at stampReleaseContractMetadata (file:///workspace/scratch/d2415e46e35b/spaceface-recovery-pr221-git/.worktrees/spaceface-integration/scripts/build-place-release-assets.mjs:733:11)
+    at buildSelectedPlaceReleaseAssets (file:///workspace/scratch/d2415e46e35b/spaceface-recovery-pr221-git/.worktrees/spaceface-integration/scripts/build-place-release-assets.mjs:236:7)
+    at async file:///workspace/scratch/d2415e46e35b/spaceface-recovery-pr221-git/.worktrees/spaceface-integration/scripts/build-place-release-assets.mjs:71:7

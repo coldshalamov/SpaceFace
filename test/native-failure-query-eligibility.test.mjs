@@ -1,0 +1,24 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {physics} from '../src/core/physics.js';
+import {markPhysicsBodyNativeFailure,clearPhysicsBodyNativeFailure} from '../src/core/physicsAuthority.js';
+import {sweepCollisionProxyInto,sweepCompactHullInto} from '../src/core/collisionProxySweep.js';
+import {segmentHitsProxy,witnessLineOfSight} from '../src/combat/lineOfSight.js';
+import {resolveCollisionProxyManifest} from '../src/data/collisionProxyManifests.js';
+const compound={schemaVersion:1,id:'failure-query:compound',referenceRadius:'radius',primitives:[{id:'solid',kind:'obb',x:0,z:0,hx:.5,hz:.5}]};
+const compact={...compound,id:'failure-query:compact',compactHull:[{x:-.5,z:-.5},{x:.5,z:-.5},{x:.5,z:.5},{x:-.5,z:.5}]};
+for(const [label,manifest] of [['circle',null],['compound',compound],['compact',compact]])test(`${label} native failure refuses actual projectile and LOS hits without changing authored geometry`,()=>{
+ const e={id:1,type:'wreck',alive:true,occupantGeneration:1,collides:true,collisionMask:-1,pos:{x:0,z:0},rot:0,radius:4,data:{},physicsBody:{dynamic:false,mass:10,radius:4,shape:'ball',revision:1,...(manifest?{collisionProxyManifest:manifest}:{})}};
+ const owner={},a={x:-8,z:0},b={x:8,z:0},state={entities:new Map([[1,e]])};
+ const projectile={id:2,type:'projectile',alive:true,radius:.1,collisionMask:-1};
+ const reader={_segmentHitScratch:{},_bestSegmentHitScratch:{}};
+ const hit=()=>physics._bestProjectileTarget.call(reader,projectile,a,b,[e],null);
+ assert.equal(hit(),e);assert.equal(segmentHitsProxy(e,a,b),true);
+ const authored=resolveCollisionProxyManifest(e);
+ const failure=markPhysicsBodyNativeFailure(e,owner);
+ assert.equal(hit(),null);assert.equal(segmentHitsProxy(e,a,b),false);assert.equal(witnessLineOfSight(state,{id:3,pos:a},b),true);
+ const out={hit:true};assert.equal(sweepCompactHullInto(out,e,manifest,a,b),false);assert.equal(out.hit,false);
+ assert.equal(sweepCollisionProxyInto(out,e,manifest,a,b),false);assert.equal(out.hit,false);
+ assert.equal(resolveCollisionProxyManifest(e),authored,'native constructor must still read the real desired manifest');
+ clearPhysicsBodyNativeFailure(e,owner,failure);assert.equal(hit(),e);assert.equal(segmentHitsProxy(e,a,b),true);assert.equal(witnessLineOfSight(state,{id:3,pos:a},b),false);
+});

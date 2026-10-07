@@ -1,0 +1,251 @@
+{
+ "schema": "spaceface.rigidMotionBank.v1",
+ "rigId": "brood_mite",
+ "sourceAssetId": "SF_BROOD_MITE_V01",
+ "sourceGlbSha256": "f2703799b6beef7b84471185293e95d058d6603a8236c9a17244ff5870652107",
+ "fps": 60,
+ "bindings": [
+  {
+   "id": "mite_membrane_port",
+   "node": "MOTION_MITE_MEMBRANE_PORT",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -3,
+     0.18000000715255737,
+     -2.450000047683716
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "mite_membrane_starboard",
+   "node": "MOTION_MITE_MEMBRANE_STARBOARD",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -3,
+     0.18000000715255737,
+     2.450000047683716
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  }
+ ],
+ "clips": [
+  {
+   "name": "brood_approach",
+   "durationS": 0.016666666666666666,
+   "loop": false,
+   "endMode": "hold",
+   "channels": [
+    {
+     "group": "mite_membrane_port",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    },
+    {
+     "group": "mite_membrane_starboard",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    }
+   ]
+  },
+  {
+   "name": "brood_windup",
+   "durationS": 0.016666666666666666,
+   "loop": false,
+   "endMode": "hold",
+   "channels": [
+    {
+     "group": "mite_membrane_port",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.14943814277648926,
+      0.0,
+      0.0,
+      0.9887710809707642,
+      0.14943814277648926,
+      0.0,
+      0.0,
+      0.9887710809707642
+     ],
+     "interpolation": "slerp"
+    },
+    {
+     "group": "mite_membrane_starboard",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      -0.14943814277648926,
+      0.0,
+      0.0,
+      0.9887710809707642,
+      -0.14943814277648926,
+      0.0,
+      0.0,
+      0.9887710809707642
+     ],
+     "interpolation": "slerp"
+    }
+   ]
+  },
+  {
+   "name": "brood_attack",
+   "durationS": 0.016666666666666666,
+   "loop": false,
+   "endMode": "hold",
+   "channels": [
+    {
+     "group": "mite_membrane_port",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.014999479055404663,
+      0.0,
+      0.0,
+      0.9998875856399536,
+      0.014999479055404663,
+      0.0,
+      0.0,
+      0.9998875856399536
+     ],
+     "interpolation": "slerp"
+    },
+    {
+     "group": "mite_membrane_starboard",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      -0.014999479055404663,
+      0.0,
+      0.0,
+      0.9998875856399536,
+      -0.014999479055404663,
+      0.0,
+      0.0,
+      0.9998875856399536
+     ],
+     "interpolation": "slerp"
+    }
+   ]
+  },
+  {
+   "name": "brood_recovery",
+   "durationS": 0.016666666666666666,
+   "loop": false,
+   "endMode": "hold",
+   "channels": [
+    {
+     "group": "mite_membrane_port",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.08987855911254883,
+      0.0,
+      0.0,
+      0.995952844619751,
+      0.08987855911254883,
+      0.0,
+      0.0,
+      0.995952844619751
+     ],
+     "interpolation": "slerp"
+    },
+    {
+     "group": "mite_membrane_starboard",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      -0.08987855911254883,
+      0.0,
+      0.0,
+      0.995952844619751,
+      -0.08987855911254883,
+      0.0,
+      0.0,
+      0.995952844619751
+     ],
+     "interpolation": "slerp"
+    }
+   ]
+  }
+ ]
+}

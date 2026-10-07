@@ -1,3 +1,6 @@
+import { validateCeresWorkfleetOperation, ceresWorkfleetContactRetained, CERES_WORKFLEET_REQUEST_STREAM, CERES_WORKFLEET_JOB_ID } from './ceresWorkfleet.js';
+import { CERES_WORKFLEET_CONTRACT as CERES_FLEET } from '../data/ceresWorkfleet.js';
+const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // Asteroid sites — durable machine-design surface grown inside drilled asteroids.
 // Design: design/ASTEROID_SITES_BRIEF.md. Owns ONLY state.sites (plus the documented
 // tile.structure stamp on live drill fields and site markers under asteroid ent.data).
@@ -48,7 +51,7 @@ import { presentationOwnerAdmissionForWorldRecord } from '../core/presentationAd
 import { WORLD_SITE_MANIFESTS, worldSiteManifestById } from '../data/worldSiteManifests.js';
 import {
   createWorldSiteRecord, normalizeWorldSiteRecord, applyWorldSiteOperation,
-  applyWorldSiteFailure, operationForWorldSiteComponent, projectWorldSite,
+  applyWorldSiteFailure, operationForWorldSiteComponent, projectWorldSite, retainCeresWorkfleetPayload,
 } from './worldSiteKernel.js';
 import {
   syncWorldSiteMaterialization, removeWorldSiteMaterialization, captureWorldSitePayloadState,
@@ -433,6 +436,7 @@ export const asteroidSites = {
     this._worldRestoreActive = false;
     this._worldAdmissionBySite = new Map();
     this._worldPayloadCaptureTicks = new Map();
+    this._worldSectionGenerations = new Map();
 
     // Subscriptions are idempotent per bus: a second init(ctx) against the SAME bus (a re-boot
     // path re-entering init) must not double every listener — doubled drill:break handlers would
@@ -533,12 +537,14 @@ export const asteroidSites = {
       this._worldSyncWanted = true;
       this._worldAdmissionBySite.clear();
       this._worldPayloadCaptureTicks.clear();
+      this._worldSectionGenerations.clear();
       this._surveyByAsteroid.clear(); // volatile assay knowledge never crosses a load
     });
     this.bus.on('save:loaded', () => {
       this._worldRestoreActive = false;
       this._worldAdmissionBySite.clear();
       this._worldPayloadCaptureTicks.clear();
+      this._worldSectionGenerations.clear();
       this._rt.clear();
       this._repairSweepWanted = true;
       this._worldSyncWanted = true;
@@ -560,6 +566,10 @@ export const asteroidSites = {
         // emit listener drains the same steps synchronously.
         .push(this._enterCookProvider);
     }
+    this.bus.on('entity:killed', (payload = {}) => this._onWorldSiteSectionKilled(payload));
+    this.bus.on('entity:destroyed', (payload = {}) => {
+      if (payload.entity?.hull <= 0) this._onWorldSiteSectionKilled(payload);
+    });
   },
 
   newGame() {
@@ -572,6 +582,7 @@ export const asteroidSites = {
     this._worldRestoreActive = false;
     this._worldAdmissionBySite = new Map();
     this._worldPayloadCaptureTicks = new Map();
+    this._worldSectionGenerations = new Map();
   },
 
   serialize() {
@@ -647,6 +658,7 @@ export const asteroidSites = {
     this._worldSyncWanted = true;
     this._worldAdmissionBySite = new Map();
     this._worldPayloadCaptureTicks = new Map();
+    this._worldSectionGenerations = new Map();
   },
 
   _normalize(sites) {
@@ -732,6 +744,13 @@ export const asteroidSites = {
         state: this.state, helpers: this.ctx && this.ctx.helpers, manifest, record,
       });
       this._worldAdmissionBySite.set(siteId, result.admissionState);
+      for (const payload of manifest.payloads) {
+        if (payload.structural) this._worldAdmissionBySite.set(payload.worldObjectId,
+          presentationOwnerAdmissionForWorldRecord(payload.worldObjectId, this.state));
+      }
+      for (const entity of result.entities) {
+        if (entity.data?.worldSiteStructural) this._worldSectionGenerations.set(entity.data.worldRecordId, entity);
+      }
       yield;
     }
   },
@@ -757,9 +776,19 @@ export const asteroidSites = {
       const record = sites.worldById[siteId];
       if (!record || record.sectorId !== currentSectorId) continue;
       const admission = presentationOwnerAdmissionForWorldRecord(`${record.worldObjectId}/root`, this.state);
-      if (this._worldAdmissionBySite.get(siteId) === admission) continue;
-      this._syncWorldSites(currentSectorId);
-      return;
+      if (this._worldAdmissionBySite.get(siteId) !== admission) {
+        this._syncWorldSites(currentSectorId);
+        return;
+      }
+      const manifest = worldSiteManifestById(record.manifestId);
+      for (const payload of manifest?.payloads || []) {
+        if (!payload.structural) continue;
+        const ownAdmission = presentationOwnerAdmissionForWorldRecord(payload.worldObjectId, this.state);
+        if (this._worldAdmissionBySite.get(payload.worldObjectId) !== ownAdmission) {
+          this._syncWorldSites(currentSectorId);
+          return;
+        }
+      }
     }
   },
 
@@ -875,7 +904,8 @@ export const asteroidSites = {
     };
   },
 
-  applyWorldSiteBeamOperation({ siteId, componentId, verb, amount, requestStreamId, requestSequence, tick } = {}) {
+  applyWorldSiteBeamOperation({ siteId, componentId, verb, amount, requestStreamId, requestSequence, tick, ceresAuthority } = {}) {
+    if(requestStreamId===CERES_WORKFLEET_REQUEST_STREAM&&ceresAuthority!==CERES_NPC_AUTHORITY)return {ok:false,reason:'npc-authority-required',moved:0};
     this._captureWorldSitePayloads();
     const record = this.getWorldSite(siteId);
     const manifest = record && worldSiteManifestById(record.manifestId);
@@ -911,6 +941,62 @@ export const asteroidSites = {
     if (result.materializationChanged
       && this.state.world && this.state.world.currentSectorId === result.record.sectorId) this._syncWorldSites(result.record.sectorId);
     return { ...result, moved: result.receipt && result.receipt.amountApplied || 0, operationId: operation.id };
+  },
+
+  applyCeresWorkfleetOperation(request={}) {
+    if(!validateCeresWorkfleetOperation(this.state,request)||request.requestSequence!==this.state.tick
+      ||!(request.amount>0&&request.amount<=1.8))return {ok:false,reason:'physical-cutter-not-ready'};
+    const operation=worldSiteManifestById(CERES_FLEET.siteId).operations.find(o=>o.id===request.operationId);
+    return this.applyWorldSiteBeamOperation({siteId:CERES_FLEET.siteId,componentId:operation.componentId,verb:operation.verb,
+      amount:request.amount,requestStreamId:CERES_WORKFLEET_REQUEST_STREAM,requestSequence:request.requestSequence,
+      ceresAuthority:CERES_NPC_AUTHORITY});
+  },
+
+  retainCeresWorkfleetSection(request={}) {
+    const state=this.state,job=state.npcJobs?.ceresWorkfleet,section=state.entities.get(request.sectionId),cradle=state.entities.get(request.cradleId);
+    if(!job||job.id!==CERES_WORKFLEET_JOB_ID||request.jobId!==job.id||job.phase!=='pads'
+      ||cradle?.data?.worldRecordId!==CERES_FLEET.identities.cradle
+      ||!ceresWorkfleetContactRetained(cradle,section,state,'cradle'))return {ok:false,reason:'receiver-not-physically-retained'};
+    const line=this._registry?.get('combat')?.kernel?.attachments?.get(job.receiverId);
+    const worker=state.entities.get(request.workerId);
+    if(line?.state!=='active'||line.ownerId!==cradle.id||line.targetId!==section.id
+      ||worker?.data?.worldRecordId!==CERES_FLEET.identities.worker
+      ||Math.hypot(worker.pos.x-cradle.pos.x,worker.pos.z-cradle.pos.z)<200)return {ok:false,reason:'receiver-coupling-invalid'};
+    this._captureWorldSitePayloads(CERES_FLEET.sectorId,{force:true});
+    const record=this.getWorldSite(CERES_FLEET.siteId),manifest=worldSiteManifestById(CERES_FLEET.siteId);
+    const result=retainCeresWorkfleetPayload(manifest,record,{receiverWorldRecordId:CERES_FLEET.identities.cradle,
+      payloadWorldObjectId:section.data.worldRecordId,tick:state.tick,motion:{pos:{x:section.pos.x,z:section.pos.z},
+        vel:{x:section.vel.x,z:section.vel.z},rot:section.rot,angVel:section.angVel}});
+    if(result.ok)this.state.sites.worldById[CERES_FLEET.siteId]=result.record;
+    return result;
+  },
+
+  releaseCeresWorkfleetRetention(jobId) {
+    const job=this.state.npcJobs?.ceresWorkfleet,record=this.getWorldSite(CERES_FLEET.siteId);
+    if(jobId!==CERES_WORKFLEET_JOB_ID||job?.id!==jobId||job.phase!=='player-retained'||!record?.payloads?.long_plate?.retained)return false;
+    const next={...record,payloads:{...record.payloads,long_plate:{...record.payloads.long_plate}}};
+    delete next.payloads.long_plate.retained;next.revision++;this.state.sites.worldById[CERES_FLEET.siteId]=next;return true;
+  },
+
+  _onWorldSiteSectionKilled({ id, entity: retiredEntity = null } = {}) {
+    if (this._worldRestoreActive) return;
+    const entity = retiredEntity || this.state.entities?.get(id);
+    const data = entity?.data;
+    if (!data?.worldSiteStructural || this._worldSectionGenerations.get(data.worldRecordId) !== entity) return;
+    if (entity.alive !== false && !(entity.hull <= 0)) return;
+    const record = this.getWorldSite(data.worldSiteId);
+    const manifest = record && worldSiteManifestById(record.manifestId);
+    const payload = manifest?.payloads.find((entry) => entry.structural
+      && entry.id === data.worldSitePayloadId && entry.worldObjectId === data.worldRecordId);
+    const durable = payload && record.payloads[payload.id];
+    if (!durable || durable.destroyed) return;
+    // Commit before entity cleanup removes the only physical witness. The cadence capture is
+    // insufficient here: combat may kill and remove a body between its 15-tick snapshots.
+    this.state.sites.worldById[record.manifestId] = {
+      ...record, revision: record.revision + 1, updatedTick: Math.max(record.updatedTick, this.state.tick || 0),
+      payloads: { ...record.payloads, [payload.id]: { ...durable, destroyed: true, remainingHull: 0 } },
+    };
+    this._worldSyncWanted = true;
   },
 
   _onWorldSiteImpact(payload = {}) {

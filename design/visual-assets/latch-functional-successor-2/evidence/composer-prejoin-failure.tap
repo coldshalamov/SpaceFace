@@ -1,0 +1,34 @@
+✔ canonical compiled Latch package presents only exact consumed native actuation and withdraws on scene loss (200.501054ms)
+[partsLibrary] authored place admission failed; no substitute visual published Error: Latch canonical asset lacks its complete source rig/nozzle groups: {"paddles":[true,true,true],"thrusters":[{"id":"MAIN_PORT","socket":true,"meshes":0},{"id":"MAIN_STBD","socket":true,"meshes":0},{"id":"REVERSE_PORT","socket":true,"meshes":0},{"id":"REVERSE_STBD","socket":true,"meshes":0},{"id":"PORT_FORE","socket":true,"meshes":0},{"id":"PORT_AFT","socket":true,"meshes":0},{"id":"STBD_FORE","socket":true,"meshes":0},{"id":"STBD_AFT","socket":true,"meshes":0}]}
+    at createLatchNineVisualDriver (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/latchNineVisuals.js:17:82)
+    at attachAuthoredMotionDriver (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/authoredMotion.js:105:86)
+    at buildPlacePropRoot (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:4530:3)
+    at upgradePlaceBoundary (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:3984:16)
+✖ real place publication records the compiled Latch source independently of Ceres metadata (185.314181ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 742.687726
+
+✖ failing tests:
+
+test at test/latch-nine-package-presentation.test.mjs:27:2
+✖ real place publication records the compiled Latch source independently of Ceres metadata (185.314181ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/latch-nine-package-presentation.test.mjs:31:13)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

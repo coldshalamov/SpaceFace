@@ -1,0 +1,74 @@
+[
+  {
+    "key": "brood-splitter",
+    "assetId": "sf.render.brood-splitter",
+    "runtimeAssetId": "SF_BROOD_SPLITTER_V01",
+    "kind": "ship",
+    "slot": "hull",
+    "releaseAssetId": "wholeship_brood_splitter_v01",
+    "sourceUrl": "assets/ships/release/parts/wholeships/brood_splitter_v01.glb",
+    "releaseSha256": "abdd19057857dac783b3cb7860d4e8dbf9ddcca5b276bbfe7e090937cc8cca6a",
+    "releaseBytes": 1411764,
+    "sceneRoot": true,
+    "dynamicNameIncludes": [
+      "PART_SPLITTER_",
+      "MOTION_SPLITTER_"
+    ],
+    "outputDir": "assets/ships/release/render-packages/brood-splitter",
+    "metadataUrl": "assets/ships/release/render-packages/brood-splitter/render-package.json"
+  },
+  {
+    "key": "brood-splitter-axial",
+    "assetId": "sf.render.brood-splitter-axial",
+    "runtimeAssetId": "SF_BROOD_SPLITTER_AXIAL_V01",
+    "kind": "ship",
+    "slot": "hull",
+    "releaseAssetId": "wholeship_brood_splitter_axial_v01",
+    "sourceUrl": "assets/ships/release/parts/wholeships/brood_splitter_axial_v01.glb",
+    "releaseSha256": "70b2b62318af2d3a44204d2957d65305c4ee475219c514fdf358139bc1ab19f3",
+    "releaseBytes": 787896,
+    "sceneRoot": true,
+    "dynamicNameIncludes": [
+      "PART_SPLITTER_",
+      "MOTION_SPLITTER_"
+    ],
+    "outputDir": "assets/ships/release/render-packages/brood-splitter-axial",
+    "metadataUrl": "assets/ships/release/render-packages/brood-splitter-axial/render-package.json"
+  },
+  {
+    "key": "brood-splitter-port",
+    "assetId": "sf.render.brood-splitter-port",
+    "runtimeAssetId": "SF_BROOD_SPLITTER_PORT_V01",
+    "kind": "ship",
+    "slot": "hull",
+    "releaseAssetId": "wholeship_brood_splitter_port_v01",
+    "sourceUrl": "assets/ships/release/parts/wholeships/brood_splitter_port_v01.glb",
+    "releaseSha256": "27c5292bcccf3b37342d090722893cd7ef244e6c6c18ec7d06adc8b2399d1c27",
+    "releaseBytes": 378648,
+    "sceneRoot": true,
+    "dynamicNameIncludes": [
+      "PART_SPLITTER_",
+      "MOTION_SPLITTER_"
+    ],
+    "outputDir": "assets/ships/release/render-packages/brood-splitter-port",
+    "metadataUrl": "assets/ships/release/render-packages/brood-splitter-port/render-package.json"
+  },
+  {
+    "key": "brood-splitter-starboard",
+    "assetId": "sf.render.brood-splitter-starboard",
+    "runtimeAssetId": "SF_BROOD_SPLITTER_STARBOARD_V01",
+    "kind": "ship",
+    "slot": "hull",
+    "releaseAssetId": "wholeship_brood_splitter_starboard_v01",
+    "sourceUrl": "assets/ships/release/parts/wholeships/brood_splitter_starboard_v01.glb",
+    "releaseSha256": "e67bb6c771845f058bb2e0a401bcaaed69a1f13e3ac6725391a59844047af533",
+    "releaseBytes": 381404,
+    "sceneRoot": true,
+    "dynamicNameIncludes": [
+      "PART_SPLITTER_",
+      "MOTION_SPLITTER_"
+    ],
+    "outputDir": "assets/ships/release/render-packages/brood-splitter-starboard",
+    "metadataUrl": "assets/ships/release/render-packages/brood-splitter-starboard/render-package.json"
+  }
+]

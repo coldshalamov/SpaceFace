@@ -1,0 +1,22 @@
+{
+  "sourceSha256": "f2703799b6beef7b84471185293e95d058d6603a8236c9a17244ff5870652107",
+  "isolatedAsset": true,
+  "actualPopulation": false,
+  "actualGameLook": false,
+  "uniformScale": 0.3521721885745643,
+  "equivalentCameraDistanceWU": 144,
+  "verticalFovDegrees": 50,
+  "viewport": [
+    1600,
+    1000
+  ],
+  "pixelBounds": [
+    785.9912395477295,
+    490.1278614997864,
+    815.7650947570801,
+    509.55063104629517
+  ],
+  "projectedWidthPx": 29.773855209350586,
+  "projectedHeightPx": 19.42276954650879,
+  "lod": 2
+}

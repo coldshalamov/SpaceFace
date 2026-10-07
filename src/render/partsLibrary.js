@@ -1,3 +1,7 @@
+import { recordCeresWorkfleetAuthoredSource } from '../core/machineryPresentation.js';
+import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
+import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
+import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform, ceresShipbreakCatalogCollision } from './ceresShipbreakVisuals.js';
 // GLTFKit: authored ship-part composition over the synchronous procedural visual boundary.
 //
 // The renderer must receive an Object3D immediately. We therefore return a stable boundary root,
@@ -306,6 +310,7 @@ export function is19305PackagedWreckFile(file) {
   return PQ_193_05_WRECK_PACKAGED_FILES.includes(normalized);
 }
 const PLACE_FILES = Object.freeze([
+  ...Object.values(CERES_SHIPBREAK_FILES),
   'places/place_lane_beacon.glb',
   'places/place_nav_buoy.glb',
   'places/place_asteroid_seamed.glb',
@@ -1240,6 +1245,7 @@ const REQUIRED_WHOLE_SHIP_ASSET_REFS = Object.freeze(new Set([
  * kit cannot substitute while those bodies decode. Traffic-role maps still win over defId, so
  * Helios Lark/Span/Cradle stay on courier/hauler/miner. */
 export function requiresProductionWholeShipForEntity(entity) {
+  if (ceresWorkfleetRole(entity) === 'breaker') return true;
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
   const data = entity.data;
   // hullDefId is the far-actor table's canonical ship-def alias (leanIdentityData): a hull
@@ -2054,8 +2060,17 @@ function placeStampEnvelopeBounds(entity, bounds, boundary) {
   };
 }
 
+/** Source-origin fit shared by raw and packaged Ceres hull composition. */
+export function wholeShipHullPlacement(record) {
+  const scale = record.assetId === CERES_BREAKER_ASSET ? CERES_BREAKER_NORMALIZED_SCALE : null;
+  return { position: [0, 0, 0], targetLength: scale == null ? 1.72 : record.bounds.size[0] * scale, label: 'Hull' };
+}
+
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
+  if (ceresWorkfleetRole(entity) === 'breaker') {
+    return liveWholeShipSelection(CERES_BREAKER_FILE, CERES_BREAKER_ASSET, 'ceres_breaker');
+  }
   const data = entity && entity.data || {};
   const hostileId = String(data.lootTableId || '');
   const hostileFile = WHOLE_SHIP_FILE_BY_HOSTILE_ID[hostileId];
@@ -2329,15 +2344,17 @@ export function liveSolidGlbCatalog() {
     if (STATION_ARCHETYPE_FILES.includes(file)) continue;
     const placeId = file.replace(/^places\//, '').replace(/\.glb$/, '');
     const family = placeFamily(placeId);
+    const physicalPlace = ceresShipbreakTransform({ placeId });
     const dressingRadius = DRESSING_RADIUS_BY_PLACE[placeId] || 12;
     add({
       id: placeId,
       family,
       file,
-      fit: family === 'drone' ? 'packaged-radius' : 'place-scale',
-      placeScale: 1,
+      fit: physicalPlace ? 'authored-place-origin' : family === 'drone' ? 'packaged-radius' : 'place-scale',
+      placeScale: physicalPlace?.scale || 1,
       entityRadius: family === 'drone' ? 2.4 : dressingRadius,
       colliderKind: 'none',
+      ...(ceresShipbreakCatalogCollision(placeId) || {}),
       solid: true,
       nonSolidReason: null,
     });
@@ -2417,6 +2434,9 @@ export function liveSolidGlbCatalog() {
       opening: typeId === 'ast_gas_cloud' ? 'gas-soft' : null,
     });
   }
+
+  for (const row of ceresWorkfleetCatalogRows(file => RENDER_PACKAGE_PILOTS.some(
+    pilot => pilot.sourceUrl === `assets/ships/release/parts/${file}`))) add(row);
 
   return Object.freeze(rows);
 }
@@ -2869,6 +2889,10 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     const fn = active && active.userData && active.userData.updateAuthoredMotion;
     if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
   };
+  if (ceresWorkfleetRole(entity)) {
+    boundary.userData.updateCeresPhysicalState = (liveEntity, a11y) =>
+      active?.userData?.updateCeresPhysicalState?.(liveEntity, a11y);
+  }
   syncActiveSurface(boundary, active);
 
   let trigger = firstRenderable(fallbackRoot);
@@ -3775,7 +3799,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
 function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
   const geologySkin = hasExplicitAuthoredGeologyPresentation(entity);
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity
-      || (entity.type !== 'fx' && !geologySkin) || !placeFile) return fallbackRoot;
+      || (entity.type !== 'fx' && !geologySkin && !isCeresShipbreakSection(entity) && !isCeresWorkfleetPlace(entity)) || !placeFile) return fallbackRoot;
   const releaseMode = isReleaseAssetMode(options);
   setPresentationAdmission(entity, PRESENTATION_ADMISSION.pending);
 
@@ -3861,6 +3885,23 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     const fn = activeRoot?.userData?.updateAuthoredMotion;
     if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
   };
+  if (ceresWorkfleetRole(entity)) {
+    boundary.userData.updateCeresPhysicalState = (liveEntity, a11y) =>
+      activeRoot?.userData?.updateCeresPhysicalState?.(liveEntity, a11y);
+  }
+  if (ceresWorkfleetRole(entity) === 'cradle') {
+    boundary.userData.rebindCeresCradleLayout = (liveEntity, state) =>
+      activeRoot?.userData?.ceresCradleLayoutGuard?.rebind(liveEntity, state);
+    boundary.userData.validateCeresCradlePublication = () =>
+      activeRoot?.userData?.ceresCradleLayoutGuard?.publish();
+    boundary.userData.updateCeresCradleLayout = (liveEntity, state) => {
+      if (boundary.userData.ceresCradleAutomaticPublication === true
+        && boundary.userData.authoredAssetState === 'authored-prepared') {
+        publishPreparedAuthoredBoundary(boundary);
+      }
+      return activeRoot?.userData?.ceresCradleLayoutGuard?.refresh(liveEntity, state);
+    };
+  }
   boundary.userData.updateWorldSitePresentation = (liveEntity, simTime, a11y) => {
     const controller = activeRoot && activeRoot.userData && activeRoot.userData.worldSitePresentationController;
     if (controller && typeof controller.update === 'function') controller.update(liveEntity, simTime, a11y);
@@ -4049,7 +4090,9 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
 
   let authored = null;
   try {
-    authored = buildPlacePropRoot(entity, record, scene, boundary, { overlayRecord });
+    authored = buildPlacePropRoot(entity, record, scene, boundary, {
+      overlayRecord, layoutEntity: options.admissionEntity || entity,
+    });
   } catch (error) {
     return failAuthoredPlaceAdmission(
       boundary, fallbackRoot, entity, renderer, options, setActive,
@@ -4086,6 +4129,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   const disposePreparedPlace = () => {
     if (authoredDisposed) return false;
     try {
+      // Logical publication and motion ownership retire now; only the detached
+      // GPU traversal waits for the paced drain. A retained keeper callback must
+      // never revive a cancelled preparation between those two moments.
+      authored.root.userData?.ceresCradleLayoutGuard?.dispose();
       // Paced — the pipeline-fail/orphan abort legs used to tear the prepared
       // tree down atomically inside the commit continuation (the same class the
       // commit disposes already pace). Registry release stays synchronous.
@@ -4297,11 +4344,16 @@ async function commitAuthoredPlaceBoundary(
   boundary.userData.__socketCache = new Map();
 
   const publish = () => {
+    const layoutGuard = authored.root.userData.ceresCradleLayoutGuard;
+    if (layoutGuard && !layoutGuard.publish(admissionEntity, authoredRuntimeState() || undefined)) return false;
     // Same residual-link guard as the ship commit: the exact-target prepare ran while this
     // root was detached, so pay any leftover variant here rather than in a presented pass.
     if (typeof options.touchAuthoredExactTarget === 'function') {
       try { options.touchAuthoredExactTarget(authored.root); }
       catch (error) { console.warn('[partsLibrary] place publish touch failed', error); }
+    }
+    if (authored.root.userData.ceresWorkfleetAuthoredSource) {
+      recordCeresWorkfleetAuthoredSource(boundary, authored.root.userData.ceresWorkfleetAuthoredSource);
     }
     boundary.userData.authoredAssetState = 'authored';
     // Same commit-tail stamp as the ship/cargo publishes: keep the first
@@ -4315,7 +4367,12 @@ async function commitAuthoredPlaceBoundary(
     setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
     return true;
   };
-  if (options.deferBoundaryPublication === true) {
+  if (authored.root.userData.ceresCradleLayoutGuard) {
+    boundary.userData.authoredAssetState = 'authored-prepared';
+    boundary.userData.ceresCradleAutomaticPublication = options.deferBoundaryPublication !== true;
+    installPreparedBoundaryPublisher(boundary, publish);
+    if (options.deferBoundaryPublication !== true) publishPreparedAuthoredBoundary(boundary);
+  } else if (options.deferBoundaryPublication === true) {
     boundary.userData.authoredAssetState = 'authored-prepared';
     installPreparedBoundaryPublisher(boundary, publish);
   } else {
@@ -4503,6 +4560,8 @@ function stampPendingCommittedVisualBounds(boundary, stampedBounds, authoredCent
 // visualRadius footprint — applying the census ratio there blew the Wreck Cathedral out to ~30x
 // authored (D54).
 export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, censusScale }) {
+  const physical = ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data);
+  if (physical) return physical.scale;
   const radius = Number(targetRadius);
   const envelope = Math.max(1e-6, Number(authoredEnvelope) || 1e-6);
   const targetScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : null;
@@ -4641,7 +4700,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
   normalizePlacePropBindings(bindings);
-  centerAuthoredPlaceRoot(root, record, scale);
+  centerAuthoredPlaceRoot(root, record, scale, ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data));
   // Stations key on the placeFile stem recorded on the boundary (e.g. place_station_trade_hub),
   // not the GLB's internal assetId.
   installAuthoredApproachYaw(root, entity, ownerBoundary?.userData?.placeId || placeId);
@@ -4654,6 +4713,10 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   // Places carrying a sealed motion bank (e.g. the rigged cargo pod) animate off the same
   // entity-keyed driver surface as ships.
   attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
+  installCeresCradleLayoutGuard(root, options.layoutEntity || entity, ownerBoundary);
+  if (isCeresWorkfleetPlace(entity)) {
+    root.userData.ceresWorkfleetAuthoredSource = { assetId: record.assetId, file: record.url };
+  }
   root.userData.authoredSourceEnvelope = authoredEnvelope;
   root.userData.authoredWorldScale = scale;
   root.userData.placeTargetRadius = Number.isFinite(targetRadius) && targetRadius > 0 ? targetRadius : null;
@@ -4667,7 +4730,9 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
     authoredSlots: {
       place: options.overlayRecord ? [record.url, options.overlayRecord.url] : [record.url],
     },
-    hookBinding: hasExplicitAuthoredGeologyPresentation(entity)
+    hookBinding: isCeresWorkfleetPlace(entity) || isCeresShipbreakSection(entity)
+      ? 'SOCKET_* markers retain source-origin mechanical attachment coordinates; simulation owns collision and service'
+      : hasExplicitAuthoredGeologyPresentation(entity)
       ? 'SOCKET_* markers remain available; authored mesh is presentation over a simulation-owned asteroid'
       : 'SOCKET_* markers remain available for debug/probes; world-place props are non-sim scenery',
   };
@@ -4794,14 +4859,14 @@ function installAuthoredApproachYaw(root, entity, placeId) {
   root.userData.authoredApproachYawDeg = yawDeg;
 }
 
-function centerAuthoredPlaceRoot(root, record, scale) {
+function centerAuthoredPlaceRoot(root, record, scale, physical = null) {
   if (!root || !record || !record.bounds) return;
   const center = record.bounds.center || [0, 0, 0];
   const sx = Number(center[0]) || 0;
   const sy = Number(center[1]) || 0;
   const sz = Number(center[2]) || 0;
   const s = Number.isFinite(scale) && scale > 0 ? scale : 1;
-  root.position.set(-sx * s, 0, -sz * s);
+  root.position.set(physical ? 0 : -sx * s, physical?.y || 0, physical ? 0 : -sz * s);
   root.userData.visualCenterOffset = { x: -root.position.x, y: sy * s, z: -root.position.z };
   root.userData.visualBounds = {
     center: [
@@ -5575,6 +5640,8 @@ function warnUnresolvedStationPlaceId(entity, id, rescue) {
 
 function placeFileForEntity(entity) {
   const data = entity && entity.data || {};
+  if (isCeresWorkfleetPlace(entity)) return ceresWorkfleetPlaceFile(entity);
+  if (isCeresShipbreakSection(entity)) return CERES_SHIPBREAK_FILES[data.placeId];
   if (entity && entity.type === 'asteroid' && !hasExplicitAuthoredGeologyPresentation(entity)) return null;
   const claimSpecializationFile = CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID[String(data.claimSpecId || '')];
   if (claimSpecializationFile) return claimSpecializationFile;
@@ -7474,6 +7541,7 @@ function admitNextUpgradeJob(state) {
     // admission. The authored overlap branches invoke this only after publishing pipelineReady.
     job.options.onAuthoredPipelineStaged = releaseSerialSlotAfterPipelineStaging;
   } else if (job.options && Object.isExtensible(job.options)
+      && job.options.retainGpuOwnershipUntilSettled !== true
       && authoredRuntimeState() && authoredRuntimeState().mode === 'flight') {
     // Flight-mode glass-law overlap: the job still stages its GPU work detached (the exact
     // pipeline/GPU gate), but the serial slot frees only while a queued job's owner is on the
@@ -7556,7 +7624,20 @@ function admitNextUpgradeJob(state) {
       // Post-commit aborts (e.g. the deferred dispose-yield rejecting after publish
       // ran) land here too — releasing residency or re-marking readmission on an
       // already-committed boundary only churns the mounted authored root.
-      releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
+      if (job.options.retainGpuOwnershipUntilSettled === true) {
+        const release = () => {
+          if (job.options.isAdmissionBoundaryCurrent()
+              && job.boundary?.userData?.authoredAssetState !== 'authored'
+              && job.boundary?.userData?.authoredAssetState !== 'authored-prepared') {
+            releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-retired');
+          }
+        };
+        work.then(release, release).catch(error => {
+          console.warn('[partsLibrary] deferred authored residency retirement failed', error);
+        });
+      } else {
+        releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
+      }
       if (timedOut) {
         job.boundary.userData.authoredAssetState = 'unavailable';
         job.boundary.userData.authoredFailureReason = 'admission-deadline';
@@ -8509,7 +8590,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   let pipelines;
   try {
     pipelines = typeof preparePipelines === 'function'
-      ? await waitForAuthoredAdmission(preparePipelines(root), options)
+      ? await waitForAuthoredGpuSettlement(preparePipelines(root), options)
       : { skipped: true, reason: 'pipeline compiler unavailable' };
   } finally {
     settleCanonicalProgramSpecimens(root, programSpecimenMount);
@@ -8522,7 +8603,7 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   }
   const residencyStartedAtMs = monotonicNow();
   const gpuResidency = typeof prepareResidency === 'function'
-    ? await waitForAuthoredAdmission(prepareResidency(root, {
+    ? await waitForAuthoredGpuSettlement(prepareResidency(root, {
         isResidencyOwnerActive: options.isResidencyOwnerActive,
       }), options)
     : { skipped: true, reason: 'GPU residency uploader unavailable' };
@@ -8537,6 +8618,14 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
     compileMs: Math.round(compileMs),
     residencyMs: Math.round(residencyMs),
   };
+}
+
+// Logical cancellation releases the queue; the existing driver promise retains its resources.
+async function waitForAuthoredGpuSettlement(work, options) {
+  if (options?.retainGpuOwnershipUntilSettled !== true) return waitForAuthoredAdmission(work, options);
+  const raw = Promise.resolve(work);
+  try { return await waitForAuthoredAdmission(raw, options); }
+  catch (error) { await raw.catch(() => null); throw error; }
 }
 
 function assertAuthoredVisualPreparationActive(options, phase) {
@@ -8642,16 +8731,18 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     // shared url::slot decode tasks join at this job's class (budget.promote + compile
     // regrade), so sustained deadline traffic cannot stall the in-flight job behind its
     // own ambient prefetch chain all the way to the stall bound.
-    const deadlineLibrary = waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options);
-    // Belt: the prefetch await below can outlive the deadline decode's rejection, so the
-    // stored promise must be marked handled now or the gap surfaces an unhandled rejection
-    // even though the later await observes it (same belt as the boot contract fetch).
-    deadlineLibrary.catch(() => {});
+    // Observe both outcomes immediately: this deadline load can reject while the independent
+    // prefetch below is still pending, or after that wait exits on owner cancellation. Keep its
+    // original error for the owning admission rather than leaving a temporarily unhandled promise.
+    const deadlineLibrary = waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options)
+      .then((library) => ({ ok: true, library }), (error) => ({ ok: false, error }));
     if (prefetchedLibrary) {
       try { await waitForAuthoredAdmission(prefetchedLibrary, options); }
       catch { assertQueuedAuthoredAdmissionActive(options, 'after-ship-prefetch'); }
     }
-    const library = await deadlineLibrary;
+    const deadlineResult = await deadlineLibrary;
+    if (!deadlineResult.ok) throw deadlineResult.error;
+    const library = deadlineResult.library;
     assertQueuedAuthoredAdmissionActive(options, 'before-ship-composition');
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
@@ -8957,7 +9048,9 @@ export function publishPreparedAuthoredBoundary(boundary) {
   const publish = boundary && boundary.userData && boundary.userData.__publishPreparedAuthoredBoundary;
   if (typeof publish === 'function') return publish();
   const state = boundary && boundary.userData && boundary.userData.authoredAssetState;
-  return state === 'authored' || state === 'same-semantic-fallback';
+  const published = state === 'authored' || state === 'same-semantic-fallback';
+  return published && (typeof boundary.userData.validateCeresCradlePublication !== 'function'
+    || boundary.userData.validateCeresCradlePublication() === true);
 }
 
 function installPreparedBoundaryPublisher(boundary, publish) {
@@ -9499,6 +9592,9 @@ async function commitAuthoredBoundary(
     }
     for (const admission of authored.packagePoolAdmissions || EMPTY_ARRAY) {
       activateRenderPackagePoolAdmission(admission);
+    }
+    if (authored.root.userData.ceresWorkfleetAuthoredSource) {
+      recordCeresWorkfleetAuthoredSource(boundary, authored.root.userData.ceresWorkfleetAuthoredSource);
     }
     boundary.userData.authoredAssetState = 'authored';
     // The publish key is final for non-family rows; a whole-ship LOD family
@@ -10213,12 +10309,14 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     authoredSlots[slot].push(record.url);
   };
 
+  if (hullRecord && ceresWorkfleetRole(entity) === 'breaker') {
+    root.userData.ceresWorkfleetAuthoredSource = { assetId: hullRecord.assetId, file: hullRecord.url };
+  }
   yield;
   let hullPartRoot = null;
   if (hullRecord) {
-    hullPartRoot = instantiatePart(hullRecord, hull, {
-      position: [0, 0, 0], targetLength: 1.72, label: 'Hull',
-    }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
+    hullPartRoot = instantiatePart(hullRecord, hull, wholeShipHullPlacement(hullRecord),
+      palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     noteUsed('hull', hullRecord);
   } else {
     fallbackParts.push('hull');
@@ -10359,7 +10457,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
   ensureStandardSockets(hull, hullRecord);
-  attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
+  if (!ceresWorkfleetRole(entity)) attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually
@@ -10498,6 +10596,12 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     });
   }
   root.traverse((object) => {
+    const channelMaterials = object.material
+      ? (Array.isArray(object.material) ? object.material : [object.material]) : EMPTY_ARRAY;
+    for (const material of channelMaterials) {
+      if (material?.userData?.spacefaceCeresThruster === true
+        && material.userData.spacefaceSharedAsset !== true) ownerLocalMaterials.add(material);
+    }
     if (object.userData?.spacefaceStaticBatch === true && object.geometry) {
       ownerLocalGeometries.add(object.geometry);
     }
@@ -12897,7 +13001,8 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
     ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
     ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
   ]);
-  const createNode = canBatchRenderPackageOwner(owner?.userData?.kind) && scene?.isScene
+  const createNode = record.assetId !== CERES_BREAKER_ASSET
+    && canBatchRenderPackageOwner(owner?.userData?.kind) && scene?.isScene
     ? createRenderPackageShipNodeFactory({
         scene,
       owner,
@@ -13749,7 +13854,9 @@ function createBindings() {
 function registerBinding(object, tags, bindings) {
   const renderable = object.isMesh || !!(object.userData && object.userData.spacefaceInstanceProxy);
   if (tags.drive === 'fan' && object.isMesh) bindings.driveFans.push(object);
-  if (tags.drive === 'core' && object.isMesh) bindings.driveCores.push(object);
+  // These independent cores consume signed native actuation, never the generic speed driver.
+  if (tags.drive === 'core' && object.isMesh
+    && !/^(?:Place_|Hull_)?LOD[012]_HOOK_CERES_THRUSTER_/.test(object.name)) bindings.driveCores.push(object);
   if (tags.drive === 'plume' && object.isMesh) bindings.drivePlumes.push(object);
   if (tags.damageRole === 'navLight' && object.isMesh) bindings.navLights.push(object);
   if (tags.damageRole === 'sensor' && object.isMesh) bindings.sensorSlits.push(object);
@@ -13867,6 +13974,7 @@ function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, whol
   }
   root.userData.updateLod = function updateComposedLod(level) {
     const requested = normalizeRequestedLod(level);
+    root.userData.authoredLod = requested;
     if (requested === appliedLevel) return;
     appliedLevel = requested;
     if (typeof baseUpdate === 'function') baseUpdate(level);
@@ -15940,6 +16048,7 @@ export function* disposeDetachedObjectSteps(root) {
 }
 
 function disposeDetachedPlaceFallback(root) {
+  root?.userData?.ceresCradleLayoutGuard?.dispose();
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') disposePresentation();
   const geometries = new Set();
@@ -15962,6 +16071,7 @@ function disposeDetachedPlaceFallback(root) {
 // Stepped twin — collect and dispose phases each yield at stride boundaries;
 // the dedup sets live in generator scope so a suspended walk keeps them.
 function* disposeDetachedPlaceFallbackSteps(root) {
+  root?.userData?.ceresCradleLayoutGuard?.dispose();
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') disposePresentation();
   const geometries = new Set();

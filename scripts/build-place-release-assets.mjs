@@ -10,7 +10,6 @@ import { fileURLToPath } from 'node:url';
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { meshopt } from '@gltf-transform/functions';
 import { ktx2 } from 'ktx2-encoder/gltf-transform';
 import JPEG from 'jpeg-js';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
@@ -27,7 +26,7 @@ import {
 } from '../tools/art/lib/ktx2MaterialRoleValidation.mjs';
 import { publishFileSetTransaction } from '../tools/art/lib/multiFileTransaction.mjs';
 import { parseStrictEmbeddedGlb } from '../tools/art/lib/strictGlbValidation.mjs';
-import { RELEASE_MESHOPT_OPTIONS } from './lib/releaseMeshoptProfile.mjs';
+import { releasePlaceGeometryCompression } from './lib/releaseStrictClearancePrecision.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -227,9 +226,10 @@ export async function buildSelectedPlaceReleaseAssets(selectedIds, options = {})
           }),
         );
       }
-      transforms.push(meshopt({
+      transforms.push(releasePlaceGeometryCompression({
+        assetId: asset.id,
+        certificate: document.getRoot().getAsset().extras?.ceresSecondMeasure,
         encoder: MeshoptEncoder,
-        ...RELEASE_MESHOPT_OPTIONS,
       }));
 
       await document.transform(...transforms);

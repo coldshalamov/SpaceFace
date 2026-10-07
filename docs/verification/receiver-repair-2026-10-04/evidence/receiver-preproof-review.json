@@ -1,0 +1,48 @@
+{
+  "scope": "Separate quick review of additive receiver take-up candidate; not part of immutable recovery follow-on review",
+  "finding": "Receiver winch reeling lacks exact endpoint-generation validation before use",
+  "impact": "A stale active receiver row changes rest length once before physics cleanup; existing sim.step regression masks this ordering seam",
+  "reproduction": "Restore receiverSlackWire; increment active receiver.targetGeneration; directly call stepCeresWorkfleet(owner,1/60); observe restLength6.871563241964691 ->6.854896575298024",
+  "recommendation": "Validate ownerGeneration and targetGeneration against the exact current cradle/section before receiver take-up and add direct-step regression",
+  "status": "Corrected by receiver owner; independent identical direct-step regression now passes with unchanged rest length. Broader receiver/full-factory proof belongs to receiver owner.",
+  "artifacts": [
+    {
+      "path": "receiver-source.js",
+      "sha256": "c321ada62a6b3a2040085e1255e08d70a1b083365940266a09bc6a1d8d66ab08"
+    },
+    {
+      "path": "receiver-direct-stale.test.mjs",
+      "sha256": "5a27fbc1c9b98aec39b676e7e17d3dd0e292a404022c2e8e6eb98792b43335ef"
+    },
+    {
+      "path": "receiver-loader.mjs",
+      "sha256": "f67c45c8667a8aca175958a9c4229b66c8fb2c596fefdffc764046e99536552f"
+    },
+    {
+      "path": "receiver-direct-stale.tap",
+      "sha256": "ca8b051fac7e85d2c63870cc45494c32d6a7ea9e8967afa0fe1eb485dcdbe161"
+    }
+  ],
+  "command": "node --max-old-space-size=192 --max-semi-space-size=4 --test-name-pattern='reviewer direct stale' --experimental-loader ./ceres-recovery-independent-review/receiver-loader.mjs ceres-recovery-independent-review/receiver-direct-stale.test.mjs",
+  "fixVerification": {
+    "pass": 1,
+    "fail": 0,
+    "before": 6.871563241964691,
+    "after": 6.871563241964691,
+    "command": "node --max-old-space-size=192 --max-semi-space-size=4 --test-name-pattern='reviewer direct stale' --experimental-loader ./ceres-recovery-independent-review/receiver-loader-fixed.mjs ceres-recovery-independent-review/receiver-direct-stale.test.mjs",
+    "artifacts": [
+      {
+        "path": "receiver-source-fixed.js",
+        "sha256": "66cbce558b66f37d5624361b05956ed84ea085ebd42a1e675cb7bdd90f8ac532"
+      },
+      {
+        "path": "receiver-loader-fixed.mjs",
+        "sha256": "80ca63346b23297771db3be3edcd2caf959e31cfd642dbe555860a7717609cdc"
+      },
+      {
+        "path": "receiver-direct-stale-fixed.tap",
+        "sha256": "c1b8c7a10b2bc6658b925cabf4da7d947000ac31df825d8a7a9f90b411f28bee"
+      }
+    ]
+  }
+}

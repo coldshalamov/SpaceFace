@@ -1,0 +1,1188 @@
+DIAG  engine_plasma_ring: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/blender/export_sprint_part.py -> tools/blender/spaceface_export.py + tools/art/finalize_part.mjs - Blender-authored generic asset
+DIAG  hull_capital: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  hull_corvette: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  hull_fighter: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  hull_freighter: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  hull_frigate: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  hull_gunship: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  hull_interceptor: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  hull_miner: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  hull_multirole: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  hull_starter: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace tools/art/repair_modular_hull_texture_roles.mjs v2
+DIAG  place_ash_pin: texture profile differs  -  textureSize=128 profile=1024
+DIAG  place_ash_pin: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_ash_pin: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_ash_pin: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_ash_pin: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_ash_pin: legacy extras dimensions match manifest  -  extras= manifest=5.369357585906982,4.1628720462322235,6.142232894897461
+DIAG  place_asteroid_graffiti: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_asteroid_graffiti: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_asteroid_graffiti: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_asteroid_graffiti: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_asteroid_graffiti: legacy extras dimensions match manifest  -  extras= manifest=18.895512580871582,15.982029914855957,17.43584442138672
+DIAG  place_asteroid_rock_a: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_asteroid_rock_a: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_asteroid_rock_a: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_asteroid_rock_a: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_asteroid_rock_a: embedded PNG or KTX2 textures  -  images=0 roleContract=legacy/legacy
+DIAG  place_asteroid_rock_a: legacy extras dimensions match manifest  -  extras= manifest=13.114858150482178,9.500719547271729,9.585910320281982
+DIAG  place_asteroid_rock_b: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_asteroid_rock_b: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_asteroid_rock_b: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_asteroid_rock_b: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_asteroid_rock_b: legacy extras dimensions match manifest  -  extras= manifest=7.741734504699707,7.818560361862183,8.893868923187256
+DIAG  place_asteroid_rock_c: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_asteroid_rock_c: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_asteroid_rock_c: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_asteroid_rock_c: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_asteroid_rock_c: legacy extras dimensions match manifest  -  extras= manifest=8.356542587280273,9.444827556610107,7.504269361495972
+DIAG  place_asteroid_seamed: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_asteroid_seamed: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_asteroid_seamed: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_asteroid_seamed: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_asteroid_seamed: embedded PNG or KTX2 textures  -  images=0 roleContract=legacy/legacy
+DIAG  place_asteroid_seamed: legacy extras dimensions match manifest  -  extras= manifest=20.300055503845215,19.24555015563965,19.196677207946777
+DIAG  place_cargo_pod_standard: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_cargo_pod_standard: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_cargo_pod_standard: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_cargo_pod_standard: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_cargo_pod_standard: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_cargo_pod_standard: legacy extras dimensions match manifest  -  extras= manifest=6.480000019073486,3.9800000190734863,3.3999998569488525
+DIAG  place_ceres_bait_wreck: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_ceres_bait_wreck: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_ceres_bait_wreck: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_ceres_bait_wreck: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_ceres_bait_wreck: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_ceres_bait_wreck: legacy extras dimensions match manifest  -  extras= manifest=68.3098030090332,27.034046173095703,26.600000381469727
+DIAG  place_ceres_grave_shard: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_ceres_grave_shard: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_ceres_grave_shard: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_ceres_grave_shard: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_ceres_grave_shard: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_ceres_grave_shard: legacy extras dimensions match manifest  -  extras= manifest=25.596129417419434,11.711859345436096,12.907963752746582
+DIAG  place_claim_mark: texture profile differs  -  textureSize=128 profile=1024
+DIAG  place_claim_mark: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_claim_mark: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_claim_mark: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_claim_mark: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_claim_mark: legacy extras dimensions match manifest  -  extras= manifest=4.196390271186829,7.641660928726196,3.617830753326416
+DIAG  place_claim_outpost_base: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_claim_outpost_base: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_base: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_base: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_base: legacy extras dimensions match manifest  -  extras= manifest=98.20000076293945,83.4000015258789,22.11499786376953
+DIAG  place_claim_outpost_catcher: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_claim_outpost_catcher: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_catcher: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_catcher: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_catcher: legacy extras dimensions match manifest  -  extras= manifest=98.20000076293945,83.4000015258789,17.519124031066895
+DIAG  place_breakaway_sp07: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_breakaway_sp07: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_breakaway_sp07: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_breakaway_sp07: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_breakaway_sp07: legacy extras dimensions match manifest  -  extras= manifest=27.38666343688965,18.40000009536743,18.21509075164795
+DIAG  place_breakaway_fork: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_breakaway_fork: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_breakaway_fork: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_breakaway_fork: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_breakaway_fork: legacy extras dimensions match manifest  -  extras= manifest=88.6000030040741,13.01880669593811,73
+DIAG  place_claim_outpost_bastion: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_claim_outpost_bastion: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_bastion: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_bastion: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_bastion: legacy extras dimensions match manifest  -  extras= manifest=98.20516586303711,83.41031646728516,23.138429641723633
+DIAG  place_claim_outpost_refinery: triangle profile differs  -  tris=35080 profile=500..32000 class=part
+DIAG  place_claim_outpost_refinery: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_claim_outpost_refinery: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_refinery: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_refinery: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_refinery: legacy extras dimensions match manifest  -  extras= manifest=98.20000076293945,83.4000015258789,22.089123725891113
+DIAG  place_claim_outpost_fence: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_claim_outpost_fence: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_fence: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_fence: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_fence: legacy extras dimensions match manifest  -  extras= manifest=99.68439483642578,90.4000015258789,23.11912441253662
+DIAG  place_claim_outpost_relay: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_claim_outpost_relay: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_relay: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_relay: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_claim_outpost_relay: legacy extras dimensions match manifest  -  extras= manifest=98.20000076293945,84.78233337402344,21.872177124023438
+DIAG  place_cold_locker: texture size is finite and positive  -  textureSize=0
+DIAG  place_cold_locker: texture profile differs  -  textureSize=0 profile=1024
+DIAG  place_cold_locker: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_cold_locker: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_cold_locker: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_cold_locker: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_cold_locker: legacy extras dimensions match manifest  -  extras= manifest=9.940000534057617,7.700000166893005,7.739999771118164
+DIAG  place_container_rack: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_container_rack: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_container_rack: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_container_rack: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_container_rack: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_container_rack: legacy extras dimensions match manifest  -  extras= manifest=13.350000381469727,12.216195583343506,7.300000190734863
+DIAG  place_conveyor_barge: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_conveyor_barge: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_conveyor_barge: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_conveyor_barge: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_conveyor_barge: legacy extras dimensions match manifest  -  extras= manifest=73.30000305175781,11.100000381469727,16.600000381469727
+DIAG  place_conveyor_truss: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_conveyor_truss: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_conveyor_truss: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_conveyor_truss: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_conveyor_truss: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_conveyor_truss: legacy extras dimensions match manifest  -  extras= manifest=28.15000057220459,7.455000102519989,8.399999618530273
+DIAG  place_dead_hulk: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_dead_hulk: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_dead_hulk: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_dead_hulk: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_dead_hulk: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_dead_hulk: legacy extras dimensions match manifest  -  extras= manifest=55.200002670288086,14.5392165184021,14.966248989105225
+DIAG  place_debris_chunk: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_debris_chunk: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_debris_chunk: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_debris_chunk: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_debris_chunk: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_debris_chunk: legacy extras dimensions match manifest  -  extras= manifest=23.300000190734863,9.764999866485596,11.09958267211914
+DIAG  place_dock_interior: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_dock_interior: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_dock_interior: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_dock_interior: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_dock_interior: legacy extras dimensions match manifest  -  extras= manifest=52,18.40000009536743,36
+DIAG  place_dock_interior_grit: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_dock_interior_grit: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_dock_interior_grit: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_dock_interior_grit: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_dock_interior_grit: legacy extras dimensions match manifest  -  extras= manifest=52,18.40000009536743,36
+DIAG  place_dock_interior_military: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_dock_interior_military: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_dock_interior_military: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_dock_interior_military: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_dock_interior_military: legacy extras dimensions match manifest  -  extras= manifest=52,18.40000009536743,36
+DIAG  place_drill_platform: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_drill_platform: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_drill_platform: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_drill_platform: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_drill_platform: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_drill_platform: legacy extras dimensions match manifest  -  extras= manifest=16,20.868260383605957,16
+DIAG  place_extraction_mast: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_extraction_mast: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_extraction_mast: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_extraction_mast: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_extraction_mast: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_extraction_mast: legacy extras dimensions match manifest  -  extras= manifest=12,13.583357378840446,9
+DIAG  place_freight_platform: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_freight_platform: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_freight_platform: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_freight_platform: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_freight_platform: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_freight_platform: legacy extras dimensions match manifest  -  extras= manifest=24,10.023038685321808,12.349999904632568
+DIAG  place_gate_jump_ring: triangle profile differs  -  tris=54052 profile=500..32000 class=part
+DIAG  place_gate_jump_ring: byte profile exceeded  -  bytes=6278108 profileMax=5000000
+DIAG  place_gate_jump_ring: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_gate_jump_ring: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_gate_jump_ring: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_gate_jump_ring: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_gate_jump_ring: legacy extras dimensions match manifest  -  extras= manifest=19,105.28499984741211,101.30000305175781
+DIAG  place_improvised_dock: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_improvised_dock: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_improvised_dock: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_improvised_dock: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_improvised_dock: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_improvised_dock: legacy extras dimensions match manifest  -  extras= manifest=7.370805978775024,4.198728799819946,13.149999618530273
+DIAG  place_interdiction_buoy: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_interdiction_buoy: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_interdiction_buoy: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_interdiction_buoy: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_interdiction_buoy: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_interdiction_buoy: legacy extras dimensions match manifest  -  extras= manifest=6.478129625320435,5.032371282577515,6.476529598236084
+DIAG  place_landmark_wreck_cathedral: texture profile differs  -  textureSize=512 profile=4096
+DIAG  place_landmark_wreck_cathedral: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace PQ-018 / Blender 5.1.2
+DIAG  place_landmark_wreck_cathedral: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_landmark_wreck_cathedral: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_landmark_wreck_cathedral: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_landmark_wreck_cathedral: legacy extras dimensions match manifest  -  extras= manifest=609.2739551125135,220.7242071575202,252.41353809709318
+DIAG  place_lane_beacon: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_lane_beacon: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_lane_beacon: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_lane_beacon: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_lane_beacon: legacy extras dimensions match manifest  -  extras= manifest=10.761853694915771,14.324499607086182,3.1999998092651367
+DIAG  place_lane_pin: texture size is finite and positive  -  textureSize=0
+DIAG  place_lane_pin: texture profile differs  -  textureSize=0 profile=1024
+DIAG  place_lane_pin: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_lane_pin: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_lane_pin: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_lane_pin: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_lane_pin: legacy extras dimensions match manifest  -  extras= manifest=9.642024993896484,11.626195669174194,10.600000381469727
+DIAG  place_maintenance_gantry: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_maintenance_gantry: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_maintenance_gantry: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_maintenance_gantry: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_maintenance_gantry: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_maintenance_gantry: legacy extras dimensions match manifest  -  extras= manifest=4.600000381469727,10.5600004196167,19.399999618530273
+DIAG  place_memorial_array: texture profile differs  -  textureSize=256 profile=1024
+DIAG  place_memorial_array: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_memorial_array: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_memorial_array: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_memorial_array: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_memorial_array: legacy extras dimensions match manifest  -  extras= manifest=13.749999761581421,5.489999890327454,12.899999618530273
+DIAG  place_landmark_skerris_throne: triangle profile differs  -  tris=70478 profile=500..32000 class=part
+DIAG  place_landmark_skerris_throne: byte profile exceeded  -  bytes=7780452 profileMax=5000000
+DIAG  place_landmark_skerris_throne: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_landmark_skerris_throne: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_landmark_skerris_throne: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_landmark_skerris_throne: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_landmark_skerris_throne: legacy extras dimensions match manifest  -  extras= manifest=217.04418182373047,86.77593612670898,189.88338470458984
+DIAG  place_landmark_resonant_cathedral: triangle profile differs  -  tris=62152 profile=500..32000 class=part
+DIAG  place_landmark_resonant_cathedral: byte profile exceeded  -  bytes=7349484 profileMax=5000000
+DIAG  place_landmark_resonant_cathedral: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_landmark_resonant_cathedral: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_landmark_resonant_cathedral: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_landmark_resonant_cathedral: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_landmark_resonant_cathedral: legacy extras dimensions match manifest  -  extras= manifest=109.31684112548828,138.53351402282715,180.17691040039062
+DIAG  place_landmark_candle_fleet: triangle profile differs  -  tris=76558 profile=500..32000 class=part
+DIAG  place_landmark_candle_fleet: byte profile exceeded  -  bytes=9248808 profileMax=5000000
+DIAG  place_landmark_candle_fleet: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_landmark_candle_fleet: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_landmark_candle_fleet: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_landmark_candle_fleet: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_landmark_candle_fleet: legacy extras dimensions match manifest  -  extras= manifest=197.21857452392578,57.52000045776367,212.96389770507812
+DIAG  place_mining_drone: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_mining_drone: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_mining_drone: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_mining_drone: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_mining_drone: legacy extras dimensions match manifest  -  extras= manifest=4.922071993350983,1.69383405148983,2.4180026054382324
+DIAG  place_nav_buoy: texture profile differs  -  textureSize=256 profile=1024
+DIAG  place_nav_buoy: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_nav_buoy: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_nav_buoy: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_nav_buoy: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_nav_buoy: legacy extras dimensions match manifest  -  extras= manifest=2.7578136920928955,15.223999977111816,2.615000009536743
+DIAG  place_radiator_bank: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_radiator_bank: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_radiator_bank: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_radiator_bank: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_radiator_bank: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_radiator_bank: legacy extras dimensions match manifest  -  extras= manifest=17.920000076293945,8.660622596740723,2.4000000953674316
+DIAG  place_scrap_cage: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_scrap_cage: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_scrap_cage: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_scrap_cage: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_scrap_cage: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_scrap_cage: legacy extras dimensions match manifest  -  extras= manifest=12.03609037399292,6.069999933242798,6.550000190734863
+DIAG  place_sensor_mast: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_sensor_mast: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_sensor_mast: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_sensor_mast: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_sensor_mast: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_sensor_mast: legacy extras dimensions match manifest  -  extras= manifest=5.028967380523682,13.274499893188477,4.170000076293945
+DIAG  place_slurry_tank: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_slurry_tank: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_slurry_tank: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_slurry_tank: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_slurry_tank: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_slurry_tank: legacy extras dimensions match manifest  -  extras= manifest=11.039999961853027,6.297999858856201,4.77724027633667
+DIAG  place_station_billboard: texture profile differs  -  textureSize=256 profile=1024
+DIAG  place_station_billboard: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_station_billboard: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_station_billboard: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_station_billboard: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_station_billboard: legacy extras dimensions match manifest  -  extras= manifest=14.899999618530273,12.349999904632568,9.493843078613281
+DIAG  place_station_blackmarket: triangle profile differs  -  tris=56852 profile=500..32000 class=part
+DIAG  place_station_blackmarket: byte profile exceeded  -  bytes=6887196 profileMax=5000000
+DIAG  place_station_blackmarket: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_station_blackmarket: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_station_blackmarket: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_station_blackmarket: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_station_blackmarket: legacy extras dimensions match manifest  -  extras= manifest=105.77488327026367,124.39048767089844,32.82170104980469
+DIAG  place_station_fab: triangle profile differs  -  tris=51764 profile=500..32000 class=part
+DIAG  place_station_fab: byte profile exceeded  -  bytes=5837088 profileMax=5000000
+DIAG  place_station_fab: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_station_fab: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_station_fab: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_station_fab: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_station_fab: legacy extras dimensions match manifest  -  extras= manifest=104.50000381469727,32.44999885559082,50.400001525878906
+DIAG  place_station_military: triangle profile differs  -  tris=81482 profile=500..32000 class=part
+DIAG  place_station_military: byte profile exceeded  -  bytes=5709116 profileMax=5000000
+DIAG  place_station_military: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_station_military: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_station_military: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_station_military: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_station_military: legacy extras dimensions match manifest  -  extras= manifest=76.10000228881836,79.29750061035156,42.58638381958008
+DIAG  place_station_mining: triangle profile differs  -  tris=43596 profile=500..32000 class=part
+DIAG  place_station_mining: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_station_mining: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_station_mining: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_station_mining: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_station_mining: legacy extras dimensions match manifest  -  extras= manifest=94.38999938964844,42.025001525878906,53.599998474121094
+DIAG  place_station_refinery: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_station_refinery: triangle profile differs  -  tris=60432 profile=500..32000 class=part
+DIAG  place_station_refinery: byte profile exceeded  -  bytes=6449960 profileMax=5000000
+DIAG  place_station_refinery: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_station_refinery: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_station_refinery: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_station_refinery: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_station_refinery: legacy extras dimensions match manifest  -  extras= manifest=99.20000457763672,56.55750274658203,89.00387573242188
+DIAG  place_station_research: triangle profile differs  -  tris=67224 profile=500..32000 class=part
+DIAG  place_station_research: byte profile exceeded  -  bytes=6835944 profileMax=5000000
+DIAG  place_station_research: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_station_research: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_station_research: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_station_research: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_station_research: legacy extras dimensions match manifest  -  extras= manifest=101.10335922241211,101.75598526000977,75.19999694824219
+DIAG  place_station_trade_hub: texture profile differs  -  textureSize=1024 profile=4096
+DIAG  place_station_trade_hub: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_station_trade_hub: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_station_trade_hub: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_station_trade_hub: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_station_trade_hub: legacy extras dimensions match manifest  -  extras= manifest=124.80134201049805,54.75500011444092,111.29914474487305
+DIAG  var_station_trade_hub_free_overlay_v01: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  var_station_trade_hub_free_overlay_v01: legacy extras priority matches manifest  -  extras=undefined
+DIAG  var_station_trade_hub_free_overlay_v01: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  var_station_trade_hub_free_overlay_v01: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  var_station_trade_hub_free_overlay_v01: legacy extras dimensions match manifest  -  extras= manifest=118.5522689819336,26.385257720947266,106.42195129394531
+DIAG  var_station_trade_hub_mts_overlay_v01: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  var_station_trade_hub_mts_overlay_v01: legacy extras priority matches manifest  -  extras=undefined
+DIAG  var_station_trade_hub_mts_overlay_v01: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  var_station_trade_hub_mts_overlay_v01: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  var_station_trade_hub_mts_overlay_v01: legacy extras dimensions match manifest  -  extras= manifest=145,21.450000762939453,145
+DIAG  var_station_trade_hub_scn_overlay_v01: triangle profile differs  -  tris=39345 profile=500..32000 class=part
+DIAG  var_station_trade_hub_scn_overlay_v01: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  var_station_trade_hub_scn_overlay_v01: legacy extras priority matches manifest  -  extras=undefined
+DIAG  var_station_trade_hub_scn_overlay_v01: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  var_station_trade_hub_scn_overlay_v01: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  var_station_trade_hub_scn_overlay_v01: legacy extras dimensions match manifest  -  extras= manifest=146.92935943603516,37.42652988433838,115.56649398803711
+DIAG  place_tally_post: texture profile differs  -  textureSize=128 profile=1024
+DIAG  place_tally_post: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_tally_post: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_tally_post: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_tally_post: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_tally_post: legacy extras dimensions match manifest  -  extras= manifest=5.730800747871399,10.100000023841858,11.005426406860352
+DIAG  place_transfer_arm: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_transfer_arm: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_transfer_arm: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_transfer_arm: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_transfer_arm: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_transfer_arm: legacy extras dimensions match manifest  -  extras= manifest=23.19230365753174,10.222228050231934,4.594112396240234
+DIAG  place_transponder_gate: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_transponder_gate: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_transponder_gate: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_transponder_gate: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_transponder_gate: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_transponder_gate: legacy extras dimensions match manifest  -  extras= manifest=2.259999990463257,13.280162811279297,22.600000381469727
+DIAG  place_whistle: texture profile differs  -  textureSize=128 profile=1024
+DIAG  place_whistle: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_whistle: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_whistle: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_whistle: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_whistle: legacy extras dimensions match manifest  -  extras= manifest=4.828631043434143,9.046273350715637,5.6928733587265015
+DIAG  place_worklight_tower: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_worklight_tower: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_worklight_tower: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_worklight_tower: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_worklight_tower: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_worklight_tower: legacy extras dimensions match manifest  -  extras= manifest=3,15.656000137329102,3
+DIAG  place_works_cargo_port: texture profile differs  -  textureSize=1024 profile=4096
+DIAG  place_works_cargo_port: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_cargo_port: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_cargo_port: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_cargo_port: extras coordinate contract
+DIAG  place_works_cargo_port: legacy extras dimensions match manifest  -  extras= manifest=2.141489952802658,1.0019999742507935,1.5799999833106995
+DIAG  place_works_conduit_lane_corner: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_lane_corner: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_corner: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_corner: legacy extras dimensions match manifest  -  extras= manifest=1.6604999899864197,0.25999999046325684,1.6604999899864197
+DIAG  place_works_conduit_lane_cross: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_lane_cross: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_cross: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_cross: legacy extras dimensions match manifest  -  extras= manifest=2.3400001525878906,0.25999999046325684,2.3400001525878906
+DIAG  place_works_conduit_lane_end: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_lane_end: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_end: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_end: legacy extras dimensions match manifest  -  extras= manifest=1.5245740115642548,0.28900001384317875,1.2475000023841858
+DIAG  place_works_conduit_lane_junction: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_lane_junction: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_junction: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_junction: legacy extras dimensions match manifest  -  extras= manifest=2.3331480026245117,0.29100000858306885,2.3400001525878906
+DIAG  place_works_conduit_lane_straight: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_lane_straight: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_straight: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_straight: legacy extras dimensions match manifest  -  extras= manifest=2.2200000286102295,0.25999999046325684,1.1009999513626099
+DIAG  place_works_conduit_lane_t: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_lane_t: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_t: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_lane_t: legacy extras dimensions match manifest  -  extras= manifest=2.3400001525878906,0.25999999046325684,1.8575000762939453
+DIAG  place_works_conduit_power_corner: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_power_corner: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_corner: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_corner: legacy extras dimensions match manifest  -  extras= manifest=1.3550000190734863,0.20000000298023224,1.3550000190734863
+DIAG  place_works_conduit_power_cross: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_power_cross: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_cross: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_cross: legacy extras dimensions match manifest  -  extras= manifest=2.200000047683716,0.20000000298023224,2.200000047683716
+DIAG  place_works_conduit_power_end: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_power_end: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_end: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_end: legacy extras dimensions match manifest  -  extras= manifest=1.5299999713897705,0.24999999441206455,0.5299999713897705
+DIAG  place_works_conduit_power_junction: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_power_junction: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_junction: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_junction: legacy extras dimensions match manifest  -  extras= manifest=2.200000047683716,0.3230000138282776,2.200000047683716
+DIAG  place_works_conduit_power_straight: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_power_straight: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_straight: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_straight: legacy extras dimensions match manifest  -  extras= manifest=2.200000047683716,0.20000000298023224,0.5099999904632568
+DIAG  place_works_conduit_power_t: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_conduit_power_t: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_t: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_conduit_power_t: legacy extras dimensions match manifest  -  extras= manifest=2.200000047683716,0.20000000298023224,1.3550000190734863
+DIAG  place_works_derrick: texture profile differs  -  textureSize=2048 profile=4096
+DIAG  place_works_derrick: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_derrick: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_derrick: legacy extras dimensions match manifest  -  extras= manifest=2.1600000858306885,6.490000247955322,1.7400000095367432
+DIAG  place_works_extractor: texture profile differs  -  textureSize=1024 profile=4096
+DIAG  place_works_extractor: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_extractor: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_extractor: legacy extras dimensions match manifest  -  extras= manifest=1.675000011920929,0.800000011920929,1.5951999425888062
+DIAG  place_works_fabricator: texture profile differs  -  textureSize=1024 profile=4096
+DIAG  place_works_fabricator: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_fabricator: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_fabricator: legacy extras dimensions match manifest  -  extras= manifest=2.0399999618530273,0.8459999933838844,2.0399999618530273
+DIAG  place_works_gas_tap: texture profile differs  -  textureSize=1024 profile=4096
+DIAG  place_works_gas_tap: generator is outside the historical SpaceFace tool chain  -  generator=glTF-Transform v4.4.1
+DIAG  place_works_gas_tap: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_gas_tap: legacy extras dimensions match manifest  -  extras= manifest=1.0749999657273293,0.9819999933242798,1.7200000286102295
+DIAG  place_works_massline_core: texture profile differs  -  textureSize=1024 profile=4096
+DIAG  place_works_massline_core: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_massline_core: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_massline_core: legacy extras dimensions match manifest  -  extras= manifest=2.080000013113022,0.9279999732971191,2.0819999426603317
+DIAG  place_works_refinery: texture profile differs  -  textureSize=1024 profile=4096
+DIAG  place_works_refinery: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_refinery: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_refinery: legacy extras dimensions match manifest  -  extras= manifest=1.721470057964325,1.2000000476837158,1.5540000200271606
+DIAG  place_works_rover: texture profile differs  -  textureSize=2048 profile=4096
+DIAG  place_works_rover: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_rover: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_rover: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_works_rover: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_works_rover: legacy extras dimensions match manifest  -  extras= manifest=1.955770030617714,1.0299999713897705,1.809999966993928
+DIAG  pod_cargo_container: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  pod_cargo_container: legacy extras priority matches manifest  -  extras=undefined
+DIAG  pod_cargo_container: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  pod_cargo_container: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  pod_cargo_container: legacy extras dimensions match manifest  -  extras= manifest=5.420000076293945,3.380000114440918,3.380000114440918
+DIAG  pod_47a_evidence_spindle: texture profile differs  -  textureSize=256 profile=1024
+DIAG  pod_47a_evidence_spindle: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  pod_47a_evidence_spindle: legacy extras priority matches manifest  -  extras=undefined
+DIAG  pod_47a_evidence_spindle: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  pod_47a_evidence_spindle: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  pod_47a_evidence_spindle: legacy extras dimensions match manifest  -  extras= manifest=5.409999847412109,3.679999828338623,3.1799999475479126
+DIAG  place_47a_rescue_capsule: texture profile differs  -  textureSize=256 profile=1024
+DIAG  place_47a_rescue_capsule: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_47a_rescue_capsule: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_47a_rescue_capsule: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_47a_rescue_capsule: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_47a_rescue_capsule: legacy extras dimensions match manifest  -  extras= manifest=7.04692816734314,3.4461954832077026,3.084579586982727
+DIAG  weapon_gatling: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace Helios remaster / Blender 5.1.2
+DIAG  weapon_gatling: legacy extras triangle count matches manifest  -  extras=3040
+DIAG  weapon_gatling: legacy extras dimensions match manifest  -  extras=9.1,1.41,1.375 manifest=4.810000121593475,1.4086011350154877,1.375
+DIAG  weapon_heavy_cannon: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace Helios remaster / Blender 5.1.2
+DIAG  weapon_heavy_cannon: legacy extras triangle count matches manifest  -  extras=2296
+DIAG  weapon_lance: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace Helios remaster / Blender 5.1.2
+DIAG  weapon_lance: legacy extras triangle count matches manifest  -  extras=1112
+DIAG  weapon_pulse_cannon: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace Helios remaster / Blender 5.1.2
+DIAG  weapon_pulse_cannon: legacy extras triangle count matches manifest  -  extras=1944
+DIAG  weapon_railgun: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace Helios remaster / Blender 5.1.2
+DIAG  weapon_railgun: legacy extras triangle count matches manifest  -  extras=1788
+DIAG  weapon_turret_dual: generator is outside the historical SpaceFace tool chain  -  generator=SpaceFace Helios remaster / Blender 5.1.2
+DIAG  weapon_turret_dual: legacy extras triangle count matches manifest  -  extras=1808
+DIAG  weapon_turret_dual: legacy extras dimensions match manifest  -  extras=5.28,2.1,2.25 manifest=5.114999771118164,2.0999999046325684,2.25
+DIAG  wholeship_apron_shuttle: triangle profile differs  -  tris=40832 profile=500..32000 class=part
+DIAG  wholeship_apron_shuttle: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_apron_shuttle: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_apron_shuttle: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_apron_shuttle: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_apron_shuttle: legacy extras dimensions match manifest  -  extras= manifest=18.871161460876465,3.566518187522888,5.528022289276123
+DIAG  wholeship_ashline_dart: triangle profile differs  -  tris=38474 profile=500..32000 class=part
+DIAG  wholeship_ashline_dart: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ashline_dart: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_dart: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_dart: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_dart: legacy extras dimensions match manifest  -  extras= manifest=16.31901979446411,2.424499988555908,6.8936638832092285
+DIAG  wholeship_ashline_lode: triangle profile differs  -  tris=32574 profile=500..32000 class=part
+DIAG  wholeship_ashline_lode: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ashline_lode: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_lode: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_lode: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_lode: legacy extras dimensions match manifest  -  extras= manifest=22.12032985687256,4.026051044464111,11.020000457763672
+DIAG  wholeship_ashline_rig: triangle profile differs  -  tris=37724 profile=500..32000 class=part
+DIAG  wholeship_ashline_rig: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ashline_rig: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_rig: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_rig: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_rig: legacy extras dimensions match manifest  -  extras= manifest=18.36199951171875,2.901238799095154,6.150302171707153
+DIAG  wholeship_ashline_rig_corsair_blade: triangle profile differs  -  tris=37810 profile=500..32000 class=part
+DIAG  wholeship_ashline_rig_corsair_blade: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ashline_rig_corsair_blade: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_rig_corsair_blade: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_rig_corsair_blade: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_rig_corsair_blade: legacy extras dimensions match manifest  -  extras= manifest=19.32029438018799,2.3794999718666077,6.549695253372192
+DIAG  wholeship_atlas_production_v1: triangle profile differs  -  tris=39968 profile=500..32000 class=part
+DIAG  wholeship_atlas_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_atlas_production_v1: extras part id  -  extras=atlas_production_v1
+DIAG  wholeship_atlas_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_atlas_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_atlas_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_atlas_production_v1: legacy extras dimensions match manifest  -  extras= manifest=23.72039031982422,4.486192464828491,7.580317974090576
+DIAG  wholeship_bastion_production_v1: triangle profile differs  -  tris=34806 profile=500..32000 class=part
+DIAG  wholeship_bastion_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_bastion_production_v1: extras part id  -  extras=bastion_production_v1
+DIAG  wholeship_bastion_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_bastion_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_bastion_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_bastion_production_v1: legacy extras dimensions match manifest  -  extras= manifest=21.10414981842041,5.079000115394592,8.600439071655273
+DIAG  wholeship_colossus_production_v1: triangle profile differs  -  tris=59184 profile=500..32000 class=part
+DIAG  wholeship_colossus_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_colossus_production_v1: extras part id  -  extras=colossus_production_v1
+DIAG  wholeship_colossus_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_colossus_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_colossus_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_colossus_production_v1: legacy extras dimensions match manifest  -  extras= manifest=53.50069808959961,12.066380977630615,26.216559410095215
+DIAG  wholeship_helios_arclight: triangle profile differs  -  tris=64326 profile=500..32000 class=part
+DIAG  wholeship_helios_arclight: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_helios_arclight: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_helios_arclight: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_helios_arclight: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_helios_arclight: legacy extras dimensions match manifest  -  extras= manifest=32.12061595916748,8.93149471282959,11.944368839263916
+DIAG  wholeship_helios_cradle: triangle profile differs  -  tris=68886 profile=500..32000 class=part
+DIAG  wholeship_helios_cradle: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_helios_cradle: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_helios_cradle: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_helios_cradle: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_helios_cradle: legacy extras dimensions match manifest  -  extras= manifest=23.820687294006348,7.09927225112915,9.464362144470215
+DIAG  wholeship_helios_lark: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_helios_lark: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_helios_lark: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_helios_lark: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_helios_lark: legacy extras dimensions match manifest  -  extras= manifest=17.870579719543457,2.856632888317108,8.022889137268066
+DIAG  wholeship_helios_span: triangle profile differs  -  tris=54220 profile=500..32000 class=part
+DIAG  wholeship_helios_span: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_helios_span: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span: legacy extras dimensions match manifest  -  extras= manifest=29.22139549255371,5.151224613189697,9.528609275817871
+DIAG  wholeship_helios_span_dmc: triangle profile differs  -  tris=54220 profile=500..32000 class=part
+DIAG  wholeship_helios_span_dmc: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_helios_span_dmc: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span_dmc: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span_dmc: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span_dmc: legacy extras dimensions match manifest  -  extras= manifest=29.22139549255371,5.151224613189697,9.528609275817871
+DIAG  wholeship_helios_span_mts: triangle profile differs  -  tris=54220 profile=500..32000 class=part
+DIAG  wholeship_helios_span_mts: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_helios_span_mts: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span_mts: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span_mts: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span_mts: legacy extras dimensions match manifest  -  extras= manifest=29.22139549255371,5.151224613189697,9.528609275817871
+DIAG  wholeship_helios_span_reach: triangle profile differs  -  tris=54220 profile=500..32000 class=part
+DIAG  wholeship_helios_span_reach: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_helios_span_reach: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span_reach: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span_reach: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_helios_span_reach: legacy extras dimensions match manifest  -  extras= manifest=29.22139549255371,5.151224613189697,9.528609275817871
+DIAG  wholeship_hornet_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_hornet_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_hornet_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_hornet_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_hornet_production_v1: legacy extras dimensions match manifest  -  extras= manifest=9.840099811553955,1.456377238035202,8.800000190734863
+DIAG  wholeship_inspection_cutter: triangle profile differs  -  tris=43748 profile=500..32000 class=part
+DIAG  wholeship_inspection_cutter: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_inspection_cutter: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_inspection_cutter: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_inspection_cutter: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_inspection_cutter: legacy extras dimensions match manifest  -  extras= manifest=22.670639038085938,6.4002485275268555,5.440714359283447
+DIAG  wholeship_ironback_production_v1: triangle profile differs  -  tris=44718 profile=500..32000 class=part
+DIAG  wholeship_ironback_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ironback_production_v1: extras part id  -  extras=ironback_production_v1
+DIAG  wholeship_ironback_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ironback_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ironback_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ironback_production_v1: legacy extras dimensions match manifest  -  extras= manifest=19.91625213623047,3.8251876831054688,6.7816009521484375
+DIAG  wholeship_kestrel: triangle profile differs  -  tris=39518 profile=500..32000 class=part
+DIAG  wholeship_kestrel: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_kestrel: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_kestrel: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_kestrel: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_kestrel: legacy extras dimensions match manifest  -  extras= manifest=27.519999504089355,6.817915439605713,13.261199951171875
+DIAG  wholeship_kestrel_lod1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_kestrel_lod1: extras part id  -  extras=wholeship_kestrel
+DIAG  wholeship_kestrel_lod1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_kestrel_lod1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_kestrel_lod1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_kestrel_lod1: legacy extras dimensions match manifest  -  extras= manifest=27.519700050354004,6.817686557769775,13.261199951171875
+DIAG  wholeship_kestrel_lod2: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_kestrel_lod2: extras part id  -  extras=wholeship_kestrel
+DIAG  wholeship_kestrel_lod2: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_kestrel_lod2: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_kestrel_lod2: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_kestrel_lod2: legacy extras dimensions match manifest  -  extras= manifest=27.518885612487793,6.819941282272339,12.760000228881836
+DIAG  wholeship_leviathan_production_v1: triangle profile differs  -  tris=53340 profile=500..32000 class=part
+DIAG  wholeship_leviathan_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_leviathan_production_v1: extras part id  -  extras=leviathan_production_v1
+DIAG  wholeship_leviathan_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_leviathan_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_leviathan_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_leviathan_production_v1: legacy extras dimensions match manifest  -  extras= manifest=61.10103225708008,17.426886081695557,33.12614822387695
+DIAG  wholeship_saucer_production_v1: triangle profile differs  -  tris=60570 profile=500..32000 class=part
+DIAG  wholeship_saucer_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_saucer_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_saucer_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_saucer_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_saucer_production_v1: legacy extras dimensions match manifest  -  extras= manifest=20.962514877319336,7.562405586242676,22.06102180480957
+DIAG  wholeship_massline_express_liner_v1: triangle profile differs  -  tris=35324 profile=500..32000 class=part
+DIAG  wholeship_massline_express_liner_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_massline_express_liner_v1: extras part id  -  extras=massline_express_liner_v1
+DIAG  wholeship_massline_express_liner_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_massline_express_liner_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_massline_express_liner_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_massline_express_liner_v1: legacy extras dimensions match manifest  -  extras= manifest=39.620609283447266,12.78883409500122,18.519885063171387
+DIAG  wholeship_mule_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_mule_production_v1: extras part id  -  extras=mule_production_v1
+DIAG  wholeship_mule_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_mule_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_mule_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_mule_production_v1: legacy extras dimensions match manifest  -  extras= manifest=16.15002155303955,3.3260695934295654,6.925260066986084
+DIAG  wholeship_ore_barge: triangle profile differs  -  tris=62648 profile=500..32000 class=part
+DIAG  wholeship_ore_barge: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ore_barge: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ore_barge: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ore_barge: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ore_barge: legacy extras dimensions match manifest  -  extras= manifest=43.31060028076172,8.87030029296875,9.511959075927734
+DIAG  wholeship_pelican_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_pelican_production_v1: extras part id  -  extras=pelican_production_v1
+DIAG  wholeship_pelican_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_pelican_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_pelican_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_pelican_production_v1: legacy extras dimensions match manifest  -  extras= manifest=14.710041522979736,4.635295867919922,6.263274669647217
+DIAG  wholeship_prospector_skiff: triangle profile differs  -  tris=38670 profile=500..32000 class=part
+DIAG  wholeship_prospector_skiff: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_prospector_skiff: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_prospector_skiff: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_prospector_skiff: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_prospector_skiff: legacy extras dimensions match manifest  -  extras= manifest=18.421117782592773,3.2427176237106323,5.178460121154785
+DIAG  wholeship_ranger_production_v1: triangle profile differs  -  tris=33120 profile=500..32000 class=part
+DIAG  wholeship_ranger_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ranger_production_v1: extras part id  -  extras=ranger_production_v1
+DIAG  wholeship_ranger_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ranger_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ranger_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ranger_production_v1: legacy extras dimensions match manifest  -  extras= manifest=17.73017692565918,3.3969706296920776,7.541898250579834
+DIAG  wholeship_repair_tender: triangle profile differs  -  tris=52822 profile=500..32000 class=part
+DIAG  wholeship_repair_tender: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_repair_tender: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_repair_tender: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_repair_tender: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_repair_tender: legacy extras dimensions match manifest  -  extras= manifest=25.590664863586426,4.947059512138367,9.927865028381348
+DIAG  wholeship_rescue_lifter: triangle profile differs  -  tris=68503 profile=500..32000 class=part
+DIAG  wholeship_rescue_lifter: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_rescue_lifter: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_rescue_lifter: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_rescue_lifter: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_rescue_lifter: legacy extras dimensions match manifest  -  extras= manifest=30.020505905151367,5.482585191726685,7.905940532684326
+DIAG  wholeship_salvage_cutter: triangle profile differs  -  tris=37306 profile=500..32000 class=part
+DIAG  wholeship_salvage_cutter: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_salvage_cutter: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_salvage_cutter: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_salvage_cutter: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_salvage_cutter: legacy extras dimensions match manifest  -  extras= manifest=21.12065601348877,4.814267039299011,7.139999866485596
+DIAG  wholeship_scrap_sweeper: triangle profile differs  -  tris=34101 profile=500..32000 class=part
+DIAG  wholeship_scrap_sweeper: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_scrap_sweeper: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_scrap_sweeper: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_scrap_sweeper: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_scrap_sweeper: legacy extras dimensions match manifest  -  extras= manifest=20.16965389251709,4.501640319824219,6.564151287078857
+DIAG  wholeship_survey_pin: triangle profile differs  -  tris=49866 profile=500..32000 class=part
+DIAG  wholeship_survey_pin: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_survey_pin: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_survey_pin: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_survey_pin: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_survey_pin: legacy extras dimensions match manifest  -  extras= manifest=21.90317726135254,5.338594913482666,8.399999618530273
+DIAG  wholeship_ship_stormshift_collector_v01: triangle profile differs  -  tris=33094 profile=500..32000 class=part
+DIAG  wholeship_ship_stormshift_collector_v01: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ship_stormshift_collector_v01: extras part id  -  extras=wholeship_stormshift_collector
+DIAG  wholeship_ship_stormshift_collector_v01: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ship_stormshift_collector_v01: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ship_stormshift_collector_v01: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ship_stormshift_collector_v01: legacy extras dimensions match manifest  -  extras= manifest=18.091590881347656,2.8473041653633118,17.4810733795166
+DIAG  wholeship_volatiles_tanker: triangle profile differs  -  tris=70912 profile=500..32000 class=part
+DIAG  wholeship_volatiles_tanker: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_volatiles_tanker: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_volatiles_tanker: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_volatiles_tanker: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_volatiles_tanker: legacy extras dimensions match manifest  -  extras= manifest=35.12083625793457,6.674773693084717,6.4439637660980225
+DIAG  wholeship_warden_production_v1: triangle profile differs  -  tris=46694 profile=500..32000 class=part
+DIAG  wholeship_warden_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_warden_production_v1: extras part id  -  extras=warden_production_v1
+DIAG  wholeship_warden_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_warden_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_warden_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_warden_production_v1: legacy extras dimensions match manifest  -  extras= manifest=42.12775802612305,11.058894157409668,12.51105785369873
+DIAG  wholeship_wasp_production_v1: triangle profile differs  -  tris=39784 profile=500..32000 class=part
+DIAG  wholeship_wasp_production_v1: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_wasp_production_v1: extras part id  -  extras=wasp_production_v1
+DIAG  wholeship_wasp_production_v1: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_production_v1: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_production_v1: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_production_v1: legacy extras dimensions match manifest  -  extras= manifest=21.6204891204834,2.649999976158142,16.159591674804688
+DIAG  wholeship_wasp_free_militia: triangle profile differs  -  tris=62310 profile=500..32000 class=part
+DIAG  wholeship_wasp_free_militia: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_wasp_free_militia: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_free_militia: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_free_militia: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_free_militia: legacy extras dimensions match manifest  -  extras= manifest=21.620471954345703,2.6500327587127686,16.159591674804688
+DIAG  wholeship_wasp_mts_escort: triangle profile differs  -  tris=62310 profile=500..32000 class=part
+DIAG  wholeship_wasp_mts_escort: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_wasp_mts_escort: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_mts_escort: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_mts_escort: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_mts_escort: legacy extras dimensions match manifest  -  extras= manifest=21.620471954345703,2.6500327587127686,16.159591674804688
+DIAG  wholeship_wasp_scn_patrol: triangle profile differs  -  tris=62310 profile=500..32000 class=part
+DIAG  wholeship_wasp_scn_patrol: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_wasp_scn_patrol: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_scn_patrol: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_scn_patrol: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_scn_patrol: legacy extras dimensions match manifest  -  extras= manifest=21.620471954345703,2.6500327587127686,16.159591674804688
+DIAG  wholeship_hornet_scn_interdictor: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_hornet_scn_interdictor: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_hornet_scn_interdictor: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_hornet_scn_interdictor: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_hornet_scn_interdictor: legacy extras dimensions match manifest  -  extras= manifest=9.840991020202637,1.456377238035202,8.800000190734863
+DIAG  wholeship_wasp_quiet_ghost: triangle profile differs  -  tris=62310 profile=500..32000 class=part
+DIAG  wholeship_wasp_quiet_ghost: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_wasp_quiet_ghost: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_quiet_ghost: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_quiet_ghost: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_wasp_quiet_ghost: legacy extras dimensions match manifest  -  extras= manifest=21.620471954345703,2.6500327587127686,16.159591674804688
+DIAG  wholeship_ashline_dart_choir: triangle profile differs  -  tris=38474 profile=500..32000 class=part
+DIAG  wholeship_ashline_dart_choir: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ashline_dart_choir: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_dart_choir: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_dart_choir: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_dart_choir: legacy extras dimensions match manifest  -  extras= manifest=16.31901979446411,2.424499988555908,6.8936638832092285
+DIAG  wholeship_ashline_lode_vael: triangle profile differs  -  tris=32574 profile=500..32000 class=part
+DIAG  wholeship_ashline_lode_vael: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ashline_lode_vael: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_lode_vael: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_lode_vael: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_lode_vael: legacy extras dimensions match manifest  -  extras= manifest=22.12032985687256,4.026051044464111,11.020000457763672
+DIAG  wholeship_ashline_rig_quiet: triangle profile differs  -  tris=37724 profile=500..32000 class=part
+DIAG  wholeship_ashline_rig_quiet: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_ashline_rig_quiet: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_rig_quiet: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_rig_quiet: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ashline_rig_quiet: legacy extras dimensions match manifest  -  extras= manifest=18.361998558044434,2.901238799095154,6.150302171707153
+DIAG  wholeship_helios_cradle_dmc: triangle profile differs  -  tris=68886 profile=500..32000 class=part
+DIAG  wholeship_helios_cradle_dmc: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_helios_cradle_dmc: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_helios_cradle_dmc: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_helios_cradle_dmc: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_helios_cradle_dmc: legacy extras dimensions match manifest  -  extras= manifest=23.820687294006348,7.09927225112915,9.464362144470215
+DIAG  wholeship_yard_tug: triangle profile differs  -  tris=65520 profile=500..32000 class=part
+DIAG  wholeship_yard_tug: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  wholeship_yard_tug: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_yard_tug: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_yard_tug: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_yard_tug: legacy extras dimensions match manifest  -  extras= manifest=26.292317390441895,5.801379084587097,7.829456806182861
+DIAG  place_works_inclusion_kit: texture profile differs  -  textureSize=2048 profile=4096
+DIAG  place_works_inclusion_kit: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_works_inclusion_kit: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_works_inclusion_kit: legacy extras dimensions match manifest  -  extras= manifest=1.5873799920082092,0.823199987411499,1.0856200456619263
+DIAG  place_quiessence_freighter_a: triangle profile differs  -  tris=65772 profile=500..32000 class=part
+DIAG  place_quiessence_freighter_a: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_quiessence_freighter_a: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_quiessence_freighter_a: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_quiessence_freighter_a: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_quiessence_freighter_a: legacy extras dimensions match manifest  -  extras= manifest=35.12099075317383,6.678264617919922,6.444001197814941
+DIAG  place_quiessence_freighter_b: triangle profile differs  -  tris=50748 profile=500..32000 class=part
+DIAG  place_quiessence_freighter_b: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_quiessence_freighter_b: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_quiessence_freighter_b: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_quiessence_freighter_b: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_quiessence_freighter_b: legacy extras dimensions match manifest  -  extras= manifest=29.22139549255371,5.147270679473877,9.528609275817871
+DIAG  place_quiessence_freighter_c: triangle profile differs  -  tris=57444 profile=500..32000 class=part
+DIAG  place_quiessence_freighter_c: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_quiessence_freighter_c: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_quiessence_freighter_c: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_quiessence_freighter_c: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_quiessence_freighter_c: legacy extras dimensions match manifest  -  extras= manifest=43.31105995178223,9.005894184112549,9.511959075927734
+DIAG  place_wasp_frag_bow: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_wasp_frag_bow: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_wasp_frag_bow: extras part id  -  extras=wasp_frag_bow
+DIAG  place_wasp_frag_bow: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_wasp_frag_bow: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_wasp_frag_bow: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_wasp_frag_bow: legacy extras dimensions match manifest  -  extras= manifest=9.800153136253357,2.7537659406661987,7.982030391693115
+DIAG  place_wasp_frag_aft: texture profile differs  -  textureSize=512 profile=1024
+DIAG  place_wasp_frag_aft: triangle profile differs  -  tris=33600 profile=500..32000 class=part
+DIAG  place_wasp_frag_aft: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v5.1.20
+DIAG  place_wasp_frag_aft: extras part id  -  extras=wasp_frag_aft
+DIAG  place_wasp_frag_aft: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_wasp_frag_aft: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_wasp_frag_aft: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_wasp_frag_aft: legacy extras dimensions match manifest  -  extras= manifest=14.620343685150146,3.096830725669861,16.159591674804688
+DIAG  place_ceres_second_measure: triangle profile differs  -  tris=146004 profile=500..32000 class=part
+DIAG  place_ceres_second_measure: byte profile exceeded  -  bytes=8665720 profileMax=5000000
+DIAG  place_ceres_second_measure: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v4.3.47
+DIAG  place_ceres_second_measure: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure: legacy extras dimensions match manifest  -  extras= manifest=180,30,84.5
+DIAG  place_ceres_second_measure_long_plate: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v4.3.47
+DIAG  place_ceres_second_measure_long_plate: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure_long_plate: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure_long_plate: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure_long_plate: legacy extras dimensions match manifest  -  extras= manifest=34,5,55
+DIAG  place_ceres_second_measure_crossbeam: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v4.3.47
+DIAG  place_ceres_second_measure_crossbeam: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure_crossbeam: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure_crossbeam: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure_crossbeam: legacy extras dimensions match manifest  -  extras= manifest=34,6,55
+DIAG  place_ceres_second_measure_keel: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v4.3.47
+DIAG  place_ceres_second_measure_keel: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure_keel: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure_keel: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_ceres_second_measure_keel: legacy extras dimensions match manifest  -  extras= manifest=35,6,10
+DIAG  wholeship_ceres_breaker: triangle profile differs  -  tris=44846 profile=500..32000 class=part
+DIAG  wholeship_ceres_breaker: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v4.3.47
+DIAG  wholeship_ceres_breaker: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_ceres_breaker: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_ceres_breaker: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_ceres_breaker: legacy extras dimensions match manifest  -  extras= manifest=90,17,62
+DIAG  place_ceres_section_cradle: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v4.3.47
+DIAG  place_ceres_section_cradle: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_ceres_section_cradle: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_ceres_section_cradle: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_ceres_section_cradle: legacy extras dimensions match manifest  -  extras= manifest=85,15,75
+DIAG  place_ceres_breaker_cutter_head: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v4.3.47
+DIAG  place_ceres_breaker_cutter_head: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_ceres_breaker_cutter_head: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_ceres_breaker_cutter_head: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  place_ceres_breaker_cutter_head: legacy extras dimensions match manifest  -  extras= manifest=8,4,6
+DIAG  wholeship_brood_mite_v01: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v4.3.47
+DIAG  wholeship_brood_mite_v01: legacy extras priority matches manifest  -  extras=undefined
+DIAG  wholeship_brood_mite_v01: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  wholeship_brood_mite_v01: legacy extras texture size matches manifest  -  extras=undefined
+DIAG  wholeship_brood_mite_v01: legacy extras dimensions match manifest  -  extras= manifest=11.312471389770508,2.523403286933899,8.548778533935547
+DIAG  place_latch_nine: generator is outside the historical SpaceFace tool chain  -  generator=Khronos glTF Blender I/O v4.3.47
+FAIL  place_latch_nine: bytes match manifest  -  glb=2391584 manifest=2390428
+DIAG  place_latch_nine: extras part id  -  extras=latch-nine
+DIAG  place_latch_nine: legacy extras priority matches manifest  -  extras=undefined
+DIAG  place_latch_nine: legacy extras triangle count matches manifest  -  extras=undefined
+DIAG  place_latch_nine: legacy extras texture size matches manifest  -  extras=undefined
+FAIL  place_latch_nine: computed dimensions match manifest  -  metric=all computed=18.300,2.920,13.672 manifest=18.300453186035156,2.919999897480011,13.75499963760376
+DIAG  place_latch_nine: legacy extras dimensions match manifest  -  extras= manifest=18.300453186035156,2.919999897480011,13.75499963760376
+FAIL  manifest GLB cockpits/cockpit_dome.glb exists on disk
+FAIL  manifest GLB cockpits/cockpit_recessed.glb exists on disk
+FAIL  manifest GLB cockpits/cockpit_slab.glb exists on disk
+FAIL  manifest GLB engines/engine_industrial.glb exists on disk
+FAIL  manifest GLB engines/engine_ion_small.glb exists on disk
+FAIL  manifest GLB engines/engine_ion_twin.glb exists on disk
+FAIL  manifest GLB engines/engine_plasma_ring.glb exists on disk
+FAIL  manifest GLB engines/engine_resonator.glb exists on disk
+FAIL  manifest GLB engines/engine_vector.glb exists on disk
+FAIL  manifest GLB fins/fin_crystalline.glb exists on disk
+FAIL  manifest GLB fins/fin_delta.glb exists on disk
+FAIL  manifest GLB fins/fin_radiator_grid.glb exists on disk
+FAIL  manifest GLB fins/fin_stabilator.glb exists on disk
+FAIL  manifest GLB fins/fin_swept_smuggler.glb exists on disk
+FAIL  manifest GLB fins/fin_wedge.glb exists on disk
+FAIL  manifest GLB greebles/greeble_antennas.glb exists on disk
+FAIL  manifest GLB greebles/greeble_armor_plates.glb exists on disk
+FAIL  manifest GLB greebles/greeble_hatches.glb exists on disk
+FAIL  manifest GLB greebles/greeble_nav_lights.glb exists on disk
+FAIL  manifest GLB greebles/greeble_pipes.glb exists on disk
+FAIL  manifest GLB greebles/greeble_rcs.glb exists on disk
+FAIL  manifest GLB greebles/greeble_vents.glb exists on disk
+FAIL  manifest GLB hulls/hull_capital.glb exists on disk
+FAIL  manifest GLB hulls/hull_corvette.glb exists on disk
+FAIL  manifest GLB hulls/hull_fighter.glb exists on disk
+FAIL  manifest GLB hulls/hull_freighter.glb exists on disk
+FAIL  manifest GLB hulls/hull_frigate.glb exists on disk
+FAIL  manifest GLB hulls/hull_gunship.glb exists on disk
+FAIL  manifest GLB hulls/hull_interceptor.glb exists on disk
+FAIL  manifest GLB hulls/hull_miner.glb exists on disk
+FAIL  manifest GLB hulls/hull_multirole.glb exists on disk
+FAIL  manifest GLB hulls/hull_starter.glb exists on disk
+FAIL  manifest GLB places/place_ash_pin.glb exists on disk
+FAIL  manifest GLB places/place_asteroid_graffiti.glb exists on disk
+FAIL  manifest GLB places/place_asteroid_rock_a.glb exists on disk
+FAIL  manifest GLB places/place_asteroid_rock_b.glb exists on disk
+FAIL  manifest GLB places/place_asteroid_rock_c.glb exists on disk
+FAIL  manifest GLB places/place_asteroid_seamed.glb exists on disk
+FAIL  manifest GLB places/place_cargo_pod_standard.glb exists on disk
+FAIL  manifest GLB places/place_ceres_bait_wreck.glb exists on disk
+FAIL  manifest GLB places/place_ceres_grave_shard.glb exists on disk
+FAIL  manifest GLB places/place_claim_mark.glb exists on disk
+FAIL  manifest GLB places/place_claim_outpost_base.glb exists on disk
+FAIL  manifest GLB places/place_claim_outpost_catcher.glb exists on disk
+FAIL  manifest GLB places/place_breakaway_sp07.glb exists on disk
+FAIL  manifest GLB places/place_breakaway_fork.glb exists on disk
+FAIL  manifest GLB places/place_claim_outpost_bastion.glb exists on disk
+FAIL  manifest GLB places/place_claim_outpost_refinery.glb exists on disk
+FAIL  manifest GLB places/place_claim_outpost_fence.glb exists on disk
+FAIL  manifest GLB places/place_claim_outpost_relay.glb exists on disk
+FAIL  manifest GLB places/place_cold_locker.glb exists on disk
+FAIL  manifest GLB places/place_container_rack.glb exists on disk
+FAIL  manifest GLB places/place_conveyor_barge.glb exists on disk
+FAIL  manifest GLB places/place_conveyor_truss.glb exists on disk
+FAIL  manifest GLB places/place_dead_hulk.glb exists on disk
+FAIL  manifest GLB places/place_debris_chunk.glb exists on disk
+FAIL  manifest GLB places/place_dock_interior.glb exists on disk
+FAIL  manifest GLB places/place_dock_interior_grit.glb exists on disk
+FAIL  manifest GLB places/place_dock_interior_military.glb exists on disk
+FAIL  manifest GLB places/place_drill_platform.glb exists on disk
+FAIL  manifest GLB places/place_extraction_mast.glb exists on disk
+FAIL  manifest GLB places/place_freight_platform.glb exists on disk
+FAIL  manifest GLB places/place_gate_jump_ring.glb exists on disk
+FAIL  manifest GLB places/place_improvised_dock.glb exists on disk
+FAIL  manifest GLB places/place_interdiction_buoy.glb exists on disk
+FAIL  manifest GLB places/place_landmark_wreck_cathedral.glb exists on disk
+FAIL  manifest GLB places/place_lane_beacon.glb exists on disk
+FAIL  manifest GLB places/place_lane_pin.glb exists on disk
+FAIL  manifest GLB places/place_maintenance_gantry.glb exists on disk
+FAIL  manifest GLB places/place_memorial_array.glb exists on disk
+FAIL  manifest GLB places/place_landmark_skerris_throne.glb exists on disk
+FAIL  manifest GLB places/place_landmark_resonant_cathedral.glb exists on disk
+FAIL  manifest GLB places/place_landmark_candle_fleet.glb exists on disk
+FAIL  manifest GLB places/place_mining_drone.glb exists on disk
+FAIL  manifest GLB places/place_nav_buoy.glb exists on disk
+FAIL  manifest GLB places/place_radiator_bank.glb exists on disk
+FAIL  manifest GLB places/place_scrap_cage.glb exists on disk
+FAIL  manifest GLB places/place_sensor_mast.glb exists on disk
+FAIL  manifest GLB places/place_slurry_tank.glb exists on disk
+FAIL  manifest GLB places/place_station_billboard.glb exists on disk
+FAIL  manifest GLB places/place_station_blackmarket.glb exists on disk
+FAIL  manifest GLB places/place_station_fab.glb exists on disk
+FAIL  manifest GLB places/place_station_military.glb exists on disk
+FAIL  manifest GLB places/place_station_mining.glb exists on disk
+FAIL  manifest GLB places/place_station_refinery.glb exists on disk
+FAIL  manifest GLB places/place_station_research.glb exists on disk
+FAIL  manifest GLB places/place_station_trade_hub.glb exists on disk
+FAIL  manifest GLB places/var_station_trade_hub_free_overlay_v01.glb exists on disk
+FAIL  manifest GLB places/var_station_trade_hub_mts_overlay_v01.glb exists on disk
+FAIL  manifest GLB places/var_station_trade_hub_scn_overlay_v01.glb exists on disk
+FAIL  manifest GLB places/place_tally_post.glb exists on disk
+FAIL  manifest GLB places/place_transfer_arm.glb exists on disk
+FAIL  manifest GLB places/place_transponder_gate.glb exists on disk
+FAIL  manifest GLB places/place_whistle.glb exists on disk
+FAIL  manifest GLB places/place_worklight_tower.glb exists on disk
+FAIL  manifest GLB works/place_works_cargo_port.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_lane_corner.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_lane_cross.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_lane_end.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_lane_junction.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_lane_straight.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_lane_t.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_power_corner.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_power_cross.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_power_end.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_power_junction.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_power_straight.glb exists on disk
+FAIL  manifest GLB works/place_works_conduit_power_t.glb exists on disk
+FAIL  manifest GLB works/place_works_derrick.glb exists on disk
+FAIL  manifest GLB works/place_works_extractor.glb exists on disk
+FAIL  manifest GLB works/place_works_fabricator.glb exists on disk
+FAIL  manifest GLB works/place_works_gas_tap.glb exists on disk
+FAIL  manifest GLB works/place_works_massline_core.glb exists on disk
+FAIL  manifest GLB works/place_works_refinery.glb exists on disk
+FAIL  manifest GLB works/place_works_rover.glb exists on disk
+FAIL  manifest GLB pods/pod_cargo_container.glb exists on disk
+FAIL  manifest GLB pods/pod_47a_evidence_spindle.glb exists on disk
+FAIL  manifest GLB places/place_47a_rescue_capsule.glb exists on disk
+FAIL  manifest GLB pods/pod_repair_patch.glb exists on disk
+FAIL  manifest GLB pods/pod_utility.glb exists on disk
+FAIL  manifest GLB gear/skid_quad.glb exists on disk
+FAIL  manifest GLB gear/skid_trio.glb exists on disk
+FAIL  manifest GLB weapons/weapon_gatling.glb exists on disk
+FAIL  manifest GLB weapons/weapon_heavy_cannon.glb exists on disk
+FAIL  manifest GLB weapons/weapon_lance.glb exists on disk
+FAIL  manifest GLB weapons/weapon_pulse_cannon.glb exists on disk
+FAIL  manifest GLB weapons/weapon_railgun.glb exists on disk
+FAIL  manifest GLB weapons/weapon_turret_dual.glb exists on disk
+FAIL  manifest GLB wholeships/apron_shuttle.glb exists on disk
+FAIL  manifest GLB wholeships/ashline_dart.glb exists on disk
+FAIL  manifest GLB wholeships/ashline_lode.glb exists on disk
+FAIL  manifest GLB wholeships/ashline_rig.glb exists on disk
+FAIL  manifest GLB wholeships/ashline_rig_corsair_blade.glb exists on disk
+FAIL  manifest GLB wholeships/atlas_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/bastion_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/colossus_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/helios_arclight.glb exists on disk
+FAIL  manifest GLB wholeships/helios_cradle.glb exists on disk
+FAIL  manifest GLB wholeships/helios_lark.glb exists on disk
+FAIL  manifest GLB wholeships/helios_span.glb exists on disk
+FAIL  manifest GLB wholeships/helios_span_dmc.glb exists on disk
+FAIL  manifest GLB wholeships/helios_span_mts.glb exists on disk
+FAIL  manifest GLB wholeships/helios_span_reach.glb exists on disk
+FAIL  manifest GLB wholeships/hornet_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/inspection_cutter.glb exists on disk
+FAIL  manifest GLB wholeships/ironback_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/kestrel.glb exists on disk
+FAIL  manifest GLB wholeships/kestrel_lod1.glb exists on disk
+FAIL  manifest GLB wholeships/kestrel_lod2.glb exists on disk
+FAIL  manifest GLB wholeships/leviathan_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/saucer_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/massline_express_liner_v1.glb exists on disk
+FAIL  manifest GLB wholeships/mule_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/ore_barge.glb exists on disk
+FAIL  manifest GLB wholeships/pelican.glb exists on disk
+FAIL  manifest GLB wholeships/pelican_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/prospector_skiff.glb exists on disk
+FAIL  manifest GLB wholeships/ranger_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/repair_tender.glb exists on disk
+FAIL  manifest GLB wholeships/rescue_lifter.glb exists on disk
+FAIL  manifest GLB wholeships/salvage_cutter.glb exists on disk
+FAIL  manifest GLB wholeships/scrap_sweeper.glb exists on disk
+FAIL  manifest GLB wholeships/survey_pin.glb exists on disk
+FAIL  manifest GLB wholeships/ship_stormshift_collector_v01.glb exists on disk
+FAIL  manifest GLB wholeships/volatiles_tanker.glb exists on disk
+FAIL  manifest GLB wholeships/warden_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/wasp.glb exists on disk
+FAIL  manifest GLB wholeships/wasp_production_v1.glb exists on disk
+FAIL  manifest GLB wholeships/wasp_free_militia.glb exists on disk
+FAIL  manifest GLB wholeships/wasp_mts_escort.glb exists on disk
+FAIL  manifest GLB wholeships/wasp_scn_patrol.glb exists on disk
+FAIL  manifest GLB wholeships/hornet_scn_interdictor.glb exists on disk
+FAIL  manifest GLB wholeships/wasp_quiet_ghost.glb exists on disk
+FAIL  manifest GLB wholeships/ashline_dart_choir.glb exists on disk
+FAIL  manifest GLB wholeships/ashline_lode_vael.glb exists on disk
+FAIL  manifest GLB wholeships/ashline_rig_quiet.glb exists on disk
+FAIL  manifest GLB wholeships/helios_cradle_dmc.glb exists on disk
+FAIL  manifest GLB wholeships/yard_tug.glb exists on disk
+FAIL  manifest GLB works/place_works_inclusion_kit.glb exists on disk
+FAIL  manifest GLB places/place_quiessence_freighter_a.glb exists on disk
+FAIL  manifest GLB places/place_quiessence_freighter_b.glb exists on disk
+FAIL  manifest GLB places/place_quiessence_freighter_c.glb exists on disk
+FAIL  manifest GLB places/place_wasp_frag_bow.glb exists on disk
+FAIL  manifest GLB places/place_wasp_frag_aft.glb exists on disk
+FAIL  manifest GLB places/place_ceres_second_measure_crossbeam.glb exists on disk
+FAIL  manifest GLB places/place_ceres_second_measure_keel.glb exists on disk
+FAIL  manifest GLB wholeships/ceres_breaker.glb exists on disk
+FAIL  manifest GLB places/place_ceres_section_cradle.glb exists on disk
+FAIL  manifest GLB places/place_ceres_breaker_cutter_head.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_starter.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_fighter.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_miner.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_freighter.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_interceptor.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_corvette.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_gunship.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_frigate.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_capital.glb exists on disk
+FAIL  runtime slot GLB hulls/hull_multirole.glb exists on disk
+FAIL  runtime slot GLB wholeships/kestrel.glb exists on disk
+FAIL  runtime slot GLB wholeships/ashline_dart.glb exists on disk
+FAIL  runtime slot GLB wholeships/ashline_lode.glb exists on disk
+FAIL  runtime slot GLB wholeships/ashline_rig.glb exists on disk
+FAIL  runtime slot GLB wholeships/ashline_rig_corsair_blade.glb exists on disk
+FAIL  runtime slot GLB wholeships/helios_lark.glb exists on disk
+FAIL  runtime slot GLB wholeships/helios_cradle.glb exists on disk
+FAIL  runtime slot GLB wholeships/helios_span.glb exists on disk
+FAIL  runtime slot GLB wholeships/helios_span_dmc.glb exists on disk
+FAIL  runtime slot GLB wholeships/helios_span_mts.glb exists on disk
+FAIL  runtime slot GLB wholeships/helios_span_reach.glb exists on disk
+FAIL  runtime slot GLB wholeships/helios_arclight.glb exists on disk
+FAIL  runtime slot GLB wholeships/ore_barge.glb exists on disk
+FAIL  runtime slot GLB wholeships/repair_tender.glb exists on disk
+FAIL  runtime slot GLB wholeships/salvage_cutter.glb exists on disk
+FAIL  runtime slot GLB wholeships/survey_pin.glb exists on disk
+FAIL  runtime slot GLB wholeships/rescue_lifter.glb exists on disk
+FAIL  runtime slot GLB wholeships/volatiles_tanker.glb exists on disk
+FAIL  runtime slot GLB wholeships/prospector_skiff.glb exists on disk
+FAIL  runtime slot GLB wholeships/scrap_sweeper.glb exists on disk
+FAIL  runtime slot GLB wholeships/yard_tug.glb exists on disk
+FAIL  runtime slot GLB wholeships/inspection_cutter.glb exists on disk
+FAIL  runtime slot GLB wholeships/apron_shuttle.glb exists on disk
+FAIL  runtime slot GLB wholeships/wasp_free_militia.glb exists on disk
+FAIL  runtime slot GLB wholeships/wasp_mts_escort.glb exists on disk
+FAIL  runtime slot GLB wholeships/wasp_scn_patrol.glb exists on disk
+FAIL  runtime slot GLB wholeships/ceres_breaker.glb exists on disk
+FAIL  runtime slot GLB cockpits/cockpit_dome.glb exists on disk
+FAIL  runtime slot GLB cockpits/cockpit_slab.glb exists on disk
+FAIL  runtime slot GLB cockpits/cockpit_recessed.glb exists on disk
+FAIL  runtime slot GLB engines/engine_ion_small.glb exists on disk
+FAIL  runtime slot GLB engines/engine_ion_twin.glb exists on disk
+FAIL  runtime slot GLB engines/engine_industrial.glb exists on disk
+FAIL  runtime slot GLB engines/engine_resonator.glb exists on disk
+FAIL  runtime slot GLB engines/engine_vector.glb exists on disk
+FAIL  runtime slot GLB engines/engine_plasma_ring.glb exists on disk
+FAIL  runtime slot GLB fins/fin_wedge.glb exists on disk
+FAIL  runtime slot GLB fins/fin_radiator_grid.glb exists on disk
+FAIL  runtime slot GLB fins/fin_swept_smuggler.glb exists on disk
+FAIL  runtime slot GLB fins/fin_crystalline.glb exists on disk
+FAIL  runtime slot GLB fins/fin_delta.glb exists on disk
+FAIL  runtime slot GLB fins/fin_stabilator.glb exists on disk
+FAIL  runtime slot GLB weapons/weapon_pulse_cannon.glb exists on disk
+FAIL  runtime slot GLB weapons/weapon_heavy_cannon.glb exists on disk
+FAIL  runtime slot GLB weapons/weapon_turret_dual.glb exists on disk
+FAIL  runtime slot GLB weapons/weapon_lance.glb exists on disk
+FAIL  runtime slot GLB weapons/weapon_gatling.glb exists on disk
+FAIL  runtime slot GLB weapons/weapon_railgun.glb exists on disk
+FAIL  runtime slot GLB greebles/greeble_vents.glb exists on disk
+FAIL  runtime slot GLB greebles/greeble_hatches.glb exists on disk
+FAIL  runtime slot GLB greebles/greeble_pipes.glb exists on disk
+FAIL  runtime slot GLB greebles/greeble_rcs.glb exists on disk
+FAIL  runtime slot GLB greebles/greeble_antennas.glb exists on disk
+FAIL  runtime slot GLB greebles/greeble_nav_lights.glb exists on disk
+FAIL  runtime slot GLB greebles/greeble_armor_plates.glb exists on disk
+FAIL  runtime slot GLB gear/skid_trio.glb exists on disk
+FAIL  runtime slot GLB gear/skid_quad.glb exists on disk
+FAIL  runtime slot GLB pods/pod_utility.glb exists on disk
+FAIL  runtime slot GLB pods/pod_cargo_container.glb exists on disk
+FAIL  runtime slot GLB pods/pod_repair_patch.glb exists on disk
+FAIL  runtime slot GLB places/place_lane_beacon.glb exists on disk
+FAIL  runtime slot GLB places/place_nav_buoy.glb exists on disk
+FAIL  runtime slot GLB places/place_asteroid_seamed.glb exists on disk
+FAIL  runtime slot GLB places/place_debris_chunk.glb exists on disk
+FAIL  runtime slot GLB places/place_station_billboard.glb exists on disk
+FAIL  runtime slot GLB places/place_memorial_array.glb exists on disk
+FAIL  runtime slot GLB places/place_dead_hulk.glb exists on disk
+FAIL  runtime slot GLB places/place_conveyor_barge.glb exists on disk
+FAIL  runtime slot GLB places/place_mining_drone.glb exists on disk
+FAIL  runtime slot GLB places/place_lane_pin.glb exists on disk
+FAIL  runtime slot GLB places/place_cold_locker.glb exists on disk
+FAIL  runtime slot GLB places/place_asteroid_rock_a.glb exists on disk
+FAIL  runtime slot GLB places/place_asteroid_rock_b.glb exists on disk
+FAIL  runtime slot GLB places/place_asteroid_rock_c.glb exists on disk
+FAIL  runtime slot GLB places/place_asteroid_graffiti.glb exists on disk
+FAIL  runtime slot GLB places/place_station_trade_hub.glb exists on disk
+FAIL  runtime slot GLB places/var_station_trade_hub_free_overlay_v01.glb exists on disk
+FAIL  runtime slot GLB places/var_station_trade_hub_mts_overlay_v01.glb exists on disk
+FAIL  runtime slot GLB places/var_station_trade_hub_scn_overlay_v01.glb exists on disk
+FAIL  runtime slot GLB places/place_station_refinery.glb exists on disk
+FAIL  runtime slot GLB places/place_station_military.glb exists on disk
+FAIL  runtime slot GLB places/place_station_blackmarket.glb exists on disk
+FAIL  runtime slot GLB places/place_gate_jump_ring.glb exists on disk
+FAIL  runtime slot GLB places/place_station_mining.glb exists on disk
+FAIL  runtime slot GLB places/place_station_fab.glb exists on disk
+FAIL  runtime slot GLB places/place_station_research.glb exists on disk
+FAIL  runtime slot GLB places/place_dock_interior.glb exists on disk
+FAIL  runtime slot GLB places/place_dock_interior_military.glb exists on disk
+FAIL  runtime slot GLB places/place_dock_interior_grit.glb exists on disk
+FAIL  runtime slot GLB places/place_claim_outpost_base.glb exists on disk
+FAIL  runtime slot GLB places/place_claim_outpost_refinery.glb exists on disk
+FAIL  runtime slot GLB places/place_claim_outpost_relay.glb exists on disk
+FAIL  runtime slot GLB places/place_claim_outpost_bastion.glb exists on disk
+FAIL  runtime slot GLB places/place_landmark_wreck_cathedral.glb exists on disk
+FAIL  runtime slot GLB places/place_claim_outpost_catcher.glb exists on disk
+FAIL  runtime slot GLB places/place_claim_outpost_fence.glb exists on disk
+FAIL  runtime slot GLB places/place_breakaway_sp07.glb exists on disk
+FAIL  runtime slot GLB places/place_breakaway_fork.glb exists on disk
+FAIL  runtime slot GLB places/place_landmark_candle_fleet.glb exists on disk
+FAIL  runtime slot GLB places/place_landmark_resonant_cathedral.glb exists on disk
+FAIL  runtime slot GLB places/place_landmark_skerris_throne.glb exists on disk
+FAIL  runtime slot GLB places/place_ceres_second_measure_crossbeam.glb exists on disk
+FAIL  runtime slot GLB places/place_ceres_second_measure_keel.glb exists on disk
+FAIL  runtime slot GLB places/place_ceres_section_cradle.glb exists on disk
+FAIL  runtime slot GLB places/place_ceres_breaker_cutter_head.glb exists on disk
+
+6062 ok, 306 fail, 879 diagnostics
+synced /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/assets/ships/parts/parts_manifest.json

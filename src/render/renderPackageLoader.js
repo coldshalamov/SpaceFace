@@ -149,6 +149,17 @@ export function createRenderPackageLoader(options = {}) {
     // inside that gap sends the loader into a decode→evict→retry livelock (the PQ-033.02
     // save/load station-shell hang: the gate-required package was always the eviction victim).
     const consumerOwner = loadOptions.residencyOwner || null;
+    // A source-URL task can represent several owners above this content-hash cache. Read
+    // that live set at both compile and commit: B may join after A posted the decode, and
+    // only B's own active residency claim may protect the result when A has departed.
+    const sharedConsumers = () => typeof loadOptions.getSharedDecodeConsumers === 'function'
+      ? loadOptions.getSharedDecodeConsumers()
+      : [loadOptions];
+    const consumerIsActive = (consumer) => typeof consumer.isResidencyOwnerActive !== 'function'
+      || consumer.isResidencyOwnerActive() === true;
+    const decodeConsumerActive = typeof loadOptions.getSharedDecodeConsumers === 'function'
+      ? () => sharedConsumers().some(consumerIsActive)
+      : loadOptions.isResidencyOwnerActive;
     // Warm-purpose decodes must carry the flag through this route too — a retracted prewarm or
     // runway residue otherwise reads identical to ambient package-cache residue and loses the
     // soft-eviction LRU race first, exactly the pop the flag exists to prevent.
@@ -158,18 +169,21 @@ export function createRenderPackageLoader(options = {}) {
     // sort last instead of first. Without a consumer owner the load is ambient, not served.
     const decodeServed = !decodeWarm && !!consumerOwner;
     const retainConsumer = (key) => {
-      if (!consumerOwner || requestAdmission.signal.aborted
-        || (typeof loadOptions.isResidencyOwnerActive === 'function'
-          && loadOptions.isResidencyOwnerActive() !== true)) return;
-      residency.retain(key, consumerOwner, {
-        role: loadOptions.residencyRole || 'live-boundary',
-        sectorId: loadOptions.residencySectorId || null,
-        decodeWarm,
-        decodeServed,
-        // Ownerless warms carry the same soft lease the GLB lane gives them — without it the
-        // session fallback owner makes this package immune to every soft-eviction pass.
-        ...(loadOptions.residencySoftLease === true ? { softLease: true } : {}),
-      });
+      if (requestAdmission.signal.aborted) return;
+      for (const consumer of sharedConsumers()) {
+        const owner = consumer.residencyOwner;
+        if (!owner || !consumerIsActive(consumer)) continue;
+        const warm = /warm|runway|prewarm|armory|predicted/i.test(String(consumer.residencyRole || ''));
+        residency.retain(key, owner, {
+          role: consumer.residencyRole || 'live-boundary',
+          sectorId: consumer.residencySectorId || null,
+          decodeWarm: warm,
+          decodeServed: !warm,
+          // Ownerless warms keep their existing soft lease; an active joiner is never
+          // permission to turn the creator's warm or departed owner into a hard retain.
+          ...(consumer.residencySoftLease === true ? { softLease: true } : {}),
+        });
+      }
     };
     const existing = cache.get(contentHash);
     if (existing) {
@@ -179,8 +193,8 @@ export function createRenderPackageLoader(options = {}) {
       // Joiner liveness rides the shared entry: the compile tail skips genuinely-dead work
       // only when no consumer remains — a departed creator must not null-settle the entry
       // under a live joiner (the null would also poison every later caller of this hash).
-      if (typeof loadOptions.isResidencyOwnerActive === 'function') {
-        (existing.liveConsumers || (existing.liveConsumers = [])).push(loadOptions.isResidencyOwnerActive);
+      if (typeof decodeConsumerActive === 'function') {
+        (existing.liveConsumers || (existing.liveConsumers = [])).push(decodeConsumerActive);
       }
       const loaded = await existing.promise;
       requestAdmission.assertActive();
@@ -221,8 +235,8 @@ export function createRenderPackageLoader(options = {}) {
       evicted: false,
       admission: newAdmission(`render-package:${metadata.assetId || contentHash}`),
       refCount: 1,
-      liveConsumers: typeof loadOptions.isResidencyOwnerActive === 'function'
-        ? [loadOptions.isResidencyOwnerActive]
+      liveConsumers: typeof decodeConsumerActive === 'function'
+        ? [decodeConsumerActive]
         : [],
     };
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {

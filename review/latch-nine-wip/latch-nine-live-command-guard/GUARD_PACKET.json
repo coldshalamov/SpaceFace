@@ -1,0 +1,19 @@
+{
+  "id": "SF20-01-live-command-guard",
+  "prerequisitePatchSha256": "abcd840e961c7d401fbf2e85022cf30431775e903f4811e08ff63e63cc9637a6",
+  "localCommit": "bed6f947de89ee030a2bc328b190bf457913d82c",
+  "patchSha256": "022035d89537c16b792d07bf7d2f912050643bba4c11ed00f43f1080f3a42c8f",
+  "files": [
+    {
+      "path": "src/core/dockIntent.js",
+      "preimageSha256": "7b7b172f3ff43e8eee32f0bdea441a1382c10d4e9903b4b1d59ea0fe29a2c7f9",
+      "postimageSha256": "e12a5477196f0df0726e230e4834bb23976944ba8646397b1464ca469e4d3828"
+    },
+    {
+      "path": "test/dock-intent-live-command.test.mjs",
+      "preimageSha256": null,
+      "postimageSha256": "47f3b8f59af33be175f4163d73f970f3a42fd8d2917d0ec2a7f8313d3ecdf918"
+    }
+  ],
+  "verification": "37/37 guard, route and ordinary rep-gated docking tests pass with guard module routed into all importers"
+}

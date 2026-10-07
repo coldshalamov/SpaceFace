@@ -1,0 +1,497 @@
+{
+  "blender": "4.3.2",
+  "files": [
+    {
+      "path": "brood-charger-redesign/candidate-c6/charger-animated-source.blend",
+      "sha256": "250e2a2416543c12e7f9db08d5c632230b772bc206c30cbb1ed680d396f41a2d",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 12
+    },
+    {
+      "path": "brood-charger-redesign/candidate-c6/charger-LOD0-source.blend",
+      "sha256": "6d1a1d583528237215b58f41ed67c9336fa7ecad3f6bdcf6aeb6beefbcdc794c",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-charger-redesign/candidate-c6/charger-LOD1-source.blend",
+      "sha256": "71a4f10a6df23848b4e63863fadf1eb386bb275b29b06de409e44e2a4028f95e",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-charger-redesign/candidate-c6/charger-LOD2-source.blend",
+      "sha256": "e6f57e59e697ad4e714b7944d1a62c3e5d32320ac3b3643400b4925dc5d16214",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-mite-redesign/study-m6/mite-M6-source.blend",
+      "sha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-mite-redesign/candidate-m7/mite-M7-LOD0-editable.blend",
+      "sha256": "554bd8b1fad8201445aea596d35756a8860d18fbf1998349eee4a3646403d0df",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-mite-redesign/candidate-m7/mite-M7-LOD1-editable.blend",
+      "sha256": "123fb5ca275a5cbe825e7e3763134aca49f9c0e33b65f97cd6634d4c8aa3d4eb",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-mite-redesign/candidate-m7/mite-M7-LOD2-editable.blend",
+      "sha256": "d6e6807577b5afe1a07537d253032382659c4cff0915f4d34b4b8f2fcaa8e5e0",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-redesign/production-a6/package-v12/tools/blender/forge/source_assets/splitter_a6/splitter-A6-finished-source.blend",
+      "sha256": "a9371077b518747467bfef18b7f95bb9bfc85644936451dd2d2c832989b2870e",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-redesign/production-a6/package-v12/tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD0-editable.blend",
+      "sha256": "156583b7a3baf32cf24f47aad0a52fa7dcb356ea61cd0053e8e460bcf29812e5",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-redesign/production-a6/package-v12/tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD1-editable.blend",
+      "sha256": "2adb694c6957a3655c023c3d634019a9ff29e02cc0bbafb8a2763b9d157621f5",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    },
+    {
+      "path": "brood-redesign/production-a6/package-v12/tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD2-editable.blend",
+      "sha256": "a7831a9a91069e6db75404b05ab00972023aa0e5eb4c64634fe6ab753a762ad7",
+      "libraries": [],
+      "images": [
+        {
+          "name": "BroodChitin_Normal_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 25687,
+              "sha256": "2fa0fa8f66511d61e0de8a7988d634ec20dd3c67e77fcc98582ad9427aa27e60"
+            }
+          ]
+        },
+        {
+          "name": "BroodChitin_ORM_v1",
+          "source": "FILE",
+          "path": "",
+          "size": [
+            256,
+            256
+          ],
+          "packed": true,
+          "packedFiles": [
+            {
+              "bytes": 16221,
+              "sha256": "5cc8d783b0e3528c97aebdd7a72b9b6b832ad111d8236cfb17350d699bc4483c"
+            }
+          ]
+        }
+      ],
+      "allImagesPacked": true,
+      "actions": 0
+    }
+  ]
+}

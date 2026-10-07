@@ -454,6 +454,33 @@ export const ATTACHMENT_DEFS = Object.freeze([
 
 export const COMBAT_PROFILES = Object.freeze([
   {
+    id:'combat_profile_ceres_breaker',version:1,entityTypes:['ship'],
+    heat:{max:100,dissipationPerTick:.5},immunityTags:[],
+    subsystemIds:['subsystem_drive','subsystem_tether_spool','subsystem_power'],
+    sockets:[
+      {id:'SOCKET_Tether_Massline',tags:['tether_spool'],localPos:[-46/110,0],maxAttachments:1},
+      {id:'SOCKET_Cutter_Dock',tags:['tether'],localPos:[-46/110,30/110],maxAttachments:1},
+      {id:'socket_hull',tags:['tether'],localPos:[0,0],maxAttachments:2},
+    ],capabilities:{drive:true,weapon:false,sensor:true,tether:true,power:true},
+  },
+  {
+    id:'combat_profile_ceres_cutter_head',version:1,entityTypes:['wreck'],
+    heat:{max:0,dissipationPerTick:0},immunityTags:[],subsystemIds:[],
+    sockets:[
+      {id:'SOCKET_Mount',tags:['transport_clamp'],localPos:[-.8,0],maxAttachments:1},
+      {id:'socket_hull',tags:['tether'],localPos:[0,0],maxAttachments:1},
+    ],capabilities:{drive:true,weapon:false,sensor:false,tether:false,power:true,transport_clamp:true},
+  },
+  {
+    id:'combat_profile_ceres_cradle',version:1,entityTypes:['wreck'],
+    heat:{max:0,dissipationPerTick:0},immunityTags:[],subsystemIds:[],
+    sockets:[
+      {id:'SOCKET_Service_Head',tags:['transport_clamp'],localPos:[0,63/114],maxAttachments:1},
+      {id:'socket_hull',tags:['tether'],localPos:[0,0],maxAttachments:1},
+    ],capabilities:{drive:false,weapon:false,sensor:false,tether:false,power:true,transport_clamp:true},
+  },
+
+  {
     id: 'combat_profile_standard_ship', version: 1, entityTypes: ['ship', 'drone'],
     heat: { max: 100, dissipationPerTick: 0.50 },
     immunityTags: [],

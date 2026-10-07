@@ -1,0 +1,3 @@
+d191a6d85365b911b3e32becdc71ea0d7cc74c8eb104557d9109283c8760301a  candidate/src/systems/tally3.js
+4c8c5cb787c523139bee3794180f8f4ea6e92177a1b6f3965c8450664af55a91  candidate/src/render/tally3Visuals.js
+1af59009cc9ccdc28bb3ea90c986413788701e5e751175288671760fa8cd7107  candidate/test/tally3-motion-lifetime.test.mjs

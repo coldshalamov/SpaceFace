@@ -1,0 +1,17 @@
+{
+  "id": "brood_mite",
+  "file": "/workspace/scratch/d2415e46e35b/mite-recovery-candidate-n4/artifacts/n4/brood_mite_v01.glb",
+  "sourceSha256": "73aa1c0d380d19d4847454980e9d855f1850958dfc97b8485f50f960130f44c3",
+  "trianglesByLod": [
+    18928,
+    4756,
+    2017
+  ],
+  "drawsByLod": [
+    9,
+    9,
+    9
+  ],
+  "materials": 3,
+  "colliders": 28
+}

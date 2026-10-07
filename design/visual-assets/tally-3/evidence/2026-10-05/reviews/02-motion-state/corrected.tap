@@ -1,0 +1,82 @@
+TAP version 13
+# Subtest: three-argument consumer fallback observes real materialized owner and assessment on authored clock
+ok 1 - three-argument consumer fallback observes real materialized owner and assessment on authored clock
+  ---
+  duration_ms: 25.457774
+  type: 'test'
+  ...
+# Subtest: fallback gates stamp on accepted economy receipt and returned source, and honors raw-to-authored clock offset
+ok 2 - fallback gates stamp on accepted economy receipt and returned source, and honors raw-to-authored clock offset
+  ---
+  duration_ms: 9.808399
+  type: 'test'
+  ...
+# Subtest: removed, same-ID replacement and changed same-object generation cannot retain fallback authority
+ok 3 - removed, same-ID replacement and changed same-object generation cannot retain fallback authority
+  ---
+  duration_ms: 3.08199
+  type: 'test'
+  ...
+# Subtest: dead actor cannot animate with still-present owner map entry
+ok 4 - dead actor cannot animate with still-present owner map entry
+  ---
+  duration_ms: 3.391973
+  type: 'test'
+  ...
+# Subtest: NewGame removes old fallback and binds only fresh encounter occupant
+ok 5 - NewGame removes old fallback and binds only fresh encounter occupant
+  ---
+  duration_ms: 2.942982
+  type: 'test'
+  ...
+# Subtest: public Save/Continue adopts restored occupant, revokes old exact object and retains accepted receipt gating
+ok 6 - public Save/Continue adopts restored occupant, revokes old exact object and retains accepted receipt gating
+  ---
+  duration_ms: 38.837393
+  type: 'test'
+  ...
+# Subtest: retired runtime revokes fallback even while exact actor remains in entity map
+ok 7 - retired runtime revokes fallback even while exact actor remains in entity map
+  ---
+  duration_ms: 4.123708
+  type: 'test'
+  ...
+# Subtest: restore-in-progress revokes fallback before entity census replacement
+ok 8 - restore-in-progress revokes fallback before entity census replacement
+  ---
+  duration_ms: 2.312198
+  type: 'test'
+  ...
+# Subtest: rejected duplicate adoption invalidates previously bound assessor
+ok 9 - rejected duplicate adoption invalidates previously bound assessor
+  ---
+  duration_ms: 5.900464
+  type: 'test'
+  ...
+# Subtest: deserialize suspends binding until actual census adoption
+ok 10 - deserialize suspends binding until actual census adoption
+  ---
+  duration_ms: 2.804634
+  type: 'test'
+  ...
+# Subtest: duplicate crate census rejects motion binding even with one surviving assessor
+ok 11 - duplicate crate census rejects motion binding even with one surviving assessor
+  ---
+  duration_ms: 2.575682
+  type: 'test'
+  ...
+# Subtest: late teardown of old runtime cannot revoke exact-occupant successor binding
+ok 12 - late teardown of old runtime cannot revoke exact-occupant successor binding
+  ---
+  duration_ms: 1.46396
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1108.341292

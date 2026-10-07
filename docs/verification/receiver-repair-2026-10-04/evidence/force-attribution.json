@@ -1,0 +1,61 @@
+{
+  "schema": "ceres.receiver.force-attribution.v1",
+  "traceSha256": "045538e4eca6edd626bb66def1f904cf9199c04293f475efef5bb674ec6b517f",
+  "firstOnsetTick": 56097,
+  "recordedCommand": {
+    "kind": "command",
+    "tick": 56097,
+    "phase": "withdraw",
+    "command": {
+      "schemaVersion": 1,
+      "control": null,
+      "impulses": [
+        {
+          "x": -10.40971002316005,
+          "y": 0,
+          "z": 3.5687668354676125
+        }
+      ],
+      "torqueImpulses": [],
+      "bodyResponse": null
+    }
+  },
+  "independentKernelResample": [
+    {
+      "id": "field_cone_npc_540",
+      "ax": -0.34699033410533503,
+      "az": 0.11895889451558708,
+      "impulse": {
+        "x": -10.40971002316005,
+        "z": 3.5687668354676125
+      }
+    }
+  ],
+  "exactMatch": true,
+  "previousTick": {
+    "kind": "before-world",
+    "tick": 56096,
+    "phase": "withdraw",
+    "pos": {
+      "x": -850.0328369140625,
+      "y": 0,
+      "z": 1321.4951171875
+    },
+    "vel": {
+      "x": -0.00971304439008236,
+      "y": 0,
+      "z": -0.0004656375967897475
+    },
+    "force": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "torque": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    }
+  },
+  "conclusion": "Fresh NPC540 cone impulse precedes native step. Original receiver cable remains slack; large own-carrier impact follows at56199."
+}

@@ -1,0 +1,575 @@
+diff --git a/.github/workflows/check.yml b/.github/workflows/check.yml
+index 09f8666..42dd0b1 100644
+--- a/.github/workflows/check.yml
++++ b/.github/workflows/check.yml
+@@ -107,6 +107,10 @@ jobs:
+         if: ${{ !cancelled() && matrix.shard == 1 }}
+         run: node --test test/brood-combat.test.mjs test/brood-force-interactions.test.mjs test/brood-spitter.test.mjs test/brood-projectile-query.test.mjs test/brood-physics-command-lifetime.test.mjs test/swarm-specialist-debut.test.mjs test/brood-source-ci.test.mjs
+ 
++      - name: Validate Brood presentation source
++        if: ${{ !cancelled() && matrix.shard == 1 }}
++        run: node --test test/brood-source-presentation.test.mjs test/brood-spitter-presentation.test.mjs test/brood-presentation-ci.test.mjs
++
+       - name: Validate program control plane
+         if: matrix.shard == 1
+         run: |
+diff --git a/test/brood-presentation-ci.test.mjs b/test/brood-presentation-ci.test.mjs
+new file mode 100644
+index 0000000..fcedb57
+--- /dev/null
++++ b/test/brood-presentation-ci.test.mjs
+@@ -0,0 +1,24 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import * as ciReport from '../scripts/check-ci-report.mjs';
++import { resolveAggregateCommand } from '../scripts/lib/ciGateGraph.mjs';
++test('Brood source presentation gates run once and never claim installed replacement art', () => {
++  const workflow = readFileSync(new URL('../.github/workflows/check.yml', import.meta.url), 'utf8');
++  const start = workflow.indexOf('      - name: Validate Brood presentation source');
++  assert.ok(start >= 0 && start < workflow.indexOf('      - name: Validate program control plane'));
++  const end = workflow.indexOf('\n      - name:', start + 1);
++  const step = workflow.slice(start, end);
++  assert.ok(step.includes('if: ${{ !cancelled() && matrix.shard == 1 }}'));
++  assert.ok(!step.includes('assets/ships/'));
++  const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
++  const matrix = ciReport.buildCommandMatrix(resolveAggregateCommand(scripts, 'check:ci'), scripts);
++  const indirect = matrix.flatMap(def => ciReport.resolveLeafCommands(def.command, scripts)).flatMap(command => command.split(/\s+/));
++  const direct = workflow.split(/\r?\n/).filter(line => /node --test\s/.test(line)).flatMap(line => line.trim().split(/\s+/));
++  for (const file of ['brood-source-presentation', 'brood-spitter-presentation', 'brood-presentation-ci']) {
++    const path = `test/${file}.test.mjs`;
++    assert.ok(step.split(/\s+/).includes(path));
++    assert.equal(direct.filter(token => token === path).length, 1, path);
++    assert.equal(indirect.filter(token => token === path).length, 0, path);
++  }
++});
+diff --git a/test/brood-source-presentation.test.mjs b/test/brood-source-presentation.test.mjs
+new file mode 100644
+index 0000000..5ebeb1a
+--- /dev/null
++++ b/test/brood-source-presentation.test.mjs
+@@ -0,0 +1,341 @@
++// Source-only port of CPU/runtime assertions; authored GLB installation belongs to replacement-art gates.
++// CPU source/ownership/geometry proofs. These do not certify GPU cost or the normal-camera picture.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as THREE from 'three';
++import { BROOD_BODY_CONTRACTS } from '../src/data/broodBodies.js';
++import { advanceBroodAttack, BROOD_ATTACK_PROFILES } from '../src/combat/broodContact.js';
++import { broodPoseFraction, createBroodMotionDriver, BROOD_CUE_CAPACITY } from '../src/render/broodVisuals.js';
++import { ActionVfx, ACTION_VFX_EVENTS } from '../src/render/actionVfx.js';
++import { attachAuthoredMotionDriver } from '../src/render/authoredMotion.js';
++import { vfx } from '../src/render/vfx.js';
++
++function fixture(role = 'brood_charger', id = 1) {
++  const body = BROOD_BODY_CONTRACTS[role];
++  const source = { id, alive: true, type: 'ship', occupantGeneration: 7, pos: { x: 12, z: 20 },
++    vel: { x: 0, z: 0 }, rot: 0, radius: body.radius, mass: body.mass,
++    data: { broodBodyId: role } };
++  const target = { id: 'player', alive: true, occupantGeneration: 9, pos: { x: 12 + Math.min(60, BROOD_ATTACK_PROFILES[role].range * .7), z: 20 }, vel: { x: 0, z: 0 }, radius: 6 };
++  const state = { tick: 120, simTime: 2, playerId: target.id,
++    entities: new Map([[id, source], [target.id, target]]), settings: { video: {} } };
++  source.data.broodAttack = advanceBroodAttack(null, { role, entityId: id, tick: state.tick, self: source, target });
++  source.data.broodAttack.sampledTick = state.tick;
++  return { body, role, source, target, state };
++}
++function advance(f, ticks, interrupted = false) {
++  f.state.tick += ticks; f.state.simTime += ticks / 60;
++  f.source.data.broodAttack = advanceBroodAttack(f.source.data.broodAttack,
++    { role: f.role, entityId: f.source.id, tick: f.state.tick, self: f.source, target: f.target, interrupted });
++  f.source.data.broodAttack.sampledTick = f.state.tick;
++}
++function receipt(f) { return { entityId: f.source.id, ...f.source.data.broodAttack, tick: f.state.tick }; }
++function capture(out) { return out.batch.attributes.map(a => Array.from(a.array)); }
++function syntheticGraph(body, sharedMaterial = new THREE.MeshStandardMaterial()) {
++  const root = new THREE.Group();
++  for (let lod = 0; lod < 3; lod++) {
++    const group = new THREE.Group(); group.name = `LOD${lod}`; root.add(group);
++    for (const rig of body.motion.rigs) {
++      const pivot = new THREE.Group(); pivot.name = rig.node; pivot.position.fromArray(rig.pivot);
++      const mesh = new THREE.Mesh(new THREE.BoxGeometry(.1, .1, .1), sharedMaterial); pivot.add(mesh); group.add(pivot);
++    }
++    for (const [name, socket] of Object.entries(body.sockets)) {
++      const node = new THREE.Object3D(); node.name = name; node.position.fromArray(socket.position); group.add(node);
++    }
++  }
++  return root;
++}
++function poses(root) {
++  const result = []; root.traverse(node => { if (node.name.startsWith('MOTION_')) result.push([...node.position.toArray(), ...node.quaternion.toArray()]); });
++  return result;
++}
++function releaseGraph(root) {
++  const materials = new Set(); root.traverse(n => { n.geometry?.dispose(); if (n.material) materials.add(n.material); });
++  for (const mat of materials) mat.dispose();
++}
++
++for (const role of Object.keys(BROOD_BODY_CONTRACTS).filter(role => BROOD_ATTACK_PROFILES[role]?.delivery !== 'projectile')) test(`${role}: locked lane survives player sidestep and a shoved/rotated source`, () => {
++  const f = fixture(role), out = new ActionVfx(new THREE.Scene());
++  try {
++    assert.ok(out.emit('brood:phase', receipt(f), f.state)); out.update(f.state);
++    const lane = out.inspect().instances[0], boundaries = out.batch.attributes[0];
++    assert.equal(out.mesh.count, 6); assert.equal(out.particles.live, 0);
++    assert.equal(lane.primitive, 'broodCorridor'); assert.equal(lane.range, f.source.data.broodAttack.attackLine.range);
++    for (const i of [0, 3]) {
++      assert.equal(out.batch.attributes[1].getY(i), 0);
++      assert.equal(out.batch.attributes[1].getZ(i), Math.fround(lane.range));
++      assert.equal(boundaries.getW(i), 0);
++      assert.ok(Math.abs(out.batch.attributes[7].getZ(i)) + out.batch.attributes[2].getX(i) <= lane.halfWidth + 1e-6);
++    }
++    f.target.pos.z += 100; f.source.pos.z += 45; f.source.vel.z = 70; f.source.rot = 1.4;
++    advance(f, 10); out.update(f.state);
++    const after = out.inspect().instances[0];
++    assert.deepEqual([after.x, after.z, after.angle, after.range, after.halfWidth],
++      [lane.x, lane.z, lane.angle, lane.range, lane.halfWidth]);
++    assert.notEqual(after.z, f.source.pos.z, 'Visible promise is not moved onto a deflected body');
++    assert.equal(f.source.vel.z, 70, 'Presentation never overwrites the external impulse');
++    advance(f, BROOD_ATTACK_PROFILES[role].windupTicks - 10);
++    assert.ok(out.emit('brood:phase', receipt(f), f.state)); out.update(f.state);
++    assert.equal(out.live, 1); assert.equal(out.inspect().instances[0].phase, 'commit');
++    assert.deepEqual([out.slots.find(slot => slot.alive).x, out.slots.find(slot => slot.alive).z, out.slots.find(slot => slot.alive).angle], [lane.x, lane.z, lane.angle]);
++    advance(f, BROOD_ATTACK_PROFILES[role].commitTicks);
++    assert.equal(out.emit('brood:phase', receipt(f), f.state), false); out.update(f.state);
++    assert.equal(out.mesh.count, 0, 'Recovery immediately removes the active danger boundary');
++  } finally { out.dispose(); }
++});
++
++test('duplicate, stale, future, expired and forged-life events cannot restart a danger promise', () => {
++  const f = fixture(), out = new ActionVfx(new THREE.Scene()), first = receipt(f);
++  try {
++    assert.ok(out.emit('brood:phase', first, f.state));
++    const born = out.slots.find(slot => slot.alive).born;
++    for (let i = 0; i < 20; i++) { advance(f, 1); assert.equal(out.emit('brood:phase', first, f.state), false); }
++    assert.equal(out.slots.find(slot => slot.alive).born, born); assert.equal(out.live, 1);
++    assert.equal(out.emit('brood:phase', { ...receipt(f), attackId: 'forged' }, f.state), false);
++    assert.equal(out.emit('brood:phase', { ...receipt(f), tick: f.state.tick + 1 }, f.state), false);
++    assert.equal(out.emit('brood:phase', { ...receipt(f), life: 6 }, f.state), false);
++    out.update(f.state); assert.equal(out.mesh.count, 6);
++    f.source.data.broodAttackInterruptedTick = f.state.tick;
++    out.update(f.state); assert.equal(out.mesh.count, 0);
++    assert.equal(out.emit('brood:phase', first, f.state), false);
++    delete f.source.data.broodAttackInterruptedTick;
++    f.state.tick = first.phaseStartedTick + BROOD_ATTACK_PROFILES[f.role].windupTicks;
++    assert.equal(out.emit('brood:phase', first, f.state), false, 'A stale windup expires even without another event');
++  } finally { out.dispose(); }
++});
++
++test('current life, exact live owner, target loss, rewind and save reset clear cue ownership', () => {
++  for (const mutate of [
++    f => f.source.occupantGeneration++,
++    f => f.state.entities.set(f.source.id, { ...f.source }),
++    f => { f.source.alive = false; },
++    f => { f.target.alive = false; },
++    f => f.target.occupantGeneration++,
++    f => f.state.entities.set(f.target.id, { ...f.target }),
++    f => { delete f.source.data.broodAttack; },
++    f => { f.state.simTime = 0; f.state.tick = 0; },
++  ]) {
++    const f = fixture(), out = new ActionVfx(new THREE.Scene());
++    try { out.emit('brood:phase', receipt(f), f.state); out.update(f.state); mutate(f); out.update(f.state); assert.equal(out.mesh.count, 0); }
++    finally { out.dispose(); }
++  }
++});
++
++test('delayed first cue rejects a recycled target and accepted metadata cannot move its lane', () => {
++  const f = fixture(), out = new ActionVfx(new THREE.Scene()), delayed = receipt(f);
++  try {
++    f.target.occupantGeneration++;
++    assert.equal(out.emit('brood:phase', delayed, f.state), false);
++    f.target.occupantGeneration--;
++    assert.ok(out.emit('brood:phase', { ...delayed, attackLine: { origin: { x: 999, z: 999 } } }, f.state));
++    out.update(f.state);
++    assert.deepEqual([out.inspect().instances[0].x, out.inspect().instances[0].z],
++      [delayed.attackLine.origin.x, delayed.attackLine.origin.z], 'Event coordinates never replace simulation truth');
++    f.source.data.broodAttack.attackLine = { ...delayed.attackLine, origin: { x: 20, z: 20 } };
++    out.update(f.state); assert.equal(out.mesh.count, 0, 'In-place producer corruption cannot retarget an already accepted lane');
++  } finally { out.dispose(); }
++});
++
++test('late valid admission keeps remaining sim lifetime; pause/rebase/accessibility preserve the exact lane', () => {
++  const f = fixture(); let origin = 0;
++  const out = new ActionVfx(new THREE.Scene(), (x, z, p) => Object.assign(p, { x: x - origin, z }));
++  try {
++    const initial = receipt(f); advance(f, 15);
++    assert.ok(out.emit('brood:phase', initial, f.state)); out.update(f.state);
++    assert.equal(out.slots.find(slot => slot.alive).born, 2); const parked = capture(out);
++    out.update(f.state); assert.deepEqual(capture(out), parked);
++    origin = 1000; out.update(f.state);
++    assert.equal(out.batch.attributes[0].getX(0), parked[0][0] - 1000);
++    assert.equal(out.slots.find(slot => slot.alive).x, initial.attackLine.origin.x);
++    f.state.settings.accessibility = { reducedMotion: true, reducedFlash: true };
++    out.update(f.state); const reduced = capture(out);
++    advance(f, 2); out.update(f.state);
++    for (const index of [0, 1, 2, 7]) assert.deepEqual(capture(out)[index], reduced[index], 'Reduced motion does not erase or sweep the locked geometry');
++    assert.equal(out.mesh.count, 6); assert.equal(out.particles.live, 0);
++    assert.ok(out.batch.attributes.every(a => a.array.every(Number.isFinite)));
++  } finally { out.dispose(); }
++});
++
++test('reserved production-cap attack slots stay bounded and share one material at 100/200/400 source probes', () => {
++  for (const density of [100, 200, 400]) {
++    const out = new ActionVfx(new THREE.Scene()), first = fixture();
++    const state = first.state;
++    try {
++      for (let i = 0; i < density; i++) {
++        const f = fixture(i % 2 ? 'brood_mite' : 'brood_charger', i + 1);
++        state.entities.set(f.source.id, f.source); f.state = state;
++        out.emit('brood:phase', receipt(f), state);
++      }
++      out.update(state);
++      assert.equal(out.live, BROOD_CUE_CAPACITY); assert.equal(out.mesh.count, BROOD_CUE_CAPACITY * 6); assert.equal(out.particles.live, 0);
++      assert.equal(Array.isArray(out.mesh.material), false);
++    } finally { out.dispose(); }
++  }
++});
++
++
++test('ordinary actions and all production-cap Brood attacks have independent reserved admissions', () => {
++  for (const order of ['ordinary-first', 'brood-first']) {
++    const f = fixture(), state = f.state, out = new ActionVfx(new THREE.Scene());
++    const ordinary = () => {
++      for (let i = 0; i < 80; i++) out.emit('well:grind', { targetId: `ordinary:${i}`, pos: { x: 2, z: 3 } }, state);
++    };
++    const brood = () => {
++      for (let i = 0; i < BROOD_CUE_CAPACITY; i++) {
++        const next = fixture(i % 2 ? 'brood_mite' : 'brood_charger', i + 10);
++        state.entities.set(next.source.id, next.source); next.state = state;
++        assert.ok(out.emit('brood:phase', receipt(next), state));
++        for (let duplicate = 0; duplicate < 4; duplicate++) assert.equal(out.emit('brood:phase', receipt(next), state), false);
++      }
++    };
++    try {
++      if (order === 'ordinary-first') { ordinary(); brood(); } else { brood(); ordinary(); }
++      state.simTime += .05; state.tick += 3; out.update(state);
++      assert.equal(out.inspect().instances.filter(slot => slot.event === 'brood:phase').length, BROOD_CUE_CAPACITY);
++      assert.equal(out.inspect().instances.filter(slot => slot.event === 'well:grind').length, 32);
++      assert.equal(out.live, BROOD_CUE_CAPACITY + 32);
++      assert.ok(out.batch.count <= out.inspect().surfaceCapacity);
++      const geometry = out.batch.geometry;
++      const allocatedBytes = Object.values(geometry.attributes).reduce((n, a) => n + a.array.byteLength, 0)
++        + geometry.index.array.byteLength + out.mesh.instanceMatrix.array.byteLength;
++      assert.ok(allocatedBytes < 160000, `Shared geometry/instance storage is ${allocatedBytes} bytes`);
++      out.clear(); assert.equal(out.live, 0); assert.equal(out.mesh.count, 0);
++      assert.ok(out.slots.every(slot => !slot.alive));
++    } finally { out.dispose(); }
++  }
++});
++
++for (const role of Object.keys(BROOD_BODY_CONTRACTS).filter(role => BROOD_ATTACK_PROFILES[role]?.delivery !== 'projectile')) test(`${role}: anatomy uses sampled phase, all LOD pivots and immutable shared material`, () => {
++  const f = fixture(role), material = new THREE.MeshStandardMaterial(), root = syntheticGraph(f.body, material);
++  f.source.mesh = root;
++  const detach = attachAuthoredMotionDriver(root, f.source, []), rest = poses(root);
++  try {
++    root.userData.updateAuthoredMotion(f.source, 99999, {}); assert.deepEqual(poses(root), rest);
++    advance(f, Math.floor(BROOD_ATTACK_PROFILES[role].windupTicks / 2));
++    root.userData.updateAuthoredMotion(f.source, 99999, {}); const half = poses(root);
++    assert.notDeepEqual(half, rest);
++    root.userData.updateAuthoredMotion(f.source, 100009, {}); assert.deepEqual(poses(root), half, 'Wall time cannot advance a paused attack');
++    const count = f.body.motion.rigs.length;
++    for (let lod = 1; lod < 3; lod++) assert.deepEqual(half.slice(lod * count, (lod + 1) * count), half.slice(0, count));
++    root.traverse(node => { if (node.isMesh) assert.equal(node.material, material, 'No per-mite material clones'); });
++    root.userData.updateAuthoredMotion(f.source, 0, { reducedMotion: true });
++    assert.equal(broodPoseFraction(f.source, true), 1);
++    advance(f, BROOD_ATTACK_PROFILES[role].windupTicks);
++    root.userData.updateAuthoredMotion(f.source, 0, { reducedMotion: true });
++    assert.equal(broodPoseFraction(f.source, true), f.body.motion.poses.attack);
++    advance(f, 1, true); root.userData.updateAuthoredMotion(f.source, 0, { reducedMotion: true });
++    assert.equal(broodPoseFraction(f.source, true), f.body.motion.poses.recovery);
++    f.source.occupantGeneration++; root.userData.updateAuthoredMotion(f.source, 0, {}); assert.deepEqual(poses(root), rest);
++  } finally { detach(); releaseGraph(root); }
++});
++
++test('cold attach and deferred snapshot activation bind only the published current-life root', () => {
++  const f = fixture(), retained = syntheticGraph(f.body), candidate = syntheticGraph(f.body);
++  f.source.mesh = retained; advance(f, 15);
++  const detachOld = attachAuthoredMotionDriver(retained, f.source, []);
++  const snapshot = { ...f.source, data: { ...f.source.data }, deferAuthoredMotionRegistration: true };
++  const detachNew = attachAuthoredMotionDriver(candidate, snapshot, []), rest = poses(candidate);
++  try {
++    candidate.userData.updateAuthoredMotion(snapshot, 2.25, {}); assert.deepEqual(poses(candidate), rest);
++    assert.equal(candidate.userData.activateAuthoredMotionRegistration(f.source), false, 'Hidden candidate cannot steal ownership');
++    retained.userData.updateAuthoredMotion(f.source, 2.25, {}); assert.notDeepEqual(poses(retained), rest);
++    f.source.mesh = candidate;
++    assert.equal(candidate.userData.activateAuthoredMotionRegistration(f.source), true);
++    candidate.userData.updateAuthoredMotion(f.source, 2.25, {}); assert.notDeepEqual(poses(candidate), rest);
++    detachOld(); candidate.userData.updateAuthoredMotion(f.source, 2.25, {}); assert.notDeepEqual(poses(candidate), rest);
++    candidate.userData.updateAuthoredMotion(snapshot, 2.25, {}); assert.deepEqual(poses(candidate), rest, 'Snapshot is never the published owner');
++    f.source.occupantGeneration++; candidate.userData.updateAuthoredMotion(f.source, 2.25, {}); assert.deepEqual(poses(candidate), rest);
++  } finally { detachOld(); detachNew(); releaseGraph(retained); releaseGraph(candidate); }
++  const cold = fixture('brood_mite'), root = syntheticGraph(cold.body), restCold = poses(root);
++  const driver = createBroodMotionDriver(root, cold.source);
++  advance(cold, 15); driver.update(cold.source, {}); assert.deepEqual(poses(root), restCold);
++  cold.source.mesh = root; driver.update(cold.source, {}); assert.notDeepEqual(poses(root), restCold);
++  driver.dispose(); releaseGraph(root);
++});
++
++test('missing anatomy fails admission; stale snapshots and non-Brood bodies cannot bind', () => {
++  const f = fixture(), root = syntheticGraph(f.body);
++  const missing = f.body.motion.rigs[0].node;
++  const remove = []; root.traverse(n => { if (n.name === missing) remove.push(n); });
++  for (const node of remove) node.removeFromParent();
++  assert.throws(() => createBroodMotionDriver(root, f.source), /missing a sealed anatomical motion pivot/);
++  assert.equal(createBroodMotionDriver(root, { data: { broodBodyId: 'vethari' } }), null);
++  releaseGraph(root);
++  for (const mutate of [f => f.source.occupantGeneration++, f => { f.source.data.broodBodyId = 'brood_mite'; }, f => { f.source.alive = false; }]) {
++    const f = fixture(), candidate = syntheticGraph(f.body), snapshot = { ...f.source, deferAuthoredMotionRegistration: true };
++    const driver = createBroodMotionDriver(candidate, snapshot); f.source.mesh = candidate; mutate(f);
++    assert.equal(driver.activate(f.source), false); driver.dispose(); releaseGraph(candidate);
++  }
++});
++
++test('exact Brood bodies never allocate generic exhaust, flee ignition or tracking telegraphs', () => {
++  const f = fixture(), out = new ActionVfx(new THREE.Scene());
++  const system = Object.create(vfx); system.state = f.state; system._scene = new THREE.Scene();
++  system._trailCandidates = [f.source]; system._productionOwnedIds = [f.source.id]; system._productionOwnedCount = 1;
++  system._admitOverflowMainJet = () => assert.fail('No overflow engine for a creature');
++  system._emitJuiceCue = () => assert.fail('No machine telegraph/flee flash for a creature');
++  system._beginDoctrineTell = () => assert.fail('No target-tracking generic marker');
++  system._spawnSprite = () => assert.fail('No mechanical RCS, boost or dash plume on a creature');
++  system._admitOverflowReverseJet = () => assert.fail('No mechanical reverse jet on a creature');
++  try {
++    f.source.vel = { x: 100, z: 100 }; f.source._flightFrame = { throttle: 1 }; f.source.flags = { boosting: true };
++    assert.equal(system._engineDriveFor(f.source).drive, 0);
++    assert.equal(system._usesProductionThruster(f.source), false);
++    assert.equal(system._energyQuietMaybeAwake(), false);
++    assert.equal(system._energyPlumeRelevant(), false);
++    assert.deepEqual(system._emitEngineTrail(f.source, 1, 1 / 60), { particles: 0, streaks: 0 });
++    system._onAiTelegraph({ entityId: f.source.id, kind: 'brood_charge' });
++    system._onAiFlee({ entityId: f.source.id });
++    system._onShipRcsPulse({ shipId: f.source.id, x: 1, z: 2, intensity: 1 });
++    system._onBoost({ shipId: f.source.id }, true); system._onDash({ shipId: f.source.id });
++    system._emitReverseNozzleTrail(f.source, 'reverse-left', 1);
++    assert.equal(out.emit('ai:telegraph', { entityId: f.source.id, kind: 'engine_flare' }, f.state), false);
++    assert.equal(out.emit('ai:flee', { entityId: f.source.id }, f.state), false);
++    assert.ok(ACTION_VFX_EVENTS.includes('brood:phase'));
++    const ordinary = { ...f.source, data: { broodBodyId: 'ordinary-mite-colour' } };
++    assert.ok(system._engineDriveFor(ordinary).drive > 0, 'Unrelated ships keep normal propulsion');
++  } finally { out.dispose(); }
++});
++
++test('real Rapier bus keeps the visible promise fixed through sidestep and external shove, then clears recovery', { timeout: 120000 }, async () => {
++  const { bootRealPath, writeRealPathInput } = await import('../scripts/lib/bench/realPath.mjs');
++  const { combat, makeEnemySpawnSpec } = await import('../src/systems/combat.js');
++  const { tumbleStates } = await import('../src/systems/tumbleStates.js');
++  const { queuePhysicsImpulse } = await import('../src/core/physicsAuthority.js');
++  const host = await bootRealPath({ seed: 714, systems: ['tacticalAI', 'actions', 'flightV3', 'aiPorts', tumbleStates,
++    'collisionConsequences', 'physics', combat], hulls: [{ hullId: 'ship_kestrel', pos: { x: 0, z: 0 }, rot: 0, isPlayer: true }] });
++  const spec = makeEnemySpawnSpec('brood_charger', 1, { x: -155, z: 0 });
++  Object.assign(spec.data.ai, { forcePlayerTarget: true, huntPlayer: true, moraleImmune: true, surrenderImmune: true });
++  spec.data.runCohort = 'survival'; spec.data.combat.targetId = host.player.id;
++  spec.data.ai.activity = { ...spec.data.ai.activity, targetId: host.player.id };
++  const actor = host.runtime.spawn(spec), out = new ActionVfx(new THREE.Scene());
++  const off = host.bus.on('brood:phase', payload => out.emit('brood:phase', payload, host.state));
++  let promise = null, samples = 0, pushed = false, recovery = false, maxSideways = 0;
++  try {
++    host.step(300, {
++      before() {
++        const attack = actor.data.broodAttack;
++        writeRealPathInput(host.state, { moveX: attack && host.state.tick - attack.cueStartedTick >= 25 ? 1 : 0 });
++        if (!pushed && attack?.phase === 'commit') {
++          queuePhysicsImpulse(actor, { x: 0, y: 0, z: actor.mass * 85 }); pushed = true;
++        }
++      },
++      after() {
++        out.update(host.state);
++        const live = out.inspect().instances.find(slot => slot.event === 'brood:phase');
++        if (live) {
++          const lane = [live.x, live.z, live.angle, live.range, live.halfWidth];
++          if (!promise) promise = lane;
++          assert.deepEqual(lane, promise); samples++;
++          maxSideways = Math.max(maxSideways, Math.abs(actor.pos.z - live.z));
++        }
++        if (actor.data.broodAttack?.phase === 'recovery') {
++          recovery = true; assert.equal(out.mesh.count, 0); return false;
++        }
++      },
++    });
++    assert.ok(samples > 30 && pushed && recovery);
++    assert.ok(maxSideways > 25, 'Actual native body leaves its original visible lane under the external impulse');
++    assert.ok(Math.abs(host.player.pos.z) > 25, 'Actual flight input sidesteps the line');
++    assert.equal(host.proof().sg02Ready, true);
++  } finally { off?.(); out.dispose(); host.dispose(); }
++});
+diff --git a/test/brood-spitter-presentation.test.mjs b/test/brood-spitter-presentation.test.mjs
+new file mode 100644
+index 0000000..f252139
+--- /dev/null
++++ b/test/brood-spitter-presentation.test.mjs
+@@ -0,0 +1,177 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as THREE from 'three';
++import { BROOD_BODY_CONTRACTS } from '../src/data/broodBodies.js';
++import { advanceBroodAttack } from '../src/combat/broodContact.js';
++import { broodPoseFraction, createBroodMotionDriver, resolveBroodAttackCue } from '../src/render/broodVisuals.js';
++import { createVisualFactory } from '../src/render/visualFactory.js';
++import { projectileSkipsVisualFactoryMesh, resolveWeaponRecipe, FLIGHT_MODE } from '../src/render/weapons/recipes.js';
++import { createGameState } from '../src/core/gameState.js';
++import { modelTruthBoltRadius } from '../src/data/modelTruth.js';
++import { vfx } from '../src/render/vfx.js';
++
++function fixture() {
++  const source = { id: 'spitter', type: 'ship', alive: true, occupantGeneration: 3,
++    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 9, rot: 0, data: { broodBodyId: 'brood_spitter' } };
++  const target = { id: 'target', alive: true, occupantGeneration: 4, pos: { x: 260, z: 0 } };
++  const state = { tick: 100, entities: new Map([[source.id, source], [target.id, target]]) };
++  function sample(tick, interrupted = false) {
++    state.tick = tick;
++    source.data.broodAttack = advanceBroodAttack(source.data.broodAttack,
++      { role: 'brood_spitter', entityId: source.id, tick, self: source, target, interrupted });
++    source.data.broodAttack.sampledTick = tick;
++  }
++  sample(100);
++  return { source, target, state, sample };
++}
++function graph() {
++  const root = new THREE.Group();
++  for (let lod = 0; lod < 3; lod++) for (const rig of BROOD_BODY_CONTRACTS.brood_spitter.motion.rigs) {
++    const pivot = new THREE.Group(); pivot.name = rig.node; pivot.position.fromArray(rig.pivot); root.add(pivot);
++  }
++  return root;
++}
++function transforms(root) { return root.children.map(n => [...n.position.toArray(), ...n.quaternion.toArray()]); }
++function accepted(f) {
++  const attack = f.source.data.broodAttack;
++  f.source.data.broodShot = { attackId: attack.attackId, life: attack.life, targetLife: attack.targetLife, tick: f.state.tick };
++}
++
++test('spitter expresses inflation on actual anatomy without a false world corridor', () => {
++  const f = fixture(), root = graph(); f.source.mesh = root;
++  const driver = createBroodMotionDriver(root, f.source);
++  driver.update(f.source, {}); const rest = transforms(root);
++  assert.equal(broodPoseFraction(f.source), .35);
++  f.sample(124); driver.update(f.source, {});
++  const inflated = transforms(root); assert.notDeepEqual(inflated, rest);
++  assert.equal(broodPoseFraction(f.source), .675);
++  for (let lod = 1; lod < 3; lod++) assert.deepEqual(inflated.slice(lod*3, lod*3+3), inflated.slice(0,3));
++  for (const kind of ['brood:phase', 'ai:telegraph']) assert.equal(resolveBroodAttackCue(kind,
++    { entityId: f.source.id, ...f.source.data.broodAttack, kind: 'brood_spit' }, f.state), null);
++  f.source.pos.z = 70; f.source.rot = 1.4; driver.update(f.source, {});
++  assert.deepEqual(transforms(root), inflated, 'Pose stays attached to physical body, not the original aim line');
++  driver.update(f.source, {}); assert.deepEqual(transforms(root), inflated, 'Paused sim cannot advance anatomy');
++  driver.update(f.source, { reducedMotion: true }); assert.equal(broodPoseFraction(f.source, true), 1);
++  f.sample(148); assert.equal(broodPoseFraction(f.source), 1, 'Commit without accepted shot stays inflated');
++  f.sample(149); assert.equal(broodPoseFraction(f.source), 1, 'Blocked/no-shot recovery never fakes a discharge');
++  f.sample(194); assert.ok(broodPoseFraction(f.source) > .35);
++  driver.dispose();
++});
++
++test('only current once-per-attack accepted shot collapses then refills over recovery', () => {
++  const f = fixture(); f.sample(148); accepted(f);
++  assert.equal(broodPoseFraction(f.source), 1);
++  f.sample(149); f.sample(152); assert.equal(broodPoseFraction(f.source), 0);
++  f.sample(180); const half = broodPoseFraction(f.source); assert.ok(half > 0 && half < .35);
++  assert.equal(broodPoseFraction(f.source), half, 'Reading repeated shot receipt never restarts collapse');
++  const receipt = f.source.data.broodShot;
++  for (const delta of [{ life: 2 }, { targetLife: 99 }, { attackId: 'old' }, { tick: 999 }, { tick: 100 }]) {
++    f.source.data.broodShot = { ...receipt, ...delta };
++    assert.ok(broodPoseFraction(f.source) >= .35, 'Stale/forged receipt cannot discharge anatomy');
++  }
++  f.source.data.broodShot = receipt; f.sample(238); assert.equal(broodPoseFraction(f.source), .35);
++});
++
++test('interruption, lost target, recycled owner and pooled sibling keep independent neutral transforms', () => {
++  const f = fixture(), sibling = fixture(), a = graph(), b = graph();
++  f.source.mesh = a; sibling.source.mesh = b;
++  const da = createBroodMotionDriver(a, f.source), db = createBroodMotionDriver(b, sibling.source);
++  db.update(sibling.source, {}); const parked = transforms(b);
++  f.sample(124); da.update(f.source, {}); const expanded = transforms(a);
++  f.sample(125, true); da.update(f.source, {});
++  assert.ok(broodPoseFraction(f.source) >= .35, 'Interrupted inflation unloads without shot-like collapse');
++  f.target.alive = false; f.sample(130); da.update(f.source, {});
++  assert.deepEqual(transforms(b), parked);
++  f.source.occupantGeneration++; da.update(f.source, {});
++  assert.notDeepEqual(transforms(a), expanded);
++  const neutral = transforms(a); da.dispose(); assert.deepEqual(transforms(a), neutral);
++  db.update(sibling.source, {}); assert.deepEqual(transforms(b), parked); db.dispose();
++});
++
++test('actual glob is closed lobed matter within sweep radius and shares bounded immutable GPU resources', () => {
++  const factory = createVisualFactory(), roots = [];
++  let geometry, material;
++  for (let id = 0; id < 400; id++) {
++    const entity = { id, type: 'projectile', radius: .8, team: 1, data: { weaponId: 'wpn_brood_glob' } };
++    assert.equal(projectileSkipsVisualFactoryMesh(entity), false);
++    const root = factory.build(entity), mesh = root.getObjectByName('BroodGlobWetMembrane'); roots.push(root);
++    assert.ok(mesh?.isMesh); assert.equal(root.children.length, 1);
++    if (!geometry) { geometry = mesh.geometry; material = mesh.material; }
++    assert.equal(mesh.geometry, geometry); assert.equal(mesh.material, material);
++    assert.equal(mesh.scale.x, entity.radius); assert.equal(material.transparent, false);
++    assert.equal(material.metalness, 0); assert.equal(material.emissiveIntensity, 2);
++    assert.equal(material.emissive.getHex(), 0xc8ed88);
++    for (let n = 0; n < geometry.attributes.position.count; n++) {
++      const p = geometry.attributes.position;
++      assert.ok(Math.hypot(p.getX(n), p.getY(n), p.getZ(n)) <= 1.00001);
++    }
++  }
++  assert.ok(geometry.index.count / 3 < 1000);
++  let disposed = 0; geometry.addEventListener('dispose', () => disposed++); material.addEventListener('dispose', () => disposed++);
++  roots[0].children[0].geometry.dispose(); roots[0].children[0].material.dispose();
++  assert.equal(disposed, 0, 'Pooled resource disposal cannot break siblings');
++  assert.equal(roots[1].children[0].geometry, geometry);
++  const recipe = resolveWeaponRecipe('wpn_brood_glob'); assert.equal(recipe.flight.mode, FLIGHT_MODE.MESH);
++  assert.equal(recipe.flight.ribbon, false); assert.equal(recipe.muzzle.surface, false);
++  assert.notEqual(resolveWeaponRecipe('wpn_autocannon_s'), recipe);
++});
++
++test('biological fire receipts never enter generic human gun flash or emission handlers', () => {
++  const system = Object.create(vfx); system._scene = new THREE.Scene();
++  system._spawnMuzzleBallistic = system._spawnMuzzleEnergy = system._spawnMuzzleExplosive = () => assert.fail('No human gun muzzle on biological mouth');
++  system._ent = () => assert.fail('Receipt must not start fallback firearm path');
++  for (const accepted of [true, false]) for (let n = 0; n < 3; n++) system._onFire({ weaponId: 'wpn_brood_glob', ownerId: 'spitter', accepted });
++});
++
++test('recovery without an earned windup and a hidden admission never invent motion', () => {
++  const f = fixture();
++  delete f.source.data.broodAttack;
++  f.target.alive = false; f.sample(101);
++  assert.equal(broodPoseFraction(f.source), .35);
++  assert.equal(broodPoseFraction(f.source, true), .35);
++  const root = graph(), snapshot = { ...f.source, deferAuthoredMotionRegistration: true };
++  const driver = createBroodMotionDriver(root, snapshot), neutral = transforms(root);
++  driver.update(snapshot, {}); assert.deepEqual(transforms(root), neutral);
++  assert.equal(driver.activate(f.source), false, 'Unpublished candidate never steals the live root');
++  f.source.mesh = root; assert.equal(driver.activate(f.source), true);
++  driver.update(f.source, {}); assert.notDeepEqual(transforms(root), neutral);
++  f.source.alive = false; driver.update(f.source, {}); assert.deepEqual(transforms(root), neutral);
++  driver.dispose();
++});
++
++
++test('physical glob never falls into legacy tracer dust or metal impact dispatch', () => {
++  const system = Object.create(vfx); system._scene = new THREE.Scene();
++  system.state = { settings: { video: {} } };
++  system._projectileTrailDiag = { byClass: Object.fromEntries(['kinetic', 'rail', 'missile', 'plasma', 'pulse', 'emp', 'other'].map(key => [key, {}])) };
++  system._refreshProjectileCandidates = () => {};
++  system._projectileCandidates = [{ id: 1, alive: true, type: 'projectile',
++    pos: { x: 1, z: 2 }, vel: { x: 220, z: 0 }, data: { weaponId: 'wpn_brood_glob' } }];
++  system._projectileTrailOnFrame = system._executeProjectileTrailPlan = () => assert.fail('No ballistic trail for biological matter');
++  assert.equal(system._emitProjectileTrails(1 / 60), false);
++  system._posFrom = () => assert.fail('No generic kinetic impact dispatch for goo contact');
++  system._onProjectileHit({ weaponId: 'wpn_brood_glob', pos: { x: 1, z: 2 } });
++});
++
++
++test('default camera keeps the collision-sized glob core and steady HDR luminance', () => {
++  const state = createGameState(714), height = 1000, width = 1600;
++  const radius = modelTruthBoltRadius({ radius: 9, data: { broodBodyId: 'brood_spitter' } });
++  const root = createVisualFactory().build({ type: 'projectile', radius, data: { weaponId: 'wpn_brood_glob' } });
++  const mesh = root.children[0], camera = new THREE.PerspectiveCamera(state.settings.video.fov, width / height, 1, 14000);
++  const tilt = state.camera.tilt * Math.PI / 180, distance = state.camera.zoom;
++  camera.position.set(0, distance * Math.sin(tilt), -distance * Math.cos(tilt));
++  camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
++  const position = mesh.geometry.attributes.position, projected = new THREE.Vector3();
++  let left = Infinity, right = -Infinity;
++  for (let i = 0; i < position.count; i++) {
++    projected.fromBufferAttribute(position, i).multiplyScalar(radius).project(camera);
++    left = Math.min(left, projected.x); right = Math.max(right, projected.x);
++  }
++  const pixels = (right - left) * width / 2;
++  assert.ok(pixels > 5 && pixels < 7, `Actual default projection is ${pixels}px; no geometry size floor`);
++  const { emissive: e, emissiveIntensity: intensity } = mesh.material;
++  const luminance = (.2126 * e.r + .7152 * e.g + .0722 * e.b) * intensity;
++  assert.ok(luminance > state.settings.video.bloomThreshold && luminance < 1.6);
++  assert.equal(mesh.onBeforeRender, THREE.Object3D.prototype.onBeforeRender, 'No per-frame light pulse or material mutation');
++});

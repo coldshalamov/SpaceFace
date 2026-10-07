@@ -1,0 +1,773 @@
+diff --git a/src/core/dockIntent.js b/src/core/dockIntent.js
+new file mode 100644
+index 0000000..a8a4694
+--- /dev/null
++++ b/src/core/dockIntent.js
+@@ -0,0 +1,33 @@
++// Transient exact-object identity for the two internal docking producers. Logical IDs and
++// occupant generations may repeat after loading the same save; neither proves current life.
++// Private receipts do not survive JSON or actor/station replacement. No allocator or saved
++// state changes are needed, and live entity references never enter event data.
++const ACTORS = new WeakMap();
++
++export function createDockIntent(state, details, actor = state.entities?.get?.(state.playerId)) {
++  const payload = Object.freeze(actor ? { ...details, shipId: actor.id,
++    shipGeneration: actor.occupantGeneration ?? null } : { ...details });
++  if (actor) {
++    const stations = state.entityIndex?.stations || state.entityList || [];
++    const station = stations.find(entity => entity?.alive && entity.type === 'station'
++      && entity.data?.stationId === details.stationId && state.entities?.get(entity.id) === entity) || null;
++    ACTORS.set(payload, { state, actor, id: actor.id, generation: actor.occupantGeneration,
++      station, stationId: details.stationId, stationLife: station?.occupantGeneration,
++      sectorId: state.world?.currentSectorId, enterSerial: state.world?.enterSerial });
++  }
++  return payload;
++}
++
++export function dockIntentStatus(state, payload) {
++  const receipt = payload && typeof payload === 'object' ? ACTORS.get(payload) : null;
++  if (!receipt) return 'unbound';
++  if (receipt.state !== state || state.playerId !== receipt.id || receipt.actor.id !== receipt.id
++    || state.entities?.get?.(state.playerId) !== receipt.actor
++    || receipt.actor.occupantGeneration !== receipt.generation
++    || state.world?.currentSectorId !== receipt.sectorId || state.world?.enterSerial !== receipt.enterSerial) return 'stale';
++  const station = receipt.station;
++  if (!station) return 'unbound'; // ordinary compatibility, but no verified target for recognition
++  return state.entities?.get(station.id) === station && station.alive
++    && station.occupantGeneration === receipt.stationLife && station.data?.stationId === receipt.stationId
++    ? 'current' : 'stale';
++}
+diff --git a/src/core/registry.js b/src/core/registry.js
+index 74b0d5c..181b656 100644
+--- a/src/core/registry.js
++++ b/src/core/registry.js
+@@ -27,6 +27,7 @@ import { flybyFocus } from '../systems/flybyFocus.js';
+ import { scanner } from '../systems/scanner.js';
+ import { mines } from '../systems/mines.js';
+ import { bombs } from '../systems/bombs.js';
++import { latchNine } from '../systems/latchNine.js';
+ import { dockingCorridor } from '../systems/dockingCorridor.js'; // PQ-008: truthful exterior corridor/capture docking (assist via physics membrane)
+ import { scanReveal } from '../systems/scanReveal.js';
+ import { buildIdentity } from '../systems/buildIdentity.js';
+@@ -432,6 +433,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
+     ['aceMemory', aceMemory],
+     ['barkDirector', barkDirector],
+     ['dockingCorridor', dockingCorridor],
++    ['latchNine', latchNine],
+     ['physics', physics],
+     ['aiPorts', aiPorts],
+     ['tumbleStates', tumbleStates],
+@@ -843,6 +845,9 @@ export function createRegistry(ctx) {
+       // state.simTime stays frozen, so the seeded client schedule holds still with it.
+       const yard = byName.get('stationServices');
+       if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
++      // Dock-confirmed Latch acknowledgement is cosmetic; finish it while simTime is paused.
++      const latch = byName.get('latchNine');
++      if (latch && typeof latch.keepalive === 'function') latch.keepalive(wallDt);
+     },
+     step(dt, tickBoundary = null) {
+       const state = ctx.state;
+diff --git a/src/core/runReset.js b/src/core/runReset.js
+index 5890e19..43ee468 100644
+--- a/src/core/runReset.js
++++ b/src/core/runReset.js
+@@ -58,6 +58,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
+   // Bark receipts/suppression are keyed per entity id and per run; a fresh run must not
+   // inherit the previous run's said-latches on recycled ids.
+   'barkDirector',
++  'latchNine',
+   // Session-scoped advisory watches hold per-entry latches keyed on entity ids that New Game
+   // recycles — a stale latch could suppress the first legitimate bark of the next run.
+   'noFireAdvisory',
+diff --git a/src/data/latchNine.js b/src/data/latchNine.js
+new file mode 100644
+index 0000000..c77bf29
+--- /dev/null
++++ b/src/data/latchNine.js
+@@ -0,0 +1,42 @@
++// SF20-01 stable identity and release admission. No asset is registered by this file.
++// A green census row is a technical geometry/provenance prerequisite, not visual approval.
++// Activation is a separate coherent model/spawn/presentation packet, never a data-row side effect.
++import { modelTruthRow } from './modelTruth.js';
++import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
++
++export const LATCH_NINE_PLACE_ID = 'place_latch_nine';
++export const LATCH_NINE_PART_ID = 'latch-nine';
++export const LATCH_NINE_ROLE = 'latch_nine';
++// No accepted authored model exists yet. The accepted model packet must explicitly promote it.
++export const LATCH_NINE_RELEASE_PROMOTED = false;
++
++export function resolveLatchNinePresence(state) {
++  if (!LATCH_NINE_RELEASE_PROMOTED) return null;
++  return latchNinePresenceForAsset(state, modelTruthRow(LATCH_NINE_PLACE_ID));
++}
++
++export function latchNinePresenceForAsset(state, row) {
++  // Technical prerequisites only; resolveLatchNinePresence separately enforces release promotion.
++  if (!row || row.id !== LATCH_NINE_PLACE_ID || row.source !== 'glb' || row.status !== 'green') return null;
++  let tender = null;
++  for (const entity of state.entityList || []) {
++    if (entity?.data?.role !== LATCH_NINE_ROLE || entity.data.placeId !== LATCH_NINE_PLACE_ID) continue;
++    if (state.entities?.get(entity.id) !== entity || !entity.alive || entity.hull <= 0) continue;
++    const body = entity.physicsBody;
++    if (body?.dynamic !== true || body.sensor === true || entity.collides === false
++      || !(body.mass > 0) || !Number.isFinite(body.mass) || !physicsBodyNativeReady(entity)) continue;
++    const service = entity.data.latchNineService;
++    if (service?.stationId !== 'station_tethys' || service.sectorId !== 'sector_tethys_junction') continue;
++    const box = service.box;
++    if (!box || !['minX', 'maxX', 'minZ', 'maxZ'].every(key => Number.isFinite(box[key]))
++      || !(box.maxX > box.minX) || !(box.maxZ > box.minZ)) continue;
++    // More than one admitted body is ambiguous; fail closed instead of picking a duplicate.
++    if (tender) return null;
++    tender = entity;
++  }
++  if (!tender) return null;
++  const { box } = tender.data.latchNineService;
++  const { x, z } = tender.pos || {};
++  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
++  return { tender, recovering: x < box.minX || x > box.maxX || z < box.minZ || z > box.maxZ };
++}
+diff --git a/src/runtime/authoritativeSystemManifest.js b/src/runtime/authoritativeSystemManifest.js
+index 8275b05..75d4ea4 100644
+--- a/src/runtime/authoritativeSystemManifest.js
++++ b/src/runtime/authoritativeSystemManifest.js
+@@ -28,7 +28,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
+   'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay', 'killcamRecorder',
+   'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmSupply', 'swarmChain', 'swarmJuice', 'swarmElites', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
+   'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
+-  'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
++  'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
+   'aiPorts', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
+   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'massSeed',
+   'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
+@@ -91,7 +91,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
+   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
+   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
+   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
+-  'survivalArena', 'fields', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'physics', 'combat',
++  'survivalArena', 'fields', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'physics', 'latchNine', 'combat',
+   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
+   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
+   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
+@@ -328,6 +328,8 @@ export const TABLE_CLOCK_IDS = Object.freeze([
+   'input', 'autoTargetAssist', 'bulletTime', 'cloak', 'actions',
+   // Flight + physics authorities: single writers of position/velocity.
+   'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor',
++  // Read-only clearance safety runs after settled physics on every tick.
++  'latchNine',
+   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.
+   'nemesis', 'nemesisEncounter',
+   // Capital score publishes orders the tactical slot reads the same tick.
+diff --git a/src/runtime/nodeSystemFactoryTable.js b/src/runtime/nodeSystemFactoryTable.js
+index 1ac8372..5704d29 100644
+--- a/src/runtime/nodeSystemFactoryTable.js
++++ b/src/runtime/nodeSystemFactoryTable.js
+@@ -27,6 +27,7 @@ import { flybyFocus } from '../systems/flybyFocus.js';
+ import { scanner } from '../systems/scanner.js';
+ import { mines } from '../systems/mines.js';
+ import { bombs } from '../systems/bombs.js';
++import { latchNine } from '../systems/latchNine.js';
+ import { dockingCorridor } from '../systems/dockingCorridor.js';
+ import { scanReveal } from '../systems/scanReveal.js';
+ import { buildIdentity } from '../systems/buildIdentity.js';
+@@ -236,6 +237,7 @@ export function getNodeSystemFactoryTable(options = {}) {
+     ['aceMemory', aceMemory],
+     ['barkDirector', barkDirector],
+     ['dockingCorridor', dockingCorridor],
++    ['latchNine', latchNine],
+     ['physics', physics],
+     ['aiPorts', aiPorts],
+     ['tumbleStates', tumbleStates],
+diff --git a/src/save/saveSystem.js b/src/save/saveSystem.js
+index 824be20..49f6c37 100644
+--- a/src/save/saveSystem.js
++++ b/src/save/saveSystem.js
+@@ -672,6 +672,7 @@ export const save = {
+       ['provenance', () => this._callSerialize('provenanceLedger') || clonePlain(state.provenance || {})],
+       ['factionPresence', () => this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {})],
+       ['bandRadio', () => this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {})],
++      ['latchNine', () => this._callSerialize('latchNine')],
+       ['v2Flavor', () => this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {})],
+       ['aftermathWrecks', () => this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {})],
+       // Discovered-crime bookkeeping: the unreported-kill docket + priced-incident ledger.
+@@ -799,6 +800,8 @@ export const save = {
+     yield 'serialize:factionPresence';
+     data.bandRadio = this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {});
+     yield 'serialize:bandRadio';
++    data.latchNine = this._callSerialize('latchNine');
++    yield 'serialize:latchNine';
+     data.v2Flavor = this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {});
+     yield 'serialize:v2Flavor';
+     data.aftermathWrecks = this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {});
+@@ -4776,6 +4779,7 @@ export const save = {
+       this._callDeserialize('factionPresence', data.factionPresence);
+       yield 'deserialized-faction-presence';
+       this._callDeserialize('bandRadio', data.bandRadio);
++      this._callDeserialize('latchNine', data.latchNine);
+       yield 'deserialized-band-radio';
+       this._callDeserialize('v2Flavor', data.v2Flavor);
+       yield 'deserialized-v2-flavor';
+diff --git a/src/systems/latchNine.js b/src/systems/latchNine.js
+new file mode 100644
+index 0000000..73e4c57
+--- /dev/null
++++ b/src/systems/latchNine.js
+@@ -0,0 +1,113 @@
++import { dockIntentStatus } from '../core/dockIntent.js';
++// SF20-01 normal-route observer. Presentation is admitted only for the accepted authored
++// tender; this owner neither spawns one nor changes docking, inputs, law, money or physics.
++import { createLatchNineService, LATCH_NINE_STATION_ID, LATCH_NINE_ACK_S } from './latchNineService.js';
++import { resolveLatchNinePresence } from '../data/latchNine.js';
++
++export function createLatchNineRuntime({ presenceResolver = resolveLatchNinePresence } = {}) {
++  return {
++    name: 'latchNine',
++    init(ctx) {
++      this.destroy();
++      this.state = ctx.state;
++      this.bus = ctx.bus;
++      this._service = createLatchNineService();
++      this._unsubs = [];
++      this._departing = false;
++      this._tender = null;
++      this._tenderLife = null;
++      this._destroyedLife = null;
++      this._ackRemaining = 0;
++      this._lastPhase = 'OFF_DUTY';
++      this._lastDocked = this.state.ui?.docked === true;
++      const on = (event, handler) => {
++        const off = this.bus?.on(event, handler);
++        if (typeof off === 'function') this._unsubs.push(off);
++      };
++      on('dock:committed', payload => {
++        if (payload?.stationId !== LATCH_NINE_STATION_ID
++          || this.state.ui?.docked !== true || this.state.ui.dockedStationId !== LATCH_NINE_STATION_ID) return;
++        const committedDock = dockIntentStatus(this.state, payload) === 'current';
++        this._sync({ committedDock });
++      });
++      on('entity:killed', payload => {
++        if (payload?.id === this._tender?.id) { this._recordTenderDestruction(); this._sync(); }
++      });
++      on('dock:denied', payload => {
++        this._service.revoke(payload?.stationId);
++        if (payload?.stationId === LATCH_NINE_STATION_ID) this._sync();
++      });
++      on('sector:exit', () => { this._departing = true; this._service.invalidate(); this._sync(); });
++      on('sector:enter', payload => {
++        if (payload?.sectorId && payload.sectorId !== this.state.world?.currentSectorId) return;
++        if (payload?.enterEpoch != null && this.state.world?.enterSerial != null
++          && payload.enterEpoch !== this.state.world.enterSerial) return;
++        this._departing = false; this._service.invalidate(); this._sync();
++      });
++      on('save:loaded', () => { this._departing = false; this._service.invalidate(); this._sync(); });
++      this._sync();
++    },
++    newGame() {
++      this._service = createLatchNineService();
++      this._tender = null; this._tenderLife = null; this._destroyedLife = null;
++      this._departing = false; this._ackRemaining = 0; this._lastPhase = 'OFF_DUTY';
++      if (this.state) this.state.latchNine = this._service.readout;
++    },
++    _recordTenderDestruction() {
++      const tender = this._tender;
++      if (!tender || this.state.entities?.get(tender.id) !== tender
++        || tender.occupantGeneration !== this._tenderLife
++        || !(tender.alive === false || tender.hull <= 0)
++        || (this._destroyedLife?.tender === tender && this._destroyedLife.life === this._tenderLife)) return;
++      this._destroyedLife = { tender, life: this._tenderLife };
++      this._service.markDestroyed();
++    },
++    _sync({ committedDock = false } = {}) {
++      if (!this._service || !this.state) return;
++      const docked = this.state.ui?.docked === true;
++      if (docked && !this._lastDocked && !committedDock) this._service.invalidate();
++      this._lastDocked = docked;
++      this._recordTenderDestruction();
++      const presence = this._departing ? null : presenceResolver(this.state);
++      const tender = presence?.tender || null;
++      if (tender !== this._tender || tender?.occupantGeneration !== this._tenderLife) {
++        this._service.invalidate();
++        this._tender = tender;
++        this._tenderLife = tender?.occupantGeneration;
++      }
++      const out = this._service.update(this.state, { enabled: !!tender, recovering: presence?.recovering === true });
++      if (out.phase === 'ACKNOWLEDGE' && this._lastPhase !== 'ACKNOWLEDGE') this._ackRemaining = LATCH_NINE_ACK_S;
++      if (out.phase !== 'ACKNOWLEDGE') this._ackRemaining = 0;
++      this._lastPhase = out.phase;
++      this.state.latchNine = out;
++    },
++    update() { this._sync(); },
++    // Cosmetic acknowledgement alone uses the existing registry keepalive's wall delta.
++    // It cannot move/advance service bodies or gameplay clocks while docking pauses simTime.
++    keepalive(wallDt) {
++      this._sync();
++      if (!(this._ackRemaining > 0) || !Number.isFinite(wallDt) || wallDt <= 0) return;
++      this._ackRemaining = Math.max(0, this._ackRemaining - wallDt);
++      if (this._ackRemaining === 0) { this._service.finishAcknowledgement(); this._sync(); }
++    },
++    dismiss() { this._service?.dismiss(); this._sync(); },
++    serialize() { return this._service?.serialize() || createLatchNineService().serialize(); },
++    deserialize(data) {
++      if (!this._service) this._service = createLatchNineService();
++      this._service.deserialize(data);
++      this._tender = null; this._tenderLife = null; this._destroyedLife = null;
++      this._ackRemaining = 0; this._lastPhase = 'OFF_DUTY';
++      if (this.state) this.state.latchNine = this._service.readout;
++    },
++    destroy() {
++      for (const off of this._unsubs || []) off();
++      this._unsubs = [];
++      if (this.state) delete this.state.latchNine;
++      this.state = null; this.bus = null; this._service = null;
++      this._tender = null; this._tenderLife = null; this._destroyedLife = null;
++      this._ackRemaining = 0;
++    },
++  };
++}
++
++export const latchNine = createLatchNineRuntime();
+diff --git a/src/systems/latchNineService.js b/src/systems/latchNineService.js
+index 518d4c4..22e1229 100644
+--- a/src/systems/latchNineService.js
++++ b/src/systems/latchNineService.js
+@@ -78,6 +78,9 @@ export function createLatchNineService(saved = null) {
+     serialize: () => normalizeLatchNineSave(memory),
+     deserialize(data) { memory = normalizeLatchNineSave(data); resetTransient(); },
+     resetSession() { dismissed = false; resetTransient(); },
++    invalidate() { resetTransient(); },
++    finishAcknowledgement() { ackUntil = -Infinity; },
++    markDestroyed() { memory.destroyed = true; resetTransient(); },
+     dismiss() { dismissed = true; arrivalArmed = false; ackUntil = -Infinity; },
+     // Wire only to dock:denied for this station. The next update re-queries the authoritative
+     // selector; an event never grants permission. Explicit revocation also cancels an ACK.
+@@ -95,10 +98,11 @@ export function createLatchNineService(saved = null) {
+       const station = state?.entities && liveStation(state);
+       const sectorId = state?.world?.currentSectorId || null;
+       const inSector = sectorId === LATCH_NINE_SECTOR_ID;
+-      const identityChanged = !binding || binding.player !== player || binding.station !== station || binding.sectorId !== sectorId;
++      const identityChanged = !binding || binding.player !== player || binding.station !== station || binding.sectorId !== sectorId
++        || binding.playerLife !== player?.occupantGeneration || binding.stationLife !== station?.occupantGeneration;
+       const docked = dockedAtLatch(state || {});
+       if (identityChanged) {
+-        binding = { player, station, sectorId };
++        binding = { player, station, sectorId, playerLife: player?.occupantGeneration, stationLife: station?.occupantGeneration };
+         arrivalArmed = false;
+         wasDocked = docked;
+         ackUntil = -Infinity;
+diff --git a/src/systems/world.js b/src/systems/world.js
+index 41974c3..84eed0f 100644
+--- a/src/systems/world.js
++++ b/src/systems/world.js
+@@ -1,3 +1,4 @@
++import { createDockIntent } from '../core/dockIntent.js';
+ // World / Sectors / Navigation system (ARCHITECTURE §2.3 step 13, §3.8, design 05).
+ //
+ // Owns: the sector graph (loaded copy of SECTORS), the active sector's live contents
+@@ -5836,7 +5837,7 @@ export const world = {
+       kind: charge.debtCr > 0 ? 'warn' : 'success',
+       ttl: 4,
+     });
+-    this.bus.emit('dock:docked', { stationId: station.id, via: 'tow' });
++    this.bus.emit('dock:docked', createDockIntent(state, { stationId: station.id, via: 'tow' }, player));
+   },
+ 
+   // --- jump-drive / scanner / fuel-tank module resolution -----------------------------------
+diff --git a/src/ui/dockStateCommit.js b/src/ui/dockStateCommit.js
+new file mode 100644
+index 0000000..aedab27
+--- /dev/null
++++ b/src/ui/dockStateCommit.js
+@@ -0,0 +1,21 @@
++import { dockIntentStatus } from '../core/dockIntent.js';
++// uiRoot remains the accepted flight -> station UI transition owner. Preserve the initiating
++// actor identity instead of relabelling a delayed message as whichever ship is current now.
++export function commitDockedUiState(state, payload, bus) {
++  if (!payload || typeof payload !== 'object') return false;
++  if (dockIntentStatus(state, payload) === 'stale') return false;
++  const stationId = payload?.stationId || null;
++  const ship = state.entities?.get?.(state.playerId);
++  if (payload?.shipId != null && payload.shipId !== state.playerId) return false;
++  if (payload?.shipGeneration != null && payload.shipGeneration !== ship?.occupantGeneration) return false;
++  const ui = state.ui || (state.ui = {});
++  const changed = ui.docked !== true || ui.dockedStationId !== stationId;
++  ui.docked = true;
++  ui.dockedStationId = stationId;
++  if (changed && bus && typeof bus.emit === 'function') {
++    // Legacy untagged callers keep ordinary docking compatibility, but their missing actor
++    // identity is not upgraded into a confirmed Latch acknowledgement.
++    bus.emit('dock:committed', payload);
++  }
++  return true;
++}
+diff --git a/src/ui/input.js b/src/ui/input.js
+index ddd1088..3ee5bc9 100644
+--- a/src/ui/input.js
++++ b/src/ui/input.js
+@@ -1,3 +1,4 @@
++import { createDockIntent } from '../core/dockIntent.js';
+ // UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
+ //
+ // UI owns: ESC (back/pause), map bindings, T (tech), mission log, K (codex), F1/H (help),
+@@ -184,7 +185,7 @@ export function createUiInput(ctx, screenManager) {
+     if (isUiInteractionFenced(state) || !dockInRange || (state.ui && state.ui.docked)) return;
+     const jumpState = state.jump && state.jump.state;
+     if (jumpState === 'CHARGING' || jumpState === 'JUMPING') return;
+-    const attempt = { stationId: dockStationId };
++    const attempt = createDockIntent(state, { stationId: dockStationId });
+     // Publish the attempt before deciding so the existing faction-voiced denial surface can explain
+     // a refusal. The same pure selector is the command gate; a banner can never be the authority.
+     bus.emit('dock:attempt', attempt);
+diff --git a/src/ui/uiRoot.js b/src/ui/uiRoot.js
+index 4a77b2a..a1b031b 100644
+--- a/src/ui/uiRoot.js
++++ b/src/ui/uiRoot.js
+@@ -1,3 +1,4 @@
++import { commitDockedUiState } from './dockStateCommit.js';
+ // The `ui` system (ARCHITECTURE §5, manifest src/ui/uiRoot.js).
+ //
+ // init(ctx): mount the HUD into #hud, build the ScreenManager, wire toasts/alerts + the UI key
+@@ -1221,9 +1222,8 @@ export const ui = {
+     // the semantic incident so no render/input frame exposes controls during transit or wake-up.
+     boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
+ 
+-    this.bus.on('dock:docked', ({ stationId }) => {
+-      this.state.ui.docked = true;
+-      this.state.ui.dockedStationId = stationId || null;
++    this.bus.on('dock:docked', (payload) => {
++      if (!commitDockedUiState(this.state, payload, this.bus)) return;
+       this.screenManager.syncVisibility();
+ 
+       // Phase 1: fade to dark
+diff --git a/test/latch-nine-runtime.test.mjs b/test/latch-nine-runtime.test.mjs
+new file mode 100644
+index 0000000..b7d75b0
+--- /dev/null
++++ b/test/latch-nine-runtime.test.mjs
+@@ -0,0 +1,327 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import { readFileSync } from 'node:fs';
++import { createDockIntent, dockIntentStatus } from '../src/core/dockIntent.js';
++import { createBus } from '../src/core/eventBus.js';
++import { resetFreshRunSystems, FRESH_RUN_SYSTEMS } from '../src/core/runReset.js';
++import { commitDockedUiState } from '../src/ui/dockStateCommit.js';
++import { createLatchNineRuntime } from '../src/systems/latchNine.js';
++import { resolveLatchNinePresence, latchNinePresenceForAsset, LATCH_NINE_PLACE_ID } from '../src/data/latchNine.js';
++import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER, TABLE_CLOCK_IDS, validateSystemClockDeclarations } from '../src/runtime/authoritativeSystemManifest.js';
++import { save } from '../src/save/saveSystem.js';
++
++// Observer/admission fixture only. This fabricated census row is NEVER added to production
++// census, does not load or stand in for a GLB, and cannot prove authored-model acceptance.
++const acceptedFixtureRow = { id: LATCH_NINE_PLACE_ID, source: 'glb', status: 'green' };
++function fixture({ promoted = true } = {}) {
++  const player = { id: 1, occupantGeneration: 1, type: 'ship', alive: true, radius: 10,
++    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
++  const station = { id: 2, occupantGeneration: 1, type: 'station', alive: true, radius: 90,
++    pos: { x: 0, z: 0 }, data: { stationId: 'station_tethys', dockRadius: 90 } };
++  const tender = { id: 3, occupantGeneration: 1, type: 'ship', alive: true, hull: 100,
++    pos: { x: 200, z: 80 }, vel: { x: 0, z: 0 }, mass: 140, collides: true,
++    physicsBody: { dynamic: true, mass: 140, sensor: false }, data: { role: 'latch_nine', placeId: LATCH_NINE_PLACE_ID,
++      latchNineService: { stationId: 'station_tethys', sectorId: 'sector_tethys_junction',
++        box: { minX: 190, maxX: 210, minZ: 70, maxZ: 90 } } } };
++  const state = { mode: 'flight', playerId: 1, simTime: 10, ui: { docked: false },
++    world: { currentSectorId: 'sector_tethys_junction', enterSerial: 1 }, factions: {},
++    entities: new Map([[1, player], [2, station], [3, tender]]), entityList: [player, station, tender],
++    entityIndex: { stations: [station] } };
++  const bus = createBus();
++  const runtime = createLatchNineRuntime(promoted
++    ? { presenceResolver: state => latchNinePresenceForAsset(state, acceptedFixtureRow) } : {});
++  runtime.init({ state, bus });
++  return { state, bus, player, station, tender, runtime };
++}
++
++test('missing real authored model keeps production service unpromoted without a fallback', () => {
++  const f = fixture({ promoted: false });
++  assert.equal(resolveLatchNinePresence(f.state), null);
++  assert.equal(f.state.latchNine.phase, 'OFF_DUTY');
++  assert.equal(f.runtime.serialize().met, false);
++  assert.equal(f.state.entityList.length, 3);
++  f.runtime.destroy();
++});
++
++test('admission rejects red/foreign art, static or sensor bodies, stale identity and duplicate tenders', () => {
++  const f = fixture();
++  assert.equal(latchNinePresenceForAsset(f.state, { ...acceptedFixtureRow, status: 'red' }), null);
++  assert.equal(latchNinePresenceForAsset(f.state, { ...acceptedFixtureRow, id: 'placeholder' }), null);
++  for (const bad of [{ dynamic: false }, { sensor: true }, { mass: 0 }, { mass: Infinity }]) {
++    const before = { ...f.tender.physicsBody };
++    Object.assign(f.tender.physicsBody, bad);
++    assert.equal(latchNinePresenceForAsset(f.state, acceptedFixtureRow), null);
++    f.tender.physicsBody = before;
++  }
++  const copy = structuredClone(f.tender); copy.id = 4;
++  f.state.entities.set(4, copy); f.state.entityList.push(copy);
++  assert.equal(latchNinePresenceForAsset(f.state, acceptedFixtureRow), null);
++  f.state.entityList.pop(); f.state.entities.delete(4); f.state.entities.delete(3);
++  assert.equal(latchNinePresenceForAsset(f.state, acceptedFixtureRow), null);
++  f.runtime.destroy();
++});
++
++test('post-commit event observes both UI fields, even when service initialized before uiRoot', () => {
++  const f = fixture();
++  assert.equal(f.state.latchNine.phase, 'GUIDE');
++  const observed = [];
++  f.bus.on('dock:committed', p => observed.push([p, f.state.ui.docked, f.state.ui.dockedStationId]));
++  // This is the exact helper now called by uiRoot's original dock:docked callback.
++  f.bus.on('dock:docked', payload => {
++    commitDockedUiState(f.state, payload, f.bus);
++    assert.equal(f.state.latchNine.phase, 'ACKNOWLEDGE', 'settled before visibility pauses simulation');
++  });
++  f.bus.emit('dock:attempt', { stationId: 'station_tethys' });
++  assert.equal(observed.length, 0);
++  f.bus.emit('dock:docked', createDockIntent(f.state, { stationId: 'station_tethys' }));
++  assert.deepEqual(observed, [[{ stationId: 'station_tethys', shipId: 1, shipGeneration: 1 }, true, 'station_tethys']]);
++  f.runtime.destroy();
++});
++
++test('paused keepalive finishes one ACK without advancing sim time or moving a body', () => {
++  const f = fixture();
++  let committed = 0;
++  f.bus.on('dock:committed', () => committed++);
++  const physical = structuredClone([f.player, f.station, f.tender]);
++  commitDockedUiState(f.state, createDockIntent(f.state, { stationId: 'station_tethys' }), f.bus);
++  assert.equal(f.state.latchNine.phase, 'ACKNOWLEDGE');
++  f.runtime.keepalive(0.4);
++  assert.equal(f.state.latchNine.phase, 'ACKNOWLEDGE');
++  commitDockedUiState(f.state, createDockIntent(f.state, { stationId: 'station_tethys' }), f.bus);
++  assert.equal(committed, 1);
++  f.runtime.keepalive(0.5);
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  f.runtime.keepalive(100);
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  assert.equal(f.state.simTime, 10);
++  assert.deepEqual([f.player, f.station, f.tender], physical);
++  f.runtime.destroy();
++});
++
++test('raw or wrong-identity post-commit messages cannot manufacture an ACK', () => {
++  const f = fixture();
++  f.bus.emit('dock:docked', { stationId: 'station_tethys' });
++  assert.equal(f.state.latchNine.phase, 'GUIDE');
++  f.bus.emit('dock:committed', { stationId: 'station_tethys', shipId: 1 });
++  assert.equal(f.state.latchNine.phase, 'GUIDE');
++  f.state.ui.docked = true; f.state.ui.dockedStationId = 'station_tethys';
++  f.bus.emit('dock:committed', { stationId: 'station_tethys', shipId: 999 });
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  f.runtime.destroy();
++});
++
++test('denial during docked pause cancels acknowledgement immediately', () => {
++  const f = fixture();
++  commitDockedUiState(f.state, createDockIntent(f.state, { stationId: 'station_tethys' }), f.bus);
++  f.station.data.quarantine = true;
++  f.bus.emit('dock:denied', { stationId: 'station_tethys', reason: 'quarantine' });
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  assert.equal(f.state.latchNine.guidance, null);
++  assert.equal(f.runtime._ackRemaining, 0);
++  f.runtime.destroy();
++});
++
++test('new tender or player lifetime cannot inherit an armed arrival even when the object is reused', () => {
++  for (const actor of ['player', 'tender', 'station']) {
++    const f = fixture();
++    f[actor].occupantGeneration++;
++    commitDockedUiState(f.state, createDockIntent(f.state, { stationId: 'station_tethys' }), f.bus);
++    assert.equal(f.state.latchNine.phase, 'HOLD', actor);
++    f.runtime.destroy();
++  }
++});
++
++test('physical service-box displacement exposes recovery while leaving bodies untouched', () => {
++  const f = fixture();
++  f.tender.pos.x = 230;
++  const before = structuredClone(f.tender);
++  f.runtime.update();
++  assert.equal(f.state.latchNine.phase, 'RECOVER');
++  assert.equal(f.state.latchNine.dockReady, true);
++  assert.deepEqual(f.tender, before);
++  f.runtime.destroy();
++});
++
++test('canonical killed body persists destroyed, but a stale/unrelated kill does not', () => {
++  const f = fixture();
++  f.bus.emit('entity:killed', { id: 99 });
++  assert.equal(f.runtime.serialize().destroyed, false);
++  f.bus.emit('entity:killed', { id: 3 });
++  assert.equal(f.runtime.serialize().destroyed, false, 'payload alone is not death truth');
++  f.tender.alive = false; f.tender.hull = 0;
++  f.bus.emit('entity:killed', { id: 3 });
++  assert.equal(f.runtime.serialize().destroyed, true);
++  assert.equal(f.state.latchNine.phase, 'OFF_DUTY');
++  const out = f.state.latchNine;
++  f.runtime.keepalive(1);
++  assert.equal(f.state.latchNine, out, 'repeated death observation does not reset every frame');
++  f.runtime.destroy();
++});
++
++test('real Save capture plan and sync/async section generator save only semantic fields', () => {
++  const f = fixture();
++  const registry = { get: name => name === 'latchNine' ? f.runtime : null };
++  const context = new Proxy({ state: f.state, registry, _callSerialize: save._callSerialize },
++    { get: (target, key) => key in target ? target[key] : () => ({}) });
++  const planned = save._saveCapturePlan.call(context).find(([key]) => key === 'latchNine')[1]();
++  const it = save._serializeDataSteps.call(context);
++  let result; do { result = it.next(); } while (!result.done);
++  assert.deepEqual(result.value.latchNine, planned);
++  assert.deepEqual(Object.keys(planned).sort(), ['cleanArrivals', 'destroyed', 'incidentIds', 'met']);
++  assert.equal('phase' in planned, false);
++  f.runtime.destroy();
++});
++
++test('real restore prefix calls the owner before sector entry and completed arrival never replays', () => {
++  const f = fixture();
++  commitDockedUiState(f.state, createDockIntent(f.state, { stationId: 'station_tethys' }), f.bus);
++  const saved = JSON.parse(JSON.stringify(f.runtime.serialize()));
++  const calls = [];
++  const context = new Proxy({ state: f.state, registry: { get: name => name === 'latchNine' ? f.runtime : null },
++    _clearEntitiesChunked: function* () {},
++    _callDeserializeChunked: save._callDeserializeChunked,
++    _callDeserialize(name, data) { calls.push(name); return save._callDeserialize.call(this, name, data); } },
++    { get: (target, key) => key in target ? target[key] : () => ({}) });
++  const session = { data: { latchNine: saved, entities: { player: {} } }, state: f.state, entityIdRemap: new Map(), options: {} };
++  const it = save._restoreChunks.call(context, session);
++  let result;
++  do { result = it.next(); } while (!result.done && result.value !== 'deserialized-band-radio');
++  assert.equal(session.chunkError, undefined);
++  assert.ok(calls.includes('latchNine'));
++  it.return();
++  f.bus.emit('save:loaded', {});
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  f.runtime.keepalive(1);
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  assert.deepEqual(f.runtime.serialize(), saved);
++  f.runtime.destroy();
++});
++
++test('fresh-run owner list resets destroyed/met without rediscovering a stale old-world body', () => {
++  const f = fixture();
++  f.runtime.deserialize({ met: true, destroyed: true, cleanArrivals: 4 });
++  assert.ok(FRESH_RUN_SYSTEMS.includes('latchNine'));
++  resetFreshRunSystems({ get: name => name === 'latchNine' ? f.runtime : null });
++  assert.deepEqual(f.runtime.serialize(), { met: false, cleanArrivals: 0, incidentIds: [], destroyed: false });
++  assert.equal(f.state.latchNine.phase, 'OFF_DUTY');
++  f.runtime.destroy();
++});
++
++test('sector lifecycle and teardown discard active/stale observers without duplicate listeners', () => {
++  const f = fixture();
++  f.bus.emit('sector:exit', {}); assert.equal(f.state.latchNine.phase, 'OFF_DUTY');
++  f.bus.emit('sector:enter', { sectorId: 'sector_elsewhere' }); assert.equal(f.state.latchNine.phase, 'OFF_DUTY');
++  f.bus.emit('sector:enter', { sectorId: 'sector_tethys_junction', enterEpoch: 0 }); assert.equal(f.state.latchNine.phase, 'OFF_DUTY');
++  f.bus.emit('sector:enter', { sectorId: 'sector_tethys_junction', enterEpoch: 1 }); assert.equal(f.state.latchNine.phase, 'GUIDE');
++  f.runtime.destroy();
++  commitDockedUiState(f.state, createDockIntent(f.state, { stationId: 'station_tethys' }), f.bus);
++  assert.equal('latchNine' in f.state, false);
++  f.runtime.init({ state: f.state, bus: f.bus });
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  f.runtime.destroy();
++});
++
++test('production order, reset, browser and Node lookup and docked keepalive seams are wired', () => {
++  assert.ok(PRODUCTION_INIT_ORDER.includes('latchNine'));
++  assert.equal(PRODUCTION_UPDATE_ORDER.indexOf('latchNine'), PRODUCTION_UPDATE_ORDER.indexOf('physics') + 1);
++  assert.ok(TABLE_CLOCK_IDS.includes('latchNine'));
++  assert.deepEqual(validateSystemClockDeclarations(), []);
++  for (const path of ['core/registry.js', 'runtime/nodeSystemFactoryTable.js']) {
++    const code = readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
++    assert.match(code, /\['latchNine', latchNine\]/);
++  }
++  const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
++  assert.match(registry, /latch\.keepalive\(wallDt\)/);
++  const ui = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
++  const commit = ui.indexOf('commitDockedUiState(this.state, payload, this.bus)');
++  assert.ok(commit > 0 && commit < ui.indexOf('this.screenManager.syncVisibility()', commit));
++});
++
++
++test('old-player dock:docked through the real commit helper cannot dock or acknowledge the new player', () => {
++  const f = fixture();
++  const old = createDockIntent(f.state, { stationId: 'station_tethys' });
++  const replacement = { ...f.player, id: 10, occupantGeneration: 20 };
++  f.state.entities.delete(1); f.state.entities.set(10, replacement); f.state.playerId = 10;
++  f.runtime.update();
++  let screenTransitions = 0;
++  f.bus.on('dock:docked', payload => {
++    if (!commitDockedUiState(f.state, payload, f.bus)) return;
++    screenTransitions++;
++  });
++  f.bus.emit('dock:docked', old);
++  assert.equal(screenTransitions, 0);
++  assert.equal(f.state.ui.docked, false);
++  assert.equal(f.state.latchNine.phase, 'GUIDE');
++  const sameIdStaleLife = { stationId: 'station_tethys', shipId: 10, shipGeneration: 1 };
++  f.bus.emit('dock:docked', sameIdStaleLife);
++  assert.equal(screenTransitions, 0);
++  f.bus.emit('dock:docked', createDockIntent(f.state, { stationId: 'station_tethys' }));
++  assert.equal(screenTransitions, 1);
++  assert.equal(f.state.latchNine.phase, 'ACKNOWLEDGE');
++  f.runtime.destroy();
++});
++
++test('legacy untagged docking remains usable but cannot gain Latch ACK on a later keepalive', () => {
++  const f = fixture();
++  assert.equal(commitDockedUiState(f.state, { stationId: 'station_tethys' }, f.bus), true);
++  assert.equal(f.state.ui.docked, true);
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  f.runtime.keepalive(0.1);
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  f.runtime.destroy();
++});
++
++
++test('same ID and generation on a fresh restored object cannot authenticate an old dock intent', () => {
++  const f = fixture();
++  const old = createDockIntent(f.state, { stationId: 'station_tethys' });
++  const replacement = structuredClone(f.player);
++  assert.equal(replacement.id, f.player.id);
++  assert.equal(replacement.occupantGeneration, f.player.occupantGeneration);
++  f.state.entities.set(replacement.id, replacement);
++  f.runtime.update();
++  let transitions = 0;
++  f.bus.on('dock:docked', payload => {
++    if (!commitDockedUiState(f.state, payload, f.bus)) return;
++    transitions++;
++  });
++  assert.equal(dockIntentStatus(f.state, old), 'stale');
++  f.bus.emit('dock:docked', old);
++  assert.equal(transitions, 0);
++  assert.equal(f.state.ui.docked, false);
++  assert.equal(f.state.latchNine.phase, 'GUIDE');
++  const current = createDockIntent(f.state, { stationId: 'station_tethys' });
++  f.bus.emit('dock:docked', current);
++  assert.equal(transitions, 1);
++  assert.equal(f.state.latchNine.phase, 'ACKNOWLEDGE');
++  f.runtime.destroy();
++});
++
++test('cloning/serializing a receipt preserves ordinary compatibility but cannot forge recognition', () => {
++  const f = fixture();
++  const original = createDockIntent(f.state, { stationId: 'station_tethys' });
++  const clone = JSON.parse(JSON.stringify(original));
++  assert.equal(dockIntentStatus(f.state, original), 'current');
++  assert.equal(dockIntentStatus(f.state, clone), 'unbound');
++  assert.equal(commitDockedUiState(f.state, clone, f.bus), true);
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  f.runtime.keepalive(0.1);
++  assert.equal(f.state.latchNine.phase, 'HOLD');
++  assert.deepEqual(Object.keys(original).sort(), ['shipGeneration', 'shipId', 'stationId']);
++  f.runtime.destroy();
++});
++
++
++test('same actor cannot reuse a dock receipt across sector entry or target object replacement', () => {
++  for (const change of ['entry', 'station']) {
++    const f = fixture();
++    const receipt = createDockIntent(f.state, { stationId: 'station_tethys' });
++    if (change === 'entry') f.state.world.enterSerial++;
++    else f.state.entities.set(2, structuredClone(f.station));
++    assert.equal(dockIntentStatus(f.state, receipt), 'stale');
++    assert.equal(commitDockedUiState(f.state, receipt, f.bus), false);
++    assert.equal(f.state.ui.docked, false);
++    f.runtime.destroy();
++  }
++});

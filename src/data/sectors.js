@@ -4,6 +4,7 @@
 import {
   applySectorAnchors,
   CERES_WRECK_CATHEDRAL_LOCAL_POS,
+  CERES_SECOND_MEASURE_LOCAL_POS,
 } from './sectorAnchors.js';
 import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
 import { applyClaimableBodySites } from './claimableBodies.js';
@@ -191,6 +192,8 @@ const CORE_SECTORS = [
         chartNote: 'An old demolition retriever is keeping one pressure core. Scan to hail. Massline the core and throw it.',
         discoveryPlate: { title: 'RU-7 / Open Work Order',
           body: 'The crew clocks stopped. The retrieval service did not. Scan to wake RUCKUS; throw his caged core with the Massline. Three returns earn a pressure present. A held line pauses its countdown. Keep clear of the amber ring.' } },
+      { id: 'world_site_ceres_second_measure', type: 'wreck', name: 'Second Measure Shipbreak',
+        anchor: CERES_SECOND_MEASURE_LOCAL_POS, runtimeOwner: 'asteroidSites' },
       // The Kettle Line drift trail (src/data/kettleLine.js): three authored convoy pieces
       // strung along a drift line off the Helios-gate approach. Plain POI rows; the scan tells
       // and the payoff pod live in that module and its owners.

@@ -1,0 +1,38 @@
+diff --git a/src/data/broodBodies.js b/src/data/broodBodies.js
+index 9907207..bf8f34f 100644
+--- a/src/data/broodBodies.js
++++ b/src/data/broodBodies.js
+@@ -1,3 +1,4 @@
++import { normalizeConvexProxyVertices } from '../core/convexProxyGeometry.js';
+ import { BROOD_SPLITTER_BODIES } from './broodSplitterBodies.js';
+ // P14 Brood: original animals, never Vethari hull-infection or recoloured ships.
+ // One pure X/Y-up/Z asset/physics contract. The concave nose is intentional;
+@@ -360,16 +361,23 @@ export const BROOD_BODY_CONTRACTS = freeze({
+ export const BROOD_BODY_IDS = freeze(Object.keys(BROOD_BODY_CONTRACTS));
+ export const broodBodyContract = id => BROOD_BODY_CONTRACTS[id] || null;
+ 
+-// Canonical collisionProxyManifests shape, shared by native/contact/LOS/tether.
+-// Geometry is authored once in WU above; conversion never fits a convex hull.
+-export const BROOD_COLLISION_MANIFESTS = freeze(Object.fromEntries(BROOD_BODY_IDS.map(id=>{
+-  const body=BROOD_BODY_CONTRACTS[id], scale=body.radius;
+-  const primitives=body.collision.primitives.map(p=>{
++export function normalizeBroodCollisionPrimitives(primitives, scale) {
++  if (!Array.isArray(primitives) || !primitives.length || primitives.length > 32 || !(scale > 0) || !Number.isFinite(scale)) throw new RangeError('invalid bounded Brood collision geometry');
++  return primitives.map(p=>{
++    if (!p || !['convex','capsule','obb'].includes(p.kind)) throw new RangeError('unsupported Brood collision primitive');
+     const result={id:p.id,kind:p.kind};
++    if(p.kind==='convex') { result.vertices=normalizeConvexProxyVertices(p.vertices).map(([x,z])=>[x/scale,z/scale]); return result; }
+     for(const key of p.kind==='capsule'?['ax','az','bx','bz','r']:['x','z','hx','hz']) result[key]=p[key]/scale;
+     if(p.kind==='obb') result.angleDeg=p.rot*180/Math.PI;
+     return result;
+   });
++}
++
++// Canonical collisionProxyManifests shape, shared by native/contact/LOS/tether.
++// Geometry is authored once in WU above; conversion never fits a convex hull.
++export const BROOD_COLLISION_MANIFESTS = freeze(Object.fromEntries(BROOD_BODY_IDS.map(id=>{
++  const body=BROOD_BODY_CONTRACTS[id], scale=body.radius;
++  const primitives=normalizeBroodCollisionPrimitives(body.collision.primitives,scale);
+   return [id,{schemaVersion:1,id:`brood:${id}:v1`,referenceRadius:'radius',
+     flags:{collides:true,renderable:false,targetable:false,radarVisible:false},
+     primitives,broodBodyId:id,neverUseConvexHull:true,

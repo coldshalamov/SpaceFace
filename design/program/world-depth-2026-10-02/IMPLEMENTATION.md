@@ -9,6 +9,36 @@ The owner requested expanded/reviewed planning, publication as a draft PR, then 
 
 The six TARGET experience commitments are covered below through linked packets, including their connective work and the mature Swarm roster. The first successful district proves a production path; it does not complete the expansion. Routine art details and narrow fixes can be decided within a brief. Canon, progression economics, material target changes and new systems outside these briefs go back to their existing owner.
 
+## Work-chunk execution contract
+
+Use the existing P00–P21 roster and original twenty-concept amendment as the scope.
+A chunk is a substantial usable feature with its consumer, authored assets, lifetime,
+persistence and evidence gates. A prototype iteration, isolated test fix, or small
+commit is an increment inside a chunk, not completion of the chunk.
+
+Current end-to-end chunk boundaries:
+
+- **Ceres workfleet delivery:** normal finite delivery plus disturbances, original
+  payload recovery, Save/Continue and truthful visual integration. Receiver-only
+  success does not close moving-load recovery or the actual presentation gates
+- **Mite completion:** finished Forge source, intentional LODs, source-derived true
+  collision, motion and a normal gameplay consumer judged in the actual camera.
+  Keep rejected studies for diagnosis; do not label a prototype iteration complete
+- **Latch completion:** authored tender, truthful guidance, normal docking, return
+  and recovery, and Save/Continue with exact actor lifetime ownership. Finish these
+  together before selecting the next unrelated character or feature
+
+On every continuation, read this plan and EXECUTION_STATUS.md. If work is already
+active, finish that chunk's next incomplete operation first. Diagnose recoverable
+failures, preserve evidence and commit coherent increments regularly. Keep the log
+concise: chunk, owner, verified evidence or blocker, and the next operation. Continue
+independent parts when a real gate blocks one part, without inventing a new queue.
+
+All original twenty concepts remain authorized. The optional Playfield First v2
+proposal is unadopted reference; it neither substitutes its concepts nor indefinitely
+blocks original Pip/Spanner. Respect active ownership and finish active Latch before
+starting that later chunk. Only explicit scope revision changes the original roster.
+
 ## 1. Production setup before multiplying assets
 
 **P00 — prove the actual authoring-to-play lane.** Continue from the verified Forge export above; do not rerun that export merely to rediscover feasibility. After planning review and draft publication, complete a current runnable source snapshot and the required canonical source GLBs/shared textures through an authorized intake route. Install locked dependencies using the approved environment workflow; measure storage and tool compatibility. Build one existing small Forge body, review it with `fleet-look.mjs` in the game's renderer, run its actual publisher/release/package path, and demonstrate its default-route consumer without an unintended fallback. Validate bytes, hashes, axes, sockets, collision and material identity. A small source asset is sufficient for this tooling proof; it is not a substitute for a substantive first feature.

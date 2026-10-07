@@ -1,0 +1,138 @@
+{
+  "manifestSHA256": "30496babf3a513663665d1213587f2c811350d5d84ef1e7f5a7b4fc8c218d8a4",
+  "finding": "Verified pose-frame keys omit rigid-verified/ prefix. Original expected hashes match that directory; sibling diagnostic images are distinct rejected Euler-only poses. No historical evidence was modified.",
+  "files": [
+    {
+      "group": "activeSheets",
+      "correctRelativePath": "v12-threshold-equivalent-source-read.png",
+      "expectedSHA256": "3430bff87c9722692cac35d14f66081648b4d746395e56e8c609040c8ec29666",
+      "actualSHA256": "3430bff87c9722692cac35d14f66081648b4d746395e56e8c609040c8ec29666",
+      "bytes": 307161
+    },
+    {
+      "group": "activeSheets",
+      "correctRelativePath": "v12-matched-close-comparison.png",
+      "expectedSHA256": "a5fb50afb3f31555e7313de880bd23cb5f43f2f72e8bfe20fe2d68e9b22f568e",
+      "actualSHA256": "a5fb50afb3f31555e7313de880bd23cb5f43f2f72e8bfe20fe2d68e9b22f568e",
+      "bytes": 1080844
+    },
+    {
+      "group": "activeSheets",
+      "correctRelativePath": "v12-rigid-state-and-split-verified.png",
+      "expectedSHA256": "48331ee6f0f5beeade1f7c93986ae2d8e2223cf39f09d80e6658d30aec45d803",
+      "actualSHA256": "48331ee6f0f5beeade1f7c93986ae2d8e2223cf39f09d80e6658d30aec45d803",
+      "bytes": 316987
+    },
+    {
+      "group": "activeSheets",
+      "correctRelativePath": "v12-fixed-envelope-state-170px-verified.png",
+      "expectedSHA256": "bf091b3849d7b2dbdf4cc3c7fa817284d12313b6700273aefaa412b884b3c629",
+      "actualSHA256": "bf091b3849d7b2dbdf4cc3c7fa817284d12313b6700273aefaa412b884b3c629",
+      "bytes": 90446
+    },
+    {
+      "group": "activeSheets",
+      "correctRelativePath": "v12-mouth-clearance-verified.png",
+      "expectedSHA256": "723d3455ec545b53c6d2221e85ef9cd958b25afc59b7cbdffef1e29a1feff711",
+      "actualSHA256": "723d3455ec545b53c6d2221e85ef9cd958b25afc59b7cbdffef1e29a1feff711",
+      "bytes": 635824
+    },
+    {
+      "group": "activeSheets",
+      "correctRelativePath": "v12-severance-surfaces.png",
+      "expectedSHA256": "f38eed1c31dec9914464069be3971236497e8ddd35731872605a3202edb98dcb",
+      "actualSHA256": "f38eed1c31dec9914464069be3971236497e8ddd35731872605a3202edb98dcb",
+      "bytes": 418959
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod0-state-closed.png",
+      "expectedSHA256": "d18128895cd2eab7692afd56eb5b10c7a04fb06083f6977d1ba550af8360a662",
+      "actualSHA256": "d18128895cd2eab7692afd56eb5b10c7a04fb06083f6977d1ba550af8360a662",
+      "bytes": 350126,
+      "rejectedSiblingRelativePath": "lod0-state-closed.png",
+      "rejectedSiblingSHA256": "d84deea76b4805ddb026ce7d54d98304011ca6d51c7ebb4d5b49aa585bbc88d5"
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod2-state-rest.png",
+      "expectedSHA256": "7ac82ac0f2f6e15f02e2760bda2078e3989c8d4f23aea0a3a410350a18b53c77",
+      "actualSHA256": "7ac82ac0f2f6e15f02e2760bda2078e3989c8d4f23aea0a3a410350a18b53c77",
+      "bytes": 350040,
+      "rejectedSiblingRelativePath": "lod2-state-rest.png",
+      "rejectedSiblingSHA256": "6ac845d3483054ef9806dc84ec55954531aeb6c39449fb7ecfbc86422bf56d13"
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod2-low-front-closed.png",
+      "expectedSHA256": "49b92aabab25ff0df71dc5788e71988b0564408288cddd1b09eec054060d28ab",
+      "actualSHA256": "49b92aabab25ff0df71dc5788e71988b0564408288cddd1b09eec054060d28ab",
+      "bytes": 345009,
+      "rejectedSiblingRelativePath": "lod2-low-front-closed.png",
+      "rejectedSiblingSHA256": "b941761543b3d3b23351f0f7f51ba82da3ef200bcd13e79458092daa762a8e02"
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod0-state-open.png",
+      "expectedSHA256": "8d6a308b307ec75d03a02c87d2a447282ace5a852f53c87d5f07138de988701c",
+      "actualSHA256": "8d6a308b307ec75d03a02c87d2a447282ace5a852f53c87d5f07138de988701c",
+      "bytes": 349992,
+      "rejectedSiblingRelativePath": "lod0-state-open.png",
+      "rejectedSiblingSHA256": "71561c3923a6019d65bc3b114dc83379283104b31042ff247f69544cbd48d050"
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod2-state-open.png",
+      "expectedSHA256": "5a2d671737c2e1320c57d566f112a811db247c3ff84d834361f5692dc7c17133",
+      "actualSHA256": "5a2d671737c2e1320c57d566f112a811db247c3ff84d834361f5692dc7c17133",
+      "bytes": 348445,
+      "rejectedSiblingRelativePath": "lod2-state-open.png",
+      "rejectedSiblingSHA256": "cdc6c0b4cf5d5898f67d6304b787a883a494a2fe99854152ee57ae014f253103"
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod2-state-closed.png",
+      "expectedSHA256": "ffabf1f9af02ce9a2440daa0b873683453f417e08e5a439f78689e5f8c75a2b0",
+      "actualSHA256": "ffabf1f9af02ce9a2440daa0b873683453f417e08e5a439f78689e5f8c75a2b0",
+      "bytes": 349766,
+      "rejectedSiblingRelativePath": "lod2-state-closed.png",
+      "rejectedSiblingSHA256": "12ccc25c475ff85b420f9bfc49a2ef33dfdbfbe75b43254b35884ba80bffb1ac"
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod0-low-front-closed.png",
+      "expectedSHA256": "a9f88c8670e03386e6574f7029ce0d1e402c916cb1dc28e2e73e50e4f29c6245",
+      "actualSHA256": "a9f88c8670e03386e6574f7029ce0d1e402c916cb1dc28e2e73e50e4f29c6245",
+      "bytes": 344794,
+      "rejectedSiblingRelativePath": "lod0-low-front-closed.png",
+      "rejectedSiblingSHA256": "ee6aab30fbc06f9d19c380896adcb53eb91b6cc9a2faed9358b76c4206cebd7c"
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod2-low-front-open.png",
+      "expectedSHA256": "04e301124e6de8768536ed9d183e4ebbc7c1b0274dd5281f0ceeb4e649a87fee",
+      "actualSHA256": "04e301124e6de8768536ed9d183e4ebbc7c1b0274dd5281f0ceeb4e649a87fee",
+      "bytes": 348646,
+      "rejectedSiblingRelativePath": "lod2-low-front-open.png",
+      "rejectedSiblingSHA256": "2cee18721bf2b9447adc2515b8ba63cec3751e8fd1726ad22c9412ffa4085680"
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod0-low-front-open.png",
+      "expectedSHA256": "94ff2983cc9038c131b11f77bc0b425250e50d5a864fb4eb69bf9ead5a7d746a",
+      "actualSHA256": "94ff2983cc9038c131b11f77bc0b425250e50d5a864fb4eb69bf9ead5a7d746a",
+      "bytes": 348410,
+      "rejectedSiblingRelativePath": "lod0-low-front-open.png",
+      "rejectedSiblingSHA256": "a5b1e51ca116a0aeb03ef9eb1f9d5c561a56c2adf6537438745f2db686711249"
+    },
+    {
+      "group": "verifiedPoseFrames",
+      "correctRelativePath": "rigid-verified/lod0-state-rest.png",
+      "expectedSHA256": "37123d230f87740f8a4f0849551df17f28a2537bc3ed5c753c7367fb13a629b2",
+      "actualSHA256": "37123d230f87740f8a4f0849551df17f28a2537bc3ed5c753c7367fb13a629b2",
+      "bytes": 350721,
+      "rejectedSiblingRelativePath": "lod0-state-rest.png",
+      "rejectedSiblingSHA256": "083a1436054706542f559f0f223d3a0c5a5d846e2db98db150a2a486dc999420"
+    }
+  ]
+}

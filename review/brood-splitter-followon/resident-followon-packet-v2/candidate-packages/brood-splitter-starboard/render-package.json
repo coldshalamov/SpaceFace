@@ -1,0 +1,2088 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.brood-splitter-starboard.anchor.socket-brood-contact",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7919702529907227,
+        0,
+        0.005022028461098671,
+        1
+      ],
+      "nodeName": "SOCKET_BROOD_CONTACT",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentNodeId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7919702529907227,
+        0,
+        0.005022028461098671,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.anchor.socket-brood-tether",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_BROOD_TETHER",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.brood-splitter-starboard",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "d6fde7060b544b32fd3da1dbd4bd67d43d07e69483d9eb59033143b517ef74b4",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.0545814037323,
+          0.4836544394493103,
+          0.23051568865776062
+        ],
+        "min": [
+          -1.931009292602539,
+          -0.6058238744735718,
+          -0.7791704535484314
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "73afc1c42430449579a187abaf647be0c545a775c9ebb9b2b59000e755435197",
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-01.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_starboard_convex_01",
+      "nodeId": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-01",
+      "primitiveIndex": 0,
+      "vertexCount": 66
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8441497087478638,
+          0.4838581681251526,
+          0.7768135666847229
+        ],
+        "min": [
+          -1.9954681396484375,
+          -0.6060276031494141,
+          -0.17608939111232758
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "788f17698ba599345f495aced41f6cae6d76815002d3d0fcd045bd30a9159f93",
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-02.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_starboard_convex_02",
+      "nodeId": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-02",
+      "primitiveIndex": 0,
+      "vertexCount": 34
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0545814037323,
+          0.4837661683559418,
+          1.0133166313171387
+        ],
+        "min": [
+          -2.2058000564575195,
+          -0.6059355735778809,
+          -0.23240970075130463
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2b6ecf79ec766c18680f10b11cbdecb846525c36ad763a2c941bac303a0f3024",
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-03.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_starboard_convex_03",
+      "nodeId": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-03",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0545814037323,
+          0.4837145209312439,
+          -0.13898491859436035
+        ],
+        "min": [
+          -2.217630386352539,
+          -0.6058839559555054,
+          -0.34707385301589966
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac163318ecd02f3d01a7fb99a22853756c9fb0bac66e534a94496078756a1872",
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-04.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_starboard_convex_04",
+      "nodeId": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-04",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8939418792724609,
+          0.48374176025390625,
+          1.1226162910461426
+        ],
+        "min": [
+          -2.16100811958313,
+          -0.6059111952781677,
+          0.5207337737083435
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d8b4a0e7369deb74f8bcf39eae7192a62e028688ab8b06852eb65a2b5ef97a12",
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-05.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_starboard_convex_05",
+      "nodeId": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-05",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6225758790969849,
+          0.4837114214897156,
+          -0.3251974582672119
+        ],
+        "min": [
+          -1.4773340225219727,
+          -0.605880856513977,
+          -0.8525621294975281
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c0cc66220de0ce06b71ff7550964e3900d6270ffecdd65dd6e8e468fc087cdf5",
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-06.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_starboard_convex_06",
+      "nodeId": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-06",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          2.055712938308716,
+          0.4837803542613983,
+          0.7187448143959045
+        ],
+        "min": [
+          0.5687808394432068,
+          -0.6059497594833374,
+          0.09156232327222824
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5333dd6af3c032384c10582a7da6fc1d853cfed8a6242fc40f236f98664dd237",
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-07.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_starboard_convex_07",
+      "nodeId": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-07",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          1.811943769454956,
+          0.4836015999317169,
+          0.7646657824516296
+        ],
+        "min": [
+          -1.8180568218231201,
+          -0.40885987877845764,
+          -0.7828509211540222
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b87f0de471c5769b83469eb166ff4774ed334376add2cc1e0df92ceba57a473",
+      "id": "sf.render.brood-splitter-starboard.node.lod0-starboard-carapace.primitive.0",
+      "indexCount": 11856,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_STARBOARD_Carapace",
+      "nodeId": "sf.render.brood-splitter-starboard.node.lod0-starboard-carapace",
+      "primitiveIndex": 0,
+      "vertexCount": 2675
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0590438842773438,
+          -0.15995173156261444,
+          1.1195021867752075
+        ],
+        "min": [
+          -2.209160804748535,
+          -0.605959415435791,
+          -0.7412511110305786
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "402a290cb812dcaa5db198847e38f9ab9809cb03a4dca5b4bf7386d01213a4cd",
+      "id": "sf.render.brood-splitter-starboard.node.lod0-starboard-chitin.primitive.0",
+      "indexCount": 6918,
+      "indexed": true,
+      "materialHash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_STARBOARD_Chitin",
+      "nodeId": "sf.render.brood-splitter-starboard.node.lod0-starboard-chitin",
+      "primitiveIndex": 0,
+      "vertexCount": 1628
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8374755382537842,
+          0.2528623938560486,
+          1.0350935459136963
+        ],
+        "min": [
+          -2.1982414722442627,
+          -0.5748001337051392,
+          -0.8538736701011658
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c468542a3bb33ac069167939c512555df8c79d816554087968432ccb22a9440e",
+      "id": "sf.render.brood-splitter-starboard.node.lod0-starboard-membrane.primitive.0",
+      "indexCount": 14502,
+      "indexed": true,
+      "materialHash": "e545a6c66bb7f76f969fa3e1438af670739021519681bf4a05d6b76993e3be91",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_STARBOARD_Membrane",
+      "nodeId": "sf.render.brood-splitter-starboard.node.lod0-starboard-membrane",
+      "primitiveIndex": 0,
+      "vertexCount": 3435
+    },
+    {
+      "bounds": {
+        "max": [
+          1.811943769454956,
+          0.48378923535346985,
+          0.7645463943481445
+        ],
+        "min": [
+          -1.818056583404541,
+          -0.40867218375205994,
+          -0.7829701900482178
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ccec908434f1ffcfc3af8c0250af7be973bb4ae91d0390c3fc845d0eba8d4839",
+      "id": "sf.render.brood-splitter-starboard.node.lod1-starboard-carapace.primitive.0",
+      "indexCount": 5796,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_STARBOARD_Carapace",
+      "nodeId": "sf.render.brood-splitter-starboard.node.lod1-starboard-carapace",
+      "primitiveIndex": 0,
+      "vertexCount": 1459
+    },
+    {
+      "bounds": {
+        "max": [
+          2.059877395629883,
+          -0.16386985778808594,
+          1.1194798946380615
+        ],
+        "min": [
+          -2.2092361450195312,
+          -0.6026763916015625,
+          -0.7338524460792542
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f6b3a1b14e46b34066e77a69eb0e255bcc8ce7dcd46297b31c2802dfa8a4dd48",
+      "id": "sf.render.brood-splitter-starboard.node.lod1-starboard-chitin.primitive.0",
+      "indexCount": 2352,
+      "indexed": true,
+      "materialHash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_STARBOARD_Chitin",
+      "nodeId": "sf.render.brood-splitter-starboard.node.lod1-starboard-chitin",
+      "primitiveIndex": 0,
+      "vertexCount": 656
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8374755382537842,
+          0.2495340257883072,
+          1.0350481271743774
+        ],
+        "min": [
+          -2.198047399520874,
+          -0.5721771121025085,
+          -0.8538282513618469
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e877eaed65d3931ee497399efdef9e0a9daefd53e545e4e15b916611faefd4b1",
+      "id": "sf.render.brood-splitter-starboard.node.lod1-starboard-membrane.primitive.0",
+      "indexCount": 15972,
+      "indexed": true,
+      "materialHash": "e545a6c66bb7f76f969fa3e1438af670739021519681bf4a05d6b76993e3be91",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_STARBOARD_Membrane",
+      "nodeId": "sf.render.brood-splitter-starboard.node.lod1-starboard-membrane",
+      "primitiveIndex": 0,
+      "vertexCount": 3847
+    },
+    {
+      "bounds": {
+        "max": [
+          1.811943769454956,
+          0.4836013615131378,
+          0.7645463943481445
+        ],
+        "min": [
+          -1.818056583404541,
+          -0.40886005759239197,
+          -0.7829701900482178
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ecbf2fc03c8940534e8ee0fb5751151dcfa9785cd58c50d3e5a189373c160a70",
+      "id": "sf.render.brood-splitter-starboard.node.lod2-starboard-carapace.primitive.0",
+      "indexCount": 5100,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_STARBOARD_Carapace",
+      "nodeId": "sf.render.brood-splitter-starboard.node.lod2-starboard-carapace",
+      "primitiveIndex": 0,
+      "vertexCount": 1305
+    },
+    {
+      "bounds": {
+        "max": [
+          2.059877395629883,
+          -0.1621154546737671,
+          1.1194682121276855
+        ],
+        "min": [
+          -2.2092361450195312,
+          -0.5983163118362427,
+          -0.7338641285896301
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "df0213116d925bb7b133f527c701817dc2831d0a5c45bdcc8f1fe5589750e48c",
+      "id": "sf.render.brood-splitter-starboard.node.lod2-starboard-chitin.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_STARBOARD_Chitin",
+      "nodeId": "sf.render.brood-splitter-starboard.node.lod2-starboard-chitin",
+      "primitiveIndex": 0,
+      "vertexCount": 373
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8374755382537842,
+          0.24935369193553925,
+          1.0351425409317017
+        ],
+        "min": [
+          -2.1973984241485596,
+          -0.5722253322601318,
+          -0.8539226651191711
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f0886ec2991e071d39aa65f2488a38312ad9e594a2d833a1eab238e6add02c9e",
+      "id": "sf.render.brood-splitter-starboard.node.lod2-starboard-membrane.primitive.0",
+      "indexCount": 10656,
+      "indexed": true,
+      "materialHash": "e545a6c66bb7f76f969fa3e1438af670739021519681bf4a05d6b76993e3be91",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_STARBOARD_Membrane",
+      "nodeId": "sf.render.brood-splitter-starboard.node.lod2-starboard-membrane",
+      "primitiveIndex": 0,
+      "vertexCount": 2785
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "id": "material:504e2af287f3bf7d40c6664e",
+      "name": "Material_Ceramic_BroodChitin",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_ORM_v1",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_Normal_v1",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_ORM_v1",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "id": "material:e1cb4c48922ec995f50bd382",
+      "name": "Material_Hull_BroodCarapace",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_ORM_v1",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_Normal_v1",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_ORM_v1",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e545a6c66bb7f76f969fa3e1438af670739021519681bf4a05d6b76993e3be91",
+      "id": "material:e545a6c66bb7f76f969fa3e1",
+      "name": "Material_Ceramic_BroodMembrane",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-01",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_starboard_convex_01",
+      "nodeName": "COLLISION_starboard_convex_01",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-02",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_starboard_convex_02",
+      "nodeName": "COLLISION_starboard_convex_02",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-03",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_starboard_convex_03",
+      "nodeName": "COLLISION_starboard_convex_03",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-04",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_starboard_convex_04",
+      "nodeName": "COLLISION_starboard_convex_04",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-05",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_starboard_convex_05",
+      "nodeName": "COLLISION_starboard_convex_05",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-06",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_starboard_convex_06",
+      "nodeName": "COLLISION_starboard_convex_06",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.collision-starboard-convex-07",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_starboard_convex_07",
+      "nodeName": "COLLISION_starboard_convex_07",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.lod0-starboard-carapace",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_STARBOARD_Carapace",
+      "nodeName": "LOD0_STARBOARD_Carapace",
+      "nodePath": [
+        0,
+        7,
+        0
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.lod0-starboard-chitin",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_STARBOARD_Chitin",
+      "nodeName": "LOD0_STARBOARD_Chitin",
+      "nodePath": [
+        0,
+        7,
+        1
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.lod0-starboard-membrane",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_STARBOARD_Membrane",
+      "nodeName": "LOD0_STARBOARD_Membrane",
+      "nodePath": [
+        0,
+        7,
+        2
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.lod1-starboard-carapace",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_STARBOARD_Carapace",
+      "nodeName": "LOD1_STARBOARD_Carapace",
+      "nodePath": [
+        0,
+        7,
+        3
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.lod1-starboard-chitin",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_STARBOARD_Chitin",
+      "nodeName": "LOD1_STARBOARD_Chitin",
+      "nodePath": [
+        0,
+        7,
+        4
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.lod1-starboard-membrane",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_STARBOARD_Membrane",
+      "nodeName": "LOD1_STARBOARD_Membrane",
+      "nodePath": [
+        0,
+        7,
+        5
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.lod2-starboard-carapace",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_STARBOARD_Carapace",
+      "nodeName": "LOD2_STARBOARD_Carapace",
+      "nodePath": [
+        0,
+        7,
+        6
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.lod2-starboard-chitin",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_STARBOARD_Chitin",
+      "nodeName": "LOD2_STARBOARD_Chitin",
+      "nodePath": [
+        0,
+        7,
+        7
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.lod2-starboard-membrane",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_STARBOARD_Membrane",
+      "nodeName": "LOD2_STARBOARD_Membrane",
+      "nodePath": [
+        0,
+        7,
+        8
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "PART_SPLITTER_STARBOARD",
+      "nodeName": "PART_SPLITTER_STARBOARD",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_BROOD_SPLITTER_STARBOARD_V01_ROOT",
+      "nodeName": "SF_BROOD_SPLITTER_STARBOARD_V01_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.socket-brood-contact",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7919702529907227,
+        0,
+        0.005022028461098671,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_BROOD_CONTACT",
+      "nodeName": "SOCKET_BROOD_CONTACT",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.7919702529907227,
+        0,
+        0.005022028461098671,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-starboard.node.socket-brood-tether",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_BROOD_TETHER",
+      "nodeName": "SOCKET_BROOD_TETHER",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-starboard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "eaa69c4f14bcbf1360dacf46202169f60fc7dfb5070d5e11ab0dd178bc215bf7"
+    },
+    "sourceGlb": {
+      "bytes": 381404,
+      "sha256": "e67bb6c771845f058bb2e0a401bcaaed69a1f13e3ac6725391a59844047af533",
+      "uri": "brood_splitter_starboard_v01.glb"
+    },
+    "sourceManifest": {
+      "bytes": 229066,
+      "sha256": "588a2fb97a680f30483ebf2274b50ca220e8a9a5201649cf2f4bb1cf03aa6735",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 770528,
+    "sha256": "3250a59190d0584660bdedac273b72b9feb806e361c3918fa8a6109efe017f72",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.07887649536132812,
+        -0.06108471751213074,
+        0.13434681296348572
+      ],
+      "max": [
+        2.059877395629883,
+        0.4838581681251526,
+        1.1226162910461426
+      ],
+      "min": [
+        -2.217630386352539,
+        -0.6060276031494141,
+        -0.8539226651191711
+      ],
+      "size": [
+        4.277507781982422,
+        1.0898857712745667,
+        1.9765389561653137
+      ]
+    },
+    "hidden": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.7919702529907227,
+          0,
+          0.005022028461098671,
+          1
+        ],
+        "name": "SOCKET_BROOD_CONTACT",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "contact"
+        },
+        "userData": {
+          "name": "SOCKET_BROOD_CONTACT",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "contact",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BROOD_CONTACT",
+            "recordIds": [
+              "sf.render.brood-splitter-starboard.anchor.socket-brood-contact",
+              "sf.render.brood-splitter-starboard.node.socket-brood-contact"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_BROOD_TETHER",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_BROOD_TETHER",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BROOD_TETHER",
+            "recordIds": [
+              "sf.render.brood-splitter-starboard.anchor.socket-brood-tether",
+              "sf.render.brood-splitter-starboard.node.socket-brood-tether"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "ceramic": 6,
+      "hull": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "ceramic"
+      }
+    ],
+    "nodeCount": 21,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_STARBOARD_Carapace",
+        "planIndex": 10,
+        "tags": {
+          "broodCell": "brood_splitter_starboard",
+          "broodContractId": "brood_splitter_starboard",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_STARBOARD_Chitin",
+        "planIndex": 11,
+        "tags": {
+          "broodCell": "brood_splitter_starboard",
+          "broodContractId": "brood_splitter_starboard",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_STARBOARD_Membrane",
+        "planIndex": 12,
+        "tags": {
+          "broodCell": "brood_splitter_starboard",
+          "broodContractId": "brood_splitter_starboard",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_STARBOARD_Carapace",
+        "planIndex": 13,
+        "tags": {
+          "broodCell": "brood_splitter_starboard",
+          "broodContractId": "brood_splitter_starboard",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_STARBOARD_Chitin",
+        "planIndex": 14,
+        "tags": {
+          "broodCell": "brood_splitter_starboard",
+          "broodContractId": "brood_splitter_starboard",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_STARBOARD_Membrane",
+        "planIndex": 15,
+        "tags": {
+          "broodCell": "brood_splitter_starboard",
+          "broodContractId": "brood_splitter_starboard",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_STARBOARD_Carapace",
+        "planIndex": 16,
+        "tags": {
+          "broodCell": "brood_splitter_starboard",
+          "broodContractId": "brood_splitter_starboard",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_STARBOARD_Chitin",
+        "planIndex": 17,
+        "tags": {
+          "broodCell": "brood_splitter_starboard",
+          "broodContractId": "brood_splitter_starboard",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_STARBOARD_Membrane",
+        "planIndex": 18,
+        "tags": {
+          "broodCell": "brood_splitter_starboard",
+          "broodContractId": "brood_splitter_starboard",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/brood_splitter_starboard_v01.glb"
+  },
+  "runtimeHash": "b94127ecad4b744c79f9a441f3b7b5b765686031bdb49965b5f44e9a30299693",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.059877395629883,
+          0.4838581681251526,
+          1.1226162910461426
+        ],
+        "min": [
+          -2.217630386352539,
+          -0.6060276031494141,
+          -0.8539226651191711
+        ]
+      },
+      "id": "sf.render.brood-splitter-starboard.body",
+      "nodeIds": [
+        "sf.render.brood-splitter-starboard.node.collision-starboard-convex-01",
+        "sf.render.brood-splitter-starboard.node.collision-starboard-convex-02",
+        "sf.render.brood-splitter-starboard.node.collision-starboard-convex-03",
+        "sf.render.brood-splitter-starboard.node.collision-starboard-convex-04",
+        "sf.render.brood-splitter-starboard.node.collision-starboard-convex-05",
+        "sf.render.brood-splitter-starboard.node.collision-starboard-convex-06",
+        "sf.render.brood-splitter-starboard.node.collision-starboard-convex-07",
+        "sf.render.brood-splitter-starboard.node.lod0-starboard-carapace",
+        "sf.render.brood-splitter-starboard.node.lod0-starboard-chitin",
+        "sf.render.brood-splitter-starboard.node.lod0-starboard-membrane",
+        "sf.render.brood-splitter-starboard.node.lod1-starboard-carapace",
+        "sf.render.brood-splitter-starboard.node.lod1-starboard-chitin",
+        "sf.render.brood-splitter-starboard.node.lod1-starboard-membrane",
+        "sf.render.brood-splitter-starboard.node.lod2-starboard-carapace",
+        "sf.render.brood-splitter-starboard.node.lod2-starboard-chitin",
+        "sf.render.brood-splitter-starboard.node.lod2-starboard-membrane",
+        "sf.render.brood-splitter-starboard.node.part-splitter-starboard",
+        "sf.render.brood-splitter-starboard.node.sf-brood-splitter-starboard-v01-root",
+        "sf.render.brood-splitter-starboard.node.socket-brood-contact",
+        "sf.render.brood-splitter-starboard.node.socket-brood-tether"
+      ]
+    }
+  ]
+}

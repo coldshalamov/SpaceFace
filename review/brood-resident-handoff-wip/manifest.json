@@ -1,0 +1,99 @@
+{
+  "schema": "spaceface.broodResidentWip.v1",
+  "status": "UNACCEPTED WIP: user rejected all shown Brood art; no default model activation",
+  "createdUTC": "2026-10-03T23:26:24.412061+00:00",
+  "prerequisite": "frozen splitter-runtime-packet/final-candidate-v1 plus current first-three presentation rebase; broodPartitionLod module already supplied there",
+  "baseline": {
+    "renderer.js": {
+      "source": "/workspace/scratch/d2415e46e35b/continuation-baseline-candidate/.reconcile/presentation-threeway/renderer.js",
+      "sha256": "fc999d44ddfd67a2ec19194c5291eae6a3cc6576b299ab81f843c7ae8fbd7ca6"
+    },
+    "partsLibrary.js": {
+      "source": "/workspace/scratch/d2415e46e35b/continuation-baseline-candidate/.reconcile/presentation-threeway/partsLibrary.js",
+      "sha256": "9f7074ec918f0de6459497c86c1c4abadf2256042bba83b36990fa9d4ad787b9"
+    },
+    "assetLoader.js": {
+      "source": "/workspace/scratch/d2415e46e35b/continuation-baseline-candidate/src/render/assetLoader.js",
+      "sha256": "0889f6cc7a1ea2077c814109982975fe8a5937ad772f9b560b7a2c12c83563f7"
+    }
+  },
+  "files": [
+    {
+      "path": "src/render/renderer.js",
+      "patch": "resident-presentation-WIP.patch",
+      "beforeSHA256": "fc999d44ddfd67a2ec19194c5291eae6a3cc6576b299ab81f843c7ae8fbd7ca6",
+      "afterSHA256": "5607b0cbe39270482c885282fa075f203f78511f968d57fd7207e89f05e7da09"
+    },
+    {
+      "path": "src/render/partsLibrary.js",
+      "patch": "resident-presentation-WIP.patch",
+      "beforeSHA256": "9f7074ec918f0de6459497c86c1c4abadf2256042bba83b36990fa9d4ad787b9",
+      "afterSHA256": "19b1776784685b8528279f63d9f9ad8a5d236d8f55e6a17ac83a3bd5870c6424"
+    },
+    {
+      "path": "src/render/assetLoader.js",
+      "patch": "resident-presentation-WIP.patch",
+      "beforeSHA256": "0889f6cc7a1ea2077c814109982975fe8a5937ad772f9b560b7a2c12c83563f7",
+      "afterSHA256": "9bc064c1e21a3dca6f5f276ad7a59d08df982b2ad4ebc1bb7c77aa4fa1c3e124"
+    },
+    {
+      "path": "src/combat/broodSplitter.js",
+      "patch": "corpse-life-followup.patch",
+      "beforeSHA256": "fe1ec4d4a542ca9c1690ac5c963c0d133a3cf1d22d7cea88e6932373b4915413",
+      "afterSHA256": "c03fa078bb155dbab521b83ea5dd04c08be93c2f9c854572ed223d195e85e5a1"
+    },
+    {
+      "path": "src/render/broodResidentCells.js",
+      "patch": "resident-presentation-WIP.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "336154f1a05018f206576dc847e512da69839eb2b1be2b58892a4d48825d4a3e"
+    },
+    {
+      "path": "src/render/broodCellIdentity.js",
+      "patch": "resident-presentation-WIP.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "dc0f367118ea9c4463a9ace80ba887f8d0efedb933e5436677082a8ac159351a"
+    },
+    {
+      "path": "src/render/broodVisualContract.js",
+      "patch": "resident-presentation-WIP.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "d115ccf249faf08a83aeb9dfd40f606c005df1995c8fe093e72f42cb4a240a06"
+    },
+    {
+      "path": "test/brood-resident-cells.test.mjs",
+      "patch": "resident-tests-WIP.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "d594cbe115842eb1eb645ac5ef0942a3196f7661cad4b4b5bf985ab72e42cf09"
+    },
+    {
+      "path": "test/brood-resident-source.test.mjs",
+      "patch": "resident-tests-WIP.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "c9fca5cfc97d4a63516b89e7274956b9cc24aecbc0ee50a8c7fd56caa3941293"
+    },
+    {
+      "path": "test/lib/splitterV12Graph.mjs",
+      "patch": "resident-tests-WIP.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "791ece2ffaa7e087318bd484034a69476b8ef70ad3cdab373f111693f1866659"
+    }
+  ],
+  "patches": {
+    "resident-presentation-WIP.patch": "41111c27fd0c5b39e6fc404b461e8841907c0dda19b41205aab5550409b43838",
+    "corpse-life-followup.patch": "87f7c5ae6fa6e6d6cdeee56058990e24b8b6dfe4a0f176c7052caec05685e47f",
+    "resident-tests-WIP.patch": "621cb189979a40ef6c3b241b44c1003b7c1f3cd51ff80df12227e634bc04386b"
+  },
+  "tests": {
+    "cpuOwner": {
+      "passed": 6,
+      "failed": 0
+    },
+    "combinedIncludingRejectedSourceDiagnostic": {
+      "passed": 7,
+      "failed": 1,
+      "failure": "actual GLB graph diagnostic helper assumes one material primitive per node; v12 has a multi-primitive node, so canonical composition/birth-frame proof remains unexecuted"
+    }
+  },
+  "pendingQuotaCoverage": "remaining finite quota0..5 versus available physical seats0..4 reinforcement boundary; existing41occupancy cap40 test is not a substitute"
+}

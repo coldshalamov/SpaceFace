@@ -1,0 +1,65 @@
+TAP version 13
+# (node:14) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: independent: post-observation player damage refuses clean recognition despite ordinary docking
+ok 1 - independent: post-observation player damage refuses clean recognition despite ordinary docking
+  ---
+  duration_ms: 125.840894
+  type: 'test'
+  ...
+# Subtest: independent: native observation gap cannot reuse the previous approach certificate
+ok 2 - independent: native observation gap cannot reuse the previous approach certificate
+  ---
+  duration_ms: 8.129331
+  type: 'test'
+  ...
+# Subtest: independent: sector removal is not death; retired native life loses all leases and budget is released
+ok 3 - independent: sector removal is not death; retired native life loses all leases and budget is released
+  ---
+  duration_ms: 12.730333
+  type: 'test'
+  ...
+# Subtest: independent: repeated runtime reinitialization leaves one materializer and destroys every actor/slot on close
+ok 4 - independent: repeated runtime reinitialization leaves one materializer and destroys every actor/slot on close
+  ---
+  duration_ms: 8.017363
+  type: 'test'
+  ...
+# Subtest: independent: actual killed actor remains destroyed when the service has been disabled
+not ok 5 - independent: actual killed actor remains destroyed when the service has been disabled
+  ---
+  duration_ms: 3.759918
+  type: 'test'
+  location: '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/independent-normal.test.mjs:17:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    An actual owned tender death must survive Save/Continue even while guidance is disabled
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/independent-normal.test.mjs:17:338)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+# Subtest: independent: scene de-admission removes native actor before the next physics integration
+ok 6 - independent: scene de-admission removes native actor before the next physics integration
+  ---
+  duration_ms: 3.40154
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 5
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 698.463008

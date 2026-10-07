@@ -30,6 +30,7 @@
 // ── end index ──
 import * as THREE from 'three';
 import { modelTruthPlumeSocketName, modelTruthTrailSocketName } from '../data/modelTruth.js';
+import { isCeresWorkfleetPropulsion, ceresWorkfleetPropulsionAwake, createCeresWorkfleetPlumeBatch } from './ceresWorkfleetVisuals.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { StationOperationVfx } from './vfx/stationOperationVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
@@ -11809,6 +11810,7 @@ export const vfx = {
    * last fleet endFrame (trails run before energy in the frame; sticky avoids dual draw).
    */
   _usesProductionThruster(e) {
+    if (isCeresWorkfleetPropulsion(e)) return true;
     if (!e || e.type !== 'ship') return false;
     if (e.id === this.state.playerId) return true;
     const owned = this._productionOwnedIds;
@@ -13348,6 +13350,7 @@ export const vfx = {
   // false-wake into the full relevant path (hide latch still early-returns); must
   // not miss a real thrust/coast wake. Soft-GPU fps not claimed.
   _energyQuietMaybeAwake() {
+    if (ceresWorkfleetPropulsionAwake(this.state)) return true;
     const energy = this._energy;
     if (energy && (
       energy.plumeDrive > 0.02
@@ -13356,7 +13359,7 @@ export const vfx = {
       || this._energyJetsFading(energy)
     )) return true;
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (player && player.alive && player.type === 'ship' && this._usesProductionThruster(player)) {
+    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && this._usesProductionThruster(player)) {
       const actuators = this._actuatorsFor(player);
       if (actuators && (
         Math.abs(actuators.lateral || 0) > 0.001
@@ -13390,7 +13393,7 @@ export const vfx = {
     if (list) {
       for (let i = 0; i < list.length; i++) {
         const e = list[i];
-        if (!e || !e.alive || e.type !== 'ship') continue;
+        if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
         if (player && e.id === player.id) continue;
         if (e.flags && e.flags.docked) continue;
         if (e.flags && e.flags.boosting) return true;
@@ -13436,6 +13439,7 @@ export const vfx = {
 
   _energyPlumeRelevant() {
     if (!this._productionThrusterEnabled()) return false;
+    if (ceresWorkfleetPropulsionAwake(this.state)) return true;
     const energy = this._energy;
     if (energy && (
       energy.plumeDrive > 0.02
@@ -13446,7 +13450,7 @@ export const vfx = {
     // Activity-gated, never "alive ship = awake": the idle-sleep invariant requires the energy
     // subsystem to do zero work when no ship is thrusting (master semantics, fleet-extended).
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (player && player.alive && player.type === 'ship' && this._usesProductionThruster(player)) {
+    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && this._usesProductionThruster(player)) {
       const actuators = this._actuatorsFor(player);
       if (actuators && (
         Math.abs(actuators.lateral || 0) > 0.001
@@ -13473,7 +13477,7 @@ export const vfx = {
     if (list) {
       for (let i = 0; i < list.length; i++) {
         const e = list[i];
-        if (!e || !e.alive || e.type !== 'ship') continue;
+        if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
         if (player && e.id === player.id) continue;
         if (e.flags && e.flags.docked) continue;
         const d = this._engineDriveFor(e);
@@ -13821,6 +13825,7 @@ export const vfx = {
     const seen = new Set();
     const livePlumes = [];
     if (energy.plumeSystem) livePlumes.push(energy.plumeSystem);
+    if (energy.ceresWorkfleet?.plume) livePlumes.push(energy.ceresWorkfleet.plume);
     if (energy.fleet && Array.isArray(energy.fleet.families)) {
       for (const family of energy.fleet.families) {
         if (family && family.plume) livePlumes.push(family.plume);
@@ -13889,6 +13894,15 @@ export const vfx = {
     const pack = resolveThrusterRecipes(profileId);
     this._productionEngineProfileId = pack.profileId;
 
+    // Exact source nozzles, including the wreck-typed cutter head, share the production
+    // continuous batch writer with sixteen retained independent channel responses.
+    const ceresPlume = new ContinuousPlumeSystem(THREE, resolveThrusterRecipes('engine_industrial').main, {
+      textures, maxSockets: 16, distortionEnabled: false,
+    });
+    this._scene.add(ceresPlume.group);
+    ceresPlume.bindDynamicBuffers(this._scene);
+    const ceresWorkfleet = createCeresWorkfleetPlumeBatch(ceresPlume, THREE.Vector3);
+
     // Unified plasma stream: player hero thruster (soft particles for root + history wake).
     // Solid ribbon + continuous card plume remain for NPCs / fallback; player hero uses plasma.
     const plasmaStream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
@@ -13921,6 +13935,7 @@ export const vfx = {
     const playerRcs = fleet.playerRcsSystem() || fleet.families[0].rcs;
     this._energy = {
       fleet,
+      ceresWorkfleet,
       plumeSystem: playerPlume,
       rcsSystem: playerRcs,
       plasmaStream,
@@ -14045,6 +14060,7 @@ export const vfx = {
       return;
     }
 
+    const ceresActive = energy.ceresWorkfleet?.update(this.state, dt, a11y) || 0;
     const fleet = energy.fleet;
     fleet.beginFrame(a11y);
 
@@ -14058,7 +14074,7 @@ export const vfx = {
     // Phase 1 — reclaim persistent slots only (no stale-slot reuse).
     // Player hero exhaust is the unified plasma stream (not continuous card plume).
     // Keep the fleet slot for RCS ownership, but write zero continuous-plume sockets/drive.
-    if (player && player.alive && player.type === 'ship') {
+    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player)) {
       const profileId = this._engineProfileIdFor(player);
       const ship = fleet.retainShip(player.id, profileId, true);
       if (ship) {
@@ -14099,7 +14115,7 @@ export const vfx = {
     // budget here: retainShip would return null anyway, but tier resolution is not free.
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e || !e.alive || e.type !== 'ship') continue;
+      if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
       if (player && e.id === player.id) continue;
       if (e.flags && e.flags.docked) continue;
       if (!fleet.hadEntity(e.id)) continue;
@@ -14120,7 +14136,7 @@ export const vfx = {
     // Phase 2 — only true newcomers (!hadEntity) after every survivor had a retain chance.
     // Each candidate is tier-resolved in exactly one phase (no double screen-check cost).
     fleet.beginAdmitPhase();
-    if (player && player.alive && player.type === 'ship' && !fleet.hasEntity(player.id)) {
+    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && !fleet.hasEntity(player.id)) {
       const profileId = this._engineProfileIdFor(player);
       const ship = fleet.admitShip(player.id, profileId, true);
       if (ship) {
@@ -14151,7 +14167,7 @@ export const vfx = {
     }
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e || !e.alive || e.type !== 'ship') continue;
+      if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
       if (player && e.id === player.id) continue;
       if (e.flags && e.flags.docked) continue;
       if (fleet.hadEntity(e.id)) continue;
@@ -14184,7 +14200,7 @@ export const vfx = {
     this._productionOwnedCount = owned;
     // Awake signal is thrust, not admission: a parked nearby ship must not pin the energy
     // subsystem awake (idle-sleep invariant).
-    energy.plumeDrive = diag && (diag.shipsActive - (diag.idleShips || 0)) > 0 ? 1 : 0;
+    energy.plumeDrive = ceresActive > 0 || diag && (diag.shipsActive - (diag.idleShips || 0)) > 0 ? 1 : 0;
     // Player drive snapshot for sleep/relevance heuristics.
     if (player && player.alive) {
       const pd = this._engineDriveFor(player);
@@ -14345,6 +14361,11 @@ export const vfx = {
   },
 
   _updateProductionRcs(player, dt, a11y) {
+    if (isCeresWorkfleetPropulsion(player)) {
+      this._energy?.retroVolume?.reset();
+      this._energy?.rcsSystem?.reset();
+      return;
+    }
     const energy = this._energy;
     if (!energy) return;
     const actuators = this._actuatorsFor(player);
@@ -14575,6 +14596,7 @@ export const vfx = {
       this._energyQuietHidden = true;
       return;
     }
+    if (energy.ceresWorkfleet) energy.ceresWorkfleet.reset();
     if (energy.plasmaStream) energy.plasmaStream.reset();
     if (energy.retroVolume) energy.retroVolume.reset();
     if (energy.fleet) energy.fleet.reset();
@@ -14657,6 +14679,7 @@ export const vfx = {
   _disposeEnergy() {
     this._releasePlayerPlumeEventLight();
     if (!this._energy) return;
+    this._energy.ceresWorkfleet?.dispose();
     if (this._energy.plasmaStream) {
       this._energy.plasmaStream.dispose();
       this._energy.plasmaStream = null;
@@ -14735,7 +14758,7 @@ export const vfx = {
         cruise: 0, reverse: 0, retroOnly: false, brake: 0,
       };
     }
-    if (!e) {
+    if (!e || isCeresWorkfleetPropulsion(e)) {
       out.drive = 0; out.throttle = 0; out.speed = 0; out.speedDrive = 0; out.boost = 0;
       out.cruise = 0; out.reverse = 0; out.retroOnly = false; out.brake = 0;
       out.dashFired = false;
@@ -15961,6 +15984,7 @@ export const vfx = {
         this._retireRibbonTrail(e.id, !isPlayer);
         continue;
       }
+      if (isCeresWorkfleetPropulsion(e)) {this._retireRibbonTrail(e.id, true);continue;}
       const driveInfo = this._engineDriveFor(e);
       const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
       if (speed < 4 && driveInfo.drive < 0.04) {
