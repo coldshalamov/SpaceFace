@@ -1735,9 +1735,10 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 15,
+      "hull": 14,
       "mechanical": 4,
-      "rubber": 1
+      "rubber": 1,
+      "signal": 1
     },
     "materialProfiles": [
       {
@@ -1793,7 +1794,7 @@
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2388,7 +2389,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_pirate_sensor_mast.glb"
   },
-  "runtimeHash": "462cf6c0d18e8b2db56babe01ae30990da02a58b8695a69cb60d9fce4c8110ed",
+  "runtimeHash": "d57a5c609d79dc2ae87f1e68a8b70afb902d3b1efbb82eda343a26990a47c844",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

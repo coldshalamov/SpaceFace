@@ -972,14 +972,15 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 9,
+      "hull": 6,
+      "signal": 3,
       "warning": 1
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1019,12 +1020,12 @@
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 14,
@@ -1304,7 +1305,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_customs_pylon.glb"
   },
-  "runtimeHash": "4f03a650197a3e25a053e70965c623904cdf9e913215c1066c5fc016a8351490",
+  "runtimeHash": "03c45e2250805d9444ea5c93259d4bf8f540ae28f40180a013a01d1cbb3f5bb6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

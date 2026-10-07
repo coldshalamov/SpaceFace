@@ -1876,19 +1876,20 @@
       }
     ],
     "materialProfileRoles": {
-      "geology": 17,
-      "mechanical": 4
+      "geology": 12,
+      "mechanical": 4,
+      "signal": 5
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1923,17 +1924,17 @@
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2560,7 +2561,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ore_sorter.glb"
   },
-  "runtimeHash": "0efa986ae2623063efe70590658dc347c4d9a16607cb9ac8702727a0c8cf5aec",
+  "runtimeHash": "f2e0e945d06e7ab36484b94f48b5005586959f205c99e87377ce9fd33de38c83",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

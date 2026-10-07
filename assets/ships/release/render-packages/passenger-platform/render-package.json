@@ -2702,7 +2702,8 @@
     ],
     "materialProfileRoles": {
       "glass": 1,
-      "hull": 31
+      "hull": 20,
+      "signal": 11
     },
     "materialProfiles": [
       {
@@ -2713,22 +2714,22 @@
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2773,37 +2774,37 @@
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 18,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 22,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 23,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -3737,7 +3738,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_passenger_platform.glb"
   },
-  "runtimeHash": "990adbbf644ee1f15cb406849e747debac8a91acbd7a4b9798bf9180aabfe1e1",
+  "runtimeHash": "9caa3da0e5f08d5cbab3d8321f7c4e912477d366230a808288331810dc0268b7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

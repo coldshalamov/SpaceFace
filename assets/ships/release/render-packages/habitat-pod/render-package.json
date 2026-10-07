@@ -1585,8 +1585,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 17,
-      "mechanical": 1
+      "hull": 11,
+      "mechanical": 1,
+      "signal": 6
     },
     "materialProfiles": [
       {
@@ -1622,7 +1623,7 @@
       {
         "allowTextures": false,
         "planIndex": 9,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1642,27 +1643,27 @@
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 16,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 18,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2173,7 +2174,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_habitat_pod.glb"
   },
-  "runtimeHash": "5760ef50266d1d4d32a5e7e55159bcdfc3f066c726356283a8b3e8a2ddc456f8",
+  "runtimeHash": "1bae44318c55bf4489603de5192f0443a1a32ea8e893d2a1d8a9fbd0fe429ee4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

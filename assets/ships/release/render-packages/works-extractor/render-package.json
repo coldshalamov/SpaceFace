@@ -1085,7 +1085,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 10
+      "hull": 8,
+      "signal": 2
     },
     "materialProfiles": [
       {
@@ -1116,7 +1117,7 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1126,7 +1127,7 @@
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1416,7 +1417,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_extractor.glb"
   },
-  "runtimeHash": "b5d03371ad729ad6db4a69e3beac2e593ecfa5edd9039e313277afdbe2862274",
+  "runtimeHash": "812cce30c9215c5d20f0ed0bf80ed4c7a1e994ad496f0cd22570da238d38ae7b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

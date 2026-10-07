@@ -38,3 +38,11 @@ test('lamps keep their glow inside the signal band', () => {
   applyAuthoredMaterialProfile(mat);
   assert.ok(mat.emissiveIntensity >= 0.45 && mat.emissiveIntensity <= 6);
 });
+
+test('flat paint brighter than ivory is brought under the value ceiling; lamps stay lamps', () => {
+  const mat = new THREE.MeshStandardMaterial({ name: 'esk_paint_civic_bone', roughness: 0.5, metalness: 0 });
+  mat.color.setHex(0xffffff);
+  applyAuthoredMaterialProfile(mat, 'hull');
+  assert.ok(Math.max(...mat.color.clone().convertLinearToSRGB().toArray()) <= 0xbf / 255 + 1e-6);
+  assert.equal(substanceRoleOverride('esk_light_cabin', 'hull'), 'signal');
+});

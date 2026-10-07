@@ -1594,9 +1594,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 14,
+      "hull": 12,
       "mechanical": 2,
-      "signal": 1
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -1672,12 +1672,12 @@
       {
         "allowTextures": false,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2151,7 +2151,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_solar_array.glb"
   },
-  "runtimeHash": "56884bb7dc83c553c105dfa6fd7646a1ada8fb058476d8c015c602046a411b8f",
+  "runtimeHash": "f336ad066dea76f64e20b3b149bdcfe81a137f3984b75a16a6ad95f6551bd8da",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

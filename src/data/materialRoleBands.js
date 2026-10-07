@@ -30,6 +30,8 @@ export const MATERIAL_ROLE_ALIASES = Object.freeze({
 // Exported roles that contradict the substance the material name states (everyday-kit exports).
 export function substanceRoleOverride(name, role) {
   const n = String(name || '');
+  // Lamps exported under a paint role glowed as paint and bloomed whole panels (everyday kit `esk_light_*`).
+  if (/(^|_)light(_|$)|(^|_)lamp(_|$)/i.test(n) && role !== 'signal' && role !== 'drive') return 'signal';
   if (/(^|_)glass($|_)|glazing|window/i.test(n) && role !== 'glass' && role !== 'signal') return 'glass';
   if (/(^|_)paint(_|$)|enamel/i.test(n) && role === 'mechanical') return 'hull';
   if (/(^|_)scorch($|_)/i.test(n) && (role === 'hull' || role === 'mechanical')) return 'rubber';
@@ -37,6 +39,25 @@ export function substanceRoleOverride(name, role) {
 }
 
 const clamp = (v, [lo, hi]) => Math.max(lo, Math.min(hi, v));
+
+// Palette value ceiling (COLOR_LIGHTING_STANDARD §3: Helios ivory #bfb6a3 is the brightest paint).
+// Only flat-colour materials: a textured material's colour factor is a tint over its map.
+export const PAINT_VALUE_CEILING_SRGB = 0xbf / 255;
+const VALUE_CEILING_ROLES = new Set(['hull', 'accent', 'warning', 'repair', 'service', 'mechanical', 'docking', 'radiator', 'ceramic', 'rubber', 'geology']);
+const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const linearToSrgb = (c) => (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055);
+
+function applyValueCeiling(material, role) {
+  // Authored base map, not the procedural fallback the legacy path may have generated.
+  const coverage = material.userData && material.userData.spacefacePbrCoverage;
+  const authoredMap = coverage ? coverage.baseColor : !!material.map;
+  if (!VALUE_CEILING_ROLES.has(role) || authoredMap || !material.color) return;
+  const c = material.color; // linear working space
+  const peak = Math.max(linearToSrgb(c.r), linearToSrgb(c.g), linearToSrgb(c.b));
+  if (!(peak > PAINT_VALUE_CEILING_SRGB)) return;
+  const k = PAINT_VALUE_CEILING_SRGB / peak;
+  c.setRGB(srgbToLinear(linearToSrgb(c.r) * k), srgbToLinear(linearToSrgb(c.g) * k), srgbToLinear(linearToSrgb(c.b) * k));
+}
 
 export function applyMaterialRoleBand(material, role) {
   const band = MATERIAL_ROLE_BANDS[role];
@@ -49,6 +70,7 @@ export function applyMaterialRoleBand(material, role) {
   if (band.emissive && material.emissive && material.emissive.getHex() !== 0 && Number.isFinite(material.emissiveIntensity)) {
     material.emissiveIntensity = clamp(material.emissiveIntensity, band.emissive);
   }
+  applyValueCeiling(material, role);
   material.userData = { ...(material.userData || {}), spacefaceRoleBand: role };
   return true;
 }

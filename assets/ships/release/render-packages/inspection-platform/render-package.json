@@ -2042,13 +2042,14 @@
     ],
     "materialProfileRoles": {
       "glass": 1,
-      "hull": 22
+      "hull": 15,
+      "signal": 7
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2063,7 +2064,7 @@
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2113,7 +2114,7 @@
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2123,7 +2124,7 @@
       {
         "allowTextures": false,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2133,7 +2134,7 @@
       {
         "allowTextures": false,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2153,12 +2154,12 @@
       {
         "allowTextures": false,
         "planIndex": 27,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 28,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 29,
@@ -2789,7 +2790,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_inspection_platform.glb"
   },
-  "runtimeHash": "62e9b748ffc3bc54187568c362fa570ef5821e2875e02450560f3c74251a3e5d",
+  "runtimeHash": "ce73d7582adc36899cc17385235ba7b1fefa1c74a80f18fd8b4a441ca8a4a290",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

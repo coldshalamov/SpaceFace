@@ -1421,7 +1421,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 14
+      "hull": 10,
+      "signal": 4
     },
     "materialProfiles": [
       {
@@ -1452,7 +1453,7 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1462,7 +1463,7 @@
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1472,7 +1473,7 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1482,7 +1483,7 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1880,7 +1881,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_derrick.glb"
   },
-  "runtimeHash": "ebb72d947b19685ccb1ee50b7a319785fddb8fd7be1758c42b3f7119c7fb856a",
+  "runtimeHash": "8050ff2337362a7330f2d26904f8a4c2f443ed74c7960c3e1340efb126d08fd0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

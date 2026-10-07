@@ -1971,8 +1971,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 18,
+      "hull": 16,
       "mechanical": 3,
+      "signal": 2,
       "warning": 1
     },
     "materialProfiles": [
@@ -2004,7 +2005,7 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2054,7 +2055,7 @@
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2688,7 +2689,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tanker_coupling.glb"
   },
-  "runtimeHash": "e6604553e7fb3f83eac8ec179844361b6cfc30a4c191235cea960ee1004c844e",
+  "runtimeHash": "d95779717192616f6926446a9a842debdbc09cc5a8658cdfd386440ddda36e43",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

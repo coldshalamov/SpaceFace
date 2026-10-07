@@ -2206,8 +2206,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 23,
+      "hull": 21,
       "rubber": 1,
+      "signal": 2,
       "warning": 1
     },
     "materialProfiles": [
@@ -2294,7 +2295,7 @@
       {
         "allowTextures": false,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2309,7 +2310,7 @@
       {
         "allowTextures": false,
         "planIndex": 25,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -3019,7 +3020,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_illicit_transfer_frame.glb"
   },
-  "runtimeHash": "b6d1e68a7fd4121ee1fa5e1efdc05a43a9c59811b305854331de0b4142c88717",
+  "runtimeHash": "bb1b34dddc3406ef4c797712ef5f2d564b94670e7de7e7a9dc09be8f43f6be75",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

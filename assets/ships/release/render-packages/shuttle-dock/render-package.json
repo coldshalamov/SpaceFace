@@ -2958,35 +2958,36 @@
     ],
     "materialProfileRoles": {
       "glass": 1,
-      "hull": 32,
+      "hull": 20,
       "mechanical": 1,
+      "signal": 12,
       "warning": 1
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -3041,27 +3042,27 @@
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 18,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -3106,7 +3107,7 @@
       {
         "allowTextures": false,
         "planIndex": 31,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -3136,7 +3137,7 @@
       {
         "allowTextures": false,
         "planIndex": 40,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 41,
@@ -4091,7 +4092,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_shuttle_dock.glb"
   },
-  "runtimeHash": "2bf246228931c1ab179419f6c17b43496767ba47b8306d75fcf07b115056f3a5",
+  "runtimeHash": "e390554d74b4896571ed2f57a0dbf3f61956e082c7a2e1debae7031114aac564",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

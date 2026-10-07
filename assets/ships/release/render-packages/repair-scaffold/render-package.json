@@ -1335,8 +1335,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 12,
-      "service": 3
+      "hull": 10,
+      "service": 3,
+      "signal": 2
     },
     "materialProfiles": [
       {
@@ -1382,12 +1383,12 @@
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1827,7 +1828,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_repair_scaffold.glb"
   },
-  "runtimeHash": "3dba59e04605af70442eac121dd19f279c73d9d95689bf82ea8b4bc2a61a1751",
+  "runtimeHash": "5ecb4aa540266ccac6817278cd8d984b1305f966ca8d6a3c4643e98a6c719d49",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
