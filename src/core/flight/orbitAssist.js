@@ -28,6 +28,46 @@ export const ORBIT_ASSIST_STRENGTH = Object.freeze({
 export const ORBIT_SWING_TRACK_MARGIN = 0.9;
 
 /**
+ * Line-locked yaw (tuning lab Phase 2a, design/program/lab/TUNING_LAB.md). A taut line already
+ * turns the ship at the orbital rate, so while the assist owns yaw the hull may borrow that rate
+ * (plus `rateMargin` headroom to keep trimming) instead of capping the swing at its own
+ * maxYawRate. The only hard ceiling left is the physics owner's absolute body yaw clamp
+ * (sg02DynamicBodyOwner SANE_MAX_YAW_RATE); the swing governor holds the orbit `governorMargin`
+ * under it so the nose can still close any error. Measured over 18 scenarios x 5 seeds: spin
+ * reaches the physical speed-cap bound (>= 100.1% of vcap / r_ship) with the nose within 3.3 deg.
+ */
+export const ORBIT_LINE_YAW_LOCK = Object.freeze({
+  id: 'orbitAssist.lineYawLock.v1',
+  rateMargin: 1.25,
+  absoluteYawCap: 6.0, // mirrors SANE_MAX_YAW_RATE (test/orbit-line-yaw-lock.test.mjs pins it)
+  governorMargin: 0.95,
+});
+
+/**
+ * Orbit-direction latch. A helm-cursor or twin-stick turn intent is derived from where the aim
+ * point sits relative to the nose; on a spinning tether the aim point sweeps behind the ship every
+ * half revolution, which flipped the chosen orbit direction and dumped the spin. An aim-derived
+ * intent therefore holds the direction picked at engagement (or the way the line is already
+ * swinging) for as long as the chord holds. Keyboard and stick intent stay live, so a deliberate
+ * reversal still works. `engageSwingFraction` of hull yaw decides "already swinging".
+ */
+export const ORBIT_DIRECTION_LATCH = Object.freeze({
+  id: 'orbitAssist.directionLatch.aim.v1',
+  engageSwingFraction: 0.25,
+});
+
+/**
+ * Thrust gate for the input owner: forward throttle scales by max(0, cos(headingError)) while
+ * the assist is engaged, so a nose that is still swinging onto the tangent never thrusts across
+ * (or against) the orbit it is chasing. The yaw helper itself stays yaw-only.
+ */
+export function orbitHeadingThrustGate(telemetry) {
+  const t = telemetry || {};
+  if (!Number.isFinite(Number(t.headingError))) return 1;
+  return Math.max(0, Math.cos(Number(t.headingError)));
+}
+
+/**
  * Throttle scale that keeps a tethered orbit trackable. Pure: 1 whenever the swing the pilot
  * demands (or already flies) fits inside yaw authority at this radius, falling toward 0 as it
  * outruns the nose. The yaw helper itself stays yaw-only; the input owner multiplies forward
@@ -35,6 +75,17 @@ export const ORBIT_SWING_TRACK_MARGIN = 0.9;
  */
 export function orbitSwingThrottleScale(telemetry, commandedSpeed) {
   const t = telemetry || {};
+  const ceiling = positive(t.yawCeiling, 0);
+  if (ceiling > 0) {
+    // Line-locked yaw: the nose can follow the line up to the physics ceiling. Compare the swing
+    // in the pair's centre-of-mass frame (the ship's own speed is only armShare of it on a
+    // movable anchor) against that ceiling, held a margin under it.
+    const share = clamp(positive(t.armShare, 1), 0.05, 1);
+    const trackableL = ceiling * positive(t.radius, 0) * ORBIT_LINE_YAW_LOCK.governorMargin * share;
+    const demandL = Math.max(Math.abs(finite(t.tangentialSpeed)) * share, Math.max(0, finite(commandedSpeed)));
+    if (!(trackableL > 1e-6) || !(demandL > trackableL)) return 1;
+    return clamp(trackableL / demandL, 0, 1);
+  }
   const trackable = positive(t.maxYawRate, 0) * positive(t.radius, 0) * ORBIT_SWING_TRACK_MARGIN;
   const demand = Math.max(
     Math.abs(finite(t.tangentialSpeed)),
@@ -62,13 +113,29 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   }
 
   const forward = finite(options.flightIntent && options.flightIntent.forward);
-  const selectedDirection = Math.sign(finite(options.flightIntent && options.flightIntent.lateral));
+  const fromAim = !!(options.flightIntent && options.flightIntent.lateralFromAim);
+  const priorLatch = fromAim ? Math.sign(finite(options.latchedDirection)) : 0;
+  let selectedDirection = Math.sign(finite(options.flightIntent && options.flightIntent.lateral));
+  if (priorLatch !== 0) selectedDirection = priorLatch;
   if (!(forward > ORBIT_ASSIST_TUNING_V1.minIntent)) return inactive('no-forward-intent');
   if (selectedDirection === 0) return inactive('no-lateral-intent');
   if (input.brake || options.controlsBlocked) return inactive('manual-override');
 
   const host = options.host;
   const anchor = options.anchor;
+  if (fromAim && priorLatch === 0) {
+    // Engagement of an aim-derived orbit: a line already swinging owns its direction.
+    const ex = finite(host.pos.x) - finite(anchor.pos.x);
+    const ez = finite(host.pos.z) - finite(anchor.pos.z);
+    const er2 = ex * ex + ez * ez;
+    const engageRate = er2 > 1e-6
+      ? (ex * (finite(host.vel.z) - finite(anchor.vel.z)) - ez * (finite(host.vel.x) - finite(anchor.vel.x))) / er2
+      : 0;
+    const hullYaw = positive(options.profile && options.profile.maxYawRate, 1);
+    if (Math.abs(engageRate) > ORBIT_DIRECTION_LATCH.engageSwingFraction * hullYaw) {
+      selectedDirection = Math.sign(engageRate);
+    }
+  }
   const rx = finite(host.pos.x) - finite(anchor.pos.x);
   const rz = finite(host.pos.z) - finite(anchor.pos.z);
   const radius = Math.hypot(rx, rz);
@@ -98,10 +165,22 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   const headingError = wrapAngle(desiredHeading - finite(host.rot));
   const alignmentYawRate = headingError
     / (ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS / strengthScale);
-  const maxYawRate = positive(options.profile && options.profile.maxYawRate, 1);
+  const hullMaxYawRate = positive(options.profile && options.profile.maxYawRate, 1);
+  // Line-locked yaw: borrow the line's rate (with headroom) when it outruns the hull, up to the
+  // physics ceiling. The input owner applies the lent rate to the yaw profile for this tick.
+  let maxYawRate = hullMaxYawRate;
+  let lentYawRate = null;
+  if (Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin > hullMaxYawRate) {
+    lentYawRate = Math.min(Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin,
+      ORBIT_LINE_YAW_LOCK.absoluteYawCap);
+    maxYawRate = Math.max(hullMaxYawRate, lentYawRate);
+  }
   const rawDesiredYawRate = orbitalYawRate + alignmentYawRate;
   const desiredYawRate = clamp(rawDesiredYawRate, -maxYawRate, maxYawRate);
   const turn = desiredYawRate / maxYawRate;
+  const anchorMass = positive(anchor.mass, positive(anchor.physicsBody && anchor.physicsBody.mass, 0));
+  const hostMass = positive(host.mass, 1);
+  const armShare = anchorMass > 0 ? anchorMass / (anchorMass + hostMass) : 1;
 
   return {
     active: true,
@@ -127,6 +206,11 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       desiredYawRate,
       turnIntent: turn,
       saturated: desiredYawRate !== rawDesiredYawRate,
+      hullMaxYawRate,
+      lentYawRate,
+      yawCeiling: ORBIT_LINE_YAW_LOCK.absoluteYawCap,
+      armShare,
+      latchedDirection: fromAim ? selectedDirection : 0,
       reason: String(options.tether.phase || 'slack') === 'slack' ? 'line-slack' : 'engaged',
     },
   };

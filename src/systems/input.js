@@ -1516,6 +1516,7 @@ export const input = {
     }
 
     inp.turnIntent = kbdTurn || gpTurn || tpTurn;
+    inp.turnIntentFromAim = false;
     inp.moveX = kbdMoveX || gpMoveX || tpMoveX;
     // Twin-stick keeps the authored drive vector under the brake — LB decomposes counter-
     // velocity below rather than forcing a flat reverse, and hard stick-down is a legit
@@ -1776,6 +1777,7 @@ export const input = {
         inp.turnIntent = Math.abs(err) < HELM_DEADBAND
           ? 0
           : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+        inp.turnIntentFromAim = true;
       }
       if (inp.brake) {
         // Brake-to-stop: decompose the counter-velocity direction into the SAME ship axes
@@ -1805,6 +1807,7 @@ export const input = {
         inp.turnIntent = Math.abs(err) < HELM_DEADBAND
           ? 0
           : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+        inp.turnIntentFromAim = true;
       }
       if (inp.brake && p.vel) {
         const speed = Math.hypot(p.vel.x, p.vel.z);
