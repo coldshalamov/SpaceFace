@@ -191,6 +191,8 @@ export const gyreSnare = {
     rt.launchLeft = 0;
     rt.launchWindup = 0;
     rt.launchCarry = 0;
+    rt.launchSpeedEff = 0;
+    rt.launchDir.x = 1; rt.launchDir.z = 0; // ledger symmetry — dead data, but nothing stale survives a boundary drop mid-burst
     rt.launchedId = null;
     // The drop-side ledger dies with the clump too — a fresh beam must not publish the last
     // ball's absorb count (or reuse its orbit phase) while it searches for a new core.
@@ -1101,7 +1103,9 @@ export const gyreSnare = {
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.launched, {
         coreId: core.id, mass: rt.clumpMass, radius: rt.clumpRadius,
-        speed: D.launchSpeed, dir: { x: dir.x, z: dir.z }, members: rt.members.length,
+        // The honest speed at the release edge is launchSpeedEff (post-mass-penalty);
+        // carry isn't known until the burst, so the authored floor would lie.
+        speed: rt.launchSpeedEff, dir: { x: dir.x, z: dir.z }, members: rt.members.length,
         tick: state.tick,
       });
     }
