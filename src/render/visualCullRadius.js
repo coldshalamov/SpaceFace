@@ -128,7 +128,25 @@ export function resetDrawnCullPassBudget() {
       );
     }
     const rec = data.drawnCullRadius || (data.drawnCullRadius = {});
-    rec.assetState = data.authoredAssetState || '';
+    // A key move while the row sat queued (composition flip mid-storm): the
+    // consult path stashes the outgoing key to the LRU before rewriting, but
+    // only on a consult — a drain firing first would overwrite the stored key
+    // and lose the remembered envelope. Same stash grammar as the consult.
+    const nextAssetState = data.authoredAssetState || '';
+    const nextCompositionId = data.authoredCompositionId || '';
+    const nextLodLevel = data.wholeShipLodActiveLevel || '';
+    const nextChildCount = mesh.children ? mesh.children.length : 0;
+    if (rec.radius != null
+        && (rec.assetState !== nextAssetState || rec.compositionId !== nextCompositionId
+          || rec.lodLevel !== nextLodLevel || rec.childCount !== nextChildCount)) {
+      const lru = data.drawnCullRadiusLru || (data.drawnCullRadiusLru = new Map());
+      const outKey = rec.assetState + '|' + rec.compositionId + '|'
+        + rec.lodLevel + '|' + rec.childCount;
+      lru.delete(outKey);
+      lru.set(outKey, rec.radius);
+      while (lru.size > DRAWN_CULL_LRU_SIZE) lru.delete(lru.keys().next().value);
+    }
+    rec.assetState = nextAssetState;
     rec.compositionId = data.authoredCompositionId || '';
     rec.lodLevel = data.wholeShipLodActiveLevel || '';
     rec.childCount = mesh.children ? mesh.children.length : 0;

@@ -2116,9 +2116,13 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
   // of paying ~1 slice per forced drain. The floor consults paced headroom
   // too: on a spent wallet it drops to this lane's own base share, so live
   // escalation + warm floor can't sum past ~one frame wallet between lanes.
+  // The clamp reads min(2x, max(base, headroom)): the live lane escalates to
+  // its doubled budget only while the wallet still has room, while a lane
+  // called with ~0 (warm leftover) keeps its floor up to the shared base.
   if (backlog > 32) {
     const headroom = Math.max(budgetMs, PACED_FRAME_BUDGET_MS - pacedFrameSpend());
-    budgetMs = Math.max(budgetMs * 2, Math.min(DESPAWN_DISPOSE_BUDGET_MS, headroom));
+    budgetMs = Math.min(Math.max(budgetMs * 2, DESPAWN_DISPOSE_BUDGET_MS),
+      Math.max(budgetMs, headroom));
   }
   // A spent paced window skips this drain entirely — the corpses keep one more
   // frame rather than stacking a fresh slice on a frame that's already over.
@@ -22521,8 +22525,21 @@ export const render = {
 
   _flushMeshReleasePending() {
     const pending = this._meshReleasePending;
-    this._meshReleasePending = null;
     if (!pending || pending.size === 0) return;
+    // Releases are idempotent and the Set dedupes, so a spent paced window
+    // defers the flush rather than stacking an un-metered walk inside a storm
+    // frame. The aging cap mirrors the sibling lanes' so a permanently-busy
+    // stretch still forces the pass; real spend debits the shared ledger so
+    // the sibling gates can see it.
+    if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+        && (this._meshReleaseLedgerSkips | 0) < DESPAWN_DISPOSE_LEDGER_MAX_SKIPS) {
+      this._meshReleaseLedgerSkips = (this._meshReleaseLedgerSkips | 0) + 1;
+      return;
+    }
+    this._meshReleaseLedgerSkips = 0;
+    this._meshReleasePending = null;
+    const flushStartedAt = (typeof performance !== 'undefined'
+      && typeof performance.now === 'function') ? performance.now() : Date.now();
     const registries = [globalShipMicroMotion, globalAsteroidMotion,
       globalInfrastructureMotion, globalForgeCrown, globalLawArenaDressing];
     let rePend = false;
@@ -22540,6 +22557,9 @@ export const render = {
       }
     }
     if (rePend) this._meshReleasePending = pending;
+    notePacedFrameSpend(
+      ((typeof performance !== 'undefined' && typeof performance.now === 'function')
+        ? performance.now() : Date.now()) - flushStartedAt);
   },
 
   _unbindPresentationMesh(entityId, mesh = null, disposeBound = false) {
