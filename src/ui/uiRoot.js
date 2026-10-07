@@ -25,6 +25,7 @@ import {
 } from '../core/presentationAdmission.js';
 import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
+import { pointerLockIsLegitimate } from '../systems/autoTargetAssist.js';
 import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 import { IS_DEV } from '../core/devMode.js';
@@ -757,6 +758,17 @@ export const ui = {
       const flightStick = st && st.input && st.input.autoTargetVector;
       const pathActive = !!(autoTarget && flightPath && flightPath.active
         && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
+      // Tick-independent pointer-lock watchdog: the sim-side reconcile stops while a menu
+      // freezes ticks, so a lock held — or granted late — outside pure-flight+G-mode would
+      // otherwise strand the player with no OS cursor (hidden by the lock) and no reticle
+      // (hidden with the HUD). This sync runs every render frame in every UI state, so the
+      // invariant cannot stick; the mode itself is untouched and re-acquires on the next
+      // canvas mousedown.
+      if (typeof document !== 'undefined' && document.pointerLockElement
+        && !pointerLockIsLegitimate(st, visible)
+        && typeof document.exitPointerLock === 'function') {
+        try { document.exitPointerLock(); } catch (_) { /* best effort: the next frame retries */ }
+      }
       if (lastFlightCursorActive !== active) {
         lastFlightCursorActive = active;
         document.body.classList.toggle('sf-flight-cursor', active);
@@ -849,10 +861,10 @@ export const ui = {
           autoTargetRouteLine.setAttribute('points', pointsValue);
           lastFlightPathPoints = pointsValue;
         }
-        const endpoint = screenPoints.length ? screenPoints[screenPoints.length - 1] : null;
+        const endpoint = screenPoints.length ? screenPoints[screenPoints.length - 1].split(',') : null;
         if (endpoint) {
-          const x = endpoint.x.toFixed(1);
-          const y = endpoint.y.toFixed(1);
+          const x = endpoint[0];
+          const y = endpoint[1];
           if (lastEndpointCx !== x || lastEndpointCy !== y) {
             lastEndpointCx = x;
             lastEndpointCy = y;
