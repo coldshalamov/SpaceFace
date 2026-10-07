@@ -37,6 +37,7 @@ test('packaged Electron includes only production shell entry points', () => {
   assert.deepEqual(packageJson.build.files, [
     'build/web/**',
     'assets/brand/exports/spaceface-launcher-256.png',
+    'assets/brand/exports/spaceface.ico',
     'electron/main.cjs',
     'electron/preload.cjs',
     'electron/autoUpdate.cjs',
