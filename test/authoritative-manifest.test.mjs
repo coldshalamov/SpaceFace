@@ -91,8 +91,11 @@ test('production init + update order lengths match the live browser baseline', (
   // the character owners after ravel and before physics.
   // 174 -> 175 init / 133 -> 134 update: RUBRIC / HM-11 system owner, after solstice and
   // before physics, in both orders.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 176);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 135);
+  // 175 -> 177 init / 134 -> 136 update: gyreSnare (telekinetic katamari lash, after
+  // fields and before planetRuntime/physics) and gyreHud (DOM-guarded pill, after
+  // fieldHud) — one system each in both orders.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 178);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 137);
   assert.ok(PRODUCTION_INIT_ORDER.includes('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('bracket') < PRODUCTION_UPDATE_ORDER.indexOf('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ravel') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
@@ -255,7 +258,10 @@ test('browser production system set is unchanged vs production manifest constant
   // after swarmJuice so cohort stamps precede the HUDs' readout).
   // 174 with solstice (SL-9 system owner, after ravel and before physics).
   // 175 with rubric (HM-11 system owner, after solstice and before physics).
-  assert.equal(registry.systems.length, 176);
+  // 177 with the Gyre Snare pair — gyreSnare (the held-verb lash itself, between
+  // fields and physics) and gyreHud (DOM-guarded lane pill beside fieldHud), one
+  // system in both orders each.
+  assert.equal(registry.systems.length, 178);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));
