@@ -23,6 +23,7 @@ import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { createBus } from '../src/core/eventBus.js';
 import { gyreSnare } from '../src/systems/gyreSnare.js';
 import { physics } from '../src/core/physics.js';
+import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { readRecentImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { GYRE_SNARE } from '../src/data/gyreSnare.js';
 
@@ -1128,5 +1129,95 @@ test('a physicsBody:false absorbable is never cored or frozen', async () => {
   assert.equal(ghost.physicsBody, false, 'no record is materialized on it');
   assert.equal(t.sys._rt.phase, 'beaming', 'the beam keeps looking for a real core');
   release(t);
+  t.cleanup();
+});
+
+test('a physicsBody:false body parked in the basin never accrues dead-letter impulses', async () => {
+  const t = await bootPhysics();
+  const ghost = t.sim.spawn({
+    type: 'asteroid', team: 9, pos: { x: T.mawDist + 4, z: 0 }, vel: { x: 0, z: 0 },
+    rot: 0, angVel: 0, radius: 4, collides: true, hull: 40, hullMax: 40,
+    physicsBody: false, data: {},
+  });
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  // physics skips opted-out bodies entirely — any queued impulse record here would
+  // accumulate unconsumed for the entity's lifetime.
+  assert.equal(consumePhysicsCommand(ghost), null, 'no impulse record ever formed');
+  assert.equal(ghost.physicsBody, false, 'no body materialized');
+  release(t);
+  t.cleanup();
+});
+
+test('a boundary-less destroy+init restores the held core\'s authored deadlines', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  core.data.despawnAt = 9999;
+  core.ttl = 8888;
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'timed body cored');
+  assert.equal(core.data.despawnAt, undefined, 'snag cleared the data deadline');
+  t.sys.destroy();
+  // The tracked core is current-timeline — its authored stashes restore via the
+  // normal clear path, not the residue sweep's drop.
+  assert.equal(core.data.gyreCore, undefined, 'the core mark is stripped');
+  assert.equal(core.data.despawnAt, 9999, 'the authored deadline is restored');
+  assert.ok(core.ttl > 8887 && core.ttl <= 8888, `authored ttl restored (got ${core.ttl})`);
+  t.sys.init({ state: t.state, bus: t.bus, helpers: t.helpers, registry: t.sim.registry });
+  t.cleanup();
+});
+
+test('docking mid-hold drops the beam as player_docked — never a phantom launch', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  t.player.flags.docked = true; // dock with the key still physically down
+  t.state.input.actions.gyreSnare = true;
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off');
+  const off = [...t.events].reverse().find((e) => e.name === 'gyre:beamOff');
+  assert.equal(off.p.reason, 'player_docked');
+  assert.equal(t.sys._rt.launchedId, null, 'dock never bowls the clump');
+  t.cleanup();
+});
+
+test('the launch burst still drains cap at the 1x rate', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const capBefore = t.player.cap;
+  t.state.input.actions.gyreSnare = false;
+  t.sim.step(); // release → LAUNCH
+  assert.equal(t.sys._rt.phase, 'launching');
+  const spent = capBefore - t.player.cap;
+  const expected = T.capDrainPerS * DT;
+  assert.ok(Math.abs(spent - expected) < 1e-9, `burst drains at 1x (got ${spent})`);
+  t.cleanup();
+});
+
+test('the ball watch list hands a live marked ball back on eviction', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  a.physicsBody.impactDamageScale = 0.2;
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the flying ball');
+  // More launches than the 8-deep watch list — A, the oldest watch, retires live.
+  for (let i = 0; i < 9; i++) {
+    t.player.cap = 100;
+    rock(t.sim, T.mawDist, 0, 40, 6);
+    hold(t);
+    for (let j = 0; j < 20; j++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+    release(t);
+    for (let j = 0; j < 8; j++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  }
+  assert.equal(a.data.gyreLaunched, undefined, 'the evicted ball is handed back, not orphaned');
+  assert.equal(a.physicsBody.impactDamageScale, 0.2, 'authored scale restored on eviction');
   t.cleanup();
 });

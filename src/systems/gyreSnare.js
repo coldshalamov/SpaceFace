@@ -110,7 +110,6 @@ export const gyreSnare = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers || {};
-    this.registry = ctx.registry || null;
     this._rt = freshRuntime();
     // Same-state destroy->init (system reload without a save/sector boundary): strip any
     // gyreCore residue AND re-seed the ball watch list from serialized gyreLaunched marks —
@@ -132,8 +131,11 @@ export const gyreSnare = {
   destroy() {
     for (const off of this._subs || []) { if (typeof off === 'function') off(); }
     this._subs = [];
-    // Same-state destroy->init (system reload without a save/sector boundary) must still
-    // sweep data.gyreCore residue — a held body left marked is pull/snag/suck-immune forever.
+    // Same-state destroy->init (system reload without a save/sector boundary): clear the
+    // tracked core's mark first (its authored stashes are current-timeline and restore),
+    // then sweep untracked residue — a held body left marked is pull/snag/suck-immune
+    // forever, and a stashless ex-core is immortal debris.
+    this._clearCoreMark();
     this._sweepBoundaryResidue();
     this._rt = freshRuntime();
   },
@@ -148,12 +150,16 @@ export const gyreSnare = {
     const coreId = rt.coreId;
     const boundary = reason === 'save_loaded' || reason === 'new_game' || reason === 'sector_exit';
     if (boundary) {
-      // Defense-in-depth sweep: cores are never flags.persistent, so a real save can't
-      // serialize data.gyreCore and a fresh state swap can't resurrect it — but any path
-      // that rebuilds the entity map without our bookkeeping (fixture replay, a future
-      // persistent core type, a same-state reload) must not leave a residue flag making
-      // a body pull/snag/suck-immune forever. gyreLaunched stays: a ball mid-flight in
-      // the save is still a launched body (it despawns on its own schedule).
+      // The tracked core is current-timeline: clear its mark through the normal path so
+      // its authored lifetime stashes restore (a same-state reload must not leave it
+      // immortal stasis debris). The sweep then handles only UNTRACKED residue: cores are
+      // never flags.persistent, so a real save can't serialize data.gyreCore and a fresh
+      // state swap can't resurrect it — but any path that rebuilds the entity map without
+      // our bookkeeping (fixture replay, a future persistent core type, a same-state
+      // reload) must not leave a residue flag making a body pull/snag/suck-immune forever.
+      // gyreLaunched stays: a ball mid-flight in the save is still a launched body (it
+      // despawns on its own schedule).
+      this._clearCoreMark();
       this._sweepBoundaryResidue();
     } else if (!wasOff) {
       this._clearCoreMark();
@@ -212,6 +218,7 @@ export const gyreSnare = {
 
   _clearCoreMark() {
     const rt = this._rt;
+    if (!rt) return; // destroy() before init() — nothing tracked
     const core = rt.coreId != null && this.state ? this.state.entities.get(rt.coreId) : null;
     if (core && core.data && core.data.gyreCore) {
       delete core.data.gyreCore;
@@ -263,13 +270,22 @@ export const gyreSnare = {
       // than the serialized despawnAt the ball already carries, and _handBack restores
       // them symmetric with the drop contract.
       if (e && e.data && e.data.gyreLaunched) {
-        const rt2 = this._rt;
-        if (rt2 && !rt2.ballIds.includes(e.id)) {
-          rt2.ballIds.push(e.id);
-          while (rt2.ballIds.length > 8) rt2.ballIds.shift();
-        }
+        this._trackBall(e.id);
       }
     });
+  },
+
+  // Watch a launched ball. The list is bounded (8): on overflow the OLDEST watch retires —
+  // a still-live marked ball is handed back (marks stripped, authored state restored)
+  // rather than orphaned out of coverage; gone/dead ids just drop.
+  _trackBall(id) {
+    const rt = this._rt;
+    if (!rt.ballIds.includes(id)) rt.ballIds.push(id);
+    while (rt.ballIds.length > 8) {
+      const e = this.state && this.state.entities ? this.state.entities.get(rt.ballIds[0]) : null;
+      if (e && e.alive !== false && e.data && e.data.gyreLaunched) this._handBack(e);
+      rt.ballIds.shift();
+    }
   },
 
   // ── the verb ───────────────────────────────────────────────────────────────────
@@ -306,12 +322,15 @@ export const gyreSnare = {
   },
 
   _spendCap(player, amount) {
-    if (typeof player.cap === 'number' && Number.isFinite(player.cap)) {
-      player.cap = Math.max(0, player.cap - amount);
-      return;
-    }
+    // Write ONLY e.cap — the weapons convention (weapons.js): data.derived is refreshed
+    // wholesale by ships.js each tick, so spending there is both a single-writer
+    // violation and a silent refund. When the direct field is absent, seed it from the
+    // derived read once and spend from the seed.
     const derived = player.data && player.data.derived;
-    if (derived && typeof derived.cap === 'number') derived.cap = Math.max(0, derived.cap - amount);
+    const cur = (typeof player.cap === 'number' && Number.isFinite(player.cap))
+      ? player.cap
+      : (derived && typeof derived.cap === 'number' ? derived.cap : 0);
+    player.cap = Math.max(0, cur - amount);
   },
 
   _evidence(tick) {
@@ -365,6 +384,9 @@ export const gyreSnare = {
       if (!e || e.alive === false || !e.pos) continue;
       if (e.id === state.playerId) continue;
       if (!isDynamic(e)) continue;
+      // physicsBody:false is an authored opt-out (dropped bombs, snare sentinels): no
+      // rapier body ever materializes, so queued impulses just accumulate unread.
+      if (e.physicsBody === false) continue;
       const dx = e.pos.x - maw.x;
       const dz = e.pos.z - maw.z;
       const distMaw = Math.hypot(dx, dz);
@@ -598,7 +620,7 @@ export const gyreSnare = {
       if (!e || e.alive === false || !e.pos || e.id === core.id || (e.data && e.data.gyreCore)) continue;
       if (e.id === state.playerId) continue;
       const absorbable = ABSORBABLE.has(e.type);
-      if (!isDynamic(e) || PULL_SKIP_TYPES.has(e.type)) continue;
+      if (!isDynamic(e) || PULL_SKIP_TYPES.has(e.type) || e.physicsBody === false) continue;
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never re-absorbed
       // Persistent / world-record mass stays live — the katamari must not eat a quest item.
       if ((e.flags && e.flags.persistent) || (e.data && e.data.worldRecordId)) continue;
@@ -739,8 +761,8 @@ export const gyreSnare = {
     rt.ballId = core.id; // outlives LAUNCH so render/HUD can track the bowling ball to its grave
     // Watch every launched id, not just the newest: a second launch or a save-load that
     // keeps the entity alive would otherwise orphan gyreLaunched + weapon scale forever.
-    if (!rt.ballIds.includes(core.id)) rt.ballIds.push(core.id);
-    while (rt.ballIds.length > 8) rt.ballIds.shift();
+    this._trackBall(core.id);
+    rt.basinCount = 0; // the "N in net" read is basin-only — a flying ball owns none
     rt.ballMass = rt.clumpMass;
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
     // clump overlay keeps riding the ball through its whole flight instead of shedding at OFF.
@@ -1012,7 +1034,15 @@ export const gyreSnare = {
     rt.wasHeld = held;
 
     if (rt.phase === PHASE.OFF) { this._publish(state, player); return; }
-    if (!player) { this._drop('player_lost'); this._publish(state, null); return; }
+    if (!player) {
+      // Docked and gone are different stories — the beamOff reason is the only record
+      // of why the lash died, so keep it honest.
+      const raw = this.helpers.player ? this.helpers.player() : state.entities.get(state.playerId);
+      const docked = !!(raw && ((raw.flags && raw.flags.docked) || (state.ui && state.ui.docked === true)));
+      this._drop(docked ? 'player_docked' : 'player_lost');
+      this._publish(state, null);
+      return;
+    }
 
     // Cap drain — an empty tank bowls whatever the beam is holding right now. Hold drain
     // scales with clump mass: a huge ball can out-pull the hull's regen — the bigger the
