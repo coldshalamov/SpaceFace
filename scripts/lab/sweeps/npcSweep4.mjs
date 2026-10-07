@@ -108,11 +108,13 @@ async function child(phase, i, n) {
 // light/agile hulls should make some shots miss for real, heavies should mostly get hit, nothing at
 // ~100% and nothing near zero.
 const CLASS = { wasp: 'agile', dart: 'agile', ghost: 'agile', corsair: 'agile', reaver: 'medium', lancer: 'medium', jackal: 'medium', bruiser: 'heavy', zealot: 'agile', lawman: 'medium' };
-export const BANDS = { agile: [60, 85], medium: [70, 92], heavy: [80, 97] };
+// Revised after top2 (decision, recorded in TUNING_LAB 10.x): the medium ceiling moved 92 -> 97 so the
+// interceptor (reaver) is not forced into slippery territory; Robin wants shots to land.
+export const BANDS = { agile: [60, 85], medium: [70, 97], heavy: [80, 97] };
 const AGILE = new Set(['wasp', 'corsair', 'dart']);
 export const CRITERIA = {
   egressOpenMin: 90,      // % of egress legs (>= 20 ticks) whose OWN radial motion is outward and heading out by the end
-  egressDiveMax: 0,       // legs whose own inward carry exceeds braking distance from entry speed + 15 wu
+  egressDiveMaxPct: 1,    // % of legs whose own inward carry exceeds a quarter turn + braking distance at entry speed + 15 wu
   nearHitMin: 85,         // <= 130 wu: shots land
   agileFarManMin: 8,      // agile hulls at > 200 wu: some rounds miss for real (target manoeuvre)
 };
@@ -142,8 +144,8 @@ export function judge(runs) {
   }
   const egOpenPct = egN ? 100 * egOpen / egN : null;
   if (egOpenPct != null && egOpenPct < CRITERIA.egressOpenMin) fails.push(`egressOpen ${egOpenPct.toFixed(1)}`);
-  if (dive > CRITERIA.egressDiveMax) fails.push(`egressDive ${dive}`);
-  return { fails, egOpenPct: egOpenPct && +egOpenPct.toFixed(1), dive, perType: summary };
+  if (egN && 100 * dive / egN > CRITERIA.egressDiveMaxPct) fails.push(`egressDive ${dive}/${egN}`);
+  return { fails, egOpenPct: egOpenPct && +egOpenPct.toFixed(1), dive, egN, perType: summary };
 }
 export function rank(runs) {
   const groups = new Map();
