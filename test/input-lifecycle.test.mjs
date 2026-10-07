@@ -406,7 +406,9 @@ test('a hold-to-toggle verb held through a dock does not re-latch on the way bac
 
     state.ui.screenStack.push('station');
     host.update(1 / 60, state);
-    assert.equal(state.input.actions.gyreSnare, false, 'a screen zeroes the verb');
+    assert.equal(state.input.actions.gyreSnare, true,
+      'a screen preserves a physically held key — zeroing would synthesize a falling edge ' +
+      'that bowls the clump (massline modal-preservation parity)');
     assert.equal(host._holdToggleEdges.gyreSnare, true,
       'the still-held key pins the toggle edge so it cannot re-arm as a fresh press');
 
