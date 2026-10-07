@@ -184,6 +184,8 @@ export class GyreSnarePresentation {
     this._discKick = 0;
     this._wakeRamp = 1;      // 0→1 over ~150 ms on the OFF→beam edge — the glass "opens" with the shimmer
     this._beamWasOn = false;
+    this._closing = false;   // close-ramp: non-launch ends ease the glass out over ~250 ms
+    this._closeT = 0;
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
     this._moteKick = 0;      // absorb gulp: the mote spiral's own clock surges for a beat
     this._moteT = 0;         // spiral uTime accumulator — decoupled so a gulp doesn't rewind motes
@@ -464,6 +466,7 @@ export class GyreSnarePresentation {
       // frame — the glass opens with the wake shimmer, plus a small pulse bump.
       if (!this._beamWasOn) {
         this._beamWasOn = true;
+        this._closing = false; // a re-wake mid-fade cancels the ramp cleanly
         this._wakeRamp = 0;
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.4);
       }
@@ -499,21 +502,46 @@ export class GyreSnarePresentation {
       this._spiral.visible = calm !== 0;
       // The maw "gulps": each absorb surges the motes' private clock so they visibly
       // accelerate into the mouth for a beat instead of holding their metronome rate.
-      this._moteT += dt * (1 + this._moteKick * 1.8);
+      // Feed surge: material already inside the cone stirs the funnel before the
+      // gulp lands — the spiral accelerates with the net count, not just on contact.
+      this._moteT += dt * (1 + this._moteKick * 1.8 + net * 0.45);
       this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = len;
       this._spiralMat.uniforms.uRad.value = endR;
     } else {
-      this._beam.visible = false;
-      this._beamWasOn = false;
+      // Close-ramp: every close (release, strain break, post-launch) eases the glass
+      // down over ~0.25 s instead of popping — the collapse is part of the payoff.
+      if (this._beamWasOn) { this._beamWasOn = false; this._closing = true; this._closeT = 0; }
+      if (this._closing) {
+        this._closeT += dt;
+        const k = Math.max(0, 1 - this._closeT / 0.25);
+        const kk = k * k;
+        this._moteT += dt; // motes keep spiraling while they die
+        this._spiralMat.uniforms.uTime.value = this._moteT;
+        this._coneMat.uniforms.uTime.value = this.time;
+        this._coneMat.uniforms.uAlpha.value = 0.42 * kk * flashCalm;
+        this._coneMat.uniforms.uPulse.value *= Math.exp(-dt * 9);
+        this._bodyMat.opacity = 0.07 * kk;
+        this._mawMat.opacity = 0.55 * kk;
+        this._discMat.uniforms.uAlpha.value = 0.55 * kk;
+        this._spiral.visible = calm !== 0;
+        if (k <= 0) { this._closing = false; this._beam.visible = false; this._spiral.visible = false; }
+      } else if (this._beam.visible) {
+        this._beam.visible = false;
+      }
     }
 
     // ── clump ────────────────────────────────────────────────────────────────
     // Hold: lumps ride the core's orbit slot. Launch: they keep riding the free ball
     // until the mirror stops tracking it.
+    // Clump overlay rides the body's real spin when held (the tumble servo parks it
+    // near 0.55 rad/s), falling back to the authored drift only while that publishes.
     let cx = null, cz = null, spinRate = 0.9;
-    if (phase === 'holding' && mirror.corePos) { cx = mirror.corePos.x; cz = mirror.corePos.z; }
-    else if (mirror.launchedId != null && mirror.ballPos) { cx = mirror.ballPos.x; cz = mirror.ballPos.z; spinRate = 2.6; }
+    if (phase === 'holding' && mirror.corePos) {
+      cx = mirror.corePos.x; cz = mirror.corePos.z;
+      const w = Math.abs(finite(mirror.coreAngVel));
+      spinRate = Math.min(3, 0.35 + w * 0.85);
+    } else if (mirror.launchedId != null && mirror.ballPos) { cx = mirror.ballPos.x; cz = mirror.ballPos.z; spinRate = 2.6; }
 
     // The flying ball's grave is tracked off ballPos only — a newly held core must
     // never poison where the OLD ball died (previously cx could be the held core).
@@ -546,6 +574,13 @@ export class GyreSnarePresentation {
       this._clumpSpin += dt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
+      // Strain tremble: under load the held rubble visibly quivers — the core mesh
+      // stays physics-true while its swarm shakes, which is exactly "about to slip".
+      const tremble = (phase === 'holding' ? clamp01(finite(mirror.strain01)) : 0) * calm;
+      if (tremble > 0) {
+        this._clump.position.x += (Math.sin(this.time * 47) * 0.7 + Math.sin(this.time * 31 + 1.7) * 0.3) * tremble * 1.4;
+        this._clump.position.z += Math.cos(this.time * 41 + 0.6) * tremble * 1.1;
+      }
       if (mirror.launchedId != null) {
         // Flight ribbon: stretched flat quad hanging off the ball's tail along launchDir.
         const dir = mirror.launchDir;
@@ -573,8 +608,9 @@ export class GyreSnarePresentation {
         const gd = Math.max(1, Math.hypot(gx, gz));
         this._grip.position.set(mL2.x + gx * 0.5, 0.55, mL2.z + gz * 0.5);
         this._grip.rotation.y = Math.atan2(-gz, gx);
-        this._grip.scale.set(gd, 1, 2.2);
         const strain = clamp01(finite(mirror.strain01));
+        // Grip width flickers under strain — the spoke trembles with the held rubble.
+        this._grip.scale.set(gd, 1, 2.2 * (1 + strain * 0.35 * Math.sin(this.time * 37) * calm));
         this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2) * flashCalm;
         this._grip.visible = true;
       } else if (this._grip.visible) {
@@ -626,9 +662,13 @@ export class GyreSnarePresentation {
 
     // ── phase transitions ────────────────────────────────────────────────────
     if (phase !== this._phase) {
-      // The grip is the payoff: entering HOLD flashes the cone hard, matching the snag
-      // audio bite + haptic that already fire on the same edge.
-      if (phase === 'holding') this._coneMat.uniforms.uPulse.value = 0.9;
+      // The grip is the payoff: entering HOLD flashes the cone hard AND gulps the
+      // mouth — the disc kick + mote surge that an absorb gets, on the catch itself.
+      if (phase === 'holding') {
+        this._coneMat.uniforms.uPulse.value = 0.9;
+        this._discKick = 1;
+        this._moteKick = 1;
+      }
       if (phase === 'launching' && cx != null) {
         this._fireBurst(mirror.corePos.x, mirror.corePos.z, Math.max(6, finite(mirror.clumpRadius, 8) * 2.2));
         this._coneMat.uniforms.uPulse.value = 1;
@@ -652,7 +692,8 @@ export class GyreSnarePresentation {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    this.scene.remove(this._beam, this._clump, this._trail, this._grip);
+    this.scene.remove(this._beam, this._clump, this._trail, this._grip, this._halo);
+    this._halo.geometry.dispose(); this._haloMat.dispose();
     this._trail.geometry.dispose(); this._trailMat.dispose();
     this._grip.geometry.dispose(); this._gripMat.dispose();
     this._bodyMat.dispose();

@@ -440,6 +440,7 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
   'gyre:droppedEmpty':      { strong: 0.20, weak: 0.15, ms: 50 },
   'gyre:strained':          { strong: 0.50, weak: 0.40, ms: 120 },
+  'gyre:full':              { strong: 0.65, weak: 0.55, ms: 150 },
 });
 // Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
 export const HAPTIC_RELEASE_PULSES = Object.freeze({
@@ -828,6 +829,7 @@ export function createGamepad(ctx) {
     bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
     bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
     bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
+    bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
     bus.on('gyre:absorbed', (payload) => {
       // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the
       // drop thud — lerped on min(1, mass/80) so katamari escalation is felt, not just seen.

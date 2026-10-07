@@ -615,6 +615,9 @@ export const gyreSnare = {
       if (rt.clumpMass >= D.maxClumpMass && !rt.fullCueLatched) {
         rt.fullCueLatched = true;
         this.bus.emit('audio:cue', { id: 'gyre_snare_full', gain: 0.8 });
+        // The escalation arc's ceiling beat reaches the hands too — every other
+        // latch pulses the pad (absorb even lerps with mass); FULL completes it.
+        this.bus.emit(GYRE_EVENTS.full, { mass: rt.clumpMass, tick: state.tick });
       }
     }
   },
@@ -712,7 +715,7 @@ export const gyreSnare = {
       phase: PHASE.OFF, nose: { x: 0, z: 0 }, maw: { x: 0, z: 0 },
       coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
-      strain01: 0, corePos: { x: 0, z: 0 }, launchDir: { x: 1, z: 0 },
+      strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
       basinCount: 0, ballClumpRadius: 0,
     });
@@ -813,12 +816,14 @@ export const gyreSnare = {
     const core = rt.coreId != null ? state.entities.get(rt.coreId) : null;
     if (core && core.pos) {
       pub.corePos.x = core.pos.x; pub.corePos.z = core.pos.z;
+      // The held body's real spin — the VFX lumps ride it instead of an authored rate.
+      pub.coreAngVel = finite(core.angVel);
       pub.strain01 = clamp(
         (Math.hypot(core.pos.x - maw.x, core.pos.z - maw.z) - D.holdStrainDist)
           / Math.max(1, D.holdBreakDist - D.holdStrainDist),
         0, 1,
       );
-    } else pub.strain01 = 0;
+    } else { pub.strain01 = 0; pub.coreAngVel = 0; }
     // Strain gets its own voice on the same hysteresis the HUD uses: the glass tension
     // rises the tick the clump strains, and latches quiet again once it reels back in.
     if (!rt.strainCueLatched && pub.strain01 > 0.4) {

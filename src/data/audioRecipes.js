@@ -3085,8 +3085,26 @@ export const RECIPES = [
   },
   // Ball death: the clump's quiet grave — a muffled glass shatter for a ball expiring in
   // open space (impacts already sing through collision audio; this covers the silent TTL).
+  // A bright clink leads the dust poof so it reads as breaking glass, not a cough.
   {
     id: 'sfx_gyre_ball_death',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_ball_death_clink', 'sfx_gyre_ball_death_dust'],
+    gainMult: 0.85,
+    pitchRange: [0.94, 1.05],
+  },
+  {
+    id: 'sfx_gyre_ball_death_clink',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 880, freqSweep: [880, 1760], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 1800, filterQ: 2.0,
+  },
+  {
+    id: 'sfx_gyre_ball_death_dust',
     category: 'weapon',
     type: 'noise_burst',
     noiseColor: 'pink',

@@ -118,4 +118,6 @@ export const GYRE_EVENTS = Object.freeze({
   launched: 'gyre:launched',
   dropped: 'gyre:dropped',
   strained: 'gyre:strained',
+  // First cap-crossing — the escalation arc's ceiling beat (audio chime + pad pulse).
+  full: 'gyre:full',
 });
