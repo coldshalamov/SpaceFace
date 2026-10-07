@@ -2043,6 +2043,32 @@ test('a body spiraling into the clump glows like a basin victim (suck-lane spots
   t.cleanup();
 });
 
+test('a too-heavy rock parked inside the suck annulus still eats the courtesy tug', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const core = t.state.entities.get(t.sys._rt.coreId);
+  // Oversized for the clump's REMAINING mass (grown to cap-5, so a modest rock is
+  // too-heavy while still light enough for tugK > 0.05) — the wave-39 dead spot:
+  // 'too-heavy' used to `continue` before the courtesy tug, so the strongest gravity
+  // zone (inside owned.r, basin lane suppressed) felt nothing.
+  t.sys._rt.clumpMass = T.maxClumpMass - 5;
+  const heavy = rock(t.sim, core.pos.x + 40, core.pos.z, 50, 6);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // spatial index registers the spawn
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.ok(heavy.alive !== false, 'a too-heavy body is never absorbed');
+  assert.ok(heavy.vel.x < -0.001,
+    `the annulus tugs the too-heavy body toward the clump (vx=${heavy.vel.x.toFixed(4)})`);
+  assert.ok((t.state.gyreSnare.towCount || 0) >= 1,
+    `a heavy body under tow counts TOWING (got ${t.state.gyreSnare.towCount})`);
+  assert.ok((t.state.gyreSnare.basinSpots || []).some(
+    (s) => Math.hypot(s.x - heavy.pos.x, s.z - heavy.pos.z) < 30),
+    'the tugged heavy publishes a pull glow like a basin victim');
+  t.cleanup();
+});
+
 test('liveBalls republishes while the lash is OFF — a retired ball clears the +N', async () => {
   const t = await bootPhysics();
   const ball = rock(t.sim, T.mawDist, 0, 6, 4);

@@ -573,7 +573,7 @@ export const gyreSnare = {
     this._rt.basinCount = 0; // reset above the guard — a helper-less host must not
     // towCount resets at the two callers: _suckPass runs before this lane in HOLD and
     // its annulus tow would be wiped by a local reset here.
-    this._rt.basinSpots.length = 0; //
+    this._rt.basinSpots.length = 0; // same early reset — a helper-less host can't keep last tick's glow spots
     // On the helper-less early return only: clear the scratch so spots _suckPass
     // staged can't publish a tick late beside the next run's basin glows. (Not
     // unconditional — the scratch is the suck lane's publish channel in HOLD.)
@@ -1353,7 +1353,9 @@ export const gyreSnare = {
     }
   },
 
-  // ── presentation mirror (read-only for render/HUD; runtime-only, never saved) ───
+  // ── presentation mirror (read-only on entity state for render/HUD; runtime-only,
+  // never saved — edge-latched emits like audio:cue/gyre:strained/gyre:fuseLow ARE
+  // allowed here: they ride published values and mutate nothing a reader can see) ──
   _publish(state, player) {
     const rt = this._rt;
     const pub = state.gyreSnare || (state.gyreSnare = {
