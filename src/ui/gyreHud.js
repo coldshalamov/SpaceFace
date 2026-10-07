@@ -63,7 +63,7 @@ export const gyreHud = {
     this._visible = false;
     this._laneSeat = '';
     this._strainOn = false; // hysteresis: enter at 0.40, exit at 0.25 — no boundary flapping
-    this._bowlUntil = -1;   // simTime deadline — the BOWL read holds ~0.4 s past the 5-tick burst
+    this._bowlUntil = -1;   // simTime deadline — the BOWL read holds ~0.8 s past the 5-tick burst
     this._bowlMass = 0;
   },
 
@@ -126,8 +126,8 @@ export const gyreHud = {
     if (!g.phase || g.phase === 'off') {
       // A thrown clump still on the map deserves a quiet "it's yours" dot for its short flight.
       if (g && g.launchedId != null) {
-        // The launch beat lands first: BOWL survives ~0.4 s past the burst ticks before
-        // the pill flips to BALL AWAY.
+        // The launch beat lands first: BOWL survives ~0.8 s past the burst ticks before
+        // the pill flips to BALL AWAY — the verb's biggest beat stays readable.
         if (now < this._bowlUntil) {
           return { text: `GYRE — BOWL ${this._bowlMass}t`, cls: 'gyre-launched' };
         }
@@ -137,7 +137,11 @@ export const gyreHud = {
         const count = g.members == null ? null : (g.absorbs || 0) + 1;
         // The thrown ball's 9 s flight is otherwise silent — ballTxt carries the
         // primary's ·Ns countdown plus any secondaries still flying (· +N balls Ns).
-        const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t` : `GYRE — BALL AWAY · ${mass}t`) : 'GYRE — BALL AWAY';
+        // DMG× names the destructive yield while it flies — the "growth → weapon"
+        // arc stays legible instead of revealing itself only on impact.
+        const dmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
+          GYRE_SNARE.launchImpactScaleBase + (g.ballMass || 0) / GYRE_SNARE.launchImpactScalePerMass);
+        const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t · DMG×${dmg.toFixed(1)}` : `GYRE — BALL AWAY · ${mass}t · DMG×${dmg.toFixed(1)}`) : 'GYRE — BALL AWAY';
         return { text: label + ballTxt, cls: 'gyre-ball' };
       }
       // No primary, but secondaries are still streaking (one retires before the rest) —
@@ -152,7 +156,7 @@ export const gyreHud = {
       return { text: '', cls: '' };
     }
     if (g.phase === 'launching') {
-      this._bowlUntil = now + 0.4;
+      this._bowlUntil = now + 0.8;
       this._bowlMass = Math.round(g.clumpMass || 0);
       return { text: `GYRE — BOWL ${this._bowlMass}t${ballTxt}`, cls: 'gyre-launched' };
     }
@@ -166,18 +170,23 @@ export const gyreHud = {
       // basinCount publishes through HOLD, so the ball's next meal is named.
       const net = g.basinCount || 0;
       const tail = (net > 0 ? ` +${net}` : '') + handlingTxt;
+      // The katamari's destructive yield is telegraphed while it grows — DMG× tracks
+      // the same launch-impact formula the throw will stamp, so "bigger = hits harder"
+      // is a visible arc, not a surprise on impact.
+      const dmg = ` · DMG×${Math.min(GYRE_SNARE.launchImpactScaleMax,
+        GYRE_SNARE.launchImpactScaleBase + (g.clumpMass || 0) / GYRE_SNARE.launchImpactScalePerMass).toFixed(1)}`;
       // Mass-scaled cap drain makes the fuse legible BEFORE the dry auto-bowl: under ~8 s
       // of burn the readout appends the countdown and the top fuse bar drains with it.
       const fuse = fuseS;
       if (this._strainOn) {
-        return { text: `GYRE — STRAIN ×${count} · ${mass}t${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-strain', strain: s, fuse };
+        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-strain', strain: s, fuse };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
       const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;
       if (full) {
-        return { text: `GYRE — ×${count} · ${mass}t FULL${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-full', strain: s, fuse };
+        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-full', strain: s, fuse };
       }
-      return { text: `GYRE — ×${count} · ${mass}t${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-holding', strain: s, fuse };
+      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-holding', strain: s, fuse };
     }
     // Net anticipation: material already inside the cone names the catch before it
     // lands — "×N IN NET" instead of a bare SEARCHING sweep. A beam towing only
