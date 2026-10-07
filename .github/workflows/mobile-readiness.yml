@@ -53,11 +53,12 @@ jobs:
         run: |
           mkdir -p .devshots/mobile-build
           set -o pipefail
-          node --test test/mobile-runtime-workers.test.mjs test/render-package-digest.test.mjs test/glb-prepass.test.mjs test/mobile-flight.test.mjs test/mobile-deck-instrument.test.mjs | tee .devshots/mobile-build/unit-tests.txt
+          node --test test/mobile-runtime-workers.test.mjs test/mobile-runtime-assets.test.mjs test/render-package-digest.test.mjs test/glb-prepass.test.mjs test/mobile-flight.test.mjs test/mobile-deck-instrument.test.mjs | tee .devshots/mobile-build/unit-tests.txt
       - name: Build real retail assets and verify receipt parity
         run: |
           set -o pipefail
           node scripts/check-bundle.mjs 2>&1 | tee .devshots/mobile-build/build.txt
+          node scripts/check-retail-motion-banks.mjs | tee .devshots/mobile-build/runtime-assets.txt
       - name: Install acceptance browser
         run: npx playwright install --with-deps "$MOBILE_PROBE_ENGINE"
       - name: Static retail route, real worker round trips, New Game and touch UI
