@@ -336,7 +336,7 @@ try {
       const x = Math.round((i + 0.5) * innerWidth / cols), y = Math.round((j + 0.5) * innerHeight / rows);
       const el = document.elementFromPoint(x, y);
       if (!el) continue;
-      if (el.closest('[data-role]') || el.closest('.mf-edge') || el.closest('.mf-pause') || el.closest('.mf-dock')) continue; // the keys and the handle are controls on purpose
+      if (el.closest('[data-role]') || el.closest('.mf-edge') || el.closest('.mf-pause') || el.closest('.mf-dock') || el.closest('.sf-radar-wrap')) continue; // the keys, the handle and the radar dial (a tap sets a course) are controls on purpose
       if (el.closest(UI) || el.closest(NOFLY)) out.push({ x, y, el: el.tagName.toLowerCase() + '.' + String(el.className).split(' ')[0], inUI: !!el.closest(UI) });
     }
     return out;
