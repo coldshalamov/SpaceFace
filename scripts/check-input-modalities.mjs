@@ -263,9 +263,9 @@ function installDom({ width = 1280, height = 800, touchDevice = true } = {}) {
         preventDefault() {}, stopPropagation() {},
       });
     },
-    move(x, y) {
+    move(x, y, movementX = 1, movementY = 1) {
       fire(winListeners, 'mousemove', {
-        type: 'mousemove', clientX: x, clientY: y, movementX: 1, movementY: 1, target: body,
+        type: 'mousemove', clientX: x, clientY: y, movementX, movementY, target: body,
         preventDefault() {}, stopPropagation() {},
       });
     },
@@ -636,10 +636,10 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
   s.tick();
   checkEqual(s.state.input.autoTargetPath.points.length, 0,
     'entering combat-stick mode clears stale draw-path geometry');
-  // The harness emits movementX/Y=1 per move. Cross the authored 10 px deadzone deliberately;
-  // sub-deadzone tremor is supposed to remain neutral.
+  // Feed deliberate relative motion as well as absolute coordinates. Palm-noise packets
+  // intentionally recenter inside the deadzone and cannot accumulate into a flight command.
   for (let i = 0; i < 18; i += 1) {
-    s.dom.move(300 + i * 12, 220 + i * 9);
+    s.dom.move(300 + i * 12, 220 + i * 9, 12, 9);
     s.tick();
   }
   check(s.state.input.autoTargetVector.active
