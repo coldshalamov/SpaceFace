@@ -3075,7 +3075,7 @@ export const missionLogScreen = {
           '<div class="k-row__sub sf-mlog-rec-body">' + escapeHtml((a.brief && a.brief.how) || a.body || '') + '</div>' +
           (a.meta ? '<div class="k-row__sub sf-mlog-rec-meta">' + escapeHtml(wordText(a.meta)) + '</div>' : '') +
           '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction
-            ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
+            ? '◆ THE AMBER DIAMOND IS YOUR CURRENT GOAL'
             : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET'))) + '</div>' +
         '</div>' +
         '<span class="k-row__num sf-mlog-rec-label">' + escapeHtml(wordText(a.label || 'NEXT')) + '</span>' +

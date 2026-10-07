@@ -176,7 +176,12 @@ function factionDossier(state, id) {
   }
   if (Array.isArray(f.controls) && f.controls.length) lines.push({ label: 'Controls', text: f.controls.join(' · ') });
   const doctrine = FACTION_DOCTRINES && FACTION_DOCTRINES[id];
-  if (doctrine && doctrine.id) lines.push({ label: 'Doctrine', text: String(doctrine.id).replace(/_/g, ' ') });
+  if (doctrine && doctrine.id) {
+    lines.push({
+      label: 'Fleet doctrine',
+      text: String(doctrine.id).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    });
+  }
 
   // Relations are the reason a rep hit spreads to somebody you have never met (J6's spillover).
   // Carrying contraband THIS faction outlaws is the single most actionable fact about them, and it
@@ -495,7 +500,7 @@ export function searchEntities(state, query, { limit = 14 } = {}) {
     if (!name.toLowerCase().includes(q)) return;
     const ref = type + ':' + id;
     if (!entityExists(ref)) return;
-    rows.push({ ref, label: name, type, kicker: DOSSIERS[type] ? type : 'entity', detail });
+    rows.push({ ref, label: name, type, kicker: DOSSIERS[type] ? type : 'Contact', detail });
   };
 
   for (const f of FACTION_META) push('faction', f.id, f.name);

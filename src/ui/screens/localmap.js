@@ -694,7 +694,7 @@ export const localmapScreen = {
       // it joins the landmarks as a poi-kind mark carrying the live readout.
       if (poiReadout && e.type !== 'station') {
         m.markLandmark({
-          id: e.id, kind: 'poi', name: poiReadout.mapLabel || e.name || 'POI',
+          id: e.id, kind: 'poi', name: poiReadout.mapLabel || e.name || 'Landmark',
           pos: e.pos, factionId: e.factionId, metadata: { poiReadout },
         });
       }

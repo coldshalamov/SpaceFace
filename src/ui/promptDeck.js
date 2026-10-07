@@ -186,6 +186,12 @@ export function createPromptDeck(ctx = {}) {
   // Power-rail claim signature ('' = released). While the deck owns Digit1-N for answers/raises,
   // the rail is told so its sockets show the answers instead of powers that will not fire.
   let claimSig = '';
+  // In-flight exits, id → { timer, nodes }: a leaving frame/chip unmounts on its own timer, and a
+  // re-offer of the same id kills the pair synchronously — two cards for one id never coexist.
+  const leaving = new Map();
+  // Layout-pass measurement signature ('' = never). An unchanged ladder re-measures nothing, so a
+  // per-second updateDecision forces no synchronous layout.
+  let layoutSig = '';
 
   function fenced() {
     return !!(state && state.ui && state.ui.fulfillmentBlackoutActive === true);
@@ -244,6 +250,16 @@ export function createPromptDeck(ctx = {}) {
     const frame = doc.createElement('section');
     frame.className = 'sf-prompt sf-prompt--' + (KINDS.has(spec.kind) ? spec.kind : 'info');
     frame.dataset.deckId = spec.id;
+    // Entrance plays once: the keyframe needs [data-enter] (prompt-deck.css); animationend — or
+    // the fallback, for reduced motion and missed events — drops the marker so later re-mounts
+    // (order-preserving layout still moves nodes) never replay the slide.
+    frame.setAttribute('data-enter', '');
+    frame.addEventListener('animationend', function onEnterEnd(ev) {
+      if (ev.target !== frame) return;
+      frame.removeEventListener('animationend', onEnterEnd);
+      frame.removeAttribute('data-enter');
+    });
+    setTimeout(() => frame.removeAttribute('data-enter'), 250);
     frame.setAttribute('role', 'dialog');
     frame.setAttribute('aria-modal', 'false');
     const senderId = 'sf-prompt-sender-' + cssId(spec.id);
@@ -328,27 +344,37 @@ export function createPromptDeck(ctx = {}) {
     const spec = entry.spec;
     const base = entry.digitBase || 0;
     const choices = spec.choices || [];
-    entry.choicesEl.replaceChildren();
-    entry.choiceButtons = [];
+    // Buttons persist while the choice-set identity holds: a rebuilt button drops a resting
+    // :hover ring and a focused one takes keyboard focus to <body>. Rebuild only on id changes.
+    const sig = choices.map((c) => c.id).join('|');
+    if (sig !== entry.choiceSig) {
+      entry.choiceSig = sig;
+      entry.choicesEl.replaceChildren();
+      entry.choiceButtons = choices.map((choice) => {
+        const btn = doc.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sf-prompt__choice';
+        btn.dataset.choiceId = choice.id;
+        const key = doc.createElement('b');
+        key.className = 'sf-prompt__key';
+        const label = doc.createElement('span');
+        btn.append(key, label);
+        entry.choicesEl.appendChild(btn);
+        return btn;
+      });
+    }
     let printable = 0;
-    choices.forEach((choice) => {
-      const btn = doc.createElement('button');
-      btn.type = 'button';
-      btn.className = 'sf-prompt__choice' + (choice.danger ? ' sf-prompt__choice--danger' : '');
-      btn.dataset.choiceId = choice.id;
+    choices.forEach((choice, i) => {
+      const btn = entry.choiceButtons[i];
+      btn.classList.toggle('sf-prompt__choice--danger', !!choice.danger);
       btn.disabled = !!choice.disabled;
       if (choice.reason || choice.title) btn.title = choice.reason || choice.title || '';
+      else btn.removeAttribute('title');
       const keyNum = choice.disabled ? '' : String(base + printable + 1);
       btn.setAttribute('aria-label', `${choice.label}.${choice.disabled ? ' Unavailable.' : ''}${keyNum ? ` Key ${keyNum}.` : ''}`);
-      const key = doc.createElement('b');
-      key.className = 'sf-prompt__key';
-      key.textContent = keyNum;
-      const label = doc.createElement('span');
-      label.textContent = choice.label;
-      btn.append(key, label);
+      setText(btn.firstElementChild, keyNum);
+      setText(btn.lastElementChild, choice.label);
       if (!choice.disabled) printable += 1;
-      entry.choicesEl.appendChild(btn);
-      entry.choiceButtons.push(btn);
     });
     entry.choicesEl.hidden = choices.length === 0;
     entry.frameEl && entry.frameEl.classList.toggle('sf-prompt--bare', choices.length === 0 && !spec.content);
@@ -428,8 +454,10 @@ export function createPromptDeck(ctx = {}) {
     if (!order.length) {
       raisedId = null;
       raisedExplicit = false;
-      root.replaceChildren();
-      root.hidden = true;
+      // Leaving nodes keep their exit window and unmount themselves; the root goes dark only when
+      // the last one is out.
+      reconcileMounted([]);
+      root.hidden = root.childElementCount === 0;
       syncClaim();
       return;
     }
@@ -441,11 +469,25 @@ export function createPromptDeck(ctx = {}) {
     raisedId = raised;
     raisedExplicit = false;
 
-    root.replaceChildren();
     const full = line.slice(0, FULL_SLOTS);
     const chips = line.slice(FULL_SLOTS);
+
+    // Measurement is reads-only and must run BEFORE the mount writes below; the signature skips it
+    // entirely when line, deck visibility, law-panel presence/hiddenness and viewport are unchanged.
+    const lawPanel = doc.getElementById('sf-sector-law');
+    const view = doc.defaultView;
+    const sig = line.join('|') + '#' + (root.hidden ? 'h' : 'v')
+      + '#' + (lawPanel ? (lawPanel.hidden ? 'x' : 'l') : '-')
+      + '#' + (view ? view.innerWidth + 'x' + view.innerHeight : '');
+    let clamp = null;
+    if (sig !== layoutSig) {
+      layoutSig = sig;
+      clamp = measureClamp(lawPanel);
+    }
+
     // Global keycap walk: visible choices claim digits in display order, chips claim the rest.
     // routeDigit() implements this same walk, so what is printed is what fires.
+    const desired = [];
     let digitSlot = 0;
     for (const id of full) {
       const entry = entries.get(id);
@@ -455,7 +497,7 @@ export function createPromptDeck(ctx = {}) {
       entry.frameEl.hidden = false;
       entry.frameEl.classList.toggle('sf-prompt--raised', id === raisedId);
       renderChoices(entry);
-      root.appendChild(entry.frameEl);
+      desired.push(entry.frameEl);
     }
     for (const id of chips) {
       const entry = entries.get(id);
@@ -466,22 +508,46 @@ export function createPromptDeck(ctx = {}) {
       // give the button an explicit name that names the verb, the card, and the key.
       entry.chipEl.setAttribute('aria-label',
         `Raise ${entry.spec.headline || entry.spec.id} — key ${digitSlot + 1}`);
-      root.appendChild(entry.chipEl);
+      desired.push(entry.chipEl);
       digitSlot += 1;
     }
-    root.hidden = line.length === 0;
-    // Clamp the ladder above the sector-law panel when it is on screen — the right column is the
-    // HUD's reserved composition (approved resting frame) and the deck may not enter it.
-    const lawPanel = doc.getElementById('sf-sector-law');
-    if (lawPanel && lawPanel.getBoundingClientRect) {
-      const lawTop = lawPanel.getBoundingClientRect().top;
-      if (Number.isFinite(lawTop) && lawTop > 0) {
-        const deckTop = root.getBoundingClientRect().top;
-        root.style.maxHeight = `${Math.max(200, Math.floor(lawTop - deckTop - 10))}px`;
-      }
-    }
+
+    reconcileMounted(desired);
+    root.hidden = root.childElementCount === 0;
+    if (clamp != null) root.style.maxHeight = clamp;
     syncChoiceHighlight();
     syncClaim();
+  }
+
+  /** Clamp reads for the law panel — reads only, no DOM writes. Null leaves the previous clamp
+   *  standing (panel off-screen or measurement unavailable). */
+  function measureClamp(lawPanel) {
+    // Clamp the ladder above the sector-law panel when it is on screen — the right column is the
+    // HUD's reserved composition (approved resting frame) and the deck may not enter it.
+    if (!lawPanel || !lawPanel.getBoundingClientRect) return null;
+    const lawTop = lawPanel.getBoundingClientRect().top;
+    if (!Number.isFinite(lawTop) || lawTop <= 0) return null;
+    const deckTop = root.getBoundingClientRect().top;
+    return `${Math.max(200, Math.floor(lawTop - deckTop - 10))}px`;
+  }
+
+  /** Order-preserving mount: a node moves only when it is not already the next expected child —
+   *  detach+reattach restarts the entrance animation and drops a resting :hover/focus. Nodes whose
+   *  entries are gone and that are not leaving unmount here; leaving nodes own their own removal. */
+  function reconcileMounted(desired) {
+    let cursor = null;
+    for (const el of desired) {
+      const expected = cursor ? cursor.nextElementSibling : root.firstElementChild;
+      if (el !== expected) root.insertBefore(el, expected);
+      cursor = el;
+    }
+    const keep = new Set(desired);
+    for (const child of [...root.children]) {
+      if (keep.has(child)) continue;
+      if (child.classList.contains('sf-prompt--leaving')
+        || child.classList.contains('sf-prompt-chip--leaving')) continue;
+      child.remove();
+    }
   }
 
   function syncChoiceHighlight() {
@@ -629,11 +695,12 @@ export function createPromptDeck(ctx = {}) {
       entry.spec = { ...entry.spec, ...normalized };
       renderFrame(entry);
     } else {
+      killLeaving(normalized.id); // a still-mounted exit frame for this id makes way synchronously
       entry = {
         spec: normalized,
         seq: ++seqCounter,
         frameEl: null, chipEl: null, highlightIndex: null, lastCountdown: null,
-        arcDeadlineAt: null, arcSpan: 0, clockShown: null,
+        arcDeadlineAt: null, arcSpan: 0, clockShown: null, choiceSig: null,
       };
       entry.frameEl = buildFrame(entry);
       renderFrame(entry);
@@ -655,7 +722,7 @@ export function createPromptDeck(ctx = {}) {
     const choices = Array.isArray(spec.choices)
       ? spec.choices.map((c) => ({
         id: String(c && c.id || ''),
-        label: String(c && (c.label != null ? c.label : c.id) || ''),
+        label: String(c && (c.label != null ? c.label : String(c.id || '').replace(/_/g, ' ')) || ''),
         disabled: !!(c && c.disabled),
         danger: !!(c && c.danger),
         cancel: !!(c && c.cancel),
@@ -698,27 +765,46 @@ export function createPromptDeck(ctx = {}) {
     return id != null ? entries.has(String(id)) : entries.size > 0;
   }
 
+  /** Synchronous unmount of a still-mounted exit pair for `id` — the re-offer path calls this so
+   *  one id never shows two cards inside the exit window. */
+  function killLeaving(id) {
+    const rec = leaving.get(id);
+    if (!rec) return;
+    leaving.delete(id);
+    clearTimeout(rec.timer);
+    for (const node of rec.nodes) node.remove();
+  }
+
   function remove(id) {
     const entry = entries.get(id);
     if (!entry) return false;
     entries.delete(id);
     if (entry.clockGauge && typeof entry.clockGauge.dispose === 'function') entry.clockGauge.dispose();
-    // Resolved/expired cards get a short exit slide instead of a pop-out; the frame stays mounted
-    // for the transition window so layout() is not re-run per frame. Reduced motion removes
-    // instantly — the state change is already unambiguous via the card disappearing.
+    // Resolved/expired cards get a short exit slide instead of a pop-out: the frame stays mounted
+    // for the transition window and unmounts on its own timer — layout() never detaches it.
+    // Reduced motion removes instantly — the state change is already unambiguous via the card
+    // disappearing.
     const frame = entry.frameEl;
+    const chip = entry.chipEl;
+    killLeaving(id);
     if (frame && frame.isConnected && !reducedMotion()) {
       frame.classList.add('sf-prompt--leaving');
       frame.style.pointerEvents = 'none';
-      const chip = entry.chipEl;
-      if (chip && chip.isConnected) chip.classList.add('sf-prompt-chip--leaving');
-      setTimeout(() => {
-        frame.remove();
-        if (chip) chip.remove();
+      const nodes = [frame];
+      if (chip && chip.isConnected) {
+        chip.classList.add('sf-prompt-chip--leaving');
+        nodes.push(chip);
+      }
+      const timer = setTimeout(() => {
+        leaving.delete(id);
+        for (const node of nodes) node.remove();
+        // The last node out turns the root off; leaving nodes own the root's visibility tail.
+        if (root.isConnected && !root.childElementCount) root.hidden = true;
       }, 170);
+      leaving.set(id, { timer, nodes });
     } else {
       if (frame) frame.remove();
-      entry.chipEl && entry.chipEl.remove();
+      if (chip) chip.remove();
     }
     if (raisedId === id) raisedId = null;
     layout();

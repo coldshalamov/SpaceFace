@@ -1020,7 +1020,7 @@ function buildDial(view) {
 
 function reelLegend(view) {
   if (!view.clips.length) return 'LAND A NAMED STUNT OR A KILL — THE REEL CATCHES IT HERE';
-  return 'DRAG A WINDOW EDGE TO PULL IT OPEN · [ ] TRIM · ARROWS RIDE THE RAIL';
+  return 'DRAG A WINDOW EDGE TO RESIZE · [ AND ] TRIM · ARROW KEYS SCRUB';
 }
 
 function exitReel(view) {

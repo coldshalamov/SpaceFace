@@ -134,7 +134,8 @@ const GIMMICK_LABELS = {
 function getGimmickLabel(gimmick) {
   if (!gimmick) return '';
   const normalized = String(gimmick).toLowerCase().replace(/_/g, '-');
-  return GIMMICK_LABELS[normalized] || GIMMICK_LABELS[String(gimmick).toLowerCase()] || String(gimmick).toUpperCase();
+  return GIMMICK_LABELS[normalized] || GIMMICK_LABELS[String(gimmick).toLowerCase()]
+    || String(gimmick).replace(/_/g, ' ').toUpperCase();
 }
 
 export function targetDisplayName(e) {
@@ -196,8 +197,8 @@ export function richSeamTargetReadout(target, state) {
       return Object.freeze({
         state: 'open',
         text: opportunity.reservationId
-          ? `${seamLabel} · NPC HELP LOCK · +${opportunity.bonusU}u`
-          : `${seamLabel} · +${opportunity.bonusU}u · HOT CUT`,
+          ? `${seamLabel} · ALREADY CLAIMED · +${opportunity.bonusU}u`
+          : `${seamLabel} · +${opportunity.bonusU}u · OPEN`,
         opportunityId: opportunity.opportunityId,
       });
     }
@@ -309,7 +310,9 @@ export function wingLineFor(target, playerId) {
   const wingRole = IDENTITY_WING_ROLE[doctrineId] || (doctrineId ? 'press' : null);
   const tracking = target.data && target.data.combat && target.data.combat.targetId != null
     && playerId != null && target.data.combat.targetId === playerId;
-  const shortId = squadId.length > 18 ? squadId.slice(0, 17) + '…' : squadId;
+  // Squad ids are internal hex slugs — a long one shows only its tail as a unit number, never
+  // a truncated hash ('WING SQ-77F3C2A19B04D1E…').
+  const shortId = squadId.length > 8 ? squadId.slice(-4) : squadId;
   let line = `WING ${shortId.toUpperCase()}`;
   // Role slugs are already display-shaped (area_denial reads AREA DENIAL), so the panel
   // shares the grammar's vocabulary instead of keeping a second table to drift.

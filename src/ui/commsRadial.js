@@ -207,7 +207,7 @@ function actionReason(actionId, availability, state, target) {
   }
   if (actionId === CONTACT_HAIL_ACTION_HEAVE_TO && availability.heaveToAvailable !== true) {
     const role = roleWord(target);
-    if (role && !HEAVE_TO_COMPLIANT_ROLES.has(role)) return 'ROLE WILL NOT HEAVE';
+    if (role && !HEAVE_TO_COMPLIANT_ROLES.has(role)) return 'CREW WILL NOT HEAVE TO';
     const record = traderRecord(state, availability.targetId);
     if (record && record.heaveTo === false) return 'NO HOLD WINDOW';
     return '';

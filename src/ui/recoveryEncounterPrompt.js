@@ -18,7 +18,7 @@ export function recoveryOutcomeText(receipt) {
   if (outcome === 'blackbox') return 'BLACK BOX SECURED';
   if (outcome === 'strip') return 'COMPONENTS RECOVERED';
   if (receipt && receipt.failure === 'reactor_burst') return 'RECOVERY LOST · CORE BURST';
-  return `RECOVERY ${outcome.replace(/_/g, ' ').toUpperCase()}`;
+  return 'RECOVERY CLOSED';
 }
 
 export function recoveryStabilizationText(readout) {

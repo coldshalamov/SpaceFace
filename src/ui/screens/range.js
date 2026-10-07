@@ -372,7 +372,7 @@ const STEP_S = 1 / 60;
 const MAX_FRAME_S = 0.1;
 const BOX_INSET = 24;
 const TRAIL_MAX = 180;
-const VERDICT_IDLE = 'FLY THE RULE';
+const VERDICT_IDLE = 'READY — FLY THE COURSE';
 const DRAWER_LABELS = Object.freeze({ rules: 'Rules', bestiary: 'Bestiary' });
 
 // The rung rail, its stable drill IDs, the rung-index lookup, and the caps→sentence-case helper
@@ -1130,7 +1130,7 @@ function evaluateElasticWhip(sim) {
         return { kind: 'fail', text: 'NO WHIP, NO SNAP', because: 'Without the whip the wasp stays put.' };
       }
       if (stored <= 0) {
-        return { kind: 'fail', text: 'STORE THE STRETCH', because: 'Burn away first. The snap is stored energy, not a shove.' };
+        return { kind: 'fail', text: 'NO STRETCH STORED', because: 'Burn away first. The snap is stored energy, not a shove.' };
       }
       return { kind: 'fail', text: 'THE HEAVY END WINS', because: 'A heavy hull shrugs. The whip snaps light bodies.' };
     }
@@ -1602,7 +1602,7 @@ export function tickOrbitReleaseDrill(sim, stepS, { input = {}, toggleTether = f
       cleared: false,
       verdict: {
         kind: 'fail',
-        text: sim.tether.releasedAfterAttach ? 'HALF AN ORBIT' : 'IT NEVER TURNED',
+        text: sim.tether.releasedAfterAttach ? 'RELEASED TOO EARLY' : 'NO FULL ORBIT',
         because: sim.tether.releasedAfterAttach
           ? `You let go at ${Math.round(sim.orbit.swept * 180 / Math.PI)}°. The gate wants the arc.`
           : 'Attach, take the long way around, then release into the exit.',
@@ -1981,7 +1981,7 @@ export function tickConeLaneDrill(sim, stepS, { input = {}, toggleCone = false, 
   if (sim.timeS > 30) {
     return {
       cleared: false,
-      verdict: { kind: 'fail', text: sim.cone.on ? 'THE LANE RAN OUT' : 'CLOSED WEDGE', because: sim.because },
+      verdict: { kind: 'fail', text: sim.cone.on ? 'THE LANE RAN OUT' : 'THE CONE NEVER OPENED', because: sim.because },
       cue: 'deny',
     };
   }
@@ -2111,7 +2111,7 @@ export function tickSkimBandDrill(sim, stepS, { input = {}, toggleSkim = false, 
   if (sim.timeS > 36) {
     return {
       cleared: false,
-      verdict: { kind: 'fail', text: sim.scoop.on ? 'THE BAND KEPT ITS MOTES' : 'SCOOP CLOSED', because: sim.because },
+      verdict: { kind: 'fail', text: sim.scoop.on ? 'THE BAND HELD ITS ORE' : 'THE SCOOP NEVER OPENED', because: sim.because },
       cue: 'deny',
     };
   }

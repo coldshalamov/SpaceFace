@@ -308,7 +308,7 @@ export function buildLoadoutPresetRailModel({
     // verb; its reasons stay on the preset lozenges, not here.)
     canSave: count < LOADOUT_PRESET_CAP_PER_HULL,
     reasonText: count >= LOADOUT_PRESET_CAP_PER_HULL
-      ? `${LOADOUT_PRESET_CAP_PER_HULL} of ${LOADOUT_PRESET_CAP_PER_HULL} builds on this hull`
+      ? `All ${LOADOUT_PRESET_CAP_PER_HULL} build banks are full on this hull — delete one to save another`
       : '',
     labelKey: saveLabel.labelKey,
     label: saveLabel.label,
@@ -343,7 +343,7 @@ export function canSavePresetForHull(player, hullDefId) {
     cap: LOADOUT_PRESET_CAP_PER_HULL,
     canSave: count < LOADOUT_PRESET_CAP_PER_HULL,
     reasonText: count >= LOADOUT_PRESET_CAP_PER_HULL
-      ? `${LOADOUT_PRESET_CAP_PER_HULL} of ${LOADOUT_PRESET_CAP_PER_HULL} builds on this hull`
+      ? `All ${LOADOUT_PRESET_CAP_PER_HULL} build banks are full on this hull — delete one to save another`
       : '',
   };
 }
