@@ -1874,7 +1874,7 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
   } else if (quiet) {
     // No lock yet — quiet refresh may acquire the nearest hostile.
   }
-  if (TARGET_LOCK_LAB.mode === 'cursor' && quiet && TARGET_LOCK_LAB.reacquireGraceS > 0
+  if ((TARGET_LOCK_LAB.mode === 'cursor' || TARGET_LOCK_LAB.mode === 'dir') && quiet && TARGET_LOCK_LAB.reacquireGraceS > 0
       && state.input && state.input.aimIntentActive === true && state.input.autoFire !== true) {
     const memo = LOCK_MEMO.get(state) || { id: null, lostAt: null };
     LOCK_MEMO.set(state, memo);
@@ -1895,7 +1895,7 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
   let best = null;
   let bestD2 = Infinity;
   const inp = state.input;
-  const aim = TARGET_LOCK_LAB.mode === 'cursor' && inp && inp.aimIntentActive === true && inp.aimWorld
+  const aim = (TARGET_LOCK_LAB.mode === 'cursor' || TARGET_LOCK_LAB.mode === 'dir') && inp && inp.aimIntentActive === true && inp.autoFire !== true && inp.aimWorld
     && Number.isFinite(inp.aimWorld.x) && Number.isFinite(inp.aimWorld.z) ? inp.aimWorld : null;
   const rangeWeight = Number(TARGET_LOCK_LAB.rangeWeight) || 0;
   for (const e of indexedShipLikeScan(state)) {
@@ -1907,7 +1907,17 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
     if (d2 > SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE) continue;
-    const cost = aim ? Math.hypot(e.pos.x - aim.x, e.pos.z - aim.z) + rangeWeight * Math.sqrt(d2) : d2;
+    let cost = d2;
+    if (aim) {
+      const r = Math.sqrt(d2);
+      if (TARGET_LOCK_LAB.mode === 'dir') {
+        // bearing form: distance from the hostile to the aim ray at the hostile's own range
+        const a = Math.atan2(aim.z - player.pos.z, aim.x - player.pos.x);
+        cost = Math.hypot(e.pos.x - (player.pos.x + Math.cos(a) * r), e.pos.z - (player.pos.z + Math.sin(a) * r)) + rangeWeight * r;
+      } else {
+        cost = Math.hypot(e.pos.x - aim.x, e.pos.z - aim.z) + rangeWeight * r;
+      }
+    }
     if (cost < bestD2) {
       best = e;
       bestD2 = cost;
