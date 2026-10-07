@@ -65,11 +65,13 @@ import { impulseCharges } from '../systems/impulseCharges.js';
 import { hullBurst } from '../systems/hullBurst.js';                   // hull-burst overhaul slice C: timed front-wedge hurl (Gravity Bumper)
 import { massSeed } from '../systems/massSeed.js';               // PQ-011/SF-11 deployable anchor Mass Seed
 import { fields } from '../systems/fields.js';                   // PQ-012/SF-12 continuous field kernel (Well/Repulsor/Cone)
+import { gyreSnare } from '../systems/gyreSnare.js';             // Gyre Snare: held-key telekinetic katamari lash (O)
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js'; // PQ-027/SF-22 timed Ceres current + World Site adapter
 import { planetRuntime } from '../systems/planetRuntime.js';     // PQ-013/SF-14 planetary site (sling/skim/harvest/reentry)
 import { massSeedHud } from '../ui/massSeedHud.js';              // PQ-011: seed status pill + lock-point marker (DOM-guarded)
 import { fieldHud } from '../ui/fieldHud.js';                    // PQ-012: field state/cooldown/denial chip (DOM-guarded)
+import { gyreHud } from '../ui/gyreHud.js';                      // Gyre Snare lash state pill (DOM-guarded)
 import { planetHud } from '../ui/planetHud.js';                  // PQ-013: band pill + heat readout (DOM-guarded)
 import { miningHud } from '../ui/miningHud.js';                  // INF: mining beam's vent/rich-core/seam rhythms at the contact (DOM-guarded)
 // Massline Physics Identity — Wave M2 (design/revamp/MASSLINE_PHYSICS_IDENTITY.md). All eight are
@@ -451,6 +453,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['massSeed', massSeed],
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
+    ['gyreSnare', gyreSnare],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],
@@ -552,6 +555,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['masslineHud', masslineHud],
     ['massSeedHud', massSeedHud],
     ['fieldHud', fieldHud],
+    ['gyreHud', gyreHud],
     ['planetHud', planetHud],
     ['miningHud', miningHud],
     ['sectorPostcard', sectorPostcard],
@@ -797,6 +801,11 @@ export function createRegistry(ctx) {
   // reason) settle BEFORE physics' reconcile pass, so a collapsed seed can never leave a ghost
   // constraint. It is deliberately NOT in the sf-sim curated harness list — the 47-A golden never
   // presses deploy, so the system is a strict no-op there.
+  // gyreSnare (Gyre Snare katamari lash) shares fields' slot: it reads the settled flight/input
+  // commands then queues its cone-pull, hold-orbit, suck, and launch impulses on the same
+  // physics-command membrane, so this tick's SG-02 solve applies them. It is input-only — the
+  // beam never activates without the held verb — it is NOT in the sf-sim curated list, and the
+  // 47-A golden never presses the key; the runtime mirror (state.gyreSnare) is never serialized.
   // fields (PQ-012) sits immediately before physics, after the massSeed/uniqueLootAbilities/
   // dockingCorridor deployable family: the continuous-field kernel reads the settled flight/input
   // commands, then queues its bounded, coupling-selective accelerations on the physics-command

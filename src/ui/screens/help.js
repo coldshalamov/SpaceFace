@@ -135,6 +135,7 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Cruise drive', 'cruise', (g) => g],
   ['Deploy nav beacon', 'deployBeacon', (g) => g],
   ['Jettison cargo lot', 'jettisonLot', (g) => g],
+  ['Gyre Snare (hold: lash; release: bowl)', 'gyreSnare', (g) => g],
 ]);
 
 // Rows with no pad action: the analogue sticks and the one verb a pad does not own. Keyed by
@@ -155,6 +156,7 @@ const GAMEPAD_ROW_ORDER = Object.freeze([
   'Detonate charge', 'Throw impulse charge', 'Cloak', 'Bullet time', 'Cruise drive',
   'Scanner pulse', 'Anchor Mass Seed', 'Deploy attractive Well', 'Clearing Cone',
   'Skim collector', 'World Site beam', 'Deploy nav beacon', 'Jettison cargo lot',
+  'Gyre Snare (hold: lash; release: bowl)',
 ]);
 
 // The static rows carry no action, so their text is authored here. Everything else is derived.
@@ -229,6 +231,7 @@ export function controlSections(state) {
       ['Deploy attractive Well (at aim; pulls light bodies & shots — heavy ships shrug)', 'deployWell'],
       ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
       ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
+      ['Gyre Snare (hold to beam a mass basin ahead; the first body to reach its heart is tethered in orbit — nearby mass absorbs in, katamari-style; release to bowl the clump)', 'gyreSnare'],
       ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
       ['Drop bomb (releases at ship velocity; payload from the bomb bay)', 'dropBomb'],
       ['Cycle bomb-bay payload', 'cycleBomb'],

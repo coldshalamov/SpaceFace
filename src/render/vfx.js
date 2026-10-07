@@ -38,6 +38,7 @@ import { CombatContactVfx } from './vfx/combatContactVfx.js';
 import { DamagedPortVfxPlanner } from './vfx/damagedPortVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
+import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
 import { fieldSignature } from './forceLanguage/catalog.js';
 import { createForceSurfacePrecompileMesh } from './forceLanguage/sweptSurfaceBatch.js';
@@ -12114,6 +12115,23 @@ export const vfx = {
     if (this._fieldGeom) return this._fieldGeom.update(dt, this.state);
   },
 
+  // Gyre Snare presentation: the published state.gyreSnare mirror owns existence —
+  // the beam exists while phase !== 'off' and the clump overlay while the bowling ball flies.
+  _gyreRelevant() {
+    const g = this.state && this.state.gyreSnare;
+    return !!g && (g.phase !== 'off' || g.launchedId != null);
+  },
+  _initGyreSnare() {
+    if (!this._scene || this._gyreSnareFx) return;
+    this._gyreSnareFx = new GyreSnarePresentation(this._scene, {
+      toLocal: this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)),
+    });
+  },
+  _updateGyreSnare(dt) {
+    if (!this._gyreSnareFx && this._gyreRelevant()) this._initGyreSnare();
+    if (this._gyreSnareFx) this._gyreSnareFx.update(dt, this.state);
+  },
+
   _fieldFlowRelevant() {
     // A live hull burst draws its wedge through the field presentation (forceLanguage/hullBurstField.js).
     return !!(this.state?.fields?.active?.length) || this.state?.hullBurst?.phase === 'active';
@@ -12327,6 +12345,7 @@ export const vfx = {
       const fields = this._updateFieldGeometry(dt);
       sub.fieldFlow = fields ? fields.surfaces : 0;
     } else sub.fieldFlow = 0;
+    if (this._gyreRelevant() || this._gyreSnareFx) this._updateGyreSnare(dt);
     if (this._actionVfx) this._actionVfx.update(this.state);
     if (this._bombDetonationVfx) this._bombDetonationVfx.update(this.state);
     if (this._statusMatterVfx) this._statusMatterVfx.update(this.state);

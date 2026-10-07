@@ -127,6 +127,10 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   cruise: Object.freeze(['r1+dRight']),           // RB layer: the long-burn state, rightward = forward
   deployBeacon: Object.freeze(['r1+view']),       // RB+View: mark the claim while running
   jettisonLot: Object.freeze(['r1+home']),        // RB+Guide: dump the hold lot while running
+  // The Gyre Snare is a HELD verb: RB+Y (the combat layer's last free chord — Y is the
+  // repulsor hand solo, and holding it under the boost finger reads as "grip the mass").
+  // Hold to beam and hold the clump; let go to bowl it.
+  gyreSnare: Object.freeze(['r1+alt']),           // RB+Y: hold the lash, release to bowl
   // The hull burst (Gravity Bumper / Fire Lance / Grip Bumper) has no pad verb (owner principle
   // 2026-09-30): the fitted boost upgrade rides the boost button itself, fired by the hullBurst
   // system polling the player's boost flag. There is nothing to bind.
@@ -312,6 +316,7 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   cruise: 'flight',
   deployBeacon: 'flight',
   jettisonLot: 'flight',
+  gyreSnare: 'flight',
   cancel: 'modal',
   tabPrev: 'modal',
   tabNext: 'modal',
@@ -426,6 +431,10 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // blade severing one of the player's lines is a warning jolt; the whip's stored snap is a crack.
   'massline:playerLineCut': { strong: 0.55, weak: 0.35, ms: 120 },
   'tether:whipSnap':        { strong: 0.70, weak: 0.30, ms: 100 },
+  // Gyre Snare: the snag is a solid bite, the bowl is the hard crack, an absorb a small tap.
+  'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
+  'gyre:launched':          { strong: 0.90, weak: 0.70, ms: 160 },
+  'gyre:absorbed':          { strong: 0.30, weak: 0.20, ms: 50 },
 });
 // Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
 export const HAPTIC_RELEASE_PULSES = Object.freeze({
@@ -811,6 +820,9 @@ export function createGamepad(ctx) {
     // is the player's own stored release. Both pulse through the same one-live-pulse gate.
     bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
     bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
+    bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
+    bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
+    bus.on('gyre:absorbed', () => startPulse(HAPTIC_VERB_PULSES['gyre:absorbed'], 'gyre:absorbed'));
   }
 
   const gp = {

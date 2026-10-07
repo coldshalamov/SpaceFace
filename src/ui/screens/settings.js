@@ -237,7 +237,8 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // new-profile Massline primary and F remains its permanent alias.
 export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'siteBeam', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
-  'dropBomb', 'cycleBomb', 'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone'];
+  'dropBomb', 'cycleBomb', 'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
+  'gyreSnare'];
 export const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -267,6 +268,8 @@ export const REBIND_LABELS = {
   deployWell: 'Field: deploy attractive Well',
   deployRepulsor: 'Field: deploy Repulsor',
   toggleClearingCone: 'Field: toggle Clearing Cone',
+  // The Gyre Snare is a held verb: grip to beam/hold, release to bowl the clump.
+  gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
   dropBomb: 'Bomb bay: drop bomb',
   cycleBomb: 'Bomb bay: cycle payload',
 };
@@ -279,7 +282,7 @@ export const GAMEPAD_REBINDABLE = [
   'accept', 'cancel', 'massline', 'dock', 'deployRepulsor', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'tabPrev', 'tabNext',
   'scanPulse', 'cruise', 'bulletTime', 'cloak', 'chargeThrow', 'siteBeam', 'deployMassSeed', 'deployWell',
-  'toggleClearingCone', 'toggleSkimCollector', 'deployBeacon', 'jettisonLot',
+  'toggleClearingCone', 'toggleSkimCollector', 'deployBeacon', 'jettisonLot', 'gyreSnare',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
@@ -316,6 +319,7 @@ export const GAMEPAD_REBIND_LABELS = {
   toggleSkimCollector: 'Field: toggle skim collector',
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',
+  gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
 };
 
 function controlSchemeFor(settings) {

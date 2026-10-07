@@ -287,6 +287,11 @@ const VERB_BINDINGS = {
   // tables and ui/bindings.js, same audit as Digit4-7) and sits with the deployable family. The
   // planetRuntime system owns the collector state; yield is path x density, never a hold timer.
   toggleSkimCollector: ['Digit8'], // edge: toggle the atmospheric skim collector (The Anvil bands)
+  // The Gyre Snare — held-key telekinetic katamari lash (gyreSnare system owns the state).
+  // KeyO is the LAST free letter key: plain 'o' only (the UI Band cycle claims Shift+O, so the
+  // unmodified key still falls through to flight). Level verb: hold to beam + hold the clump,
+  // release to bowl it; hold-to-toggle latch opt-in via accessibility.holdToToggle.gyreSnare.
+  gyreSnare:          ['KeyO'],     // level: hold to pull/snag/grow a ball, release to bowl it
   // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Digit9 is free repo-wide (same audit as
   // Digit4-8; Digit1-3 carry the ORDNANCE band) and completes the deployable row.
   // Comma is free repo-wide (checked against both scheme tables and ui/bindings.js) and sits
@@ -589,6 +594,9 @@ const GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS = Object.freeze([
   'dropBomb', 'cycleBomb',
   'scanPulse', 'cruise', 'deployBeacon', 'deployMassSeed', 'deployWell', 'toggleClearingCone',
   'toggleSkimCollector', 'siteBeam', 'bulletTime', 'cloak', 'chargeThrow', 'jettisonLot',
+  // gyreSnare is a held pad chord (RB+Y): a grip held across a dock or tab-hide must not
+  // re-fire the beam the moment the pad publishes again.
+  'gyreSnare',
 ]);
 
 function freshGamepadLifecycleQuarantine() {
@@ -604,7 +612,7 @@ function freshGamepadLifecycleQuarantine() {
 // accessibility.holdToToggle[verb] flips one on. A latch survives until the next press edge or
 // a context change (dock, death, any screen/modal, lifecycle reset).
 export const HOLD_TO_TOGGLE_ACTIONS = Object.freeze([
-  'boost', 'brake', 'bulletTime', 'massline', 'reelIn', 'reelOut',
+  'boost', 'brake', 'bulletTime', 'gyreSnare', 'massline', 'reelIn', 'reelOut',
 ]);
 
 function holdToToggleEnabled(state) {
@@ -1292,6 +1300,7 @@ export const input = {
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
       siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
+      gyreSnare: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (shouldNeutralizeFlightInput(state, modalInputActive())) {
@@ -1310,6 +1319,7 @@ export const input = {
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
       acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false;
+      acts.gyreSnare = false;
       const masslineHeldThroughModal = this._held(state, 'tether')
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
@@ -1742,6 +1752,10 @@ export const input = {
       this._held(state, 'bulletTime') || this._padHeld(gp, 'bulletTime'), toggleLive('bulletTime'));
     acts.cloakToggle = edge('cloak') || this._padEdge(gp, 'cloak');
     acts.throwArm = throwArmHeld;
+    // The Gyre Snare is a LEVEL verb like bulletTime/massline: hold to run the beam and hold the
+    // clump; the falling edge is the bowl. Opt-in press-to-toggle latch rides the same FB-113 path.
+    acts.gyreSnare = applyHoldToggle(holdLatches, holdEdges, 'gyreSnare',
+      this._held(state, 'gyreSnare') || this._padHeld(gp, 'gyreSnare'), toggleLive('gyreSnare'));
     // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a
     // press MEANS in each state (arm a spool, cancel a spool, disengage a burn).
     const travelPressed = edge('travelBurn') || !!(gp && gp.isConnected()

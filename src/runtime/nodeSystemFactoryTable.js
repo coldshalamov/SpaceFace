@@ -64,11 +64,13 @@ import { impulseCharges } from '../systems/impulseCharges.js';
 import { hullBurst } from '../systems/hullBurst.js';
 import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
+import { gyreSnare } from '../systems/gyreSnare.js';
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js';
 import { planetRuntime } from '../systems/planetRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
 import { fieldHud } from '../ui/fieldHud.js';
+import { gyreHud } from '../ui/gyreHud.js';
 import { planetHud } from '../ui/planetHud.js';
 import { miningHud } from '../ui/miningHud.js';
 import { survivalHud } from '../ui/survivalHud.js';
@@ -255,6 +257,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['massSeed', massSeed],
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
+    ['gyreSnare', gyreSnare],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],
@@ -354,6 +357,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['masslineHud', masslineHud],
     ['massSeedHud', massSeedHud],
     ['fieldHud', fieldHud],
+    ['gyreHud', gyreHud],
     ['planetHud', planetHud],
     ['miningHud', miningHud],
     ['survivalHud', survivalHud],

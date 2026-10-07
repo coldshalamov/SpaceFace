@@ -3001,6 +3001,77 @@ export const RECIPES = [
     gainMult: 1.0,
     pitchRange: [0.96, 1.1],
   },
+  // --- Gyre Snare (held-verb katamari lash) ---------------------------------
+  // Snag: a crystalline "grip" — a rising glassy fifth into a sub bite, the lash
+  // locking onto mass. Distinct from lock_acquired (UI) and masslineLatch (rope):
+  // this is the gravity tool taking hold.
+  {
+    id: 'sfx_gyre_snag',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_snag_glass', 'sfx_gyre_snag_bite'],
+    gainMult: 0.9,
+    pitchRange: [0.97, 1.06],
+  },
+  {
+    id: 'sfx_gyre_snag_glass',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 620, freqSweep: [620, 1240], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_gyre_snag_bite',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.05 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.9,
+    subBass: { startFreq: 110, endFreq: 46, dur: 0.12, gain: 0.6 },
+  },
+  // Absorb: the small glassy tick of a swallowed mass clicking into the clump.
+  // Quiet on purpose — it can fire several times a second while the maw feeds.
+  {
+    id: 'sfx_gyre_absorb',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 480, freqSweep: [480, 900], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 1700, filterQ: 2.2,
+    pitchRange: [0.9, 1.25],
+  },
+  // Launch: the bowling-ball release — a whip-crack transient over a big falling
+  // sub whoosh. The single loudest voice in the weapon's vocabulary.
+  {
+    id: 'sfx_gyre_launch',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_launch_crack', 'sfx_gyre_launch_body'],
+    gainMult: 1.0,
+    pitchRange: [0.92, 1.05],
+  },
+  {
+    id: 'sfx_gyre_launch_crack',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.05 },
+    filterType: 'highpass', filterFreq: 1800, filterQ: 0.8,
+    transientClick: { gain: 0.85 },
+  },
+  {
+    id: 'sfx_gyre_launch_body',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 520, freqSweep: [520, 90], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 2400, filterQ: 0.7,
+    subBass: { startFreq: 170, endFreq: 34, dur: 0.32, gain: 0.7 },
+  },
   // Capacitor spool: the rising whine a spinal railgun / siege lance makes while its capacitors
   // recharge for the next shot. Heard on the cooldown tail so the released round feels charged.
   {
