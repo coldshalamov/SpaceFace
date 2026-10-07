@@ -119,9 +119,12 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     if (!power || !canFly(state, doc)) { closeWheel(); return; }
     if (power.id === 'jettisonLot' && !win.confirm('Jettison one cargo lot?')) { closeWheel(); return; }
     if (power.id === 'fullscreen') {
-      // Must remain directly inside a user gesture; failure never blocks playing.
-      const promise = doc.documentElement.requestFullscreen?.();
-      promise?.catch?.(() => showMessage('Fullscreen unavailable; play in this tab.'));
+      // Must remain directly inside a user gesture; failure never blocks playing. iPhone Safari has no element
+      // fullscreen at all, and some browsers throw instead of rejecting: either way the pilot is told.
+      const unavailable = () => showMessage('Fullscreen unavailable; play in this tab.');
+      const page = doc.documentElement;
+      if (typeof page.requestFullscreen !== 'function') unavailable();
+      else { try { page.requestFullscreen()?.catch?.(unavailable); } catch { unavailable(); } }
     } else if (power.id === 'help') {
       activate({ id: 'pause', kind: 'ui' }); openGuide();
     } else activate(power);

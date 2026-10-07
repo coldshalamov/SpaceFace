@@ -54,7 +54,9 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-edge-word { position:absolute; left:calc(17px * var(--mf-scale)); top:50%; writing-mode:vertical-rl; transform:translateY(-50%) rotate(180deg); font:600 12px/1 var(--mf-face); font-stretch:108%; letter-spacing:.2em; text-transform:uppercase; color:rgb(var(--mf-bone) / .82); }
 #sf-touch-overlay .mf-edge[aria-expanded="true"] .mf-e-edge { stroke:var(--mf-hand); }
 /* ---- the two keys: a gameboy diagonal, gun high, tether low ---- */
-#sf-touch-overlay .mf-buttons { z-index:5; position:absolute; right:calc(16px + var(--sf-safe-right,0px)); bottom:calc(18px + var(--sf-safe-bottom,0px)); width:calc(196px * var(--mf-scale)); height:calc(156px * var(--mf-scale)); pointer-events:none; }
+/* z-index 6 ties the handle (.mf-edge), and the keys and DOCK come later in the tree, so they win the tie: the handle's invisible
+   hit pad reaches 24px past it, and in landscape (844x390) that pad lies over the top of the gun key and half of DOCK */
+#sf-touch-overlay .mf-buttons { z-index:6; position:absolute; right:calc(16px + var(--sf-safe-right,0px)); bottom:calc(18px + var(--sf-safe-bottom,0px)); width:calc(196px * var(--mf-scale)); height:calc(156px * var(--mf-scale)); pointer-events:none; }
 #sf-touch-overlay .mf-key { pointer-events:auto; touch-action:none; position:absolute; isolation:isolate; display:grid; place-content:center; justify-items:center; gap:3px; padding:0; border:0; background:none; color:rgb(var(--mf-bone)); transition:transform 90ms ease; }
 #sf-touch-overlay .mf-key > svg:not([class]) { position:relative; z-index:2; width:calc(28px * var(--mf-scale)); height:calc(28px * var(--mf-scale)); fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 #sf-touch-overlay .mf-key-word { position:relative; z-index:2; font:700 12px/1 var(--mf-face); font-stretch:104%; letter-spacing:.08em; text-transform:uppercase; }
@@ -95,7 +97,7 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-beam-core { stroke:var(--mf-hand-hot); stroke-width:1.6; stroke-linecap:round; stroke-dasharray:3 8; }
 #sf-touch-overlay .mf-beam-tip { fill:var(--mf-hand-hot); }
 /* the contextual DOCK key: the same Lamp Key, only while a station is in range */
-#sf-touch-overlay .mf-dock { position:absolute; z-index:5; right:calc(18px + var(--sf-safe-right,0px)); bottom:calc(18px + 156px * var(--mf-scale) + 14px + var(--sf-safe-bottom,0px)); isolation:isolate; display:inline-flex; align-items:center; min-height:50px; padding:0 26px 0 22px; border:0; background:none; color:#1c1406; pointer-events:auto; touch-action:manipulation; font:800 15px/1 var(--mf-face); font-stretch:125%; letter-spacing:.16em; text-transform:uppercase; animation:mf-key-in 260ms var(--mf-over) both; }
+#sf-touch-overlay .mf-dock { position:absolute; z-index:6; right:calc(18px + var(--sf-safe-right,0px)); bottom:calc(18px + 156px * var(--mf-scale) + 14px + var(--sf-safe-bottom,0px)); isolation:isolate; display:inline-flex; align-items:center; min-height:50px; padding:0 26px 0 22px; border:0; background:none; color:#1c1406; pointer-events:auto; touch-action:manipulation; font:800 15px/1 var(--mf-face); font-stretch:125%; letter-spacing:.16em; text-transform:uppercase; animation:mf-key-in 260ms var(--mf-over) both; }
 #sf-touch-overlay .mf-dock::before { content:''; position:absolute; inset:0; z-index:-1; background:var(--mf-hand); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
 #sf-touch-overlay .mf-dock:active::before { background:var(--mf-hand-hot); }
 /* ---- the stick: an orrery that powers up under the thumb ---- */
@@ -197,7 +199,8 @@ const FLIGHT_CSS = `
 .sf-mobile-guide .mg-note { margin:0 0 12px; color:rgb(232 226 212 / .66); font-size:13px; }
 .sf-mobile-guide label { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; min-height:44px; font:600 12px/1.2 var(--dp-face-label,"Archivo",system-ui,sans-serif); font-stretch:112%; letter-spacing:.12em; text-transform:uppercase; color:rgb(232 226 212 / .82); }
 .sf-mobile-guide select, .sf-mobile-guide input[type="range"] { min-height:44px; font:500 15px var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); max-width:58%; }
-.sf-mobile-guide select { background:rgb(232 226 212 / .08); color:#e8e2d4; border:0; padding:0 10px; }
+/* 16px: iPhone Safari zooms the whole page when a select under 16px takes focus, and the deck keeps browser zoom on */
+.sf-mobile-guide select { background:rgb(232 226 212 / .08); color:#e8e2d4; border:0; padding:0 10px; font-size:16px; }
 .sf-mobile-guide .mg-check { justify-content:flex-start; text-transform:none; letter-spacing:.02em; font-weight:500; font-size:14px; }
 .sf-mobile-guide .mg-check input { width:22px; height:22px; }
 .sf-mobile-guide .mg-ready { position:relative; isolation:isolate; display:flex; align-items:center; min-height:50px; margin:12px 0 0 auto; padding:0 28px 0 24px; border:0; background:none; color:#1c1406; font:800 15px/1 var(--dp-face-display,"Archivo",system-ui,sans-serif); font-stretch:125%; letter-spacing:.16em; text-transform:uppercase; }
