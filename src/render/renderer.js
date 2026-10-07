@@ -580,7 +580,17 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
     const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
     let precollected = null;
     for (;;) {
-      const collectStep = collectIter.next();
+      let collectStep;
+      try {
+        collectStep = collectIter.next();
+      } catch (collectError) {
+        // A torn census used to propagate through the cook's best-effort catch
+        // (silent cold depth link) or reject the drain settle. Skip the
+        // pre-collect so the compile below pays the sync collect instead.
+        closeCookStepsIter(collectIter);
+        console.warn('[render] shadow-cast subject census drive failed; compiling without pre-collect', collectError);
+        break;
+      }
       if (collectStep.done) { precollected = collectStep.value; break; }
       await pace();
     }
@@ -589,7 +599,16 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const iterator = compileShadowDepthPipelinesSteps(depthOpts);
     for (;;) {
-      const step = iterator.next();
+      let step;
+      try {
+        step = iterator.next();
+      } catch (driveError) {
+        closeCookStepsIter(iterator);
+        console.warn('[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
+        return runCookSyncTwin('compile-shadow-depth-pipelines',
+          () => compileShadowDepthPipelines(depthOpts),
+          { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
+      }
       if (step.done) {
         if (step.value && step.value.stale === true) break;
         return step.value;
@@ -2849,6 +2868,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       // world's sweep runs even if the enter didn't re-set dirty.
       owner._meshReconcileDirty = true;
     }
+    let reconcileWorked = false;
     if (owner._meshReconcileDirty && !owner._reconcileIter
         && owner._reconcileFaultEpoch !== serviceFaultEpoch(owner.state)) {
       // The full pass is the poll's superset — close any suspended poll rather
@@ -2861,8 +2881,10 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         // Fixture/custom owners without the staged twin keep the atomic call.
         owner.reconcileMeshes();
       }
+      reconcileWorked = true;
     }
     if (owner._reconcileIter) {
+      reconcileWorked = true;
       // Once per pump invocation: a suspended sweep re-mints its scan env on
       // resume under a newer stamp (the refreshOnNewerBeat mechanism).
       owner._residencySweepBeatStamp = (owner._residencySweepBeatStamp || 0) + 1;
@@ -2907,7 +2929,10 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // The drain is budgeted and the late-present gate already throttles it on heavy
     // frames, so fold the drain into the same frame instead of stranding it.
     if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) owner._drainPendingMeshBuilds();
-    return 'full';
+    // A dirty flag banked behind the fault-epoch park mints no work — returning
+    // 'full' would starve the residency poll for the rest of the epoch, so a
+    // parked reconcile falls through to the poll section instead.
+    if (reconcileWorked) return 'full';
   }
   if (pollDue || owner._residencyPollIter) {
     const liveEpoch = owner.state && owner.state.world && owner.state.world.enterSerial != null
@@ -23124,7 +23149,16 @@ export const render = {
       if (options.force !== true
           && this._envMapTarget != null
           && earlyIblSource === this._envMapSource) return;
-      const pmrem = new THREE.PMREMGenerator(renderer);
+      // The generator carries program/RT setup per mint — cache it across
+      // bakes inside one context epoch and re-mint on a GL restore (the cached
+      // chain is dead GL state there).
+      const pmremContextSeq = Number(state && state.contextRestoreSeq) || 0;
+      if (!this._pmremGenerator || this._pmremContextSeq !== pmremContextSeq) {
+        try { if (this._pmremGenerator) this._pmremGenerator.dispose(); } catch (_) { /* cleanup-only */ }
+        this._pmremGenerator = new THREE.PMREMGenerator(renderer);
+        this._pmremContextSeq = pmremContextSeq;
+      }
+      const pmrem = this._pmremGenerator;
       // Capture the IBL from the foundry HDRI when it has arrived, NOT from the live scene.
       //
       // The live scene is deliberately near-black, so convolving it produced an environment with
@@ -23159,7 +23193,6 @@ export const render = {
         );
       }
       const envMap = envTarget.texture;
-      pmrem.dispose();
       if (reflectionEnv) reflectionEnv.dispose();
       // The PMREM output is a render-target texture: Texture.dispose() reaches no listener for
       // those (initTexture never runs on isRenderTargetTexture), so only disposing the owning
@@ -24563,7 +24596,7 @@ export const render = {
     // Per-pass sequence stamp: the shadow light census memo keys on it so a frame's
     // N withhold-gate evaluations share one whole-scene traverse.
     this._viewSyncSeq = (this._viewSyncSeq || 0) + 1;
-    resetDrawnCullPassBudget();
+    resetDrawnCullPassBudget(notePacedFrameSpend);
     // Opt-in CPU attribution only — no performance.now()/ring write when disabled.
     const useCpu = !!(this.state && this.state.perfRuntime
       && this.state.perfRuntime.renderWorkEnabled
@@ -25718,13 +25751,31 @@ export const render = {
       // Each settle pass's leg chain (entity sync, forced compose, pool/shadow
       // band, second compose) runs one atomic span — drive the stepped twin so
       // the legs pace between browser beats like the upgrade-promises walk.
+      // A torn step used to reject the whole settle loop and fail the boot:
+      // re-mint once (every leg is idempotent across the 8-pass envelope), then
+      // degrade to the sync twin — degraded-but-alive over dead boot.
       const drivePublishFirstPicture = async () => {
-        const iter = this._publishOpeningFirstPictureSteps();
-        for (;;) {
-          const publishStep = iter.next();
-          if (publishStep.done) return publishStep.value;
-          await yieldToBrowser();
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          const iter = this._publishOpeningFirstPictureSteps();
+          for (;;) {
+            let publishStep;
+            try {
+              publishStep = iter.next();
+            } catch (publishError) {
+              closeCookStepsIter(iter);
+              if (attempt === 0) {
+                console.warn('[boot] opening first-picture publish step faulted; re-minting', publishError);
+                break;
+              }
+              console.warn('[boot] opening first-picture publish step faulted twice; degrading to sync twin', publishError);
+              return runCookSyncTwin('opening-first-picture-publish',
+                () => this._publishOpeningFirstPicture(), true);
+            }
+            if (publishStep.done) return publishStep.value;
+            await yieldToBrowser();
+          }
         }
+        return false;
       };
       for (let pass = 0; pass < 8; pass++) {
         if (!(await drivePublishFirstPicture())) {
@@ -25732,14 +25783,30 @@ export const render = {
         }
         // Each settle pass pays a shadow-candidate census + the _meshes wait-set
         // walk — drive the stepped twin so a big scene does not freeze the last
-        // loading stretch between presenter beats.
+        // loading stretch between presenter beats. The same re-mint-once belt
+        // applies; a walk that faults twice skips the settle wait ([] answers
+        // "no pending upgrades") instead of failing the boot.
         const driveUpgradePromises = async () => {
-          const iter = this._openingFirstPictureUpgradePromisesSteps();
-          for (;;) {
-            const driveStep = iter.next();
-            if (driveStep.done) return driveStep.value;
-            await yieldToBrowser();
+          for (let attempt = 0; attempt < 2; attempt += 1) {
+            const iter = this._openingFirstPictureUpgradePromisesSteps();
+            for (;;) {
+              let driveStep;
+              try {
+                driveStep = iter.next();
+              } catch (upgradeError) {
+                closeCookStepsIter(iter);
+                if (attempt === 0) {
+                  console.warn('[boot] opening upgrade-promise walk faulted; re-minting', upgradeError);
+                  break;
+                }
+                console.warn('[boot] opening upgrade-promise walk faulted twice; skipping the settle wait', upgradeError);
+                return [];
+              }
+              if (driveStep.done) return driveStep.value;
+              await yieldToBrowser();
+            }
           }
+          return [];
         };
         const pending = await driveUpgradePromises();
         if (pending === null) throw new Error('opening first-picture camera unavailable');

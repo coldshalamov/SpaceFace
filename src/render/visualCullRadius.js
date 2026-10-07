@@ -101,9 +101,20 @@ let _passRemeasureCount = 0;
 // direction) and drain ≤DRAWN_CULL_REMEASURE_PER_PASS per pass — the staleness
 // bound becomes cap + ceil(queue/K) passes, still a hard bound.
 const _drawnCullForceRemeasure = [];
-export function resetDrawnCullPassBudget() {
+const _drainNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+  ? performance.now() : Date.now());
+// Each drained row pays one Box3.setFromObject subtree walk — a populated FIFO
+// used to stack up to PER_PASS unbudgeted walks atomically at every pass head.
+// Bound the burst inside ~1 ms (always ≥1 row so the queue can't starve) and
+// hand the caller's paced ledger the measured spend.
+export function resetDrawnCullPassBudget(debitSpend) {
   let spent = 0;
-  while (_drawnCullForceRemeasure.length && spent < DRAWN_CULL_REMEASURE_PER_PASS) {
+  let rows = 0;
+  const drainStart = _drainNow();
+  const deadline = drainStart + 1;
+  while (_drawnCullForceRemeasure.length && spent < DRAWN_CULL_REMEASURE_PER_PASS
+      && (rows === 0 || _drainNow() < deadline)) {
+    rows += 1;
     const mesh = _drawnCullForceRemeasure.shift();
     const data = mesh && mesh.userData;
     // Rows whose mesh parked (unparented) or had the queue stamp cleared drop —
@@ -156,6 +167,8 @@ export function resetDrawnCullPassBudget() {
     spent += 1;
   }
   _passRemeasureCount = spent;
+  const drainedMs = _drainNow() - drainStart;
+  if (drainedMs > 0 && typeof debitSpend === 'function') debitSpend(drainedMs);
 }
 
 function drawnCullRadiusForMesh(mesh) {
