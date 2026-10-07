@@ -688,11 +688,14 @@ test('a ball dying at its TTL fires the muffled shatter; an impact death does no
   hold(t);
   for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   t.state.input.actions.gyreSnare = false; t.sim.step();
-  // Quiet expiry: deadline reached, entity left dead in place.
-  ball.data.despawnAt = t.state.simTime - 0.01;
-  ball.alive = false;
-  t.sim.step();
+  // Quiet expiry through the REAL lifetimeSweep: the deadline lands inside the next
+  // step, the sweep kills + compacts the body in one pass, and gyreSnare's expiry-
+  // imminent branch sings the grave on the last live tick — the only window where
+  // the ball is both still in the map and past its deadline.
+  ball.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 8; i++) t.sim.step();
   assert.equal(t.sys._rt.ballId, null);
+  assert.ok(!t.state.entities.has(ball.id) || ball.alive === false, 'the sweep took the body');
   assert.ok(t.events.some((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death'),
     'TTL expiry sings the muffled shatter');
   t.cleanup();
@@ -826,5 +829,56 @@ test('launching the clump kicks the ship a small counter-Δv', async () => {
   release(t);
   assert.ok(t.player.vel.x < vxBefore, `recoil pushes off the +x nose (vx ${vxBefore.toFixed(2)}→${t.player.vel.x.toFixed(2)})`);
   assert.ok(Math.abs(t.player.vel.x - vxBefore) <= 6.5, 'the kick stays a nudge, not a knockback');
+  t.cleanup();
+});
+
+// -- coverage: a REAL serialize->load cycle of the core's data blob, mid-hold --
+test('a mid-hold core serializes its flag and the loaded sweep clears it', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'core held before the save boundary');
+  assert.equal(core.data.gyreCore, true);
+
+  // The save path JSON-serializes entity.data — prove the mark survives the round-trip
+  // (this is exactly why the load sweep exists), then land it on a fresh state.
+  const savedData = JSON.parse(JSON.stringify(core.data));
+  assert.equal(savedData.gyreCore, true, 'the residue flag is serialized with the body');
+
+  const t2 = await bootPhysics();
+  const loaded = rock(t2.sim, T.mawDist + 30, 0, 6, 4);
+  loaded.data = savedData; // restore: the loaded body's data blob carries the old mark
+  t2.bus.emit('save:loaded', {});
+  t2.sim.step();
+  assert.equal(loaded.data.gyreCore, undefined, 'the boundary sweep strips the stale flag');
+  // And the loaded body is pull-able again — snagging proof, not just flag deletion.
+  hold(t2);
+  for (let i = 0; i < 25; i++) { t2.state.input.actions.gyreSnare = true; t2.sim.step(); }
+  assert.equal(t2.sys._rt.coreId, loaded.id, 'a save-loaded body can still be cored');
+  t.cleanup();
+  t2.cleanup();
+});
+
+// -- coverage: fast-translation chase — the frame-damped spring tracks a boosting ship --
+test('a held core tracks a fast-translating ship without slipping the beam', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'core gripped before the chase');
+
+  // Boost-line speed (~280 wu/s) for ~1.5 s: the maw outruns the clump every frame and
+  // the ship-frame damping term is what reels it in rather than flapping strain.
+  t.player.vel.x = 280;
+  for (let i = 0; i < 90; i++) {
+    t.state.input.actions.gyreSnare = true;
+    t.player.vel.x = 280; t.player.vel.z = 0; // hold the drive — pinning, not drifting
+    t.sim.step();
+    t.player.pos.x += 280 / 60; // ship-frame motion is the player's own tick; mirror it
+  }
+  assert.notEqual(t.sys._rt.phase, 'off', 'the lash never dropped mid-chase');
+  const d = dist(core, t.player);
+  assert.ok(d < T.holdBreakDist, `core stays inside break distance (d=${d.toFixed(1)} < ${T.holdBreakDist})`);
   t.cleanup();
 });

@@ -122,6 +122,9 @@ export const gyreSnare = {
   destroy() {
     for (const off of this._subs || []) { if (typeof off === 'function') off(); }
     this._subs = [];
+    // Same-state destroy->init (system reload without a save/sector boundary) must still
+    // sweep data.gyreCore residue — a held body left marked is pull/snag/suck-immune forever.
+    this._sweepBoundaryResidue();
     this._rt = freshRuntime();
   },
 
@@ -517,9 +520,12 @@ export const gyreSnare = {
       const er = entityRadius(e);
       if (!absorbable) {
         // A non-absorbable body inside the annulus still feels the clump's gravity —
-        // courtesy tug toward the core at the same discounted rate the basin gives,
-        // or a 60 wu gravity ball has a dead zone around it.
-        if (dist > (rt.clumpRadius + er) * D.absorbOverlap && dist > 1e-4) {
+        // courtesy tug toward the core at the same discounted rate the basin gives, or
+        // a 60 wu gravity ball has a dead zone around it. The tug runs under the skin
+        // too: _pullPass's owned-skip is type-agnostic, so this lane is the ONLY pull
+        // a mine/projectile gets inside the annulus. (Inside the skin, rapier contact
+        // does the real work; the tug just keeps the gravity story unbroken.)
+        if (dist > 1e-4) {
           const tug = D.suckAccel * D.nonAbsorbablePull * couplingScale(this._profile(e));
           this._queueAccel(e, (dx / dist) * tug, (dz / dist) * tug, entityMass(e), dt, state);
         }
@@ -750,6 +756,15 @@ export const gyreSnare = {
         pub.ballClumpRadius = rt.ballClumpRadius;
         pub.ballTtl01 = ball.data.despawnAt != null && Number.isFinite(state.simTime)
           ? Math.max(0, Math.min(1, (ball.data.despawnAt - state.simTime) / D.ballTtlS)) : 1;
+        // TTL-imminent: the lifetime sweep marks the ball dead AND compacts it out of
+        // the entity map later this same step — so next tick 'ball' is undefined and the
+        // retire below goes silent. Sing the grave HERE, on the last tick the ball is
+        // still live: otherwise the authored shatter is unreachable on normal expiry.
+        if (ball.data.despawnAt != null && Number.isFinite(state.simTime)
+          && state.simTime >= ball.data.despawnAt && this.bus) {
+          this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: ball.pos.x, z: ball.pos.z } });
+          rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
+        }
       }
     }
     if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballClumpRadius = 0; }
@@ -847,7 +862,9 @@ export const gyreSnare = {
       // Deliberate release bowls a held clump; every other close (beam with no core, mid-launch,
       // or the player gone/docked) is a drop — never a launch from a dock seat or a corpse.
       if (rt.phase === PHASE.HOLD && player) this._launch(state, player);
-      else if (rt.phase === PHASE.BEAM) this._drop('released');
+      else if (rt.phase === PHASE.BEAM && player) this._drop('released');
+      // BEAM with no player isn't a release — it falls through to the !player drop
+      // below, so the reason reads 'player_lost' instead of a lie.
       // LAUNCH is exempt: the release edge that starts the bowl must not truncate its burst.
       // (Any other close — player gone, docked, dead — lands via the !player drop below.)
     }
