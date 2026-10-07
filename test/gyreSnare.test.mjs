@@ -1001,3 +1001,22 @@ test('a ball tracked through a load boundary keeps gyreLaunched and its deadline
   assert.equal(ball.data.despawnAt, dl, 'deadline intact — it despawns on schedule');
   t.cleanup();
 });
+
+// -- coverage: snag clears BOTH lifetime channels (despawnAt AND entity.ttl) --
+test('a body carrying a finite ttl is freed on snag — the lash holds mass in stasis', async () => {
+  const t = await bootPhysics();
+  const timed = rock(t.sim, T.mawDist, 0, 6, 4);
+  timed.ttl = 120;           // sibling sweep channel — same failure class as despawnAt
+  timed.data.despawnAt = 90; // and the data-table deadline, together in one body
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, timed.id, 'timed body cored');
+  assert.equal(timed.ttl, Infinity, 'ttl channel cleared on snag');
+  assert.equal(timed.data.despawnAt, undefined, 'despawnAt channel cleared on snag');
+  // Step past both old deadlines while still held — the clump must not evaporate.
+  for (let i = 0; i < 100; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(timed.alive, true, 'held core survives its old deadlines');
+  assert.equal(t.sys._rt.coreId, timed.id, 'no core_lost mid-hold');
+  release(t);
+  t.cleanup();
+});

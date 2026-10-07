@@ -142,10 +142,12 @@ export const gyreSnare = {
     const coreId = rt.coreId;
     const boundary = reason === 'save_loaded' || reason === 'new_game' || reason === 'sector_exit';
     if (boundary) {
-      // A mid-hold save serializes data.gyreCore onto the entity, and the fresh state swap
-      // makes the rt.coreId lookup stale — sweep every entity for the residue flag so a
-      // loaded rock isn't pull-immune for the rest of the save. gyreLaunched stays: a ball
-      // mid-flight in the save is still a launched body (it despawns on its own schedule).
+      // Defense-in-depth sweep: cores are never flags.persistent, so a real save can't
+      // serialize data.gyreCore and a fresh state swap can't resurrect it — but any path
+      // that rebuilds the entity map without our bookkeeping (fixture replay, a future
+      // persistent core type, a same-state reload) must not leave a residue flag making
+      // a body pull/snag/suck-immune forever. gyreLaunched stays: a ball mid-flight in
+      // the save is still a launched body (it despawns on its own schedule).
       this._sweepBoundaryResidue();
     } else if (!wasOff) {
       this._clearCoreMark();
@@ -438,8 +440,10 @@ export const gyreSnare = {
     best.data.gyreCore = true;
     // A timed body (timedWreckOrAsteroidDeadline) cored mid-hold would die at its own
     // deadline → core_lost evaporates the whole clump, members included. The lash
-    // holds mass in stasis — the deadline clears on snag and launch stamps its own TTL.
+    // holds mass in stasis — BOTH lifetime channels clear on snag: data.despawnAt
+    // (the data-table deadline) and entity.ttl (the sibling sweep at coreSystem).
     delete best.data.despawnAt;
+    best.ttl = Infinity;
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(best);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.snagged, {
@@ -521,7 +525,10 @@ export const gyreSnare = {
     const shipVz = finite(player && player.vel && player.vel.z);
     for (let i = 0; i < cands.length; i++) {
       const e = cands[i];
-      if (!e || e.alive === false || !e.pos || e.id === core.id) continue;
+      // gyreCore skip is parity with _pullPass — the id check already covers the core
+      // itself, but the flag skip makes the single-flagged-body invariant local instead
+      // of depending on sweep ordering.
+      if (!e || e.alive === false || !e.pos || e.id === core.id || (e.data && e.data.gyreCore)) continue;
       if (e.id === state.playerId) continue;
       const absorbable = ABSORBABLE.has(e.type);
       if (!isDynamic(e) || PULL_SKIP_TYPES.has(e.type)) continue;
