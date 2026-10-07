@@ -1,0 +1,98 @@
+verify: 90 jobs on 2 workers -> /tmp/t10/npc
+worker 0: ran 45
+worker 1: ran 45
+verify: done in 1.8 min
+{
+ "verify": {
+  "runs": 90,
+  "configs": 1,
+  "passing": 1,
+  "top": [
+   {
+    "cfg": "shipped",
+    "config": {
+     "shipped": true
+    },
+    "n": 90,
+    "fails": [],
+    "egOpenPct": 94.5,
+    "dive": 1,
+    "egN": 293,
+    "perType": {
+     "wasp": {
+      "ubHit": 78.8,
+      "nearHit": null,
+      "farMan": 30,
+      "farN": 466,
+      "egN": 92,
+      "egOpen": 94.6,
+      "dive": 0
+     },
+     "corsair": {
+      "ubHit": 84,
+      "nearHit": null,
+      "farMan": 16.7,
+      "farN": 486,
+      "egN": 50,
+      "egOpen": 94,
+      "dive": 0
+     },
+     "reaver": {
+      "ubHit": 97.7,
+      "nearHit": null,
+      "farMan": 2.6,
+      "farN": 495,
+      "egN": 42,
+      "egOpen": 100,
+      "dive": 1
+     },
+     "lancer": {
+      "ubHit": 85.1,
+      "nearHit": null,
+      "farMan": 15.9,
+      "farN": 466,
+      "egN": 0,
+      "egOpen": null,
+      "dive": 0
+     },
+     "bruiser": {
+      "ubHit": 98,
+      "nearHit": null,
+      "farMan": 2.2,
+      "farN": 403,
+      "egN": 35,
+      "egOpen": 94.3,
+      "dive": 0
+     },
+     "dart": {
+      "ubHit": 78.3,
+      "nearHit": 100,
+      "farMan": 23.2,
+      "farN": 297,
+      "egN": 34,
+      "egOpen": 94.1,
+      "dive": 0
+     },
+     "ghost": {
+      "ubHit": 72.9,
+      "nearHit": null,
+      "farMan": 28,
+      "farN": 186,
+      "egN": 0,
+      "egOpen": null,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 90.4,
+      "nearHit": null,
+      "farMan": 8.5,
+      "farN": 294,
+      "egN": 40,
+      "egOpen": 90,
+      "dive": 0
+     }
+    }
+   }
+  ]
+ }
+}

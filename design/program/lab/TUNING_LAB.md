@@ -952,3 +952,19 @@ fail identically on master. Results `results/mining-2b/{lab,verify-prod}`.
 with sloppy timing gets there); whether a gem jackpot is wanted on purpose; the focused bundle has no cargo writer
 (the mining stub hold of 40 was widened in the bench).
 
+
+## 11. Combined PR #236 (`lab/tuning-all-10`, 2026-10-07)
+
+master + #228, #229, #227, #230, #231, #232, #233, #234, #235 merged in that order with no conflicts. #225 is excluded and overlaps this PR. #227–#235 are closed as superseded. Decisions: #7 keeps "terrain is lethal" (no cap); #10 pays the cheapest rare; feel knobs stay at their tuned defaults; gamepad lock and Tab cycling are unchanged.
+
+Re-verify on the combined branch (`results/combined-all10/`):
+- tether passes all criteria (3.26° / 1.0012 / 1.611).
+- NPC passes (egress 94.5%, reaver and bruiser inside 99).
+- sling, lock and dock reproduce their solo-PR numbers exactly (dock: 108/108, 0 contacts).
+- mining rares are platinoid only.
+- beam dummy kills: 16/16.
+- aim: 89.43 / 93.25 full, 77.38 / 80.92 half, lead error 0. The drop from #228 alone is #229 jinking, confirmed by bisecting.
+
+Interaction flagged, not fixed: #229's egress away-cone (`EGRESS_AWAY_MIN_COS`) cuts live missile_rack_m kills from 16/24 to 10/24 (ablation without the cone: 16/24). This is an open knob for Robin.
+
+Tests: 395 focused files at 120 s each. 28 fail, and all 28 fail on master with identical failing subtests.

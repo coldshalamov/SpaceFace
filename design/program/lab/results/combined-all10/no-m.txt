@@ -1,0 +1,48 @@
+test/anvil-normal-work.test.mjs not ok 6 - real save/load preserves a loaded return through world records and never transfers it twice
+test/ceres-active-pockets.test.mjs not ok 9 - R5B materializes six inert object slots and two existing-budget collision anchors
+test/ceres-five-minute-acceptance.test.mjs not ok 1 - Browser route disables Windows native occlusion for the fixed simulation horizon
+test/ceres-five-minute-acceptance.test.mjs not ok 46 - seed-47 singleton Hornet traverses the toolkit camera corridor with production Flight V3 and Rapier
+test/ceres-five-minute-acceptance.test.mjs not ok 47 - seed-47 production Massline relatch retains and leads the Reaver through off-frustum fire
+test/doctrine-distinct.test.mjs not ok 3 - the production squad and combat-doctrine consumers expose each sampled profile
+test/fb-determinism-wall-time-guard.test.mjs not ok 1 - the real tree has zero unclassified wall-clock sites in simulation owners
+test/fb-determinism-wall-time-guard.test.mjs not ok 6 - the named sim owners no longer read wall clocks directly
+test/fb-heavy-hull-drives.test.mjs not ok 1 - FB-059 the heavy ladder is the real fleet: five distinct hulls, one shared drive law
+test/fb-heavy-hull-drives.test.mjs not ok 2 - FB-059 the fix mechanism exists authored: drive_gravimetric_m is in the catalog and unfitted
+test/fb-telegraph-every-archetype.test.mjs not ok 1 - FB-016: every roster row carries a telegraph block with bark, line and cue
+test/fun-critic.test.mjs not ok 19 - validateStripAdmission fails closed on bad schema, slow-motion, missing camera, unverified HUD, and missing hull
+test/hud-flight-attention.test.mjs not ok 5 - createToasts uses admitReceipt and keeps at most two receipts
+test/inf-world-courier-promotes-named.test.mjs not ok 1 - Cinder Run Courier: fixture mints her named, the boot shelves her, promote restores name, record and motion
+test/inf-world-courier-promotes-named.test.mjs not ok 2 - Cinder Run Courier: a shelved row and a re-minted fixture promote into ONE named courier
+test/inference-open-rest.test.mjs not ok 4 - WORLD-20 seed 4242 can place a living tourist inside the Helios memorial
+test/next-wave-nxb-030.test.mjs not ok 6 - NXB-030 repaired comparison: advertised deltas are the live deltas
+test/nxi-119-demonstrated-use-cases.test.mjs not ok 1 - each starter-build description names a demonstrated use-case and its cost
+test/nxi-119-demonstrated-use-cases.test.mjs not ok 2 - neighboring success: the four builds still place legal fits through the real owner
+test/pb-wire-selection.test.mjs not ok 14 - PB-285 REV: a durable bind survives save/restore — the stable stamp re-materializes
+test/pb-wire-selection.test.mjs not ok 15 - PB-285 REV-2: a recycled bind id cannot poison the serialized record
+test/pq-026-02-inertial-shunt.test.mjs not ok 2 - PQ-026.02 route cruise numbers are the live catalog, not a constructed 105
+test/pq-026-02-inertial-shunt.test.mjs not ok 3 - PQ-026.02 ROUTE seed 26002: Hitch@cruise ram sends a Wasp ≥ 1 screen and stops the player
+test/pq-026-02-inertial-shunt.test.mjs not ok 4 - PQ-026.02 ROUTE seed 26002: Hornet@cruise also clears the screen and stops
+test/pq-026-02-inertial-shunt.test.mjs not ok 6 - PQ-026.02 head-on dumps YOUR speed, not relative closing — player stops, no reverse throw
+test/pq-140-01-heavy-terrain.test.mjs not ok 1 - Hitch stays the light ship_kestrel and every mass-150+ hull is authored heavy
+test/pq-148-00-pods-are-bodies.test.mjs not ok 5 - ore shotgun: shoved pod moves a Wasp ≥ 30% cruise on rapier-dynamic
+test/pq-193-live-picture-arrival.test.mjs not ok 1 - all 14 roster hulls and the liner are required packaged-live complete bodies
+test/pro-13-achievement-milestones.test.mjs not ok 2 - PRO-13 go-beyond: a profile already containing this run does not poison the comparison
+test/pro-13-achievement-milestones.test.mjs not ok 2 - PRO-13 go-beyond: a profile already containing this run does not poison the comparison
+test/pro-13-achievement-milestones.test.mjs not ok 2 - PRO-13 go-beyond: a profile already containing this run does not poison the comparison
+test/pro-13-achievement-milestones.test.mjs not ok 3 - PRO-13 go-beyond: a real record key survives the bag round trip
+test/pro-13-achievement-milestones.test.mjs not ok 3 - PRO-13 go-beyond: a real record key survives the bag round trip
+test/pro-13-achievement-milestones.test.mjs not ok 3 - PRO-13 go-beyond: a real record key survives the bag round trip
+test/pro-13-achievement-milestones.test.mjs not ok 4 - PRO-13 go-beyond: the pre-run map is bounded and max-merged across shells
+test/pro-13-achievement-milestones.test.mjs not ok 4 - PRO-13 go-beyond: the pre-run map is bounded and max-merged across shells
+test/pro-13-achievement-milestones.test.mjs not ok 4 - PRO-13 go-beyond: the pre-run map is bounded and max-merged across shells
+test/pro-13-achievement-milestones.test.mjs not ok 5 - PRO-13: a seed-4242 campaign script earns the dock, contract and jump milestones
+test/pro-13-achievement-milestones.test.mjs not ok 6 - PRO-13: a mining and throwing script earns the two remaining milestones
+test/pro-13-achievement-milestones.test.mjs not ok 7 - PRO-13: an NPC miner does not count toward the player's quarry milestone
+test/propulsion-spawned-ship-authority.test.mjs not ok 2 - the player ship accelerates and stops 15% faster than its catalogue drive
+test/prospector-ladder.test.mjs not ok 1 - candidate modules exist under allowlist paths
+test/station-docking-corridor.test.mjs not ok 19 - proxy diagnostics publish frozen world geometry on the physicsRuntime surface (debug seam)
+test/station-docking-corridor.test.mjs not ok 21 - real authority: capture settles at the berth with bounded per-tick velocity change
+test/station-docking-corridor.test.mjs not ok 4 - default station autopilot stages an outside-gap approach through the measured corridor mouth
+test/ui-grammar-matrix.test.mjs not ok 1 - /tmp/t10/master/test/ui-grammar-matrix.test.mjs
+test/weapon-shove-identity.test.mjs not ok 7 - the shipworks outfitting rows render the shove metric and the sentence
+test/wf05-beam-tender.test.mjs not ok 1 - beam-tender: a limping hauler is scan-acquired, welded to full, and the beam lets go

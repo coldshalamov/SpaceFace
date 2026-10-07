@@ -1,0 +1,4 @@
+verify: 445 jobs on 2 workers -> /tmp/t10/lock
+worker 1: ran 222
+worker 0: ran 223
+verify: done in 0.6 min

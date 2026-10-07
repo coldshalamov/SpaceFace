@@ -1,0 +1,4 @@
+verify: 560 jobs on 2 workers -> /tmp/t10/ttk
+worker 0: ran 280
+worker 1: ran 280
+verify: done in 4.2 min
