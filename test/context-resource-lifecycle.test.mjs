@@ -508,7 +508,7 @@ test('renderer wiring: the loss handler stashes the consumed provenance and tear
     'the loss handler must stash the provenance the detach pass consumed',
   );
 
-  const disposeAt = source.indexOf('function disposeObject(obj)');
+  const disposeAt = source.search(/function disposeObject\(obj\b/);
   assert.ok(disposeAt >= 0, 'disposeObject must be inspectable');
   const disposeBody = source.slice(disposeAt, source.indexOf('\nfunction ', disposeAt + 10));
   const stripAt = disposeBody.indexOf('detachStashedStaleWebGlDisposeListeners([obj]);');
