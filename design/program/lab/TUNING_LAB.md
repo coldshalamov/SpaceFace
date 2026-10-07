@@ -481,13 +481,11 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here, 2026-10-07 00:45 ET):** #4 NPC evasion/spacing IN PROGRESS, no PR yet.
-Bench `npc` + baseline + 49-config grid (2 seeds) done and committed. The `top` phase (9 curated configs
-x 20 scenarios x 5 seeds, own-motion egress metric) is running detached and is resumable:
-`nohup node scripts/lab/sweeps/npcSweep4.mjs top --workers 7 > /tmp/npc-top.log 2>&1 &`, then
-`node scripts/lab/sweeps/npcSweep4.mjs report` (writes `results/npc-2b/report.json`). Next: pick the
-config from `top`, cut `lab2b/npc-evasion` from origin/master with the production change + tests, verify
-with `npcSweep4.mjs verify` on that checkout, open the PR. #5..#10 not started. #3 skipped (Robin's call).
+**Status (restart from here, 2026-10-06 23:30 ET):** #4 NPC evasion/spacing SHIPPED as PR #229
+(`lab2b/npc-evasion`, not merged; see 10.2). Egress legs that open range went from 43.4% to 91.6%, and
+dives from 119/389 to 2/286. Player hit rate with the #228 locked aim is now 74-97% by hull (was 75-99.5%).
+Next: #5 massline throw / sling (based on `lab2a/tether-spin`), then #6, #8, #7, #9, #10. #3 is skipped
+(Robin's call).
 
 ### 10.1 #4 NPC evasion + engagement spacing
 
@@ -560,6 +558,71 @@ Read-outs:
   carry <= braking distance from entry speed + 15 wu); `top` and `judge` use it.
 - Separate finding, not fixed here: interceptor-flyby hulls (reaver) thrash their heading during the
   crossing-lane strike (angle error swings +-1.5..3 rad tick to tick even with no incoming fire) and
-  creep at 15-25 wu/s against a 44 wu/s budget; their passes rarely reach the 150-wu band. Suspect the
-  ship-collision pass-around (the target itself is inside the 180-wu lookahead) fighting the corridor
-  point. Needs its own trace.
+  creep at 15-25 wu/s against a 44 wu/s budget; their passes rarely reach the 150-wu band. Ruled out:
+  ship-collision avoidance (disabling it changes nothing). The likely cause is yaw-controller overshoot
+  (angular velocity ~4 rad/s against turnRate 1.55, `yawRateTorqueFor` plus physics). Needs its own trace.
+
+**top (9 configs x 5 seeds) and top2 (12 configs x 5 seeds, `egressTrack`).** The best `top` config
+(cone 0.6 + strikeGate + orbitFarClosing + jinkAuthority 1 + cooldown 60) reached 72% own-motion
+egress-open with 70 dives. The remaining failures were mostly cruise scenarios, because the stored egress
+point goes stale as the player moves. New seam `egressTrack`: re-aim a committed egress point into the away
+cone against the LIVE target whenever its bearing leaves the cone. With it, top2 reached about 86% open and
+40 dives. Most of the "dives" left were 17-30 wu of entry momentum on hulls that need about 1 s to turn.
+
+**Criteria revised after top2 (decision, before top3).** (a) Dive allowance = quarter turn at the hull's
+turn rate at entry speed + braking distance + 15 wu (it previously had no turn time); criterion is dives
+<= 1% of legs. (b) The medium-hull hit ceiling moved from 92% to 97%: the reaver sits at 92-97 depending on
+jink authority, and Robin wants shots to land. The other bands are unchanged: agile 60-85, heavy 80-97,
+near (<=130 wu) >= 85%, agile far manoeuvre-miss >= 8%.
+
+**top3 (7 configs x 18 scenarios x 5 seeds; adds `swarmExtendMaxTicks` 150).** wasp-hold-nofire showed the
+90-tick swarm extend ends before a wasp has turned off the pass (extends ended at 131-167 wu). At 150
+ticks they end at 200-275 wu.
+
+| config (all + egressTrack + strikeGate + orbitFarClosing + extend 150) | egress open | dives | hit% wasp/cors/reav/lanc/bru/dart/ghost/jack |
+|---|---|---|---|
+| master | 43.4% | 119/389 | 84.6/92.4/99.0/88.1/99.5/79.1/74.8/96.0 |
+| cone 0.8, jink authority 0.7 (**shipped**) | **91.6%** | **2/286** | 76.0/82.6/96.7/87.5/95.1/78.4/73.8/87.1 |
+| cone 0.8, jink authority 1.0 | 92.7% | 3/287 | 69.5/81.1/92.0/85.9/94.5/78.4/65.1/84.8 |
+| cone 0.6, jink authority 1.0 | 90.2% | 2/296 | 70.7/79.7/94.7/85.9/97.8/82.1/65.1/86.1 |
+| cone 0.8, no jink authority | 88.9% | 6/~290 | 80.5/89.9/97.6/88.1/98.6/78.4/74.8/90.7 |
+
+Only the shipped config passes every criterion. Jink authority 1.0 also clears the egress criteria but makes
+ghost and wasp slippery (65-70%).
+
+### 10.2 #4 shipped: PR #229 (`lab2b/npc-evasion`)
+
+Production change, with no seams:
+- `combatDoctrine.js`: `EGRESS_AWAY_MIN_COS` 0.8 clamp in `egressPoint` plus `trackEgressPoint` for the
+  extend/breakaway/peel/disengage/escape phases; strike clock from band entry (`INTERCEPTOR_STRIKE_BAND_WU`
+  225, `SWARM_STRIKE_BAND_WU` 180, `STRIKE_CLOSE_CAP_TICKS` 240); `SWARM_EXTEND_MAX_TICKS` 90 -> 150.
+- `maneuver.js`: `orbitFarClosingMargin` 60 / `orbitFarClosingScale` 1.5; `reflexStrafeAuthority` 0.7 for
+  volley jink / hit weave (no x0.35 cut, emergency slew).
+- Tests: new `test/sf-2b-npc-evasion-spacing.test.mjs` (6 cases, all fail on master); `pq206-01` updated (a
+  pass 330 wu out keeps striking until the 240-tick cap). AI suite: 660/662; the 2 failures
+  (`doctrine-distinct`, `fb-telegraph-every-archetype`) also fail on clean master.
+
+**Verify on the production checkout** (scripts/lab copied in, #228's `weapons.js` applied temporarily for the
+locked aim, 90 runs, `results/npc-2b/verify.w*.jsonl`): the numbers are byte-identical to the top3 seam row.
+Every criterion passes.
+
+| type | hit% master -> PR | egress open (PR) |
+|---|---|---|
+| wasp | 84.6 -> 76.0 | 93.3% (89 legs, 0 dives) |
+| corsair | 92.4 -> 82.6 | 85.7% (49, 1) |
+| reaver | 99.0 -> 96.7 | 97.6% (42, 0) |
+| lancer | 88.1 -> 87.5 | 100% (1, 0) |
+| bruiser | 99.5 -> 95.1 | 91.4% (35, 0) |
+| dart | 79.1 -> 78.4 | 86.7% (30, 1) |
+| ghost | 74.8 -> 73.8 | (no egress legs; ranged stalker) |
+| jackal | 96.0 -> 87.1 | 92.5% (40, 0) |
+
+Wasp extend (sampled legs): mean range 182 -> 184 wu with own radial -6 wu on master, against 191 -> 267 wu and
++67 wu on the PR.
+
+**Dependency.** Without #228 (master's old aim, `verify-masteraim.w*.jsonl`) the same change gives ghost
+50.5% and dart 86.5%, both outside their bands; egress still passes (93.2%). Merge #228 first or together.
+
+Re-run: `LAB_OUT=/tmp/npc-verify node scripts/lab/sweeps/npcSweep4.mjs verify --workers 6`, on a checkout of
+the PR (+ #228) with `scripts/lab` from this branch.
+
