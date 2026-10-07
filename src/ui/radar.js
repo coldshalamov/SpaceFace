@@ -1,10 +1,12 @@
 // Second-generation tactical radar.
 //
 // The radar is a decision instrument, not a miniature screenshot of space. Its primary classes are
-// drawn natively as crisp semantic glyphs; no canvas bloom is used. Shape, fill, outline weight,
-// direction, and scale carry identity before colour does. Contact classes ride the kit's authored
-// silhouettes (assets/ui/kit/assets/radar/radar-glyph-paths.json); the primitives below remain as
-// fallbacks for classes the kit does not name.
+// drawn natively as crisp semantic glyphs. Shape, fill, outline weight, direction, and scale carry
+// identity before colour does; colour is the fast second channel (owner ruling 2026-10-03). Since
+// 2026-10-04 every class also carries a GLOW: a pre-rendered radial-gradient sprite under its glyph
+// (geometry, never a blur filter and never a shadow), so the scope stands out of a bright world.
+// Contact classes ride the kit's authored silhouettes (its radar glyph path data); the primitives
+// below remain as fallbacks for classes the kit does not name.
 //
 // World projection (fixed chase camera):
 //   bx = C - (entity.x - player.x) / range * R
@@ -37,6 +39,7 @@ import {
   sanitizeMapLabel,
   tacticalRadarMetrics,
 } from './map/tacticalMapGrammar.js';
+import { canNavigateToKnowledge, discoveryKnowledge } from './sim/discoveryKnowledge.js';
 import { installMapParityBridge } from './map/mapParityBridge.js';
 import { svg as orrSvg, circularText } from './orrery/svg.js';
 import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instruments.js';
@@ -126,6 +129,7 @@ export function censusRadarContactsStillLayer({
   cache,
   updateTrailFn = null,
   maxTrailUpdates = MAX_TRAIL_UPDATES,
+  hostileOf = null,
 }) {
   const playerX = player.pos.x;
   const playerZ = player.pos.z;
@@ -193,7 +197,7 @@ export function censusRadarContactsStillLayer({
     const dx = entity.pos.x - playerX;
     const dz = entity.pos.z - playerZ;
     const distanceSq = dx * dx + dz * dz;
-    const hostile = isHostileToPlayer(entity, playerTeam, state);
+    const hostile = hostileOf ? hostileOf(entity) : isHostileToPlayer(entity, playerTeam, state);
     const station = entity.type === 'station';
     const gate = station && !!(entity.data && entity.data.isGate);
     const poiStamped = entity.data && entity.data.poiBehavior;
@@ -497,7 +501,7 @@ const CAPITAL_DEFS = new Set(
     .map((ship) => ship.id),
 );
 
-// ---- Contact-class silhouettes (kit: assets/ui/kit/assets/radar) ------------------
+// ---- Contact-class silhouettes (the kit's radar glyph paths) ------------------
 // The kit authored twelve Path2D silhouettes explicitly for this canvas (ORRERY §6 promises
 // "contacts as class silhouettes"). Each key is one merged Path2D in a 24x24 box centred on
 // (12,12), nose up — the same pose the fallback primitives use — so it drops into the existing
@@ -565,8 +569,66 @@ function contactGlyphKey(entity) {
   return ROLE_GLYPH.get(role) || null;
 }
 
-const GLYPH_SCALE_NEUTRAL = 0.5;
-const GLYPH_SCALE_HOSTILE = 0.55;
+const GLYPH_SCALE_NEUTRAL = 0.62;
+const GLYPH_SCALE_HOSTILE = 0.72;
+
+// ---- Glow: one soft sprite per colour and size, drawn additively under a glyph -----------------
+// Pre-rendered once (a radial gradient on a tiny canvas), so the 10 Hz draw only ever blits.
+const GLOW_RGB = Object.freeze({
+  hostile: '255,80,56', friendly: '79,191,143', neutral: '154,168,188', station: '110,195,216',
+  gate: '168,154,224', wreck: '192,138,88', objective: '242,185,80', self: '232,226,212', sweep: '143,203,255',
+});
+const glowSprites = new Map();
+function glowSprite(rgb, radius) {
+  const dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2.5);
+  const key = `${rgb}|${radius}|${dpr}`;
+  let sprite = glowSprites.get(key);
+  if (sprite !== undefined) return sprite;
+  sprite = null;
+  try {
+    if (typeof document !== 'undefined') {
+      const px = Math.max(4, Math.ceil(radius * 2 * dpr));
+      const c = document.createElement('canvas');
+      c.width = px; c.height = px;
+      const sg = c.getContext('2d');
+      if (sg && typeof sg.createRadialGradient === 'function') {
+        const grad = sg.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2);
+        if (grad && typeof grad.addColorStop === 'function') {
+          grad.addColorStop(0, `rgba(${rgb},0.92)`);
+          grad.addColorStop(0.2, `rgba(${rgb},0.5)`);
+          grad.addColorStop(0.55, `rgba(${rgb},0.14)`);
+          grad.addColorStop(1, `rgba(${rgb},0)`);
+          sg.fillStyle = grad;
+          sg.fillRect(0, 0, px, px);
+          sprite = c;
+        }
+      }
+    }
+  } catch (_) { sprite = null; }
+  glowSprites.set(key, sprite);
+  return sprite;
+}
+function drawGlow(g, x, y, radius, rgb, alpha) {
+  if (!(alpha > 0.02)) return;
+  const sprite = glowSprite(rgb, radius);
+  if (!sprite) return;
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  g.imageSmoothingEnabled = true;
+  g.globalAlpha = Math.min(1, alpha);
+  g.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
+  g.restore();
+}
+const rgbCache = new Map();
+/** "#rrggbb" -> "r,g,b" (the glow's colour), neutral grey-blue for anything unparsable. */
+function glowRgbOf(colour) {
+  let hit = rgbCache.get(colour);
+  if (hit) return hit;
+  const m = /^#([0-9a-f]{6})$/i.exec(String(colour || ''));
+  hit = m ? `${parseInt(m[1].slice(0, 2), 16)},${parseInt(m[1].slice(2, 4), 16)},${parseInt(m[1].slice(4, 6), 16)}` : GLOW_RGB.neutral;
+  rgbCache.set(colour, hit);
+  return hit;
+}
 
 function drawNeutralSilhouette(g, key, x, y, heading, colour, { selected = false, scale = GLYPH_SCALE_NEUTRAL }) {
   const path = glyphPathFor(key);
@@ -575,6 +637,7 @@ function drawNeutralSilhouette(g, key, x, y, heading, colour, { selected = false
   g.translate(x, y);
   if (Number.isFinite(heading)) g.rotate(Math.PI + heading);
   g.scale(scale, scale);
+  g.translate(-12, -12); // the kit's paths are authored in a 24 box centred on (12,12)
   g.globalAlpha = selected ? 1 : 0.8;
   g.strokeStyle = colour;
   g.fillStyle = selected ? colour : TACTICAL_MAP_PALETTE.groundPlate;
@@ -593,6 +656,7 @@ function drawHostileSilhouette(g, key, x, y, heading, { selected = false, capita
   g.translate(x, y);
   if (Number.isFinite(heading)) g.rotate(Math.PI + heading);
   g.scale(scale, scale);
+  g.translate(-12, -12);
   // Threats stay always-filled (grammar law): red fill plus class shape, thin dark edge to stay
   // crisp over bright scene bleed at the rim.
   g.fillStyle = TACTICAL_MAP_PALETTE.hostile;
@@ -679,14 +743,18 @@ function entityHeading(entity) {
   return null;
 }
 
-function shipState(entity, playerTeam, state) {
-  if (isHostileToPlayer(entity, playerTeam, state)) return 'hostile';
+// hostileOf (optional): a frame-scoped `(entity) => boolean` stance resolver. The 10 Hz draw asks
+// the same entity's stance from several passes (glow, trail, glyph) — a per-draw memo keeps stance
+// live per frame while paying for one isHostileToPlayer evaluation per contact per frame.
+function shipState(entity, playerTeam, state, hostileOf) {
+  const hostile = hostileOf ? hostileOf(entity) : isHostileToPlayer(entity, playerTeam, state);
+  if (hostile) return 'hostile';
   if (entity && entity.factionId && FACTION_COLOR[entity.factionId]) return 'friendly';
   return 'neutral';
 }
 
-function contactColor(entity, playerTeam, colorblindMode, state) {
-  const semanticState = shipState(entity, playerTeam, state);
+function contactColor(entity, playerTeam, colorblindMode, state, hostileOf) {
+  const semanticState = shipState(entity, playerTeam, state, hostileOf);
   if (colorblindMode && colorblindMode !== 'none') {
     return semanticColor(semanticState, colorblindMode);
   }
@@ -695,12 +763,13 @@ function contactColor(entity, playerTeam, colorblindMode, state) {
   return TACTICAL_MAP_PALETTE.neutral;
 }
 
-function contactShape(entity, playerTeam, state) {
-  if (isHostileToPlayer(entity, playerTeam, state)) return semanticShape('hostile');
+function contactShape(entity, playerTeam, state, hostileOf) {
+  const hostile = hostileOf ? hostileOf(entity) : isHostileToPlayer(entity, playerTeam, state);
+  if (hostile) return semanticShape('hostile');
   const role = String((entity.data && (entity.data.trafficRole || entity.data.role)) || '').toLowerCase();
   if (role === 'hauler' || role === 'miner' || role === 'smuggler' || role === 'tug') return 'square';
   if (role === 'patrol' || role === 'escort' || role === 'courier' || role === 'rescue') return 'diamond';
-  return semanticShape(shipState(entity, playerTeam, state));
+  return semanticShape(shipState(entity, playerTeam, state, hostileOf));
 }
 
 function updateTrail(entity) {
@@ -778,6 +847,7 @@ function drawNeutralContact(g, entity, x, y, heading, colour, {
   named = false,
   playerTeam = null,
   state = null,
+  hostileOf = null,
 } = {}) {
   const namedScale = named ? 1.25 : 1;
   const glyphKey = contactGlyphKey(entity);
@@ -788,7 +858,7 @@ function drawNeutralContact(g, entity, x, y, heading, colour, {
       scale: GLYPH_SCALE_NEUTRAL * namedScale * (isCapitalContact(entity) ? 1.3 : 1),
     });
   } else {
-    const shape = contactShape(entity, playerTeam, state);
+    const shape = contactShape(entity, playerTeam, state, hostileOf);
     const scale = namedScale;
     g.save();
     g.translate(x, y);
@@ -1121,12 +1191,12 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   g.restore();
 }
 
-// Kit sweep geometry (assets/ui/kit/assets/svg/radar/radar-sweep.svg): a short sector trailing
+// Kit sweep geometry (the kit's radar sweep drawing): a short sector trailing
 // the sweep line — bright at the leading edge, falling off across a 45° tail — ported to this
 // canvas as a conic gradient so it scales with the dial. Instrument-grade: the wedge peaks at the
 // same alpha family as the old line, it does not glow. Reduced motion keeps the same wedge frozen
 // at north, exactly where the old static line sat.
-const SWEEP_TRAIL_ANGLE = Math.PI / 4;
+const SWEEP_TRAIL_ANGLE = Math.PI / 3;
 function drawRadarSweep(g, center, radius, angle) {
   g.save();
   g.beginPath();
@@ -1140,30 +1210,36 @@ function drawRadarSweep(g, center, radius, angle) {
     gradient = g.createConicGradient(angle - SWEEP_TRAIL_ANGLE, center, center);
   }
   if (gradient) {
-    gradient.addColorStop(0, 'rgba(232,226,212,0)');
-    gradient.addColorStop(SWEEP_TRAIL_ANGLE / (Math.PI * 2), 'rgba(232,226,212,0.09)');
-    gradient.addColorStop(1, 'rgba(232,226,212,0)');
+    gradient.addColorStop(0, 'rgba(143,203,255,0)');
+    gradient.addColorStop(SWEEP_TRAIL_ANGLE / (Math.PI * 2), 'rgba(143,203,255,0.24)');
+    gradient.addColorStop(1, 'rgba(143,203,255,0)');
     g.fillStyle = gradient;
   } else {
-    g.fillStyle = 'rgba(232,226,212,0.045)';
+    g.fillStyle = 'rgba(143,203,255,0.1)';
   }
   g.fill();
-  g.strokeStyle = 'rgba(232,226,212,0.12)';
-  g.lineWidth = 1;
-  g.beginPath();
-  g.moveTo(center, center);
-  g.lineTo(center + Math.cos(angle) * radius, center + Math.sin(angle) * radius);
-  g.stroke();
+  // the leading edge: a lit line over its own bloom twin (ice: the sweep is data in motion)
+  const ex = center + Math.cos(angle) * radius;
+  const ey = center + Math.sin(angle) * radius;
+  g.lineCap = 'round';
+  g.strokeStyle = 'rgba(143,203,255,0.2)';
+  g.lineWidth = 5;
+  g.beginPath(); g.moveTo(center, center); g.lineTo(ex, ey); g.stroke();
+  g.strokeStyle = 'rgba(205,232,255,0.72)';
+  g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(center, center); g.lineTo(ex, ey); g.stroke();
   g.restore();
 }
 
 function drawBackground(g, center, radius, { grid = true } = {}) {
   g.clearRect(0, 0, center * 2, center * 2);
-  // Dark ground first: every mark on this dial is small, so contrast has to come from the plate.
+  // The plate: deep glass, nearly opaque. The old plate was translucent, so a bright structure behind
+  // the dial showed straight through it and the scope never stood out of the world.
   const gradient = g.createRadialGradient(center, center, 0, center, center, radius);
-  gradient.addColorStop(0, 'rgba(13,16,20,0.82)');
-  gradient.addColorStop(0.68, 'rgba(15,19,24,0.62)');
-  gradient.addColorStop(1, 'rgba(28,33,41,0.38)');
+  gradient.addColorStop(0, 'rgba(9,13,18,0.96)');
+  gradient.addColorStop(0.62, 'rgba(11,16,22,0.94)');
+  gradient.addColorStop(0.9, 'rgba(19,25,33,0.93)');
+  gradient.addColorStop(1, 'rgba(30,37,47,0.93)');
   g.fillStyle = gradient;
   g.beginPath();
   g.arc(center, center, radius, 0, Math.PI * 2);
@@ -1173,7 +1249,15 @@ function drawBackground(g, center, radius, { grid = true } = {}) {
   g.beginPath();
   g.arc(center, center, radius, 0, Math.PI * 2);
   g.clip();
-  g.strokeStyle = 'rgba(232,226,212,0.04)';
+  // range zones: alternate faint bands, so distance reads at a glance
+  g.fillStyle = 'rgba(232,226,212,0.04)';
+  for (const [r0, r1] of [[0.25, 0.5], [0.75, 1]]) {
+    g.beginPath();
+    g.arc(center, center, radius * r1, 0, Math.PI * 2);
+    g.arc(center, center, radius * r0, 0, Math.PI * 2, true);
+    g.fill('evenodd');
+  }
+  g.strokeStyle = 'rgba(232,226,212,0.05)';
   g.lineWidth = 1;
   // The square grid is the legacy face; under the ORRERY frame the scope is rings and a dotted cross.
   const step = grid ? radius / 3 : Infinity;
@@ -1189,26 +1273,33 @@ function drawBackground(g, center, radius, { grid = true } = {}) {
     g.lineTo(center + radius, center + d);
     g.stroke();
   }
-  for (const fraction of [0.25, 0.5, 1]) {
-    // 4px 20% geometric bloom twin
-    g.strokeStyle = fraction === 1
-      ? 'rgba(232,226,212,0.22)'
-      : 'rgba(232,226,212,0.12)';
-    g.lineWidth = fraction === 1 ? 4 : 3;
+  // rings: each a band with body under a crisp core; the rim is the heaviest
+  for (const fraction of [0.25, 0.5, 0.75, 1]) {
+    const rim = fraction === 1;
+    const mid = fraction === 0.5;
+    g.strokeStyle = rim ? 'rgba(232,226,212,0.16)' : mid ? 'rgba(232,226,212,0.1)' : 'rgba(232,226,212,0.06)';
+    g.lineWidth = rim ? 8 : mid ? 4 : 3;
     g.beginPath();
     g.arc(center, center, radius * fraction, 0, Math.PI * 2);
     g.stroke();
-
-    // core ring
-    g.strokeStyle = fraction === 1
-      ? 'rgba(232,226,212,0.65)'
-      : 'rgba(232,226,212,0.32)';
-    g.lineWidth = fraction === 1 ? 1.5 : 1;
+    g.strokeStyle = rim ? 'rgba(236,230,216,0.9)' : mid ? 'rgba(232,226,212,0.46)' : 'rgba(232,226,212,0.28)';
+    g.lineWidth = rim ? 2 : 1.2;
+    if (fraction === 0.75) g.setLineDash([2, 4]);
     g.beginPath();
     g.arc(center, center, radius * fraction, 0, Math.PI * 2);
     g.stroke();
+    g.setLineDash([]);
   }
-  g.strokeStyle = 'rgba(232,226,212,0.08)';
+  // an inner rim glow: light gathers just inside the edge, so the dial reads as a lit instrument
+  const rimGlow = g.createRadialGradient(center, center, radius - 18, center, center, radius);
+  rimGlow.addColorStop(0, 'rgba(236,230,216,0)');
+  rimGlow.addColorStop(1, 'rgba(236,230,216,0.2)');
+  g.fillStyle = rimGlow;
+  g.beginPath();
+  g.arc(center, center, radius, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = 'rgba(232,226,212,0.16)';
+  g.lineWidth = 1;
   const muteR = 18;
   g.beginPath();
   g.moveTo(center, center - radius);
@@ -1236,7 +1327,7 @@ function createRadarFrame(size, center, radius) {
     viewBox: `${-FRAME_PAD} ${-FRAME_PAD} ${size + FRAME_PAD * 2} ${size + FRAME_PAD * 2}`,
     'aria-hidden': 'true',
   });
-  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 0.5, tone: 'hi', width: 1.5, bloom: 5 }));
+  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 1, tone: 'hi', width: 2.4, bloom: 10 }));
   root.appendChild(orbitRing({ cx: center, cy: center, r: radius + 5, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false }).el);
   root.appendChild(orrSvg('path', {
     d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,
@@ -1271,6 +1362,52 @@ function createRadarFrame(size, center, radius) {
     },
     dispose() { objective.dispose(); root.remove(); },
   };
+}
+
+const PING_HIT_PX = 14;
+
+/** Unresolved scanner pings in the current sector, as named courses. No exact wreck position. */
+export function radarPingCourses(state) {
+  const sectorId = state && state.world && state.world.currentSectorId != null
+    ? String(state.world.currentSectorId)
+    : null;
+  const courses = [];
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (!entry || entry.tier !== 'ping' || entry.source !== 'ping' || !entry.pos) continue;
+    if (canNavigateToKnowledge(entry)) continue;
+    if (sectorId && entry.sectorId !== sectorId) continue;
+    const prefix = `ping:${entry.sectorId}:`;
+    const pingId = entry.id.startsWith(prefix) ? entry.id.slice(prefix.length) : entry.id;
+    courses.push({
+      type: 'ping',
+      pos: { x: entry.pos.x, z: entry.pos.z },
+      label: entry.label || 'Unresolved contact',
+      reason: entry.label || 'Unresolved contact',
+      waypointKind: 'local',
+      arrivalRadius: 44,
+      autopilot: true,
+      targetEntityId: pingId,
+    });
+  }
+  return courses;
+}
+
+/** The course under a radar click, or null when the click is empty dial (expand instead). */
+export function radarDialCourse(state, playerPos, range, metrics, clickX, clickY) {
+  let best = null;
+  let bestD = PING_HIT_PX * PING_HIT_PX;
+  for (const course of radarPingCourses(state)) {
+    const projected = projectRadarPoint(playerPos, course.pos, range, metrics);
+    if (!projected || projected.offRange) continue;
+    const dx = projected.x - clickX;
+    const dy = projected.y - clickY;
+    const d2 = dx * dx + dy * dy;
+    if (d2 <= bestD) {
+      best = course;
+      bestD = d2;
+    }
+  }
+  return best;
 }
 
 export function createRadar(ctx) {
@@ -1360,7 +1497,25 @@ export function createRadar(ctx) {
       : '';
   }
 
-  const onDialClick = () => setExpanded(!expanded);
+  const onDialClick = (ev) => {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const rect = canvas.getBoundingClientRect();
+    if (player && player.pos && rect.width > 0 && rect.height > 0 && bus) {
+      const x = ((ev.clientX - rect.left) / rect.width) * configuredSize;
+      const y = ((ev.clientY - rect.top) / rect.height) * configuredSize;
+      const baseRange = (state.ui && state.ui.radarRange) || 4000;
+      const range = expanded ? baseRange * 2 : baseRange;
+      const course = radarDialCourse(state, player.pos, range, tacticalRadarMetrics(expanded), x, y);
+      if (course) {
+        bus.emit('ui:setCourse', course);
+        bus.emit('toast', { text: 'Autopilot set: ' + course.label, kind: 'info', ttl: 3 });
+        return;
+      }
+    }
+    setExpanded(!expanded);
+  };
   dial.addEventListener('click', onDialClick);
 
   let contactList = [];
@@ -1642,6 +1797,18 @@ export function createRadar(ctx) {
     const playerZ = player.pos.z;
     const targetId = state.player && state.player.targetId;
     const playerTeam = player.team;
+    // One stance verdict per contact per draw: the census and the glow/trail/glyph passes all ask
+    // isHostileToPlayer for the same entities; a frame-scoped memo keeps stance live per frame
+    // (combat lock / rep changes still repaint next draw) while paying for one evaluation each.
+    const stanceMemo = new Map();
+    const hostileOf = (entity) => {
+      let verdict = stanceMemo.get(entity);
+      if (verdict === undefined) {
+        verdict = isHostileToPlayer(entity, playerTeam, state);
+        stanceMemo.set(entity, verdict);
+      }
+      return verdict;
+    };
     const colorblindMode = (
       state.settings
       && state.settings.accessibility
@@ -1771,10 +1938,43 @@ export function createRadar(ctx) {
       cache: contactsStillCache,
       updateTrailFn: updateTrail,
       maxTrailUpdates: MAX_TRAIL_UPDATES,
+      hostileOf,
     });
     const hostileCount = contactCensus.hostileCount;
     const salientContactCount = contactCensus.salients;
     const nearestOffRangeHostile = contactCensus.nearestOffRangeHostile;
+
+    // GLOW pre-pass: every contact carries a soft halo in its class colour, and a contact the sweep
+    // has just crossed flares and fades like phosphor. Blits only (sprites are built once).
+    {
+      const flareOf = (px, py) => {
+        if (reducedMotion) return 0.3;
+        const ang = Math.atan2(py - center, px - center);
+        const behind = (((sweepAngle - ang) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        return behind < 1.6 ? 1 - behind / 1.6 : 0;
+      };
+      drawGlow(g, center, center, 13, GLOW_RGB.self, 0.34);
+      const hostileGlowCount = Math.min(hostileMarks.length, MAX_SEMANTIC_HOSTILES);
+      for (let i = 0; i < hostileGlowCount; i += 1) {
+        const mark = hostileMarks[i];
+        if (!mark.entity) continue;
+        const sel = mark.entity.id === targetId;
+        drawGlow(g, mark.x, mark.y, sel ? 24 : 20, GLOW_RGB.hostile, 0.72 + flareOf(mark.x, mark.y) * 0.3 + (sel ? 0.2 : 0));
+      }
+      for (let i = 0; i < neutralMarks.length; i += 1) {
+        const mark = neutralMarks[i];
+        if (!mark.entity) continue;
+        if (mark.type === 'pickup') { drawGlow(g, mark.x, mark.y, 14, GLOW_RGB.objective, 0.6); continue; }
+        if (mark.type === 'wreck') { drawGlow(g, mark.x, mark.y, 11, GLOW_RGB.wreck, 0.34); continue; }
+        const rgb = glowRgbOf(contactColor(mark.entity, playerTeam, colorblindMode, state, hostileOf));
+        drawGlow(g, mark.x, mark.y, mark.named ? 17 : 14, rgb, 0.42 + flareOf(mark.x, mark.y) * 0.4);
+      }
+      const infraGlowCount = Math.min(infrastructureMarks.length, MAX_SEMANTIC_INFRASTRUCTURE);
+      for (let i = 0; i < infraGlowCount; i += 1) {
+        const mark = infrastructureMarks[i];
+        drawGlow(g, mark.x, mark.y, 18, mark.gate ? GLOW_RGB.gate : GLOW_RGB.station, mark.offRange ? 0.4 : 0.7);
+      }
+    }
 
     // Paint trails + neutral glyphs from retained marks (live colour / pulse).
     for (let i = 0; i < hostileMarks.length; i += 1) {
@@ -1783,7 +1983,7 @@ export function createRadar(ctx) {
       if (!entity) continue;
       const type = entity.type;
       if ((type === 'ship' || type === 'drone') && trailMap.has(entity.id)) {
-        const colour = contactColor(entity, playerTeam, colorblindMode, state);
+        const colour = contactColor(entity, playerTeam, colorblindMode, state, hostileOf);
         drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
       }
     }
@@ -1794,7 +1994,7 @@ export function createRadar(ctx) {
       const x = mark.x;
       const y = mark.y;
       const type = mark.type;
-      const colour = contactColor(entity, playerTeam, colorblindMode, state);
+      const colour = contactColor(entity, playerTeam, colorblindMode, state, hostileOf);
       if (mark.wantsTrail || trailMap.has(entity.id)) {
         drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
       }
@@ -1808,6 +2008,7 @@ export function createRadar(ctx) {
         if (!reducedMotion) g.rotate((now * 0.0008) % (Math.PI * 2));
         if (beaconPath) {
           g.scale(GLYPH_SCALE_NEUTRAL, GLYPH_SCALE_NEUTRAL);
+          g.translate(-12, -12);
           g.fill(beaconPath);
         } else {
           g.beginPath();
@@ -1827,6 +2028,7 @@ export function createRadar(ctx) {
         if (wreckPath) {
           g.translate(x, y);
           g.scale(GLYPH_SCALE_NEUTRAL, GLYPH_SCALE_NEUTRAL);
+          g.translate(-12, -12);
           g.lineWidth = 1.5 / GLYPH_SCALE_NEUTRAL;
           g.stroke(wreckPath);
         } else {
@@ -1843,6 +2045,7 @@ export function createRadar(ctx) {
         neutralOpts.named = mark.named;
         neutralOpts.playerTeam = playerTeam;
         neutralOpts.state = state;
+        neutralOpts.hostileOf = hostileOf;
         drawNeutralContact(g, entity, x, y, mark.heading, colour, neutralOpts);
       }
       if (mark.poiKind) drawPoiClassMark(g, x, y, mark.poiProgress);
@@ -1918,10 +2121,9 @@ export function createRadar(ctx) {
       const pulse = reducedMotion ? 0.7 : 0.5 + 0.5 * Math.sin(now * 0.015);
       g.globalAlpha = 0.5 + 0.5 * pulse;
 
-      if (Array.isArray(pings)) {
-        for (const ping of pings) {
-          if (!ping || !ping.pos) continue;
-          const projected = projectRadarPoint(player.pos, ping.pos, range, metrics, projectScratch);
+      if (Array.isArray(pings) || radarPingCourses(state).length) {
+        for (const course of radarPingCourses(state)) {
+          const projected = projectRadarPoint(player.pos, course.pos, range, metrics, projectScratch);
           if (!projected || projected.offRange) continue;
           g.strokeText('?', projected.x, projected.y);
         }
@@ -1996,6 +2198,7 @@ export function createRadar(ctx) {
 
     drawObjectiveCorridor(g, cue);
     if (cue) {
+      drawGlow(g, cue.x, cue.y, cue.offRange ? 15 : 22, GLOW_RGB.objective, 0.55 + (reducedMotion ? 0 : 0.2 * Math.sin(now * 0.0042)));
       if (cue.offRange) drawWaypointEdgeArrow(g, cue, now, reducedMotion);
       else drawWaypointDiamond(g, cue, now, reducedMotion);
       if (expanded || cue.resolved === false) drawObjectiveLabel(g, cue);
@@ -2034,6 +2237,7 @@ export function createRadar(ctx) {
           g.save();
           g.translate(projected.x, projected.y);
           g.scale(GLYPH_SCALE_NEUTRAL, GLYPH_SCALE_NEUTRAL);
+          g.translate(-12, -12);
           g.fill(beaconGlyph);
           g.restore();
         } else {

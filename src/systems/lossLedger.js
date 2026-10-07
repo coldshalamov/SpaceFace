@@ -50,10 +50,11 @@ import { hash32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { SHIPS } from '../data/ships.js';
-import { MISSION_TUNING } from '../data/missions.js';
+import { MISSION_TUNING, hasContractsDesk } from '../data/missions.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { pickWreckClass, wreckClassById } from '../data/wreckClasses.js';
 import { effectiveDangerTierFor, sectorSignalFor } from './sectorSim.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 
 const MAX_PER_SECTOR = 8;           // ring-buffer cap — bounded growth (failureMode guard)
 const MAX_TOTAL = 64;               // global backstop across all sectors (rare; trims oldest)
@@ -61,8 +62,12 @@ const GHOST_CONVOY_THRESHOLD = 3;
 const GHOST_CONVOY_DRIVER = 'reach_pressure';
 const GHOST_CONVOY_MISSION_ID = 'wm_reach_bounty';
 const AUTOMATION_LOSS_SOURCES = new Set(['automation:assetLost', 'automation:outpostRaided']);
+const SECTOR_BY_ID = new Map();
 const STATION_BY_SECTOR = new Map();
-for (const sector of SECTORS) STATION_BY_SECTOR.set(sector.id, sector.stations || []);
+for (const sector of SECTORS) {
+  SECTOR_BY_ID.set(sector.id, sector);
+  STATION_BY_SECTOR.set(sector.id, sector.stations || []);
+}
 const SHIP_IDS = new Set(SHIPS.map((ship) => ship.id));
 const KIND_NORMALIZE = {
   trader: 'trader',
@@ -159,6 +164,35 @@ function makeLossId(seed, sectorId, kind, simTime, assetId) {
   return 'loss_' + hash32(seed, sectorId, kind, simTime, assetId).toString(36);
 }
 
+// The ledger row this wreck's own death recorded — matched on the kill stamp (marker.t and
+// loss.t are written from the same entity:killed dispatch), the victim's hull def when both
+// sides carry one, and the victim's name when the ledger filed a real one. For the player's
+// own hull the loss carries assetId === playerId, which is stronger than any label check —
+// 'Your Hull' is a generated name and would never equal the filed victimName. Anything looser
+// could pin a stranger's loss onto this hull in a fought-over sector.
+function ownLossForWreck(entity, state, sectorId) {
+  const data = entity && entity.data || {};
+  const provenance = data.provenance && typeof data.provenance === 'object' ? data.provenance : {};
+  const killedAt = Number.isFinite(data.killedAt) && data.killedAt > 0 ? data.killedAt
+    : (data.aftermath && Number.isFinite(data.aftermath.t) && data.aftermath.t > 0 ? data.aftermath.t : null);
+  if (killedAt == null) return null;
+  const isPlayerHull = data.playerWreck === true;
+  const victimDefId = provenance.victimDefId || (data.aftermath && data.aftermath.victimDefId) || null;
+  const victimLabel = provenance.victimLabel || (data.aftermath && data.aftermath.victimLabel) || null;
+  for (const loss of lossesFor(state, sectorId)) {
+    if (!loss || !Number.isFinite(loss.t) || Math.abs(loss.t - killedAt) > 0.001) continue;
+    if (isPlayerHull) {
+      if (loss.assetId !== state.playerId) continue;
+      return loss;
+    }
+    if (victimDefId && loss.shipDefId && loss.shipDefId !== victimDefId) continue;
+    if (loss.victimName && victimLabel && loss.victimName !== victimLabel
+      && loss.victimCallsign !== victimLabel) continue;
+    return loss;
+  }
+  return null;
+}
+
 function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
 }
@@ -167,9 +201,22 @@ function laneKeyFor(entry) {
   return `${entry.sectorId}:${entry.factionId || 'unknown'}`;
 }
 
-function stationForSector(sectorId) {
+function repFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  return rec ? (rec.rep || 0) : 0;
+}
+
+// The rumor names a desk the pilot must dock at to read the board — a berth that refuses
+// the pilot (repGated fence, the closed Den) would make the line a lie, so the pick honors
+// the same admission contract the pickers and the accept gate apply. No admits → no desk:
+// the rumor still runs as news, it just cannot sell a bounty.
+function stationForSector(sectorId, state) {
   const stations = STATION_BY_SECTOR.get(sectorId) || [];
-  return stations.find((s) => s.services && s.services.includes('missions')) || stations[0] || null;
+  const sec = SECTOR_BY_ID.get(sectorId) || null;
+  const admits = (s) => stationBerthAdmits(s, repFor(state, s && (s.factionId || (sec && sec.factionId))), state);
+  return stations.find((s) => hasContractsDesk(s && s.services) && admits(s))
+    || stations.find(admits)
+    || null;
 }
 
 /**
@@ -195,7 +242,7 @@ function nestAnchorIdFor(state, laneKey, sectorId) {
 function ghostConvoyLine(state, entry, count) {
   const sName = sectorName(state, entry.sectorId);
   // The line names WHERE the bounty sits; without it the rumor has no address and dies as news.
-  const station = stationForSector(entry.sectorId);
+  const station = stationForSector(entry.sectorId, state);
   const posted = station && station.name ? ` ${station.name} posted a bounty.` : '';
   return `Ghost convoy rumor: ${count} losses on the ${sName} lane point to a Reach raider nest.${posted}`;
 }
@@ -203,7 +250,7 @@ function ghostConvoyLine(state, entry, count) {
 function buildGhostConvoyOffer(state, entry, sameLane, signal) {
   const template = wreckMissionById(GHOST_CONVOY_MISSION_ID);
   const sectorId = entry.sectorId;
-  const station = stationForSector(sectorId);
+  const station = stationForSector(sectorId, state);
   const laneKey = laneKeyFor(entry);
   const dangerTier = clamp(
     Math.max(effectiveDangerTierFor(state, sectorId), Math.round(((signal && signal.danger) || 0) * 4)),
@@ -315,7 +362,9 @@ function maybeEmitGhostConvoyRumor(state, bus, helpers, entry) {
   };
   if (bus && bus.emit) {
     bus.emit('rumor:ghostConvoy', payload);
-    bus.emit('mission:offered', offer);
+    // No admitting desk → no row: _onExternalBoardOffer drops a null-station offer anyway,
+    // and the rumor's news line already said there is nowhere to collect it.
+    if (offer.stationId) bus.emit('mission:offered', offer);
   }
   if (helpers && helpers.voice && typeof helpers.voice.say === 'function') {
     const said = helpers.voice.say({ channel: 'news', text: line, kind: 'ghostConvoy' });
@@ -370,6 +419,7 @@ export const lossLedger = {
     this._onOutpostRaided = (p) => this._handleOutpostRaided(p);
     this._onEntitySpawned = (p) => this._tagWreck(p);
     this._onEntityKilled = (p) => this._handleEntityKilled(p);
+    this._onPlayerDeath = (p) => this._handlePlayerDeath(p);
     this._onMissionCompleted = (p) => this._handleMissionCompleted(p);
     this._onNewGame = () => this._reset();
 
@@ -378,6 +428,7 @@ export const lossLedger = {
       this._bus.on('automation:outpostRaided', this._onOutpostRaided);
       this._bus.on('entity:spawned', this._onEntitySpawned);
       this._bus.on('entity:killed', this._onEntityKilled);
+      this._bus.on('player:death', this._onPlayerDeath);
       this._bus.on('mission:completed', this._onMissionCompleted);
       this._bus.on('game:newGame', this._onNewGame);
     }
@@ -468,6 +519,42 @@ export const lossLedger = {
     });
   },
 
+  // The player's own hull dying is ledger history too — the defeat receipt names the killer and
+  // the sector, and the aftermath marker's cargo residue is real. It stays LEDGER-ONLY (source is
+  // deliberately not in AUTOMATION_LOSS_SOURCES): no news-voice consumption, no ghost-convoy lane
+  // counting — the one-voice news floor is for the world's losses, not for a defeat the player
+  // is standing inside of. killedByPlayer is always false: a death is not a kill, even the
+  // self-inflicted edge, so the living-hull kill-renown consumer cannot misfire on it.
+  _handlePlayerDeath(p) {
+    const state = this._state;
+    if (!state) return;
+    const entity = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const data = (entity && entity.data) || {};
+    // The player is always in the active sector when a defeat fires (combat and hazard emitters
+    // are live-tick paths); data.sectorId is a boot-time stamp and goes stale across gates.
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId) return;
+    const L = ensureState(state);
+    record(state, this._bus, this._helpers, {
+      lossId: makeLossId(L.seed, sectorId, 'ship', state.simTime || 0, state.playerId),
+      sectorId,
+      assetId: state.playerId,
+      factionId: (entity && entity.factionId) || ownerOf(state, sectorId),
+      kind: 'ship',
+      simDay: dayOf(state),
+      t: state.simTime || 0,
+      cargoHint: CARGO_HINT.ship,
+      value: 0,
+      shipDefId: SHIP_IDS.has(data.defId) ? data.defId : null,
+      killerId: p && p.killerId != null ? p.killerId : null,
+      killedByPlayer: false,
+      victimName: durableIdentityText(data.shipName) || durableIdentityText(data.name)
+        || durableIdentityText(data.ai && data.ai.name),
+      victimCallsign: durableIdentityText(data.callsign),
+      source: 'player:death',
+    });
+  },
+
   // The rumor's ending: when the ghost-convoy bounty settles, the lane's news voice reports the
   // quiet — once, through the same one-voice news channel that announced the deaths. A bounty that
   // expires or fails stays silent; the lane's losses remain true, so no false closure is spoken.
@@ -504,6 +591,20 @@ export const lossLedger = {
     if (!sectorId) return;
     const loss = latestLossFor(state, sectorId);
     if (!loss) return; // no recorded loss ⇒ generic wreck (unchanged) — golden-sim safe
+    // A marker-owned wreck already carries its authoritative aftermath provenance (victimLabel,
+    // killerLabel, markerId — the binding isBoundWreck matches on). Replacing it would sever the
+    // marker binding, drop the victim's name, and aim the ledger's lossId at whichever loss the
+    // sector recorded last — a different victim's story. The player's own hull still takes its
+    // OWN recorded loss (the defeat receipt names it) — matched by kill stamp, hull def and
+    // label so a foreign loss in a fought-over sector can never attach.
+    const existing = e.data.provenance;
+    if (existing && typeof existing === 'object' && existing.markerId != null) {
+      if (e.data.playerWreck === true && existing.lossId == null) {
+        const own = ownLossForWreck(e, state, sectorId);
+        if (own) existing.lossId = own.lossId;
+      }
+      return;
+    }
     // Don't clobber a communicator's mission-bearing label — only enrich non-communicator wrecks.
     const isComms = e.data.isCommunicator || e.data.parentType === 'communicator';
     const classId = pickWreckClass({ seed: ensureState(state).seed, lossId: loss.lossId, sectorId });
@@ -516,14 +617,24 @@ export const lossLedger = {
       simDay: loss.simDay,
       cargoHint: loss.cargoHint,
     };
-    e.data.wreckClass = classId;
+    // The player's own wreck keeps its authored identity — the marker's 'Your Hull' scanLabel and
+    // its own wreck class. What it takes from this seam is the provenance, which now names its
+    // own recorded loss instead of whatever hull the sector ring happened to lose last.
+    if (e.data.playerWreck === true) return;
+    // A berth-consigned hulk carries its class by authorship — the berth data picked the body
+    // ('consigned_hulk', 'fresh') on purpose, and a seeded roll over it would silently void the
+    // authored value. Provenance still names the real recorded loss; only the class and its
+    // scan labels come from the authored field.
+    const authoredClass = e.data.berthConsign ? wreckClassById(e.data.wreckClass) : null;
+    const labelClass = authoredClass || cls;
+    e.data.wreckClass = authoredClass ? authoredClass.id : classId;
     if (!isComms) {
-      e.data.scanLabel = cls.scanLabel;
-      e.data.wreckClassLabel = cls.label;
-      e.data.wreckClassBlurb = cls.blurb;
+      e.data.scanLabel = labelClass.scanLabel;
+      e.data.wreckClassLabel = labelClass.label;
+      e.data.wreckClassBlurb = labelClass.blurb;
     } else {
       // Communicator: keep the mission label, but record the class for the mission log to read.
-      e.data.wreckClassLabel = cls.label;
+      e.data.wreckClassLabel = labelClass.label;
     }
   },
 
@@ -533,6 +644,7 @@ export const lossLedger = {
       if (this._onOutpostRaided) this._bus.off('automation:outpostRaided', this._onOutpostRaided);
       if (this._onEntitySpawned) this._bus.off('entity:spawned', this._onEntitySpawned);
       if (this._onEntityKilled) this._bus.off('entity:killed', this._onEntityKilled);
+      if (this._onPlayerDeath) this._bus.off('player:death', this._onPlayerDeath);
       if (this._onMissionCompleted) this._bus.off('mission:completed', this._onMissionCompleted);
       if (this._onNewGame) this._bus.off('game:newGame', this._onNewGame);
     }
@@ -540,6 +652,7 @@ export const lossLedger = {
     this._onOutpostRaided = null;
     this._onEntitySpawned = null;
     this._onEntityKilled = null;
+    this._onPlayerDeath = null;
     this._onMissionCompleted = null;
     this._onNewGame = null;
   },

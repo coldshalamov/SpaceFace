@@ -250,17 +250,50 @@ test('the heavy manifest measurably changes the flown outcome: slower sprint, sm
 
 test('mass never becomes a second capacity: the hold gates on volume alone', () => {
   const state = bootState();
+  bootEconomy(state);
   // Weapon Systems: volPerU 0.9 fits 277 u in the 250 u hold; at massPerU 1.5 that is ~416 t
   // on an 18 t hull — absurdly overweight, and the hold must still accept every volume-fit unit.
   const accepted = addCargo(state, 'cmdty_weapons', 400);
   assert.ok(accepted > 0, 'an overweight-but-volume-fit load is not refused');
   assert.ok(state.player.cargo.usedVolume <= state.player.cargo.capVolume + 1e-6);
   assert.ok(state.player.cargo.usedMass > KESTREL.designMass, 'the accepted load is far past design mass');
-  // The preflight names the cost instead of gating it.
+  // The preflight names the cost instead of gating it — and with the hold volume-full nothing
+  // fits, so the forecast fields are deterministically absent rather than printing a stale load.
   refreshPlayerEntity(state);
   const trades = computeBestTrades(state, HERE);
-  const heavy = trades.find((t) => t.cmdtyId === RUN_GOOD);
-  if (heavy && Number.isFinite(heavy.loadThrustPct)) {
-    assert.ok(heavy.loadUnits > 0, 'the route still stages a load under volume-only capacity');
-  }
+  const full = trades.find((t) => t.cmdtyId === RUN_GOOD);
+  assert.ok(full, 'the route is still listed under volume-only capacity');
+  assert.equal(full.loadUnits, 0, 'a volume-full hold plans no further load');
+  assert.equal(full.loadMassT, undefined, 'no load planned -> no mass forecast');
+  assert.equal(full.loadThrustPct, undefined, 'no load planned -> no thrust forecast');
+});
+
+test('the preflight forecast reads the current hold, not the stale docked derived block', () => {
+  // The docked staleness shape the review pinned: the entity's derived block is captured at
+  // boot (empty hold), then the single writer fills the hold synchronously while the
+  // cargo:massSettled flush never runs (registry skips cargo/ships while ui.docked).
+  const state = bootState();
+  bootEconomy(state);
+  assert.equal(addCargo(state, 'cmdty_weapons', 100), 100); // 90 u of volume, 150 t aboard
+  // No refreshPlayerEntity here — entity.data.derived still says the hold is empty (18 t).
+  const trades = computeBestTrades(state, HERE);
+  const route = trades.find((t) => t.cmdtyId === RUN_GOOD);
+  assert.ok(route, 'the measured run is listed from the loaded hold');
+  // The forecast base must be dryMass (18 t) + the writer's current 150 t, not the stale 18 t
+  // block: 160 hold-bound units of provisions add 112 t -> 280 t total -> load law floor 0.30.
+  // Reading the stale block instead would print -60% (130 t) and understate the cost.
+  assert.equal(route.loadUnits, 160, 'the load plan sizes by the hold the writer actually holds');
+  assert.equal(route.loadMassT, 112);
+  assert.equal(route.loadThrustPct, 70, 'the printed thrust includes the unflushed mass aboard');
+  // The refreshed truth agrees with the projection: same number the block would flush to.
+  refreshPlayerEntity(state);
+  const derived = getDerivedStats(KESTREL.id, [], state.player);
+  const projectedTotal = derived.dryMass + state.player.cargo.usedMass + route.loadMassT;
+  assert.equal(route.loadThrustPct,
+    Math.round((1 - makeShipEntitySpec(KESTREL.id, { player: {
+      ...state.player,
+      cargo: { ...state.player.cargo, usedMass: state.player.cargo.usedMass + route.loadMassT },
+    } }).data.derived.propulsion.massLoadFactor) * 100),
+    'projection and a real re-derive over the same manifest are one number');
+  assert.ok(Math.abs(projectedTotal - 280) < 1e-6);
 });

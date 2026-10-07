@@ -58,8 +58,27 @@ import {
 import { TOW_ASSIST_FEE_CR } from '../data/yardContracts.js';
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { makeShipEntitySpec } from './ships.js';
+import {
+  captureEntitySelection,
+  liveEntityById,
+  resolveEntitySelection,
+} from '../ui/sim/stableSelection.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
+
+/**
+ * The live body a signal record still points at. A record written with `entityStable` resolves
+ * through the identity stamp — a recycled id can never satisfy it — and returns the CURRENT
+ * instance (a durable target rebinds after an instance swap). Pre-stamp saves and non-entity
+ * signals fall back to the legacy bare-id resolve, dead holders included nowhere.
+ */
+function recordEntity(state, record) {
+  if (!record) return null;
+  if (record.entityStable) {
+    try { return resolveEntitySelection(state, record.entityStable); } catch { return null; }
+  }
+  return liveEntityById(state, record.entityId);
+}
 
 const HAIL_REFUSAL_TEXT = Object.freeze({
   unresolved_target: 'No contact to hail',
@@ -469,6 +488,39 @@ function upsertUnknownPing(state, sectorId, ping) {
   return true;
 }
 
+// A ping row may exist only while its source POI still qualifies for one (hidden or an anomaly,
+// triangulation answered, cache signal live) — the SAME predicate the upsert in
+// _pingHiddenPois grants, minus the pulse radius, so an out-of-range fix stays remembered.
+// When the source is answered — the POI discovered (world.js poi:discovered flips .hidden),
+// a named cache consumed, an untriangulated anomaly regressed — the row would otherwise live
+// forever (upsert is create-only; the bucket rides the save), and every map surface would keep
+// offering an 'Unresolved contact' course to a question that has been answered. Runs on the
+// pulse that refreshes the bucket, in this single-writer file; keyed on the POI identity
+// (poi.poiId || poi_<entity id>), never on a signal-string namespace.
+function pruneResolvedPings(state, sectorId, pois) {
+  const bucket = state.world && state.world.scanPings;
+  const list = bucket && bucket[sectorId];
+  if (!Array.isArray(list) || !list.length) return;
+  const live = new Set();
+  for (const poi of pois || []) {
+    if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
+    const entity = state.entities && state.entities.get && state.entities.get(poi.id);
+    if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
+    if (!vestaOreCacheSignalAvailable(state, poi.poiId || poi.id)
+      || !pallasHiddenCacheSignalAvailable(state, poi.poiId || poi.id)) continue;
+    live.add(poi.poiId || `poi_${poi.id}`);
+  }
+  // An id no current POI claims is an orphan only once the sector is cooked (a non-empty poi
+  // list answers "who could own a ping here"); a transiently empty list must not wipe the
+  // remembered fixes the bucket exists to keep.
+  const cooked = Array.isArray(pois) && pois.length > 0;
+  bucket[sectorId] = list.filter((ping) => {
+    if (!ping || ping.id == null) return false;
+    if (live.has(ping.id)) return true;
+    return !cooked;
+  });
+}
+
 export function signalStrengthFor(distance, range) {
   const r = Math.max(1, Number(range) || 1);
   return Math.max(0, Math.min(1, 1 - Math.max(0, Number(distance) || 0) / r));
@@ -611,6 +663,13 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     const range = Math.max(1, Number(candidate.range) || NEAR_SCAN_RADIUS);
     if (distance > range) return;
     const row = { ...candidate, distance, range, pos: pos2(candidate.pos) };
+    // Stamp what the entityId means at record time — a signal record can outlive the body,
+    // and the free-id pool reissues ids; the stamp is the record's proof of WHICH holder.
+    if (row.entityId != null && row.entityStable == null) {
+      const bound = liveEntityById(state, row.entityId);
+      const stable = bound ? captureEntitySelection(bound) : null;
+      if (stable) row.entityStable = stable;
+    }
     const previous = byId.get(row.id);
     if (!previous || row.distance < previous.distance) byId.set(row.id, row);
   };
@@ -1112,6 +1171,15 @@ export const scanner = {
         data.manifest = buildWreckManifest(entity);
         if (!data.weakPoint) data.weakPoint = weakPointFor(entity);
         if (firstResolve) {
+          // The resolve names the hull it was: an aftermath wreck's provenance carries the
+          // victim's own callsign, so the hulk reads "Hulk of MERIDIA SPOKE" on every scanLabel
+          // surface (lock, comms, roster) instead of the salvage-kit tag (CV-SO).
+          const provenance = data.provenance && typeof data.provenance === 'object' ? data.provenance : null;
+          const victim = provenance && provenance.victimLabel;
+          if (victim && victim !== provenance.victimClass && data.playerWreck !== true) {
+            const named = `Hulk of ${victim}`;
+            if (data.scanLabel !== named) data.scanLabel = named;
+          }
           // A targeted per-hull resolution — the law's wreck-provenance loop keys on markerId,
           // so a generic sector pulse can never mass-report every wreck it merely pinged.
           this.bus.emit('scan:wreckResolved', {
@@ -1187,7 +1255,9 @@ export const scanner = {
 
   _pingHiddenPois(state, sectorId, origin, scanRadius = HIDDEN_POI_RADIUS) {
     const active = state.world && state.world.activeSector;
-    for (const poi of active && active.pois || []) {
+    const pois = active && active.pois || [];
+    pruneResolvedPings(state, sectorId, pois);
+    for (const poi of pois) {
       if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
       const entity = state.entities && state.entities.get && state.entities.get(poi.id);
       if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
@@ -1262,6 +1332,7 @@ export const scanner = {
             sourceKind: candidate.kind,
             sourceId: candidate.sourceId || null,
             entityId: candidate.entityId || null,
+            entityStable: candidate.entityStable || null,
             signalPriority: candidate.signalPriority || 0,
             // Before the fix, this is the pilot's sample origin—not the hidden target position.
             pos: pos2(origin),
@@ -1304,6 +1375,7 @@ export const scanner = {
         sourceKind: candidate.kind,
         sourceId: candidate.sourceId || null,
         entityId: candidate.entityId || null,
+        entityStable: candidate.entityStable || null,
         signalPriority: candidate.signalPriority || 0,
         pos: pos2(candidate.pos),
         classification: signalClassLabel(candidate.kind, stage),
@@ -1441,9 +1513,12 @@ export const scanner = {
       && discovery.actionPos && Number.isFinite(discovery.actionPos.x) && Number.isFinite(discovery.actionPos.z)
       ? discovery.actionPos : null;
     const aim = lessonPos || record.pos;
+    // Emit the entity the record still proves it means — a dead or recycled holder binds
+    // nothing and the course keeps the honest recorded fix instead of a stranger's hull.
+    const holder = lessonPos ? null : recordEntity(state, record);
     const course = {
       pos: { x: aim.x, z: aim.z },
-      targetEntityId: lessonPos ? null : record.entityId,
+      targetEntityId: holder ? holder.id : null,
       label: record.classification,
       reason: lessonPos && discovery.sentence
         ? discovery.sentence
@@ -1483,9 +1558,10 @@ export const scanner = {
   _retargetClue(record) {
     const route = record && record.clue && record.clue.route;
     if (!route || !route.pos || !this.bus || typeof this.bus.emit !== 'function') return false;
+    const holder = recordEntity(this.state, record);
     this.bus.emit('ui:setCourse', {
       pos: { x: route.pos.x, z: route.pos.z },
-      targetEntityId: record.entityId || null,
+      targetEntityId: holder ? holder.id : null,
       label: route.label || record.classification,
       reason: route.reason,
       waypointKind: 'signal',
@@ -1757,7 +1833,7 @@ export const scanner = {
     if (record.sectorId && sectorId && record.sectorId !== sectorId) return;
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.alive || !player.pos) return;
-    const target = record.entityId && state.entities && state.entities.get && state.entities.get(record.entityId);
+    const target = recordEntity(state, record);
     const pos = target && target.pos || record.pos;
     if (!pos) return;
     record.pos = pos2(pos);

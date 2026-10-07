@@ -159,9 +159,9 @@ assert.match(save, /data\.nav\s*=\s*this\._serializeNav\(\)/,
   'save data must include the active navigation intent');
 assert.match(save, /_restoreNav\(data\.nav\)/,
   'load restore must rebuild navigation intent before save:loaded listeners run');
-assert.match(save, /function sanitizeNavState\(nav\)/,
+assert.match(save, /function sanitizeNavState\(nav\b/,
   'saved navigation must be sanitized into a plain JSON contract');
-assert.match(save, /function sanitizeNavWaypoint\(waypoint\)[\s\S]*commodityId/s,
+assert.match(save, /function sanitizeNavWaypoint\(waypoint\b[\s\S]*commodityId/s,
   'trade route waypoints must persist the commodity id needed at the destination market');
 assert.match(save, /this\.bus\.emit\('nav:waypoint',\s*restored\.waypoint \|\| null\)/,
   'restoring a save must rebroadcast the restored or cleared waypoint');
@@ -224,10 +224,14 @@ assert.equal(latestOccupiedSlot({
 }), 'auto', 'saveLoad latest-slot badges should prefer savedAt/lastSavedAt timestamps when present');
 
 // UI save feedback: F5/F9/autosave and Save/Load screen actions all converge through save events.
+// 'save:started' is intentionally not toasted — the write lands in milliseconds and 'Saved …'
+// follows, so two receipts for one press only crowded the lane (wireSaveFeedback's own comment).
 assert.match(uiRoot, /function wireSaveFeedback\(bus\)/, 'uiRoot must centralize save/load feedback');
-for (const eventName of ['save:started', 'save:completed', 'save:loaded', 'save:error']) {
+for (const eventName of ['save:completed', 'save:loaded', 'save:error']) {
   assert.match(uiRoot, new RegExp(`bus\\.on\\('${eventName}'`), `uiRoot must listen for ${eventName}`);
 }
+assert.doesNotMatch(uiRoot, /bus\.on\('save:started'[\s\S]{0,200}emit\('toast'/,
+  'save:started stays silent by design — the completion receipt is the one toast');
 assert.match(uiRoot, /function saveErrorText\(payload = \{\}\)/, 'uiRoot must translate save error reasons into player copy');
 assert.match(uiRoot, /Autosaved/, 'uiRoot should show a short autosave completion toast');
 assert.match(uiRoot, /Start or load a game before saving/, 'uiRoot should explain no-player save failures');

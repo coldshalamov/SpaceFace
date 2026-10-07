@@ -87,8 +87,17 @@ test('the chooser emits ui:fitModule for hold rows — shipIndex, slot, and inst
   assert.ok(/data-fit-inv/.test(src), 'hold rows carry a fit verb');
   assert.ok(/emit\w*\('ui:fitModule',\s*\{[^}]*shipIndex:\s*viewIdx[^}]*instanceId/s.test(src),
     'ui:fitModule carries the viewed hull and the row instanceId');
-  assert.ok(/emit\('ui:unfitModule',\s*\{[^}]*shipIndex:\s*viewIdx/s.test(src),
+  assert.ok(/emit\w*\('ui:unfitModule',\s*\{[^}]*shipIndex:\s*viewIdx/s.test(src),
     'ui:unfitModule outfits the viewed hull, not always the active one');
+  // Research G / P08 residual — the unfit intent settles through the shared refused-fit
+  // listener: a refusal (e.g. cargo capacity changed between render and intent) keeps the
+  // chooser open on the attempted slot with a deny cue and no success detent; only an
+  // accepted unfit closes, exactly once.
+  assert.ok(/const accepted = emitFitIntent\('ui:unfitModule'/.test(src),
+    'the unfit intent rides the same refused-fit outcome listener as fit');
+  assert.ok(
+    /emitFitIntent\('ui:unfitModule'[\s\S]*?ui_deny[\s\S]*?return;[\s\S]*?UI_SWITCH_DETENT_CUE[\s\S]*?closeChooser\(\)/.test(src),
+    'a refused unfit denies and returns before the chooser closes; acceptance cues the detent then closes once');
   // The purchase settles on the hull the confirmation named: the handler captures
   // viewIdx into statedShipIndex at quote time and emits that binding — pinning the
   // capture plus the emission proves the same discipline without asserting raw viewIdx.
@@ -103,4 +112,50 @@ test('the chooser emits ui:fitModule for hold rows — shipIndex, slot, and inst
     'hold rows refuse right-size/wrong-mount weapons in words like the buy list');
   assert.ok(/typeof item\.instanceId !== 'string'/.test(src),
     'rows without a usable instanceId never become a dead Fit button');
+});
+
+test('a refused unfit (hold filled between render and intent) keeps the fit and names the reason', () => {
+  const { state, bus } = boot();
+  // Kestrel slot order: weapon, shield, engine, cargo, mining, utility, thruster.
+  const CARGO_SLOT = 3;
+  const outcomes = [];
+  bus.on('module:fitRefused', (payload) => outcomes.push({ name: 'module:fitRefused', payload }));
+  bus.on('module:unequipped', (payload) => outcomes.push({ name: 'module:unequipped', payload }));
+  bus.on('toast', (payload) => outcomes.push({ name: 'toast', payload }));
+  // At render the pod (+50 → 300 cap) covered the hold; by intent time the hold sits at 280,
+  // above the bare hull's 250 — the owner must refuse, not fake a success.
+  state.player.ownedShips[0].fittings[CARGO_SLOT] = 'mod_cargo_pod_m';
+  state.player.cargo.usedVolume = 280;
+
+  bus.emit('ui:unfitModule', { shipIndex: 0, slotIndex: CARGO_SLOT });
+
+  assert.equal(state.player.ownedShips[0].fittings[CARGO_SLOT], 'mod_cargo_pod_m',
+    'the refused unfit leaves the attempted module fitted');
+  assert.equal(state.player.moduleInventory.length, 0, 'nothing strands in the hold');
+  const refusal = outcomes.find((o) => o.name === 'module:fitRefused');
+  assert.ok(refusal, 'the refusal rides the shared module:fitRefused outcome, not a second channel');
+  assert.equal(refusal.payload.reason, 'cargo_overflow');
+  assert.equal(refusal.payload.slotIndex, CARGO_SLOT);
+  assert.equal(refusal.payload.defId, 'mod_cargo_pod_m');
+  assert.equal(outcomes.some((o) => o.name === 'module:unequipped'), false,
+    'no success outcome rides along with a refusal');
+  const toast = outcomes.find((o) => o.name === 'toast');
+  assert.ok(toast && /Cargo would overflow/.test(toast.payload.text),
+    'the refusal reason is named to the player');
+});
+
+test('an accepted unfit emits exactly one success outcome and never a refusal', () => {
+  const { state, bus } = boot();
+  const unequips = [];
+  const refusals = [];
+  bus.on('module:unequipped', () => unequips.push(1));
+  bus.on('module:fitRefused', () => refusals.push(1));
+  state.player.ownedShips[0].fittings[KESTREL_UTILITY_SLOT] = UTILITY_DEF;
+
+  bus.emit('ui:unfitModule', { shipIndex: 0, slotIndex: KESTREL_UTILITY_SLOT });
+
+  assert.deepEqual(unequips, [1], 'exactly one unequip outcome — the chooser closes on it once');
+  assert.equal(refusals.length, 0, 'an accepted fit carries no refusal');
+  assert.equal(state.player.ownedShips[0].fittings[KESTREL_UTILITY_SLOT], null);
+  assert.equal(state.player.moduleInventory.length, 1);
 });

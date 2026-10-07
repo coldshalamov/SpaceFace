@@ -105,7 +105,8 @@ test('rock-visit quiet retain wakes on mining pin fact', () => {
   step(state);
   step(state);
   const rock = state.rocks[3];
-  state.player.data.miningTargetId = rock.id;
+  // The real writer is mining.js _setLockTargetId → state.player.miningTargetId (D173).
+  state.player.miningTargetId = rock.id;
   step(state);
   const pins = (rock.activity && rock.activity.pins) || [];
   assert.ok(

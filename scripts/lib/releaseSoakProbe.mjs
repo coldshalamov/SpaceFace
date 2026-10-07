@@ -265,7 +265,7 @@ export async function runReleaseSoakProbe({
       assert.equal(ownedServer.ownsServer, true, 'browser soak must own its canonical in-process server');
       rootUrl = ownedServer.baseUrl;
       ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport));
-      pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
+      pageIssueTracker = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
       // Navigation is measurement apparatus (the boot floor anchors at timeOrigin, read
       // after this resolves). A host busy with other lanes' builds/benches can starve the
@@ -6087,7 +6087,7 @@ async function runPerformanceAttributionProbe({
       ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport, {
         enableTier1Counters,
       }));
-      pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
+      pageIssueTracker = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
       // Navigation is measurement apparatus (the boot floor anchors at timeOrigin, read
       // after this resolves). A host busy with other lanes' builds/benches can starve the

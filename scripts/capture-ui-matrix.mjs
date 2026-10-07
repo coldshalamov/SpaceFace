@@ -2468,7 +2468,7 @@ export async function startFreshServer() {
     const seedPort = 16000 + Math.floor(Math.random() * 32000);
     const port = await findFreePort(seedPort);
     const baseUrl = `http://127.0.0.1:${port}/`;
-    const child = spawn(process.execPath, ['server.js', String(port)], {
+    const child = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, 
       cwd: ROOT,
       stdio: ['ignore', 'ignore', 'ignore'],
       windowsHide: true,

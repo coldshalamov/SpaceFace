@@ -23,6 +23,7 @@ import {
   planFactionPresence,
   presenceServiceForStation,
 } from '../data/factionPresence.js';
+import { factionBerthForStation } from '../data/factionBerths.js'; // CR-BERTH-1
 import { conflictAftermathAnchor } from '../data/conflictZones.js';
 import {
   RECORD_KIND,
@@ -451,6 +452,9 @@ export const factionPresence = {
       this.bus.on('combat:subsystemEnabled', (payload) => this._onSubsystemEnabled(payload || {})),
       this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
       this.bus.on('ui:factionPresenceService', (payload) => this._onServiceAction(payload || {})),
+      // CR-BERTH-1 — a redeem_rights payout at a berth station is the desk receipt for the
+      // consigned wreck that world.js then parks on the strip-line.
+      this.bus.on('service:completed', (payload) => this._onServiceCompleted(payload || {})),
       this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload || {})),
       this.bus.on('save:loaded', () => this._onSaveLoaded()),
       this.bus.on('conflict:flip', (payload) => this._onConflictFlip(payload || {})),
@@ -1130,6 +1134,35 @@ export const factionPresence = {
         own.serviceReceipts[appraisalId] = receipt;
         pushReceipt(this.state, receipt);
       }
+      // CR-BERTH-2 — a fed appraisal is also the feed order: the hull the ledger proved goes
+      // to the slip off the refinery. Only a hull loss feeds it — the desk's own denial text
+      // keys on shipDefId, so an entry with a lossId but no named hull (outpost raid,
+      // unrecognized def) buys nothing physical. count tracks distinct hulls fed, not clicks:
+      // re-appraising the same loss is one feed. world.js reads the row's existence as the
+      // hulk gate.
+      const berth = factionBerthForStation(stationId);
+      if (berth && loss && loss.lossId && loss.shipDefId) {
+        const prior = own.serviceReceipts[berth.receiptKey];
+        const fedLossIds = new Set(Array.isArray(prior && prior.fedLossIds) ? prior.fedLossIds : []);
+        const alreadyFed = fedLossIds.has(loss.lossId);
+        fedLossIds.add(loss.lossId);
+        const feed = {
+          kind: 'berthFeed',
+          berthId: berth.id,
+          stationId,
+          factionId: berth.factionId,
+          // count is distinct hulls the slip has eaten, not desk clicks — a second appraisal
+          // of the same recorded loss is one feed. fedLossIds is the dedupe memory (the desk
+          // always appraises the newest loss, so a bounded tail is the whole reachable set).
+          count: (Number.isFinite(prior && prior.count) ? prior.count : 0) + (alreadyFed ? 0 : 1),
+          fedLossIds: [...fedLossIds].slice(-24),
+          lastLossId: loss.lossId,
+          lastShipDefId: loss.shipDefId,
+          t: this.state.simTime || 0,
+        };
+        own.serviceReceipts[berth.receiptKey] = feed;
+        pushReceipt(this.state, feed);
+      }
       this.bus.emit('comms:popup', {
         id: appraisalId, sender: 'Understory Wreck Buyer', text, category: 'salvage', persist: true,
       });
@@ -1155,6 +1188,36 @@ export const factionPresence = {
     this.bus.emit('factionPresence:serviceAction', {
       factionId: current.factionId, stationId, serviceId, targetTab, available: true,
     });
+  },
+
+  // CR-BERTH-1 — the consignment line's receipt. A redeem_rights payout at a berth station is
+  // the yard desk buying the player's claim on a wreck already in the yards' books: write the
+  // keyed serviceReceipt the berth's strip-line spawn reads, and journal it like every other
+  // faction desk receipt. The body itself materializes on the next sector pass — the yard works
+  // between visits. Repeat payouts update the same keyed row (count accumulates, t refreshes)
+  // rather than minting unstable keys.
+  _onServiceCompleted(payload) {
+    if (!payload || payload.type !== 'redeem_rights') return;
+    const stationId = typeof payload.stationId === 'string' ? payload.stationId : null;
+    const berth = stationId ? factionBerthForStation(stationId) : null;
+    // The redeem_rights payout feeds consignment berths only — a berth keyed to a different
+    // receipt contract (the slip's berthFeed: feed order, written by the appraisal desk)
+    // must not let a foreign payout mint a hulk on the wrong memory.
+    if (!berth || !String(berth.receiptKey).startsWith('berthConsign:')) return;
+    const own = ensureOwnState(this.state);
+    const prior = own.serviceReceipts[berth.receiptKey];
+    const rights = Math.max(1, Math.floor(Number(payload.rights) || 0));
+    const receipt = {
+      kind: 'berthConsign',
+      berthId: berth.id,
+      stationId,
+      factionId: berth.factionId,
+      count: (prior && Number.isFinite(prior.count) ? prior.count : 0) + rights,
+      lastRights: rights,
+      t: Number(this.state.simTime) || 0,
+    };
+    own.serviceReceipts[berth.receiptKey] = receipt;
+    pushReceipt(this.state, receipt);
   },
 
   _updateFulfillmentRoutes() {

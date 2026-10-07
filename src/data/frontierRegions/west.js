@@ -50,15 +50,15 @@ export const WEST_ORIGIN_CELLS = Object.freeze({
 // Inlined from sectors.js SECTOR_PALETTE_CLASSES — existing vocab only, no import.
 const PALETTE = Object.freeze({
   core: Object.freeze({
-    key: 0xd8e8ff, rim: 0x7a6cff, fill: 0x4ad8ff, ambient: 0x384868,
+    key: 0xffe2bd, rim: 0x82baf0, fill: 0xa3b4dd, ambient: 0x45516f,
     fog: 0x05070b, fogDensity: 0, nebulaTint: 0x2450a0, dust: 0x8ec0e8,
   }),
   belt: Object.freeze({
-    key: 0xffd59a, rim: 0xb56d2f, fill: 0xffb13d, ambient: 0x594a42,
+    key: 0xffd59a, rim: 0x71a4bf, fill: 0xbca58d, ambient: 0x594a52,
     fog: 0x090705, fogDensity: 0.00002, nebulaTint: 0x8a4a1e, dust: 0xc0793d,
   }),
   fringe: Object.freeze({
-    key: 0xffb07a, rim: 0xff3f2d, fill: 0xffaa66, ambient: 0x584343,
+    key: 0xffb07a, rim: 0x9875ce, fill: 0xbc91a6, ambient: 0x51435d,
     fog: 0x090504, fogDensity: 0.00003, nebulaTint: 0x8a1e1e, dust: 0xc15032,
   }),
   anomaly: Object.freeze({

@@ -81,6 +81,21 @@ test('release snap is distinct from break: recipe, caption, and pitch contour', 
   assert.equal(release.play, true);
   assert.equal(messy.play, false, 'messy release stays on the 158.06 snap so the two leaves do not double');
   assert.equal(broken.play, true, 'break is audible on the instrument');
+
+  // CV-THROW — the ear learns the cut: the snap climbs the same energy→pitch ladder the rest of
+  // the instrument already teaches. A razor rings above a clean, a merely-good cut lands flat,
+  // and every played grade stays above the break's lower failure voice.
+  const razor = resolveMasslineInstrument({ event: 'release', classification: 'razor' });
+  const good = resolveMasslineInstrument({ event: 'release', classification: 'good' });
+  assert.ok(razor.rate > release.rate && release.rate > good.rate,
+    `razor ${razor.rate} > clean ${release.rate} > good ${good.rate} — the grade is audible`);
+  assert.ok(razor.gain > release.gain && release.gain > good.gain,
+    'a better cut rings brighter as well as higher');
+  assert.ok(good.rate > broken.rate, 'even a flat release is a taut let-go, not a failure');
+  assert.equal(razor.play, true);
+  assert.equal(good.play, true);
+  assert.equal(razor.recipeId, release.recipeId,
+    'the grade bends the voice, never swaps the recipe — the ear learns one snap, three notes');
   const releaseRecipe = RECIPES.find((r) => r.id === 'sfx_massline_release');
   const breakRecipe = RECIPES.find((r) => r.id === 'sfx.tetherSnap');
   assert.equal(releaseRecipe.type, 'oscillator');

@@ -51,9 +51,11 @@ const player = {
 };
 const loaded = getDerivedStats(NEW_GAME.shipId, starterFittings, player);
 
-assert.equal(loaded.dryMass, 32, 'starter dry mass is hull plus fitted modules');
+// Hull 18 + pulse laser 2 + ion engine 6 + shield 3 + mining laser 3 + drill amp 3 (ea6a87ab3
+// fitted the Hitch's cut — dry mass tracks the authored starter fit, not a fixed hull-only count).
+assert.equal(loaded.dryMass, 35, 'starter dry mass is hull plus fitted modules');
 assert.equal(loaded.cargoMass, 20, 'derived stats read authoritative cargo usedMass');
-assert.equal(loaded.operationalMass, 52, 'operational mass includes live cargo');
+assert.equal(loaded.operationalMass, 55, 'operational mass includes live cargo');
 assert.equal(loaded.mass, loaded.operationalMass, 'legacy mass alias is the operational mass');
 
 const npc = getDerivedStats('ship_wasp', [], null);
@@ -332,7 +334,7 @@ const deriveRestoredStarter = () => {
 const restoredA = deriveRestoredStarter();
 const restoredB = deriveRestoredStarter();
 assert.deepEqual(restoredB, restoredA, 'save-like cargo restore derives the same mass/spool snapshot twice');
-assert.deepEqual(restoredA, { cargoMass: 8, operationalMass: 40, spool: 1, physicsMass: 40 },
+assert.deepEqual(restoredA, { cargoMass: 8, operationalMass: 43, spool: 1, physicsMass: 43 },
   'restored cargo items replace stale caches and the empty starter has the 1.0 spool');
 
 async function runStarterTetherSeed(seed) {

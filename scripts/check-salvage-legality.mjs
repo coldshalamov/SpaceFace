@@ -11,6 +11,10 @@ import { existsSync } from 'node:fs';
 
 import { COMMODITIES } from '../src/data/commodities.js';
 import { economy } from '../src/systems/economy.js';
+import {
+  TETHYS_BLACK_MARKET_DISCOVERY,
+  TETHYS_BLACK_MARKET_RUN,
+} from '../src/data/frontierRumors.js';
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 assert.ok(existsSync(new URL('../src/data/salvageLegality.js', import.meta.url)),
@@ -159,6 +163,26 @@ function testBlackmarketLaunderingClearsRestrictedSalvage() {
   sys.ensureMarket('station_smuggler');
   assert.ok(state.economy.markets.station_smuggler[CLASSIFIED_SALVAGE_COMMODITY_ID],
     'blackmarket market lists classified salvage through shipped market tolerance');
+
+  // 6a149c419: the den stays locked until the Quiet entrance run is delivered.
+  const locked = sys.execute('station_smuggler', CLASSIFIED_SALVAGE_COMMODITY_ID, 'sell', 2);
+  assert.equal(locked.ok, false, 'unearned blackmarket sell is refused');
+  assert.equal(locked.reason, 'black_market_locked',
+    'the refusal names the entrance-run gate, not a cargo or stock fault');
+  assert.equal(state.player.cargo.items[CLASSIFIED_SALVAGE_COMMODITY_ID], 2,
+    'a refused sale confiscates nothing');
+
+  // Earned access: the discovery record carries a delivered entrance run.
+  state.world.frontierRumors = {
+    byId: {
+      [TETHYS_BLACK_MARKET_DISCOVERY.rumorId]: {
+        phase: 'contacted',
+        contactId: TETHYS_BLACK_MARKET_DISCOVERY.contactId,
+        entranceRun: { ...TETHYS_BLACK_MARKET_RUN, phase: 'delivered' },
+      },
+    },
+  };
+
   const sold = sys.execute('station_smuggler', CLASSIFIED_SALVAGE_COMMODITY_ID, 'sell', 2);
   assert.equal(sold.ok, true, 'blackmarket sell path accepts classified salvage');
   assert.equal(state.player.cargo.items[CLASSIFIED_SALVAGE_COMMODITY_ID], undefined,

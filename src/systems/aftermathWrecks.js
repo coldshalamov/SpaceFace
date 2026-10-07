@@ -11,7 +11,9 @@ import { hash32 } from '../core/rng.js';
 import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { validateRunState } from '../core/runState.js';
 import { salvagePoolFromManifest, spawnJettisonedCargoPod } from './lootShards.js';
-import { peekPendingSlam } from './hullFracture.js';
+import { peekPendingSlam, IMPACT_TEAROFF_LAW, spawnCollisionTearOff } from './hullFracture.js';
+import { combatFlag } from '../data/featureFlags.js';
+import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { zoneAt, zoneThreat } from '../data/sectorZones.js';
@@ -431,6 +433,15 @@ function victimLabelFor(entity, payload) {
   return data.name || data.shipName || data.callsign || data.callSign || payload && payload.label || victimClassFor(entity, payload);
 }
 
+// The killer's NAME has to be captured at record time: killerId is a bare entity id that
+// recycles, and by scan time the shooter may be dead or despawned. The body is alive here —
+// it just fired — so the same label chain the victim uses resolves while the record is made.
+function killerLabelFor(state, killerId) {
+  const entity = entityFor(state, killerId);
+  const data = entity && entity.data || {};
+  return data.name || data.shipName || data.callsign || data.callSign || null;
+}
+
 function classForVictim(victimClass) {
   const key = String(victimClass || '').toLowerCase();
   if (key.includes('patrol') || key.includes('law') || key.includes('military')) return 'military';
@@ -528,7 +539,9 @@ function aftermathLine(marker) {
   const victim = marker.victimLabel || marker.victimClass || 'ship';
   const cause = marker.cause;
   if (cause && cause.actor) return `${victim} destroyed in ${zone}; evidence links ${cause.actor} to ${cause.motiveId}.`;
-  return `${victim} destroyed in ${zone}; black box lists killer ${marker.killerId == null ? 'unknown' : marker.killerId}.`;
+  // The name was captured at record time — killerId is a bare id that may have recycled since.
+  const killer = marker.killerLabel || (marker.killerId == null ? 'unknown' : 'unidentified');
+  return `${victim} destroyed in ${zone}; black box lists killer ${killer}.`;
 }
 
 function newsLine(marker) {
@@ -645,6 +658,7 @@ function makeMarker(state, payload, entity) {
     victimLabel: victimLabelFor(entity, payload),
     victimFactionId: entity && entity.factionId || payload && payload.factionId || null,
     killerId: payload && payload.killerId != null ? payload.killerId : null,
+    killerLabel: killerLabelFor(state, payload && payload.killerId),
     tick: state.tick || 0,
     t: Number(state.simTime || 0),
     wreckClass: cls ? cls.id : 'battlefield',
@@ -700,6 +714,7 @@ function makePlayerWreckMarker(state, payload, entity) {
     victimLabel: victimLabelFor(entity, payload) || 'Your Hull',
     victimFactionId: entity && entity.factionId || payload && payload.factionId || null,
     killerId: payload && payload.killerId != null ? payload.killerId : null,
+    killerLabel: killerLabelFor(state, payload && payload.killerId),
     tick: state.tick || 0,
     t: Number(state.simTime || 0),
     wreckClass: cls ? cls.id : 'fresh',
@@ -866,6 +881,9 @@ function normalizeMarker(input) {
     victimLabel: input.victimLabel || input.victimClass || 'ship',
     victimFactionId: input.victimFactionId || null,
     killerId: input.killerId == null ? null : input.killerId,
+    // Markers written before the record carried a name restore to null — the black box
+    // then honestly reports an unidentified killer rather than guessing one.
+    killerLabel: boundedIdentityText(input.killerLabel),
     tick: Number.isFinite(input.tick) ? input.tick : 0,
     t: Number.isFinite(input.t) ? input.t : 0,
     wreckClass: input.wreckClass || 'battlefield',
@@ -968,19 +986,21 @@ export const aftermathWrecks = {
       this._spawnForSector(this.state && this.state.world && this.state.world.currentSectorId);
     };
     this._onSaveError = () => { this._saveRestoring = false; };
+    this._onLooseImpact = (payload) => this._shedImpactChips(payload || {});
 
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:killed', this._onKilled);
       this.bus.on('player:death', this._onPlayerDeath);
       this.bus.on('entity:destroyed', this._onDestroyed);
       this.bus.on('wreckField:source', this._onFieldSource);
+      this.bus.on('physics:impact', this._onLooseImpact);
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
       // drains the same _onSectorEnter under its slice clock in listener order.
-      this.bus.on('sector:enter', (p) => {
+      this._onSectorEnterWrapped = (p) => {
         if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
         this._onSectorEnter(p);
-      });
-      this.bus.on('sector:exit', this._onSectorExit);
+      };
+      this.bus.on('sector:enter', this._onSectorEnterWrapped);
       // Census arm: sector-dust wrecks materialize inside the cook, not on emit order.
       // The cook drives the chunked steps across its slice clock; the emit listener
       // drains the same steps synchronously, so both paths mint the identical field.
@@ -990,6 +1010,7 @@ export const aftermathWrecks = {
       });
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);
+      this.bus.on('sector:exit', this._onSectorExit);
       this.bus.on('salvage:completed', this._onSalvageCompleted);
       this.bus.on('encounter:resolved', this._onEncounterResolved);
       this.bus.on('dock:docked', this._onDocked);
@@ -1025,6 +1046,65 @@ export const aftermathWrecks = {
     if (!sectorId || this._saveRestoring) return;
     this._syncEcologyForSector(sectorId);
     this._driveScavengers(state, sectorId);
+  },
+
+  // Impact tear-off for loose bodies (hullFracture.IMPACT_TEAROFF_LAW): a wreck meeting
+  // rock/station/craft at tumble-class closing speed sheds bounded chips — the
+  // break-apart beat of the hull-burst overhaul (`combat.tumbleFling`), for the debris a
+  // blast already sent flying. Admission here (cooldown, per-wreck lifetime cap, mass
+  // floor, real dynamic body only); the chip bodies are hullFracture's own tear-off spec.
+  // Ships keep the collisionConsequences path — this is the loose-body sibling, not a
+  // second ship rule.
+  _shedImpactChips(payload) {
+    if (!combatFlag('tumbleFling')) return;
+    const state = this.state;
+    if (!state || !payload) return;
+    const dp = Math.abs(Number(payload.dp) || Number(payload.impulse) || 0);
+    if (!(dp > 0)) return;
+    const a = payload.aId != null ? state.entities.get(payload.aId) : null;
+    const b = payload.bId != null ? state.entities.get(payload.bId) : null;
+    // Both flanks of a wreck-vs-wreck contact shed independently: each is bounded by its
+    // own cooldown, lifetime cap and mass floor, so a mutual slam costs two sprays only
+    // when both hulls are heavy enough to earn one. The flank flag is positional, not
+    // derived from the payload ids (aId/bId name entities; these are the entities).
+    if (a && a.type === 'wreck') this._shedChipsFromWreck(a, true, payload, dp, state);
+    if (b && b.type === 'wreck' && b !== a) this._shedChipsFromWreck(b, false, payload, dp, state);
+  },
+
+  _shedChipsFromWreck(wreck, wreckIsA, payload, dp, state) {
+    if (!wreck || wreck.alive === false || !wreck.data) return;
+    if (!isDynamicPhysicsBodyEntity(wreck)) return;
+    const data = wreck.data;
+    const count = Number(data.impactChipCount) || 0;
+    if (count >= IMPACT_TEAROFF_LAW.maxPerVictim) return;
+    const mass = Math.max(0.1, Number(wreck.physicsBody && wreck.physicsBody.mass) || Number(wreck.mass) || 1);
+    if (mass < IMPACT_TEAROFF_LAW.minVictimMass) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+    const lastAt = Number(data.lastImpactChipAt);
+    if (Number.isFinite(lastAt) && now - lastAt < IMPACT_TEAROFF_LAW.cooldownS) return;
+    const deltaV = dp / mass;
+    if (!(deltaV >= IMPACT_TEAROFF_LAW.deltaV)) return;
+    // The chips seed from the struck side: flip the solver's A→B axis so it points away
+    // from the wreck's flank of the contact (spawnCollisionTearOff randomizes which side
+    // of that line the chips leave on anyway; the note's normal only orients the line).
+    const nx = Number(payload.normal && payload.normal.x) || 0;
+    const nz = Number(payload.normal && payload.normal.z) || 0;
+    const spawned = spawnCollisionTearOff({ state, helpers: this.helpers, bus: this.bus }, {
+      victimId: wreck.id,
+      pos: { x: wreck.pos.x, z: wreck.pos.z },
+      vel: { x: wreck.vel ? wreck.vel.x : 0, z: wreck.vel ? wreck.vel.z : 0 },
+      normal: { x: wreckIsA ? nx : -nx, z: wreckIsA ? nz : -nz },
+      closingSpeed: deltaV,
+      count: deltaV >= IMPACT_TEAROFF_LAW.heavyDeltaV ? 2 : 1,
+      tick: state.tick | 0,
+      mass,
+      radius: Math.max(1, Number(wreck.radius) || 7),
+      momentum: dp,
+      sectorId: (state.world && state.world.currentSectorId) || null,
+    });
+    if (!spawned) return;
+    data.impactChipCount = count + spawned.length;
+    data.lastImpactChipAt = now;
   },
 
   // Per-tick scavenger behavior. Bounded: one slot per field, fields are few, and slots that are
@@ -1656,6 +1736,7 @@ export const aftermathWrecks = {
       victimLabel: boundedIdentityText(payload.victimLabel) || 'Recovered Assembly',
       victimFactionId: payload.victimFactionId || null,
       killerId: payload.killerId == null ? null : payload.killerId,
+      killerLabel: killerLabelFor(state, payload.killerId),
       tick: state.tick || 0,
       t: Number(state.simTime || 0),
       wreckClass: cls ? cls.id : 'fresh',
@@ -2091,6 +2172,7 @@ export const aftermathWrecks = {
           victimDefId: marker.victimDefId || null,
           victimFactionId: marker.victimFactionId,
           killerId: marker.killerId,
+          killerLabel: marker.killerLabel || null,
           tick: marker.tick,
           encounterId: marker.encounterId,
           fingerprint: marker.encounterFingerprint,
@@ -2698,6 +2780,12 @@ export const aftermathWrecks = {
       if (this._onPlayerDeath) this.bus.off('player:death', this._onPlayerDeath);
       if (this._onDestroyed) this.bus.off('entity:destroyed', this._onDestroyed);
       if (this._onFieldSource) this.bus.off('wreckField:source', this._onFieldSource);
+      if (this._onLooseImpact) this.bus.off('physics:impact', this._onLooseImpact);
+      if (this._onSectorEnterWrapped) this.bus.off('sector:enter', this._onSectorEnterWrapped);
+      if (this._cookProvider && this.helpers && Array.isArray(this.helpers.sectorCookProviders)) {
+        const at = this.helpers.sectorCookProviders.indexOf(this._cookProvider);
+        if (at >= 0) this.helpers.sectorCookProviders.splice(at, 1);
+      }
       if (this._onSectorEnter) this.bus.off('sector:enter', this._onSectorEnter);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
       if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);

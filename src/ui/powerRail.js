@@ -498,7 +498,7 @@ export function readBombBayModel(state, nowS) {
       cooldownMs: 0, deployed, armedCount, fields,
       badge: 'RACK EMPTY',
       why: locked ? 'Undock to use the bay' : 'Rack empty — restock at a station shipworks',
-      description: `Bomb rack empty — re-arm at a station shipworks. ${armedCount} armed; ${fields} active fields.`,
+      description: `Bomb rack empty — rearm at a station shipworks. ${armedCount} armed; ${fields} active fields.`,
     };
   }
   return {

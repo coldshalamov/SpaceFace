@@ -54,6 +54,14 @@ export const DECKPLATE_LAYOUT_CSS = `
    escaping into the HUD's stack (ARCHITECTURE §1.2). */
 .dp-frame--screen { position:fixed; inset:0; isolation:isolate; background:transparent; }
 .dp-frame__head { grid-area:head; min-width:0; }
+@media (max-height:640px) {
+  /* a short window still owes the body row a working share: an auto head row sizes to the
+     crown's full content, so a tall crown (a wrapped berth's vitals at a narrow station window)
+     can eat the frame whole and leave the body band at zero. Cap the head inside the screen
+     and let its own rows scroll — the foot keeps its seat and the body keeps its instrument
+     (REV-D112). */
+  .dp-frame--screen .dp-frame__head { max-height:56vh; overflow:hidden auto; }
+}
 .dp-frame__body { grid-area:body; min-height:0; min-width:0; display:grid; gap:var(--dp-rhythm); }
 .dp-frame__foot { grid-area:foot; min-width:0; display:flex; align-items:center; gap:var(--dp-gap); flex-wrap:wrap; }
 

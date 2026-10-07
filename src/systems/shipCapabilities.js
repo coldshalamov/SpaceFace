@@ -20,6 +20,8 @@
 import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
+import { PLAYER_TRANSLATION_RESPONSIVENESS, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import {
   HEAVY_AS_TERRAIN_MASS,
   TERRAIN_CRUMPLE_LAW,
@@ -64,7 +66,7 @@ function round(value, digits = 1) {
 }
 
 /** "a Mule" / "an Ironback" — the sentence names a ship, so it has to read like one. */
-function withArticle(name) {
+export function withArticle(name) {
   const word = String(name || '');
   return /^[AEIOU]/i.test(word) ? `an ${word}` : `a ${word}`;
 }
@@ -74,9 +76,12 @@ function withArticle(name) {
 //
 // A tow is one coupled body: the drive's force has to move your hull AND the load. The force the
 // drive makes is the acceleration the profile publishes times the mass it is publishing it for
-// (this is exactly what the kernel reconstructs: `force = acceleration * body.mass`), so a fit
-// that is heavier than its rating both accelerates worse AND tows less — the same mass law, felt
-// twice. The class is the heaviest hull on the roster the pair still gets under way.
+// (this is exactly what the kernel reconstructs: `force = acceleration * body.mass`). The player
+// flight tick then multiplies that translation accel by PLAYER_TRANSLATION_RESPONSIVENESS, so the
+// tow the fit screen names is the force the stick actually makes. A fit that is heavier than its
+// rating both accelerates worse AND tows less — the same mass law, felt twice. The named hull is
+// the heaviest roster hull a tow of which lands within 20% of the under-way bar. A hull the drive
+// can move, but only by missing that bar, is not the sentence.
 // ---------------------------------------------------------------------------------------------
 
 /** The forward force this fit's drive actually makes, in the kernel's own units. */
@@ -159,12 +164,111 @@ export function forwardAccelFor(derived) {
   return finite(derived && derived.thrust, 0);
 }
 
+/** The forward force the player flight tick makes: published force times the translation feel. */
+export function playerTowForceFor(derived) {
+  return driveForceFor(derived) * PLAYER_TRANSLATION_RESPONSIVENESS;
+}
+
+function towSelfMass(derived) {
+  return finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+}
+
 /** The heaviest partner mass this fit can put under way, in tonnes. Zero means "nothing". */
 export function towClassMassFor(derived) {
-  const force = driveForceFor(derived);
-  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  const force = playerTowForceFor(derived);
+  const self = towSelfMass(derived);
   if (!(force > 0) || !(self > 0)) return 0;
   return Math.max(0, force / TOW_UNDER_WAY_ACCEL - self);
+}
+
+const TOW_PICK_CACHE = new WeakMap();
+const TOW_SAMPLE_DT = 1 / 60;
+
+/**
+ * Speed of a coupled tow after the under-way window, on the player flight tick.
+ * The drive force is whatever stepPropulsion emits for the tug's own mass. That
+ * force accelerates tug + load. Speed is fed back so a governor sees the tow,
+ * not a ship nailed to the origin. Peak thrust after a torch finishes spooling
+ * is not this number — the window is 1.5 s, and a spool that ends at 2.8 s has
+ * not arrived yet.
+ */
+export function underwayTowSpeed(derived, loadMass) {
+  const self = towSelfMass(derived);
+  const load = Math.max(0, finite(loadMass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'tow-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'tow-predict', seed: 4242 });
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  let runtime = createPropulsionRuntime(profile);
+  let speed = 0;
+  const ticks = Math.max(1, Math.round(CAPABILITY_LAW.towUnderWaySeconds / TOW_SAMPLE_DT));
+  const coupled = self + load;
+  for (let i = 0; i < ticks; i += 1) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: TOW_SAMPLE_DT,
+      body,
+      input: { throttle: 1, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed += (finite(step.force.x, 0) / coupled) * TOW_SAMPLE_DT;
+    if (speed < 0) speed = 0;
+  }
+  return speed;
+}
+
+function towPickFor(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = TOW_PICK_CACHE.get(key);
+    if (hit) return hit;
+  }
+  const target = CAPABILITY_LAW.towUnderWaySpeed;
+  let best = null;
+  let heaviest = null;
+  let heaviestSpeed = 0;
+  if (towClassMassFor(derived) > 0) {
+    for (const shipDef of SHIPS) {
+      const m = finite(shipDef.mass, 0);
+      if (!(m > 0)) continue;
+      const speed = underwayTowSpeed(derived, m);
+      if (!heaviest || m > finite(heaviest.mass, 0)) {
+        heaviest = shipDef;
+        heaviestSpeed = speed;
+      }
+      if (Math.abs(speed - target) / target > 0.2) continue;
+      if (!best || m > finite(best.mass, 0) || (m === finite(best.mass, 0) && shipDef.id < best.id)) {
+        best = shipDef;
+      }
+    }
+  }
+  const pick = {
+    hull: best,
+    coversRoster: !best && !!heaviest && heaviestSpeed >= target * 0.8,
+  };
+  if (key && typeof key === 'object') TOW_PICK_CACHE.set(key, pick);
+  return pick;
+}
+
+/** Heaviest roster hull a 1.5 s player tow holds within 20% of 60 WU/s. */
+export function towableHullFor(derived) {
+  return towPickFor(derived).hull;
+}
+
+/** True when even the heaviest roster hull is under way inside the 1.5 s window. */
+export function towCoversRoster(derived) {
+  return towPickFor(derived).coversRoster;
 }
 
 /** The heaviest ROSTER hull at or under `massT`, so the sentence can name a ship the player knows. */
@@ -342,30 +446,32 @@ export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
   if (!derived) return { tow: null, slam: null, line: null, field: null, rows: [] };
 
   const towMassT = towClassMassFor(derived);
-  const towHull = heaviestHullWithin(towMassT);
-  const towNextHull = lightestHullAbove(towMassT);
+  const towHull = towableHullFor(derived);
+  const coversRoster = towCoversRoster(derived);
   const tow = {
     id: 'tow_class',
     massT: round(towMassT, 1),
     hullId: towHull ? towHull.id : null,
     hullName: towHull ? towHull.name : null,
+    coversRoster,
     verb: towHull
       ? `Can tow ${withArticle(towHull.name)}`
-      : 'Too loaded to tow anything',
-    sub: towHull ? `${Math.floor(towMassT)} t on the line` : 'no tow',
-    // FLOOR, not round: the sentence names the heaviest hull at or under this figure, so rounding
-    // 47.6 up to 48 made it claim 48 t and then name a 32 t Pelican, because the 48 t Drifter was
-    // half a tonne out of reach. The next hull up is named for exactly that reason — sixteen
-    // tonnes of unexplained headroom under a sentence about towing reads as a bug.
+      : (coversRoster ? 'Can tow anything on the roster' : 'Too loaded to tow anything'),
+    sub: towHull
+      ? `${Math.floor(towHull.mass)} t on the line`
+      : (coversRoster ? 'any hull' : 'no tow'),
+    // The named hull is the one a tow holds within 20% of the bar, not merely the heaviest hull
+    // lighter than the class. A capital that outruns the bar on every roster hull says so instead
+    // of naming a ship it would tow twice as fast as the sentence's own pace.
     why: towHull
-      ? `Your drive gets ${Math.floor(towMassT)} t under way on the line — ${CAPABILITY_LAW.towUnderWaySpeed} WU/s in `
-        + `${CAPABILITY_LAW.towUnderWaySeconds} s with the load attached. The ${towHull.name} weighs `
-        + `${round(towHull.mass, 0)} t`
-        + (towNextHull
-          ? `; the ${towNextHull.name} at ${round(towNextHull.mass, 0)} t is out of reach.`
-          : `, and nothing on the roster is heavier.`)
-      : `At ${round(finite(derived.operationalMass, 0), 0)} t you cannot get anything else moving as well as yourself. `
-        + 'Drop cargo or fit a stronger drive.',
+      ? `Your drive gets the ${towHull.name} under way on the line — ${CAPABILITY_LAW.towUnderWaySpeed} WU/s in `
+        + `${CAPABILITY_LAW.towUnderWaySeconds} s with that hull attached. It weighs `
+        + `${round(towHull.mass, 0)} t.`
+      : (coversRoster
+        ? `Your drive gets every hull on the roster under way faster than ${CAPABILITY_LAW.towUnderWaySpeed} WU/s in `
+          + `${CAPABILITY_LAW.towUnderWaySeconds} s. Nothing aboard is heavy enough to load it to that pace.`
+        : `At ${round(finite(derived.operationalMass, 0), 0)} t you cannot get anything else moving as well as yourself. `
+          + 'Drop cargo or fit a stronger drive.'),
   };
 
   const slamResult = slamSurvivalSpeedFor(derived);

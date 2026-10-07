@@ -15,6 +15,12 @@ edit any repository file and you do not re-shoot: you score the stills you are g
 - Instruments of light over borderless glass. Bone rest light rgb(236 230 216). ONE amber Hand per
   screen (#f2b950 / hot #ffd98c) plus ONE amber Lamp Key verb (the accept/commit key). Ice only for
   motion, red only for threat. No cards, pills, boxed rows, borders, underlines, fake materials.
+- **Owner ruling 2026-10-04 (the map and the minimap):** the Chart's GROUND and the radar's contacts may
+  carry colour and glow. Each holder's space on the chart wears its own hue (`chartWorld.js` DOMINION,
+  re-tinted so none sits on the Hand's amber or on threat red), borders and tokens glow, and the radar's
+  contact classes carry their stance hues with a halo (`tacticalMapGrammar.js` TACTICAL_MAP_PALETTE).
+  Do NOT score that as a palette violation. The two lines that hold: amber stays the Hand/route, red stays
+  threat. Structural rings, rails, words and keys on the chart keep the bone rest light.
 - Ruling: where the hero instrument has an arm (Missions route beam, Factions orbit arm, Ledger tape
   Hand, Bar contact arm) that arm IS the Hand and the rail's chosen row is bone.
 - Archivo for display/labels, Instrument Sans for body. Thin display numerals for readings.

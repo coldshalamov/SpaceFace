@@ -25,6 +25,7 @@ import {
   entityIsDurableCandidate,
   ensureWorldRecords,
   findLiveEntityForRecord,
+  isAmbientTombstoneWorldRecord,
   normalizeRecordsBag,
   recordsForSector,
   serializeRecordsBag,
@@ -936,4 +937,33 @@ test('missionTag is recognized as durable mission identity for capture', () => {
   assert.equal(ids.length, 1);
   assert.equal(bag.byId[ids[0]].kind, RECORD_KIND.MISSION_TARGET);
   assert.equal(ent.data.worldRecordId, ids[0]);
+});
+
+test('real entity:killed path mints an ambient-classifiable tombstone', () => {
+  // The retention bound's production guard: an ambient kill must produce a record the
+  // tombstone lane can evict — positional mint identity, no authored markers, wr_* id.
+  const { state, world, helpers, bus } = bootWorld(313);
+  world.enterSector(HELIOS);
+  world._setSectorTier(CERES, RESIDENCY_TIER.FULL, { reason: 'test' });
+  const ceresO = sectorGlobalOrigin(CERES);
+  const npc = helpers.spawnEntity({
+    type: 'ship',
+    pos: { x: ceresO.x + 9, z: ceresO.z + 9 },
+    hull: 6,
+    hullMax: 40,
+    collides: true,
+    data: { lootTableId: 'wasp_swarmer', enemyTypeId: 'wasp_swarmer', level: 1, homeSectorId: CERES },
+  });
+  npc.homeSectorId = CERES;
+  npc.alive = false;
+  bus.emit('entity:killed', { id: npc.id, type: 'ship', killerId: state.playerId });
+  const tombstone = Object.values(state.world.records.byId).find((r) => (
+    r.sectorId === CERES && r.alive === false && r.outcome === 'destroyed'
+  ));
+  assert.ok(tombstone, 'the real kill path wrote a destroyed tombstone');
+  assert.ok(tombstone.recordId && tombstone.recordId.startsWith('wr_'),
+    'the tombstone keeps the stable wr_* join id');
+  assert.ok(tombstone.identityKey, 'the tombstone carries the semantic mint identity');
+  assert.equal(isAmbientTombstoneWorldRecord(tombstone), true,
+    'the real kill path produces a record the tombstone lane can bound');
 });

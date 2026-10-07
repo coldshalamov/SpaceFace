@@ -210,12 +210,12 @@ function listForecastDecision(state, stationId) {
     id: `forecast:${stationId}:${best.commodityId}:${up ? 'up' : 'down'}:${band}`,
     kind: 'forecast',
     surface: 'market',
-    situation: `${name} can be sold at this berth now, or held for the forecast.`,
+    situation: `${name} sells here now, or you can hold for the forecast.`,
     options: [
       {
         id: 'sell_now',
         label: `Sell ${name}`,
-        tradeoff: `Sell ${best.qty} now for ${sellTotal.toLocaleString('en-US')} cr. The later price is given up.`,
+        tradeoff: `Sell ${best.qty} now for ${sellTotal.toLocaleString('en-US')} cr. You forfeit the later price.`,
         stake: `sell:${sellTotal}`,
         viable: true,
         effect: { type: 'sell', commodityId: best.commodityId, qty: best.qty },
@@ -224,8 +224,8 @@ function listForecastDecision(state, stationId) {
         id: 'hold',
         label: `Hold ${name}`,
         tradeoff: up
-          ? `Hold ${best.qty}. The forecast is ${laterTotal.toLocaleString('en-US')} cr in ${best.minutes} min, and it can still miss.`
-          : `Hold ${best.qty}. The forecast falls toward ${laterTotal.toLocaleString('en-US')} cr in ${best.minutes} min. You keep the cargo and miss this bid.`,
+          ? `Hold ${best.qty}. Forecast ${laterTotal.toLocaleString('en-US')} cr in ${best.minutes} min, but it can miss.`
+          : `Hold ${best.qty}. Forecast falls to ${laterTotal.toLocaleString('en-US')} cr in ${best.minutes} min. You miss today's bid.`,
         stake: `hold:${laterTotal}`,
         viable: true,
         effect: { type: 'hold', commodityId: best.commodityId, qty: best.qty, forecastUp: up },
@@ -269,12 +269,12 @@ function listHaulDecision(state, stationId) {
     id: `haul:${stationId}:${best.trade.destStation}:${best.trade.cmdtyId}:${best.profit}`,
     kind: 'haul',
     surface: 'market',
-    situation: `${name} pays more at ${dest} than it costs here. The remembered price can move before you arrive.`,
+    situation: `${name} pays more at ${dest} than it costs here. Prices can move before you arrive.`,
     options: [
       {
         id: 'haul',
         label: `Haul to ${dest}`,
-        tradeoff: `Buy ${best.units} for ${cost.toLocaleString('en-US')} cr and set course for ${dest}. The later price is an estimate, not a guaranteed arrival.`,
+        tradeoff: `Buy ${best.units} for ${cost.toLocaleString('en-US')} cr and set course for ${dest}. The payout is an estimate.`,
         stake: `haul:${cost}:${best.profit}`,
         viable: true,
         effect: {
@@ -287,7 +287,7 @@ function listHaulDecision(state, stationId) {
       {
         id: 'stay',
         label: 'Keep the credits',
-        tradeoff: `Do not buy. Keep ${cost.toLocaleString('en-US')} cr here and give up the ${best.profit.toLocaleString('en-US')} cr margin.`,
+        tradeoff: `Keep ${cost.toLocaleString('en-US')} cr. Skip the ${best.profit.toLocaleString('en-US')} cr margin.`,
         stake: `stay:${creditsOf(state)}`,
         viable: true,
         effect: { type: 'stay' },
@@ -315,18 +315,18 @@ function listRepairDecision(state, stationId) {
   if (cost < MIN_CREDIT_GAP || creditsOf(state) < cost) return null;
   const services = stationServices(stationId);
   if (services.length && !services.includes('repair')) return null;
-  const armorWords = armorMax > 0 ? `, armor ${Math.round(armor)} to ${Math.round(armorMax)}` : '';
+  const armorWords = armorMax > 0 ? `, armor ${Math.round(armor)} → ${Math.round(armorMax)}` : '';
   const armorLeft = armorMax > 0 ? ` (armor ${Math.round(armor)})` : '';
   return {
     id: `repair:${stationId}:${Math.round(hull)}:${Math.round(armor)}`,
     kind: 'repair',
     surface: 'market',
-    situation: 'The ship is battered and the yard can weld it. The credits stay yours if you leave it.',
+    situation: 'Battered hull. The yard here can fix it.',
     options: [
       {
         id: 'repair',
         label: 'Repair now',
-        tradeoff: `Pay ${cost.toLocaleString('en-US')} cr and book the weld: hull ${Math.round(hull)} to ${Math.round(hullMax)}${armorWords}.`,
+        tradeoff: `Pay ${cost.toLocaleString('en-US')} cr. Hull ${Math.round(hull)} → ${Math.round(hullMax)}${armorWords}.`,
         stake: `repair:${cost}`,
         viable: true,
         effect: { type: 'repair', cost },
@@ -334,7 +334,7 @@ function listRepairDecision(state, stationId) {
       {
         id: 'fly',
         label: 'Fly damaged',
-        tradeoff: `Keep the ${cost.toLocaleString('en-US')} cr. The hull stays at ${Math.round(hull)}${armorLeft} until a later yard.`,
+        tradeoff: `Keep the ${cost.toLocaleString('en-US')} cr. Hull stays at ${Math.round(hull)}${armorLeft}.`,
         stake: `fly:${Math.round(hull)}:${Math.round(armor)}`,
         viable: true,
         effect: { type: 'fly' },

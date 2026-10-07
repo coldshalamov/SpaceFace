@@ -25,6 +25,7 @@ import { machineSitesForSector } from '../data/precursorMachines.js';
 import { alienSitesForSector, planInfestationModules } from '../data/alienEcology.js';
 import { markArchetypePoolFor } from '../data/bountyMarks.js';
 import { HELIOS_ROPE_CACHE, WORLD_ONE_OFFS } from '../data/worldOneOffs.js';
+import { FACTION_BERTHS } from '../data/factionBerths.js';
 import { KETTLE_LINE } from '../data/kettleLine.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { authoredSetPieceById, megaHeistById } from '../data/missions.js';
@@ -393,6 +394,26 @@ export function saveEnvelopeSectorStubs(data) {
     for (const part of (oneOff.cluster && oneOff.cluster.props) || []) {
       if (part && part.placeId) {
         out.placeStubs.push({ type: 'fx', data: { placeId: part.placeId, worldOneOff: true } });
+      }
+    }
+  }
+
+  // Faction berths (factionBerths.js): the crib stands unconditionally, so its place files
+  // warm for every entry; the consigned hulk only exists once the desk receipt was written,
+  // and its tombstone follows the same destroyed-record rule as the live spawn.
+  const berthReceipts = (data.factionPresence && data.factionPresence.serviceReceipts) || {};
+  for (const berth of FACTION_BERTHS) {
+    if (!berth || berth.sectorId !== sector.id) continue;
+    for (const prop of berth.crib || []) {
+      if (prop && prop.placeId) {
+        out.placeStubs.push({ type: 'fx', data: { placeId: prop.placeId, berthId: berth.id } });
+      }
+    }
+    if (berth.hulk && berth.hulk.placeId && berthReceipts[berth.receiptKey]) {
+      const recordId = stableRecordId(seed, sector.id, RECORD_KIND.WRECK, `factionBerth:${berth.id}`);
+      const durable = recordsById[recordId];
+      if (!(durable && (durable.outcome === 'destroyed' || durable.alive === false))) {
+        out.placeStubs.push({ type: 'fx', data: { placeId: berth.hulk.placeId, berthId: berth.id } });
       }
     }
   }

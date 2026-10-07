@@ -402,11 +402,13 @@ export function combatDenialToastSpec(payload) {
 /**
  * A refused verb names the gate that actually fired.
  * `capability:*` is a dead part (checked before tags). `tag:dash` and `tag:tether` are a tumble.
- * `tag:weapon` is a dead battery, a tumble, or cooked guns — the token does not say which.
+ * `tag:weapon` names the status or subsystem that blocked it when the reason carries one.
  */
 function disabledActionLine(rest) {
-  const [kind, rawName] = String(rest || '').split(':');
-  const name = String(rawName || '').toLowerCase();
+  const parts = String(rest || '').split(':');
+  const kind = parts[0];
+  const name = String(parts[1] || '').toLowerCase();
+  const cause = parts.slice(2).join(':');
   if (kind === 'capability') {
     if (name === 'tether') return 'Massline spool out — the rope will not hold';
     if (name === 'transport_clamp') return 'Clamp out — the load is no longer held';
@@ -422,8 +424,14 @@ function disabledActionLine(rest) {
     if (name === 'sling') return 'Can\'t throw — the drive or the Massline spool is out';
     if (name === 'dash') return 'Can\'t dash — the ship is tumbling';
     if (name === 'tether') return 'Can\'t use the rope — the ship is tumbling';
-    if (name === 'weapon') return 'Guns won\'t answer — out, tumbling, or cooked';
-    if (name === 'burst') return 'Guns won\'t answer — cooked or out';
+    if (name === 'weapon' || name === 'burst') {
+      if (cause === 'status_tumbling') return 'Guns won\'t answer — the ship is tumbling';
+      if (cause === 'status_overheated') return 'Guns won\'t answer — cooked';
+      if (cause === 'subsystem_weapon') return 'Guns won\'t answer — the battery is dark';
+      return name === 'burst'
+        ? 'Guns won\'t answer — cooked or out'
+        : 'Guns won\'t answer — out, tumbling, or cooked';
+    }
     if (name === 'sensor' || name === 'lock') return 'Sensors aren\'t answering — jammed or out';
     return '';
   }
@@ -434,9 +442,14 @@ function disabledActionHint(reason) {
   if (!String(reason || '').startsWith('disabled:')) return '';
   const rest = String(reason).slice('disabled:'.length);
   if (!disabledActionLine(rest)) return '';
-  const [kind, rawName] = rest.split(':');
-  const name = String(rawName || '').toLowerCase();
+  const parts = rest.split(':');
+  const kind = parts[0];
+  const name = String(parts[1] || '').toLowerCase();
+  const cause = parts.slice(2).join(':');
   if (kind === 'tag' && (name === 'dash' || name === 'tether')) return 'Wait until the tumble stops';
+  if (kind === 'tag' && cause === 'status_tumbling') return 'Wait until the tumble stops';
+  if (kind === 'tag' && cause === 'status_overheated') return 'Ease off until heat falls';
+  if (kind === 'tag' && cause === 'subsystem_weapon') return 'Repair the battery';
   if (kind === 'tag' && (name === 'weapon' || name === 'burst')) return 'Wait it out, or repair the battery';
   if (name === 'sensor' || name === 'lock') return 'Wait out the jam, or repair the sensors';
   return 'Repair it, or wait for the part to come back';

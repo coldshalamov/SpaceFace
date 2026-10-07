@@ -9,16 +9,16 @@ import {
   livingHullGrimeAt,
   normalizeLivingHull,
 } from '../../core/livingHull.js';
+import { resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
+import { createPropulsionRuntime, stepPropulsion } from '../../core/flight/propulsionKernel.js';
 import { getDerivedStats } from '../../systems/ships.js';
-import { shipCapabilityVerbs } from '../../systems/shipCapabilities.js';
+import { shipCapabilityVerbs, withArticle } from '../../systems/shipCapabilities.js';
 import { handlingProfileForShip } from '../panels/handlingProfile.js';
-import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { describeTechNodeReadiness } from '../screens/techTree.js';
 import {
   moduleSentencesForFittings,
   reversalSentence,
   sustainedFireForFit,
-  turnRadiusSentence,
 } from './fitReadout.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((shipDef) => [shipDef.id, shipDef]));
@@ -150,14 +150,6 @@ function ratioFor(derived, shipDef) {
   return feelMass / base;
 }
 
-function turnMassForRatio(ratio) {
-  return 1.4 / (0.4 + Math.max(0.001, finite(ratio, 1)));
-}
-
-function speedMassForRatio(ratio) {
-  return 2 / (1 + Math.max(0.001, finite(ratio, 1)));
-}
-
 function percentDelta(after, before) {
   const b = finite(before, 0);
   if (Math.abs(b) < 1e-6) return 0;
@@ -234,21 +226,166 @@ export function conditionFromEntity(entity) {
   };
 }
 
-function handlingSentence(profile, derived, emptyDerived) {
-  if (!profile || !Array.isArray(profile.axes) || !profile.axes.length) return '';
-  const agilityAxis = profile.axes.find((axis) => axis.id === 'agility');
-  const brakeAxis = profile.axes.find((axis) => axis.id === 'brake');
-  const clauses = [];
-  if (agilityAxis) {
-    if (agilityAxis.bar >= 67) clauses.push('Turns hard.');
-    else if (agilityAxis.bar >= 34) clauses.push('Turns steadily.');
-    else clauses.push('Turns wide.');
+/** The fit-screen line that names the hull this fit tows at the under-way bar. */
+export function towSentence(predictions) {
+  const name = predictions && predictions.towableHullName;
+  if (name) return `Can tow ${withArticle(name)}.`;
+  if (predictions && predictions.towCoversRoster) return 'Can tow anything on the roster.';
+  return '';
+}
+
+/** True when the heavier fit actually turns or stops worse than the lighter one. */
+function fliesWorse(heavier, lighter) {
+  if (!heavier || !lighter) return false;
+  const yawH = finite(heavier.propulsion && heavier.propulsion.yawAccel, 0);
+  const yawL = finite(lighter.propulsion && lighter.propulsion.yawAccel, 0);
+  if (yawL > 0 && (yawL - yawH) / yawL >= 0.005) return true;
+  if (liveStopDistance(heavier) - liveStopDistance(lighter) > 2) return true;
+  const turnH = liveTurnCircle(heavier);
+  const turnL = liveTurnCircle(lighter);
+  return turnH.radius > 0 && turnL.radius > 0 && (turnH.radius - turnL.radius) > 2;
+}
+
+let ROSTER_STOP_MEDIAN = null;
+let ROSTER_TURN_MEDIAN = null;
+
+/** Middle flown turn radius on the bare roster, in metres. An unsteady circle is left out. */
+function rosterTurnMedian() {
+  if (ROSTER_TURN_MEDIAN != null) return ROSTER_TURN_MEDIAN;
+  const radii = [];
+  for (const ship of SHIPS) {
+    const metres = Math.round(liveTurnCircle(getDerivedStats(ship.id, [], null)).radius);
+    if (metres > 0) radii.push(metres);
   }
+  radii.sort((a, b) => a - b);
+  if (!radii.length) {
+    ROSTER_TURN_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(radii.length / 2);
+  ROSTER_TURN_MEDIAN = radii.length % 2 ? radii[mid] : (radii[mid - 1] + radii[mid]) / 2;
+  return ROSTER_TURN_MEDIAN;
+}
+
+/** Crest turn word from the circle, not the yaw bar one fast hull pins. */
+function turnClause(derived) {
+  const metres = Math.round(liveTurnCircle(derived).radius);
+  if (!(metres > 0)) return '';
+  const median = rosterTurnMedian();
+  if (!(median > 0)) return '';
+  if (metres < median * 0.5) return 'Turns hard.';
+  if (metres > median * 1.2) return 'Turns wide.';
+  return 'Turns steadily.';
+}
+
+/** Middle flown stop on the bare roster, in metres. A ship that does not stop is left out. */
+function rosterStopMedian() {
+  if (ROSTER_STOP_MEDIAN != null) return ROSTER_STOP_MEDIAN;
+  const stops = [];
+  for (const ship of SHIPS) {
+    const metres = Math.round(liveStopDistance(getDerivedStats(ship.id, [], null)));
+    if (metres > 0) stops.push(metres);
+  }
+  stops.sort((a, b) => a - b);
+  if (!stops.length) {
+    ROSTER_STOP_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(stops.length / 2);
+  ROSTER_STOP_MEDIAN = stops.length % 2 ? stops[mid] : (stops[mid - 1] + stops[mid]) / 2;
+  return ROSTER_STOP_MEDIAN;
+}
+
+/** Half the mark when the number is the roster middle. One huge hull no longer pins the rest at the bottom. */
+function medianFill(value, median) {
+  if (!(median > 0) || !(value > 0)) return 0;
+  return clamp(Math.round((50 * value) / median), 0, 100);
+}
+
+function agilityFill(derived) {
+  const yaw = finite(derived && derived.propulsion && derived.propulsion.yawAccel, 0);
+  return medianFill(yaw, AGILITY_MEDIAN);
+}
+
+let ROSTER_CEILING_MEDIAN = null;
+
+function rosterCeilingMedian() {
+  if (ROSTER_CEILING_MEDIAN != null) return ROSTER_CEILING_MEDIAN;
+  const ceilings = [];
+  for (const ship of SHIPS) {
+    const stats = getDerivedStats(ship.id, [], null);
+    const ceiling = Math.round(publishedSpeed(stats && stats.propulsion, 'travel'));
+    if (ceiling > 0) ceilings.push(ceiling);
+  }
+  ceilings.sort((a, b) => a - b);
+  if (!ceilings.length) {
+    ROSTER_CEILING_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(ceilings.length / 2);
+  ROSTER_CEILING_MEDIAN = ceilings.length % 2 ? ceilings[mid] : (ceilings[mid - 1] + ceilings[mid]) / 2;
+  return ROSTER_CEILING_MEDIAN;
+}
+
+function ceilingFill(derived) {
+  return medianFill(publishedSpeed(derived && derived.propulsion, 'travel'), rosterCeilingMedian());
+}
+
+let ROSTER_MASS_MEDIAN = null;
+
+function movingMass(derived) {
+  return finite(derived && (derived.operationalMass != null ? derived.operationalMass : derived.mass), 0);
+}
+
+function rosterMassMedian() {
+  if (ROSTER_MASS_MEDIAN != null) return ROSTER_MASS_MEDIAN;
+  const masses = [];
+  for (const ship of SHIPS) {
+    const mass = Math.round(movingMass(getDerivedStats(ship.id, [], null)));
+    if (mass > 0) masses.push(mass);
+  }
+  masses.sort((a, b) => a - b);
+  if (!masses.length) {
+    ROSTER_MASS_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(masses.length / 2);
+  ROSTER_MASS_MEDIAN = masses.length % 2 ? masses[mid] : (masses[mid - 1] + masses[mid]) / 2;
+  return ROSTER_MASS_MEDIAN;
+}
+
+function inertiaFill(derived) {
+  return medianFill(movingMass(derived), rosterMassMedian());
+}
+
+/**
+ * The brake bar and the crest word. Reverse acceleration is not the stop: one hull's
+ * huge number pins everyone else at the bottom of that scale. The bar fills from how
+ * the flown stop compares with the middle of the roster.
+ */
+function brakePresentation(derived) {
+  const stop = Math.round(liveStopDistance(derived));
+  if (!(stop > 0)) return { bar: 0, clause: '' };
+  const median = rosterStopMedian();
+  if (!(median > 0)) return { bar: 0, clause: '' };
+  const bar = clamp(Math.round((100 * median) / stop), 0, 100);
+  return { bar, clause: bar >= 55 ? 'Stops clean.' : 'Stops badly.' };
+}
+
+function handlingSentence(profile, derived, emptyDerived, bareDerived) {
+  if (!profile || !Array.isArray(profile.axes) || !profile.axes.length) return '';
+  const clauses = [];
+  const turnWord = turnClause(derived);
+  if (turnWord) clauses.push(turnWord);
   const shipDef = SHIP_BY_ID.get(profile.shipId);
   const massRatio = ratioFor(derived, shipDef);
-  if (massRatio < 0.9) clauses.push('Light on the stick.');
-  else if (massRatio > 1.15) clauses.push('Sluggish under load.');
-  if (brakeAxis) clauses.push(brakeAxis.bar >= 55 ? 'Stops clean.' : 'Stops badly.');
+  // Heavier than the catalog hull is not itself a worse ship. A bumper under the
+  // drive rating keeps the same yaw, stop, and circle, and must not be called sluggish.
+  if (fliesWorse(derived, emptyDerived) || fliesWorse(derived, bareDerived)) {
+    clauses.push('Sluggish under load.');
+  } else if (massRatio < 0.9) clauses.push('Light on the stick.');
+  const stopClause = brakePresentation(derived).clause;
+  if (stopClause) clauses.push(stopClause);
   const cargoMass = finite(derived && derived.cargoMass, 0);
   if (cargoMass > 0) {
     const extra = Math.max(0, Math.round(liveStopDistance(derived) - liveStopDistance(emptyDerived)));
@@ -257,39 +394,384 @@ function handlingSentence(profile, derived, emptyDerived) {
   return clauses.join(' ');
 }
 
+const BRAKE_STOP_CACHE = new WeakMap();
+const BRAKE_SAMPLE_DT = 1 / 60;
+const BRAKE_SAMPLE_CAP_TICKS = 60 * 20;
+
 /**
- * Stop distance from the LIVE propulsion profile the kernel resolves: governed speed squared over
- * twice the braking acceleration.
+ * Metres a held assisted brake uses from fight speed.
  *
- * The compatibility flight model's own estimate reads its legacy `maxSpeed` and `reverseAccel`,
- * both of which move with the old drag term — so it says a nine-hundred-tonne freighter pulls up in
- * two metres, which is the opposite of what the ship does and the opposite of what the sentence
- * beside it says. `stopDistanceEstimate` stays exactly as it is for the mass-delta readout that
- * pins it; the words a player reads come off the profile they actually fly.
+ * v²/2a is not this. The pilot brake is a proportional null, clamped to the brake the drive
+ * can actually spend. A torch that is already at fight speed is spooled; cutting the throttle
+ * to brake lets that spool die, and the stop is neither the cold-torch distance nor the
+ * closed-form preview that pretends the main drive stays fully lit. A sail whose speed does
+ * not fall does not get a made-up distance. The mass-delta arrival estimator stays on its own.
  */
 function liveStopDistance(derived) {
-  const p = derived && derived.propulsion;
-  if (!p) return Math.max(0, stopDistanceEstimate(derived && derived.flightModel));
-  const speed = finite(p.combatSpeed, finite(p.maxSpeed, 0));
-  const brake = finite(p.reverseAccel, finite(p.maxBrakeAccel, finite(p.rcsReverseAccel, 0)));
-  if (!(speed > 0) || !(brake > 0)) return Math.max(0, stopDistanceEstimate(derived && derived.flightModel));
-  return (speed * speed) / (2 * brake);
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = BRAKE_STOP_CACHE.get(key);
+    if (hit != null) return hit;
+  }
+  const metres = heldBrakeStopMetres(derived);
+  if (key && typeof key === 'object') BRAKE_STOP_CACHE.set(key, metres);
+  return metres;
+}
+
+function heldBrakeStopMetres(derived) {
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'stop-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'stop-predict', seed: 4242 });
+  if (!profile) return 0;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return 0;
+  const dead = finite(profile.assist && profile.assist.deadSpeed, 0.18);
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted' },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+      if (speed < 0) speed = 0;
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  let speed = speed0;
+  let dist = 0;
+  let ticks = 0;
+  while (speed > dead && ticks < BRAKE_SAMPLE_CAP_TICKS) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: 0, brake: true, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    const v0 = speed;
+    speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    if (speed < 0) speed = 0;
+    dist += ((v0 + speed) / 2) * BRAKE_SAMPLE_DT;
+    ticks += 1;
+  }
+  if (!(speed <= dead)) return 0;
+  return dist;
+}
+
+const REVERSAL_CACHE = new WeakMap();
+const REVERSAL_CAP_TICKS = 60 * 40;
+
+/**
+ * Seconds a held reverse thrust takes to go from fight speed ahead to the same
+ * speed astern. 2v/a is the constant-accel guess: a lit torch and a field sail
+ * are not that guess, and a sail whose reverseAccel is unpublished still reverses.
+ */
+function liveReversalSeconds(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = REVERSAL_CACHE.get(key);
+    if (hit != null) return hit;
+  }
+  const seconds = heldReversalSeconds(derived);
+  if (key && typeof key === 'object') REVERSAL_CACHE.set(key, seconds);
+  return seconds;
+}
+
+function heldReversalSeconds(derived) {
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'reversal-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'reversal-predict', seed: 4242 });
+  if (!profile) return 0;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return 0;
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted' },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+      if (speed < 0) speed = 0;
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  let speed = speed0;
+  let ticks = 0;
+  while (speed > -speed0 && ticks < REVERSAL_CAP_TICKS) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: -1, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    ticks += 1;
+  }
+  if (!(speed <= -speed0)) return 0;
+  return ticks * BRAKE_SAMPLE_DT;
+}
+
+const COAST_CACHE = new WeakMap();
+const COAST_CAP_TICKS = 60 * 180;
+const COAST_CRAWL = 1;
+const COAST_STALL_DROP = 1e-4;
+
+/**
+ * Seconds a hands-off assisted ship keeps moving after fight speed.
+ * 1/linearDrag is the legacy flight model. The live assist eases you down,
+ * and a sail that never slows does not get a made-up time. A pulse plate
+ * that sticks in a crawl counts as still once the crawl stops falling.
+ */
+function liveCoastSeconds(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = COAST_CACHE.get(key);
+    if (hit != null) return hit;
+  }
+  const seconds = heldCoastSeconds(derived);
+  if (key && typeof key === 'object') COAST_CACHE.set(key, seconds);
+  return seconds;
+}
+
+function heldCoastSeconds(derived) {
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'coast-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'coast-predict', seed: 4242 });
+  if (!profile) return 0;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return 0;
+  const dead = finite(profile.assist && profile.assist.deadSpeed, 0.18);
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  const advance = (speed, step) => {
+    let next = speed + (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    if (step.impulse) next += finite(step.impulse.x, 0) / self;
+    return next < 0 ? 0 : next;
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted' },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed = advance(speed, step);
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  let speed = speed0;
+  let ticks = 0;
+  while (ticks < COAST_CAP_TICKS) {
+    const prev = speed;
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: 0, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed = advance(speed, step);
+    ticks += 1;
+    if (speed <= dead) return ticks * BRAKE_SAMPLE_DT;
+    if (speed <= COAST_CRAWL && speed > prev - COAST_STALL_DROP) return ticks * BRAKE_SAMPLE_DT;
+  }
+  return 0;
+}
+
+const TURN_CACHE = new WeakMap();
+const TURN_HOLD_TICKS = 60 * 12;
+const TURN_WINDOW = 60 * 2;
+const TURN_STEADY = 0.15;
+
+/**
+ * The circle a held turn actually flies, with the default velocity-vectoring
+ * assist on. Fight speed divided by the yaw ceiling is the nose rate, and the
+ * assist does not let the nose run away from the path. A sail that keeps going
+ * straight, or a plate that never holds one circle, gets no number.
+ */
+function liveTurnCircle(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = TURN_CACHE.get(key);
+    if (hit) return hit;
+  }
+  const circle = heldTurnCircle(derived);
+  if (key && typeof key === 'object') TURN_CACHE.set(key, circle);
+  return circle;
+}
+
+function heldTurnCircle(derived) {
+  const none = { radius: 0, atFightSpeed: false };
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return none;
+  const entity = { id: 'turn-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'turn-predict', seed: 4242 });
+  if (!profile) return none;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return none;
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  const advance = (step) => {
+    body.vel.x += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    body.vel.z += (finite(step.force && step.force.z, 0) / self) * BRAKE_SAMPLE_DT;
+    if (step.impulse) {
+      body.vel.x += finite(step.impulse.x, 0) / self;
+      body.vel.z += finite(step.impulse.z, 0) / self;
+    }
+    body.angVel += finite(step.telemetry && step.telemetry.angularAcceleration, 0) * BRAKE_SAMPLE_DT;
+    body.rot += body.angVel * BRAKE_SAMPLE_DT;
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted', velocityVectoring: true },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+      if (speed < 0) speed = 0;
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  body.vel.x = speed0;
+  body.vel.z = 0;
+  body.rot = 0;
+  body.angVel = 0;
+  const radii = [];
+  const speeds = [];
+  let heading = 0;
+  for (let i = 0; i < TURN_HOLD_TICKS; i += 1) {
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: 1, turn: 1, assistMode: 'assisted', velocityVectoring: true },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    advance(step);
+    const nextHeading = Math.atan2(body.vel.z, body.vel.x);
+    let dHead = nextHeading - heading;
+    while (dHead > Math.PI) dHead -= Math.PI * 2;
+    while (dHead < -Math.PI) dHead += Math.PI * 2;
+    heading = nextHeading;
+    if (i < TURN_HOLD_TICKS - TURN_WINDOW) continue;
+    const speed = Math.hypot(body.vel.x, body.vel.z);
+    const pathRate = dHead / BRAKE_SAMPLE_DT;
+    speeds.push(speed);
+    if (Math.abs(pathRate) > 1e-6) radii.push(speed / Math.abs(pathRate));
+  }
+  if (radii.length < TURN_WINDOW / 2) return none;
+  const mean = radii.reduce((sum, n) => sum + n, 0) / radii.length;
+  const variance = radii.reduce((sum, n) => sum + (n - mean) ** 2, 0) / radii.length;
+  if (!(mean > 0) || Math.sqrt(variance) / mean > TURN_STEADY) return none;
+  const meanSpeed = speeds.reduce((sum, n) => sum + n, 0) / speeds.length;
+  return {
+    radius: mean,
+    atFightSpeed: Math.abs(meanSpeed - speed0) / speed0 <= TURN_STEADY,
+  };
+}
+
+function liveTurnSentence(derived) {
+  const flown = liveTurnCircle(derived);
+  if (!(flown.radius > 0)) return '';
+  const metres = Math.round(flown.radius);
+  if (!(metres > 0)) return '';
+  return flown.atFightSpeed
+    ? `At fight speed the turn radius is ${metres} m.`
+    : `Holding the turn, the turn radius is ${metres} m.`;
 }
 
 function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
   const cargoMass = finite(derived && derived.cargoMass, 0);
   const moduleMass = Math.max(0, finite(derived && derived.dryMass, finite(shipDef && shipDef.mass, 0)) - finite(shipDef && shipDef.mass, 0));
-  const loadedRatio = ratioFor(derived, shipDef);
-  const dryRatio = ratioFor(dryDerived, shipDef);
-  const bareRatio = ratioFor(bareDerived, shipDef);
-  const cargoPenalty = cargoMass > 0
-    ? percentDelta(turnMassForRatio(loadedRatio), turnMassForRatio(dryRatio))
-    : 0;
-  const modulePenalty = moduleMass > 0
-    ? percentDelta(turnMassForRatio(dryRatio), turnMassForRatio(bareRatio))
-    : 0;
-  const agilityRaw = finite(derived && derived.flightModel && derived.flightModel.angularAccel, 0);
-  const hullShift = percentDelta(agilityRaw, AGILITY_MEDIAN);
+  // The bar's own number. Cargo and fitted mass use that same yaw acceleration.
+  // A mass curve blamed a bumper for a turn loss the yaw number never took.
+  const yawAccel = finite(derived && derived.propulsion && derived.propulsion.yawAccel, 0);
+  const dryYaw = finite(dryDerived && dryDerived.propulsion && dryDerived.propulsion.yawAccel, yawAccel);
+  const bareYaw = finite(bareDerived && bareDerived.propulsion && bareDerived.propulsion.yawAccel, dryYaw);
+  const hullShift = percentDelta(dryYaw, AGILITY_MEDIAN);
+  const cargoPenalty = cargoMass > 0 ? percentDelta(yawAccel, dryYaw) : 0;
+  const modulePenalty = moduleMass > 0 ? percentDelta(dryYaw, bareYaw) : 0;
   const rows = [];
   if (cargoMass > 0) {
     rows.push({
@@ -298,7 +780,7 @@ function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
       why: `${formatMass(cargoMass)} of cargo. That is why you turn ${signedPercent(cargoPenalty)} slower than empty.`,
     });
   }
-  if (moduleMass > 0) {
+  if (moduleMass > 0 && Math.abs(modulePenalty) >= 0.5) {
     rows.push({
       key: 'modules',
       magnitude: Math.abs(modulePenalty),
@@ -308,7 +790,9 @@ function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
   rows.push({
     key: 'hull',
     magnitude: Math.abs(hullShift),
-    why: `This frame turns ${signedPercent(hullShift)} ${hullShift >= 0 ? 'faster' : 'slower'} than the roster median.`,
+    why: Math.abs(hullShift) < 0.5
+      ? 'This frame turns with the middle of the roster.'
+      : `This frame turns ${signedPercent(hullShift)} ${hullShift >= 0 ? 'faster' : 'slower'} than the roster median.`,
   });
   // PQ-176.01: the manoeuvring bay owns turning, so when it is refitted it is the loudest reason
   // this hull turns the way it does — louder than the hull, the modules or the hold.
@@ -340,26 +824,42 @@ function bayFor(derived) {
 
 function inertiaWhy(derived) {
   const mass = finite(derived && (derived.operationalMass != null ? derived.operationalMass : derived.mass), 0);
-  const linearDrag = Math.max(0.001, finite(derived && derived.flightModel && derived.flightModel.linearDrag, 0));
-  const settleSeconds = 1 / linearDrag;
+  const coast = liveCoastSeconds(derived);
+  const coastLine = coast > 0
+    ? `Let go and you are still moving for ${round1(coast)} s.`
+    : '';
   // PQ-176.00: over the hull's drive rating, mass is the law and the screen has to say so in
-  // tonnes and in what it costs, not as a hidden coefficient.
+  // tonnes and in what it costs, not as a hidden coefficient. The coast is the hands-off
+  // settle, not a cost of the overload: loading the Hitch does not change that time.
   const load = finite(derived && derived.massLoadFactor, 1);
   const design = finite(derived && derived.designMass, 0);
   if (load < 0.995 && design > 0) {
     const lost = Math.round((1 - load) * 100);
-    return `${formatMass(mass)} moving on a drive rated for ${formatMass(design)}. `
-      + `That overload costs you ${lost}% of your push, and ${round1(settleSeconds)}s to change your mind.`;
+    const head = `${formatMass(mass)} moving on a drive rated for ${formatMass(design)}. `
+      + `That overload costs you ${lost}% of your push.`;
+    return coastLine ? `${head} ${coastLine}` : head;
   }
-  return `${formatMass(mass)} moving. It takes ${round1(settleSeconds)}s to change your mind.`;
+  const head = `${formatMass(mass)} moving.`;
+  return coastLine ? `${head} ${coastLine}` : head;
 }
 
-function topSpeedWhy(profile, derived, dryDerived, shipDef) {
-  const loadedRatio = ratioFor(derived, shipDef);
-  const dryRatio = ratioFor(dryDerived, shipDef);
-  const loadedFactor = speedMassForRatio(loadedRatio);
-  const dryFactor = speedMassForRatio(dryRatio);
-  const massLoss = (1 - (loadedFactor / Math.max(0.001, dryFactor))) * 100;
+function publishedSpeed(propulsion, key) {
+  const block = propulsion || {};
+  if (key === 'fight') {
+    return finite(block.combatSpeed != null ? block.combatSpeed : block.maxSpeed, 0);
+  }
+  return finite(block.travelCeiling, 0);
+}
+
+/** How many percent the published ceiling fell. A rise, or a missing dry number, is zero. */
+function ceilingFellPct(loaded, dry) {
+  const base = finite(dry, 0);
+  if (!(base > 0)) return 0;
+  const drop = (1 - finite(loaded, 0) / base) * 100;
+  return drop > 0 ? drop : 0;
+}
+
+function topSpeedWhy(profile, derived, dryDerived) {
   // PQ-176.01: a fitted drive buys speed ABOVE the fight cap, never at it (FEEL_CONTRACT B3 is
   // measured at the cap). So the sentence has to name the burn, not the fight: saying "holds you
   // at 84 in a fight, 86 % over this hull's own motor" was a straight lie once the cap stopped
@@ -368,15 +868,24 @@ function topSpeedWhy(profile, derived, dryDerived, shipDef) {
   if (driveSpeed !== 1) {
     const travelMult = finite(derived.propulsion.driveTravelMult, driveSpeed);
     const shift = Math.round((travelMult - 1) * 100);
-    const governed = Math.round(finite(
-      derived.propulsion.combatSpeed != null ? derived.propulsion.combatSpeed : derived.propulsion.maxSpeed,
-      0,
-    ));
-    const burn = Math.round(finite(derived.propulsion.travelCeiling, 0));
+    const governed = Math.round(publishedSpeed(derived.propulsion, 'fight'));
+    const burn = Math.round(publishedSpeed(derived.propulsion, 'travel'));
     return `You still fight at ${governed}. The drive you fitted buys the run: ${burn} on the burn, `
       + `${signedPercent(shift)} ${shift >= 0 ? 'over' : 'under'} this hull's own motor.`;
   }
-  if (massLoss > 1) return `Mass costs you ${Math.round(massLoss)}% of your ceiling.`;
+  // Cargo loads the drive's push. It does not move the travel ceiling or the fight cap.
+  // The old line invented a percent from a mass ratio the kernel never applies to speed.
+  const cargoMass = finite(derived && derived.cargoMass, 0);
+  if (cargoMass > 0) {
+    const loadedProp = derived && derived.propulsion;
+    const dryProp = dryDerived && dryDerived.propulsion;
+    const fell = Math.max(
+      ceilingFellPct(publishedSpeed(loadedProp, 'travel'), publishedSpeed(dryProp, 'travel')),
+      ceilingFellPct(publishedSpeed(loadedProp, 'fight'), publishedSpeed(dryProp, 'fight')),
+    );
+    if (fell > 1) return `Mass costs you ${Math.round(fell)}% of your ceiling.`;
+    return 'The ceiling holds with this load.';
+  }
   if (profile && profile.driveLabel) return `The ${profile.driveLabel} sets your ceiling.`;
   return '';
 }
@@ -405,25 +914,40 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
   const bars = [];
   for (const axis of profile.axes) {
     let why = '';
-    if (axis.id === 'agility') why = agilityWhy({ shipDef, derived, dryDerived, bareDerived });
-    else if (axis.id === 'inertia') why = inertiaWhy(derived);
-    else if (axis.id === 'topSpeed') why = topSpeedWhy(profile, derived, dryDerived, shipDef);
-    else if (axis.id === 'brake') why = brakeWhy(derived);
+    let bar = clamp(Math.round(finite(axis.bar, 0)), 0, 100);
+    if (axis.id === 'agility') {
+      why = agilityWhy({ shipDef, derived, dryDerived, bareDerived });
+      bar = agilityFill(derived);
+    }
+    else if (axis.id === 'inertia') {
+      why = inertiaWhy(derived);
+      bar = inertiaFill(derived);
+    }
+    else if (axis.id === 'topSpeed') {
+      why = topSpeedWhy(profile, derived, dryDerived);
+      bar = ceilingFill(derived);
+    }
+    else if (axis.id === 'brake') {
+      why = brakeWhy(derived);
+      bar = brakePresentation(derived).bar;
+    }
     bars.push({
       id: axis.id,
       label: axis.label,
       raw: finite(axis.raw, 0),
-      bar: clamp(Math.round(finite(axis.bar, 0)), 0, 100),
+      bar,
       why,
     });
   }
-  const turnSentence = turnRadiusSentence(profile.predictions);
-  const reversalLine = reversalSentence(profile.predictions);
+  const turnSentence = liveTurnSentence(derived);
+  const reversalLine = reversalSentence({ reversalTimeS: liveReversalSeconds(derived) });
   const sustainedFire = sustainedFireForFit(shipId, fittings, player);
-  // The crest is the sentence the fit screen already prints under the hull name. Turn radius,
-  // reversal and the burst length belong there, before the player commits, not in a tooltip.
+  const towLine = towSentence(profile.predictions);
+  // The crest is the sentence the fit screen prints under the hull name. The hull this
+  // fit can tow leads, so a short nameplate still names it. Turn, stop, and the burst follow.
   const crestSentence = [
-    handlingSentence(profile, derived, dryDerived),
+    towLine,
+    handlingSentence(profile, derived, dryDerived, bareDerived),
     turnSentence,
     reversalLine,
     sustainedFire.sentence,
@@ -436,6 +960,7 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
     crestSentence,
     turnSentence,
     reversalSentence: reversalLine,
+    towSentence: towLine,
     sustainedFire,
     moduleSentences: moduleSentencesForFittings(fittings),
   };
@@ -676,9 +1201,23 @@ export function capabilityBandModel({ derived, state, fittings = [] }) {
  */
 function leadFromTow(tow) {
   const hullName = tow && tow.hullName ? String(tow.hullName) : null;
+  if (hullName) {
+    return {
+      value: 'can tow',
+      word: withArticle(hullName),
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
+  if (tow && tow.coversRoster) {
+    return {
+      value: 'can tow',
+      word: 'any hull',
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
   return {
-    value: hullName ? 'can tow' : 'no tow',
-    word: hullName ? `a ${hullName}` : 'too loaded',
+    value: 'no tow',
+    word: 'too loaded',
     why: (tow && tow.why) || (tow && tow.verb) || '',
   };
 }

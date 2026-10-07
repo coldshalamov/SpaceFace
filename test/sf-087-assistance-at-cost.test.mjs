@@ -179,7 +179,7 @@ test('a mid-hire save/Continue reports the dropped tow and refunds the fee', asy
     assert.equal(grants.length, 1, 'the fee comes back through the same economy seam that billed it');
     assert.equal(grants[0].amount, 150);
     assert.equal(grants[0].reason, 'refund:tow_assist');
-    assert.ok(toasts.some((t) => /150cr/.test(t)),
+    assert.ok(toasts.some((t) => /150 cr/.test(t)),
       `the refund says what it paid back — saw: ${JSON.stringify(toasts)}`);
   } finally {
     dispose(sim);

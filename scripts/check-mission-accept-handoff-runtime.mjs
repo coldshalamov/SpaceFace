@@ -25,7 +25,9 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page);
+  // The probe server runs with the player store unmounted (see spawnProbeServer) — isolated
+  // harnesses never touch the machine save drawer, and store calls take the localStorage path.
+  const issues = collectPageIssues(page, { playerStoreMounted: false });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
@@ -252,7 +254,13 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  // SPACEFACE_PLAYER_STORE_DIR='' is the designed explicit unmount — a probe must not write
+  // autosaves into the machine's real player save drawer. The unmounted route 404s fast and
+  // the client takes its localStorage fallback, so no store request can stall under load.
+  const child = spawn(process.execPath, ['server.js', String(port)], {
+    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
+  });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };
   child.stdout.on('data', capture);

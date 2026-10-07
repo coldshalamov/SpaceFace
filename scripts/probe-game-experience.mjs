@@ -34,7 +34,7 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: HEADLESS });
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
+  const issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true, ignoreProbeWarnings: true });
 
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
@@ -874,7 +874,7 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,

@@ -369,8 +369,13 @@ const EMITTED_CUES = {
   'massline.sling': { distinct: true }, 'massline.tumble': { distinct: true },
   'massline.bulletTimeIn': { distinct: true }, 'massline.bulletTimeOut': { distinct: true },
   'massline.cloakOn': { distinct: true }, 'massline.cloakOff': { distinct: true },
-  'massline.jettisonKick': { distinct: true },
+  // FB-073 — deliberately unmapped: cargo:jettisoned is the single jettison voice; a mapped
+  // row would stack a second hit on flag-on routes (audioSystem.js AUDIO_CUE_TO_RECIPE note).
+  'massline.jettisonKick': { silent: true },
   'massline.bombDrop': { distinct: true },
+  // Iron Maw prow tear (tacticalAI) — propulsion wind-down voice; boss moment stinger.
+  'combat.subsystem.disabled': { distinct: true },
+  'moment.stinger': { distinct: true },
   // World/work receipts: the salvage plate torn free (vfx.js salvage completion) and the hauler
   // foghorn greeting on a pass-by hail (barkDirector.js). Both own authored recipes — the plate is
   // a direct recipe id, the foghorn maps through AUDIO_CUE_TO_RECIPE.
@@ -392,6 +397,12 @@ const EMITTED_CUES = {
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {
   const rid = resolveAudioCueRecipeId(cue);
+  if (spec.silent) {
+    assert(rid === null,
+      `Emitted cue "${cue}" is deliberately unmapped (see its comment) but resolves to "${rid}" — ` +
+      `mapping it stacks a second voice onto the moment's single owner.`);
+    continue;
+  }
   assert(AUDIO_RECIPE_BY_ID[rid],
     `Emitted cue "${cue}" resolves to "${rid}", which is NOT a defined recipe. ` +
     `Add the recipe to audioRecipes.js or fix its AUDIO_CUE_TO_RECIPE mapping.`);
@@ -422,7 +433,8 @@ for (const recipe of RECIPES) {
 }
 // Also assert the EMITTED_CUES contract specifically resolves to a real recipe (the catalog sweep
 // above proves recipes render; this proves every emitted cue MAPS to one of them).
-for (const [cue] of Object.entries(EMITTED_CUES)) {
+for (const [cue, spec] of Object.entries(EMITTED_CUES)) {
+  if (spec.silent) continue;
   const rid = resolveAudioCueRecipeId(cue);
   assert.ok(AUDIO_RECIPE_BY_ID[rid],
     `Emitted cue "${cue}" resolves to "${rid}", which is not a defined recipe.`);
@@ -498,7 +510,9 @@ assert.equal(resolveAudioCueRecipeId(PRESENTATION_AUDIO_CUE_BY_ID['travel.cruise
   'cruise charging semantic cue must resolve to its authored rise');
 assert.doesNotMatch(audioSrc, /bus\.on\('cruise:charging'/,
   'raw cruise charging must not stack a duplicate voice beneath presentation audio');
-assert.doesNotMatch(audioSrc, /bus\.on\('jump:(?:chargeStart|start|arrive)'/,
+// INST-17's jump:start/chargeAbort subscriptions arm the _jumpArrivalWhoosh flag only — they
+// play nothing, so they are exempt; the hazard is a raw jump sub that plays a voice inline.
+assert.doesNotMatch(audioSrc, /bus\.on\('jump:(?:chargeStart|start|arrive)'[^;]*play\(/,
   'raw jump events must not stack duplicate voices beneath presentation audio');
 assert.match(audioSrc, /sfx_accel_transition/, 'acceleration transition motif must be used');
 assert.match(audioSrc, /sfx_undock_release/, 'undock mood must use undock release recipe');

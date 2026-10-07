@@ -32,6 +32,8 @@ import { clearEntityRuntime } from '../core/entity.js';
 import { SECTORS } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { hasContractsDesk } from '../data/missions.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { rememberMoralDebt } from './moralMemory.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
@@ -70,9 +72,12 @@ const CAUSAL_RECEIPT_CAP = 24;
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const ALL_STATIONS = [];
+const STATION_BY_ID = new Map();
 for (const sec of SECTORS) {
   for (const st of (sec.stations || [])) {
-    ALL_STATIONS.push({ ...st, sectorId: sec.id });
+    const row = { ...st, sectorId: sec.id };
+    ALL_STATIONS.push(row);
+    STATION_BY_ID.set(row.id, row);
   }
 }
 
@@ -120,14 +125,35 @@ function choosePoint(seed, sectorId, candidates) {
   return ordered[idx] || ordered[0];
 }
 
-function rescueStationForSector(sectorId) {
+function repFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  return rec ? (rec.rep || 0) : 0;
+}
+
+// The handoff berth is where the pod's passenger_transport offer settles — a pick the
+// pilot cannot dock at writes a rescue that can never pay out (the accept gate refuses
+// it outright). The same preference ladder holds, just over berths that admit: concord
+// house first, then a real desk, then any open local berth, then the same ladder wide.
+function rescueStationForSector(sectorId, state) {
   const sec = SECTOR_BY_ID.get(sectorId);
   const local = (sec && sec.stations) || [];
-  return local.find((s) => s.factionId === CONCORD_FACTION_ID)
-    || local.find((s) => s.services && s.services.includes('missions'))
-    || local[0]
-    || ALL_STATIONS.find((s) => s.factionId === CONCORD_FACTION_ID)
-    || ALL_STATIONS[0]
+  const admits = (s) => {
+    if (!s) return false;
+    // Station faction first, sector faction as the world-stamp fallback — a record that
+    // carried no factionId of its own reads the sector's standing, same as the dock gate.
+    const factionId = s.factionId || (SECTOR_BY_ID.get(s.sectorId || sectorId) || {}).factionId;
+    return stationBerthAdmits(s, repFor(state, factionId), state);
+  };
+  const hasDesk = (s) => hasContractsDesk(s && s.services);
+  // The global desk rung is defensive ordering: every concord house admits unconditionally
+  // today, so the first global concord find always lands — a future gated house needs the
+  // ladder past it already written.
+  return local.find((s) => s.factionId === CONCORD_FACTION_ID && admits(s))
+    || local.find((s) => hasDesk(s) && admits(s))
+    || local.find((s) => admits(s))
+    || ALL_STATIONS.find((s) => s.factionId === CONCORD_FACTION_ID && admits(s))
+    || ALL_STATIONS.find((s) => hasDesk(s) && admits(s))
+    || ALL_STATIONS.find((s) => admits(s))
     || null;
 }
 
@@ -1172,7 +1198,7 @@ export const survivorPod = {
     const point = choosePoint(state.meta && state.meta.seed, sectorId, preferred.length ? preferred : eligible);
     if (!point) return null;
 
-    const dest = rescueStationForSector(sectorId);
+    const dest = rescueStationForSector(sectorId, state);
     const startedAt = deferredEnterNow(state) || 0;
     const rec = {
       salvagePointId: point.id,
@@ -1182,7 +1208,8 @@ export const survivorPod = {
       wreckMissionId: MISSION_ID,
       factionId: CONCORD_FACTION_ID,
       destStationId: dest ? dest.id : null,
-      destSectorId: dest ? dest.sectorId : sectorId,
+      // Local picks come back as raw catalog records (no sectorId); global picks carry it.
+      destSectorId: dest ? (dest.sectorId || sectorId) : sectorId,
       oxygenStartedAt: startedAt,
       oxygenDueAt: startedAt + OXYGEN_WINDOW_S,
       oxygenDecayWindow_s: OXYGEN_DECAY_WINDOW_S,
@@ -1261,6 +1288,23 @@ export const survivorPod = {
     offer.choice = clone(template.choice);
     offer.tag = template.tag || 'wreck_salvage';
     offer.factionId = CONCORD_FACTION_ID;
+    // The bound handoff was picked at promotion; a stale save (or standing lost since)
+    // can leave it a berth the pilot cannot use. Re-resolve at offer time — an admitting
+    // reroute heals the record for the board and the tethered path alike; a still-closed
+    // sector keeps the named berth so the accept gate's refusal can say why.
+    const bound = rec.destStationId ? STATION_BY_ID.get(rec.destStationId) : null;
+    if (bound && !stationBerthAdmits(
+      bound,
+      repFor(state, bound.factionId || (SECTOR_BY_ID.get(bound.sectorId) || {}).factionId),
+      state,
+    )) {
+      const reroute = rescueStationForSector(rec.sectorId, state);
+      if (reroute) {
+        rec.destStationId = reroute.id;
+        // Local rows are raw catalog records without sectorId — keep the pod's sector.
+        rec.destSectorId = reroute.sectorId || rec.sectorId;
+      }
+    }
     // salvage._buildOffer already bound a board station; the rescue desk is the fallback.
     offer.stationId = offer.stationId || rec.destStationId || null;
     offer.destStationId = rec.destStationId;
@@ -1307,7 +1351,12 @@ export const survivorPod = {
     const rec = own.promotedByPoint[point.id];
     if (!rec || rec.stripped) return false;
     const optionId = payload.optionId || payload.choiceId || payload.id;
-    if (optionId === 'rescue') return this._chooseRescue(point, rec);
+    if (optionId === 'rescue') {
+      // A committed rescue (its contract is already live) never re-runs the choice — the
+      // pod's second rescueSelected would price a second accept against a withdrawn offer.
+      if (rec.rescueSelected) return false;
+      return this._chooseRescue(point, rec);
+    }
     if (optionId === 'strip') return this._chooseStrip(point, rec);
     return false;
   },
@@ -1333,7 +1382,6 @@ export const survivorPod = {
       }
       return false;
     }
-    rec.rescueSelected = true;
     const ent = entityForPoint(state, point);
     const meta = mirrorMeta(state, rec, point, ent);
     if (this._bus && this._bus.emit) {
@@ -1345,7 +1393,28 @@ export const survivorPod = {
         destSectorId: rec.destSectorId || rec.sectorId,
       });
     }
-    return true;
+    // Missions accepts synchronously inside the emit above. A refused accept — standing lost
+    // at the destination desk between the berth re-resolve and this choice, or an offer row
+    // that is already gone — leaves NO contract. The latch must not hold: set it only when a
+    // live rescue mission for this pod exists, otherwise roll back and tell the card so the
+    // prompt stays for the retry instead of resolving on a choice that produced nothing
+    // (D133).
+    const active = (state.missions && state.missions.active) || [];
+    const committed = active.some((m) => m && m.status === 'active'
+      && m.params && m.params.survivorPodId === point.id);
+    if (committed) {
+      rec.rescueSelected = true;
+      return true;
+    }
+    rec.rescueSelected = false;
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('survivorPod:rescueBlocked', {
+        salvagePointId: point.id,
+        entityId: point.entityId,
+        reason: 'accept_refused',
+      });
+    }
+    return false;
   },
 
   _chooseStrip(point, rec) {

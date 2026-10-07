@@ -42,6 +42,19 @@ function modalInputActive() {
   return body.classList.contains('ui-modal-open') || body.classList.contains('ui-live-screen');
 }
 
+// Pure-flight gate for the canvas lock, shared with the render-loop watchdog in
+// src/ui/uiRoot.js (which enforces the same invariant every frame, including while sim
+// ticks are frozen by a menu). The lock is legitimate in exactly one situation: G
+// combat-stick mode on, in pure flight. Anywhere else the OS cursor must come back —
+// outside pure flight there is no software reticle to take its place.
+export function inPureFlightForLock(state) {
+  return !!state && state.mode === 'flight' && !modalInputActive();
+}
+
+export function pointerLockIsLegitimate(state, pureFlight) {
+  return !!pureFlight && !!state && !!state.input && state.input.autoFire === true;
+}
+
 function isAutoFireCode(state, code) {
   return !!code && binding(state, 'autoFire').includes(code);
 }
@@ -91,10 +104,13 @@ export const autoTargetAssist = {
       // next canvas click below re-acquires the lock. The old reset here silently killed the
       // mode whenever the browser dropped the lock, leaving the player drawing into nothing.
       this._pointerLockAcquired = !!(canvas && document.pointerLockElement === canvas);
-      // The converse is not symmetric: a lock that LANDS while the mode is off (a still-pending
-      // request from before the toggle, or an autoFire reset that bypassed this module) must
-      // be released — it hides the cursor and freezes the reticle's clientX feed otherwise.
-      if (this._pointerLockAcquired && this.state?.input?.autoFire !== true) {
+      // The converse is not symmetric: a lock that LANDS while it is not legitimate — the mode
+      // is off (a still-pending request from before the toggle, or an autoFire reset that
+      // bypassed this module) or the game left pure flight (a menu opened over a pending grant
+      // while sim ticks were frozen) — must be released. A held lock hides the OS cursor, and
+      // outside pure flight there is no software reticle to take its place: the player sits in
+      // front of a menu with no cursor at all.
+      if (this._pointerLockAcquired && !pointerLockIsLegitimate(this.state, inPureFlightForLock(this.state))) {
         setPointerLock(false);
         this._pointerLockAcquired = false;
       }
@@ -128,6 +144,17 @@ export const autoTargetAssist = {
     this._unsubSaveLoaded = this.bus && this.bus.on
       ? this.bus.on('save:loaded', () => this.reset())
       : null;
+    // A menu (or dock) freezes sim ticks, which stops update()'s per-tick lock reconcile —
+    // and pause flips mode directly without a mode:changed event, so reset() never runs.
+    // Release the LOCK at the pause boundary itself (tick-independent): the mode stays on,
+    // the OS cursor comes back under the menu, and the next canvas mousedown re-acquires
+    // on resume (see _onPointerDown).
+    this._unsubPause = this.bus && this.bus.on
+      ? this.bus.on('sim:pause', () => {
+        setPointerLock(false);
+        this._pointerLockAcquired = false;
+      })
+      : null;
 
     this._onKeyDown = (e) => {
       if (shouldNeutralizeFlightInput(this.state, modalInputActive())
@@ -151,6 +178,12 @@ export const autoTargetAssist = {
     };
     this._onBlur = () => {
       this._gHeld = false;
+      // Window focus lost (Alt-Tab, overlay): a lock held across the switch hides the OS
+      // cursor with no reticle on return until something reconciles it — release now. The
+      // mode stays on; the next canvas mousedown re-acquires (see _onPointerDown). The flag
+      // clears eagerly: a re-acquire attempt while somehow still locked is a guarded no-op.
+      setPointerLock(false);
+      this._pointerLockAcquired = false;
       if (this.state?.input?.drawFlight) delete this.state.input.drawFlight;
       if (this.state?.input?.autoTargetPath) this.state.input.autoTargetPath.active = false;
     };
@@ -197,6 +230,7 @@ export const autoTargetAssist = {
     if (this._unsubDock) this._unsubDock();
     if (this._unsubSaveRestoring) this._unsubSaveRestoring();
     if (this._unsubSaveLoaded) this._unsubSaveLoaded();
+    if (this._unsubPause) this._unsubPause();
     if (typeof removeEventListener === 'function') {
       if (this._onKeyDown) removeEventListener('keydown', this._onKeyDown, { capture: true });
       if (this._onKeyUp) removeEventListener('keyup', this._onKeyUp, { capture: true });
@@ -211,6 +245,7 @@ export const autoTargetAssist = {
     this._unsubDock = null;
     this._unsubSaveRestoring = null;
     this._unsubSaveLoaded = null;
+    this._unsubPause = null;
     this._gHeld = false;
   },
 

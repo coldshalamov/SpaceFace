@@ -6,7 +6,10 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
 const PORT = '8123';
-const server = spawn(process.execPath, ['server.js', PORT], { stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, ['server.js', PORT], {
+  stdio: ['ignore', 'pipe', 'pipe'],
+  env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
+});
 server.stdout.on('data', (d) => process.stdout.write('[server] ' + d));
 server.stderr.on('data', (d) => process.stderr.write('[server!] ' + d));
 
@@ -22,7 +25,7 @@ const authored = process.argv.includes('authored') || process.env.SF_AUTHORED ==
 const previewUrl = `http://localhost:${PORT}/?dev=shippreview${authored ? '&authored=1' : ''}`;
 const driver = spawn(process.execPath, [electronBin, 'electron/shipPreview.cjs'], {
   stdio: 'inherit',
-  env: { ...process.env, SF_PREVIEW_URL: previewUrl },
+  env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SF_PREVIEW_URL: previewUrl },
 });
 
 driver.on('exit', (code) => {

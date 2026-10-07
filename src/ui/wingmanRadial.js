@@ -9,6 +9,7 @@
 // Pure DOM + event listeners; reads state for the fleet + target, never mutates sim state (§0.6).
 // The radial keeps the player's hands on thrust/trigger — open, pick, gone — matching the cockpit feel.
 
+import { injectWingmanLayouts } from './orrery/wingmanLayouts.js';
 import { BINDINGS } from './bindings.js';
 import { dpIcon } from './deckplate/icons.js';
 
@@ -66,6 +67,7 @@ const DIAL_SVG = '<svg class="sf-wradial__dial" viewBox="0 0 400 400" aria-hidde
 export function createWingmanRadial(ctx) {
   const { bus, state } = ctx;
   injectCss();
+  injectWingmanLayouts();
 
   const root = document.getElementById('ui-root');
   const overlay = document.createElement('div');

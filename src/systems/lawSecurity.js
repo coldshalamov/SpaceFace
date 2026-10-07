@@ -64,6 +64,7 @@ import {
 import { scaleBySector } from '../data/sectorPhysical.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { requestActivityReclassify } from '../world/activityRuntime.js';
+import { SECTORS } from '../data/sectors.js';
 import {
   collectLivingWorldActors,
   findLivingWorldActor,
@@ -2799,7 +2800,7 @@ export const lawSecurity = {
       kind: 'warrant',
       causeId,
       amountCr: fine,
-      label: `fine at ${stationId}`,
+      label: `fine at ${stationDisplayName(stationId)}`,
     });
     const choice = payload && typeof payload.fineChoice === 'string' ? payload.fineChoice : null;
     // FB-039 — docking only assesses; the charge is the player's answer, not the berth's act.
@@ -2836,7 +2837,7 @@ export const lawSecurity = {
       this._recordReceipt({
         cause: 'wanted_fine', outcome: 'fine_left',
         attackerId: state.playerId, targetId: null, stationId,
-        text: `FINE LEFT ${fine} cr — warrant stands at ${stationId}.`,
+        text: `FINE LEFT ${fine} cr — warrant stands at ${stationDisplayName(stationId)}.`,
       });
       return;
     }
@@ -2855,7 +2856,7 @@ export const lawSecurity = {
       this._recordReceipt({
         cause: 'wanted_fine', outcome: 'fine_work',
         attackerId: state.playerId, targetId: null, stationId,
-        text: `FINE WORK ${fine} cr — warrant held until the shift is done at ${stationId}.`,
+        text: `FINE WORK ${fine} cr — warrant held until the shift is done at ${stationDisplayName(stationId)}.`,
       });
       return;
     }
@@ -2901,7 +2902,7 @@ export const lawSecurity = {
     this._recordReceipt({
       cause: 'wanted_fine', outcome: 'fine_paid',
       attackerId: state.playerId, targetId: null, stationId,
-      text: `FINE PAID ${fine} cr — warrant cleared at ${stationId}.`,
+      text: `FINE PAID ${fine} cr — warrant cleared at ${stationDisplayName(stationId)}.`,
     });
   },
 
@@ -2940,7 +2941,8 @@ export const lawSecurity = {
     });
   },
 
-  // Helios is a corridor. Tethys is a cone. Standing in the old zone disc is not enough.
+  // Helios is a corridor. Tethys is a cone. Dione is a funnel. Standing in the old zone
+  // disc is not enough.
   _updateCustomsWeir(dt, state) {
     const step = Number(dt);
     const own = ensureState(state);
@@ -3077,6 +3079,13 @@ export const lawSecurity = {
   },
 
   _dwellWeirPods(step, state, weir) {
+    // A live inspection case or a live patrol intercept already owns the scan — same
+    // guard as _dwellWeirPlayer. Without it a dwelled pod's `customs_weir` emit can be
+    // adopted as the patrol's own result and resolve the case 'fined' at 0 credits (D179).
+    // The gate pauses accumulation, but housekeeping (exit-delete, non-contraband-clear,
+    // despawn prune) still runs underneath it — a pod that leaves mid-case must not keep
+    // stale dwell credit toward a scan on re-entry.
+    const gated = activeLawfulInspection(state) || hasLivePatrolScan(state);
     const dwell = this._weirPodDwell || (this._weirPodDwell = new Map());
     // Same payload-bucket proof as the cone census: no payloads → the walk sees no pods, `seen`
     // stays empty, and the prune below would drop every dwell row anyway.
@@ -3106,6 +3115,7 @@ export const lawSecurity = {
         dwell.delete(key);
         continue;
       }
+      if (gated) continue;
       const next = (Number(dwell.get(key)) || 0) + step;
       dwell.set(key, next);
       if (next < weir.dwellS) continue;
@@ -4747,7 +4757,7 @@ export const lawSecurity = {
       text: disposition === 'settled'
         ? 'CUSTODY ACCEPTED — the law holds the guns. This lot is already settled on the record.'
         : obligation
-          ? `CUSTODY ACCEPTED — the law holds the guns. Bill posted: ${priceCr} Cr.`
+          ? `CUSTODY ACCEPTED — the law holds the guns. Bill posted: ${priceCr} cr.`
           : 'CUSTODY ACCEPTED — the law holds the guns. Custody stands; no new bill could be posted.',
       kind: 'good', ttl: 4,
     });
@@ -6456,3 +6466,13 @@ function normalizeFineSettled(raw) {
 }
 
 export default lawSecurity;
+
+// Receipts name the berth, not its id. An id that does not resolve is printed as given.
+let stationNamesById = null;
+function stationDisplayName(stationId) {
+  if (!stationNamesById) {
+    stationNamesById = new Map();
+    for (const sector of SECTORS) for (const station of (sector.stations || [])) stationNamesById.set(station.id, station.name);
+  }
+  return stationNamesById.get(stationId) || String(stationId);
+}

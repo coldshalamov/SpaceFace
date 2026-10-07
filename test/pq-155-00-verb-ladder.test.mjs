@@ -25,9 +25,9 @@ import {
 
 const MAX_STAT_ONLY = 12;
 
-test('PQ-155.00: 32 tech nodes, every node has one ladder row', () => {
-  assert.equal(TECH_NODES.length, 32);
-  assert.equal(TECH_VERB_LADDER.length, 32);
+test('PQ-155.00: every tech node has one ladder row', () => {
+  assert.equal(TECH_NODES.length, 35);
+  assert.equal(TECH_VERB_LADDER.length, 35);
   const nodeIds = TECH_NODES.map((node) => node.id).sort();
   const rowIds = TECH_VERB_LADDER.map((row) => row.nodeId).sort();
   assert.deepEqual(rowIds, nodeIds);
@@ -51,10 +51,10 @@ test('PQ-155.00: each row is hour → verb → cost → gate', () => {
   }
 });
 
-test('PQ-155.00: strict 32 verb / 0 stat-only; FB-053 reclassified the three leftovers', () => {
+test('PQ-155.00: strict 35 verb / 0 stat-only; FB-053 reclassified the three leftovers', () => {
   const counts = countVerbVsStatOnly(TECH_NODES, 'strict');
-  assert.equal(counts.total, 32);
-  assert.equal(counts.verb, 32);
+  assert.equal(counts.total, 35);
+  assert.equal(counts.verb, 35);
   assert.equal(counts.statOnly, 0);
   assert.ok(counts.statOnly <= MAX_STAT_ONLY);
   assert.deepEqual(counts.statOnlyIds.slice().sort(), STRICT_STAT_ONLY_IDS.slice().sort());
@@ -67,9 +67,9 @@ test('PQ-155.00: strict 32 verb / 0 stat-only; FB-053 reclassified the three lef
   }
 });
 
-test('PQ-155.00: broad 26 verb / 6 stat-only; each leftover justified', () => {
+test('PQ-155.00: broad 29 verb / 6 stat-only; each leftover justified', () => {
   const counts = countVerbVsStatOnly(TECH_NODES, 'broad');
-  assert.equal(counts.verb, 26);
+  assert.equal(counts.verb, 29);
   assert.equal(counts.statOnly, 6);
   assert.ok(counts.statOnly <= MAX_STAT_ONLY);
   const hullLicenses = TECH_NODES.filter(isHullLicenseOnly).map((node) => node.id).sort();

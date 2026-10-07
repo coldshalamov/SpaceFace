@@ -1579,10 +1579,10 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     }
 
     // Kick direction: from the counterpart body toward the knocked hull — the direction that hull
-    // was physically shoved. Positions, not the `normal` field, are the authority: both payload
-    // families carry an UNORIENTED contact axis there (the SG-02 normal never supplies sign), so
-    // only a body-pair difference can pick the right sign. Fallback chain when bodies are retired
-    // or degenerate: contact point → signed normal (b/other end is pushed +n, a/target end −n).
+    // was physically shoved. Positions stay the authority (they survive retired or degenerate
+    // bodies better than a field read); the signed-normal fallback below is now trustworthy on
+    // BOTH backends — SFQ-B183 orients every physics:impact normal aId→bId at capture, so
+    // "b/other end is pushed +n, a/target end −n" is a receipt fact, not a custom-backend guess.
     const bodyAt = (id) => (id != null && ents && typeof ents.get === 'function' ? ents.get(id) : null);
     const knockBody = bodyAt(knockId);
     const otherBody = bodyAt(otherId);

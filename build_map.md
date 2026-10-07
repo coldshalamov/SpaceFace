@@ -50,7 +50,13 @@ wrong still starts at the fun loop (§1.7), then returns here.
    works it in when it returns. A cosmetic frontend impulse your task does not need is one ledger
    row (§7 of `AGENTS.md`), never a second designer. Authority:
    [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md).
-2. If this sitting is a finishing or A-list pass with no named packet — "make it better", "finish
+2. **Maturity first (owner, 2026-10-04):** debugging and polish are planned production work,
+   including in areas whose feature rows say `done`. For "fix the bugs", "make it solid",
+   "polish" or "demo ready", use [§1.8](#18-production-maturity-debugging-and-polish).
+   For unnamed next work, fix an available confirmed player-facing defect before adding a
+   feature; if the selected area has no current maturity coverage, do its bounded discovery
+   pass first. Exact-path ownership still applies. Otherwise, if this sitting is a finishing
+   or A-list pass with no named packet — "make it better", "finish
    the game", "polish", a long build session — take a lane from
    [§27](#27-the-finish-in-lanes--admitted-2026-09-24) / [`FINISH_LANES.md`](./design/program/FINISH_LANES.md):
    the first lane whose files are free, worked in order. A lane is an open-ended area assignment —
@@ -91,6 +97,10 @@ Broad, unnamed quality work still goes through the Central Brain manager loop
 inside the same queue; it never admits, mutates queue truth, or replaces this procedure.
 
 ### 1.2 The order (why `--next` returns what it returns)
+
+**The maturity priority in [§1.8](#18-production-maturity-debugging-and-polish) precedes this
+feature sequence.** A broken existing workflow is production work now, even when its packet
+is closed or release packaging is parked. Queue order does not require building on a broken game.
 
 Dispatch order is kind first (build before proof), then unit priority. The units of the finishing
 program carry priorities that encode this sequence, and their dependencies name the exact units they
@@ -248,6 +258,7 @@ procedure:
 
 | The owner says | Start here |
 |---|---|
+| "it's super buggy", "fix all the bugs", "make it solid", "debug and polish", "text overflows", "models don't load", "too much off-screen loading", "demo ready" | **[§1.8](#18-production-maturity-debugging-and-polish)** — own discovery and repair of ordinary player workflows through the existing lanes and ONE defect ledger. The owner supplies the symptom, not a technical diagnosis |
 | "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
 | "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
@@ -272,6 +283,88 @@ procedure:
 | "it crashed / my save is gone / it won't start" | integrity first: §7, `PQ-033`, the save checks |
 
 Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an ordinary unit.
+
+### 1.8 Production maturity: debugging and polish
+
+**Owner direction, 2026-10-04:** mature the existing game into a dependable, polished experience.
+Feature expansion alone is not progress when ordinary play is buggy. Agents own finding,
+reproducing and fixing failures; the owner does not need jargon or a bug-by-bug briefing.
+This is an active production priority across §27's existing lanes, not a second queue or an audit
+deliverable. The ONE open-defect ledger remains
+[`DEMO_READINESS_2026-09-20.md` §6](./design/program/DEMO_READINESS_2026-09-20.md#6-the-demo-defect-ledger--everything-a-demo-player-will-hit-live-opened-2026-09-22).
+
+**Copy-ready assignment:** "Debug and polish SpaceFace using build_map §1.8. Own discovery
+and repair of the assigned area; for a whole-game campaign cover every workflow in the table.
+Fix production causes, verify ordinary play and recovery, and report what now works and any
+remaining defects in plain player language. You own finding the bugs, not just checking a list."
+
+**Choose repairs before expansion.** First: crashes, lost progress, failed launch/Continue,
+softlocks and unusable controls. Then: repeatable hitches, missing bodies, broken transactions,
+unreadable or unreachable UI and incorrect gameplay feedback. Then: visual, audio and interaction
+polish. Rank by severity, frequency and reach, not by how easy the task is to count. Fix an
+available defect in the selected area before extending it; unaffected work can continue in disjoint
+paths. `done` on a feature or `free` on a seam says nothing about current product quality.
+
+**Discover by player workflow.** A maturity assignment covers an ordinary workflow and its
+failure/recovery edges, not just the happy path or a named function. Use the following coverage
+to select area-sized repair work. Across a finishing campaign, cover every row; a single fix
+checks only the affected row and adjacent transitions. Reuse current results when the relevant
+owners have not changed. These are assignments and completion bars, not new status IDs.
+
+| Player problem / coverage | Existing owner and concrete repair assignment | The result the player should get |
+|---|---|---|
+| **Start, stop and resume** | THE MACHINE + THE LONG GAME: cold New Game → Launch → control; save → title/restart → Continue; death → retry; failed/invalid load → recover. Cover Browser and Electron's shared route and any affected shell boundary. | No crash, endless spinner, invisible world, lost progress, duplicate rewards or dead end. A failed operation explains itself and leaves a usable route back. |
+| **Controls and everyday play** | THE HAND + THE FIGHT: ordinary flight, targeting, mining, towing, fighting and camera/zoom; pause/settings/modal → resume; held/released inputs, rebinding and focus changes. | Input answers once, the camera and body agree, and closing a screen never leaves stuck controls, accidental actions or an unusable ship. |
+| **Menus, HUD and text** | The workflow owner repairs functional UI within ORRERY: exercise title/new game/load/settings/pause, map, station/market/outfitting, jobs and Swarm draft/refit/results. Check narrow/default/wide layouts, long names/numbers, +40% pseudo-localized copy, populated/empty/error states, scrolling and focus. | No overflow, overlap, cropped meaning, off-screen action, unreadable feedback or dead control. Needed information and controls remain reachable by the supported input methods; motion/accessibility settings preserve meaning. |
+| **The visible world loads and stays there** | THE PICTURE + THE MACHINE: camera approach/turn/zoom, fast travel, sector arrival/exit, combat spawns and save/load. Repair the actual asset resolution, fetch/decode/compose/compile/admission/residency owner that fails. | Ships, stations, rocks, wrecks and effects appear as authored bodies when needed; nothing usable is an empty lock, invisible collider, missing part or disappearing on-screen model. Loading failure is recoverable and cannot silently count as readiness. |
+| **Off-screen work and loading pressure** | THE MACHINE with THE PICTURE/WORLD: bound predictive admission, decode/compile queues, draw submission, distant queries, texture/model residency and retirement. Check rapid direction reversals, arrivals and repeated sector revisits. Separate render cost from simulation authority. | Nearby and imminent content wins priority; distant content does not flood expensive queues or remain resident without need. Culling/residency does not pop visible bodies, discard imminent arrivals, erase NPC consequences or change default visual quality. |
+| **Hitches and long-session stability** | THE MACHINE: repair identified main-thread stalls, allocation/GC churn, repeated setup, unbounded scans, resource/event/timer leaks and stale async callbacks through dock/undock/jump/fight/save/load cycles. | Stable frame pacing and bounded resources over ordinary transitions. Use existing demo/min-spec budgets; report frame tails and missing-body evidence as well as averages. A smoother empty scene does not pass. |
+| **Transactions, jobs and progression** | THE WORLD + THE LONG GAME: accept → do → settle/abandon/fail → reload; trade, buy/fit/use, cargo custody, credits, law and unlocks. Include invalid/stale selections and repeated clicks. | Displayed price, eligibility, inventory, physical result and saved result agree. Settlement happens once; cancellation/failure leaves coherent play and useful feedback. |
+| **Visual and audio finish** | THE PICTURE + THE EAR + the affected workflow owner: broken transforms/materials/lighting, clipping/z-fighting, stuck/floating effects, unreadable cues, missing/duplicated sound and effects surviving their owner. | The authored picture and feedback remain coherent at the gameplay camera, dense moments and supported accessibility settings. Repair defects within the existing art direction. |
+
+**Run a finite find → fix → verify loop.**
+
+1. Pick the highest-impact available ledger defect, or one workflow above lacking current
+   coverage. Check the live owner and exact dirty paths. State the player-visible outcome in
+   one sentence. A closed packet is a lead, not a reason to dismiss a current failure.
+2. Exercise the real workflow with representative existing content. Include the relevant
+   interruption, repeated action or recovery edge. Existing fixtures, DOM/layout checks and
+   fixed-seed routes are the default; do not create a universal crawler or another census.
+   A full campaign rotates through the table rather than repeating the same easy opening.
+3. Reproduce a found failure at the cheapest relevant layer and fix the production cause.
+   If a missing lifecycle owner, loading policy, cancellation path, resource budget or shared
+   layout primitive is necessary, build that specific structure and wire it into the default
+   route. Prefer that shared repair over scattered symptom patches; no speculative rewrite.
+4. Verify the affected workflow and its failure/recovery edge after the fix. Add a focused
+   regression when recurrence or a meaningful boundary warrants it; do not write tests that
+   merely mirror the code. Run affected existing checks once; broaden only for a real failure
+   or a change that crosses more owners. Green tests cannot prove a visual or timing claim
+   they do not observe.
+5. Commit the owned repair by exact paths, removing its ledger row in the fixing commit.
+   Out-of-area defects follow root `AGENTS.md` §7: fix small ones, delegate medium ones,
+   otherwise one ledger row with what the player sees, the route/actions, expected/actual
+   behavior, frequency/seed if known and the cheapest repro. Never substitute a report for
+   an assigned repair or silently discard a defect because its cause is unknown.
+6. A bounded assignment ends when its outcome works, direct verification passes and no
+   unresolved defect materially changes that outcome. A broader maturity campaign continues
+   through uncovered workflows and remaining repairs until its agreed scope is complete.
+   Report coverage and any material remaining defect plainly; do not call a whole game
+   flawless because one fixture or one route passed. No repeated confidence-only review.
+
+**Demo-ready is a product condition, separate from publishing.** The existing demo path
+(§21/§25: launch, fight, results/retry, Adventure job, purchase/fit/use an upgrade, save/Continue)
+must work with the real picture and reachable UI, without known crashes, lost progress, softlocks,
+visible-body failures, obstructed controls/text or repeatable player-disrupting hitches in that
+scope. The table above covers ordinary play beyond that showcase; a narrow demo pass does not
+close the whole maturity program. Packaging/store work keeps its existing release authorization.
+Maturity fixes remain active while THE RELEASE is parked.
+
+**Use the right host without stalling repairs.** Clean-machine captures, absolute performance
+readings and soaks belong only to [`QUIET_HOST_PROGRAM.md`](./design/program/QUIET_HOST_PROGRAM.md).
+On the shared dev box, fix known causes with source inspection and focused functional/layout/
+resource checks; do not produce captures, hunt historical freezes, or claim a hardware speedup
+from contended timings. Consume the quiet-host receipt for the broader timing/visual verdict
+and route real failures back to these repair owners. Human play or approval is not a repair gate.
 
 ## 1A. Central Brain quality-convergence layer
 
@@ -358,6 +451,9 @@ Moved to [build_map_done.md](./build_map_done.md) — completed/historical, kept
 ## 1C. The board — every dispatchable unit, numbered (refreshed 2026-09-27)
 
 The old packet queue (`program-dispatch --next`) is drained. **That is not an empty plan.**
+For debugging/polish work, [§1.8](#18-production-maturity-debugging-and-polish) takes priority:
+repair existing ledger defects and discover failures in the selected ordinary workflow even when
+its seam has no OPEN feature rows. Preserve row statuses; this does not mint a parallel catalog.
 An empty script result is this board. It is not permission to switch to
 `INFERENCE_IDEAS.md`. The inference catalog is the small wiring inside a seam you already
 claimed, and it is the whole job only when the owner said INFERENCE.
@@ -520,11 +616,12 @@ rows carry commits and focused suites. NXI-024's evidence was re-anchored on its
 
 ### Handoff — stock take (2026-10-06)
 
-Published line is GitHub `master`. The checkout that recorded this note was diverged and already held other dirty work, and was not reset onto this line.
+Published line is GitHub `master`. The checkout that recorded this note was diverged and already held other dirty work, and was not reset onto this line. The shared checkout integrated that line by merge (no reset, no rebase): local `master` still carries local commits and other agents' dirty work ahead of it. Do not reset this checkout onto the published line — sync by merging `origin/master` into it.
 
 - RUCKUS is in the game. Pull request #223 is merged (`96d37229a`).
 - Frame optimizations from pull request #220, waves 60–100, are on GitHub master as snapshot `24d5375fa`. That commit matches branch `devin/1791064509-perf-w60` at `73b275a0` and does not merge the pull request. #220 stays open for further waves. Do not close it, and do not retake those waves.
 - GitHub `check` is red on master (recent runs hit the 30-minute cap) and red on #220 at this tip: static, sim, feel, and browser groups failed, and draw-flight failed one pin (Flight V3 must not contain an automatic orbit/follow controller). That is the published state. This note does not open a repair campaign.
+
 ### A. Recover — finished work stranded in the tree
 
 | # | ID | Work | Kind | Status |
@@ -657,7 +754,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 109 | PB-ECON-D | SF-115+117 per-cycle automation cost breakdown + capability-gated route opportunity | PB | DONE — `op.cycle`/`lastCycle` ledger books mined/fuel/upkeep/sold/withdrawn per cycle (reconciles carryIn+mined=sold+withdrawn+held); loss log carries the closed ledger; panel prints "Last run"; tow_recovery ceiling = real tow class (`_playerTowClassMassT`) with mass named in offer — automation-operational-limits 26/26, pq-152-00 8/8 |
 | 110 | PB-ECON-E | SF-109+116+119 supply-signal story, substitute-remedy flow, guaranteed reachable job | PB | DONE — depletion pin (stock climbs, sell quote sags); `starvedIndustryNeedFor` names cause+deficit; `_guaranteeRecoveryOffer` posts a zero-capital job on every board; `test/pb-econ-e.test.mjs` 4/4 |
 | 117 | PB-BUILD-A | SF-122+123+124+125+133 synergy proof quintet: rammer-truck, control-tug, survey-control, bulk-miner, stale-clear | PB | SHIPPED devin-oct2-batch — module-scaled reveal bands + cargo-scanner hold read + dated confirmed basis |
-| 118 | PB-BUILD-B | SF-129+134+135 tech-ladder trio: unlock→new physical question, rare capability two homes, first-earned delay trace; [research G](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#g-research-and-fitting-report-authoritative-outcomes--p06-p07-p08): hull research readiness + settled research feedback (P06/P07) | PB | SHIPPED — fleet-order research gates at owner; cloak two-homes already true; first-earned ~12.6min; research residual open |
+| 118 | PB-BUILD-B | SF-129+134+135 tech-ladder trio: unlock→new physical question, rare capability two homes, first-earned delay trace; [research G](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#g-research-and-fitting-report-authoritative-outcomes--p06-p07-p08): hull research readiness + settled research feedback (P06/P07) | PB | DONE 2026-10-04 — fleet-order research gates at owner; cloak two-homes already true; first-earned ~12.6min; P07 residual landed: the optimistic "Researching…" toast is gone (the synchronous owner toasts the one terminal line), pinned by `test/tech-tree-research-truth.test.mjs` 3/3 red-green |
 | 119 | PB-BUILD-C | SF-121+127+130+132 starter-identity proofs, charge-after-fit race verify, route-geometry upgrade, drawback management | PB | SHIPPED partial 2026-10-02 devin-oct2-batch — SF-121/127/132 already-true; SF-130 berth-pocket math + tug refusal landed (87dc8add3); physics.js dock:range gate + flightV3 aim held for foreign lanes |
 | 120 | PB-CONS-A | SF-151+159 witness-validated intake legibility + verdict escalation windows | PB | SHIPPED 2026-10-02 devin-oct2-batch — SF-151 witness intake requires a real sightline (heavy cover only); SF-159 sustained-collision window escalates reckless→unlawful kill |
 | 122 | PB-CONS-C | SF-160+163 memorial responds to named loss + uncertain evidence presented as uncertain | PB | SHIPPED already true — memorialSites + witnessed/uncertain evidence in lawSecurity, pinned infer-law-rows |
@@ -711,7 +808,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 180 | BUILD | [NXB-017](design/program/next-wave-2026-09-28/build/NXB-017.md) | Author one three-round act whose physical question changes each round | Existing owners; SF-061, SF-062, SF-064, SF-068, PQ-174 | DONE — 'mooring_line' act on waves 25–27 (SWARM_ACT table + staged owed bodies + per-round question banner); `test/next-wave-nxb-017.test.mjs` |
 | 181 | BUILD | [NXB-018](design/program/next-wave-2026-09-28/build/NXB-018.md) | Draft offers remain useful for the actual build and transaction state | Existing owners; SF-065, SF-066, SF-072, SF-251 | SHIPPED — displaced fitting named (NXI-071); children closed 2026-10-01 |
 | 183 | BUILD | [NXB-026](design/program/next-wave-2026-09-28/build/NXB-026.md) | Compare a multi-stop freight trip using known stock, actual capacity and operating cost | Existing owners; SF-107, SF-108, SF-112, SF-115 | SHIPPED |
-| 184 | BUILD | [NXB-029](design/program/next-wave-2026-09-28/build/NXB-029.md) | A named loadout prepares owned equipment atomically across modules and bomb rack; [research G](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#g-research-and-fitting-report-authoritative-outcomes--p06-p07-p08): refused-unfit continuation (P08); preserve shipped NXI-114 buy-fit/fit protection | NXB-009; SF-127, SF-128, SF-242, PQ-205 | SHIPPED — rack layout in presets + atomic identity-preserving apply; implemented / route-unproven; research residual open |
+| 184 | BUILD | [NXB-029](design/program/next-wave-2026-09-28/build/NXB-029.md) | A named loadout prepares owned equipment atomically across modules and bomb rack; [research G](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#g-research-and-fitting-report-authoritative-outcomes--p06-p07-p08): refused-unfit continuation (P08); preserve shipped NXI-114 buy-fit/fit protection | NXB-009; SF-127, SF-128, SF-242, PQ-205 | DONE 2026-10-04 — rack layout + atomic apply shipped; P08 residual landed: a refused unfit names its reason through the shipped `module:fitRefused` channel, plays `ui_deny`, and keeps the chooser open (acceptance still closes exactly once); `test/shipworks-fit-from-hold.test.mjs` pins both paths; NXI-114 neighbors green |
 | 185 | BUILD | [NXB-030](design/program/next-wave-2026-09-28/build/NXB-030.md) | Prove three existing hull sidegrades through actual physical jobs | Existing owners; SF-121, SF-122, SF-123, SF-124, SF-130 | SHIPPED 2026-10-02 devin-oct2-batch — three starters × three real jobs proven through live owners; false turn-rate/speed advantages repaired display-side; shipworks.js hunks held for foreign FB-057 lane |
 | 186 | BUILD | [NXB-031](design/program/next-wave-2026-09-28/build/NXB-031.md) | A synergy explanation matches the live combined effect and its drawback | Existing owners; SF-126, SF-132, SF-133 | SHIPPED — scan-gated basis + named prerequisites 2026-10-01 |
 | 188 | BUILD | [NXB-038](design/program/next-wave-2026-09-28/build/NXB-038.md) | A failed job leaves a playable continuation rather than a reset scene | Existing owners; SF-139, SF-147, SF-150, SF-285 | SHIPPED — disabled-helper readout + survivor release; mutations already chained 2026-10-01 |
@@ -721,7 +818,7 @@ The 60 BUILD packets and 240 INFERENCE packets are assignment counts, not 300 in
 | 193 | BUILD | [NXB-049](design/program/next-wave-2026-09-28/build/NXB-049.md) | A three-verb collision stays readable without draining the spectacle | Existing owners; SF-196, SF-197, SF-200, SF-207 | SHIPPED — three things at once stay visible, and a repeat only drops the extra flash |
 | 194 | BUILD | [NXB-052](design/program/next-wave-2026-09-28/build/NXB-052.md) | The crowded combat mix releases into real quiet after the last threat | Existing owners; SF-231, SF-234, SF-237, SF-240 | SHIPPED |
 | 195 | BUILD | [NXB-054](design/program/next-wave-2026-09-28/build/NXB-054.md) | The map can manage two real destinations without confusing knowledge with a route | Existing owners; SF-244, SF-245, SF-246, SF-254 | SHIPPED |
-| 196 | BUILD | [NXB-055](design/program/next-wave-2026-09-28/build/NXB-055.md) | Alternative controls reach the same actions without changing irreversible confirmation rules; [research B](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#b-rebinding-reset-and-capture-ownership--j4-j5): reset conflict checks + capture-timer ownership (J4/J5) | Existing owners; SF-247, SF-248, SF-254, PQ-164 | SHIPPED already true — modalities check (122 assertions, 4 adapters) + FB-113 latch-drop + live bindings read; research residual open |
+| 196 | BUILD | [NXB-055](design/program/next-wave-2026-09-28/build/NXB-055.md) | Alternative controls reach the same actions without changing irreversible confirmation rules; [research B](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#b-rebinding-reset-and-capture-ownership--j4-j5): reset conflict checks + capture-timer ownership (J4/J5) | Existing owners; SF-247, SF-248, SF-254, PQ-164 | DONE 2026-10-04 — modalities check (122 assertions, 4 adapters) + FB-113 latch-drop + live bindings read; J4/J5 residual landed (fdb6ea88e): capture closes once, reset passes the conflict rule, `test/j5-capture-generation.test.mjs` 5/5 |
 | 197 | BUILD | [NXB-056](design/program/next-wave-2026-09-28/build/NXB-056.md) | Dense instrument text survives long names, large text and narrow windows | Existing owners; SF-243, SF-249, SF-253, SF-255 | DONE 2026-10-03 — signed deltas carry U+2212+NBSP so a minus/unit never wraps into a separate item (NXI-222 strengthened); the trade refusal note is a stable id + tabindex slot the action is described-by, full reason keyboard-reachable without moving the control (NXI-224); the local-map route panel carries focus across repaints by route identity and reveals it two frames after wrapped bounds settle (NXI-223); rows/stage labels already keep complete accessible names (NXI-221 already true) — 58ff9de18, devin-sweep-oct2; test next-wave-nxb-056 + engineering-preview + localmap suites green |
 | 200 | BUILD | [NXB-011](design/program/next-wave-2026-09-28/build/NXB-011.md) | A moving enemy bomb can be intercepted and disposed of using existing physical verbs | Existing owners; SF-031, SF-040, SF-041, SF-044 | SHIPPED |
 | 201 | BUILD | [NXB-015](design/program/next-wave-2026-09-28/build/NXB-015.md) | Convoys negotiate a narrow obstruction instead of shoving every member through it | Existing owners; SF-048, SF-059, SF-080, SF-082 | DONE — the convoy script's route corridor now runs one bounded spatial probe for foreign solids (a parked tow, a wreck, a station edge); a latched stable order sends leading freight through while followers wait at hull-clearance stand-off points (NXI-057) and passive escorts hold flank stations on the rear ward (NXI-060); dead/disabled members fall out of the wait condition each tick (NXI-058), a cleared body drains the order one member at a time through the latched slot (NXI-059), and a stalled commitment releases + recomputes instead of pinning forever; `test/next-wave-nxb-015.test.mjs` 6/6 — devin-sweep-oct2; implemented / route-unproven |
@@ -893,16 +990,7 @@ shipped, so their J1/J6 and P04 residuals moved to §K rows 276/277; §K rows re
 
 ### L. THE LONG GAME — first decomposition (lane L-LONGGAME sitting 1, 2026-10-04)
 
-Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row.
-
-| # | ID | Work | Kind | Status |
-|---|---|---|---|---|
-| 278 | LG-TOW-PREDICT | Fit screen predicts tow class before you pay (M2): `handlingProfileForShip().predictions` gains `towClassMassT` + named heaviest towable roster hull, read off the live tow law (`shipCapabilities.towClassMassFor`), same derived block the bars read. Prior owner: PQ-176.03 fit sentences. Done when: predicted tow class matches a live tow of that hull within 20 % on seed 4242, and the fit screen names the hull. | BUILD | OPEN |
-| 279 | LG-FORECAST-PROOF | The market forecast cone is falsifiable (M4): each cone stores its quoted band + the sim event ids that moved the price, and the market screen prints one line tracing the last move to its cause. Prior owner: economy forecast band. Done when: on seed 4242 a reader of the cone out-earns a non-reader by ≥ 30 % over a seeded hour and every ticker line names its event. | BUILD | OPEN |
-| 280 | LG-STARTER-JOBS | Three starters are three jobs (F10/PQ-156): each starter hull ships an authored opening contract chain that only its fit can run cleanly, accepted from the ordinary board on the default route. Prior owner: onboarding/new-game defaults. Done when: a stranger flies each starter's chain to payout with no flag or debug key. | BUILD | OPEN |
-| 281 | LG-SPINE-HEADLINES | Every story beat has a physical headline verb (M5/PQ-032): beats that are text-only gain a staged physical action (tow, deliver, scan, survive) wired through the live `headlineVerb` mission seam. Prior owner: story beat content. Done when: all 8 beats each name a verb a player performs, reachable by a combat-only and a builder run on seed 4242. | BUILD | OPEN |
-| 282 | LG-SHIP-PORTRAIT | The load screen reads your ship's history back (M6): scars, repairs, titles and the named grudge render as one portrait block from the living-hull + title + ace-memory owners. Prior owner: save portrait fields. Done when: a scarred, titled, grudge-holding save shows all four lines with zero invented entries. | BUILD | OPEN |
-| 283 | LG-VERB-CURVE | A new verb every hour for ten hours (B8/PQ-155): the verb-unlock curve is a data table keyed to hours 1–10 with each unlock wired to its live verb key (PQ-208), surfaced once in the fit/tech screen. Prior owner: tech/unlock catalog. Done when: a fixed-seed ten-hour reference route meets 10 distinct verbs, each usable the hour it unlocks. | BUILD | OPEN |
+Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row. The first six rows are landed; the table is empty until the next decomposition.
 
 ## 2. Product north star
 
@@ -4950,14 +5038,14 @@ This is the vertical slice. Ship it before Wave B content.
 
 | Id | The player gets | Done when | Files |
 |---|---|---|---|
-| **A1** | A hauler is already under attack within three minutes of a new game, inside about two screen-depths. A camper comes into grab range or a patrol arrives in view. The camper does not despawn and does not lose health by fiat. | One fixture, seeds 4242 and 8008, asserts spawn range, time, and the commitment event. | `src/systems/encounterDirector.js`, `src/data/pirateDoctrines.js`, `src/data/encounters/`. Finish `015-opening-hauler-raid.js` if it is already in the tree. |
-| **A2** | A cargo-ship kill becomes salvage, a sale, and one new job. | Fixture: kill → salvage pickup → commodity sale → one new contract or price move. Not a fine. Not a failed mission. | `src/systems/economy.js`, `src/systems/missions.js`. |
-| **A3** | The next rocks are a few minutes of cruise past a used-up starter field, with rocks between. | Fixture asserts distance ≤ a few minutes at cruise and at least one field on the way. Beam rate, hold size, and tax unchanged. | `src/systems/fieldDepletion.js`, `src/systems/world.js`. |
-| **A4** | A witnessed kill puts one responder on the wreck and one chaser inside the composed frame within 10 seconds. | Fixture, both seeds, asserts frame membership and the stay-versus-chase split. No new heat formula. | `src/systems/lawSecurity.js`. |
-| **A5** | Small and medium shots are born inside the composed frame and live ≥ 0.7 s on screen. | Fixture prints range and time-to-exit. Damage, rate of fire, and impulse byte-compare equal except range and projectile life. | `src/data/weapons.js`. |
-| **A6** | The default route runs the slice: raid, a throw or a shove that kills, cargo or a wreck, patrol in frame, dock, Swing Drive purchased from the first-haul offer, undock with that module fitted. | One scenario, seed 4242, asserts each beat in order. No debug spawn. No mission-fail. Depends on A1–A5 being in the tree. | `src/testing/lab/` or `tools/agentic/`. |
-| **A7** | Default-kit muzzles move. | Discharge flow for the starter weapons is non-zero for the life of the shot. No new particle family. | `src/render/forceLanguage/weaponDischargePool.js`. |
-| **A8** | A swarm kill by shove, throw, slam, or field prints that stunt's name on the results. | Fixture reads the results model and asserts the name. No timer that clears the name. | `src/ui/screens/crucible.js`, `src/systems/survivalResults.js`. |
+| **A1** | A hauler is already under attack within three minutes of a new game, inside about two screen-depths. A camper comes into grab range or a patrol arrives in view. The camper does not despawn and does not lose health by fiat. | One fixture, seeds 4242 and 8008, asserts spawn range, time, and the commitment event. DONE 2026-10-04 — already true, pinned green at HEAD: `test/opening-hauler-raid-and-pursuit.test.mjs` + `test/opening-hauler-raid-timeout-ships-remain.test.mjs`. | `src/systems/encounterDirector.js`, `src/data/pirateDoctrines.js`, `src/data/encounters/`. Finish `015-opening-hauler-raid.js` if it is already in the tree. |
+| **A2** | A cargo-ship kill becomes salvage, a sale, and one new job. | Fixture: kill → salvage pickup → commodity sale → one new contract or price move. Not a fine. Not a failed mission. DONE 2026-10-04 — already true, pinned green at HEAD: `test/cargo-kill-salvage-sale-opportunity.test.mjs`. | `src/systems/economy.js`, `src/systems/missions.js`. |
+| **A3** | The next rocks are a few minutes of cruise past a used-up starter field, with rocks between. | Fixture asserts distance ≤ a few minutes at cruise and at least one field on the way. Beam rate, hold size, and tax unchanged. DONE 2026-10-04 — already true, pinned green at HEAD: `test/used-up-field-opportunity.test.mjs`. | `src/systems/fieldDepletion.js`, `src/systems/world.js`. |
+| **A4** | A witnessed kill puts one responder on the wreck and one chaser inside the composed frame within 10 seconds. | Fixture, both seeds, asserts frame membership and the stay-versus-chase split. No new heat formula. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-a4-witness-frame.test.mjs`. | `src/systems/lawSecurity.js`. |
+| **A5** | Small and medium shots are born inside the composed frame and live ≥ 0.7 s on screen. | Fixture prints range and time-to-exit. Damage, rate of fire, and impulse byte-compare equal except range and projectile life. DONE 2026-10-04 — already true, pinned green at HEAD (re-run this sitting): `test/wave-a5-shot-life.test.mjs`. | `src/data/weapons.js`. |
+| **A6** | The default route runs the slice: raid, a throw or a shove that kills, cargo or a wreck, patrol in frame, dock, Swing Drive purchased from the first-haul offer, undock with that module fitted. | One scenario, seed 4242, asserts each beat in order. No debug spawn. No mission-fail. Depends on A1–A5 being in the tree. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-a6-opening-slice.test.mjs` (+ `tools/agentic/a6OpeningSlice.mjs`). | `src/testing/lab/` or `tools/agentic/`. |
+| **A7** | Default-kit muzzles move. | Discharge flow for the starter weapons is non-zero for the life of the shot. No new particle family. DONE 2026-10-04 — already true, pinned: `test/wave-a7-muzzle-discharge.test.mjs` 3/3 drives the real spawn/update path (pulse 7 frames, autocannon 5, flow > 0 to the last frame; `DISCHARGE_FLOW` census unchanged). | `src/render/forceLanguage/weaponDischargePool.js`. |
+| **A8** | A swarm kill by shove, throw, slam, or field prints that stunt's name on the results. | Fixture reads the results model and asserts the name. No timer that clears the name. DONE 2026-10-04 — already true, pinned green at HEAD (re-run this sitting): `test/wave-a8-stunt-names.test.mjs`. | `src/ui/screens/crucible.js`, `src/systems/survivalResults.js`. |
 
 ### 22.4 Wave B — the world keeps going, and the toy has a ceiling
 
@@ -4966,17 +5054,17 @@ combat toys the description already names. Build these. Do not wait for a person
 
 | Id | The player gets | Done when | Files |
 |---|---|---|---|
-| **B1** | Hours 1 through 10 still pay. Income is a curve. Encounters still spawn after hour 4. | A derived-model fixture, not a ten-hour battery: income in a post-hour-1 window is > 0, and encounter supply in hours 5–9 is > 0 on both seeds. Hour-5 supply already landed once; re-assert it, do not retune the pilot. | `src/systems/economy.js`, `src/systems/encounterDirector.js` only if the fixture is red. |
-| **B2** | One pirate who escapes is back in the same sector later, with a line, and is a body you can fight. | Fixture: escape event, advance sim time, same identity spawns, bark or comms payload is non-empty. No stat debuff on the player. | `src/systems/aceMemory.js`, `src/data/namedAces.js`, `src/systems/barkDirector.js`. |
-| **B3** | A wreck you made in swarm is a grabbable body in the next round. | Fixture: kill leaves a durable wreck id; the next round's Massline can latch it; latch survives the shop transition. | `src/systems/aftermathWrecks.js`, `src/systems/survivalRun.js`. |
-| **B4** | The four specialist problems each break one plan: tether cut, field disrupt, anchor, cargo screen. | Four Crucible cells, seed 4242. Each specialist negates exactly its plan and does not also negate the other three. | `src/systems/tacticalAI.js`, `src/ai/`. |
-| **B5** | A 150-unit-per-second slam is not the same answer as an 8-unit nudge. | Fixture: hit-stop and trauma are strictly increasing across three closing speeds, using pre-solve closing speed. Audio pitch differs by ≥ 1 octave between the light kiss and the heavy slam. | `src/render/feel.js`, `src/audio/`. |
-| **B6** | Six sectors each run one job chain with nobody accepting a mission, and each has one physical number that is not Helios's. | Per sector, a fixture: miner or hauler or patrol completes one handoff, and one of {rock mass, patrol response time, gravity, traffic speed} differs from Helios by a named ratio. | `src/data/` sector profiles, `src/systems/traffic.js`. One sector per agent. |
-| **B7** | Three set pieces, each a situation the sandbox verbs already solve: a convoy loss that becomes salvage, a heist that becomes an escape, a disabled ship that becomes a tow. | Three scenarios. Each ends in a new entity or contract, never in a fail-and-reload flag. | `src/data/encounters/`, `src/systems/missions.js`. |
-| **B8** | A new verb every hour of the first ten hours of the tech curve, and the first one is Swing Drive inside the first haul. | `check:progression:verbs` stays green. A curve fixture lists ten purchases, each adding a verb key that has a live consumer, prices summing inside the income curve from B1. | `src/data/modules.js`, `src/data/tech.js`. |
-| **B9** | Crucible's first screen offers the daily seed, the ghost, and the share code. Round end can replay the last kill for five seconds from the sim seed and can be skipped. | Fixture: those three controls exist on the entry model; the replay resim matches the kill's positions at t+5 s within a hull length; skip leaves the results model intact. | `src/ui/screens/crucible.js`, `src/systems/survivalResults.js`. |
-| **B10** | The rope's combat result is the same class of outcome on both seeds. | The throw fixture from the landed taut-release work passes on 4242 and 8008 with a kill, not a 1-versus-45 split. If it already does, skip. | `src/systems/masslineThrow.js`, `src/systems/tetherGameplay.js`. |
-| **B11** | A physics lab on the front door: the sandbox ships as a toy — spawn bodies, grab and throw them with the rope, slow time — for streamers and the curious. | Fixture on the default route, no dev flag: spawn → latch → throw → time-scale all work from the lab controls, and the input tape replays the same positions. | `src/ui/screens/sandbox.js` (today dev-only), `src/ui/screens/crucibleLabControls.js`, `src/testing/lab/`. |
+| **B1** | Hours 1 through 10 still pay. Income is a curve. Encounters still spawn after hour 4. | A derived-model fixture, not a ten-hour battery: income in a post-hour-1 window is > 0, and encounter supply in hours 5–9 is > 0 on both seeds. Hour-5 supply already landed once; re-assert it, do not retune the pilot. DONE 2026-10-04 — already true, pinned green at HEAD (re-run this sitting): `test/b1-hours-income-encounter-supply.test.mjs`. | `src/systems/economy.js`, `src/systems/encounterDirector.js` only if the fixture is red. |
+| **B2** | One pirate who escapes is back in the same sector later, with a line, and is a body you can fight. | Fixture: escape event, advance sim time, same identity spawns, bark or comms payload is non-empty. No stat debuff on the player. DONE 2026-10-04 — already true, pinned green at HEAD: `test/b2-escaped-pirate-returns.test.mjs`. | `src/systems/aceMemory.js`, `src/data/namedAces.js`, `src/systems/barkDirector.js`. |
+| **B3** | A wreck you made in swarm is a grabbable body in the next round. | Fixture: kill leaves a durable wreck id; the next round's Massline can latch it; latch survives the shop transition. DONE 2026-10-04 — already true, pinned green at HEAD: `test/crucible-wreck-body.test.mjs`. | `src/systems/aftermathWrecks.js`, `src/systems/survivalRun.js`. |
+| **B4** | The four specialist problems each break one plan: tether cut, field disrupt, anchor, cargo screen. | Four Crucible cells, seed 4242. Each specialist negates exactly its plan and does not also negate the other three. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-b4-specialist-plans.test.mjs`. | `src/systems/tacticalAI.js`, `src/ai/`. |
+| **B5** | A 150-unit-per-second slam is not the same answer as an 8-unit nudge. | Fixture: hit-stop and trauma are strictly increasing across three closing speeds, using pre-solve closing speed. Audio pitch differs by ≥ 1 octave between the light kiss and the heavy slam. DONE 2026-10-04 — already true, pinned green at HEAD: `test/b5-slam-vs-nudge.test.mjs`. | `src/render/feel.js`, `src/audio/`. |
+| **B6** | Six sectors each run one job chain with nobody accepting a mission, and each has one physical number that is not Helios's. | Per sector, a fixture: miner or hauler or patrol completes one handoff, and one of {rock mass, patrol response time, gravity, traffic speed} differs from Helios by a named ratio. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-b6-sector-physical.test.mjs`. | `src/data/` sector profiles, `src/systems/traffic.js`. One sector per agent. |
+| **B7** | Three set pieces, each a situation the sandbox verbs already solve: a convoy loss that becomes salvage, a heist that becomes an escape, a disabled ship that becomes a tow. | Three scenarios. Each ends in a new entity or contract, never in a fail-and-reload flag. DONE 2026-10-04 — already true, pinned green at HEAD: `test/set-piece-follow-on.test.mjs`. | `src/data/encounters/`, `src/systems/missions.js`. |
+| **B8** | A new verb every hour of the first ten hours of the tech curve, and the first one is Swing Drive inside the first haul. | `check:progression:verbs` stays green. A curve fixture lists ten purchases, each adding a verb key that has a live consumer, prices summing inside the income curve from B1. DONE 2026-10-04 — the counted audit is green again: its consumer pin had gone stale on FB-054's fitted-flag move; the pin now reads the `tractorWholeWrecks` flag (3903d4466), `check:progression-verb-audit` OK (24 verb keys verified / 0 declared-only), wave-b8 + pq208 drift guard + fb-module-dead-fields 15/15. | `src/data/modules.js`, `src/data/tech.js`. |
+| **B9** | Crucible's first screen offers the daily seed, the ghost, and the share code. Round end can replay the last kill for five seconds from the sim seed and can be skipped. | Fixture: those three controls exist on the entry model; the replay resim matches the kill's positions at t+5 s within a hull length; skip leaves the results model intact. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-b9-kill-replay.test.mjs`. | `src/ui/screens/crucible.js`, `src/systems/survivalResults.js`. |
+| **B10** | The rope's combat result is the same class of outcome on both seeds. | The throw fixture from the landed taut-release work passes on 4242 and 8008 with a kill, not a 1-versus-45 split. If it already does, skip. DONE 2026-10-04 — it does. At HEAD both seeds kill: 4242 throw_kill t=143.1 (via=mid_swing), 8008 t=173.2 (via=meeting), plus 3200 t=106.0 — bit-identical across repeat runs, trio green 18/18. The earlier DIAGNOSED finding (33bfdcd19) was an artifact of measuring a transient multi-lane dirty tree, not any commit: base→HEAD touched zero sim-route files, the named suspects (02a846590, b969523c2/01c12238b) exonerated by hunk read, and the diag's own 4242 record differs from HEAD's. Both cases now assert kill, unskipped. | `src/systems/masslineThrow.js`, `src/systems/tetherGameplay.js`. |
+| **B11** | A physics lab on the front door: the sandbox ships as a toy — spawn bodies, grab and throw them with the rope, slow time — for streamers and the curious. | Fixture on the default route, no dev flag: spawn → latch → throw → time-scale all work from the lab controls, and the input tape replays the same positions. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-b11-physics-lab.test.mjs`. | `src/ui/screens/sandbox.js` (today dev-only), `src/ui/screens/crucibleLabControls.js`, `src/testing/lab/`. |
 
 ### 22.5 Wave C — presentation a studio would not ship without
 
@@ -5974,6 +6062,54 @@ definition of beauty. A cheaper hull on the live glass. Content as the cure for 
 
 When a campaign's feeling is ordinary on the default route, say so in the §1.4 report and
 leave the heading here with one line: the feeling, and the commit that made it ordinary.
+
+#### 23.3.1 Authored-units annex — BATCH-20 rung-4 rows (2026-10-05)
+
+Rows authored this sitting from the open-ended direction, each landed with its pin:
+
+- **G-LOC answers the hull you fly** — the sustained-turn vignette reads the hull's own derived
+  yaw ceiling (0.75 of ceiling; 0.48 boosting; unknown ceiling fails closed) instead of absolute
+  2.2/1.4 rad/s that a hauler could never reach and a scout cleared at cruise. Second instance
+  of the e8d94e38e reader-orphaned-by-absolute-yaw class. DONE 7f0eaed08 —
+  `test/hud-g-lag.test.mjs` 16/16 with live-route frame() pins both ways.
+- **The off-screen objective arrow contract, pinned** — the seam had zero test references and
+  already burned once (the D135 north-up regression). DONE 44bd5799f —
+  `test/objective-edge-arrow.test.mjs` 4/4 through the real createHud/frame() path: diamond
+  in-camera, correct-edge seat with the tracker's own label, the D135 south-flight regression,
+  and a 72-bearing boundary sweep.
+- **Vesta Forge: the feedstock day** — sector_vesta_forge's zone copy promised a working day
+  nobody could see; four authored pockets (feedstock seam, forge haul + lawful patrol, derelict
+  scavenger drift, slag relay) now deliver it through the generic spawn path. DONE dd0438962 —
+  `test/vesta-activity-pocket-chain.test.mjs` 5/5, helios re-counted 5/5, pocket families 25/25.
+- **Tethys Junction: the checkpoint day** — the border material existed with no pockets; four
+  authored pockets now work it (checkpoint toll queue, Io-gate lane patrol, the Quiet Cache
+  runner sliding past the checkpoint, customs-log relay) — law and outlaw sharing the same
+  water, nobody arriving hostile. DONE 502861969 — `test/tethys-activity-pocket-chain.test.mjs`
+  registry/laws/chain/runtime/bearing pins, named run 25/26 (one pre-existing foreign red).
+- **Pallas Drift: the drift day, pinned — and its hub tender given work** — the pin found the
+  hub tender authored outside the runtime's job-kind gate, materializing as a named hull with no
+  work; re-authored on the Vesta relay pattern and the pin asserts all eight actors fly real
+  jobs. DONE 4f86339ff — `test/pallas-activity-pocket-chain.test.mjs` 5/5.
+- **Dione Lane: the toll funnel** — the CR-WEIR named corridor that was still an empty
+  disc. `zone_dione_customs` (720-radius Lane Customs with a patrol wedge, Concord reads
+  inbound cargo per its own reason text) had no weir. Third silhouette: a trapezoid
+  funnel bracketing the gate→checkpoint bearing — 460-wide mouth, 140 toll gap at the
+  booth — riding the generic weir contract (seen/read/bolt/pod-bust all work through
+  `pointInsideCustomsWeir` + `customsWeirSegments`; smuggling lanes into Dione now name
+  the weir in the risk note for free). DONE a23c85be5 —
+  `test/customs-weir.test.mjs` 17/17, law/customs surface 67/67.
+- **Charon Expanse: the Afterwake Slip** — second faction berth, a different memory. Where
+  the Pitborn line cuts what you sell, the Understory slip off Expanse Refinery digests
+  it: a proved wreck_buy appraisal (one the loss ledger names) writes the keyed
+  `berthFeed:` receipt, and the generic berth spawn lays a real ropeable wreck into an
+  organic crib drawn from the procedural `alien_growth_*` kit — no GLB ask. An
+  empty-ledger appraisal feeds nothing; the redeem_rights consignment writer is pinned
+  to its own `berthConsign:` key contract so a foreign payout cannot mint the slip's
+  hulk. DONE 38162edf9 + review resolution 15b0e90d2 (feed gate keys on `shipDefId`,
+  count = distinct fed hulls, authored `wreckClass` honored on berth bodies —
+  `consigned_hulk` is now a real class row) —
+  `test/understory-afterwake-slip.test.mjs` 7/7, berth/desk/world/save/weir surface
+  54/54, wreck-provenance surface 59/59.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools
@@ -6094,6 +6230,10 @@ for. They wait until that flyby is one world. Shelf bodies that are only a repai
 do not get a second production pass. Captures, tool caches, and old checkouts are not the game.
 
 ## 27. The finish in lanes — ADMITTED 2026-09-24
+
+**Maturity update, owner 2026-10-04:** every lane also owns the debugging and polish assignments
+in [§1.8](#18-production-maturity-debugging-and-polish). Repair broken existing workflows before
+expansion; a lane with closed feature rows and a buggy player experience remains unfinished.
 
 Owner direction, 2026-09-24: batch the granular plans into a few logical lanes, with open-ended
 instructions — the agent owns an *area*, lands the named work still open there, and reviews and

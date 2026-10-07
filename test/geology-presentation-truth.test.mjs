@@ -205,7 +205,16 @@ test('rock-shaped dressing is replaced one-for-one with non-colliding infrastruc
   assert.ok(infrastructure.length >= 8);
   for (const entity of infrastructure) {
     assert.equal(entity.type, 'fx');
-    assert.equal(entity.collides, false);
     assert.equal(entity.data.worldDressing, true);
+    // Solid dressing is census truth, not a blanket ghost rule: a prop big enough to see is a
+    // prop you hit — but only through its measured skin, so collider == drawn silhouette.
+    const skinned = typeof entity.data.collisionProxy === 'string'
+      && entity.data.collisionProxy.startsWith('skin:');
+    assert.equal(entity.collides === true, skinned,
+      `${entity.data.placeId} collides only through its measured skin, never a fake radius`);
+    if (entity.collides === true) {
+      assert.ok(entity.physicsBody && entity.physicsBody.dynamic === false,
+        'a solid prop is a fixed body on the static layer');
+    }
   }
 });

@@ -14,7 +14,7 @@ import { getCombatKernel } from '../../combat/kernel.js';
 import { isAttachable } from '../../systems/tetherGameplay.js';
 import { massline2Flag } from '../../data/featureFlags.js';
 import { releaseAssistMode } from '../../systems/masslineThrow.js';
-import { installSandboxGameStartedHook, spawnTargetsNow } from '../sandbox/sandboxSetup.js';
+import { hasPendingSandboxLaunch, installSandboxGameStartedHook, spawnTargetsNow } from '../sandbox/sandboxSetup.js';
 import { el } from '../kit/index.js';
 
 export const CRUCIBLE_LAB_SPEED_SOURCE = 'crucible-lab:speed';
@@ -514,7 +514,10 @@ function showFlightToy(ctx) {
 }
 
 function onGameNew() {
-  if (screenMounts > 0 || practiceArmed) {
+  // The toy follows an explicit request: the practice button, or a Sandbox launch in flight.
+  // A mounted Sandbox screen alone proves nothing — it is prewarmed hidden on every title visit,
+  // and keying on that turned every New Game into the physics toy.
+  if (practiceArmed || hasPendingSandboxLaunch()) {
     practiceArmed = false;
     pendingToy = true;
     return;

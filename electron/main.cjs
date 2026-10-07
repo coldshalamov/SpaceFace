@@ -53,8 +53,11 @@ const workshopMods = require('./workshopMods.cjs');
 // when a stale build/web directory exists from an earlier package build.
 const PROJECT_ROOT = path.join(__dirname, '..');
 // The SpaceFace emblem (assets/brand): taskbar / window icon. Packaged builds embed the exe icon from the electron-builder
-// config; this covers the live window on Linux and the unpackaged run. A missing file leaves Electron's default.
-const APP_ICON = path.join(PROJECT_ROOT, 'assets', 'brand', 'exports', 'spaceface-launcher-256.png');
+// config; this covers the live window and the unpackaged run. Windows takes the multi-size ICO (it carries the
+// hand-tuned 16/24/32 px frames for the taskbar and title bar); other platforms take the 256 px PNG. A missing
+// file leaves Electron's default.
+const APP_ICON = path.join(PROJECT_ROOT, 'assets', 'brand', 'exports',
+  process.platform === 'win32' ? 'spaceface.ico' : 'spaceface-launcher-256.png');
 const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
 
 // SAVE PERSISTENCE: the port MUST be fixed. localStorage (where saveSystem.js persists) is keyed by
@@ -898,6 +901,12 @@ async function runPlayerStoreMigration() {
     if (!win.isDestroyed()) win.destroy();
     app.quit();
   }
+}
+
+// Windows taskbar identity: same id as package.json build.appId, so the taskbar button, pinned shortcut and
+// Alt-Tab entry all resolve to the SpaceFace icon instead of the host Electron's. No-op off Windows.
+if (process.platform === 'win32' && typeof app.setAppUserModelId === 'function') {
+  app.setAppUserModelId('com.spaceface.game');
 }
 
 // Single-instance lock: a second launch focuses the existing window instead of starting a rival

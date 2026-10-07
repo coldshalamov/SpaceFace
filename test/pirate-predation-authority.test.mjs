@@ -153,7 +153,7 @@ test('curtain route materializes one manifest carrier plus authored raiders with
   const live = fire(harness);
   const { haulers, raiders, target, raider } = actors(harness, live);
 
-  assert.equal(haulers.length, 1, 'the ignored civilian branch is now the physical carrier');
+  assert.equal(haulers.length, 2, 'the authored curtain convoy flies two manifest carriers');
   assert.ok(raiders.length >= 2, 'the authored hostile squad materializes as raiders, not haulers');
   assert.equal(target, haulers[0], 'stable carrier ordering selects the lowest live identity');
   assert.equal(raiders[0].data.lootTableId, 'pd_screen_escort', 'the readable PD controller anchors the curtain');
@@ -232,7 +232,9 @@ test('predation admission waits for carrier, PD curtain, and offensive raider wi
   const harness = boot(47010);
   const budget = harness.sim.helpers.spawnBudget;
   const heldOwner = 'fixture:predation-floor';
-  assert.equal(budget.request(budget.max() - 2, heldOwner), budget.max() - 2);
+  // The authored premise floor grew with the second manifest carrier: two civilians, the PD
+  // curtain anchor, and one offensive raider.
+  assert.equal(budget.request(budget.max() - 3, heldOwner), budget.max() - 3);
   const beforeEntityIds = [...harness.state.entities.keys()];
   const beforeFizzle = harness.state.encounterDirector.stats.fizzled;
   const request = (encounterId) => harness.director.requestAuthoredEncounter({
@@ -244,15 +246,15 @@ test('predation admission waits for carrier, PD curtain, and offensive raider wi
   assert.deepEqual([...harness.state.entities.keys()], beforeEntityIds, 'rejection spawns no partial premise');
   assert.equal(harness.state.encounterDirector.stats.fizzled, beforeFizzle, 'rejection is not a fired/fizzled encounter');
   assert.equal(harness.state.encounterDirector.cooldowns.curtain_convoy, undefined, 'rejection cannot consume cooldown');
-  assert.equal(budget.current(), budget.max() - 2, 'rejection retains only the fixture reservation');
+  assert.equal(budget.current(), budget.max() - 3, 'rejection retains only the fixture reservation');
 
   assert.equal(budget.releaseSome(heldOwner, 1), 1);
   const admittedId = `${ENCOUNTER_ID}:cap-three`;
   assert.deepEqual(request(admittedId), { ok: true, encounterId: admittedId });
   const live = harness.state.encounterDirector.live[admittedId];
   const { haulers, raiders, raider } = actors(harness, live);
-  assert.equal(haulers.length, 1);
-  assert.equal(raiders.length, 2);
+  assert.equal(haulers.length, 2);
+  assert.ok(raiders.length >= 2);
   assert.ok(raiders.some((candidate) => candidate.data.lootTableId === 'pd_screen_escort'));
   assert.notEqual(raider.data.lootTableId, 'pd_screen_escort');
 });
@@ -289,7 +291,14 @@ test('response expiry opens only the selected raider-to-manifest relation and re
     data: { ai: { passive: true }, intent: {} },
   });
   assert.equal(isHostileForAI(harness.state, raider, innocent), false, 'team 2 never becomes globally hostile');
-  assert.equal(haulers.every((carrier) => carrier === target), true);
+  assert.equal(haulers.every((carrier) => carrier.team === 2), true, 'both authored carriers are civilian');
+  const secondHauler = haulers.find((candidate) => candidate !== target);
+  assert.ok(secondHauler, 'the second authored carrier is on the lane');
+  assert.notEqual(secondHauler.data.predationIdentityKey, target.data.predationIdentityKey,
+    'the raid binds exactly one carrier identity');
+  assert.equal(isHostileForAI(harness.state, raider, secondHauler), false,
+    'the off-target hauler is not hostile while the selected relation runs');
+  assert.notEqual(raider.data.ai.predationObjective.targetId, secondHauler.id);
   for (const standby of raiders.filter((candidate) => candidate !== raider)) {
     assert.equal(standby.data.ai.passive, true);
     assert.equal(standby.data.ai.predationTargetId, undefined);
@@ -303,7 +312,7 @@ test('response expiry opens only the selected raider-to-manifest relation and re
 test('the shipped tactical route makes the offensive raider first-fire while the PD curtain holds', () => {
   const harness = bootTactical();
   const live = fire(harness, `${ENCOUNTER_ID}:tactical`);
-  const { target, raider, raiders } = actors(harness, live);
+  const { target, raider, raiders, haulers } = actors(harness, live);
   assert.notEqual(raider.data.lootTableId, 'pd_screen_escort');
   assert.equal(raider.data.ai.combatDoctrineId, 'interceptor_flyby');
 
@@ -311,6 +320,18 @@ test('the shipped tactical route makes the offensive raider first-fire while the
   // not put the PD wingmate between the selected raider and carrier, then observe warning to fire.
   raider.pos.x = target.pos.x + 300;
   raider.pos.z = target.pos.z - 100;
+  // Two-hauler convoy: the off-target carrier is incidental to this relation — park it clear of
+  // the raider's authored ingress lane instead of letting its jittered lane position block LOS.
+  const secondHauler = haulers.find((candidate) => candidate !== target);
+  secondHauler.pos.x = target.pos.x - 600;
+  secondHauler.pos.z = target.pos.z + 600;
+  // The curtain ring rotates with the plan rng stream; park the PD wingmates off the same lane so
+  // the observed first fire is the selected relation, not a luck-of-the-draw clear corridor.
+  for (const escort of raiders) {
+    if (escort === raider) continue;
+    escort.pos.x = target.pos.x - 260;
+    escort.pos.z = target.pos.z - 260;
+  }
   const noFireUntil = live.data.predationNoFireUntil;
   const maxTicks = Math.ceil(Math.max(3, noFireUntil - harness.state.simTime + 3) * 60);
   let firstFireAt = null;

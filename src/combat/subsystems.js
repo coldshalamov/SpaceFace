@@ -1,4 +1,5 @@
 import { appendCombatTrace } from './trace.js';
+import { STATUS_DEFS, SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 
 /** The capital opening follows this battery, not a hull-fraction act. */
 export const CAPITAL_OPENING_SUBSYSTEM_ID = 'subsystem_weapon';
@@ -290,12 +291,37 @@ export function repairSubsystem(context, entity, runtime, subsystemId, amount, r
   return { applied, health: subsystem.health };
 }
 
+const STATUS_BY_ID = new Map(STATUS_DEFS.map((def) => [def.id, def]));
+const SUBSYSTEM_BY_ID = new Map(SUBSYSTEM_DEFS.map((def) => [def.id, def]));
+
+function tagBlockSource(runtime, tag) {
+  const subsystems = runtime && runtime.subsystems || {};
+  for (const id of Object.keys(subsystems).sort()) {
+    const row = subsystems[id];
+    if (!row || row.effectiveDisabled !== true) continue;
+    const tags = SUBSYSTEM_BY_ID.get(id)?.disabledBehavior?.blockedActionTags || [];
+    if (tags.includes(tag)) return id;
+  }
+  const statuses = runtime && runtime.statuses || {};
+  for (const id of Object.keys(statuses).sort()) {
+    const status = statuses[id];
+    if (!status || status.pending) continue;
+    const tags = STATUS_BY_ID.get(id)?.effects?.blockedActionTags || [];
+    if (tags.includes(tag)) return id;
+  }
+  return '';
+}
+
 export function actionBlockedByCombatant(runtime, actionDef) {
   for (const capability of actionDef.requiresCapabilities || []) {
     if (runtime.capabilities && runtime.capabilities[capability] === false) return `capability:${capability}`;
   }
   const blocked = new Set(runtime.blockedActionTags || []);
-  for (const tag of actionDef.tags || []) if (blocked.has(tag)) return `tag:${tag}`;
+  for (const tag of actionDef.tags || []) {
+    if (!blocked.has(tag)) continue;
+    const source = tagBlockSource(runtime, tag);
+    return source ? `tag:${tag}:${source}` : `tag:${tag}`;
+  }
   return null;
 }
 

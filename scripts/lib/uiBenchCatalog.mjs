@@ -11,7 +11,7 @@ export const BACKDROPS = Object.freeze({
 
 /** `ruleset` picks the Crucible run a draft/refit shot seeds (tools/ui-bench.js seedCrucibleShot).
  *  `drill` / `base` pick the populated seeds (seedDrillShot / seedBaseShot).
- *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string}[]} */
+ *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, mobile?: string}[]} */
 export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'title', screen: 'mainMenu', backdrop: 'title' },
   { id: 'mainMenu', screen: 'mainMenu', backdrop: 'title' },
@@ -41,6 +41,13 @@ export const UI_BENCH_SHOTS = Object.freeze([
 
   { id: 'flight', screen: 'flight', backdrop: 'world' },
   { id: 'power-rail', screen: 'flight', backdrop: 'world' },
+  // The phone deck over the flight HUD (ui-bench --phone). `mobile` is the pose a thumb holds.
+  { id: 'mobile-flight', screen: 'mobileFlight', backdrop: 'world', mobile: 'idle' },
+  { id: 'mobile-stick', screen: 'mobileFlight', backdrop: 'world', mobile: 'stick' },
+  { id: 'mobile-boost', screen: 'mobileFlight', backdrop: 'world', mobile: 'boost' },
+  { id: 'mobile-brake', screen: 'mobileFlight', backdrop: 'world', mobile: 'brake' },
+  { id: 'mobile-wheel', screen: 'mobileFlight', backdrop: 'world', mobile: 'wheel' },
+  { id: 'mobile-wheel-pinned', screen: 'mobileFlight', backdrop: 'world', mobile: 'wheel-pinned' },
   { id: 'crucibleHud', screen: 'crucibleHud', backdrop: 'world' },
   // ORRERY Phase 0a: the flight HUD composed from src/ui/orrery over a real frame of open flight.
   { id: 'orrery-flight', screen: 'orreryFlight', backdrop: 'space' },

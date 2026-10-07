@@ -116,6 +116,10 @@ test('seed 4242: the biased-palm saturation repro stays fixed — re-centering b
   // crosses, carrying at least the authored from-neutral authority for that displacement
   // (t=(40-10)/108, ^1.16 at the 118 px radius = 0.226; the small residual palm displacement
   // rides on top and can only add, and the rim caps the answer).
+  // Direction dependence: the >= 0.226 floor leans on this repro's bias being RIGHTWARD
+  // (+0.4 px/packet fixes the residual at a small positive x, which can only add authority to
+  // a rightward swipe). A neutral- or left-bias variant must re-anchor the floor from its own
+  // neutral start instead of silently inheriting this one.
   recordDynamicFlightStick(host, 40, 0, w, h);
   const vector = projectDynamicFlightStick(host, w, h);
   assert.ok(vector.active && vector.magnitude >= 0.226 - 1e-9 && vector.magnitude <= 1,

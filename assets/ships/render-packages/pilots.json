@@ -3902,8 +3902,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
-      "releaseSha256": "f9de7cb955ac2dbc150feaac72a72f76f349c49daba3bccb78bdcb846903e392",
-      "releaseBytes": 582448,
+      "releaseSha256": "6cc580e212c5eb8fdc0f2f6fa8783daf2dce6ec849bec33ccfb6f539a3f51c68",
+      "releaseBytes": 582604,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4259,8 +4259,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_scn_interdictor",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb",
-      "releaseSha256": "54ca1ae25fe91f66206e57463894015d385c1c4ed7549c2db787b45d2ac9f728",
-      "releaseBytes": 762992,
+      "releaseSha256": "5bafb81449eda81f1bbbd1ad67ea19f6cbc341aa7cd8ecd8a75600b58a704ce6",
+      "releaseBytes": 763136,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4469,8 +4469,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb",
-      "releaseSha256": "3478d512e2074ca7d69c97bd63c5fb672be514a42ef106864373d045c9c02b90",
-      "releaseBytes": 435672,
+      "releaseSha256": "ab46199c8368a8e91be1657ec7cfee359cef9b21ea2ad3ea7f9b302e6e810d4e",
+      "releaseBytes": 435848,
       "rootNode": "HORNET_LOD1_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -4490,8 +4490,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_hornet_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb",
-      "releaseSha256": "db92f624e1113ddcbbcbcc9dafb8ac0b061e61309fa212bb57987edd51d09bba",
-      "releaseBytes": 372856,
+      "releaseSha256": "050663b626b1259d0756cd8241979ac72be0a06ac9f624cc2ac4bfd29f644109",
+      "releaseBytes": 373020,
       "rootNode": "HORNET_LOD2_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

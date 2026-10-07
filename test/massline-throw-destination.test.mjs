@@ -145,6 +145,14 @@ test('release target is captured once per latch and only precise live aim intent
     targetId: freighter.id,
     pos: null,
     radius: 0,
+    // The seeded bind is stamped at capture — a despawn+recycle mid-swing resolves closed
+    // through the stamp instead of redirecting the release onto the slot's new occupant.
+    stable: {
+      key: `entity:${freighter.id}`,
+      durable: false,
+      entityId: freighter.id,
+      stamp: { type: 'ship' },
+    },
   });
   assert.equal(runtime.aimTargetId, freighter.id);
 

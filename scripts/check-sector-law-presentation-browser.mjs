@@ -34,7 +34,7 @@ try {
   mkdirSync(SHOT_DIR,{recursive:true});
   const port=await freePort();
   const base=`http://127.0.0.1:${port}/`;
-  child=spawn(process.execPath,['server.js',String(port)],{cwd:ROOT,stdio:['ignore','pipe','pipe'],windowsHide:true});
+  child=spawn(process.execPath,['server.js',String(port)],{env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, cwd:ROOT,stdio:['ignore','pipe','pipe'],windowsHide:true});
   child.stdout.on('data',()=>{}); child.stderr.on('data',()=>{});
   await waitReachable(base);
   browser=await chromium.launch({headless:true});

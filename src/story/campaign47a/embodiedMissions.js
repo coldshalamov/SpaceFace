@@ -3,10 +3,15 @@
 // encounterDirector owns encounters, and aftermathWrecks owns battle residue.
 
 import { hash32 } from '../../core/rng.js';
-import { PQ032_BEAT_SET_PIECES } from '../../data/missions.js';
+import {
+  BRANCH_HEADLINE_VERBS as LIVE_BRANCH_HEADLINE_VERBS,
+  PQ032_BEAT_SET_PIECES,
+  STORY_BEATS,
+} from '../../data/missions.js';
 import {
   BRANCH_CHAIN,
   BRANCH_FACTION,
+  BRANCH_HEADLINE_VERBS,
   BRANCH_IDS,
   CAMPAIGN_BEATS,
   ENDGAME_NET_WORTH_CR,
@@ -99,6 +104,7 @@ const DEEP_REACH_CLIMAX = B({
 export const EMBODIED_MISSIONS = Object.freeze([
   B({
     beat: 0, id: 'cold_start', contactId: 'contact_kessler', contactName: 'Kessler',
+    headlineVerb: 'mine',
     location: B({ sectorId: 'sector_helios_prime', stationId: 'station_helios', fieldId: 'f_helios_starter' }),
     physicalContact: B({ mode: 'ordered_and', steps: B([
       B({ id: 'mine', signal: 'mining:yield', accept: B(['mining:yield', 'mining.yield']) }),
@@ -182,6 +188,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
   }),
   B({
     beat: 4, id: 'pick_a_side', contactId: 'contact_vale', contactName: 'V. Director, Acting',
+    headlineVerbs: BRANCH_HEADLINE_VERBS,
     location: B({ sectorId: 'sector_helios_prime', stationId: 'station_helios' }),
     consequenceStakes: PICK_SIDE_STAKES,
     physicalContact: B({ mode: 'existing_branch_intro', steps: B([B({ id: 'branch', signal: 'mission:completed', accept: B(['mission:completed']), requireStoryTag: STORY_BRANCH_INTRO_TAG })]) }),
@@ -191,6 +198,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
   }),
   B({
     beat: 5, id: 'proving_ground', contactId: 'contact_callum', contactName: 'Callum',
+    headlineVerbs: BRANCH_HEADLINE_VERBS,
     location: B({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys' }),
     physicalContact: B({ mode: 'chain_count', steps: B([B({ id: 'chain', signal: 'mission:completed', accept: B(['mission:completed']), requireChainComplete: true })]) }),
     missionBoardContract: B({ kind: 'branch_chain', storyTag: 'campaign47a:b5' }),
@@ -199,6 +207,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
   }),
   B({
     beat: 6, id: 'empire_seed', contactId: 'contact_vale', contactName: 'Director Vale',
+    headlineVerb: 'deploy',
     location: B({ sectorId: 'sector_ceres_belt', stationId: 'station_beltout' }),
     empireSeedPrograms: EMPIRE_SEED_PROGRAMS,
     physicalContact: B({ mode: 'ordered_and', steps: B([
@@ -258,6 +267,37 @@ export function getDeepReachOperation(elroyOutcome, branch) {
     : (elroyOutcome === 'custody' ? 'patrol' : 'traders');
   const outcome = elroyOutcome === 'custody' ? 'custody' : 'force';
   return { outcome, ...DEEP_REACH_CLIMAX[key] };
+}
+
+/**
+ * The physical headline verb a player performs on this beat — the same field beats 1–3
+ * already carry, resolved per run for the branch-dependent beats. B4/B5 take the run's
+ * branch verb (the intro/chain type the player actually flies); B7 takes the climax op
+ * verb so the named verb is always the staged physical action of that run. Returns null
+ * only when a branch-scoped beat is asked without a branch.
+ */
+export function headlineVerbForBeat(beatIndex, options = {}) {
+  const def = embodiedMissionAt(beatIndex);
+  if (!def) return null;
+  if (def.beat === 7) {
+    const op = getDeepReachOperation(options.elroyOutcome, options.branch);
+    return op && op.headlineVerb || null;
+  }
+  if (def.headlineVerbs) {
+    const branch = options.branch || null;
+    return branch ? def.headlineVerbs[branch] || null : null;
+  }
+  return def.headlineVerb || null;
+}
+
+/** Branch → verb map for surfaces that name every option (B4 pre-choice, B5, B7); null on static beats. */
+export function headlineVerbMapForBeat(beatIndex) {
+  const def = embodiedMissionAt(beatIndex);
+  if (!def) return null;
+  if (def.beat === 7) {
+    return Object.fromEntries(BRANCH_IDS.map((b) => [b, DEEP_REACH_CLIMAX[b].headlineVerb]));
+  }
+  return def.headlineVerbs ? { ...def.headlineVerbs } : null;
 }
 
 export function listEmbodiedMissions() { return EMBODIED_MISSIONS.slice(); }
@@ -381,6 +421,9 @@ function buildBranchChainOffer(def, seed, epoch, options) {
     : chain.missionType === 'patrol_clear'
       ? { clearCount: 1, targetStrength: 1.8 + step * 0.3, fValue: 1.5, taskTime: 60 }
       : { cmdtyId: 'cmdty_classified_salvage', qty: 1, manifestName: 'ADMINISTRATIVE RECORDS — 3 YEARS / SEALED', fValue: 1.3, taskTime: 30 };
+  // The proving leg names the physical verb the run performs — the same field the
+  // authored set-piece types stamp inline in _rollParams.
+  params.physicalVerb = BRANCH_HEADLINE_VERBS[branch];
   return {
     id: stableOfferId(seed, 5, epoch, step, branch),
     type: chain.missionType,
@@ -492,7 +535,8 @@ export function describeEmbodiedMission(beatIndex, options = {}) {
   if (!def) return null;
   return {
     beat: def.beat, id: def.id, contactId: def.contactId, contactName: def.contactName,
-    headlineVerb: def.headlineVerb || null,
+    headlineVerb: headlineVerbForBeat(beatIndex, options),
+    headlineVerbs: headlineVerbMapForBeat(beatIndex),
     setPiece: def.setPiece || null,
     location: getEmbodiedLocation(beatIndex, options.branch, options.elroyOutcome),
     physicalContact: getPhysicalContact(beatIndex),
@@ -531,6 +575,48 @@ export function validateEmbodiedMissions() {
     if (!contract || !Array.isArray(contract.params && contract.params.completionMethods)
       || contract.params.completionMethods.length !== 2) {
       errors.push(`B${row.beat}: two physical solutions required`);
+    }
+  }
+  // LG-SPINE-HEADLINES — all 8 beats name a physical verb a player performs, resolved
+  // per run for the branch-dependent beats. Parity is checked against the live spine
+  // (STORY_BEATS / live BRANCH_HEADLINE_VERBS), not the sidecar mirror alone: a literal
+  // mirror compared to itself can never drift.
+  for (const def of EMBODIED_MISSIONS) {
+    const canonical = CAMPAIGN_BEATS[def.beat];
+    const live = STORY_BEATS[def.beat];
+    if (def.beat === 7) {
+      for (const branch of BRANCH_IDS) {
+        const op = DEEP_REACH_CLIMAX[branch];
+        if (!op || !op.headlineVerb) errors.push(`B7: ${branch} climax verb missing`);
+        if (!canonical.headlineVerbs || canonical.headlineVerbs[branch] !== (op && op.headlineVerb)) {
+          errors.push(`B7: ${branch} canonical headline verb drift`);
+        }
+        if (!live.headlineVerbs || live.headlineVerbs[branch] !== (op && op.headlineVerb)) {
+          errors.push(`B7: ${branch} live headline verb drift`);
+        }
+      }
+    } else if (def.headlineVerbs) {
+      for (const branch of BRANCH_IDS) {
+        if (!def.headlineVerbs[branch]) errors.push(`B${def.beat}: ${branch} headline verb missing`);
+        if (LIVE_BRANCH_HEADLINE_VERBS[branch] !== def.headlineVerbs[branch]) {
+          errors.push(`B${def.beat}: ${branch} live headline verb drift`);
+        }
+        if (!canonical.headlineVerbs || canonical.headlineVerbs[branch] !== def.headlineVerbs[branch]) {
+          errors.push(`B${def.beat}: ${branch} canonical headline verb drift`);
+        }
+        if (!live.headlineVerbs || live.headlineVerbs[branch] !== def.headlineVerbs[branch]) {
+          errors.push(`B${def.beat}: ${branch} live table headline verb drift`);
+        }
+      }
+    } else if (!def.headlineVerb) {
+      errors.push(`B${def.beat}: headline verb missing`);
+    } else {
+      if (canonical.headlineVerb !== def.headlineVerb) {
+        errors.push(`B${def.beat}: canonical headline verb drift`);
+      }
+      if (live.headlineVerb !== def.headlineVerb) {
+        errors.push(`B${def.beat}: live headline verb drift`);
+      }
     }
   }
   const b3 = embodiedMissionAt(3);

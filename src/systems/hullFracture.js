@@ -371,6 +371,20 @@ const TEAROFF_MASS_FRAC = 0.02;
 const TEAROFF_RADIUS_MIN = 1.6;
 const TEAROFF_RADIUS_MAX = 3.4;
 
+// Impact tear-off admission for LOOSE bodies (wreck/debris), the sibling of the ship
+// tear-off path collisionConsequences owns. The threshold is the same force that takes a
+// craft's helm (COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV): the shove that tumbles a ship
+// shears loose debris apart. Admission lives with the wreck owner (aftermathWrecks);
+// the body spec is this file's (spawnCollisionTearOff), so ship chips and wreck chips
+// share one debris law.
+export const IMPACT_TEAROFF_LAW = Object.freeze({
+  deltaV: 18,
+  heavyDeltaV: 34,
+  cooldownS: 1.0,
+  maxPerVictim: 2,
+  minVictimMass: 2,
+});
+
 function tearOffSpec({ note, dir, speed, mass, radius, sectorId }) {
   return {
     type: 'wreck',
@@ -390,6 +404,9 @@ function tearOffSpec({ note, dir, speed, mass, radius, sectorId }) {
       scanLabel: 'Hull Debris',
       name: 'Hull Debris',
       collisionTearOff: true,
+      // Correlator-only stamp: no production reader keys off it today (tests and the
+      // stunt journal may) — a wreck-sourced chip's victimId is a wreck, not a ship,
+      // and nothing downstream assumes otherwise.
       collisionTearOffOf: note.victimId != null ? note.victimId : null,
       homeSectorId: sectorId,
       persistenceOwner: 'collisionConsequences',

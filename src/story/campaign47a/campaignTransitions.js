@@ -241,6 +241,7 @@ function recordOrderedSteps(state, own, def, signal, payload, simTime, canon) {
     stepsComplete,
     simTime,
     attempt: own.attempt,
+    physicalVerb: payload.physicalVerb || null,
   });
   pushCampaignReceipt(own, receipt);
   pushCampaignHistory(own, {
@@ -302,6 +303,7 @@ function recordBranchIntroStep(state, own, signal, payload, simTime, canon) {
     factionId: payload.factionId || null,
     simTime,
     attempt: own.attempt,
+    physicalVerb: payload.physicalVerb || null,
   });
   pushCampaignReceipt(own, receipt);
   pushChoiceLog(own, { kind: 'branch_intro_observed', branch, type: payload.type }, simTime);
@@ -315,6 +317,7 @@ function recordBranchIntroStep(state, own, signal, payload, simTime, canon) {
     stepsComplete: true,
     simTime,
     attempt: own.attempt,
+    physicalVerb: payload.physicalVerb || null,
   });
   pushCampaignReceipt(own, stepReceipt);
 
@@ -364,6 +367,7 @@ function recordChainStep(state, own, signal, payload, simTime, canon) {
     simTime,
     attempt: own.attempt,
     missionType: payload.missionType || chain.missionType,
+    physicalVerb: payload.physicalVerb || null,
   });
   pushCampaignReceipt(own, receipt);
   pushCampaignHistory(own, {
@@ -404,6 +408,7 @@ function recordChainStep(state, own, signal, payload, simTime, canon) {
     stepsComplete: true,
     simTime,
     attempt: own.attempt,
+    physicalVerb: payload.physicalVerb || null,
   });
   pushCampaignReceipt(own, stepReceipt);
 
@@ -459,6 +464,7 @@ function recordAssetDeployStep(state, own, signal, payload, simTime, canon) {
     stepsComplete: true,
     simTime,
     attempt: own.attempt,
+    physicalVerb: payload.physicalVerb || (beatDefAt(6) || {}).headlineVerb || null,
   });
   pushCampaignReceipt(own, receipt);
   pushCampaignHistory(own, {

@@ -2423,9 +2423,10 @@ export const economy = {
     if (side === 'buy') {
       if (entry.stock - qty < 1) qty = Math.max(0, Math.floor(entry.stock - 1)); // can't drain below 1u
       if (qty <= 0) return { ok: false, reason: 'no_stock' };
-      // cargo volume check (volume is the ONLY hard cap §0.13)
+      // cargo volume check (volume is the ONLY hard cap §0.13). Fail closed on a non-finite
+      // hold cache: an unknowable free means "no room", never a NaN canFit that skips the clamp.
       const free = state.player.cargo.capVolume - state.player.cargo.usedVolume;
-      const canFit = Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1));
+      const canFit = Number.isFinite(free) ? Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1)) : 0;
       if (canFit < qty) qty = canFit;
       if (qty <= 0) return { ok: false, reason: 'cargo_full' };
       const fq = this.quote(stationId, commodityId, 'buy', qty);
@@ -2438,7 +2439,9 @@ export const economy = {
       }
       // APPLY
       const added = this.addToCargo(cargoSys, state, commodityId, qty);
-      if (added <= 0) return { ok: false, reason: 'cargo_full' };
+      // Fail closed on any non-positive or non-finite accepted count: settling past this
+      // line has already loaded goods, so a bad count must never reach the stock/charge legs.
+      if (!(added > 0)) return { ok: false, reason: 'cargo_full' };
       const realQty = added;
       const realCost = realQty === qty ? cost : round(this.quote(stationId, commodityId, 'buy', realQty).total);
       entry.stock = Math.max(1, entry.stock - realQty);
@@ -2464,7 +2467,8 @@ export const economy = {
       }
       // APPLY
       const removed = this.removeFromCargo(cargoSys, state, commodityId, qty);
-      if (removed <= 0) return { ok: false, reason: 'no_cargo' };
+      // Same fail-closed rule as the buy leg: a bad count must never reach stock/credits.
+      if (!(removed > 0)) return { ok: false, reason: 'no_cargo' };
       const realQty = removed;
       const realGross = realQty === qty ? gross : round(this.quote(stationId, commodityId, 'sell', realQty).total);
       entry.stock = entry.stock + realQty;
@@ -3270,11 +3274,11 @@ export const economy = {
           type: 'refuel', units: reserve, stationId,
           meta: { cost: 0, debtCr },
         })) {
-          this.bus.emit('toast', { text: `Refuel on the note (${round(reserve)}u — ${debtCr}cr filed)`, kind: 'warn', ttl: 3 });
+          this.bus.emit('toast', { text: `Refuel on the note (${round(reserve)}u — ${debtCr} cr filed)`, kind: 'warn', ttl: 3 });
         } else {
           fuel.current = Math.min(fuel.max, fuel.current + reserve);
           this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
-          this.bus.emit('toast', { text: `Emergency fuel (${round(reserve)}u — ${debtCr}cr filed as debt)`, kind: 'warn', ttl: 3 });
+          this.bus.emit('toast', { text: `Emergency fuel (${round(reserve)}u — ${debtCr} cr filed as debt)`, kind: 'warn', ttl: 3 });
         }
         return;
       }
@@ -3288,11 +3292,11 @@ export const economy = {
         stationId: (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null,
         meta: { cost: realCost },
       })) {
-        this.bus.emit('toast', { text: `Refuel underway (${round(realUnits)}u, ${realCost}cr)`, kind: 'success', ttl: 2 });
+        this.bus.emit('toast', { text: `Refuel underway (${round(realUnits)}u, ${realCost} cr)`, kind: 'success', ttl: 2 });
       } else {
         fuel.current = Math.min(fuel.max, fuel.current + realUnits);
         this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
-        this.bus.emit('toast', { text: `${realUnits < units ? 'Partial refuel' : 'Refueled'} (${round(realUnits)}u, ${realCost}cr)`, kind: realUnits < units ? 'warn' : 'success', ttl: 2 });
+        this.bus.emit('toast', { text: `${realUnits < units ? 'Partial refuel' : 'Refueled'} (${round(realUnits)}u, ${realCost} cr)`, kind: realUnits < units ? 'warn' : 'success', ttl: 2 });
       }
     } else if (type === 'repair') {
       const e = state.entities && state.entities.get(state.playerId);
@@ -3329,10 +3333,10 @@ export const economy = {
         if (credits < cost) {
           actualCost = credits;
           this.chargeCredits(credits, 'service:repair');
-          this.bus.emit('toast', { text: 'Partial repair booked (out of credits)', kind: 'warn', ttl: 2 });
+          this.bus.emit('toast', { text: 'Partial repair booked — out of credits', kind: 'warn', ttl: 2 });
         } else {
           this.chargeCredits(cost, 'service:repair');
-          this.bus.emit('toast', { text: `Repair underway (${cost}cr)`, kind: 'success', ttl: 2 });
+          this.bus.emit('toast', { text: `Repair underway (${cost} cr)`, kind: 'success', ttl: 2 });
         }
       } else {
         let actualCost = cost;
@@ -3343,11 +3347,11 @@ export const economy = {
           e.armorHp = Math.min(e.armorMax, (e.armorHp || 0) + missArmor * frac);
           actualCost = credits;
           this.chargeCredits(credits, 'service:repair');
-          this.bus.emit('toast', { text: 'Partial repair (out of credits)', kind: 'warn', ttl: 2 });
+          this.bus.emit('toast', { text: 'Partial repair — out of credits', kind: 'warn', ttl: 2 });
         } else {
           e.hull = e.hullMax; e.armorHp = e.armorMax;
           this.chargeCredits(cost, 'service:repair');
-          this.bus.emit('toast', { text: `Repaired (${cost}cr)`, kind: 'success', ttl: 2 });
+          this.bus.emit('toast', { text: `Repaired (${cost} cr)`, kind: 'success', ttl: 2 });
         }
         this.bus.emit('service:completed', {
           type: 'repair',
@@ -3377,7 +3381,7 @@ export const economy = {
         return;
       }
       if (normalizeCredits(player.credits) < HULL_WASH_CR) {
-        this.bus.emit('toast', { text: 'Insufficient credits for hull wash', kind: 'error', ttl: 2 });
+        this.bus.emit('toast', { text: 'Not enough credits for a hull wash', kind: 'error', ttl: 2 });
         return;
       }
       this.chargeCredits(HULL_WASH_CR, 'service:hull_wash');
@@ -3388,18 +3392,18 @@ export const economy = {
         stationId,
         atT: Number(state.simTime) || 0,
       });
-      this.bus.emit('toast', { text: `Hull washed (${HULL_WASH_CR}cr)`, kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: `Hull washed (${HULL_WASH_CR} cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'ammo') {
       const units = Math.max(0, Math.floor(p.amount || 0));
       if (units <= 0) return;
       const cost = round(units * AMMO_UNIT_CR);
-      if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for munitions', kind: 'error', ttl: 2 }); return; }
+      if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for munitions', kind: 'error', ttl: 2 }); return; }
       // ammo is tracked as a cargo commodity (cmdty_munitions) so it integrates with the hold.
       const added = this.addToCargo(this.registryGet && this.registryGet('cargo'), state, 'cmdty_munitions', units);
       if (added <= 0) { this.bus.emit('toast', { text: 'Cargo hold full', kind: 'error', ttl: 2 }); return; }
       const realCost = round(added * AMMO_UNIT_CR);
       this.chargeCredits(realCost, 'service:ammo');
-      this.bus.emit('toast', { text: `Bought ${added} munitions (${realCost}cr)`, kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: `Bought ${added} munitions (${realCost} cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'redeem_rights') {
       // Stunt-paid claim currency (PQ-155.03): a Pitborn yard/fence buys out held rights for
       // credits plus a standing notice. Trick pay never opened the wallet; the sink only
@@ -3430,7 +3434,7 @@ export const economy = {
       this.bus.emit('service:completed', {
         type: 'redeem_rights', rights: want, payout, stationId, atT: Number(state.simTime) || 0,
       });
-      this.bus.emit('toast', { text: `Redeemed ${want} salvage right${want === 1 ? '' : 's'} (+${payout}cr)`, kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: `Redeemed ${want} salvage right${want === 1 ? '' : 's'} (+${payout} cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'insurance') {
       const ins = state.player.insurance || (state.player.insurance = {
         rate: INSURANCE_DEFAULTS.rate,
@@ -3442,11 +3446,11 @@ export const economy = {
       if (enable) {
         if (ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already active', kind: 'info', ttl: 2 }); return; }
         const cost = Math.max(0, Math.round(ins.deductibleCr || 0));
-        if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for insurance', kind: 'error', ttl: 2 }); return; }
+        if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for insurance', kind: 'error', ttl: 2 }); return; }
         if (cost) this.chargeCredits(cost, 'service:insurance');
         ins.insuredModules = true;
         ins.lastStationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || ins.lastStationId;
-        this.bus.emit('toast', { text: `Hull insurance active (${cost}cr)`, kind: 'success', ttl: 2 });
+        this.bus.emit('toast', { text: `Hull insurance active (${cost} cr)`, kind: 'success', ttl: 2 });
       } else {
         if (!ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already inactive', kind: 'info', ttl: 2 }); return; }
         ins.insuredModules = false;
@@ -3473,7 +3477,7 @@ export const economy = {
         stationId, atT: Number(state.simTime) || 0,
       });
       this.bus.emit('toast', {
-        text: `Borrowed ${take}cr — the note stands at ${Math.round(Number(player.debt) || 0)}cr`,
+        text: `Borrowed ${take} cr — the note stands at ${Math.round(Number(player.debt) || 0)} cr`,
         kind: 'success', ttl: 3,
       });
     } else if (type === 'settle') {
@@ -3504,8 +3508,8 @@ export const economy = {
       });
       this.bus.emit('toast', {
         text: player.debt > 0
-          ? `Paid ${pay}cr — the note stands at ${player.debt}cr`
-          : `Note settled (${pay}cr)`,
+          ? `Paid ${pay} cr — the note stands at ${player.debt} cr`
+          : `Note settled (${pay} cr)`,
         kind: 'success', ttl: 2,
       });
     } else if (type === 'cargo_insurance') {
@@ -3522,7 +3526,7 @@ export const economy = {
         return;
       }
       if (normalizeCredits(player.credits) < quote.premiumCr) {
-        this.bus.emit('toast', { text: 'Insufficient credits for a cargo policy', kind: 'error', ttl: 2 });
+        this.bus.emit('toast', { text: 'Not enough credits for a cargo policy', kind: 'error', ttl: 2 });
         return;
       }
       this.chargeCredits(quote.premiumCr, 'service:cargo_insurance');
@@ -3541,7 +3545,7 @@ export const economy = {
         coverCr: quote.coverCr, stationId, atT: Number(state.simTime) || 0,
       });
       this.bus.emit('toast', {
-        text: `Cargo policy written (${quote.premiumCr}cr — covers ${quote.coverCr}cr until the next dock)`,
+        text: `Cargo policy written (${quote.premiumCr} cr — covers ${quote.coverCr} cr until the next dock)`,
         kind: 'success', ttl: 3,
       });
     }
@@ -3757,7 +3761,7 @@ export const economy = {
   payBribe(p) {
     const fine = p.fine || 0;
     const cost = round(fine * BRIBE_FRAC);
-    if (normalizeCredits(this.state.player.credits) < cost) { this.bus.emit('toast', { text: 'Cannot afford bribe', kind: 'error', ttl: 2 }); return { ok: false }; }
+    if (normalizeCredits(this.state.player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for the bribe', kind: 'error', ttl: 2 }); return { ok: false }; }
     this.chargeCredits(cost, 'bribe:contraband');
     return { ok: true, cost };
   },
@@ -4046,6 +4050,11 @@ export const economy = {
     this._syntheticHistoryKeys = new Set();
     this._restoredQuoteKeys = new Set();
     this._offlineSummaryRefresh = null;
+    // Session berth latches are run-scoped: a quit-while-docked New Game must not let
+    // dockedStationId()/_stationServicesDocked() resolve the previous run's berth — trade and
+    // service gates would then fail open against a station the player is not at.
+    this._lastDockedStation = null;
+    this._stationServiceBerth = null;
     // warm the home sector's markets so prices exist before first dock
     const home = (state.world && state.world.currentSectorId) || 'sector_helios_prime';
     const sec = SECTORS.find((s) => s.id === home);

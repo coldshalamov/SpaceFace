@@ -57,6 +57,54 @@ export const DEEP_SKY_PLATES = Object.freeze({
     height: 1024,
     residentBytes: 11184812,
   }),
+  // §22.5 C6 sector skies — the six baked backdrops from vm-drop/sector-skies (set manifest:
+  // assets/background/deep-sky/sector-skies/manifest.json). These are the region's BASE sky
+  // image (profile background.sky), not paintedSky accent plates: they answer the darker
+  // action-over-sky luminance budget (~0.013-0.017 mean), which is why they are not entries in
+  // the accent-plate bake manifest above. `sky-galactic-spur` is the single galaxy-allowed
+  // image and only the tethys profile binds it.
+  'sky-helios-orbital-void': Object.freeze({
+    id: 'sky-helios-orbital-void',
+    url: '/assets/background/deep-sky/sector-skies/sky_helios_orbital_void.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
+  'sky-core-trade-constellation': Object.freeze({
+    id: 'sky-core-trade-constellation',
+    url: '/assets/background/deep-sky/sector-skies/sky_core_trade_constellation.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
+  'sky-belt-broken-dust-lane': Object.freeze({
+    id: 'sky-belt-broken-dust-lane',
+    url: '/assets/background/deep-sky/sector-skies/sky_belt_broken_dust_lane.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
+  'sky-fringe-tidal-filament': Object.freeze({
+    id: 'sky-fringe-tidal-filament',
+    url: '/assets/background/deep-sky/sector-skies/sky_fringe_tidal_filament.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
+  'sky-anomaly-electromagnetic-scar': Object.freeze({
+    id: 'sky-anomaly-electromagnetic-scar',
+    url: '/assets/background/deep-sky/sector-skies/sky_anomaly_electromagnetic_scar.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
+  'sky-galactic-spur': Object.freeze({
+    id: 'sky-galactic-spur',
+    url: '/assets/background/deep-sky/sector-skies/sky_galactic_spur.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
 });
 
 /** One active plate plus one incoming during a region transition. Nothing else may be held. */
@@ -67,8 +115,9 @@ export function deepSkyPlate(id) {
 }
 
 /**
- * Worst-case residency the runtime can reach: the two largest plates, which is what a transition
- * between the two biggest regions costs for the moment both are held.
+ * Worst-case residency one channel can reach: the two largest plates, which is what a transition
+ * between the two biggest regions costs for the moment both are held. The runtime owns two
+ * channels (accent + sector base), so total peak is twice this.
  */
 export function deepSkyPeakResidentBytes() {
   const sizes = Object.values(DEEP_SKY_PLATES).map((p) => p.residentBytes).sort((a, b) => b - a);

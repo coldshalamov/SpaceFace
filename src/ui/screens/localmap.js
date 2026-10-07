@@ -201,7 +201,10 @@ export function pickClickTarget(targets, sx, sy) {
 // The scan ping is the sweep's answer, not a decoration: the map draws it, the legend names it,
 // so a click on it must set course TO it (named, not a bare "Map fix"). Same contract the
 // scanner readouts teach ("Track the source"): the local map is where tracking is one click.
-// Marks are picked for the CURRENT sector only, exactly like the radar and the galaxy chart.
+// Marks are picked for the CURRENT sector only. The system chart and the radar set the same
+// named course through chartPingCourseTargets and radarDialCourse.
+// Downstream the click flows through world._onSetCourse's pos-branch (src/systems/world.js:5312),
+// which takes waypointKind verbatim (:5326); no sim-side change was needed.
 export const PING_COURSE_LABEL = 'Unresolved contact';
 
 export function pingOverlayMarks(state, wx, wz) {
@@ -442,6 +445,12 @@ const LM_LEGEND_MARKS = {
   ping: glyphSvg('unknown', 14, 'lm-mark lm-mark--goal'),
 };
 
+// The legend names the ping the same way a click does (PING_COURSE_LABEL). The sentence is
+// static markup, so mount interpolates it once into the lm-legend div.
+export function localMapLegendText() {
+  return `${LM_LEGEND_MARKS.station} STATION · ${LM_LEGEND_MARKS.gate} GATE · ${LM_LEGEND_MARKS.hostile} HOSTILE · ${LM_LEGEND_MARKS.friendly} FRIENDLY · ${LM_LEGEND_MARKS.asteroid} ASTEROID · ${LM_LEGEND_MARKS.ping} ${PING_COURSE_LABEL} · Zoom: [Scroll Wheel]`;
+}
+
 export const localmapScreen = {
   id: 'localmap',
   _ctx: null,
@@ -493,7 +502,7 @@ export const localmapScreen = {
       '<div class="lm-body sf-stage"><canvas></canvas>' +
       '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
       '<div class="lm-legend">' +
-        `${LM_LEGEND_MARKS.station} STATION · ${LM_LEGEND_MARKS.gate} GATE · ${LM_LEGEND_MARKS.hostile} HOSTILE · ${LM_LEGEND_MARKS.friendly} FRIENDLY · ${LM_LEGEND_MARKS.asteroid} ASTEROID · ${LM_LEGEND_MARKS.ping} SCAN PING · Zoom: [Scroll Wheel]` +
+        localMapLegendText() +
       '</div>' +
       '<div class="lm-routes sf-apron" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';

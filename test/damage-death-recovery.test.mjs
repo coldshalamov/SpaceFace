@@ -548,6 +548,25 @@ test('cross-sector recovery asks the world owner to enter the last lawful dock s
   assert.equal(state.entities.get(1).pos.z, 240);
 });
 
+test('recovery never resurrects a dock latch on the revived hull', () => {
+  // Dock → death edges: every live kill path is dock-guarded, but nothing else cleared
+  // flags.docked off a recovered hull — a revive that kept it would leave the ship
+  // permanently dock-protected and flight-controls-dead (no dock:undocked ever follows).
+  const state = makeState();
+  combat.state = state;
+  combat.registry = { get() { return null; } };
+  combat.bus = { emit() {} };
+  const player = state.entities.get(1);
+  player.flags.docked = true;
+  player.flags.defeated = true;
+  player.flags.invuln = true;
+  combat.restorePlayerAtRecoveryDock(player, { stationId: 'station_helios', sectorId: null });
+  assert.equal('docked' in player.flags, false, 'the revived hull must not carry a dock latch');
+  assert.equal('defeated' in player.flags, false);
+  assert.equal(player.flags.invuln, false);
+  assert.equal(player.alive, true);
+});
+
 test('persistent command strip wires armor and a named, anchored impact receipt', () => {
   const source = readFileSync(new URL('../src/ui/commandBar.js', import.meta.url), 'utf8');
   assert.match(source, /data-k="armor"/);

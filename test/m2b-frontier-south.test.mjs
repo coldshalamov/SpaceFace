@@ -40,6 +40,7 @@ const ZONE_TYPES = new Set([
 const FACTION_IDS = new Set([
   'faction_scn', 'faction_mts', 'faction_dmc', 'faction_reach',
   'faction_quiet', 'faction_vael', 'faction_free', 'faction_choir', 'faction_helix',
+  'faction_understory',
 ]);
 const PALETTE_CLASSES = new Set(['core', 'belt', 'fringe', 'anomaly']);
 const ASSIGNED = Object.freeze({

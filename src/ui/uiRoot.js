@@ -25,6 +25,7 @@ import {
 } from '../core/presentationAdmission.js';
 import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
+import { pointerLockIsLegitimate } from '../systems/autoTargetAssist.js';
 import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 import { IS_DEV } from '../core/devMode.js';
@@ -415,10 +416,8 @@ function saveErrorReasonText(payload = {}) {
 
 function wireSaveFeedback(bus) {
   if (!bus || !bus.on) return;
-  bus.on('save:started', ({ slot } = {}) => {
-    if (slot === 'auto' || slot === 'autosave') return;
-    bus.emit('toast', { text: 'Saving ' + saveSlotLabel(slot), kind: 'info', ttl: 1600 });
-  });
+  // No 'Saving …' receipt: the write lands in milliseconds and 'Saved …' follows, so two toasts
+  // for one press only crowded the lane.
   bus.on('save:completed', ({ slot } = {}) => {
     bus.emit('toast', {
       text: (slot === 'auto' || slot === 'autosave') ? 'Autosaved' : 'Saved ' + saveSlotLabel(slot),
@@ -527,9 +526,9 @@ export const ui = {
         try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
       }
       if (payload.mirrorRecovered) {
-        this.bus.emit('toast', { text: 'Shared save store reconnected — mirroring resumed.', kind: 'good', ttl: 2600 });
+        this.bus.emit('toast', { text: 'Save sync restored.', kind: 'good', ttl: 2600 });
       } else if (payload.ok === false && payload.mirror === 'shared') {
-        this.bus.emit('toast', { text: 'Shared save store unreachable — saves stay on this device.', kind: 'warn', ttl: 3600 });
+        this.bus.emit('toast', { text: 'Save sync unavailable. Saves stay on this device.', kind: 'warn', ttl: 3600 });
       }
     });
 
@@ -759,6 +758,17 @@ export const ui = {
       const flightStick = st && st.input && st.input.autoTargetVector;
       const pathActive = !!(autoTarget && flightPath && flightPath.active
         && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
+      // Tick-independent pointer-lock watchdog: the sim-side reconcile stops while a menu
+      // freezes ticks, so a lock held — or granted late — outside pure-flight+G-mode would
+      // otherwise strand the player with no OS cursor (hidden by the lock) and no reticle
+      // (hidden with the HUD). This sync runs every render frame in every UI state, so the
+      // invariant cannot stick; the mode itself is untouched and re-acquires on the next
+      // canvas mousedown.
+      if (typeof document !== 'undefined' && document.pointerLockElement
+        && !pointerLockIsLegitimate(st, visible)
+        && typeof document.exitPointerLock === 'function') {
+        try { document.exitPointerLock(); } catch (_) { /* best effort: the next frame retries */ }
+      }
       if (lastFlightCursorActive !== active) {
         lastFlightCursorActive = active;
         document.body.classList.toggle('sf-flight-cursor', active);
@@ -851,10 +861,10 @@ export const ui = {
           autoTargetRouteLine.setAttribute('points', pointsValue);
           lastFlightPathPoints = pointsValue;
         }
-        const endpoint = screenPoints.length ? screenPoints[screenPoints.length - 1] : null;
+        const endpoint = screenPoints.length ? screenPoints[screenPoints.length - 1].split(',') : null;
         if (endpoint) {
-          const x = endpoint.x.toFixed(1);
-          const y = endpoint.y.toFixed(1);
+          const x = endpoint[0];
+          const y = endpoint[1];
           if (lastEndpointCx !== x || lastEndpointCy !== y) {
             lastEndpointCx = x;
             lastEndpointCy = y;
@@ -947,7 +957,7 @@ export const ui = {
           <div class="cine-title" id="cinematic-title">SPACEFACE</div>
           <div class="cine-rule"></div>
           <div class="cine-contract" id="cinematic-summary">Contract 47-A — Open / Payment Pending</div>
-          <div class="cine-begin">Click or press any key to begin</div>
+          <div class="cine-begin">${window.matchMedia?.('(pointer: coarse)').matches ? 'Tap to begin' : 'Click or press any key to begin'}</div>
         </div>
         <div class="cine-signal" id="cinematic-signal">
           <div class="cine-signal__k">Inbound signal</div>

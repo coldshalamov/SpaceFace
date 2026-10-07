@@ -162,7 +162,8 @@ function testThirdReachPressureLossEmitsRumorAndOffer() {
   assert.equal(offer.destStationId, 'station_tethys', 'offer has a concrete station anchor');
   assert.equal(offer.factionId, 'faction_mts', 'offer rep routes to the affected lane faction');
   assert.ok(offer.params.targetStrength > 0, 'offer carries targetStrength for mission spawning');
-  assert.equal(offer.params.clearCount, 1, 'bounty offer has one target to clear');
+  assert.ok(offer.params.clearCount >= 3 && offer.params.clearCount <= 4,
+    `bounty clears the full raider pack (got ${offer.params.clearCount})`);
   assert.equal(offer.budgetedEncounter.spawnOnAccept, true, 'hostiles are deferred to mission accept');
   assert.equal(offer.budgetedEncounter.spawnBudgetClient, 'missions', 'spawn budget owner is existing missions path');
   assert.ok(offer.reward_cr > 0 && offer.time_limit_s > 0, 'offer is board-shaped with reward and time');

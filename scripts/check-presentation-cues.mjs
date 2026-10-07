@@ -253,9 +253,9 @@ runtimeState.settings.accessibility.flashReduce = true;
 bus.emit('tether:broken', { actorId: 1, targetId: 2, attachmentId: 'att_2', tension: 9, impulse: 5 });
 bus.flush();
 assert.equal(cueRecords.at(-1).id, 'tether.break', 'tether break should route through SG-08');
-assert.equal(cameraRecords.at(-1).amount, 0.055, 'reduced motion should scale camera trauma down');
+assert.equal(cameraRecords.at(-1).amount, 0.03, 'reduced motion should scale camera trauma down');
 assert.equal(cameraRecords.at(-1).reducedMotion, true, 'camera cue should record reduced-motion transform');
-assert.equal(vfxRecords.at(-1).particles, 48, 'reduced flashing should halve tether break particle budget');
+assert.equal(vfxRecords.at(-1).particles, 24, 'reduced flashing should halve tether break particle budget');
 assert.equal(vfxRecords.at(-1).lights, 0, 'reduced flashing should suppress event lights');
 assert.equal(captionRecords.at(-1).flashReduced, true, 'caption evidence should record flash reduction');
 

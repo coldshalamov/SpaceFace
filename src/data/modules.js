@@ -187,6 +187,7 @@ const SHIPPED_MODULES = [
   {
     // G10 — charge-throw drops a heat lure that drags heat-hunters off your plume (60s).
     id: 'mod_heat_lure_s', name: 'Heat Lure Beacon', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 13500,
+    requiresTech: 'tech_heat_lure',
     energyDraw: 2,
     mods: { heatLure: true },
     description: 'Charge-thrown bait: a burn-flag beacon that reads hotter than your reactor. Predators chase the lie for a minute.',
@@ -209,7 +210,7 @@ const SHIPPED_MODULES = [
   {
     // G13 — the cradle: a latched animal released under it reaches the hold alive.
     id: 'mod_capture_cradle_m', name: 'Capture Cradle', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 32000,
-    requiresTech: 'tech_tractor_systems',
+    requiresTech: 'tech_capture_cradle',
     energyDraw: 4,
     mods: { captureSurvivalMult: 0.85 },
     description: 'A padded field cage for the massline. Release the latch while it is fitted and the animal comes aboard alive.',
@@ -225,6 +226,7 @@ const SHIPPED_MODULES = [
   {
     // K03 — quarantine paperwork as equipment: custody refusal softens to a discount.
     id: 'mod_containment_seal_s', name: 'Containment Seal Kit', slotType: 'utility', size: 'S', tier: 3, mass: 2, price: 28000,
+    requiresTech: 'tech_containment_seal',
     energyDraw: 1,
     mods: { containmentSeal: true },
     description: 'Registry-stamped quarantine seals. Stations that would refuse a biological lot instead take it at surrender prices.',
@@ -930,6 +932,28 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_sanction_spool: 'Concord yards fit this spool only for captains the Navy trusts at its back.',
   mod_deep_scoop_array_m: 'The Collective fits this scoop for crews who bring the whole ring home.',
   mod_splitburner_m: 'The Reach fits this burner for its runners: a hotter, longer burn, back on the pipe sooner.',
+  mod_filter_stack_s: 'Contaminated space fouls the hull more slowly.',
+  mod_filter_stack_m: 'Contaminated space fouls the hull much more slowly than the small filter.',
+  mod_bio_spectral_pass_s: 'Biological contacts resolve one classification rung earlier.',
+  mod_field_coherence_meter: 'Inside a colonized field, the flight log notes whether that ecology is still coherent.',
+  mod_quarantine_locker_s: 'Biohazard cargo in the hold does not foul the hull.',
+  mod_hull_purge_ring_m: 'Dock once and a fouled hull is scrubbed clean.',
+  mod_heat_lure_s: 'Throw a charge that burns hotter than you, and heat-hunters chase it.',
+  mod_quiet_mask_s: 'Animals that hunt by heat notice this hull later.',
+  mod_relay_needle_s: 'A relay organism reports whether its broadcast is still coherent.',
+  mod_capture_cradle_m: 'Release a latched animal and it comes aboard alive, if the hold has room.',
+  mod_precursor_handshake_s: 'A machine site finishes reading your compliance in half the time.',
+  mod_containment_seal_s: 'A station that would refuse a biological lot will take it.',
+  mod_filament_contrast_s: 'Phantom contacts in a colonized field are marked with a question mark.',
+  mod_host_cartography_s: 'Crossing into a colonized field names the hull under the growth.',
+  mod_echo_recorder_s: 'Relay pulses that stay in phase leave a note in the flight log.',
+  mod_resonant_massline_m: 'Mining strikes read as dead matter, so sleeping fauna do not wake.',
+  mod_quiet_equation_s: 'A machine directive keeps its own words, then adds a line you can read.',
+  mod_lattice_coupler_s: 'Approaching a machine site echoes its standing directive on the comms.',
+  unique_quadrille_box_reader: 'Reads what another hull is carrying, from farther out than a stock scanner.',
+  unique_double_entry_mask: 'You read quieter than a stock scrambler, and the scan reaches a little farther.',
+  unique_first_notch_marker: 'Closes an anomaly fix in two scans instead of three, and the scan reaches farther.',
+  unique_regular_mass_shifter: 'More room in the hold than the hull was built with.',
 });
 
 function attachAirSentences(list) {

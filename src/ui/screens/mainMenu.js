@@ -16,6 +16,7 @@ import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { isPhoneLayout } from '../../systems/mobile/model.js';
 
 const LS_PREFIX = 'sf.save.';
 /** Show or hide Continue's row on the dial, and re-seat the dial when it changes. */
@@ -58,12 +59,12 @@ function isDisabled(button) { return button.getAttribute('aria-disabled') === 't
 function setScreenButtonReady(button, ctx, id, label) {
   if (!button) return;
   const ready = screenReady(ctx, id);
-  setDisabled(button, !ready, ready ? '' : label + ' is initializing');
+  setDisabled(button, !ready, ready ? '' : label + ' is still loading');
 }
 function pushWhenReady(ctx, id, label) {
   if (!screenReady(ctx, id)) {
     if (ctx && ctx.bus && ctx.bus.emit) {
-      ctx.bus.emit('toast', { text: label + ' is initializing - try again in a moment', kind: 'info', ttl: 2200 });
+      ctx.bus.emit('toast', { text: label + ' is still loading — try again in a moment', kind: 'info', ttl: 2200 });
     }
     return;
   }
@@ -402,11 +403,14 @@ export const mainMenuScreen = {
     // its pivot to whichever verb is awake. The rail only positions the list and draws behind it.
     if (arcRail) arcRail.dispose();
     injectOrreryScreens();
-    rootEl.classList.add('orr-title');
+    // A phone has no room for the dial (its rim is wider than the screen): the verbs stand as the plain
+    // Deckplate column under the logotype, in big thumb-sized words, and the world is the backdrop.
+    const phone = isPhoneLayout();
+    rootEl.classList.add(phone ? 'orr-title--phone' : 'orr-title');
     // The emblem sits BEHIND the logotype (ORRERY 6): its upper third runs under the name, its rim is
     // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
     // and the choice are one object and the lower left goes back to the key art.
-    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
+    arcRail = phone ? null : createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
       // T-S1: the title's signature — the Hand follows the pointer round the dial, the rings answer
       freeTrack: true,
       // the pivot keeps the rim's ticks clear of the frame (re + 33) at every height

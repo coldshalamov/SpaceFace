@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d767135a5e6ea749097dd86501880e212eb3728f2f46b57e51873748d87ed73a",
+  "contentHash": "14cdc05cb5a62cb38eba1e8ce1afd14c289db24db1d2f51322e096883c36e132",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1748,7 +1748,7 @@
     },
     "sourceManifest": {
       "bytes": 219794,
-      "sha256": "81b413c425531af63fa3f895c51f5be4ba86bec2c3ece4040a0acf26b71ab54f",
+      "sha256": "80f3f090c9d9dd27f218d7fa14f6703b7efc4b3398f6376312758f99914bbe73",
       "uri": "pilots.json"
     }
   },
@@ -2464,7 +2464,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_truss.glb"
   },
-  "runtimeHash": "84cbc41bd3104100c3c2437566416c10e722c90c1e3d6b618685c249bc28fe27",
+  "runtimeHash": "65db77e103db481617bebd522840739241b737045d51e78f3e7906804fd11049",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

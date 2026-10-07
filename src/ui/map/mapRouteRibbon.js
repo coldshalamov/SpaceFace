@@ -159,7 +159,7 @@ function resolveRibbonActions(hasRoute, status, engaged) {
     'pause',
     'Pause',
     false,
-    'Pause is not a route-follower verb — Disengage keeps the itinerary and Resume picks it up on the same leg',
+    'A route cannot be paused. Disengage keeps it, and Resume picks it up on the same leg.',
     null,
   );
 

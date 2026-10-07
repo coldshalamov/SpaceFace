@@ -228,6 +228,13 @@ function ensureRuntime(state) {
       classifySeenScratch: new Set(),
       requestedReclassifyIds: new Set(),
       lastLiveCount: 0,
+      // Prune-sweep bookkeeping (D130): the signaturesById prune walks every historical id on
+      // every classify. Nothing can have become prunable unless sanctioned membership moved —
+      // spawn/remove both bump the entity index version — so a steady membership skips the
+      // sweep outright. `pruneSweeps` counts actual sweeps for the focused fixture.
+      pruneSweeps: 0,
+      _lastPruneMembership: undefined,
+      _lastPruneLiveCount: -1,
       pinResolveScratch: [],
       pinNormalizeScratch: { out: [], seen: new Set() },
     };
@@ -507,6 +514,48 @@ function setMatchesList(set, list) {
   return true;
 }
 
+// Player-intent pins the classify key and the early-quiet latch both watch. Every derivation
+// reads a live record: the legacy player.data *.dockTargetId/*.hailTargetId locations and the
+// state.comms.* family have no writers anywhere (D174).
+//   dockId — uiRoot writes state.ui.dockedStationId; resolved through entityIndex.byStationId so
+//     the pin names the station entity when materialized (a 'station:<id>' sentinel otherwise —
+//     still flips on the dock/undock transition). flags.docked without a station pins `true`.
+//   hailId — two live hail records: the customs scan prompt names the patrol entity directly
+//     (state.ui.customsPrompt.patrolId — lawSecurity emits patrol.id/scanner.id); a lawful
+//     inspection case carries the patrol's world record (player.lawfulInspection.active
+//     .patrolWorldRecordId, resolved through entityIndex.byWorldRecordId). No comms target
+//     record exists.
+//   targetId — the player combat record (weapons.js writes combat.lockTarget on missile lock).
+function playerIntentPins(state, player) {
+  const ui = state && state.ui;
+  const index = state && state.entityIndex;
+  let dockId = null;
+  const dockedStationId = ui && ui.dockedStationId != null ? ui.dockedStationId : null;
+  if (dockedStationId != null) {
+    const stationEntity = index && index.byStationId ? index.byStationId.get(dockedStationId) : null;
+    dockId = stationEntity && stationEntity.alive !== false && stationEntity.id != null
+      ? stationEntity.id : `station:${dockedStationId}`;
+  } else if ((ui && ui.docked === true) || (player && player.flags && player.flags.docked === true)) {
+    dockId = true;
+  }
+  // Two durable hail records: the customs scan prompt names the patrol entity directly;
+  // a lawful-inspection case carries the patrol's world record (lawSecurity activeCase).
+  const customs = ui && ui.customsPrompt;
+  let hailId = customs && customs.patrolId != null ? customs.patrolId : null;
+  if (hailId == null) {
+    const inspection = player && player.lawfulInspection && player.lawfulInspection.active;
+    const recordId = inspection && inspection.patrolWorldRecordId;
+    const patrol = recordId != null && index && index.byWorldRecordId
+      ? index.byWorldRecordId.get(recordId) : null;
+    if (patrol && patrol.alive !== false && patrol.id != null) hailId = patrol.id;
+  }
+  const combat = player && player.data && player.data.combat;
+  const targetId = combat && (combat.targetId ?? combat.lockTarget) != null
+    ? (combat.targetId ?? combat.lockTarget)
+    : null;
+  return { dockId, hailId, targetId };
+}
+
 function rebuildPinFacts(state, player, facts, simTime) {
   const playerId = player && player.id;
   const cache = facts._cache || (facts._cache = {
@@ -527,20 +576,15 @@ function rebuildPinFacts(state, player, facts, simTime) {
   let nextMiningId = null;
   let nextDockId = null;
   let nextHailId = null;
-  if (player && player.data && player.data.miningTargetId != null) {
-    nextMiningId = player.data.miningTargetId;
+  // The mining beam's lock lives on the player RECORD (state.player.miningTargetId —
+  // written by mining.js _setLockTargetId), not on the player entity's .data.
+  if (state.player && state.player.miningTargetId != null) {
+    nextMiningId = state.player.miningTargetId;
   }
-  const playerCombat = player && player.data && player.data.combat;
-  if (playerCombat && playerCombat.targetId != null) nextTargetId = playerCombat.targetId;
-  else if (playerCombat && playerCombat.lockTarget != null) nextTargetId = playerCombat.lockTarget;
-  const dockId = player && (
-    (player.data && (player.data.dockStationId || player.data.dockTargetId))
-    || (player.flags && player.flags.dockStationId)
-  );
-  if (dockId != null) nextDockId = dockId;
-  const hail = state && (state.comms && (state.comms.hailTargetId || state.comms.targetId)
-    || state.ui && state.ui.hailTargetId);
-  if (hail != null) nextHailId = hail;
+  const intentPins = playerIntentPins(state, player);
+  nextTargetId = intentPins.targetId;
+  nextDockId = intentPins.dockId;
+  nextHailId = intentPins.hailId;
   const signalState = state && state.signalInvestigation;
   const trackedSignal = signalState && signalState.trackedId;
   const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
@@ -572,9 +616,10 @@ function rebuildPinFacts(state, player, facts, simTime) {
     for (const id of fieldAffected) fieldScratch.push(id);
   }
 
-  // SG-06: player-intent pins arrive only through entity-carried state (see scalar
-  // block above). Scanner owns the durable tracked contact — resolve its signal record
-  // without asking the HUD to decide residency.
+  // SG-06: player-intent pins read the live state records (playerIntentPins above —
+  // entity data for combat, state.ui/state.player for dock/hail). Scanner owns the
+  // durable tracked contact — resolve its signal record without asking the HUD to
+  // decide residency.
   const trackedId = trackedSignal;
   const trackedRecord = trackedId && signalState && signalState.records && signalState.records[trackedId];
   if (trackedRecord) {
@@ -1025,12 +1070,13 @@ function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
   const maxSpeed = Math.max(TABLE_REFERENCE_SPEED_WU, finite(player.maxSpeed));
   if (latch.maxSpeed !== maxSpeed) return false;
   // Cheap pin-intent smoke: mining/dock/hail/target flips must wake without waiting for rescan.
-  const data = player.data || {};
-  const combat = data.combat || {};
-  if (latch.miningId !== (data.miningTargetId ?? null)) return false;
-  if (latch.dockId !== (data.dockTargetId ?? null)) return false;
-  if (latch.hailId !== (data.hailTargetId ?? null)) return false;
-  if (latch.targetId !== (combat.targetId ?? data.targetId ?? null)) return false;
+  const miningId = state.player && state.player.miningTargetId != null
+    ? state.player.miningTargetId : null;
+  if (latch.miningId !== miningId) return false;
+  const intentPins = playerIntentPins(state, player);
+  if (latch.dockId !== intentPins.dockId) return false;
+  if (latch.hailId !== intentPins.hailId) return false;
+  if (latch.targetId !== intentPins.targetId) return false;
   // Durable scheduled wake due: cannot stay asleep when an actor's timer expires.
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (tick / 60);
   const bag = state && state.world && state.world.records && state.world.records.byId;
@@ -1078,8 +1124,7 @@ function armEarlyQuietClassifyLatch(state, runtime, player, origin) {
     return;
   }
   const cam = simCamera(state);
-  const data = player && player.data || {};
-  const combat = data.combat || {};
+  const intentPins = playerIntentPins(state, player);
   runtime._earlyQuietLatch = {
     armed: true,
     armedTick: state.tick | 0,
@@ -1091,10 +1136,11 @@ function armEarlyQuietClassifyLatch(state, runtime, player, origin) {
     membership: entityIndexVersion(state),
     staticAuthority: entityIndexPhysicsStaticVersion(state),
     maxSpeed: Math.max(TABLE_REFERENCE_SPEED_WU, finite(player && player.maxSpeed)),
-    miningId: data.miningTargetId ?? null,
-    dockId: data.dockTargetId ?? null,
-    hailId: data.hailTargetId ?? null,
-    targetId: combat.targetId ?? data.targetId ?? null,
+    miningId: (state.player && state.player.miningTargetId != null)
+      ? state.player.miningTargetId : null,
+    dockId: intentPins.dockId,
+    hailId: intentPins.hailId,
+    targetId: intentPins.targetId,
   };
 }
 
@@ -1772,17 +1818,36 @@ function classifyWorld(state, runtime) {
     || runtime.classifyMode === 'frame-retain'
     || runtime.classifyMode === 'early-quiet-latch'
     || runtime.classifyMode === 'flying-frame-retain';
-  for (const id of runtime.signaturesById.keys()) {
-    const stillLive = pruneLikeIncremental
-      ? !!(state.entities && typeof state.entities.get === 'function'
-        && state.entities.get(id) && state.entities.get(id).alive !== false)
-      : runtime.currentEntityIds.has(id);
-    if (stillLive) continue;
-    runtime.signaturesById.delete(id);
-    runtime.reasonsById.delete(id);
-    runtime.pinBuffersById.delete(id);
-    runtime.signatureCacheById.delete(id);
-    runtime.seenEntityIds.delete(id);
+  // Sweep only when something could have died or spawned since the last sweep: any sanctioned
+  // membership move bumps the entity index version (and raw list edits still change length).
+  // A steady membership means every mapped id is exactly as live as last sweep — re-walking the
+  // keyspace would delete nothing. Without an index there is no change signal, so it sweeps
+  // every pass; non-incremental modes also always sweep (their visit set IS the truth).
+  const pruneMembership = entityIndexVersion(state);
+  const sweepDue = !pruneLikeIncremental
+    || pruneMembership == null
+    || pruneMembership !== runtime._lastPruneMembership
+    || runtime._lastPruneLiveCount !== list.length;
+  if (sweepDue) {
+    runtime.pruneSweeps++;
+    runtime._lastPruneMembership = pruneMembership;
+    runtime._lastPruneLiveCount = list.length;
+    const canMapLookup = !!(state.entities && typeof state.entities.get === 'function');
+    for (const id of runtime.signaturesById.keys()) {
+      let stillLive;
+      if (pruneLikeIncremental) {
+        const e = canMapLookup ? state.entities.get(id) : null;
+        stillLive = !!(e && e.alive !== false);
+      } else {
+        stillLive = runtime.currentEntityIds.has(id);
+      }
+      if (stillLive) continue;
+      runtime.signaturesById.delete(id);
+      runtime.reasonsById.delete(id);
+      runtime.pinBuffersById.delete(id);
+      runtime.signatureCacheById.delete(id);
+      runtime.seenEntityIds.delete(id);
+    }
   }
   counts.physics = statics.length + dynamics.length;
   runtime.lastLiveCount = (state.entityList || []).length;
@@ -1886,6 +1951,10 @@ export function resetActivityRuntimeForRestore(state) {
   runtime.classifiedStaticAuthority = null;
   runtime._staticMembershipDirty = true;
   if (runtime._dynamicEntities) runtime._dynamicEntities.length = 0;
+  // A restore can keep the index version unchanged while the id set moved — force the next
+  // classify pass to run the prune sweep rather than trusting the carried membership stamp.
+  runtime._lastPruneMembership = undefined;
+  runtime._lastPruneLiveCount = -1;
   return true;
 }
 

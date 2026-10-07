@@ -43,7 +43,11 @@ export const wreckChoicePrompt = {
     if (this._bus && this._bus.on) {
       this._bus.on('salvage:communicatorFound', this._onFound);
       this._bus.on('mission:accepted', this._onAccepted);
-      this._bus.on('survivorPod:rescueSelected', this._onPodTerminal);
+      // survivorPod:rescueSelected is NOT a terminal event for the card — it is the pilot's
+      // choice, and missions' accept preflight can still refuse it (standing lost at the
+      // destination desk). The card resolves on the real outcomes: mission:accepted via
+      // _onAccepted, survivorPod:stripped below, or stays live for survivorPod:rescueBlocked's
+      // annotation (D133 — a refused rescue used to close the card with no contract).
       this._bus.on('survivorPod:stripped', this._onPodTerminal);
       this._bus.on('survivorPod:rescueBlocked', this._onPodBlocked);
       this._bus.on('sector:exit', this._onClear);
@@ -174,12 +178,15 @@ export const wreckChoicePrompt = {
     if (!payload || !payload.salvagePointId) return;
     const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
     if (!deck) return;
+    // A refused rescue keeps the card: tow_missing still asks for the latch, and a refused
+    // contract accept says the filing desk itself would not take the rescue (D133).
+    const flag = payload.reason === 'accept_refused' ? 'RESCUE REFUSED' : 'TETHER REQUIRED';
+    const detail = payload.reason === 'accept_refused'
+      ? 'The destination desk will not take this rescue — check your standing, then choose again.'
+      : 'Latch the pod to your massline first, then tow it out.';
     for (const [deckId, rec] of [...this._live]) {
       if (rec.salvagePointId !== payload.salvagePointId) continue;
-      deck.updateDecision(deckId, {
-        statusFlag: 'TETHER REQUIRED',
-        detail: 'Latch the pod to your massline first, then tow it out.',
-      });
+      deck.updateDecision(deckId, { statusFlag: flag, detail });
     }
   },
 
@@ -217,7 +224,6 @@ export const wreckChoicePrompt = {
       if (this._onFound) this._bus.off('salvage:communicatorFound', this._onFound);
       if (this._onAccepted) this._bus.off('mission:accepted', this._onAccepted);
       if (this._onPodTerminal) {
-        this._bus.off('survivorPod:rescueSelected', this._onPodTerminal);
         this._bus.off('survivorPod:stripped', this._onPodTerminal);
       }
       if (this._onPodBlocked) this._bus.off('survivorPod:rescueBlocked', this._onPodBlocked);

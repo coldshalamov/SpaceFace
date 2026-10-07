@@ -102,7 +102,7 @@ import {
   statusAttachedAccessibility,
 } from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
-import { impactAxisAngle, impactRead } from './combat/impactRead.js';
+import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
   collisionDisplayDeltaV,
   collisionImpactLight,
@@ -2431,8 +2431,10 @@ export const vfx = {
       this._pCol[dst3] = old._cr0[src] + (old._cr1[src] - old._cr0[src]) * t;
       this._pCol[dst3 + 1] = old._cg0[src] + (old._cg1[src] - old._cg0[src]) * t;
       this._pCol[dst3 + 2] = old._cb0[src] + (old._cb1[src] - old._cb0[src]) * t;
-      this._pSize[dst] = old._size0[src] + (old._size1[src] - old._size0[src]) * t;
-      this._pAlpha[dst] = 1 - t;
+      this._pSize[dst] = particleLifeSize(old._size0[src], old._size1[src], t);
+      let mSeed = (old._particleAdmissionSerial[src] * 0.618033988749895) % 1;
+      if (mSeed < 0) mSeed += 1;
+      this._pAlpha[dst] = particleLifeAlpha(t, mSeed);
       this._pTrailAxis[dst] = old._particleTrailAxis[src];
       this._pTrailStretch[dst] = old._particleTrailStretch[src];
       this._alive[dst] = 1;
@@ -2609,6 +2611,9 @@ export const vfx = {
     add('bombs:detonated', (p) => this._onBombDetonated(p));
     add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
     add('bombs:destroyed', (p) => this._onBombDestroyed(p));
+    // Hull-burst shockwave sweep: each body the sim front overtakes answers with one
+    // small surface read — the wave becomes a sequence of responses, nearest first.
+    add('combat:shockwavePass', (p) => this._onShockwavePass(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
@@ -4460,10 +4465,22 @@ export const vfx = {
     let nz = p && p.normal && Number(p.normal.z);
     if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
       const approach = p && p.approach;
-      nx = approach && Number.isFinite(approach.x) ? -approach.x : 1;
+      nx = approach && Number.isFinite(approach.x) ? -approach.x : 0;
       nz = approach && Number.isFinite(approach.z) ? -approach.z : 0;
     }
+    if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
+      // SFQ-B183 — the packet carries no measured direction (a DoT, a field tick). The receipt's
+      // own contact point relative to the struck body is the honest placement hint; an invented
+      // +X is not. When even that is degenerate the axis stays zero and the read draws unaimed.
+      if (tgt && tgt.pos && p && p.pos) {
+        nx = Number(p.pos.x) - Number(tgt.pos.x);
+        nz = Number(p.pos.z) - Number(tgt.pos.z);
+      }
+    }
     const normalLength = Math.hypot(nx, nz) || 1;
+    // A measured axis is signed; the degenerate all-zero case (no normal, no approach, no usable
+    // pos offset) is not, and normalAngle's atan2(0,0) = 0 must never aim a cone at +X.
+    const normalSigned = normalLength > 1e-6;
     nx /= normalLength;
     nz /= normalLength;
     const normalAngle = Math.atan2(nz, nx);
@@ -4536,7 +4553,9 @@ export const vfx = {
         Math.max(0.05, Math.min(0.26, 0.05 + (Number(p.amount) || 0) * 0.004)),
         'armor', Math.max(0.8, ((tgt && tgt.radius) || 6) * 0.22), _impactOpts,
       );
-      if (!armored) {
+      if (!armored && normalSigned) {
+        // The cone is the mount-unavailable fallback; with no measured axis it would aim at a
+        // fabricated +X, so a directionless armor tick refuses it (SFQ-B183).
         const count = Math.max(5, Math.min(10, Math.round(8 * (this._burst || 1))));
         this._impactParticleCone(pos.x, pos.z, normalAngle, 0.82, 24, 56, count,
           0.23, 0.82, '#f6ead2', '#514c46', 2.8);
@@ -4569,8 +4588,12 @@ export const vfx = {
         Math.max(0.28, Math.min(0.55, 0.28 + (Number(p.amount) || 0) * 0.006)),
         'hull', Math.max(1.2, ((tgt && tgt.radius) || 6) * 0.3), _impactOpts,
       );
-      if (!breached) {
-        this._impactParticleCone(pos.x, pos.z, hitRead.shapeId === 'hull-cone' ? impulseAngle : normalAngle, 0.95, 9, 24,
+      if (!breached && normalSigned) {
+        // An aimed cone needs a measured direction: the impulse axis when the hit carries one,
+        // else the contact axis rebuilt above from the receipt geometry. With neither, no cone
+        // draws — atan2(0,0) = 0 would aim one at a fabricated +X (SFQ-B183).
+        const coneAngle = hitRead.signed ? impulseAngle : normalAngle;
+        this._impactParticleCone(pos.x, pos.z, coneAngle, 0.95, 9, 24,
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
       }
@@ -5034,6 +5057,16 @@ export const vfx = {
     if (id === 'combat.vectorMine.detonate') {
       return presentationStyle('#e6f2ff', '#5aa0ff', SPR_FLASH, { radial: true, lightPeak: 3.2, lightDistance: 170, speed0: 52, speedJitter: 40, life0: 0.32, size0: 1.8, size1: 0.2, drag: 1.1 });
     }
+    // Hull-burst shockwave sweep — the wave the blast shove belongs to. A broad, slow,
+    // cool-white ring racing the sim front outward (echoRing repeats it), so the eye reads
+    // one expanding pressure front rather than a fireball; objects flash as the ring
+    // overtakes them via combat:shockwavePass.
+    if (id === 'combat.shockwaveSweep') {
+      return presentationStyle('#eef6ff', '#8fb6ff', SPR_RING, {
+        radial: true, echoRing: true, lightPeak: 2.2, lightDistance: 190,
+        speed0: 64, speedJitter: 46, life0: 0.5, size0: 2.2, size1: 0.3, drag: 0.9,
+      });
+    }
     // SF-10 RCS-disruptor tell — small, fast ion-blue sparks skittering off the hull (attitude
     // drift), a punch-flash spark spray distinct from both the tumble puff and the mine shove.
     if (id === 'ship.rcsDisrupt') {
@@ -5340,10 +5373,11 @@ export const vfx = {
       }
     }
     }
-    // IMPACTS: the composed contact. axisSigned is FALSE — an SG-02 solver normal is an axis, and
-    // its sign is an artifact of collider ordering. The recipe therefore draws a mirrored pair.
-    // The legacy quarks spall call above is superseded by the debris layer that emitImpact
-    // composes; drop the block below once the debris lane's entry point is wired.
+    // IMPACTS: the composed contact. The receipt normal is oriented aId→bId now (SFQ-B183), but
+    // the composed contact keeps axisSigned FALSE on purpose: two bodies met, so the recipe draws
+    // a mirrored pair and neither half is "outward". The legacy quarks spall call above is
+    // superseded by the debris layer that emitImpact composes; drop the block below once the
+    // debris lane's entry point is wired.
     _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
     _impactOpts.serial = serial;
     _impactOpts.targetId = p.aId ?? p.targetId ?? null;
@@ -8908,7 +8942,8 @@ export const vfx = {
     mesh.visible = true;
   },
 
-  // Two edges, not a disc: Helios is a corridor, Tethys is a cone. Brighter while you are inside.
+  // Two edges, not a disc: Helios is a corridor, Tethys is a cone, Dione is a funnel.
+  // Brighter while you are inside.
   _updateCustomsWeirLines() {
     const live = readCustomsWeir(this.state);
     const segments = live && live.segments ? live.segments : [];
@@ -9112,9 +9147,13 @@ export const vfx = {
       input.liveTarget = arc.postTarget.targetId != null ? this._ent(arc.postTarget.targetId) : null;
     } else if (preActive) {
       input.releaseTarget = throwState.releaseTarget;
-      input.liveTarget = throwState.releaseTarget.targetId != null
-        ? this._ent(throwState.releaseTarget.targetId)
-        : null;
+      // The annulus rides the per-tick resolved holder — the seeded targetId names a slot that
+      // can recycle mid-swing; only an unstamped bind still trusts its seed id.
+      const liveId = throwState.aimTargetId != null
+        ? throwState.aimTargetId
+        : (throwState.releaseTarget && !throwState.releaseTarget.stable
+          ? throwState.releaseTarget.targetId : null);
+      input.liveTarget = liveId != null ? this._ent(liveId) : null;
     } else {
       input.releaseTarget = null;
       input.liveTarget = null;
@@ -10393,8 +10432,14 @@ export const vfx = {
         && this.state.massline2.throw.releaseTarget;
       const postTarget = arc.postTarget;
       clearMasslineReleaseTarget(postTarget);
-      const capturedEntity = captured && captured.targetId != null
-        ? this._ent(captured.targetId)
+      // The captured frame anchors to the resolved holder at release — the seeded targetId can
+      // name a recycled slot by then; only an unstamped bind still trusts its seed id.
+      const throwRuntime = this.state.massline2 && this.state.massline2.throw;
+      const liveId = throwRuntime && throwRuntime.aimTargetId != null
+        ? throwRuntime.aimTargetId
+        : (captured && !captured.stable ? captured.targetId : null);
+      const capturedEntity = liveId != null
+        ? this._ent(liveId)
         : null;
       if (capturedEntity && capturedEntity.alive !== false && capturedEntity.pos
         && Number.isFinite(capturedEntity.pos.x) && Number.isFinite(capturedEntity.pos.z)) {
@@ -10702,6 +10747,34 @@ export const vfx = {
     if (p && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) this._bombFlashDropped(p);
     return this._emitBombMaterial('bombs:detonated', p);
   },
+
+  // One surface read per body the shockwave front overtakes: a small ring + directional
+  // shimmer along the push, the visual counterpart of the sweep's graded shove. The sim
+  // already moved the body; this is the wave's arrival mark, kept deliberately cheap
+  // (two sprites, table draw distance, reduced-motion drops the particles).
+  _onShockwavePass(p) {
+    if (!this._scene || !p || p.level == null || this.state?.render?.openingVfxFrozen === true) return;
+    const body = this._ent(p.targetId);
+    const pos = body && body.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    const player = this._ent(this.state?.playerId);
+    if (player && player.pos) {
+      const look = tableLookAtDelta(this.state, player.pos, pos, _tableLookAtScratch);
+      if (!shouldDrawTableVfx(look.x, look.z, this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state))) return;
+    }
+    const reduced = this._isReduced();
+    const tumble = p.level === 'tumble';
+    const dirX = Number(p.dirX) || 0;
+    const dirZ = Number(p.dirZ) || 0;
+    const size = Math.max(2.4, (Number(body.radius) || 6) * 2.1);
+    this._spawnSprite(SPR_RING, pos.x, 0.12, pos.z,
+      reduced ? 0.16 : 0.26, size * 0.35, size, tumble ? 0.4 : 0.26, 0, '#b8d8ff', dirX * 10, dirZ * 10, 1, null, 0.72);
+    if (!reduced && (dirX || dirZ)) {
+      this._spawnSprite(SPR_PUFF, pos.x + dirX * (Number(body.radius) || 6) * 0.5, 0.1,
+        pos.z + dirZ * (Number(body.radius) || 6) * 0.5,
+        0.2, size * 0.22, 0.06, tumble ? 0.34 : 0.2, 0, '#e8f2ff', dirX * 26, dirZ * 26, 1, null, 0.66);
+    }
+  },
   _onBombFieldEnded(p) { return this._emitBombMaterial('bombs:fieldEnded', p); },
   _onBombDestroyed(p) { return this._emitBombMaterial('bombs:destroyed', p); },
 
@@ -10734,9 +10807,18 @@ export const vfx = {
     req.y = NaN;
     req.classId = 'ordinary';
     req.radius = Math.max(2, Number(victim && victim.radius) || 6);
-    req.dirX = Math.cos(axisAngle);
-    req.dirZ = Math.sin(axisAngle);
-    req.hasDir = 0;
+    // SFQ-B183 — a signed throw rides the burst's directional channel (hasDir = 1); the unsigned
+    // axis keeps the unoriented read, exactly as before.
+    const reqThrow = collisionThrowRead(p);
+    if (reqThrow.signed) {
+      req.dirX = reqThrow.x;
+      req.dirZ = reqThrow.z;
+      req.hasDir = 1;
+    } else {
+      req.dirX = Math.cos(axisAngle);
+      req.dirZ = Math.sin(axisAngle);
+      req.hasDir = 0;
+    }
     req.velX = victim && victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
     req.velY = victim && victim.vel && Number.isFinite(victim.vel.y) ? victim.vel.y : 0;
     req.velZ = victim && victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
@@ -10765,15 +10847,18 @@ export const vfx = {
         || 0;
       const seatSeverity = Math.max(0.06, Math.min(0.95, 0.06 + seatDp / 14000));
       this._noteHullScarFromContact(p, -seatNz, seatNx, seatSeverity);
-      _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
-      _impactOpts.serial = this._collisionPatternSerial(p);
-      _impactOpts.targetId = p.aId ?? p.targetId ?? null;
-      _impactOpts.eventClass = collisionEventClass(seatSeverity);
-      _impactOpts.priority = 0.3 + seatSeverity * 0.4;
-      _impactOpts.hero = false;
-      this._composeImpact(
-        p.pos.x, 0.2, p.pos.z, seatNx, 0, seatNz, false, seatSeverity, 'hull', 1.6, _impactOpts,
-      );
+      // No impact-beats composition at the seat. The collision receipt's structural answer is the
+      // ONE family burst below — arcs and shards on a tumble, nothing on a stagger (the arbiter's
+      // verdict; a stag composing a graze sheet here leaked blades the family does not own). And
+      // every consequence-bearing contact carries a physics:impact sibling whose low-contact rung
+      // already owns the graze/slam/breakup matter ladder, so a seat compose double-spawned the
+      // pools for real contacts. Matter seat, scar, light and throw spray still draw.
+      // SFQ-B183 — a signed throw names which way the contact THREW the hull: this additive fan
+      // draws only the thrown side at the receipt contact point, so the shove's displacement has
+      // a visible cause before the drift begins. Unsigned receipts draw nothing — no direction,
+      // no fan.
+      const seatThrow = collisionThrowRead(p);
+      if (seatThrow.signed) this._spawnCollisionThrowSpray(p, seatThrow);
       // Keep receipt admission/audio and the separate physical debris event. Geometry
       // now maps body extent and closing speed, never dimensionless camera trauma.
       if (p.control === 'tumble') {
@@ -10808,10 +10893,16 @@ export const vfx = {
     const axisX = Math.cos(axisAngle), axisZ = Math.sin(axisAngle);
     const tx = -axisZ, tz = axisX;
     const terrain = p.surface === 'terrain';
-    // No signed causal direction exists at this rung. Opposed compression bars and tangent fans
-    // present the receipted contact axis without pretending either normal half is outward.
+    // SFQ-B183 — the axis stays the presentation spine. Without a signed throw, the opposed bars
+    // and tangent fans present the receipted contact axis without pretending either normal half
+    // is outward. With one, the fan collapses to the thrown side: the spray names the direction
+    // the hull was actually thrown, and nothing is drawn on the unthrown half.
+    const fallbackThrow = collisionThrowRead(p);
+    const sides = fallbackThrow.signed
+      ? [Math.sign(Math.cos(fallbackThrow.angle) * axisX + Math.sin(fallbackThrow.angle) * axisZ) || 1]
+      : [-1, 1];
     const puffsPerSide = reduced ? 1 : (hard ? 3 : 2);
-    for (const side of [-1, 1]) {
+    for (const side of sides) {
       this._spawnSprite(SPR_FLASH,
         pos.x + axisX * side * 0.08 * authoredScale, 0,
         pos.z + axisZ * side * 0.08 * authoredScale,
@@ -10887,8 +10978,51 @@ export const vfx = {
     return true;
   },
 
-  // Deterministic paired debris from the receipt. SG-02 supplies an unoriented contact axis, so
-  // fragments leave in opposed pairs; choosing one normal half would fabricate causality.
+  // SFQ-B183 — the one-sided displacement read, shared by the seat and fallback rungs of
+  // _onCollisionConsequence. Streaks and dust leave ALONG the signed throw, anchored at the
+  // receipt contact point; reduced motion shortens travel and keeps the counts. Never called
+  // for an unsigned receipt — no throw, no fan.
+  _spawnCollisionThrowSpray(p, throwRead) {
+    if (!this._scene || !p || !p.pos || !throwRead || !throwRead.signed) return false;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
+    const pos = p.pos;
+    const serial = this._collisionPatternSerial(p);
+    const terrain = p.surface === 'terrain';
+    const tx = -throwRead.z, tz = throwRead.x;
+    const streaks = reduced ? 1 : 2;
+    for (let k = 0; k < streaks; k++) {
+      const spread = explosionPatternSigned(serial, 'throw', k, 41) * 0.38;
+      const angle = throwRead.angle + spread;
+      const cx = Math.cos(angle), cz = Math.sin(angle);
+      this._spawnProjectileTrailStreak(
+        pos.x + cx * 0.08, 0.18, pos.z + cz * 0.08,
+        reduced ? 0.26 : 0.4,
+        (reduced ? 0.07 : 0.1) * 1.2,
+        (reduced ? 2.4 : 4.4) * 1.2,
+        (reduced ? 0.3 : 0.58) * acc.flashOpacityScale,
+        terrain ? '#f0d0a0' : '#d4e6f5',
+        cx * (reduced ? 5 : 11), cz * (reduced ? 5 : 11),
+        cx, cz,
+      );
+    }
+    const puffs = reduced ? 1 : 3;
+    for (let k = 0; k < puffs; k++) {
+      const spread = (k - (puffs - 1) * 0.5) * 0.42;
+      const vx = throwRead.x * 12 + tx * spread * 12;
+      const vz = throwRead.z * 12 + tz * spread * 12;
+      this._spawnSprite(SPR_PUFF,
+        pos.x + throwRead.x * 0.12, 0.05, pos.z + throwRead.z * 0.12,
+        0.5, 1.4, 3.6,
+        0.4 * acc.flashOpacityScale, 0.0, terrain ? '#c9a878' : '#aac4e0', vx, vz,
+        1.8, Math.atan2(vz, vx));
+    }
+    return true;
+  },
+
+  // Deterministic paired debris from the receipt. The contact axis is oriented aId→bId now
+  // (SFQ-B183), but the aftermath stays deliberately bilateral: chips fly both ways off a
+  // compression, and a debris half chosen by pair order would still be causality theater.
   _onCollisionDebris(p) {
     if (!this._scene || !p || !p.pos || !this._consumeMediumCollision(p)) return false;
     const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
@@ -15987,6 +16121,7 @@ export const vfx = {
     const pos = this._pPos, col = this._pCol, size = this._pSize, alpha = this._pAlpha;
     const active = this._activeParticles;
     const packedSlots = this._pPackedParticleSlots;
+    const admissionSerials = this._particleAdmissionSerial;
     let cursor = 0;
     while (cursor < this._liveCount) {
       const i = active[cursor];
@@ -16014,8 +16149,10 @@ export const vfx = {
       col[i3] = this._cr0[i] + (this._cr1[i] - this._cr0[i]) * t;
       col[i3 + 1] = this._cg0[i] + (this._cg1[i] - this._cg0[i]) * t;
       col[i3 + 2] = this._cb0[i] + (this._cb1[i] - this._cb0[i]) * t;
-      size[cursor] = this._size0[i] + (this._size1[i] - this._size0[i]) * t;
-      alpha[cursor] = 1 - t;
+      let seed = admissionSerials ? (admissionSerials[i] * 0.618033988749895) % 1 : 0.5;
+      if (seed < 0) seed += 1;
+      size[cursor] = particleLifeSize(this._size0[i], this._size1[i], t);
+      alpha[cursor] = particleLifeAlpha(t, seed);
       if (!packedSlots || packedSlots[cursor] !== i) {
         this._pTrailAxis[cursor] = this._particleTrailAxis[i];
         this._pTrailStretch[cursor] = this._particleTrailStretch[i];
@@ -16062,7 +16199,10 @@ export const vfx = {
       s.x += s.vx * dt;
       s.z += s.vz * dt;
       const scale = s.size0 + (s.size1 - s.size0) * t;
-      const op = s.op0 * (1 - t * 0.85);
+      // Hold the authored streak brightness, then erode the final stretch to nothing:
+      // the streak runs out of material instead of popping out while still 15% visible.
+      const erode = t < 0.55 ? 1 : 1 - smoothstep01((t - 0.55) / 0.45);
+      const op = s.op0 * (1 - t * 0.85) * erode;
       this._writeTrailStreakInstance(i, cursor, scale, op);
       cursor++;
     }
@@ -16094,9 +16234,13 @@ export const vfx = {
       if (t >= 1) { this._retireSprite(i); continue; }
       let scale, op;
       if (s.kind === SPR_RING) {
-        const e = easeOutCubic(t);
+        // A shock front arrives early, then cools in place: it reaches its radius while
+        // radiance is still falling, instead of expanding at full brightness to a uniform
+        // fade that dies exactly at maximum extent. Per-seed timing desynchronizes
+        // simultaneous rings so they never share one terminal beat.
+        const e = easeOutCubic(Math.min(1, t * (1.25 + 0.5 * s.seed)));
         scale = s.size0 + (s.size1 - s.size0) * e;
-        op = s.op0 * (1 - t);
+        op = s.op0 * Math.pow(1 - t, 1.15 + 0.5 * s.seed);
       } else if (s.kind === SPR_FRESNEL) {
         // shield ripple: snap out to full radius fast (rim feel), then a short bright pulse fade
         const e = easeOutCubic(Math.min(1, t * 2.2));
@@ -16105,7 +16249,9 @@ export const vfx = {
         op = s.op0 * (1 - t) * (0.6 + 0.4 * Math.cos(t * Math.PI * 3));
         if (op < 0) op = 0;
       } else if (s.kind === SPR_PUFF) {
-        scale = s.size0 + (s.size1 - s.size0) * t;
+        // Billow then settle: dust reaches most of its dilution early and hangs as a
+        // residual volume, instead of expanding at constant rate until the frame it dies.
+        scale = s.size0 + (s.size1 - s.size0) * spritePuffGrowth(t, s.seed);
         op = s.op0 + (s.op1 - s.op0) * t;
         s.x += s.vx * dt; s.z += s.vz * dt;
       } else if (s.kind === SPR_COMBUSTION) {
@@ -16180,7 +16326,7 @@ export const vfx = {
     for (let orderIndex = 0; orderIndex < smokeCount; orderIndex++) {
       const s = st[smokeOrder[orderIndex]];
       const t = s.age / s.life;
-      const scale = s.size0 + (s.size1 - s.size0) * t;
+      const scale = s.size0 + (s.size1 - s.size0) * spritePuffGrowth(t, s.seed);
       writeInstancedSpriteFields(
         this._spriteBatches,
         'smoke',
@@ -16843,6 +16989,40 @@ function disposeVfxRoot(root, state) {
 
 function dirOf(rot) { return { x: Math.cos(rot), z: Math.sin(rot) }; }
 function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+function smoothstep01(x) {
+  const t = x < 0 ? 0 : x > 1 ? 1 : x;
+  return t * t * (3 - 2 * t);
+}
+
+// Pooled-particle lifecycle: ignition is instant (a hit has no spool-up), radiance holds
+// while the fragment is compact and hot, then material erodes to nothing exactly at the
+// retirement plane. The stable per-element seed staggers hold and cooling rate, so a burst
+// thins out as fragments run out at different moments instead of blinking off together.
+function particleLifeAlpha(t, seed) {
+  const hold = 0.08 + 0.14 * seed;
+  if (t <= hold) return 1;
+  const u = (t - hold) / (1 - hold);
+  return u >= 1 ? 0 : Math.pow(1 - u, 1.5 + 1.4 * seed);
+}
+
+// Matter rhythm follows what the fragment is: dispersing matter (smoke, dust) billows out
+// fast then settles into its residual volume; a cooling fragment holds its size while hot,
+// then collapses late. Authored size0->size1 direction selects the curve.
+function particleLifeSize(size0, size1, t) {
+  if (size1 > size0) {
+    const g = 1 - (1 - t) * (1 - t);
+    return size0 + (size1 - size0) * g;
+  }
+  if (size1 < size0) {
+    const s = Math.pow(1 - t, 1.8);
+    return size1 + (size0 - size1) * s;
+  }
+  return size0;
+}
+
+// Smoke/dust billow shared by both sprite publish passes: fast early dilation, settling
+// tail, with per-seed rate so simultaneous puffs never dilate in lockstep.
+function spritePuffGrowth(t, seed) { return 1 - Math.pow(1 - t, 1.6 + seed); }
 
 function budgetInt(value) {
   const n = Number(value);

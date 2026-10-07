@@ -40,9 +40,9 @@ for (const [label] of requiredRows) {
     `Controls shortcut reference must label ${label}`);
 }
 
-assert.match(settingsSource, /Fixed ship\/system shortcuts are listed below/,
+assert.match(settingsSource, /Fixed shortcuts are listed below/,
   'Controls intro should explain why fixed shortcuts appear beside rebinds');
-assert.match(settingsSource, /Flight keys above are rebindable here; these interface shortcuts follow the shared binding registry\./,
+assert.match(settingsSource, /Flight keys above can be rebound here\. These interface shortcuts are for reference\./,
   'Controls footer should distinguish rebindable flight keys from fixed interface keys');
 assert.match(settingsSource, /Massline: tap latch\/cut; hold line control/,
   'Settings must name the live Massline tap/hold grammar');

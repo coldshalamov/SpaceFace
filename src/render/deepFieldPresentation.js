@@ -171,10 +171,13 @@ export function installDeepFieldPresentation(Background) {
         deepFieldPresentation: 'clip-proof-fractured-v1',
         skyCarrierTriangles: 1,
         voidTextureBytes: rgbaMipBytes(DEEP_FIELD_VOID_SIZE),
-        clearSectorTextureReads: this._paintedSkyStrength > 0 ? 2 : 1,
+        clearSectorTextureReads: 1
+          + (this._skyBaseStrength > 0 ? 1 : 0)
+          + (this._paintedSkyStrength > 0 ? 1 : 0),
         // Read the live plate. This was hardcoded to the Helios plate, which stopped being true
         // the moment the sky became regional.
         paintedSky: this._paintedSkyStrength > 0 ? (this.deepSkyPlates?.activeId || null) : null,
+        skyBase: this._skyBaseStrength > 0 ? (this.deepSkyBases?.activeId || null) : null,
       };
     };
   }

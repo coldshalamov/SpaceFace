@@ -26,7 +26,7 @@ const PHRASES = Object.freeze({
   'Settings': L('Ajustes', 'Réglages', 'Einstellungen', 'Configurações'),
   'Signal Archive': L('Archivo de señales', 'Archive des signaux', 'Signalarchiv', 'Arquivo de sinais'),
   'Continue: {summary}': L('Continuar: {summary}', 'Continuer : {summary}', 'Fortsetzen: {summary}', 'Continuar: {summary}'),
-  'No save found - New Game opens Contract 47-A in Helios.': L(
+  'No save found — New Game opens Contract 47-A in Helios.': L(
     'No hay partida — Nueva partida abre el Contrato 47-A en Helios.',
     'Aucune sauvegarde — Nouvelle partie ouvre le Contrat 47-A à Helios.',
     'Kein Spielstand — Neues Spiel öffnet Vertrag 47-A in Helios.',
@@ -92,7 +92,7 @@ const PHRASES = Object.freeze({
   JETTISON: L('ABANDONAR', 'JETER', 'ABWERFEN', 'ALIJAR'),
   'LOCK: PERSISTENT': L('BLOQUEO: PERSISTENTE', 'VERROU : PERSISTANT', 'LOCK: DAUERHAFT', 'TRAVA: PERSISTENTE'),
   'Catalog Supply Chain': L('Cadena de suministro del catálogo', 'Chaîne d’approvisionnement du catalogue', 'Katalog-Lieferkette', 'Cadeia de suprimentos do catálogo'),
-  'Are you sure you want to jettison {qty}x {name}? This action is permanent.': L(
+  'Are you sure you want to jettison {qty}× {name}? This action is permanent.': L(
     '¿Seguro que quieres alijar {qty}× {name}? Esta acción es permanente.',
     'Jeter {qty}× {name} ? Cette action est définitive.',
     '{qty}× {name} abwerfen? Das ist endgültig.',
@@ -119,7 +119,7 @@ const PHRASES = Object.freeze({
     'Alvo selecionado: {rec_name}',
   ),
   'WEAPONS VENTING': L('ARMAS VENTEANDO', 'ARMES EN PURGE', 'WAFFEN ENTLÜFTEN', 'ARMAS VENTILANDO'),
-  'Jettisoned {dumped}x {name}': L(
+  'Jettisoned {dumped}× {name}': L(
     'Alijado {dumped}× {name}',
     'Jeté {dumped}× {name}',
     '{dumped}× {name} abgeworfen',
@@ -142,6 +142,7 @@ const PHRASES = Object.freeze({
   LEGAL: L('LEGAL', 'LÉGAL', 'LEGAL', 'LEGAL'),
   EXOTIC: L('EXÓTICO', 'EXOTIQUE', 'EXOTISCH', 'EXÓTICO'),
   BAND: L('BANDA', 'BANDE', 'BAND', 'BANDA'),
+  RADIO: L('RADIO', 'RADIO', 'FUNK', 'RÁDIO'),
   FRAGILE: L('FRÁGIL', 'FRAGILE', 'ZERBRECHLICH', 'FRÁGIL'),
   'SET COURSE': L('FIJAR RUMBO', 'CAP À SUIVRE', 'KURS SETZEN', 'DEFINIR RUMO'),
   'Emergency recovery online…': L(

@@ -4,18 +4,19 @@ import { createSaveStage } from '../views/saveFrame.js';
 // (src/ui/orrery/saveFilmstrip.js), each save a frame of its hull on its own station, an empty slot an
 // open station; the amber Hand swings along the rail to the chosen save. Its hull stands alone on the
 // glass; beside it the page of its record (where, how rich, how long, when, and the hull's scars,
-// titles, rap sheet and grudge): the credits roll, the readings decrypt, and its one primary verb is
+// yard repairs, titles, rap sheet and grudge): the credits roll, the readings decrypt, and its one primary verb is
 // the Lamp Key (composition: src/ui/orrery/saveLayouts.js). Keys for Load / Save here / Delete / Export /
 // Import / Back; every slot and confirm stays reachable. UI emits game:save/game:load {slot}; the save system owns persistence. Slot index
 // is read defensively from the save system's public API if present, else from localStorage
 // (manifest: SaveLoadScreen reads sf.save.index).
 
-import { livingHullScars } from '../../core/livingHull.js';
+import { livingHullPatchedScars, livingHullScars, normalizeLivingHull } from '../../core/livingHull.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { SHIPS } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
+import { wantedClearClause } from '../wantedReason.js';
 import { confirm } from '../confirm.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
 import { decorateEntityNode } from '../entityResolver.js';
@@ -198,7 +199,7 @@ function paintSlotRow(row, selected) {
 }
 
 export const SAVE_PORTRAIT_SEED = 15610;
-export const SAVE_PORTRAIT_FIELDS = Object.freeze(['hull', 'scars', 'titles', 'rapSheet', 'grudge']);
+export const SAVE_PORTRAIT_FIELDS = Object.freeze(['hull', 'scars', 'repairs', 'titles', 'rapSheet', 'grudge']);
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -590,6 +591,33 @@ function buildScarsField(livingHull, meta) {
   return { count: 0, open: 0, patched: 0, line: portraitLine(meta && meta.scars, 'Clean plates') };
 }
 
+function countPhrase(n, singular, plural) {
+  const count = Math.max(0, Math.floor(Number(n) || 0));
+  const word = count < COUNT_WORDS.length ? COUNT_WORDS[count] : String(count);
+  return word + ' ' + (count === 1 ? singular : plural);
+}
+
+/** Yard repairs are the living hull's repair count, plus scars the yard already covered. */
+function buildRepairsField(livingHull, meta) {
+  if (!livingHull || typeof livingHull !== 'object' || Array.isArray(livingHull)) {
+    return {
+      repairPatches: 0,
+      patchedScars: 0,
+      line: portraitLine(meta && meta.repairs, 'No yard repairs'),
+    };
+  }
+  const hull = normalizeLivingHull(livingHull, 0);
+  const patches = hull.repairPatches;
+  const patched = livingHullPatchedScars(hull);
+  if (!patches && patched.length === 0) {
+    return { repairPatches: 0, patchedScars: 0, line: 'No yard repairs' };
+  }
+  const parts = [];
+  if (patches) parts.push(countPhrase(patches, 'yard repair', 'yard repairs'));
+  if (patched.length) parts.push(countPhrase(patched.length, 'scar patched', 'scars patched'));
+  return { repairPatches: patches, patchedScars: patched.length, line: parts.join(' · ') };
+}
+
 function buildTitlesField(story, meta) {
   const names = collectPlayerTitles(story);
   if (names.length) return { names, line: names.join(' · ') };
@@ -603,7 +631,11 @@ function buildRapSheetField(player, meta) {
   const bounty = Number(player && player.bounty);
   const info = wantedTierInfo(Number.isFinite(heat) ? heat : 0);
   const parts = [];
-  if (info && info.id && info.id !== WANTED_TIER.NONE) parts.push(info.label);
+  if (info && info.id && info.id !== WANTED_TIER.NONE) {
+    parts.push(info.label);
+    const clock = wantedClearClause(Number.isFinite(heat) ? heat : 0).replace(/^ · /, '');
+    if (clock) parts.push(clock);
+  }
   if (Number.isFinite(bounty) && bounty > 0) parts.push(fmtCredits(bounty) + ' bounty');
   if (parts.length) return { tier: info.id, heat: Number.isFinite(heat) ? heat : 0, bounty: bounty || 0, line: parts.join(' · ') };
   return {
@@ -627,7 +659,7 @@ function buildGrudgeField(memory, meta) {
   return { aceId: null, name: '', returnTier: 0, line: portraitLine(meta && meta.grudge, 'No one hunts you') };
 }
 
-/** Headless model of the load-stage portrait: hull + scars + titles + rap sheet + grudge. */
+/** Headless model of the load-stage portrait: hull + scars + repairs + titles + rap sheet + grudge. */
 export function buildSavePortrait(source = {}) {
   const data = unwrapSaveData(source.data || source.envelope || source.save);
   const state = source.state && typeof source.state === 'object' && !Array.isArray(source.state)
@@ -652,6 +684,7 @@ export function buildSavePortrait(source = {}) {
   return {
     hull: { id: defId, name: hullName, fittings, line: hullName },
     scars: buildScarsField(ship && ship.livingHull, meta),
+    repairs: buildRepairsField(ship && ship.livingHull, meta),
     titles: buildTitlesField(story, meta),
     rapSheet: buildRapSheetField(player, meta),
     grudge: buildGrudgeField(aceMemory, meta),
@@ -682,6 +715,7 @@ export function paintSavePortrait(nodes, portrait) {
   if (!nodes || !portrait) return portrait;
   paintEntityLine(nodes.hull, portrait.hull && portrait.hull.id ? 'hull:' + portrait.hull.id : null, portrait.hull.line);
   if (nodes.scars) nodes.scars.textContent = portrait.scars.line;
+  if (nodes.repairs) nodes.repairs.textContent = portrait.repairs.line;
   if (nodes.titles) nodes.titles.textContent = portrait.titles.line;
   if (nodes.rapSheet) nodes.rapSheet.textContent = portrait.rapSheet.line;
   paintEntityLine(nodes.grudge, portrait.grudge && portrait.grudge.aceId ? 'captain:' + portrait.grudge.aceId : null, portrait.grudge.line);
@@ -775,7 +809,7 @@ export const saveLoadScreen = {
       },
     }) : null;
 
-    const { stage, caption, shipName, portrait, scars, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
+    const { stage, caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
     stage.classList.add('sf-save-stage');
     caption.classList.add('sf-save-ledger');
     // The slot card's name is a content header (the header voice, set by the sheet), not a title.
@@ -796,7 +830,7 @@ export const saveLoadScreen = {
     facts.setAttribute('aria-label', 'Save facts');
     caption.insertBefore(facts, portrait);
     portrait.prepend(el('p', 'sf-ledger-head', 'Hull record'));
-    for (const [node, label] of [[scars, 'Scars'], [titles, 'Titles'], [rapSheet, 'Rap sheet'], [grudge, 'Grudge']]) {
+    for (const [node, label] of [[scars, 'Scars'], [repairs, 'Repairs'], [titles, 'Titles'], [rapSheet, 'Rap sheet'], [grudge, 'Grudge']]) {
       if (!node) continue;
       const line = el('div', 'sf-ledger-line');
       portrait.insertBefore(line, node);
@@ -893,7 +927,7 @@ export const saveLoadScreen = {
 
     refs = {
       root: rootEl, title, heading, vacantWord, sub, hang, stage, foot, list: null, orr, factCells: null, arrive: false,
-      caption, shipName, portrait, scars, titles, rapSheet, grudge,
+      caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
       cancelHullRelease, unsubLoading, unsubStartFailed, unsubLoadFailed, unsubSynced, unsubValidated, unsubCompleted,
@@ -1097,7 +1131,7 @@ export const saveLoadScreen = {
       occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : 'Empty slot');
     if (occupied && portrait) {
       paintSavePortrait({
-        scars: refs.scars, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,
+        scars: refs.scars, repairs: refs.repairs, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,
       }, portrait);
       if (!refs.portrait.parentNode) refs.caption.insertBefore(refs.portrait, refs.actions);
     } else if (refs.portrait.parentNode) {

@@ -244,6 +244,29 @@ test('Wave B11: practice launch applies through the sandbox hook without a dev f
   }
 });
 
+test('Wave B11: an ordinary New Game is not the physics toy while a Sandbox screen is mounted', () => {
+  // The Sandbox screen is prewarmed hidden on every title visit, so a mounted screen is the normal
+  // state. Only the practice button or a pending Sandbox launch may turn the next game into the toy.
+  const { doc, makeNode } = createDomStub();
+  const prevDoc = globalThis.document;
+  globalThis.document = doc;
+  try {
+    const harness = createLabHarness();
+    const ctx = { ...harness.ctx, registry: { get() { return null; } } };
+    assert.equal(ensurePhysicsLabRoute(ctx), true);
+    const lab = mountCrucibleLabControls(ctx, makeNode('div')); // the prewarmed, hidden lab form
+    ctx.state.sandbox = false;
+    ctx.bus.emit('game:new', {});
+    ctx.bus.emit('game:started');
+    assert.notEqual(ctx.state.sandbox, true, 'a plain New Game must be the adventure, not the toy');
+    ctx.bus.emit('game:exitToMenu');
+    lab.dispose();
+  } finally {
+    sandboxScreen.onHide();
+    globalThis.document = prevDoc;
+  }
+});
+
 test('Wave B11: the lab is on the front door, not behind a dev flag', () => {
   const menu = readFileSync(fileURLToPath(new URL('../src/ui/screens/mainMenu.js', import.meta.url)), 'utf8');
   const door = readFileSync(fileURLToPath(new URL('../src/ui/screens/crucible.js', import.meta.url)), 'utf8');

@@ -664,7 +664,7 @@ export function applyTurretEdgeEffects(entity, doctrine, state) {
     setThrusterHealth(entity, 'rcs-starboard', 0.4);
     const bus = state && state.bus;
     if (bus && typeof bus.emit === 'function') {
-      bus.emit('toast', { text: 'Iron Maw\'s bow plate is torn — cross the prow!', kind: 'warn', ttl: 3 });
+      bus.emit('toast', { text: 'Iron Maw\'s bow plate is torn — cross the prow.', kind: 'warn', ttl: 3 });
       bus.emit('audio:cue', { id: 'combat.subsystem.disabled' });
     }
   }

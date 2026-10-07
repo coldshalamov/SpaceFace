@@ -38,6 +38,21 @@ export const MASSLINE_PITCH_RATE_MIN = 0.82;
 export const MASSLINE_PITCH_RATE_SPAN = 0.70;
 export const MASSLINE_REEL_COOLDOWN_TICKS = 12;
 
+// CV-THROW — the ear learns the cut. Everywhere else this instrument maps energy to pitch
+// (tension→rate, strain→grit); a release's *grade* is the energy the cut kept, so the snap
+// climbs the same ladder: a razor rings highest and brightest, a merely-good cut lands flat.
+// Messy/unclassified releases never reach this table — the owned snap speaks for them.
+export const MASSLINE_RELEASE_GRADE_RATE = Object.freeze({ razor: 1.45, clean: 1.18, good: 0.94 });
+export const MASSLINE_RELEASE_GRADE_GAIN = Object.freeze({ razor: 0.85, clean: 0.78, good: 0.7 });
+function releaseGradeRate(klass) {
+  const r = MASSLINE_RELEASE_GRADE_RATE[klass];
+  return Number.isFinite(r) ? r : MASSLINE_RELEASE_GRADE_RATE.good;
+}
+function releaseGradeGain(klass) {
+  const g = MASSLINE_RELEASE_GRADE_GAIN[klass];
+  return Number.isFinite(g) ? g : MASSLINE_RELEASE_GRADE_GAIN.good;
+}
+
 function clamp(v, lo, hi) {
   const n = Number(v);
   if (!Number.isFinite(n)) return lo;
@@ -174,7 +189,7 @@ export function resolveMasslineInstrument(input = {}) {
   const caption = MASSLINE_CAPTIONS[event];
   const rate = event === 'strain' || event === 'reel'
     ? masslinePitchRate(event === 'reel' ? Math.min(1, reelDelta(input) * 4 + tension) : tension)
-    : event === 'release' ? 1.18
+    : event === 'release' ? releaseGradeRate(klass)
       : event === 'break' ? 0.92
         : event === 'bridle' ? 1.0
           : 1.0;
@@ -191,7 +206,7 @@ export function resolveMasslineInstrument(input = {}) {
     grit: Math.round(grit * 1000) / 1000,
     humHz: Math.round(masslineHumHz(strain) * 100) / 100,
     gain: event === 'break' ? 0.92
-      : event === 'release' ? 0.78
+      : event === 'release' ? releaseGradeGain(klass)
         : event === 'reel' ? 0.42 + grit * 0.28
           : event === 'bridle' ? 0.7
             : event === 'strain' ? 0.55 + grit * 0.3

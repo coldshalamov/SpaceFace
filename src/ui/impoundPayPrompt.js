@@ -23,7 +23,9 @@
 // can never charge.
 
 import { getPromptDeck } from './promptDeck.js';
+import { wantedClearClause } from './wantedReason.js';
 import { SECTORS } from '../data/sectors.js';
+import { isPlayerWanted } from '../systems/heat.js';
 
 const DECK_ID = 'impound-pay';
 const FINE_DECK_ID = 'law-fine';
@@ -183,8 +185,6 @@ export const impoundPayPrompt = {
     const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
     if (!deck) return;
     const amount = Math.max(0, Math.round(Number(offer.amount) || 0));
-    const credits = Math.max(0, Math.round(Number(state && state.player && state.player.credits) || 0));
-    const short = amount > credits;
     const name = stationNameForDeck(offer.stationId) || 'STATION';
     deck.offerDecision({
       id: FINE_DECK_ID,
@@ -192,9 +192,7 @@ export const impoundPayPrompt = {
       sender: `${name} LAW DESK`,
       statusFlag: 'WANTED',
       headline: `FINE ${amount} CR`,
-      detail: offer.status === 'working'
-        ? `The shift is running against the bill — stay on the lane while it accrues, or wire the ${amount} cr and walk.`
-        : `The warrant rides your transponder. Wire the ${amount} cr, work the desk's shift, or carry the warrant — the next lawful berth will ask again.${short ? ` You hold ${credits} cr.` : ''}`,
+      detail: fineWarrantDetail(offer, state),
       choices: [
         { id: 'pay', label: `PAY ${amount} CR`, title: 'Wire the desk its fine — the warrant clears. The engine re-checks credits; a short account is refused, never charged.' },
         { id: 'work', label: 'WORK THE DEBT', title: 'A short lawful shift accrues against the bill — no credits needed, just the clock.' },
@@ -257,6 +255,22 @@ export const impoundPayPrompt = {
     this._dismissFine(true);
   },
 };
+
+// The law-desk card's warrant line. At or above the wanted threshold the same
+// clear clock as the flight alert is appended; below it the clause is empty.
+export function fineWarrantDetail(offer, state) {
+  const amount = Math.max(0, Math.round(Number(offer && offer.amount) || 0));
+  const credits = Math.max(0, Math.round(Number(state && state.player && state.player.credits) || 0));
+  const short = amount > credits;
+  const heat = state && state.player ? state.player.heat : 0;
+  const clock = (typeof heat === 'number' && isPlayerWanted({ player: { heat } }))
+    ? wantedClearClause(heat)
+    : '';
+  if (offer && offer.status === 'working') {
+    return `The shift is running against the bill — stay on the lane while it accrues, or wire the ${amount} cr and walk.${clock}`;
+  }
+  return `The warrant rides your transponder. Wire the ${amount} cr, work the desk's shift, or carry the warrant — the next lawful berth will ask again.${short ? ` You hold ${credits} cr.` : ''}${clock}`;
+}
 
 // Station display name for the card sender — authored geography first, else a bare desk.
 // Same lookup precedent as barkDirector's stationNameFor.

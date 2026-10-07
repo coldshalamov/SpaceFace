@@ -11,11 +11,23 @@ import {
 import { physicalMissionVariantFor } from '../data/missions.js';
 import { serializableMissionCondition } from '../data/missionConditions.js';
 import { getRegionalEcologyProfile } from '../data/regionalEcology.js';
+import { SECTORS } from '../data/sectors.js';
 
 const RECEIPT_CAP = 96;
 const SETTLED_CAP = 96;
 const REFRESH_SECONDS = 600;
 const RUN_STATUS = Object.freeze({ READY: 'ready', OFFERED: 'offered', ACTIVE: 'active', RECOVERING: 'recovering', COMPLETED: 'completed' });
+
+// station id → authored name, resolved from the same SECTORS graph missions.js reads. The chain's
+// settlement voice names the place the next leg posts — a real place, never a raw id.
+const STATION_NAMES = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) STATION_NAMES.set(station.id, station.name);
+}
+
+function stationNameFor(stationId) {
+  return (stationId && STATION_NAMES.get(stationId)) || null;
+}
 
 function clonePlain(value) {
   return JSON.parse(JSON.stringify(value == null ? null : value));
@@ -406,7 +418,64 @@ export const careerContracts = {
       run.attempt += 1;
       run.status = RUN_STATUS.RECOVERING;
     }
+    this._settleChainComms(def, run, stage, completed);
     return true;
+  },
+
+  /**
+   * The chain's own voice at the moment a leg settles.
+   *
+   * Missions' settlement debrief is generic per mission type ("Manifest sealed at …"), so a career
+   * chain used to go dark exactly when the player needed steering: nothing said where the next leg
+   * posts, that a failed leg re-posts at its home board instead of dying, or that clearing the
+   * third leg moved the sector (the consequence the sectorsim impulse actually applies). This emits
+   * ONE comms:popup per settlement, in the chain's own channel, from lines the catalog already
+   * authors — the offered leg's recovery copy on a failure, the next leg's title and board on a
+   * mid-chain success, and the authored sector consequence on a chain close. It reads state the
+   * settle just wrote (post-increment stageIndex / attempt), so the sentence can never contradict
+   * the offer the board posts next.
+   */
+  _settleChainComms(def, run, settledStage, completed) {
+    if (!this.bus?.emit || !def || !settledStage) return;
+    if (completed && run.status === RUN_STATUS.COMPLETED) {
+      const reopen = stationNameFor(def.stages[0] && def.stages[0].boardStationId) || 'its origin board';
+      this.bus.emit('comms:popup', {
+        sender: def.title,
+        factionId: def.actor.factionId,
+        text: `That closes ${def.title}. ${def.consequence} It reopens at ${reopen} next board cycle.`,
+        category: 'personal',
+        ttl: 8,
+      });
+      return;
+    }
+    if (completed) {
+      const nextStage = def.stages[run.stageIndex] || null;
+      if (!nextStage) return; // unreachable by the settle rules, but a live sim path never throws
+      const board = stationNameFor(nextStage.boardStationId) || 'the board';
+      const legWord = `${run.completedStages.length}/${def.stages.length}`;
+      this.bus.emit('comms:popup', {
+        sender: def.title,
+        factionId: def.actor.factionId,
+        text: `Leg ${legWord} of ${def.title} cleared. The next leg — ${nextStage.title} — posts at ${board}.`,
+        category: 'personal',
+        ttl: 8,
+      });
+      return;
+    }
+    // The catalog's recovery copy usually names the re-post place in its own words ("the tow leg
+    // re-posts at Tethys Trade Hub"); appending the board again right after that reads as a
+    // stutter. The mechanical pointer joins only when the authored sentence does not already name it.
+    const board = stationNameFor(settledStage.boardStationId);
+    const rePost = board && !String(settledStage.recoveryText).includes(board)
+      ? ` The failed leg re-posts at ${board}.`
+      : '';
+    this.bus.emit('comms:popup', {
+      sender: def.title,
+      factionId: def.actor.factionId,
+      text: settledStage.recoveryText + rePost,
+      category: 'trap',
+      ttl: 7,
+    });
   },
 
   destroy() {

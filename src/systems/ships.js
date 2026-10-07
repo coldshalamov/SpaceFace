@@ -2015,7 +2015,16 @@ export const ships = {
     if (!node) return false;
     const p = this.state.player;
     if (!this.researchable(nodeId)) {
-      this.bus.emit('toast', { text: 'Cannot research ' + (node.name || nodeId), kind: 'error', ttl: 3 });
+      // Name the blocker: a bare "Cannot research X" leaves the player guessing which of the
+      // four gates (already done, prerequisite, credits, RP) closed it.
+      const name = node.name || nodeId;
+      const missingPre = (node.prereqs || []).filter((pre) => !p.researchedNodes.includes(pre));
+      let text = 'Cannot research ' + name;
+      if (p.researchedNodes.includes(nodeId)) text = name + ' is already researched';
+      else if (missingPre.length) text = 'Research ' + missingPre.map((pre) => (TECH_BY_ID.get(pre) || {}).name || pre).join(' and ') + ' first';
+      else if (p.credits < node.cost.credits) text = 'Need ' + Math.ceil(node.cost.credits - p.credits).toLocaleString('en-US') + ' more cr to research ' + name;
+      else if ((p.researchPoints || 0) < node.cost.rp) text = 'Need ' + Math.ceil(node.cost.rp - (p.researchPoints || 0)).toLocaleString('en-US') + ' more RP to research ' + name;
+      this.bus.emit('toast', { text, kind: 'error', ttl: 3 });
       return false;
     }
     // spend: credits via economy (single writer §0.6); RP is ours to deduct.
@@ -2464,11 +2473,25 @@ export const ships = {
   },
 
   unfitModule({ shipIndex, slotIndex }) {
+    // Research G / P08 residual — a refused unfit travels the SAME authoritative outcome channel
+    // as a refused fit: module:fitRefused names the reason, and the chooser's synchronous
+    // listener keeps the attempted slot mounted instead of playing the success detent over an
+    // intent the owner rejected (e.g. cargo capacity changed between render and intent).
+    const refuse = (reason, refusedDefId = null, refusedInstanceId = null) => {
+      this.bus.emit('module:fitRefused', {
+        shipIndex,
+        slotIndex,
+        defId: refusedDefId,
+        instanceId: refusedInstanceId,
+        reason,
+      });
+      return false;
+    };
     const p = this.state.player;
     const owned = this.ownedShip(shipIndex);
-    if (!owned) return false;
+    if (!owned) return refuse('missing_ship');
     const defId = owned.fittings[slotIndex];
-    if (!defId) return false;
+    if (!defId) return refuse('empty_slot');
 
     const inst = this._takeFittedInstance(owned, slotIndex);
     owned.fittings[slotIndex] = null;
@@ -2479,7 +2502,7 @@ export const ships = {
         owned.fittedInstances[slotIndex] = inst;
       }
       this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
-      return false;
+      return refuse('cargo_overflow', defId, inst ? inst.instanceId : null);
     }
     p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId });
     this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });

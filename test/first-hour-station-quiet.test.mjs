@@ -203,25 +203,43 @@ test('stationBroadcast resumes after tutorial completion', () => {
 
 // ── economyContracts: durable offer, quiet news during onboarding ──────────────────────────────
 
-test('economyContracts still posts field offers while onboarding is active', () => {
+test('the teaching contract owns Helios first dock; field offers resume after it', () => {
   const bus = makeBus();
   const voice = makeVoice();
   const state = makeContractState({ onboarding: { active: true, finished: false } });
+  // Relief is outbound-only — a scarcity row needs a distressed NEIGHBOR to deliver into,
+  // or the dock posts a zero-travel self-delivery. Home stays scarce in fiction (its own
+  // node drives the signal read) while Ceres carries the deliverable distress.
+  state.sectorSim.field.nodes.sector_ceres_belt = fieldNode({ pricePressure: 0.4 });
   const sys = freshContracts();
   sys.init({ bus, state, helpers: { voice } });
   bus.emit('dock:docked', { stationId: STATION.id });
 
+  // The authored first-trade teaching row owns Helios's first dock — a same-class field offer
+  // yields the slot rather than crowd the teaching row.
   const offers = bus.emitLog.filter((e) => e.evt === 'mission:offered');
-  assert.equal(offers.length, 1, 'durable mission:offered still emits during onboarding');
-  assert.equal(offers[0].payload.source, 'economyContract');
-  assert.equal(offers[0].payload.cause.tag, 'route_scarcity');
+  assert.equal(offers.length, 1, 'one contract row posts on the first dock');
+  assert.equal(offers[0].payload.source, 'firstTradeContract');
 
   const own = ensureFieldContractState(state);
   assert.equal(
     isStationEpochEvaluated(own, STATION.id, 0),
     true,
-    'station-epoch dedupe bag is marked (durable economy state)',
+    'the yielded field evaluation still marks its epoch (durable economy state)',
   );
+
+  // The field contract is yielded, not dead: once the teaching latch is spent and the epoch
+  // rolls, the scarcity offer posts through the same emit path — sealed into Ceres, not back
+  // into the station the player is already docked at.
+  state.simTime = 700;
+  bus.emit('dock:docked', { stationId: STATION.id });
+  const field = bus.emitLog
+    .filter((e) => e.evt === 'mission:offered')
+    .find((e) => e.payload.source === 'economyContract');
+  assert.ok(field, 'a field offer posts once the teaching row has landed');
+  assert.equal(field.payload.cause.tag, 'route_scarcity');
+  assert.equal(field.payload.destSectorId, 'sector_ceres_belt');
+  assert.notEqual(field.payload.destStationId, STATION.id, 'relief runs out, never to self');
 });
 
 test('economyContracts suppresses news voice and toast at first dock while onboarding is active', () => {

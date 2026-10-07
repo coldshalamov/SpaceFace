@@ -79,7 +79,11 @@ test('system timing uses a prime-period bounded sampler without aliasing common 
 
 test('registry skips per-system perfNow calls unless the bounded sampler selects the tick', () => {
   assert.match(registrySource, /const measureSystems = perf\.shouldMeasureSystemsThisStep\(state\.tick\)/);
-  assert.match(registrySource, /if \(!measureSystems\) \{[\s\S]*?core\.preStep\(dt, state\)[\s\S]*?input\.update\(dt, state\)[\s\S]*?tickBoundary\.publishInputCommand\(state\.input, state\.tick\)[\s\S]*?for \(const s of POST_INPUT_UPDATE_ORDER\)[\s\S]*?core\.lifetimeSweep\(dt, state\)[\s\S]*?return;/,
+  // The default path now iterates the calendar partition queue (updateDt supplies per-owner
+  // elapsed sim time) under try/finally with optional countSystemInvocation accounting —
+  // the ordering contract is unchanged: input first, publish before downstream, sweep last,
+  // and no per-system clocks.
+  assert.match(registrySource, /if \(!measureSystems\) \{[\s\S]*?core\.preStep\(dt, state\)[\s\S]*?input\.update\(dt, state\)[\s\S]*?tickBoundary\.publishInputCommand\(state\.input, state\.tick[\s\S]*?for \(const s of updateQueueForThisStep\(postInputPartitions, state\)\)[\s\S]*?core\.lifetimeSweep\(dt, state\)[\s\S]*?return;/,
     'default path preserves input-first order and publishes before downstream systems without clocks');
 });
 
@@ -172,7 +176,9 @@ test('scheduler attribution clears stale child phases and preserves in-callback 
 });
 
 test('runner and authored-admission owners publish bounded attribution without a second loop', () => {
-  assert.match(presentationRunnerSource, /perf\.beginFrame\([\s\S]*callbackStart[\s\S]*simulationRunner\.fixedDt/);
+  // The frame budget derives from the runner's fixedDt and is resolved ahead of the call —
+  // the contract is beginFrame carries callbackStart plus that derived budget.
+  assert.match(presentationRunnerSource, /simulationRunner\.fixedDt[\s\S]{0,200}frameBudgetMs[\s\S]{0,200}perf\.beginFrame\([\s\S]*callbackStart[\s\S]*frameBudgetMs/);
   assert.match(presentationRunnerSource, /perf\.recordPresentationFrame/);
   assert.match(partsLibrarySource, /recordAdmissionSlice[\s\S]*recordAdmissionWork/);
   assert.doesNotMatch(loopSource, /requestAnimationFrame/,

@@ -286,3 +286,76 @@ test('projectile sweeps and contact receipts see solid dressing rows', () => {
     t.bus.clear();
   }
 });
+
+test('a REDUCED->FULL POI promote keeps the measured-skin body the row carried', async () => {
+  const { world } = await import('../src/systems/world.js');
+  const t = bootCore(7020);
+  try {
+    const system = Object.create(world);
+    system.state = t.state;
+    system.helpers = t.helpers;
+    // A REDUCED-tier bag row: a landmark POI stamped solid by the dressing plan, the way
+    // _spawnPOIs leaves it when the sector first materializes as a quiet neighbour.
+    const data = {
+      poi: true, poiId: 'poi_test_hulk', placeId: 'place_dead_hulk',
+      name: 'Test Hulk', worldDressing: true,
+    };
+    assert.ok(stampSolidDressing(data, { radius: 42 }), 'the skin stamps on the row data');
+    const row = insertDressingRow(t.state, {
+      pos: { x: 100, z: 200 }, radius: 42,
+      collides: true, physicsBody: { dynamic: false, material: 'prop' },
+      homeSectorId: 'sector_test', data,
+    });
+    const sector = { id: 'sector_test', pois: [{ id: 'poi_test_hulk', landmark: true }] };
+    const active = { pois: [{ id: row.id, poiId: 'poi_test_hulk', type: 'derelict' }] };
+
+    system._promotePoiRowsToLive(sector, active);
+
+    const ent = (t.state.entityList || []).find((e) => e.data && e.data.poiId === 'poi_test_hulk');
+    assert.ok(ent && ent.alive !== false, 'the row promotes to a live entity');
+    assert.equal(ent.collides, true,
+      'the measured-skin body survives promote — a solid landmark must not ghost on arrive');
+    assert.ok(ent.physicsBody && ent.physicsBody.dynamic === false,
+      'the promoted body is the authored fixed prop body, not a dynamic hull');
+    assert.equal(ent.collisionMask, Masks.STATION, 'the mask matches the POI spawn path');
+    assert.equal(ent.data.collisionProxy, 'skin:place_dead_hulk',
+      'the skin stamp rides data into the live entity');
+    assert.equal(getDressingRow(t.state, row.id), null, 'the consumed row leaves the table');
+    assert.equal(active.pois[0].id, ent.id, 'the bag entry repoints at the live id');
+  } finally {
+    t.cleanup();
+  }
+});
+
+test('a promoted activity-slot POI stays a ghost even if its row carried a stale stamp', async () => {
+  const { world } = await import('../src/systems/world.js');
+  const t = bootCore(7021);
+  try {
+    const system = Object.create(world);
+    system.state = t.state;
+    system.helpers = t.helpers;
+    // Pre-fix saves can hold a REDUCED row stamped solid before the slot ghost contract was
+    // enforced; the slot's cost-neutrality must survive the promote anyway.
+    const row = insertDressingRow(t.state, {
+      pos: { x: 50, z: 60 }, radius: 20,
+      collides: true, physicsBody: { dynamic: false, material: 'prop' },
+      homeSectorId: 'sector_test',
+      data: {
+        poi: true, poiId: 'poi_test_slot', placeId: 'place_dead_hulk',
+        activityObjectSlotId: 'test_slot', worldDressing: true,
+      },
+    });
+    const sector = { id: 'sector_test', pois: [{ id: 'poi_test_slot' }] };
+    const active = { pois: [{ id: row.id, poiId: 'poi_test_slot', type: 'cache' }] };
+
+    system._promotePoiRowsToLive(sector, active);
+
+    const ent = (t.state.entityList || []).find((e) => e.data && e.data.poiId === 'poi_test_slot');
+    assert.ok(ent, 'the slot row promotes to a live entity');
+    assert.equal(ent.collides, false,
+      'an activity slot never carries a collider through promote — PQ-020 cost contract');
+    assert.equal(ent.physicsBody, undefined, 'no authored body on a ghost');
+  } finally {
+    t.cleanup();
+  }
+});

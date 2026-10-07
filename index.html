@@ -5,8 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Browser chrome (tab strip / mobile bar) tints to the game background instead of default white. -->
   <meta name="theme-color" content="#101516" />
+  <!-- Added to a phone's home screen the game opens full-screen, with no browser bars (iOS and Android). -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SpaceFace" />
   <title>SpaceFace</title>
-  <link rel="icon" type="image/svg+xml" href="assets/ui/kit/marks/logotype/spaceface-monogram.svg" />
+  <link rel="icon" type="image/svg+xml" href="assets/ui/app-icon/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/ui/app-icon/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/ui/app-icon/apple-touch-icon.png" />
   <link rel="stylesheet" href="./styles/ui.css" />
   <link rel="stylesheet" href="./styles/fonts.css" />
   <link rel="stylesheet" href="./styles/menu.css" />
@@ -192,7 +199,7 @@
   <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" href="./src/render/uiStage.js" />
-                                                              <!-- modulepreload:registry:begin -->
+                                                            <!-- modulepreload:registry:begin -->
   <link rel="modulepreload" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
@@ -327,6 +334,7 @@
   <link rel="modulepreload" href="./src/combat/projectileFlight.js" />
   <link rel="modulepreload" href="./src/combat/rewardEligibility.js" />
   <link rel="modulepreload" href="./src/combat/runtime.js" />
+  <link rel="modulepreload" href="./src/combat/shockwaveSweep.js" />
   <link rel="modulepreload" href="./src/combat/statuses.js" />
   <link rel="modulepreload" href="./src/combat/stuntContracts.js" />
   <link rel="modulepreload" href="./src/combat/stuntEvidence.js" />
@@ -384,6 +392,7 @@
   <link rel="modulepreload" href="./src/core/livingHull.js" />
   <link rel="modulepreload" href="./src/core/math.js" />
   <link rel="modulepreload" href="./src/core/newGamePlus.js" />
+  <link rel="modulepreload" href="./src/core/numberFormat.js" />
   <link rel="modulepreload" href="./src/core/perfCounters.js" />
   <link rel="modulepreload" href="./src/core/perfRuntime.js" />
   <link rel="modulepreload" href="./src/core/periodicClock.js" />
@@ -391,6 +400,7 @@
   <link rel="modulepreload" href="./src/core/physicsAuthority.js" />
   <link rel="modulepreload" href="./src/core/pickupAcceptance.js" />
   <link rel="modulepreload" href="./src/core/pickupCustody.js" />
+  <link rel="modulepreload" href="./src/core/playerCompass.js" />
   <link rel="modulepreload" href="./src/core/presentationAdmission.js" />
   <link rel="modulepreload" href="./src/core/presentationFreeze.js" />
   <link rel="modulepreload" href="./src/core/rapierCompatRuntime.js" />
@@ -557,6 +567,7 @@
   <link rel="modulepreload" href="./src/data/entityInteractionProfiles.js" />
   <link rel="modulepreload" href="./src/data/environmentalMachinery.js" />
   <link rel="modulepreload" href="./src/data/everydaySpaceKitDressing.js" />
+  <link rel="modulepreload" href="./src/data/factionBerths.js" />
   <link rel="modulepreload" href="./src/data/factionContactGrammar.js" />
   <link rel="modulepreload" href="./src/data/factionDoctrines.js" />
   <link rel="modulepreload" href="./src/data/factionPresence.js" />
@@ -648,6 +659,7 @@
   <link rel="modulepreload" href="./src/data/postEndingReplayChains.js" />
   <link rel="modulepreload" href="./src/data/precursorMachines.js" />
   <link rel="modulepreload" href="./src/data/raceCourses.js" />
+  <link rel="modulepreload" href="./src/data/rangeRails.js" />
   <link rel="modulepreload" href="./src/data/ravel.js" />
   <link rel="modulepreload" href="./src/data/regionalEcology.js" />
   <link rel="modulepreload" href="./src/data/regionalEconomyProfiles.js" />
@@ -679,6 +691,7 @@
   <link rel="modulepreload" href="./src/data/sites.js" />
   <link rel="modulepreload" href="./src/data/solstice.js" />
   <link rel="modulepreload" href="./src/data/squadChoreography.js" />
+  <link rel="modulepreload" href="./src/data/starterJobs.js" />
   <link rel="modulepreload" href="./src/data/stationBubbles.js" />
   <link rel="modulepreload" href="./src/data/stationContacts.js" />
   <link rel="modulepreload" href="./src/data/stationSideEvents.js" />
@@ -1205,9 +1218,11 @@
   <link rel="modulepreload" href="./src/systems/missions.js" />
   <link rel="modulepreload" href="./src/systems/mobile/bridge.js" />
   <link rel="modulepreload" href="./src/systems/mobile/catalog.js" />
+  <link rel="modulepreload" href="./src/systems/mobile/instrument.js" />
   <link rel="modulepreload" href="./src/systems/mobile/model.js" />
   <link rel="modulepreload" href="./src/systems/mobile/styles.js" />
   <link rel="modulepreload" href="./src/systems/mobile/view.js" />
+  <link rel="modulepreload" href="./src/systems/mobile/wheel.js" />
   <link rel="modulepreload" href="./src/systems/moralMemory.js" />
   <link rel="modulepreload" href="./src/systems/moralTrap.js" />
   <link rel="modulepreload" href="./src/systems/morrow.js" />
@@ -1446,9 +1461,12 @@
   <link rel="modulepreload" href="./src/ui/orrery/bootRingWorker.js" />
   <link rel="modulepreload" href="./src/ui/orrery/buildSigils.js" />
   <link rel="modulepreload" href="./src/ui/orrery/chainBeam.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/chartHub.js" />
   <link rel="modulepreload" href="./src/ui/orrery/chartInstruments.js" />
   <link rel="modulepreload" href="./src/ui/orrery/chartLabels.js" />
   <link rel="modulepreload" href="./src/ui/orrery/chartLayouts.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/chartWorld.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/commsLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/constellation.js" />
   <link rel="modulepreload" href="./src/ui/orrery/constellationLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/constellationMedals.js" />
@@ -1494,6 +1512,7 @@
   <link rel="modulepreload" href="./src/ui/orrery/text.js" />
   <link rel="modulepreload" href="./src/ui/orrery/tokens.js" />
   <link rel="modulepreload" href="./src/ui/orrery/waveform.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/wingmanLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/yardCarousel.js" />
   <link rel="modulepreload" href="./src/ui/outfittingSpendConfirm.js" />
   <link rel="modulepreload" href="./src/ui/pallasHiddenCacheMapLayer.js" />
@@ -1535,6 +1554,11 @@
   <link rel="modulepreload" href="./src/ui/shipLedgerPanel.js" />
   <link rel="modulepreload" href="./src/ui/shipPreviewMount.js" />
   <link rel="modulepreload" href="./src/ui/signalInvestigationPrompt.js" />
+  <link rel="modulepreload" href="./src/ui/sim/custodyProjection.js" />
+  <link rel="modulepreload" href="./src/ui/sim/discoveryKnowledge.js" />
+  <link rel="modulepreload" href="./src/ui/sim/missionNextAction.js" />
+  <link rel="modulepreload" href="./src/ui/sim/stableSelection.js" />
+  <link rel="modulepreload" href="./src/ui/sim/tradeTruth.js" />
   <link rel="modulepreload" href="./src/ui/starterAirCard.js" />
   <link rel="modulepreload" href="./src/ui/station/adBoard.js" />
   <link rel="modulepreload" href="./src/ui/station/barContacts.js" />
@@ -1563,6 +1587,7 @@
   <link rel="modulepreload" href="./src/ui/station/stationHubFormatters.js" />
   <link rel="modulepreload" href="./src/ui/station/stationHubModel.js" />
   <link rel="modulepreload" href="./src/ui/station/stationMissionModel.js" />
+  <link rel="modulepreload" href="./src/ui/station/tradeReceipt.js" />
   <link rel="modulepreload" href="./src/ui/stuckTowPrompt.js" />
   <link rel="modulepreload" href="./src/ui/stuntCallout.js" />
   <link rel="modulepreload" href="./src/ui/survivalHud.js" />

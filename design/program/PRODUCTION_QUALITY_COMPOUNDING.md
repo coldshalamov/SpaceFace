@@ -1,6 +1,12 @@
 <!-- LIFETIME: ACTIVE_PLAN — selected production direction; lifecycle stays in the existing board. -->
 # Production quality through compounding improvements
 
+**Owner update, 2026-10-04:** the active debugging and polish priority is
+[`build_map.md` §1.8](../../build_map.md#18-production-maturity-debugging-and-polish).
+Repair broken existing workflows before this plan's feature expansion. Its workflow coverage
+and completion bars apply to every bundle below, including already-built content; this dated
+analysis and first-wave order do not supersede current defects or maturity work.
+
 Planning baseline: `adc71448e95c0cd488b0ba195ff5187b799e1488`, 2026-09-30.
 Scope: a source-grounded second opinion and executable first wave. This PR changes documentation only.
 The initial pass was source-only. A deeper follow-up executed focused production-function probes;

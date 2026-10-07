@@ -38,7 +38,7 @@ async function ensureLocalServer() {
     return null;
   }
   console.log(`[perf:spector] Starting local server on port ${PORT}...`);
-  const srv = spawn('node', ['server.js', String(PORT)], {
+  const srv = spawn('node', ['server.js', String(PORT)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
     cwd: ROOT,
     stdio: 'ignore',
     detached: false,

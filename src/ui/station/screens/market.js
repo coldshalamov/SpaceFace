@@ -27,7 +27,9 @@ import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 import { focusNamedStationControl } from '../../outfittingSpendConfirm.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
-import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
+import { lastMoveCause, marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
+import { latestTradeReceipt } from '../../sim/tradeTruth.js';
+import { TRADE_EXPECTATION_KEY } from '../tradeReceipt.js';
 import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
 import { starvedNeedLine } from '../../worldNewsBeats.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
@@ -1077,7 +1079,8 @@ export function createMarketScreen(ctx) {
     if (signature !== listRenderSignature) {
       listRenderSignature = signature;
       modeEl.firstChild.textContent = cargoOnly ? 'Your cargo hold' : 'Station exchange';
-      modeEl.querySelector('b').textContent = ` · ${visible.length} of ${rows.length}`;
+      // "10 of 10" says nothing; the count earns its place only when a filter or search narrows the list.
+      modeEl.querySelector('b').textContent = visible.length < rows.length ? ` · ${visible.length} of ${rows.length}` : '';
       for (const [id, btn] of filterEls) {
         btn.classList.toggle('is-on', id === marketFilter);
         btn.setAttribute('aria-pressed', String(id === marketFilter));
@@ -1165,6 +1168,7 @@ export function createMarketScreen(ctx) {
     const avg = Number(def.basePrice) || buy;
     const demand = demandLevel(entry);
     const drivers = presentMarketDrivers({ state, stationId: sid, commodity: def, entry });
+    const cause = lastMoveCause({ state, stationId: sid, commodity: def, entry });
     const legal = def.legality || 'legal';
     const isTracked = trackedCmdty(state) === r.id;
     const trackedGuidance = isTracked ? trackedCargoGuidance(state, r.id, def.name) : null;
@@ -1181,6 +1185,7 @@ export function createMarketScreen(ctx) {
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
       quoteAge: 'fresh', quoteSource: 'live',
       survey: rememberedSurveyFreshness(state, r.id),
+      cause,
       saleQty: qty,
       saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + (decisionEl ? '' : marketDecisionHtml(state, sid));
     if (decisionEl) {
@@ -1771,7 +1776,29 @@ export function createMarketScreen(ctx) {
         // INF-084: bind the trade to the stated terms so a stale quote cannot settle
         // silently at a worse price. tradeBusy already stops a repeated confirmation
         // from emitting twice in-screen.
+        // SF-241: stamp the confirmed terms into the UI-owned scratch tree first, so the
+        // TRADE CLEARED receipt can compare what settled against what was confirmed — a
+        // partial fill says "6 of the 10 confirmed", never silently reprints a new total.
+        if (tradeState.ui) {
+          const lastReceipt = latestTradeReceipt(tradeState);
+          tradeState.ui[TRADE_EXPECTATION_KEY] = {
+            commodityId: decision.payload.commodityId,
+            side: mode,
+            qty: decision.payload.qty,
+            total: decision.payload.expectedTotal != null ? decision.payload.expectedTotal : null,
+            stationId: stationId(tradeState) || null,
+            afterSequence: lastReceipt ? lastReceipt.tradeSequence : 0,
+            atSimTime: Number(tradeState.simTime) || 0,
+          };
+        }
         ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', decision.payload);
+        // The trade chain is synchronous: a still-set stamp means the emit produced neither a
+        // settle nor a refusal (the bus swallows a listener's throw). simTime is frozen while
+        // docked so the TTL cannot age it out — drop it here or the next same-lot settle would
+        // borrow a confirmation it never made.
+        if (tradeState.ui && tradeState.ui[TRADE_EXPECTATION_KEY]) {
+          tradeState.ui[TRADE_EXPECTATION_KEY] = null;
+        }
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
       deferRefresh(80, true, true);

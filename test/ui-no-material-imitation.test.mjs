@@ -56,9 +56,10 @@ const FORBIDDEN = [
   // The kit's photographed controls: keys, sockets, switches, slider parts, lamps, gauge cells,
   // tapes, windows and texture tiles. A backdrop photograph of the world (plates/plate.backdrop.*)
   // is a picture, not a control, and stays allowed; so do the vector icons, marks and SVG shells.
-  [/assets\/(?:ui\/kit\/)?assets\/(?:keys|controls|lights|gauges|sockets|tapes|strips|wear|windows|badges|radar|tiles)\//,
+  // (a .json or .svg inside those folders is vector data -- the radar's glyph paths -- and is drawn, not photographed)
+  [/assets\/(?:ui\/kit\/)?assets\/(?:keys|controls|lights|gauges|sockets|tapes|strips|wear|windows|badges|radar|tiles)\/(?![^'"`\s)]*\.(?:json|svg))/,
     'a photographed control standing in for a drawn one'],
-  [/\.\.\/assets\/(?:keys|controls|lights|gauges|sockets|tapes|strips|wear|windows|badges|radar|tiles)\//,
+  [/\.\.\/assets\/(?:keys|controls|lights|gauges|sockets|tapes|strips|wear|windows|badges|radar|tiles)\/(?![^'"`\s)]*\.(?:json|svg))/,
     'a photographed control standing in for a drawn one'],
 ];
 

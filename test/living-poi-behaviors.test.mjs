@@ -520,6 +520,35 @@ test('lawful-yard completion is bound to the exact docked station', () => {
   assert.equal(state.livingPoiBehaviors.aftermath[row.behaviorId]?.kind, 'cleared_manifest');
 });
 
+test('a gated yard reroutes its dock contract to the berth that admits', () => {
+  // The yard family's verb is literally 'dock at this station' — a repGated pick strands
+  // the job as dockable-in-name-only. The plan-time pick is seed-pure; the materialize
+  // pass re-resolves the row to the same selection over berths that admit the pilot.
+  const { system, bus, state } = makeSystem(79);
+  const sector = {
+    ...SYNTHETIC_SECTOR,
+    stations: [
+      { id: 'station_gated_yard', factionId: 'faction_scn', type: 'trade_hub', pos: { x: 100, z: 0 }, repGated: true },
+      { id: 'station_open_yard', factionId: 'faction_scn', type: 'trade_hub', pos: { x: 2000, z: 0 } },
+    ],
+  };
+  state.factions = { faction_scn: { rep: -5 } };
+  system.planSector(sector.id, { zones: SYNTHETIC_ZONES, sector, dayIndex: 4 });
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.familyId === 'lawful_station_yard');
+  assert.ok(row, 'the plan still carries a yard row');
+  assert.equal(row.stationId, 'station_open_yard',
+    'the dock verb rebinds to the berth the pilot can actually use');
+
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId });
+  bus.emit('dock:docked', { stationId: 'station_gated_yard' });
+  assert.equal(state.livingPoiBehaviors.aftermath[row.behaviorId], undefined,
+    'the closed berth never held the contract to clear');
+  bus.emit('dock:docked', { stationId: 'station_open_yard' });
+  assert.equal(state.livingPoiBehaviors.aftermath[row.behaviorId]?.kind, 'cleared_manifest',
+    'the rerouted yard resolves through the ordinary dock path');
+});
+
 test('all seven visible contracts expose a distinct verb, risk, and reward through one arbiter slot each', () => {
   const { bus, state, spoken } = makeSystem(97);
   for (const row of Object.values(state.livingPoiBehaviors.activeByZone)) {

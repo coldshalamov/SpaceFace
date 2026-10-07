@@ -76,7 +76,7 @@ function wrapRecipeIssues(issues) {
 export const CONTENT_FACTORY_STRINGS = Object.freeze({
   'trait.mod_herald_fan.summary': 'Widen the root volley cone. Heat rises slightly. Damage is unchanged.',
   'trait.mod_herald_fan.detail': 'Adds spread only. No extra roots, no payload scale, no speed grant. You cover a wider lane and pay heat.',
-  'recipe.factory_herald_pincer.summary': 'A two-gate pincer: mass on the south-west, pressure on the north-east.',
+  'recipe.factory_herald_pincer.summary': 'A two-gate pincer: mass on the north-west, pressure on the south-east.',
   'recipe.factory_herald_pincer.detail': 'Five swarmers then three reavers. Peak demand stays at eight. The room stays idle.',
   'lint.spawn.default': 'Peak concurrent demand exceeds the default spawn cap of 24.',
   'lint.spawn.hard': 'Peak concurrent demand exceeds the hard spawn cap of 40.',

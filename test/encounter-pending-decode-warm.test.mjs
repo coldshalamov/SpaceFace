@@ -29,6 +29,8 @@ test('encounter pending squads warm through the roster decode lane inside the de
 });
 
 test('the pending-squad warm runs on the residency poll beside sector prewarm', () => {
+  // "Beside" means in the same warm block — the frame-pacing ladder interleaves `yield;`
+  // statements between the calls, so a two-statement window (not adjacent lines) is the contract.
   assert.match(rendererSrc,
     /updatePredictedSectorPrewarmSteps\s*&&\s*\(yield\*\s*updatePredictedSectorPrewarmSteps\(this\)\);\s*\r?\n\s*yield;\s*\r?\n\s*warmEncounterPendingDecode\(this\);/,
     'warmEncounterPendingDecode must be wired beside updatePredictedSectorPrewarmSteps');

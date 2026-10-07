@@ -354,8 +354,13 @@ test('authored geology keeps the measured census scale of its adopted collision 
   const measuredScale = measured.drawScale * (entity.radius / measured.gameplay.entityRadius);
   assert.equal(authoredRoot.userData.authoredWorldScale, measuredScale,
     'the adopted skin follows its census scale ahead of the broadphase radius target');
-  assert.deepEqual(authoredRoot.userData.visualBounds.size,
-    measured.bounds.size.map((size) => size * measuredScale));
+  // The composed root re-measures in float32 (047f6daa — the authored skin's own box, not the
+  // float64 product), so the sizes agree within measurement precision, never bit-for-bit.
+  const expectedSize = measured.bounds.size.map((size) => size * measuredScale);
+  authoredRoot.userData.visualBounds.size.forEach((actual, i) => {
+    assert.ok(Math.abs(actual - expectedSize[i]) <= 1e-4,
+      `visualBounds.size[${i}] ${actual} ≈ bounds×scale ${expectedSize[i]} within float32 measure`);
+  });
 });
 
 test('visual overrides route only explicit geology asteroids through the authored place builder', () => {

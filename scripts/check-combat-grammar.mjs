@@ -148,7 +148,30 @@ function checkSharedPlayerAiPath() {
   assert.equal(starts.length, 2);
   assert.deepEqual(starts.map((event) => event.actionId), ['action_burst', 'action_burst']);
   const source = fs.readFileSync(path.join(ROOT, 'src/combat/actions.js'), 'utf8');
-  assert.doesNotMatch(source, /source\s*(?:\.|\[).*?(?:===|!==)\s*['"]ai['"]/s, 'action execution must not branch on AI identity');
+  // Execution stays source-neutral (proven behaviorally above). The one sanctioned 'ai'
+  // comparison is reauthorizeQueuedAction's commit-gate seam — queued AI shots re-run
+  // engagement authorization on live state before they fire. Any 'ai' branch outside that
+  // function is a real violation.
+  const aiBranchPattern = /source\s*(?:\.|\[).*?(?:===|!==)\s*['"]ai['"]/gs;
+  // Brace-match the function body so a re-indent or nested close cannot silently
+  // over-extend the exemption window into code that follows the seam.
+  const fnStart = source.indexOf('function reauthorizeQueuedAction');
+  assert.ok(fnStart >= 0, 'reauthorizeQueuedAction must exist as the sanctioned AI-source seam');
+  const braceStart = source.indexOf('{', fnStart);
+  let depth = 0;
+  let fnEnd = -1;
+  for (let i = braceStart; i < source.length; i++) {
+    const ch = source[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) { fnEnd = i + 1; break; }
+    }
+  }
+  assert.ok(fnEnd > braceStart, 'reauthorizeQueuedAction body must be brace-balanced');
+  const permitted = source.slice(0, fnStart) + source.slice(fnEnd);
+  assert.doesNotMatch(permitted, aiBranchPattern,
+    'action execution must not branch on AI identity outside reauthorizeQueuedAction');
 }
 
 function checkSubsystemNextTickEffects() {

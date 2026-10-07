@@ -26,7 +26,7 @@ import {
 test('PQ-155.01: committed ladder stays hour → verb → cost → gate', () => {
   const gate = assertCommittedLadder(TECH_VERB_LADDER);
   assert.equal(gate.ok, true, gate.errors.join('; '));
-  assert.equal(TECH_VERB_LADDER.length, 32);
+  assert.equal(TECH_VERB_LADDER.length, 35);
   assert.equal(FIRST_UPGRADE.nodeId, 'tech_combat_basics');
   // Entry tier is start-capital covered under the derived price scale (2026-09-19
   // ruling); the honest window describes firstEarnedRow, asserted by the ladder gate.

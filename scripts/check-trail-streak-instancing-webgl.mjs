@@ -220,7 +220,7 @@ try {
 async function startFreshServer() {
   const port = await findFreePort(8560);
   const baseUrl = `http://127.0.0.1:${port}/`;
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, 
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,

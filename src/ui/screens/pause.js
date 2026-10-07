@@ -26,6 +26,7 @@ import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createArcRail } from '../orrery/arcRail.js';
+import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
@@ -183,18 +184,18 @@ function missionNextStep(m) {
     case 'escort':
     case 'smuggling_run':
     case 'salvage_retrieval':
-      return 'Next: resume, follow tracked nav to ' + dest + ', then dock to resolve the handoff.';
+      return 'Next: follow tracked nav to ' + dest + ', then dock.';
     case 'bulk_trade':
-      return 'Next: buy or carry ' + missionCommodity(m) + ', then sell into the tracked destination market.';
+      return 'Next: buy or carry ' + missionCommodity(m) + ', then sell at the destination market.';
     case 'mining_quota':
-      return 'Next: mine ' + missionCommodity(m) + ', keep cargo room open, then follow the tracker for payout.';
+      return 'Next: mine ' + missionCommodity(m) + ' and keep cargo room free.';
     case 'bounty_hunt':
     case 'patrol_clear':
-      return 'Next: resume, follow tracked nav, and expect combat before the timer runs down.';
+      return 'Next: follow tracked nav. Expect a fight before the timer runs out.';
     case 'recon_scan':
-      return 'Next: resume, follow tracked nav, and scan each marked site.';
+      return 'Next: follow tracked nav and scan each marked site.';
     default:
-      return 'Next: resume and follow the tracked objective; Mission Log (' + BINDINGS.missionLog.label + ') has the details.';
+      return 'Next: follow the tracked objective. Mission Log (' + BINDINGS.missionLog.label + ') has the details.';
   }
 }
 
@@ -333,18 +334,18 @@ function saveLine(state) {
   // save system now blocks.
   const run = state && state.run;
   if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
-    return 'This run is not saved. Leaving the arena ends it; your campaign save is untouched.';
+    return 'This run is not saved. Leaving the arena ends it. Your campaign save is untouched.';
   }
   const slot = state && state.save && state.save.currentSlot;
   const savedAt = state && state.meta && state.meta.lastSavedAt;
   const savedWhen = fmtSavedAt(savedAt);
   if (savedWhen) {
-    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '. F5 quick-saves; F9 loads quick.';
+    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '.';
   }
   if (slot) {
-    return 'Loaded ' + slotLabel(slot) + ', but no save has landed this session. Use Save or F5 before quitting.';
+    return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. Use Save or F5 before quitting.';
   }
-  return 'Unsaved run. Use Save or F5 before quitting; autosaves fire after dock, undock, sector entry, and completed jobs.';
+  return 'Unsaved run. Use Save or F5 before quitting. Autosave runs on dock, undock, jump and job completion.';
 }
 
 // The combat trace (damage.routed / physics.impulse / collision.consequence) and the hull's
@@ -477,7 +478,7 @@ export function pauseStatusLines(state) {
       objectiveMention: missionId(candidate)
         ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
         : null,
-      next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + '), Track Nav on a contract, then resume with a clear marker.',
+      next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + ') and Track Nav on a contract.',
       save: saveLine(state),
     };
   }
@@ -494,7 +495,7 @@ export function pauseStatusLines(state) {
   return {
     hit: pauseLastImpactLine(state),
     objective: 'NO ACTIVE CONTRACT',
-    next: 'Next: dock at a station, open Missions or the Bar, accept + track work, then undock.',
+    next: 'Next: dock at a station, accept and track a job, then undock.',
     save: saveLine(state),
   };
 }
@@ -936,7 +937,8 @@ export const pauseScreen = {
     mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
     if (mapAction) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
-    mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'), { group: 'Reference', bank: true, icon: 'help' });
+    // On a phone the keyboard reference means nothing: Help opens the touch guide the deck carries instead.
+    mk(coreText('helpControls'), () => { if (isPhoneLayout() && ctx.bus && ctx.bus.emit) ctx.bus.emit('touch:guide', {}); else nav(ctx, 'pushScreen', 'help'); }, { group: 'Reference', bank: true, icon: 'help' });
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
     mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
@@ -1022,15 +1024,19 @@ export const pauseScreen = {
     // name engraved over its row) with Resume leading as the one lit verb; the brief, which the dial
     // would cover, becomes a reading on the right. Same list, same roving focus, same buttons.
     injectOrreryScreens();
-    rootEl.classList.add('orr-pause');
+    // A phone has no room for the dial: the verbs stay the plain banked Deckplate column and the brief stays
+    // above them in it, like the title's phone composition.
+    const phone = isPhoneLayout();
+    // add/remove, not toggle: the headless shims the pause tests mount on carry no classList.toggle
+    rootEl.classList.add(phone ? 'orr-pause--phone' : 'orr-pause');
     const brief = briefKicker.parentElement;
-    if (brief) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
-    if (pauseRail) pauseRail.dispose();
+    if (brief && !phone) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
+    if (pauseRail) { pauseRail.dispose(); pauseRail = null; }
     // One stop per group (ORRERY 3.2: an arc carries at most nine): Resume leads, then each group is one
     // tick with its name as the row's legend and its verbs on one line after it. The Hand swings to the row;
     // within it only the awake verb lights. Up/down steps between rows, left/right along one.
     // a smaller dial, higher: its lowest tick clears the key strip at every height
-    pauseRail = createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, span: 56,
+    pauseRail = phone ? null : createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, span: 56,
       place: (W, H) => ({ pivot: { x: Math.min(112, Math.max(56, Math.round(W * 0.056))), y: Math.round(H * 0.55) }, re: Math.round(H * 0.3), centerDeg: 90 }) });
 
     // The column ends in a legend strip, not an air gap: the keys that are live while this modal

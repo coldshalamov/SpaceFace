@@ -494,6 +494,14 @@ export function objectInfoLine(t, state, p, dist) {
     } else if (t.type === 'wreck') {
       facts.push('Salvageable');
     }
+    // A disclosed kill record rides the same facts line in its own terse shape — the reveal's
+    // story exists only at identified+, so its presence IS the disclosure gate.
+    const record = t.type === 'wreck' && d.scanRevealed && d.scanRevealed.story ? d.scanRevealed : null;
+    if (record) {
+      const killer = d.provenance && d.provenance.killerLabel;
+      if (killer) facts.push(`Killer: ${killer}`);
+      if (Number.isFinite(record.daysAgo) && record.daysAgo > 0) facts.push(`${record.daysAgo}d ago`);
+    }
   } else if (Number.isFinite(t.mass) && t.mass > 0) {
     facts.push(`Mass ${Number.isInteger(t.mass) ? t.mass : Math.round(t.mass * 100) / 100}`);
   }

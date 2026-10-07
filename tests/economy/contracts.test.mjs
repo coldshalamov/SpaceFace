@@ -47,6 +47,7 @@ test('hold capacity bounds one-load contracts including exact fractional volume'
 });
 test('calm sector maintenance is a physical mission invitation, never money',()=>{
  const {c,state,bus}=fresh();state.simTime=600;const before=state.player.credits;
+ bus.on('mission:offered',p=>bus.emit('mission:offerBoarded',{offerId:p&&p.id}));
  c._handleDock('station_ceres');const offer=bus.events.find(e=>e.event==='mission:offered')?.p;
  assert.equal(offer.source,'economyMaintenance');assert.equal(offer.type,'tow_recovery');assert.equal(offer.params.physicalVerb,'tow');
  assert.equal(state.player.credits,before);assert.deepEqual(state.missions.boards,{});assert.deepEqual(state.missions.active,[]);
@@ -69,7 +70,8 @@ test('local scarcity cannot make a circular same-station delivery',()=>{
  state.fixtureSignals.sector_ceres_belt=calm();assert.equal(c.planOffer(info,2),null);
 });
 test('saved station-epoch dedupe survives reload and discards unknown station keys',()=>{
- const a=fresh();a.state.simTime=600;a.c._handleDock('station_ceres');const data=a.c.serialize();data.evaluatedEpochByStation.madeUp=999;
+ const a=fresh();a.bus.on('mission:offered',p=>a.bus.emit('mission:offerBoarded',{offerId:p&&p.id}));
+ a.state.simTime=600;a.c._handleDock('station_ceres');const data=a.c.serialize();data.evaluatedEpochByStation.madeUp=999;
  const b=fresh();b.state.simTime=600;b.c.deserialize(data);b.c._handleDock('station_ceres');
  assert.equal(b.bus.events.filter(e=>e.event==='mission:offered').length,0);assert.equal(b.c.serialize().evaluatedEpochByStation.madeUp,undefined);
 });

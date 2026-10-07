@@ -240,8 +240,8 @@ export const BREAKAWAY_BERTH = Object.freeze({
   name: 'Berth Three',
   // The lawful catcher the berth serves; also the only facility whose committed handoff activates it.
   facilityId: 'lawful_catcher',
-  // Sector-local parked position of the worker hull, north of the catcher and clear of the fork's
-  // delivery corridor (the fork faces the launcher, roughly west/south of the catcher).
+  // Sector-local parked position of the worker hull, north of the catcher (+z is north) and clear
+  // of the fork's delivery corridor (the fork faces the launcher, roughly east/south of the catcher).
   workerLocalPos: Object.freeze({ x: -400, z: -1080 }),
   worker: Object.freeze({
     shipId: 'ship_mule',

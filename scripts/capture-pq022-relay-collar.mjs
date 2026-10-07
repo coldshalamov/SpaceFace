@@ -33,7 +33,7 @@ const shots = [
 ];
 
 await mkdir(OUT, { recursive: true });
-const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+const server = spawn(process.execPath, ['server.js', String(PORT)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },  cwd: ROOT, stdio: 'ignore' });
 let browser;
 try {
   await waitForServer();

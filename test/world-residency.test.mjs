@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
-import { world as worldSystem } from '../src/systems/world.js';
+import { world as worldSystem, MEMBERSHIP_DWELL_S } from '../src/systems/world.js';
 import {
   CORRIDOR_SECTOR_IDS,
   RESIDENCY_MATERIALIZED_CAP,
@@ -55,6 +55,15 @@ function bootWorld(seed = 42) {
   const world = Object.assign(Object.create(worldSystem), {});
   world.init(ctx);
   return { state, bus, helpers, world, player };
+}
+
+// Free-flight membership is deliberately hysteretic: the player must carry a margin-past-edge
+// lead for MEMBERSHIP_DWELL_S before the residency plan re-runs (border-patrol damping — see
+// world.js). Drive a held candidate through its dwell on consecutive observe ticks.
+function dwellMembership(state, world) {
+  world.update(1 / 60, state);                                   // arms the candidate
+  state.simTime = (state.simTime || 0) + MEMBERSHIP_DWELL_S + 0.5;
+  world.update(1 / 60, state);                                   // held lead matures → continuous enterSector
 }
 
 function residencySnapshot(state) {
@@ -186,21 +195,22 @@ test('free-flight membership never teleports, zeros velocity, or sets noInterp',
   bus.on('world:membership', (p) => membership.push(p));
   bus.on('world:residency', (p) => residency.push(p));
 
-  // Place player just on the Ceres side of the Helios/Ceres bisector.
+  // Place player deep on the Ceres side of the Helios/Ceres bisector — past the hysteresis
+  // margin (35% of span / 2500 WU) so the candidate arms, then hold the lead through the dwell.
   const h = sectorGlobalOrigin(HELIOS);
   const c = sectorGlobalOrigin(CERES);
-  player.pos.x = (h.x + c.x) * 0.5 + (c.x - h.x) * 0.02;
-  player.pos.z = (h.z + c.z) * 0.5 + (c.z - h.z) * 0.02;
+  player.pos.x = (h.x + c.x) * 0.5 + (c.x - h.x) * 0.45;
+  player.pos.z = (h.z + c.z) * 0.5 + (c.z - h.z) * 0.45;
   assert.equal(sectorMembershipAtGlobal(player.pos), CERES);
 
   const heliosStructuralBefore = structuralIdsForSector(state, HELIOS);
   assert.ok(heliosStructuralBefore.length > 0);
 
-  world.update(1 / 60, state);
+  dwellMembership(state, world);
 
   assert.equal(state.world.currentSectorId, CERES);
-  assert.equal(player.pos.x, (h.x + c.x) * 0.5 + (c.x - h.x) * 0.02);
-  assert.equal(player.pos.z, (h.z + c.z) * 0.5 + (c.z - h.z) * 0.02);
+  assert.equal(player.pos.x, (h.x + c.x) * 0.5 + (c.x - h.x) * 0.45);
+  assert.equal(player.pos.z, (h.z + c.z) * 0.5 + (c.z - h.z) * 0.45);
   // Position must not snap to Ceres entry point / origin.
   assert.notEqual(player.pos.x, sectorGlobalOrigin(CERES).x);
   assert.equal(player.vel.x, velBefore.x);
@@ -259,7 +269,7 @@ test('spawned sector entities carry stable homeSectorId; demotion is sector-scop
   // Force Ceres to RECORD_ONLY via capped residency from Tethys membership far from Ceres.
   player.pos.x = sectorGlobalOrigin(TETHYS).x;
   player.pos.z = sectorGlobalOrigin(TETHYS).z;
-  world.update(1 / 60, state);
+  dwellMembership(state, world);
   assert.equal(state.world.currentSectorId, TETHYS);
 
   // With default cap 3 all corridor sectors stay materialized — inject a forced demote.
@@ -296,14 +306,14 @@ test('sector content RNG is stable across membership jitter; state.rng untouched
   // Cross into Ceres and back into Helios — Ceres must not rematerialize different anchors.
   const h = sectorGlobalOrigin(HELIOS);
   const c = sectorGlobalOrigin(CERES);
-  player.pos.x = (h.x + c.x) * 0.5 + (c.x - h.x) * 0.05;
-  player.pos.z = (h.z + c.z) * 0.5 + (c.z - h.z) * 0.05;
-  world.update(1 / 60, state);
+  player.pos.x = (h.x + c.x) * 0.5 + (c.x - h.x) * 0.45;
+  player.pos.z = (h.z + c.z) * 0.5 + (c.z - h.z) * 0.45;
+  dwellMembership(state, world);
   assert.equal(state.world.currentSectorId, CERES);
 
   player.pos.x = 0;
   player.pos.z = 0;
-  world.update(1 / 60, state);
+  dwellMembership(state, world);
   assert.equal(state.world.currentSectorId, HELIOS);
 
   const ceresStationsAfter = (state.world.sectorContents[CERES].stations || [])
@@ -428,8 +438,8 @@ test('free-flight residency still ranks from live player pose (not destination e
 
   const h = sectorGlobalOrigin(HELIOS);
   const c = sectorGlobalOrigin(CERES);
-  player.pos.x = (h.x + c.x) * 0.5 + (c.x - h.x) * 0.04;
-  player.pos.z = (h.z + c.z) * 0.5 + (c.z - h.z) * 0.04;
+  player.pos.x = (h.x + c.x) * 0.5 + (c.x - h.x) * 0.45;
+  player.pos.z = (h.z + c.z) * 0.5 + (c.z - h.z) * 0.45;
   player.vel.x = 12;
   player.vel.z = -4;
   player.flags.noInterp = false;
@@ -443,7 +453,7 @@ test('free-flight residency still ranks from live player pose (not destination e
     return origApply(membershipSectorId, opts);
   };
 
-  world.update(1 / 60, state);
+  dwellMembership(state, world);
   assert.equal(state.world.currentSectorId, CERES);
   assert.ok(capturedFocus);
   assert.equal(capturedFocus.x, livePos.x);
@@ -486,9 +496,9 @@ test('residency receipts include sector ids, tiers, reason, tick, noTeleport', (
 
   const h = sectorGlobalOrigin(HELIOS);
   const c = sectorGlobalOrigin(CERES);
-  player.pos.x = (h.x + c.x) * 0.5 + (c.x - h.x) * 0.05;
-  player.pos.z = (h.z + c.z) * 0.5 + (c.z - h.z) * 0.05;
-  world.update(1 / 60, state);
+  player.pos.x = (h.x + c.x) * 0.5 + (c.x - h.x) * 0.45;
+  player.pos.z = (h.z + c.z) * 0.5 + (c.z - h.z) * 0.45;
+  dwellMembership(state, world);
   const last = residency[residency.length - 1];
   assert.equal(last.noTeleport, true);
   assert.ok(last.sectors.some((s) => s.sectorId === CERES && s.tier === RESIDENCY_TIER.FULL));

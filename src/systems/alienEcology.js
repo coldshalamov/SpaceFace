@@ -47,6 +47,8 @@ import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
 import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcologyState.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { hasContractsDesk } from '../data/missions.js';
 
 const TWO_PI = Math.PI * 2;
 
@@ -293,13 +295,31 @@ export function materializeAlienEcology(world, sector, active) {
 // ── Mission offers (AE-067..069, AE-087..089) ─────────────────────────────────────────────
 // Site close-band fires emit a `mission:offered` row on the sector's station board — the
 // same external-offer contract salvage uses, so the board/accept path needs no new code.
+function repFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  return rec ? (rec.rep || 0) : 0;
+}
+
+// The fieldwork contract posts at a desk the pilot must dock at to read — a first-station pick
+// can name a refinery with no contract office (Ceres, Vesta Forge) or a berth that refuses the
+// pilot outright (the repGated Ashfall cache, the Sker Bazaar). Pick a missions-capable desk
+// that admits them, fall back to any admitting desk, or leave the key unset: the emit retries
+// on the next close-band entry once standing opens the berth.
+function deskForSite(state, stations, sector) {
+  const admits = (st) => stationBerthAdmits(
+    st, repFor(state, st && (st.factionId || (sector && sector.factionId))), state);
+  return stations.find((st) => st && hasContractsDesk(st.services) && admits(st))
+    || stations.find((st) => st && admits(st))
+    || null;
+}
+
 function emitEcologyOffer(world, site, sector) {
   const state = world && world.state;
   const rec = siteRecord(state, site.siteId);
   const missions = ecologyMissionsForSite(site.siteId);
   if (!missions.length) return;
   const stations = (sector && sector.stations) || [];
-  const station = stations[0] || null;
+  const station = deskForSite(state, stations, sector);
   let emitted = 0;
   // AE-130..137 — every authored faction desk at the site emits once, each under its own
   // offersEmitted key; a site carrying multiple contracts surfaces all of them. The bit is
@@ -816,12 +836,25 @@ export function tickAlienEcology(world, dt) {
         }
         if (meterSite) {
           const r = siteRecord(state, meterSite.siteId);
+          const coherent = r.relaySevered !== true && r.state !== 'severed';
           world.bus.emit('ecology:coherence', {
             siteId: meterSite.siteId,
-            coherent: r.relaySevered !== true && r.state !== 'severed',
+            coherent,
             contamination: sectorC,
             t: now,
           });
+          // The 1 Hz event is the sample. The flight log speaks only when the
+          // reading changes, so a meter inside the field is not a toast every second.
+          const shown = `${meterSite.siteId}:${coherent ? 'coherent' : 'severed'}`;
+          if (ae._cohShown !== shown) {
+            ae._cohShown = shown;
+            const name = meterSite.name || meterSite.siteId;
+            world.bus.emit('comms:log', {
+              from: 'Coherence meter',
+              kind: 'ecology',
+              text: coherent ? `${name} is still coherent.` : `${name} has been severed.`,
+            });
+          }
         }
       }
     }
@@ -1665,13 +1698,19 @@ function runClaimCrew(world, sectorId, now, dt) {
   const crew = rec.claimCrew || (rec.claimCrew = { state: null, killed: 0 });
   if (crew.state === 'driven_off') return;
   const g = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
+  // The work record IS the claim: no world-site record (producer cadence is 'sector_enter',
+  // so this is near-impossible on the default route) means the torches would have nothing
+  // to feed — applyWorldSiteBeamOperation would refuse 'site-missing' forever. Never arm
+  // onto a missing record.
+  const record = state.sites && state.sites.worldById
+    ? state.sites.worldById[NURSERY_CLAIM_CREW.worldSiteId] : null;
 
   if (!crew.state) {
     // Arming: a LIVING nursery only — a severed site's cyst lot no longer exists, so no
     // claim is posted on it. Ordinary approach arms the beat; nothing time-gates behind it.
     const coherent = rec.relaySevered !== true && rec.state !== 'severed';
     const pd = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
-    if (!coherent || pd > NURSERY_CLAIM_CREW.spawnRadius) return;
+    if (!record || !coherent || pd > NURSERY_CLAIM_CREW.spawnRadius) return;
     crew.state = 'arriving';
     crew.armedAt = now + NURSERY_CLAIM_CREW.armedS;
     return;
@@ -1711,8 +1750,7 @@ function runClaimCrew(world, sectorId, now, dt) {
       }
       world.bus.emit('comms:log', { from: 'Claim crew', kind: 'ecology', text: NURSERY_CLAIM_CREW.hostileComms });
     }
-    const record = state.sites && state.sites.worldById
-      ? state.sites.worldById[NURSERY_CLAIM_CREW.worldSiteId] : null;
+    const recordGone = !record;
     if (record && record.completedOperations
       && record.completedOperations[NURSERY_CLAIM_CREW.operationId]) {
       // The cut is already complete (the player raced them, or it settled before a
@@ -1725,6 +1763,13 @@ function runClaimCrew(world, sectorId, now, dt) {
       }
       crew.leaveAt = now + NURSERY_CLAIM_CREW.leaveGraceS;
       return;
+    }
+    if (recordGone) {
+      // Arm-path hardening: the record vanished mid-beat (it is never authored to — the
+      // producer cadence is 'sector_enter'). Count it as a bad intake the same way the
+      // batch path does, so the cutters can never circle a missing claim forever.
+      lapseOnBadIntake(world, crew, now);
+      if (crew.state !== 'working') return;
     }
     const target = claimCrewTarget(state, world, sectorId, site, crew);
     if (!target) return;
@@ -1745,7 +1790,16 @@ function runClaimCrew(world, sectorId, now, dt) {
     crew.batchT = 0;
     const sitesSys = world.registry && typeof world.registry.get === 'function'
       ? world.registry.get('asteroidSites') : null;
-    if (!sitesSys || typeof sitesSys.applyWorldSiteBeamOperation !== 'function') return;
+    if (!sitesSys || typeof sitesSys.applyWorldSiteBeamOperation !== 'function') {
+      lapseOnBadIntake(world, crew, now);
+      return;
+    }
+    // Shared intake semantics: every industrial worker on this manifest — the player's
+    // mining beam and these torches alike — feeds the operation's one declared stream with
+    // requestSequence = state.tick. The kernel cursor is per-operation 'throughSequence'
+    // (worldSiteKernel.applyWorldSiteOperation): a player batch issued on the SAME tick as
+    // a crew batch is swallowed as 'request-replayed' and loses that one work unit. That is
+    // the intended cost of working one shared record — documented here, never enlarged.
     const result = sitesSys.applyWorldSiteBeamOperation({
       siteId: NURSERY_CLAIM_CREW.worldSiteId,
       componentId: NURSERY_CLAIM_CREW.componentId,
@@ -1756,6 +1810,7 @@ function runClaimCrew(world, sectorId, now, dt) {
       tick: state.tick,
     });
     if (result && result.ok && !result.duplicate) {
+      crew.badBatches = 0;
       fireClaimTorches(world, sectorId, now, target);
       if (result.receipt && result.receipt.complete) {
         // The crew's own torch finished the extraction: claim paid, sample pod released
@@ -1767,6 +1822,10 @@ function runClaimCrew(world, sectorId, now, dt) {
         }
         crew.leaveAt = now + NURSERY_CLAIM_CREW.leaveGraceS;
       }
+    } else if (!result || !result.duplicate) {
+      // A hard refusal ('site-missing' or worse) means the intake is gone: a few in a row
+      // lapses the claim instead of the cutters circling a dead record forever.
+      lapseOnBadIntake(world, crew, now);
     }
     return;
   }
@@ -1789,6 +1848,21 @@ function runClaimCrew(world, sectorId, now, dt) {
       crew.cutterIds = [];
     }
   }
+}
+
+// Arm-path hardening: a hard intake refusal repeated in a row ('site-missing', a vanished
+// record, a missing sites system) is a claim that can never be worked — lapse it after a
+// short run of failures instead of letting the cutters circle forever. Plain duplicates
+// (the normal race/settle no-ops) never count.
+function lapseOnBadIntake(world, crew, now) {
+  crew.badBatches = (crew.badBatches || 0) + 1;
+  if (crew.badBatches < 3 || crew.state !== 'working') return;
+  crew.state = 'lapsed';
+  if (!crew.lapseNotified) {
+    crew.lapseNotified = true;
+    world.bus.emit('comms:log', { from: 'Claim crew', kind: 'ecology', text: NURSERY_CLAIM_CREW.lapsedComms });
+  }
+  crew.leaveAt = now + NURSERY_CLAIM_CREW.leaveGraceS;
 }
 
 function spawnClaimCutters(world, sectorId, siteGlobal, crew) {

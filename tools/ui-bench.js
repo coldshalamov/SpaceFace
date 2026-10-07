@@ -26,6 +26,7 @@ import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCa
 import { createBenchSaveSystem } from './ui-bench-saves.js';
 import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
 import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js';
+import { MOBILE_CSS } from '../src/systems/mobile/styles.js';
 
 window.__BENCH_READY = false;
 window.__BENCH_OVERLAY = '';
@@ -87,6 +88,16 @@ const stillInput = document.getElementById('bench-still');
 const bgEl = document.getElementById('bench-bg');
 
 const params = new URLSearchParams(location.search);
+// ?phone=1 (ui-bench --phone): the page is a touch phone — the deck's own CSS and root flag, exactly as
+// the mobile layer stamps them in the game, so menus are judged against the cascade a phone gets.
+const PHONE = params.get('phone') === '1';
+if (PHONE) {
+  document.documentElement.dataset.sfMobile = '1';
+  const phoneStyle = document.createElement('style');
+  phoneStyle.id = 'sf-mobile-style';
+  phoneStyle.textContent = MOBILE_CSS;
+  document.head.append(phoneStyle);
+}
 const log = [];
 const stack = [];
 
@@ -854,6 +865,7 @@ async function goto(rawId) {
   window.__BENCH_READY = false;
   window.__BENCH_OVERLAY = '';
   window.__BENCH_OVERLAY_EL = null;
+  if (window.__benchMobile) { try { window.__benchMobile.destroy(); } catch { /* already gone */ } window.__benchMobile = null; }
   const shot = resolveShot(rawId) || { id: rawId, screen: rawId, backdrop: 'title' };
   const id = shot.screen;
   applyBackdrop(shot);
@@ -883,7 +895,7 @@ async function goto(rawId) {
       await mountLoadingShot();
       current = id;
       currentScreen = null;
-    } else if (id === 'flight' || id === 'crucibleHud') {
+    } else if (id === 'flight' || id === 'crucibleHud' || id === 'mobileFlight') {
       restoreBaseline();
       unseedDrillShot(state);
       unseedBaseShot(state);
@@ -894,6 +906,7 @@ async function goto(rawId) {
       document.body.dataset.kScreen = id;
       if (id === 'crucibleHud') await mountCrucibleHud();
       else await mountFlightHud();
+      if (id === 'mobileFlight') await mountMobileDeck(shot);
       current = id;
       currentScreen = null;
     } else {
@@ -1003,6 +1016,59 @@ async function openOverlay(kind) {
     window.__BENCH_OVERLAY = node && !node.hidden ? 'wingman open' : 'wingman did not open';
     if (node && !node.hidden) window.__BENCH_OVERLAY_EL = node;
   }
+}
+
+/** The phone deck over the flight HUD: the real mobile view with the real gesture model, its contacts
+ *  driven through the view's own pointer handlers (synthetic touch PointerEvents on the HUD root and the
+ *  powers handle), so the picture is what a thumb produces. shot.mobile picks the pose:
+ *  idle | stick | boost | brake | wheel | wheel-pinned. ?layout=lefty mirrors the deck. */
+async function mountMobileDeck(shot) {
+  const [{ MobileGestures, stickRadius }, { mountMobileView }] = await Promise.all([
+    import('../src/systems/mobile/model.js'),
+    import('../src/systems/mobile/view.js'),
+  ]);
+  const model = new MobileGestures();
+  const cfg = { layout: params.get('layout') || 'standard', scale: Number(params.get('scale')) || 1 };
+  const view = mountMobileView({ state, model, activate() {}, reset() {}, config: () => cfg, saveConfig() {}, doc: document, win: window });
+  window.__benchMobile = view;
+  window.__benchModel = model;
+  const w = window.innerWidth, h = window.innerHeight, radius = stickRadius(w, h, cfg.scale);
+  const touch = (type, target, x, y, id) => target.dispatchEvent(new PointerEvent(type, {
+    pointerId: id, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y, bubbles: true, cancelable: true, composed: true,
+  }));
+  const field = document.getElementById('hud');
+  const pose = shot.mobile || 'idle';
+  const toward = Number(params.get('deg') || 38) * Math.PI / 180;   // 0 = up, clockwise
+  const ox = w * 0.3, oy = h * 0.64;
+  const reach = (k) => [ox + Math.sin(toward) * radius * k, oy - Math.cos(toward) * radius * k];
+  if (pose === 'stick' || pose === 'boost' || pose === 'brake') {
+    touch('pointerdown', field, ox, oy, 11);
+    if (pose !== 'brake') {
+      const [x, y] = reach(pose === 'boost' ? 1.62 : Number(params.get('push') || 0.72));
+      touch('pointermove', field, x, y, 11);
+    }
+    // the fixed-step sampler is what latches boost dwell and brake dwell: run it the way the sim would
+    for (let i = 0; i < 30; i += 1) model.sample(1 / 60);
+    view.render({ flight: { brake: pose === 'brake' }, actions: {} });
+  } else if (pose === 'wheel' || pose === 'wheel-pinned') {
+    const edge = document.querySelector('.mf-edge');
+    const r = edge.getBoundingClientRect();
+    const ex = r.left + r.width / 2, ey = r.top + r.height / 2;
+    touch('pointerdown', edge, ex, ey, 12);
+    if (pose === 'wheel') {
+      const g = document.querySelector('.mf-wheel-art').getBoundingClientRect();
+      const cx = g.left + g.width / 2, cy = g.top + g.height / 2, rad = g.width / 2.7;
+      const a = (Number(params.get('slot') || 2) + 0.5) * Math.PI / 6;
+      const side = (cfg.layout === 'lefty') ? 1 : -1;
+      touch('pointermove', edge, cx + side * Math.sin(a) * rad * 0.76, cy - Math.cos(a) * rad * 0.76, 12);
+    } else {
+      touch('pointerup', edge, ex, ey, 12);
+    }
+    view.render({ flight: { brake: false }, actions: {} });
+  } else {
+    view.render({ flight: { brake: false }, actions: {} });
+  }
+  note('— phone deck mounted (' + pose + ', ' + cfg.layout + ')');
 }
 
 /** Mount the always-on flight HUD into #hud (the bench page carries the node) over the held

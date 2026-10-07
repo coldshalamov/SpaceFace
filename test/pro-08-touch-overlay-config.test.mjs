@@ -18,11 +18,13 @@ import {
   TOUCH_SCALE_DEFAULT,
   TOUCH_SCALE_MAX,
   TOUCH_SCALE_MIN,
-  createTouch,
   normalizeTouchLayout,
   normalizeTouchScale,
   readTouchOverlayConfig,
 } from '../src/systems/touch.js';
+// The facade's createTouch now builds the phone deck (src/systems/mobile, pinned in
+// mobile-flight.test.mjs). These builder tests pin the legacy overlay module, which stays shipped.
+import { createTouch } from '../src/systems/legacyTouch.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { save } from '../src/save/saveSystem.js';

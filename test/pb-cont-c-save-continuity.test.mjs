@@ -99,6 +99,13 @@ function mountSystem(definition, ctx, calls) {
         return inner.call(this, data);
       };
     }
+    const innerChunked = definition.deserializeChunked;
+    if (typeof innerChunked === 'function') {
+      fork.deserializeChunked = function* (data) {
+        calls.push({ name, data });
+        yield* innerChunked.call(this, data);
+      };
+    }
   }
   fork.init(ctx);
   ctx.registry.__systems.set(name, fork);

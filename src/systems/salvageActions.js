@@ -659,7 +659,7 @@ export const salvageActions = {
         data.coreWarned = true;
         if (this._bus && this._bus.emit) {
           this._bus.emit('toast', {
-            text: 'The vented core is going critical — scoop it or clear the blast!',
+            text: 'The vented core is going critical — scoop it or clear the blast.',
             kind: 'warn', ttl: 4,
           });
         }

@@ -9,6 +9,7 @@ Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an
 
 | Task | Start here |
 |---|---|
+| "Fix all the bugs" / super buggy / make it solid / debug and polish / overflowing text / missing models / excessive off-screen loading / demo ready | **[`build_map.md` §1.8](../build_map.md#18-production-maturity-debugging-and-polish)** — agents discover and repair ordinary workflows across existing lanes; confirmed player-facing defects outrank feature expansion. One existing demo defect ledger, no requirement for the owner to diagnose bugs. Clean-machine results stay in `QUIET_HOST_PROGRAM.md`; repairs keep moving |
 | No instruction, "next", "go", or "do N tasks" | **`build_map.md` §1C seams** — `node scripts/board-chunks.mjs`. Claim a `free` seam whose files are not in a live NOW row and do up to N of its open rows (the rows are the tasks). `program-dispatch --next` only when it returns a real packet. A drained queue is not an empty plan and is not the inference catalog. An A-list pass with no packet is a §27 lane, not a smaller queue row |
 | Program map, "next N" / "what next" / multi-plan work, check-off, plan routing | **`build_map.md`**, then `design/program/NOW.md` + queue |
 | Same-picture performance option, investigation, or large port later | **`build_map.md` §8.2** → [`../design/PERF_OPTION_SPACE.md`](../design/PERF_OPTION_SPACE.md) |

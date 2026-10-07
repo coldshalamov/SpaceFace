@@ -398,6 +398,13 @@ export function requestSandboxGame(bus, config) {
   bus.emit('game:new', gameNewOptionsForSandboxConfig(config));
 }
 
+/** True between requestSandboxGame() and the launch that consumes it. The physics toy keys on this,
+ *  not on a Sandbox screen merely being mounted: the screen is prewarmed hidden during menu dwell,
+ *  so "a screen is mounted" is true for every ordinary New Game. */
+export function hasPendingSandboxLaunch() {
+  return pendingConfig != null;
+}
+
 /** Idempotent installer for the game:started hook. Call once during UI init. Re-arms after each
  *  fire so repeated sandbox launches work without re-installing. Safe no-op if no config pending. */
 export function installSandboxGameStartedHook(bus, ctxRef) {

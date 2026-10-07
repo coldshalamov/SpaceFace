@@ -415,6 +415,11 @@ export function addCargo(state, commodityId, qty, lotSource = null) {
   if (!def || requested <= 0) return 0;
   const volPerU = volumePerUnit(def);
   const free = cargo.capVolume - cargo.usedVolume;
+  // Fail closed when the hold caches are unknowable: a non-finite free must read as "no
+  // room" for volume-capped goods, never produce a NaN accepted count that callers would
+  // mistake for a successful add (a NaN capVolume previously made a market buy settle
+  // nothing yet report ok:true). Zero-volume items are uncapped and skip the check.
+  if (volPerU > 0 && !Number.isFinite(free)) return 0;
   // floor so a bulky item (vol>1) only takes whole units that fit; max(0) guards over-capacity/float drift.
   const accepted = volPerU === 0 ? Math.max(0, requested) : Math.max(0, Math.min(requested, Math.floor(free / volPerU)));
   if (accepted > 0) {
@@ -569,9 +574,22 @@ export const cargo = {
       if (!cargo || (cargo.items && cargo.items[payload.id] > 0)) return;
       addCargo(state, payload.id, 1);
     });
+    // An armed hot-dock spill receipt is run-scoped: it lives on this instance, never in save
+    // data, so a quit-while-docked New Game or a save load can never carry it across. Leaving
+    // it armed lets the fresh run's first undock announce pods that were never beside that
+    // berth. Every run boundary clears it — game:new and the legacy game:newGame alias for New
+    // Game, save:loaded for restores.
+    const clearRunScopedSpillLatch = () => {
+      this._pendingSpillAnnounce = null;
+      this._lastHotDockSpillTick = -1;
+    };
+    subscribe(binding, 'game:new', clearRunScopedSpillLatch);
+    subscribe(binding, 'game:newGame', clearRunScopedSpillLatch);
+
     // Saves made while the grant seam was dead carry the story lock but an empty hold: backfill
     // the missing persistent items on load so the manifest matches the narrative again.
     subscribe(binding, 'save:loaded', () => {
+      clearRunScopedSpillLatch();
       const locked = state.story && state.story.persistentCargo;
       if (!Array.isArray(locked)) return;
       for (const id of locked) {

@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-03",
+  "updated": "2026-10-04",
   "runs": [
     {
       "date": "2026-08-12",
@@ -73,19 +73,6 @@
     }
   ],
   "units": [
-    {
-      "id": "first-frontier-hint",
-      "date": "2026-09-28",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "First arrival in an uncharted sector speaks the one-time frontier hint through the existing first-use hint mechanism",
-      "fingerprint": "verb=teach,subject=frontier entry,sector=frontier rim,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "f891b6c1a",
-      "verification": "focused_green"
-    },
     {
       "id": "wf06-freight-lane-attrition",
       "date": "2026-09-28",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "70b2512b5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-world-courier-promotes-named",
+      "date": "2026-10-04",
+      "wf": "WF-03",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "the boot-shelved Cinder Run Courier promotes anonymous and parked; far-actor restore now re-adopts her through the save path so the default route's authored face keeps her name and flies her route",
+      "fingerprint": "verb=fix,subject=named_lane_contact,sector=helios_prime,domain=wf-03",
+      "references": [],
+      "integration": "live",
+      "commit": "913252eff",
       "verification": "focused_green"
     }
   ],

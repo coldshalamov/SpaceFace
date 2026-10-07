@@ -16,7 +16,7 @@ const MID_SHOT = resolve(ROOT, '.devshots/k0-kestrel/v5-player-route-mid.png');
 const CLOSE_SHOT = resolve(ROOT, '.devshots/k0-kestrel/v5-player-route-close.png');
 const SLOT = 'k0-old-save-route';
 
-const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+const server = spawn(process.execPath, ['server.js', String(PORT)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },  cwd: ROOT, stdio: 'ignore' });
 let browser;
 try {
   await waitForServer();

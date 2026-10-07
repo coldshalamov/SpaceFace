@@ -1216,7 +1216,10 @@ export const NURSERY_CLAIM_CREW = Object.freeze({
   verb: 'extract',
   // The nursery manifest declares this stream for its operations; kernel rule: a request
   // stream must BE the operation's declared stream, so every industrial worker on this site
-  // — player or crew — feeds the same intake and the same once-rules. Sequence = state.tick.
+  // — player or crew — feeds the same intake and the same once-rules. Sequence = state.tick,
+  // and the per-operation cursor is 'throughSequence': a player batch issued on the SAME
+  // tick as a crew batch is swallowed as 'request-replayed' and loses that one work unit.
+  // That is the intended cost of one shared record — never enlarged, never worked around.
   requestStreamId: 'player-industrial-beam',
   crewSize: 2,
   factionId: 'faction_free',

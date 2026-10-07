@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MobileGestures, shapeStick, stickRadius, wheelSlot, shouldEnable, canFly, screenDirection, steerToward } from '../src/systems/mobile/model.js';
+import { MobileGestures, shapeStick, stickRadius, wheelSlot, distanceToRect, shouldEnable, canFly, screenDirection, steerToward } from '../src/systems/mobile/model.js';
 import { enhanceMobileTouch } from '../src/systems/mobile/bridge.js';
 import { POWER_PAGES } from '../src/systems/mobile/catalog.js';
 
@@ -77,6 +77,20 @@ test('repeated power requests are separated by a neutral sample',()=>{
 test('reset drops queued powers, held toggles, flick and all contacts',()=>{
  const m=new MobileGestures();begin(m);m.pulse('chargeThrow');m.toggle.bulletTime=true;m.reset();
  assert.equal(m.pointers.size,0);assert.deepEqual(m.toggle,{});assert.equal(Object.keys(tick(m).actions).length,0);
+});
+test('left-hand wheel opens inward from the left edge',()=>{
+ for(let i=0;i<6;i++){
+  const a=(i+.5)*Math.PI/6;
+  assert.equal(wheelSlot(100+Math.sin(a)*100,300-Math.cos(a)*100,100,300,140,6,-1,'left'),i);
+ }
+ assert.equal(wheelSlot(70,300,100,300,140,6,-1,'left'),-1);
+ assert.equal(wheelSlot(112,300,100,300,140,6,-1,'left'),-1);
+});
+test('a point inside a control pad is distance zero and a near miss is the gap',()=>{
+ const rect={left:100,top:200,right:160,bottom:260};
+ assert.equal(distanceToRect(120,220,rect),0);
+ assert.equal(distanceToRect(80,230,rect),20);
+ assert.equal(distanceToRect(0,0,null),Infinity);
 });
 test('wheel top-left-bottom resolves all six sectors and cancels safely',()=>{
  for(let i=0;i<6;i++){

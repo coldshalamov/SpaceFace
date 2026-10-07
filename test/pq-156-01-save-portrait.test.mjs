@@ -100,14 +100,14 @@ function envelopeFor(data, seed = SEED) {
 test('PQ-156.01: seed matches the packet', () => {
   assert.equal(SEED, 15610);
   assert.equal(SAVE_PORTRAIT_SEED, 15610);
-  assert.deepEqual(SAVE_PORTRAIT_FIELDS.slice(), ['hull', 'scars', 'titles', 'rapSheet', 'grudge']);
+  assert.deepEqual(SAVE_PORTRAIT_FIELDS.slice(), ['hull', 'scars', 'repairs', 'titles', 'rapSheet', 'grudge']);
   assert.equal(shipLabel('ship_kestrel'), 'Hitch');
   assert.equal(shipLabel('ship_pelican'), 'Pelican');
   assert.equal(shipLabel('ship_wasp'), 'Wasp');
   assert.equal(shipLabel('ship_kestrel_runner'), 'Kestrel Runner');
 });
 
-test('PQ-156.01: a file-list index still yields five portrait fields', () => {
+test('PQ-156.01: a file-list index still yields the portrait fields', () => {
   const portrait = buildSavePortrait({
     meta: {
       savedAt: '2026-09-08T00:00:00.000Z',
@@ -155,11 +155,12 @@ test('PQ-156.01: save envelope round-trip keeps the portrait', () => {
   assert.deepEqual(trip.second, trip.first);
 });
 
-test('PQ-156.01: paint writes scars, titles, rap sheet, and grudge', () => {
+test('PQ-156.01: paint writes scars, repairs, titles, rap sheet, and grudge', () => {
   const portrait = buildSavePortrait({ data: portraitSave(SEED) });
   const nodes = {
     hull: { textContent: '' },
     scars: { textContent: '' },
+    repairs: { textContent: '' },
     titles: { textContent: '' },
     rapSheet: { textContent: '' },
     grudge: { textContent: '' },
@@ -167,6 +168,7 @@ test('PQ-156.01: paint writes scars, titles, rap sheet, and grudge', () => {
   paintSavePortrait(nodes, portrait);
   assert.equal(nodes.hull.textContent, portrait.hull.line);
   assert.equal(nodes.scars.textContent, portrait.scars.line);
+  assert.equal(nodes.repairs.textContent, portrait.repairs.line);
   assert.equal(nodes.titles.textContent, portrait.titles.line);
   assert.equal(nodes.rapSheet.textContent, portrait.rapSheet.line);
   assert.equal(nodes.grudge.textContent, portrait.grudge.line);

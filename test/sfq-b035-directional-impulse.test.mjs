@@ -1,13 +1,17 @@
 // SFQ-B035 — "Hitting a flank gives a different opening than hitting the nose."
 // Pins, on seed 4242, through the real bombs owner and its physics/damage seams:
 //   1. the same impulse delivered on a flank vs the nose yields different authored outcomes —
-//      the signed side comes from the real blast-facing surface point (mirrored flank blasts
-//      sign OPPOSITE where the old fabricated +z offset signed both the same), nose hits take
+//      the signed side is decided by signedHitSide's hull-heading read of the surface hit (the
+//      blast-facing contact point lies ON the impulse line, so its own cross is exactly zero;
+//      its job was replacing the fabricated +z offset that used to dominate via sign(world ix)),
+//      mirrored flank blasts sign OPPOSITE where the fake signed both the same, nose hits take
 //      the deterministic id-parity fallback, and physicsAuthority receives the contact point
 //      plus the def's supported torque cap;
-//   2. fauna are blast-eligible by explicit decision on every axis — damage routed, craft
-//      status riders withheld, dynamic-body fauna shoved, kinematic fauna motion-exempt, and
-//      the proximity fuze still triggers on craft only.
+//   2. fauna are eligible by explicit decision on every axis a blast or field touches —
+//      blast/field-crush damage routed, craft status riders (blast and goo re-application)
+//      withheld, dynamic-body fauna shoved/pulled/dragged, kinematic fauna motion-exempt, no
+//      fauna of any body kind publishes hitstun, and the proximity fuze still triggers on
+//      craft only.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -15,6 +19,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { BOMB_DEFS } from '../src/data/bombs.js';
 import { HITSTUN_IMPULSE_EVENT } from '../src/combat/impulseKernel.js';
+import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { bombs } from '../src/systems/bombs.js';
 
 const DT = 1 / 60;
@@ -205,5 +210,44 @@ test('B035: the proximity fuze still triggers on craft only — a fauna crowd do
     t.tick(120);
     assert.equal(t.detonated.length, 0,
       'no craft inside the trigger radius -> no prime: the fuze opt-out is explicit');
+  } finally { t.bus.clear(); }
+});
+
+test('B035: field axes are fauna-explicit — a dynamic fauna is pulled and crushed, goo never statuses it', () => {
+  const t = boot();
+  try {
+    t.state.entities.get(1).pos = { x: 0, z: 500 }; // keep the owner out of the well
+    const ram = t.fauna(40, 0, true); // physics fauna inside the neutron slug's radius (150)
+    t.spawnBomb('bomb_singularity', 0, 0, { detonateAt: 0.2 });
+    t.tick(45); // burst into the field, let a few pull/crush ticks land
+    // Pull: the field tick queued a real impulse on the dynamic fauna, aimed at the well.
+    const cmd = consumePhysicsCommand(t.state.entities.get(ram.id));
+    assert.ok(cmd && cmd.impulses.length >= 1, 'the singularity pulls the dynamic-body fauna');
+    assert.ok(cmd.impulses[0].x < 0, 'the pull aims from the fauna toward the well at the origin');
+    // Crush: the inner-radius crush tick routes fauna damage, without any status rider.
+    const crushReq = t.routed.find((req) => req.targetId === ram.id
+      && req.packet.source && req.packet.source.phase === 'crush');
+    assert.ok(crushReq, 'the well crushes the fauna in its inner radius (damage axis, not silence)');
+    assert.equal(crushReq.packet.statuses.length, 0, 'the crush packet carries no status rider');
+    assert.ok(!t.routed.some((req) => req.targetId === ram.id
+      && (req.packet.statuses || []).some((s) => s.id === 'status_goo')),
+    'no bomb status is ever scheduled on a fauna');
+  } finally { t.bus.clear(); }
+});
+
+test('B035: goo re-application is craft-only — a fauna in tar is slowed, never statused', () => {
+  const t = boot();
+  try {
+    t.state.entities.get(1).pos = { x: 0, z: 500 };
+    const grazer = t.fauna(20, 0, false); // kinematic fauna standing in the tar
+    const crew = t.ship(-20, 0, 0);       // craft control in the same cloud
+    t.spawnBomb('bomb_goo', 0, 0, { detonateAt: 0.2 });
+    t.tick(75); // past the first status tick (tickEveryTicks 30)
+    const crewReq = t.routed.find((req) => req.targetId === crew.id
+      && (req.packet.statuses || []).some((s) => s.id === 'status_goo'));
+    assert.ok(crewReq, 'the craft in the cloud wears the goo rider on the published cadence');
+    assert.ok(!t.routed.some((req) => req.targetId === grazer.id
+      && (req.packet.statuses || []).some((s) => s.id === 'status_goo')),
+    'the kinematic fauna is never statused by the field — an explicit axis exclusion, not silence (it still took the splat damage)');
   } finally { t.bus.clear(); }
 });

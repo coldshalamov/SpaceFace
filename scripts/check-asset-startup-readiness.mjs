@@ -143,7 +143,7 @@ async function runAssetStartupReadiness() {
     server = await startFreshServer();
     browser = await chromium.launch({ headless: true });
     page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-    issues = collectPageIssues(page);
+    issues = collectPageIssues(page, { playerStoreMounted: false });
     assetHttp = createAssetHttpTracker(page);
 
     await page.addInitScript(() => {
@@ -695,7 +695,7 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,

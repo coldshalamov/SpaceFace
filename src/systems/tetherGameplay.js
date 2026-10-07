@@ -23,6 +23,7 @@ import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { isDynamicPhysicsBodyEntity, queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
@@ -142,7 +143,8 @@ const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55
 // breaking threshold, never invented from line length or phase. Only the DISPLAYED number is
 // smoothed: fast attack so a climb toward the envelope is readable inside the 15-tick (250 ms)
 // warning lease the authority grants, slower release so the bar does not chatter. The physical
-// inputs and tether.strain are never smoothed, rescaled, or written by this.
+// inputs and tether.strain are never smoothed, rescaled, or written by this (scale contract:
+// the SCALE WARNING inside _emitStrain below).
 const ESTIMATE_ATTACK_TAU_S = 0.09;
 const ESTIMATE_RELEASE_TAU_S = 0.35;
 // Authored payloads and loose pickups are sensor bodies: they intentionally do not collide, so the
@@ -231,6 +233,10 @@ export const tetherGameplay = {
       this._pendingCut = null;
       this._ignoreReleaseCutUntilReelIdle = false;
       this._lastStrainT = -Infinity;
+      // SFQ-B026: the display smoother is per-run state, never persisted. A re-adopted live line
+      // must warm-start its estimate from 0 exactly like a cold-restarted load, or the uninterrupted
+      // run and the reload disagree on tether.tensionEstimate for ~1 s (the release tau).
+      this._tensionEstimate = 0;
       this._npcBridleCutTicks.clear();
       this._monofilamentCutIds.clear();
       this._monofilamentKickIds.clear();
@@ -250,6 +256,7 @@ export const tetherGameplay = {
       this._monofilamentKickIds.clear();
       this._hostileSweepCutIds.clear();
       this._monofilamentLatchId = null;
+      this._tensionEstimate = 0;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
       this._releaseSnagLatch(this.state, this._snag, 'ended');
@@ -847,12 +854,18 @@ export const tetherGameplay = {
 
   _reconcileTwinBridle(attachments, state, player, now) {
     if (this._bridleSetup) {
-      const source = state.entities?.get ? state.entities.get(this._bridleSetup.sourceId) : null;
-      const sameSector = this._bridleSetup.sectorId === currentSectorId(state);
-      if (!source || source.alive === false || !sameSector) {
-        this._cancelTwinBridleSetup(state, sameSector ? 'endpoint_lost' : 'sector_changed');
-      } else if (now >= this._bridleSetup.expiresAt) {
-        this._cancelTwinBridleSetup(state, 'setup_expired');
+      const published = state.masslineBridle;
+      const publishedSource = published && published.sourceId;
+      if (publishedSource == null || publishedSource !== this._bridleSetup.sourceId) {
+        this._cancelTwinBridleSetup(state, 'endpoint_lost');
+      } else {
+        const source = state.entities?.get ? state.entities.get(this._bridleSetup.sourceId) : null;
+        const sameSector = this._bridleSetup.sectorId === currentSectorId(state);
+        if (!source || source.alive === false || !sameSector) {
+          this._cancelTwinBridleSetup(state, sameSector ? 'endpoint_lost' : 'sector_changed');
+        } else if (now >= this._bridleSetup.expiresAt) {
+          this._cancelTwinBridleSetup(state, 'setup_expired');
+        }
       }
     }
     if (!this._bridleActive) return;
@@ -3123,10 +3136,29 @@ function preciseCursorScore(entity, aim) {
 }
 
 function masslineRouteTargetId(state) {
-  const waypointId = state && state.nav && state.nav.waypoint && state.nav.waypoint.targetEntityId;
-  if (waypointId != null) return waypointId;
-  const autopilotId = state && state.nav && state.nav.autopilot && state.nav.autopilot.targetEntityId;
-  return autopilotId != null ? autopilotId : null;
+  const nav = state && state.nav;
+  const waypoint = nav && nav.waypoint;
+  if (waypoint) {
+    if (waypoint.stable) {
+      // The stamped bind is the authority for which entity the armed course meant: a durable
+      // bind follows the re-materialized body, and a closed stamp means the slot's occupant is
+      // not the course target — returning the bare id would inject (and prioritize) an
+      // unrelated body into acquisition.
+      const entity = resolveEntitySelection(state, waypoint.stable);
+      if (entity && entity.alive) return entity.id;
+    } else if (waypoint.targetEntityId != null) {
+      return waypoint.targetEntityId;
+    }
+  }
+  const autopilot = nav && nav.autopilot;
+  if (autopilot) {
+    if (autopilot.stable) {
+      const entity = resolveEntitySelection(state, autopilot.stable);
+      return entity && entity.alive ? entity.id : null;
+    }
+    return autopilot.targetEntityId != null ? autopilot.targetEntityId : null;
+  }
+  return null;
 }
 
 function latchedLoadRemaining(entity) {
@@ -3286,7 +3318,10 @@ export function stepTensionEstimate(prev, raw, dt) {
 // the max of the tension, impulse and yank legs against the live break policy — real constraint
 // load vs real breaking threshold. Read-only mirror of that formula: no policy is decided here,
 // no attachment field is written, and a leg with no threshold contributes 0 rather than a fake
-// overload. Same degrade chain _emitStrain has always used for the tension threshold.
+// overload. Same degrade chain _emitStrain has always used for the tension threshold. Unlike the
+// authority's near-break check this omits the break-grace and automaticMasslineBreakAllowed gates
+// (src/combat/attachments.js), so the display may warn a few ticks before the authority may break
+// — deliberate: the display leads, it never lags a real approach.
 function constraintLoadRatio(attachment, policy, def) {
   const tensionLimit = positive(
     (policy && policy.maxTension) || (def && (def.breakTension || (def.break && def.break.maxTension))),

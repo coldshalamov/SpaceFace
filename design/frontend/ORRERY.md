@@ -96,6 +96,17 @@ Existing Deckplate tokens are reused wherever they already mean the right thing.
 | `--dp-lamp` / `-hot` / `-dim` (existing) — alias `--dp-hand` | `#F2B950` / `#FFD98C` / `#8A6B3A` | **the Hand**: yours, chosen, actionable. At most one amber *thing* leads each screen |
 | `--dp-danger` (existing) | `#FF5038` | **threat only**: hostile, incoming, loss, irreversible |
 
+**One extension (owner, 2026-10-04): the map's ground and the minimap's contacts carry colour.** The owner
+asked for "more contrast, colour coding and glow" on the Chart and the radar, because both read as bone
+wireframes in play. The answer is scoped: the Chart's GROUND (each holder's territory wash, the border where
+two holders meet, border posts, lane tints, a halo on each token; `src/ui/orrery/chartWorld.js`) and the
+radar's CONTACTS (class hues with a halo; `src/ui/radar.js`) may be colour. Every structure, word, rail and
+key on both stays bone. Two lines hold: **amber stays the Hand** (the course, the objective) and **red stays
+threat** (a war front, danger haze, hostile contacts). A faction whose own hue sat on either is re-tinted for
+the ground (Meridian's gold → yellow-lime, Reach's crimson → rose, Drift/Pitborn rust softened); the
+crests and the rest of the interface keep their authored colours. Glow is geometry (gradient washes and
+pre-rendered sprites), never a filter in flight.
+
 **Why the rest light is warm bone, not blue.** The owner's recorded rejection is "hard cyan
 wireframe on black reads as generic AI sci-fi". Blue hairlines at rest would be that look however
 beautifully they move. ORRERY's instrument light is the warm white of the station practicals the

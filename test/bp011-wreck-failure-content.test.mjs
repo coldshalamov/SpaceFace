@@ -538,6 +538,63 @@ test('a rep-gated sector reroutes its wreck claim to a reachable mission board',
   salvageSys.destroy && salvageSys.destroy();
 });
 
+test('standing opens the gated filing desk the flag alone would hide', () => {
+  const state = baseState();
+  state.factions = { faction_reach: { rep: 5 } };
+  const bus = new Bus();
+  const salvageSys = { ...salvage };
+  salvageSys.init({ state, bus, helpers: { hash32, mulberry32 }, registry: { get: () => null } });
+  // Sker Bazaar is repGated — the old !repGated filter rerouted EVERY pilot, even one the
+  // berth would happily dock. At rep 5 the local desk is reachable and the claim files locally.
+  const local = salvageSys._wreckStation({
+    id: 'zone_sker_field:sal0', sectorId: 'sector_sker_haven', zoneId: 'zone_sker_field',
+    pos: { x: 0, z: 0 },
+  });
+  assert.equal(local && local.id, 'station_sker',
+    'a pilot the berth admits files at the local desk, not a remote reroute');
+  salvageSys.destroy && salvageSys.destroy();
+});
+
+test('a berth below its own minimum stops taking wreck filings', () => {
+  const state = baseState();
+  state.factions = { faction_quiet: { rep: -50 } };
+  const bus = new Bus();
+  const salvageSys = { ...salvage };
+  salvageSys.init({ state, bus, helpers: { hash32, mulberry32 }, registry: { get: () => null } });
+  // Io Reach's Mercenary Outpost vets at -30 — this pilot sits at -50. The point id's hash
+  // picks the Outpost out of the ungated pair (zone_io_field:sal0 → slot 1), so a flag-only
+  // filter files a claim at a desk that refuses the pilot. Reach Station is the open desk.
+  const desk = salvageSys._wreckStation({
+    id: 'zone_io_field:sal0', sectorId: 'sector_io_reach', zoneId: 'zone_io_field',
+    pos: { x: 0, z: 0 },
+  });
+  assert.equal(desk && desk.id, 'station_reach',
+    'below the Outpost minimum the claim must file at the open berth');
+  const again = salvageSys._wreckStation({
+    id: 'zone_io_field:sal0', sectorId: 'sector_io_reach', zoneId: 'zone_io_field',
+    pos: { x: 0, z: 0 },
+  });
+  assert.equal(again.id, desk.id, 'the gated-aware pick is still deterministic per point');
+  salvageSys.destroy && salvageSys.destroy();
+});
+
+test('the Den cannot file a wreck claim until the entrance parcel lands', () => {
+  const state = baseState();
+  const bus = new Bus();
+  const salvageSys = { ...salvage };
+  salvageSys.init({ state, bus, helpers: { hash32, mulberry32 }, registry: { get: () => null } });
+  // Pallas's Den is a missions desk behind dockDeny 'private' — closed until the Tethys
+  // entrance run is delivered. The point id's hash picks it out of the ungated pair
+  // (zone_pallas_field:sal1 → slot 1): a flag-only filter files where the pilot is refused.
+  const desk = salvageSys._wreckStation({
+    id: 'zone_pallas_field:sal1', sectorId: 'sector_pallas_drift', zoneId: 'zone_pallas_field',
+    pos: { x: 0, z: 0 },
+  });
+  assert.equal(desk && desk.id, 'station_drift',
+    'no entrance run → the claim files at the open Drift desk, never the Den');
+  salvageSys.destroy && salvageSys.destroy();
+});
+
 test('a stripped pod stamps the loss site — the recovery pocket spawns where the pod died', () => {
   const state = baseState();
   const bus = new Bus();
