@@ -985,8 +985,14 @@ export const gyreSnare = {
       this._holdPass(dt, state, player, maw, nose);
     }
 
-    // The capacitor running dry mid-hold auto-bowls (dramatic and honest).
-    if (dry && rt.phase === PHASE.HOLD) this._launch(state, player);
+    // The capacitor running dry mid-hold auto-bowls (dramatic and honest) — but say
+    // why: an unattributed launch reads as "the lash fired itself". The toast lands
+    // before the normal launch beat so the cause is legible at the moment of surprise.
+    if (dry && rt.phase === PHASE.HOLD) {
+      this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare drained — clump away', ttl: 1.6 });
+      this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.5 });
+      this._launch(state, player);
+    }
     else if (dry && rt.phase === PHASE.BEAM) this._drop('cap_dry');
 
     this._publish(state, player);

@@ -432,7 +432,9 @@ export class GyreSnarePresentation {
     const live = phase !== 'off' || (mirror && mirror.launchedId != null);
     // A mid-flight ball-death burst must keep ticking after the mirror goes quiet —
     // early-returning here froze the ring at t≈0.03 as a faint glow stuck at the grave.
-    if (!live && this._quiet && !this._bursts.some((b) => b.t < 1)) return;
+    // The close-ramp owns the quiet window too: latching _quiet on the first dead frame
+    // strangled the ramp after ~1 tick, leaving a ghost cone + frozen clump on screen.
+    if (!live && this._quiet && !this._closing && !this._bursts.some((b) => b.t < 1)) return;
     if (!live) { this._quiet = true; }
     else this._quiet = false;
 
@@ -474,9 +476,11 @@ export class GyreSnarePresentation {
       this._cone.scale.set(endR, len, endR);
       this._coneBody.scale.set(endR * 0.97, len, endR * 0.97);
       this._maw.position.set(len, 0, 0);
-      this._maw.scale.setScalar(endR); // uniform — the torus circle spans local X and Y
+      // The mouth gulps geometrically: each absorb kick dilates ring + disc, not just
+      // their opacity — the verb's face visibly swallows.
+      this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick)); // uniform — the torus circle spans local X and Y
       this._disc.position.set(len + 1.5, 0, 0);
-      this._disc.scale.setScalar(endR * 0.96);
+      this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick));
 
       const holding = phase === 'holding';
       const strain = clamp01(finite(mirror.strain01));
@@ -563,8 +567,10 @@ export class GyreSnarePresentation {
     let cx = null, cz = null, spinRate = 0.9;
     if (phase === 'holding' && mirror.corePos) {
       cx = mirror.corePos.x; cz = mirror.corePos.z;
-      const w = Math.abs(finite(mirror.coreAngVel));
-      spinRate = Math.min(3, 0.35 + w * 0.85);
+      const w = finite(mirror.coreAngVel);
+      // Signed: an external torque that flips the core's tumble should flip the
+      // rubble overlay's orbit too, not leave it revolving against its own spin.
+      spinRate = Math.min(3, 0.35 + Math.abs(w) * 0.85) * (w < 0 ? -1 : 1);
     } else if (mirror.launchedId != null && mirror.ballPos) { cx = mirror.ballPos.x; cz = mirror.ballPos.z; spinRate = 2.6; }
 
     // The flying ball's grave is tracked off ballPos only — a newly held core must
