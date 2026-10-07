@@ -2055,7 +2055,16 @@ function flushDisposeQueueLane(owner, queueField, headField) {
     const queued = queue[owner[headField]];
     if (queued && queued.parent == null) {
       const flushMeasure = { receivers: 0 };
-      disposeObject(queued, flushMeasure);
+      // Per-corpse catch: a disposer-hook throw tears this subtree but must
+      // not strand the corpses behind it — flag partial teardown and settle
+      // the tally via the dirty recount (null) like the paced lanes do.
+      try {
+        disposeObject(queued, flushMeasure);
+      } catch (error) {
+        console.info('[render] dispose queue flush step failed', error);
+        if (queued.userData) queued.userData.sfDespawnPartialTeardown = true;
+        flushMeasure.receivers = null;
+      }
       const queuedUd = queued.userData;
       if (queuedUd && queuedUd.sfDespawnNoted === true) delete queuedUd.sfDespawnNoted;
       else owner._noteShadowMeshRemoved?.(queued, flushMeasure.receivers);
@@ -10574,7 +10583,19 @@ export const render = {
             const disposeInFlight = state.mode === 'flight';
             let disposeSliceStart = disposeNow();
             for (;;) {
-              if (disposeIter.next().done === true) {
+              let stepDone = false;
+              try {
+                stepDone = disposeIter.next().done === true;
+              } catch (error) {
+                // Same contract as the paced despawn lane: a hook throw tears the
+                // subtree — flag it so a later remount re-arms policy sync, leave
+                // measure.settled false so the receiver tally recounts dirty, and
+                // consume the corpse instead of killing the whole dispose drive.
+                console.info('[render] boundary dispose iterator step failed', error);
+                if (boundary && boundary.userData) boundary.userData.sfDespawnPartialTeardown = true;
+                return true;
+              }
+              if (stepDone) {
                 boundaryDisposeMeasure.settled = true;
                 return true;
               }
@@ -10590,7 +10611,10 @@ export const render = {
                 // A context loss while parked abandons the remaining walk — the
                 // generic teardown is reserved for live-context resources.
                 if (!rendererGenerationIsActive() || this._contextLost === true
-                    || recordContextGeneration !== currentContextGeneration()) return false;
+                    || recordContextGeneration !== currentContextGeneration()) {
+                  if (boundary && boundary.userData) boundary.userData.sfDespawnPartialTeardown = true;
+                  return false;
+                }
                 disposeSliceStart = disposeNow();
               }
             }
@@ -12938,8 +12962,21 @@ export const render = {
           // clock and settle the tally from the teardown's own measurement.
           const leftoverMeasure = { receivers: 0 };
           const leftoverDispose = disposeObjectSteps(mesh, leftoverMeasure);
+          let leftoverTorn = false;
           for (;;) {
-            if (leftoverDispose.next().done === true) break;
+            let leftoverDone = false;
+            try {
+              leftoverDone = leftoverDispose.next().done === true;
+            } catch (error) {
+              // Per-corpse catch (despawn-lane contract): a hook throw tears the
+              // subtree — flag for remount re-arm, settle via dirty recount (null),
+              // and keep the sweep alive instead of abandoning every corpse behind.
+              console.info('[render] leftover dispose iterator step failed', error);
+              if (mesh && mesh.userData) mesh.userData.sfDespawnPartialTeardown = true;
+              leftoverTorn = true;
+              leftoverDone = true;
+            }
+            if (leftoverDone) break;
             if (openingProviderNow() - leftoverSliceStart >= 8
                 || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
               if (leftoverSliceArmed) {
@@ -12951,7 +12988,7 @@ export const render = {
               if (cookStale()) return cookSuperseded;
             }
           }
-          noteShadowMeshRemoved(this, mesh, leftoverMeasure.receivers);
+          noteShadowMeshRemoved(this, mesh, leftoverTorn ? null : leftoverMeasure.receivers);
           if (openingProviderNow() - leftoverSliceStart >= 8
               || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
             if (leftoverSliceArmed) {
@@ -15742,14 +15779,27 @@ export const render = {
             clearEntityMeshReference(entity, mesh);
             const departMeasure = { receivers: 0 };
             const departDispose = disposeObjectSteps(mesh, departMeasure);
+            let departTorn = false;
             for (;;) {
-              if (departDispose.next().done === true) break;
+              let departDone = false;
+              try {
+                departDone = departDispose.next().done === true;
+              } catch (error) {
+                // Per-corpse catch (despawn-lane contract): flag the torn subtree
+                // for remount re-arm, settle the tally via dirty recount (null),
+                // and keep the depart sweep alive for the corpses behind it.
+                console.info('[render] depart dispose iterator step failed', error);
+                if (mesh && mesh.userData) mesh.userData.sfDespawnPartialTeardown = true;
+                departTorn = true;
+                departDone = true;
+              }
+              if (departDone) break;
               if (providerSliceDue()) {
                 const superseded = await providerYield();
                 if (superseded) return superseded;
               }
             }
-            noteShadowMeshRemoved(this, mesh, departMeasure.receivers);
+            noteShadowMeshRemoved(this, mesh, departTorn ? null : departMeasure.receivers);
             if (providerSliceDue()) {
               const superseded = await providerYield();
               if (superseded) return superseded;
@@ -18516,8 +18566,11 @@ export const render = {
       }
       // The stamp clear is synchronous with the last consume, so an emit
       // either lands in the map above or finds a null stamp and mints its
-      // own drive — nothing strands on an exited chain.
-      this._rosterPrewarmCohortDrain = null;
+      // own drive — nothing strands on an exited chain. Identity-guard the
+      // clear: a stale drive's settle must not wipe a newer drive's stamp
+      // (the run-epoch machinery already retired its work — but an unguarded
+      // null would let the next emit mint a concurrent third drive).
+      if (this._rosterPrewarmCohortDrain === drive) this._rosterPrewarmCohortDrain = null;
     })();
     this._rosterPrewarmCohortDrain = drive;
     const drain = drive.catch((error) => {
@@ -19168,15 +19221,15 @@ export const render = {
         }
         // An installed authored disposer keeps its own teardown contract; the
         // plain disposeObject fallback rides the bounded drain which settles
-        // the receiver note from its own measured walk. Unmounted roots were
-        // never counted, so they dispose inline with no note either way.
+        // the receiver note from its own measured walk. Unmounted roots ride
+        // the same paced lane — a fat composed tree released before its first
+        // mount used to pay the atomic O(subtree) teardown inline; the
+        // pre-stamped sfDespawnNoted just tells the drain its measured note
+        // nets to nothing (never mounted = never counted).
         if (!disposePreparedAuthoredBoundary(root)) {
-          if (wasMounted) {
-            if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
-            this._warmDisposeQueue.push(root);
-          } else {
-            disposeObject(root);
-          }
+          if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+          if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
+          this._warmDisposeQueue.push(root);
         } else if (wasMounted) {
           this._noteShadowMeshRemoved?.(root);
         }
@@ -19723,13 +19776,12 @@ export const render = {
         if (root.userData) root.userData.sfDespawnNoted = true;
         return;
       }
+      // Never-mounted roots ride the paced lane too (sfDespawnNoted skips
+      // the nets-to-nothing note) — see the sibling release sites.
       if (!disposePreparedAuthoredBoundary(root)) {
-        if (wasMounted) {
-          if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
-          this._warmDisposeQueue.push(root);
-        } else {
-          disposeObject(root);
-        }
+        if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+        if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
+        this._warmDisposeQueue.push(root);
       } else if (wasMounted) {
         this._noteShadowMeshRemoved?.(root);
       }
@@ -21008,12 +21060,9 @@ export const render = {
           if (catalogMounted) this._noteShadowMeshRemoved?.(catalog);
           if (catalog.userData) catalog.userData.sfDespawnNoted = true;
         } else if (!disposePreparedAuthoredBoundary(catalog)) {
-          if (catalogMounted) {
-            if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
-            this._warmDisposeQueue.push(catalog);
-          } else {
-            disposeObject(catalog);
-          }
+          if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+          if (!catalogMounted && catalog.userData) catalog.userData.sfDespawnNoted = true;
+          this._warmDisposeQueue.push(catalog);
         } else if (catalogMounted) {
           this._noteShadowMeshRemoved?.(catalog);
         }
@@ -21040,17 +21089,13 @@ export const render = {
         if (this._contextLost === true) continue;
         // Whole composed warm trees pace across the despawn drain's parked
         // per-corpse iterators instead of paying an atomic teardown inside the
-        // run:ended emit — but a root that never mounted paid no mount-time
-        // tally note, so queueing it would burn a drain slot on a measured -K
-        // walk that nets to nothing. Mounted roots queue; unmounted roots
-        // dispose inline — same contract as teardownWarm's tail.
+        // run:ended emit — never-mounted roots ride the same lane with
+        // sfDespawnNoted pre-stamped (no mount-time note to settle), so the
+        // paced contract covers them instead of the inline O(subtree) walk.
         if (!disposePreparedAuthoredBoundary(root)) {
-          if (wasMounted) {
-            if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
-            this._warmDisposeQueue.push(root);
-          } else {
-            disposeObject(root);
-          }
+          if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+          if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
+          this._warmDisposeQueue.push(root);
         } else if (wasMounted) {
           this._noteShadowMeshRemoved?.(root);
         }
@@ -21498,6 +21543,10 @@ export const render = {
     // root stays culled across the whole dwell window, or a first-cycle
     // cull->show flap pays the mint+restore pair for ~zero compose savings.
     ud.sfHiddenFreezeQueuedSeq = this._viewSyncSeq || 0;
+    // Shared flap epoch: the unfreeze lane's own dwell only delays its stamp,
+    // so a freeze queued after a cancelled unfreeze inherits the queue date of
+    // a long-dead first request — this stamp is what the freezes dwell on.
+    ud.sfHiddenFlapSeq = ud.sfHiddenFreezeQueuedSeq;
     if (!this._pendingHiddenFreeze) this._pendingHiddenFreeze = [];
     this._pendingHiddenFreeze.push(mesh);
   },
@@ -21547,7 +21596,8 @@ export const render = {
         // The dwell spans queue age as well as last-show: a freshly-queued entry
         // stays deferred until it has spent the full window culled — the first
         // cull->show cycle of a flap used to mint the same pass it queued.
-        const dwellBase = Math.max(lastShow || 0, ud.sfHiddenFreezeQueuedSeq || 0);
+        const dwellBase = Math.max(lastShow || 0, ud.sfHiddenFreezeQueuedSeq || 0,
+          ud.sfHiddenFlapSeq || 0);
         if (viewSeq - dwellBase < HIDDEN_FREEZE_FLAP_DWELL) {
           pending[w++] = mesh;
           continue;
@@ -21634,12 +21684,21 @@ export const render = {
     // queue stamp is the show epoch — sfHiddenFreezeLastShowSeq re-stamps on
     // every visible pass and so can never serve as a dwell base.
     ud.sfHiddenUnfreezeQueuedSeq = this._viewSyncSeq || 0;
+    ud.sfHiddenFlapSeq = ud.sfHiddenUnfreezeQueuedSeq;
     (this._pendingHiddenUnfreeze || (this._pendingHiddenUnfreeze = [])).push(mesh);
   },
 
   _drainHiddenUnfreezeQueue() {
     const pending = this._pendingHiddenUnfreeze;
     if (!pending || pending.length === 0) return;
+    // Twin of the freeze drain's metering: a mass re-show mints up to the
+    // same caps inside the same seams, so it debits the flight wallet and
+    // parks its tail on a spent wallet — first row still guaranteed per call.
+    const drainNow = () => (typeof performance !== 'undefined'
+      && typeof performance.now === 'function' ? performance.now() : Date.now());
+    const drainStarted = drainNow();
+    const flightMode = this.state && this.state.mode === 'flight';
+    try {
     const viewSeq = this._viewSyncSeq || 0;
     let minted = 0;
     let scanned = 0;
@@ -21650,7 +21709,8 @@ export const render = {
       const mesh = pending[r];
       if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
           || visited >= HIDDEN_FREEZE_VISIT_PER_PASS
-          || nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS) {
+          || nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS
+          || (flightMode && visited > 0 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
         pending[w++] = mesh;
         continue;
       }
@@ -21668,7 +21728,11 @@ export const render = {
         // re-hide and this entry dead-drops at the flag check for zero walks;
         // a period>=4 flapper used to pay ~7 subtree walks per cycle for ~3
         // hidden frames of compose savings.
-        if (viewSeq - (ud.sfHiddenUnfreezeQueuedSeq || 0) < HIDDEN_FREEZE_FLAP_DWELL) {
+        // Dwell on the latest queue direction stamp, not this lane's own:
+        // a cancel-then-refreeze flap would otherwise keep deferring the
+        // freeze mint on the original queue date forever.
+        if (viewSeq - Math.max(ud.sfHiddenUnfreezeQueuedSeq || 0, ud.sfHiddenFlapSeq || 0)
+            < HIDDEN_FREEZE_FLAP_DWELL) {
           pending[w++] = mesh;
           continue;
         }
@@ -21734,6 +21798,9 @@ export const render = {
       minted += 1;
     }
     pending.length = w;
+    } finally {
+      if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
+    }
   },
 
   _queueAssetResidencyDiagnosticsPublish() {
@@ -21914,6 +21981,7 @@ export const render = {
       delete mesh.userData.sfHiddenUnfreezeQueued;
       delete mesh.userData.sfHiddenUnfreezeQueuedSeq;
       delete mesh.userData.sfHiddenUnfreezeBound;
+      delete mesh.userData.sfHiddenFlapSeq;
       // A parked mid-mint iterator must not resume against a row the world no
       // longer owns — kill it here; the subtree's stamped prefix heals via the
       // sfHiddenFrozen branch's restore below (partial prefixes unfreeze

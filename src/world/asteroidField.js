@@ -509,6 +509,14 @@ export function getOpticFarQuietLatchForBench() {
 
 /** Membership / field-version rescan while latched (0.5 s @ 60 Hz). */
 const OPTIC_FAR_QUIET_RESCAN_TICKS = 30;
+// Per-tick promote/demote budgets: crossing a dense optic pocket used to run
+// every in-disc promote (catchUp + ship-scan + spawnEntity + ~24-listener
+// entity:spawned fan + Rapier mint) inside ONE sim step — the same burst class
+// the first-flight cook paces 4-per-yield and far-actors gate on
+// budget.request. Deferred records stay field-resident (identical sim reads)
+// until their tick — indistinguishable from slightly-later boundary entry.
+const OPTIC_PROMOTE_PER_TICK = 4;
+const OPTIC_DEMOTE_PER_TICK = 4;
 
 function entityIndexVersion(state) {
   const index = state && state.entityIndex;
@@ -586,6 +594,10 @@ export function tickOpticFieldRocks(state, helpers) {
     const dz = rec.pos.z - pz;
     if (dx * dx + dz * dz > radii.enter2) continue;
     opticInterest = true;
+    // Past the per-tick budget the record stays field-resident — it simulates
+    // identically and promotes on a later tick instead of stacking spawn
+    // transactions inside this one.
+    if (promoted >= OPTIC_PROMOTE_PER_TICK) continue;
     const ent = promoteAsteroidFieldRock(state, rec.id, helpers, 'optic-approach');
     if (ent) promoted += 1;
   }
@@ -602,6 +614,9 @@ export function tickOpticFieldRocks(state, helpers) {
     const dx = entity.pos.x - px;
     const dz = entity.pos.z - pz;
     if (dx * dx + dz * dz <= radii.exit2) continue;
+    // Symmetric budget: a mass exit shelves N more bodies next tick rather
+    // than paying N removal fans inside this step.
+    if (shelved >= OPTIC_DEMOTE_PER_TICK) continue;
     if (demoteOpticAsteroidToField(state, entity, helpers, 'optic-exit')) shelved += 1;
   }
 

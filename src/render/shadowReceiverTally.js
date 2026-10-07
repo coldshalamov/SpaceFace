@@ -71,6 +71,10 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
   const stack = [{
     node: scene,
     idx: -1,
+    // kidCount stamps the children-array length the frame last saw so a
+    // resume can detect below-cursor inserts (growth the indexOf shift alone
+    // cannot locate) — see the shifted compare below.
+    kidCount: scene.children ? scene.children.length : 0,
     dead: detached && detached.size > 0 && detached.has(scene) ? 1 : 0,
     visited: false,
   }];
@@ -114,6 +118,9 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
             } else if (parentFrame.node.children
                 && parentFrame.node.children[parentFrame.idx] !== f.node) {
               const shifted = parentFrame.node.children.indexOf(f.node);
+              // The resume pass charges its own work: each indexOf is
+              // O(siblings) — count it against the slice budget like a visit.
+              sinceYield += 1;
               if (shifted < 0) deadAt = i;
               else {
                 // Insert-before-cursor: children between the recorded cursor
@@ -125,7 +132,28 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
                   if (!gapSeed) gapSeed = [];
                   gapSeed.push({ node: parentFrame.node, from: parentFrame.idx, to: shifted });
                 }
+                // Below-cursor inserts (unshift / splice(0,..) / a reorder
+                // dragging an unvisited row ahead of the cursor) leave the
+                // chain child where the indexOf still finds it but put fresh
+                // rows in the consumed prefix — invisible to the gap seed.
+                // Array growth is the tell: when the children list got longer
+                // than the frame last saw, rescan the consumed prefix for
+                // unvisited members.
+                const kidCount = parentFrame.kidCount | 0;
+                if (parentFrame.node.children.length > kidCount) {
+                  const prefixTo = Math.min(shifted, parentFrame.idx);
+                  if (prefixTo > 0) {
+                    if (!gapSeed) gapSeed = [];
+                    gapSeed.push({
+                      node: parentFrame.node,
+                      from: 0,
+                      to: prefixTo,
+                      prefix: true,
+                    });
+                  }
+                }
                 parentFrame.idx = shifted;
+                parentFrame.kidCount = parentFrame.node.children.length;
               }
               if (deadAt >= 0) break;
             }
@@ -134,16 +162,29 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
             for (let k = deadAt; k < stack.length; k += 1) stack[k].dead = 1;
           } else if (gapSeed) {
             // Reverse-push so the lowest-indexed unvisited sibling pops first.
+            // Rows already on the stack (an earlier seed or the open chain
+            // itself — prefix scans re-see live rows) are skipped rather than
+            // pushed twice; the seeded span still bounds the slice the same
+            // way visited nodes do.
             for (const gap of gapSeed) {
               for (let j = gap.to - 1; j >= gap.from; j -= 1) {
                 const node = gap.node.children[j];
+                if (openSet && openSet.has(node)) continue;
                 stack.push({
                   node,
                   idx: -1,
+                  kidCount: node.children ? node.children.length : 0,
                   dead: detached.size > 0 && detached.has(node) ? 1 : 0,
                   visited: false,
                 });
                 if (openSet) openSet.add(node);
+                sinceYield += 1;
+                // A seeded span is real work — yield mid-seed instead of
+                // letting a wide splice turn one resume into its own burst.
+                if (sinceYield >= every) {
+                  sinceYield = 0;
+                  yield;
+                }
               }
             }
           }
@@ -183,6 +224,7 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
       stack.push({
         node: child,
         idx: -1,
+        kidCount: child.children ? child.children.length : 0,
         dead: detached && detached.size > 0 && detached.has(child) ? 1 : 0,
         visited: false,
       });
