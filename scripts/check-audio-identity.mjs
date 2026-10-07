@@ -381,6 +381,9 @@ const EMITTED_CUES = {
   gyre_snare_strain: { distinct: true }, gyre_snare_ball_death: { distinct: true },
   gyre_snare_drop: { distinct: true }, gyre_snare_off: { distinct: true },
   gyre_snare_full: { distinct: true },
+  // Gyre capacitor dying gasp — a low falling thrum latched once per hold, ~3 s before
+  // the dry auto-bowl (gyreSnare.js fuseCueLatched → sfx_gyre_fuse_low).
+  gyre_snare_fuse_low: { distinct: true },
   // Iron Maw prow tear (tacticalAI) — propulsion wind-down voice; boss moment stinger.
   'combat.subsystem.disabled': { distinct: true },
   'moment.stinger': { distinct: true },
