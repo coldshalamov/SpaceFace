@@ -653,7 +653,11 @@ export class GyreSnarePresentation {
         ? 0.7 + 0.3 * (fuseS / GYRE_SNARE.fuseWarnVisS) : 1;
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
-      this._coneMat.uniforms.uAlpha.value = (tense ? 0.62 : 0.42) * flashCalm * wakeEase * fuseDim;
+      // A thrown lash is SPENT glass: during launch no pull lane runs, so the cone
+      // dims ~28% (still the follow-through, just not a live gravity zone) — the
+      // tense floor keeps it visibly taut without implying it can still grab.
+      const spent = phase === 'launching' ? 0.72 : 1;
+      this._coneMat.uniforms.uAlpha.value = (tense ? 0.62 : 0.42) * spent * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
       // for the cone to occlude background glow and read as a surface, not a hologram.
       this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * fuseDim * (tense ? 1.2 : 0.8);
@@ -706,7 +710,7 @@ export class GyreSnarePresentation {
       if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strain * 1.5);
       this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = drawLen;
-      this._spiralMat.uniforms.uRad.value = endR;
+      this._spiralMat.uniforms.uRad.value = endR * spent; // the funnel narrows with the spent lash
       // Aim the funnel's endpoint at the held core's beam-local offset: while a mass
       // is tethered it orbits ±75 wu off the maw plane, and the suction arrow should
       // point at the gravity well it really feeds — not an empty plane.
@@ -838,7 +842,9 @@ export class GyreSnarePresentation {
       // Opacity rides the pull strength the sim published (k = lane accel share):
       // a body at the basin's heart burns brighter than one fading at the lip —
       // and warms toward rim-hot in hue, so 'about to be grabbed' reads at a glance.
-      g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm;
+      // wakeEase gates them too: the sim's pull is live on frame one but the glass
+      // takes ~150 ms to project — glows must not outrun the drawn rim.
+      g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * wakeEase;
       g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
       g.visible = true;
     }
@@ -1053,6 +1059,10 @@ export class GyreSnarePresentation {
               finite(member.nx, 0) * spread,
               ((i * 0.61803398875) % 1 - 0.5) * r * 1.1,
               finite(member.nz, 0) * spread);
+            // Levitating bob like the primary's lumps — seat + amplitude pinned at
+            // build time so the sway never drifts the rubble apart over a flight.
+            lm.userData.baseY = lm.position.y;
+            lm.userData.bobAmp = r * 0.15;
             lm.visible = true;
           }
         }
@@ -1062,8 +1072,13 @@ export class GyreSnarePresentation {
         this._secGroup.rotation.y += sdt * 2.6 * calm;
         for (let i = 0; i < this._secLumps.length; i++) {
           if (!this._secLumps[i].visible) continue;
-          this._secLumps[i].rotation.y += sdt * (0.35 + i * 0.17) * calm;
-          this._secLumps[i].rotation.x += sdt * (0.21 + i * 0.11) * calm;
+          const lm = this._secLumps[i];
+          lm.rotation.y += sdt * (0.35 + i * 0.17) * calm;
+          lm.rotation.x += sdt * (0.21 + i * 0.11) * calm;
+          if (lm.userData.baseY !== undefined) {
+            lm.position.y = lm.userData.baseY
+              + Math.sin(this.time * 2.2 + i * 1.7) * (lm.userData.bobAmp || 0) * calm;
+          }
         }
         this._secGroup.visible = true;
       } else if (this._secGroup.visible) {

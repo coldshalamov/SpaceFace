@@ -117,6 +117,7 @@ export const GYRE_SNARE = Object.freeze({
                               // a capped 2400 t clump must still visibly bow ~13 wu aft in
                               // ~100 ms (the slingshot read dies if the coil can't pull it)
   ballTtlS: 9,               // s — the bowling ball despawns after this flight window
+  ballWatchMax: 8,           // live balls the tracker mirrors/watches (overflow keeps marks, sheds watch)
   launchImpactScaleBase: 1.6,// damage scale floor on a launched ball
   launchImpactScalePerMass: 90, // +1 impactDamageScale per this many tons of clump mass
   launchImpactScaleMax: 8,   // impulseKernel clamps physicsBody.impactDamageScale to [0,8] —
