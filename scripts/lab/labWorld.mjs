@@ -26,7 +26,7 @@ function silentConsole(fn) {
   try { return fn(); } finally { Object.assign(console, saved); }
 }
 
-export async function createLabWorld({ seed = 1, bundle = 'focused', quiet = true, settings = {} } = {}) {
+export async function createLabWorld({ seed = 1, bundle = 'focused', quiet = true, settings = {}, extraSystems = [] } = {}) {
   const aim = { x: 0, z: 1000 };
   const helpers = { raycastToPlane: (_ndc, out) => { const o = out || {}; o.x = aim.x; o.z = aim.z; return o; } };
   let runtime;
@@ -37,7 +37,7 @@ export async function createLabWorld({ seed = 1, bundle = 'focused', quiet = tru
     // Resolve the production manifest once to get the production system objects + order.
     const probe = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed, helpers, createSimulation: false });
     const order = probe.manifest.authoritativeUpdateOrder;
-    const keep = new Set(FOCUSED_SYSTEM_NAMES);
+    const keep = new Set([...FOCUSED_SYSTEM_NAMES, ...extraSystems]);
     const systems = order.filter((s) => s && keep.has(s.name));
     return createAuthoritativeRuntime({ profileId: 'production', seed, helpers, systems });
   };

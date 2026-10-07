@@ -17,6 +17,7 @@ const BENCHES = {
   flight: () => import('./benches/flightTurn.mjs'),
   lock: () => import('./benches/targetLock.mjs'),
   collision: () => import('./benches/collision.mjs'),
+  dock: () => import('./benches/dock.mjs'),
 };
 
 function parseArgs(argv) {
