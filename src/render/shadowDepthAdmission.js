@@ -655,7 +655,7 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
   const lightSigEpoch = Number.isFinite(options.lightSigEpoch) ? options.lightSigEpoch : null;
   const censusStale = () => lightSigEpoch !== null && shadowCensusEpoch() !== lightSigEpoch;
   if (censusStale()) {
-    return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true };
+    return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true, aborted: true };
   }
   // three bakes the rendered scene's light counts (numDirLights/numPointLights/…) and fog flags
   // into EVERY program key — including depth variants. The live scene runs 3 directional + 8
@@ -706,7 +706,7 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
       if (++censusVisited % 512 === 0) {
         yield;
         if (censusStale()) {
-          return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true };
+          return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true, aborted: true };
         }
       }
     }
@@ -725,12 +725,12 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
       : 'l0|f0');
   if (typeof renderer.render !== 'function' || !camera
       || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {
-    return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
+    return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0, aborted: true };
   }
 
   const THREE = options.THREE;
   if (!THREE || typeof THREE.Scene !== 'function') {
-    return { skipped: true, reason: 'THREE.Scene unavailable for depth staging', subjects: 0 };
+    return { skipped: true, reason: 'THREE.Scene unavailable for depth staging', subjects: 0, aborted: true };
   }
   // Last bail before the atomic slice — reparent/render/mark inside
   // session.slice() is yield-free, so a drift detected here is the final
@@ -742,7 +742,7 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
       _depthStageSessions.delete(renderer);
       heldSession = null;
     }
-    return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true };
+    return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true, aborted: true };
   }
   // Session amortization: consecutive drives under an unchanged census share
   // the staging scene + cloned light set + warmed render state — each leg

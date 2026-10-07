@@ -9,6 +9,7 @@ import {
   collectJournalPresentationEntitiesChunked,
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
+import { notePacedFrameSpend, pacedFrameSpend, PACED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
 
 function aliveEntities(state) {
   return collectJournalPresentationEntities(state);
@@ -134,11 +135,16 @@ export function createPresentationPublisher(world, state, options = {}) {
         && typeof performance.now === 'function' ? performance.now() : Date.now();
       let collectStep = null;
       for (;;) {
+        // A spent pass parks mid-walk — the private 4 ms clock is no longer
+        // the only meter on these drives.
+        if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
         collectStep = pendingCollectIter.next();
         if (collectStep.done) break;
         if ((typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now()) - collectStart >= 4) break;
       }
+      notePacedFrameSpend((typeof performance !== 'undefined'
+        && typeof performance.now === 'function' ? performance.now() : Date.now()) - collectStart);
       if (collectStep && collectStep.done === true) {
         pendingCollectIter = null;
         pendingCollectSample = pendingCollectOut;
@@ -169,11 +175,14 @@ export function createPresentationPublisher(world, state, options = {}) {
             && typeof performance.now === 'function' ? performance.now() : Date.now();
           let collectStep = null;
           for (;;) {
+            if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
             collectStep = pendingCollectIter.next();
             if (collectStep.done) break;
             if ((typeof performance !== 'undefined' && typeof performance.now === 'function'
               ? performance.now() : Date.now()) - collectStart >= 4) break;
           }
+          notePacedFrameSpend((typeof performance !== 'undefined'
+            && typeof performance.now === 'function' ? performance.now() : Date.now()) - collectStart);
           if (collectStep && collectStep.done === true) {
             pendingCollectIter = null;
             pendingCollectSample = pendingCollectOut;
@@ -222,11 +231,14 @@ export function createPresentationPublisher(world, state, options = {}) {
           ? performance.now() : Date.now();
         let applyStep = null;
         for (;;) {
+          if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
           applyStep = applyIter.next();
           if (applyStep.done) break;
           if ((typeof performance !== 'undefined' && typeof performance.now === 'function'
             ? performance.now() : Date.now()) - applyStart >= 4) break;
         }
+        notePacedFrameSpend((typeof performance !== 'undefined'
+          && typeof performance.now === 'function' ? performance.now() : Date.now()) - applyStart);
         if (applyStep && applyStep.done === true) {
           pendingApplyIter = null;
           const worldDiag = world.diagnostics;

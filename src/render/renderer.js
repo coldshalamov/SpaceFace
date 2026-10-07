@@ -608,9 +608,18 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
       } catch (driveError) {
         closeCookStepsIter(iterator);
         console.warn('[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
-        return runCookSyncTwin('compile-shadow-depth-pipelines',
+        const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
           () => compileShadowDepthPipelines(depthOpts),
           { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
+        // The degrade discards the remaining drift retries and runs under
+        // census terms minted pre-fault — a {stale} or never-compiled shape
+        // must read aborted like this drive's own exhausted loop, or callers
+        // evaluate marks that never landed and park roots on unearned
+        // undrawable verdicts.
+        if (degraded && (degraded.stale === true || degraded.skipped === true)) {
+          degraded.aborted = true;
+        }
+        return degraded;
       }
       if (step.done) {
         if (step.value && step.value.stale === true) break;
@@ -2573,8 +2582,27 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       if (!owner._keepGpuReconcileDegraded
           && now() - owner._keepGpuReconcileDirtySince >= 1000) {
         owner._keepGpuReconcileDegraded = true;
-        runCookSyncTwin('keep-gpu reconcile',
-          () => owner.reconcileMeshes({ keepResidentSet: true }));
+        if (typeof owner._reconcileMeshesSteps === 'function') {
+          // Escalated-paced re-mint, not the atomic drain: the kept resident
+          // set is the whole cooked sector — exactly the fat case the paced
+          // twin exists for, so an inline drain re-stalls the very window it
+          // rescues. Re-mint the same iterator and let the drive below pace
+          // it across shell ticks at an escalated slice.
+          owner._reconcileIter = owner._reconcileMeshesSteps({ keepResidentSet: true });
+          owner._reconcileKeepGpu = true;
+          owner._reconcileDegraded = true;
+          owner._reconcileEpoch = st.world && st.world.enterSerial != null
+            ? st.world.enterSerial : null;
+        } else {
+          // Fixture/custom owners without the staged twin keep the atomic
+          // call — re-dirty on a throw so the reconcile isn't lost for the
+          // epoch (the iterator clears the flag at its head).
+          try { owner.reconcileMeshes({ keepResidentSet: true }); }
+          catch (err) {
+            owner._meshReconcileDirty = true;
+            console.warn('[render] keep-gpu reconcile degrade failed', err);
+          }
+        }
       }
     }
     if (owner._reconcileIter) {
@@ -2606,11 +2634,18 @@ export function serviceRenderMeshResidency(owner, frameDt) {
               owner._reconcileIter = null;
               owner._reconcileEpoch = null;
               owner._reconcileKeepGpu = null;
+              owner._reconcileDegraded = null;
             }
             break;
           }
-          if (now() - reconcileSliceStart >= 4
-              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+          // A degrade-minted iter is the keepGpu rescue lane itself — pace it
+          // at an escalated slice per shell tick and keep it off the presented
+          // ledger consult (a busy stretch otherwise pauses the rescue back
+          // toward the ~210 s gate it exists to beat).
+          const degradeSlice = owner._reconcileDegraded === true ? 16 : 4;
+          if (now() - reconcileSliceStart >= degradeSlice
+              || (owner._reconcileDegraded !== true
+                && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         }
         notePacedFrameSpend(now() - reconcileSliceStart);
       }
@@ -3472,6 +3507,7 @@ function abandonReconcile(owner) {
   owner._reconcileIter = null;
   owner._reconcileEpoch = null;
   owner._reconcileKeepGpu = null;
+  owner._reconcileDegraded = null;
 }
 
 // The tracker-record prune + detached-owner release is one atomic multi-ms sweep
@@ -25803,12 +25839,26 @@ export const render = {
     const publication = this._presentationPublisher && typeof this._presentationPublisher.consume === 'function'
       ? this._presentationPublisher.consume()
       : null;
-    if (publication && publication.rebuilt) yield* this._rebindPresentationMeshesSteps();
-    else if (publication) {
-      yield* this._bindPublishedPresentationMeshesSteps(
-        publication.spawnedSlots
-          ? publication.spawnedSlots.slice(0, publication.spawnedCount)
-          : null);
+    // Bind obligations are durable latches, not one-shot consume flags: a leg
+    // torn mid-walk would otherwise never re-mint (the next consume reports
+    // nothing), leaving world.meshRefs null and doomed bits set on the first
+    // presented frame. Latches clear only on leg completion.
+    if (publication && publication.rebuilt === true) this._openingRebindOwed = true;
+    if (publication && publication.spawnedSlots && publication.spawnedCount > 0) {
+      const announced = publication.spawnedSlots.slice(0, publication.spawnedCount);
+      this._openingSpawnedBindPending = this._openingSpawnedBindPending
+        ? this._openingSpawnedBindPending.concat(announced) : announced;
+    }
+    if (this._openingRebindOwed === true) {
+      yield* this._rebindPresentationMeshesSteps();
+      this._openingRebindOwed = false;
+      // A whole-set rebind covers every announced spawned row.
+      this._openingSpawnedBindPending = null;
+    } else if (this._openingSpawnedBindPending && this._openingSpawnedBindPending.length) {
+      const pendingList = this._openingSpawnedBindPending;
+      yield* this._bindPublishedPresentationMeshesSteps(pendingList);
+      // Identity check: rows announced after this leg minted are still owed.
+      if (this._openingSpawnedBindPending === pendingList) this._openingSpawnedBindPending = null;
     }
 
     if (this._snapshotFence && this._presentationWorld) {
@@ -26215,9 +26265,24 @@ export const render = {
     // frame under publication churn. The cheap spawned-slot leg is NOT parked:
     // it is independent, per-row idempotent, and is the only bind path for rows
     // announced while their sweep bind hasn't run.
-    const rebindFaulted = this._rebindFaultEpoch === serviceFaultEpoch(this.state);
-    if (!rebindFaulted && (publication.remapped === true
-      || (publication.rebuilt && publication.appliedDelta !== 0))) {
+    // The park carries the standard bounded in-epoch retry (<=3 drives, >=1 s
+    // between mints) — a transient throw inside the longest leg used to drop
+    // the whole tail until the next enter.
+    const rebindFaulted = this._rebindFaultEpoch === serviceFaultEpoch(this.state)
+      && ((this._rebindFaultRetries | 0) >= 3 || Date.now() < (this._rebindRetryAt || 0));
+    if (publication.remapped === true
+      || (publication.rebuilt && publication.appliedDelta !== 0)) {
+      this._openingRebindOwed = true;
+    }
+    if (publication && publication.spawnedSlots && publication.spawnedCount > 0) {
+      const announced = publication.spawnedSlots.slice(0, publication.spawnedCount);
+      this._openingSpawnedBindPending = this._openingSpawnedBindPending
+        ? this._openingSpawnedBindPending.concat(announced) : announced;
+    }
+    // Mint on the durable latch — the consume flags that armed it are gone by
+    // the next pass, and a rebuilt+0-delta feed (which never armed it) keeps
+    // skipping the re-mint like before.
+    if (!rebindFaulted && this._openingRebindOwed === true) {
       // A REMAP (world.clear() or rebuildFromEntities) drops every mesh
       // binding by construction — the whole-_meshes rebind must mint — and a
       // fallback diff-apply with real alloc/retire churn needs it too (those
@@ -26232,18 +26297,29 @@ export const render = {
       if (priorRebind && typeof priorRebind.return === 'function') {
         try { priorRebind.return(); } catch (_) { /* fresh walk supersedes */ }
       }
-      this._presentationRebindIter = this._rebindPresentationMeshesSteps();
-    } else if (publication && publication.spawnedCount > 0) {
+      const owner = this;
+      // The latch clears only when the rebind leg completes — a torn walk
+      // keeps the obligation minted so the next consume-free pass re-runs it.
+      this._presentationRebindIter = (function* () {
+        yield* owner._rebindPresentationMeshesSteps();
+        owner._openingRebindOwed = false;
+        owner._openingSpawnedBindPending = null;
+      })();
+    } else if (this._openingSpawnedBindPending && this._openingSpawnedBindPending.length) {
       // A parked walk still owns unbound tail rows the new publication does not
       // cover — chain it behind the spawned range instead of dropping them.
       // Spawned rows bind FIRST: during a suspended rebuild the parked tail
       // can stretch across presents, and fresh spawns near the player would
       // pop in late waiting behind it. Per-row lazy checks make the tail
       // order non-load-bearing and re-binding is idempotent.
-      const spawnedIter = this._bindPublishedPresentationMeshesSteps(
-        publication.spawnedSlots
-          ? publication.spawnedSlots.slice(0, publication.spawnedCount)
-          : null);
+      const owner = this;
+      const pendingList = this._openingSpawnedBindPending;
+      const spawnedIter = (function* () {
+        yield* owner._bindPublishedPresentationMeshesSteps(pendingList);
+        if (owner._openingSpawnedBindPending === pendingList) {
+          owner._openingSpawnedBindPending = null;
+        }
+      })();
       this._presentationRebindIter = this._presentationRebindIter
         ? this._chainPresentationBindIters(spawnedIter, this._presentationRebindIter)
         : spawnedIter;
@@ -26256,6 +26332,9 @@ export const render = {
         ? performance.now()
         : Date.now();
       for (;;) {
+        // Ledger consult at loop top: a spent pass parks the walk instead of
+        // stepping it (worst frame cost, so first to yield).
+        if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
         const iter = this._presentationRebindIter;
         let step;
         try {
@@ -26263,8 +26342,12 @@ export const render = {
         } catch (err) {
           closeCookStepsIter(iter);
           if (this._presentationRebindIter === iter) this._presentationRebindIter = null;
-          this._rebindFaultEpoch = serviceFaultEpoch(this.state);
-          console.warn('[render] presentation rebind drive failed; parked until the next enter', err);
+          const rebindEpoch = serviceFaultEpoch(this.state);
+          if (this._rebindFaultEpoch !== rebindEpoch) this._rebindFaultRetries = 0;
+          this._rebindFaultEpoch = rebindEpoch;
+          this._rebindFaultRetries = (this._rebindFaultRetries | 0) + 1;
+          this._rebindRetryAt = Date.now() + 1000;
+          console.warn('[render] presentation rebind drive failed; retrying under cooldown', err);
           break;
         }
         if (step.done) {
@@ -26276,6 +26359,9 @@ export const render = {
           : Date.now();
         if (rebindNow - rebindStart >= 4) break;
       }
+      notePacedFrameSpend(
+        (typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()) - rebindStart);
     }
     // PresentationRunner publishes a caller-owned completed-tick record, not the tick number
     // itself. Its sequence is the immutable simulation publication boundary; falling back to the
@@ -26328,6 +26414,10 @@ export const render = {
           const packStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
             ? performance.now() : Date.now();
           for (;;) {
+            // Shared ledger consult at loop top + measured debit at exit:
+            // a whole-world copy on a spent pass parks instead of stacking
+            // un-metered work on the magic frame.
+            if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
             let step;
             try {
               step = pendingPack.iter.next();
@@ -26360,6 +26450,9 @@ export const render = {
               ? performance.now() : Date.now();
             if (packNow - packStart >= 4) break;
           }
+          notePacedFrameSpend(
+            (typeof performance !== 'undefined' && typeof performance.now === 'function'
+              ? performance.now() : Date.now()) - packStart);
         } else {
           const packed = packPresentationWorldToFence(
             this._presentationWorld,
@@ -28212,6 +28305,9 @@ export const render = {
       while (memo.sig == null
         || ((typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now()) < deadline)) {
+        // A spent pass serves the in-flight signature instead of stepping —
+        // the first-ever mint keeps draining (nothing to serve yet).
+        if (memo.sig != null && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
         try {
           step = memo.pendingIter.next();
         } catch (censusError) {
@@ -28239,6 +28335,9 @@ export const render = {
           memo.superseded = (memo.superseded | 0) + 1;
         }
       }
+      notePacedFrameSpend(
+        (typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()) - startedAt);
     }
     if (memo.sig == null) {
       // Eval-harness envs lack the Steps twin — the sync walk is the fallback.
