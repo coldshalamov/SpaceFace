@@ -1,4 +1,4 @@
-# SpaceFace Tuning Lab — Phase 1 notebook
+# SpaceFace Tuning Lab — notebook (Phase 1, Phase 2a in §9)
 
 Branch `lab/tuning-phase1`, cut from `origin/master` 7ee4205d8 (2026-10-06). Headless, deterministic,
 steps the REAL authoritative runtime (Rapier SG-02 dynamic authority, flight v3, SG-06 tactical AI,
@@ -341,4 +341,140 @@ node scripts/lab/run.mjs aim --seeds 1,2,3
 node scripts/lab/run.mjs aim --seeds 1,2,3 --variant muzzle-only,oracle-accel-muzzle
 node scripts/lab/run.mjs aim --seeds 1,2,3 --variant oracle-accel,no-spread --scenarios wasp-cruise-160,wasp-boost-160,mule-flee-boost,wasp-joust-railgun-400,dart-hold-200,wasp-cruise-autocannon,wasp-hold-autocannon-230,wasp-boostweave-160
 ```
+Phase 2a:
+```
+node scripts/lab/sweeps/tetherSweep2a.mjs baseline|grid|top|helm|ablate --workers 6   # resumable
+node scripts/lab/sweeps/tetherSweep2a.mjs verify --workers 6   # on a production checkout with scripts/lab copied in
+node scripts/lab/sweeps/tetherSweep2a.mjs report               # report.json + grid-ranked.csv
+node scripts/lab/run.mjs aim --seeds 1,2,3 --quiet --variant baseline,pre-2a,muzzle-only,no-spread,oracle-accel,oracle-intent --out /tmp/aim-full.json
+node scripts/lab/run.mjs aim --seeds 1,2,3 --quiet --variant half,half-pre-2a,half-muzzle-only,half-no-spread,half-oracle-accel,half-oracle-intent --out /tmp/aim-half.json
+```
+(`grid.w*.jsonl` raw shards are gitignored; regenerate with `grid`, about 15 min.)
 Wall time on the VM: tether 5 variants × 13 × 3 ≈ 5.5 min; aim 25 × 3 ≈ 65 s per variant.
+
+## 9. Phase 2a — systems #1 and #2 proven (2026-10-06)
+
+Production PR branches are cut from `origin/master` d9619d568. Each carries only the production change and its tests; the lab seams stay on this branch.
+- `lab2a/tether-spin` f60923e5b: orbitAssist.js, flightV3.js, input.js, the test-17 rope edit, and the new orbit-line-yaw-lock test.
+- `lab2a/locked-aim-muzzle` 593488f17: weapons.js and the new aim-locked-muzzle-solve test.
+
+### 9.1 Tether spin (#1)
+
+**Sweep** (`scripts/lab/sweeps/tetherSweep2a.mjs`, resumable: each run is appended to `results/tether-2a/<phase>.w<k>.jsonl` and skipped on restart)
+- grid: 243 configs = lineLock margin {1.05,1.1,1.25} × alignTimeS {0.25,0.4,0.55} × lend yawAccel mult {1,2,4} × governor margin {0.9,0.95,1.0} × dash cap {0.8,1,track}. Run over 15 scenarios × 3 seeds = 10,935 runs in 15.5 min (6 workers); 36 configs passed.
+- top: the top 10 configs re-run on 18 scenarios × 5 seeds. All 10 passed. Best was `lm1.25_a0.25` (any yaw-accel/dash): worst nose 0.72°, min eff 1.0012, pump ≤ 1.60, settle 1.35 s. yawAccel mult and dash-cap mult barely matter.
+
+**Helm direction sweep** (CHOSEN config, 5 seeds)
+
+| latch | result |
+|---|---|
+| off | helm-cursor-spin flips 1 (active 69%), far-left eff 0.70, helm-boost eff 0 |
+| aim (shipped) | 0 flips everywhere, spin-reverse keeps its expected 1 flip, nose ≤ 0.72° |
+| all inputs | breaks keyboard reversal (followsIntent false) |
+
+**Ablation** (5 seeds)
+
+| config | result |
+|---|---|
+| no forwardCommit | identical to CHOSEN, so it was dropped; this keeps R2 `directionCommittedTicks === 0` |
+| no heading thrust gate | spin-plain-left nose 5.3° (FAIL) |
+| alignTimeS 0.55 | passes, nose 3.26°, settle 1.63 s |
+| alignTimeS 0.55 + no FC + no TG | nose 16.6° (FAIL) |
+
+**Shipped config**
+- line yaw lock: margin 1.25, absolute cap 6.0 rad/s (= SG-02 `SANE_MAX_YAW_RATE`)
+- yawAccel/yawBrake scaled by the lend ratio
+- COM-frame swing governor 0.95
+- tangentAlignTimeS stays 0.55 (pinned by master test)
+- heading thrust gate cos(err)₊ in flightV3
+- aim-only direction latch, engaging on the swing if it is above 25% of hull yaw
+- line dash capped at the boosted cap
+
+**Verify on the production checkout** (`verify` phase, 18 scenarios × 5 seeds = 90 runs): every criterion passes.
+- worst nose 3.26° (spin-plain-left)
+- min eff 1.0012
+- max pump 1.611
+- mean settle 1.63 s
+- 0 wrong-way turns, 0 unexpected flips
+- orbit/massline tests 76/76
+
+**Before → after** (shipped master → production, 5-seed engaged window)
+
+| scenario | before | after |
+|---|---|---|
+| spin-plain | nose 32.5°, eff 0.916, ω 2.67 | 0.8°, 1.065, ω 3.11 |
+| spin-boost-hold | nose 34.9°, boosted eff 0.593 | 1.3°, 1.018, ω 4.64 |
+| spin-short-line (36 wu) | nose 36.2° max / 32.5° p50, eff 0.460 | 1.7° / 1.5°, 1.005, ω 5.92 |
+| spin-light-anchor | nose 128.5°, eff 0.626 | 1.3°, 1.176 |
+| latch-moving-with | nose 75.0° | 2.7° |
+| spin-reverse | nose 55.8° | 2.5° (1 expected flip) |
+| helm-cursor-spin | 1 flip, eff 0.724, nose 13.0° | 0 flips, 1.068, 1.4° |
+| helm-cursor-far-left | 1 flip, eff 0.667 | 0 flips, 1.068 |
+| helm-boost | 1 flip, boosted eff 0.381 | 0 flips, 1.022 |
+| spin-dash-spam | pump 2.02 | 1.61 |
+| spin-plain-left | nose 39.3° | 3.3° |
+
+**Short line:** this was not a physical limit. ω·r/vcap at 36 wu needs about 5.9 rad/s, which is above the hull's 2.65 rad/s yaw but under SG-02's 6.0 sanity ceiling. The line lock lends that authority, so the short line now reaches the bound with its nose at 1.7°. Lines shorter than about 35 wu (Kestrel at cruise, scaling the 36-wu bound of 5.89 rad/s) would need more than 6.0 rad/s. There the speed governor caps the swing instead of the nose falling behind; test 17 covers this at 20 wu, but the nose angle is not benched below 36 wu. (The phase-2a brief quoted 12.6°/21.6° for the short line; this bench's 5-seed engaged-window metric on current master reads 32.5°/36.2°.)
+
+**Option:** alignTimeS 0.25 gives worst nose 0.72° and settle 1.35 s, but it needs the master test constant changed (0.55 → 0.25).
+
+**Residual:** test 17 in massline-orbit-assist needed a 20 wu rope (it was 30 wu) to stay saturated. This is disclosed in the PR.
+
+### 9.2 Auto-aim (#2)
+
+**Change**
+- Normal locked aim (forced target, player fixed mount) solves from the muzzle.
+- `refineLeadForLaunch` re-solves against the round's real world launch velocity. The aim-true launch stops compensating once hull lateral speed exceeds projectile speed.
+- `launchVelocity` is target-free (no homing; curvature ≤ 3e-6°).
+
+**Bench** (`run.mjs aim`, 25 scenarios × seeds 1,2,3)
+- Ghost-path scoring per round with a tMeet window and a 2-s no-fire tail.
+- Exact intercept-direction aim error.
+- Spread is removed by rotation.
+- Rounds are classified as hit / occluded / pd / contact / unreachable / out-of-range / dispersion / lead-error / target-maneuver.
+
+| variant | full-size hit / unblocked | lead-err | aim err max | half-size hit / unblocked | half lead-err |
+|---|---|---|---|---|---|
+| pre-2a (hull centre, no launch model) | 86.91 / 90.90 | 0.13% | up to 96° | 59.87 / 62.62 | 24.93% |
+| muzzle-only | — / 94.22 | 0 | 7.6° (wasp-hold-G) | — / 87.12 | — |
+| shipped (lab) | 90.78 / 94.11 | 0 | 0.43° | 84.31 / 87.79 | 0 |
+| shipped (production checkout, `results/aim-2a/prod.summary.json`) | 90.78 / 94.11 | 0 | 0.43° | 84.31 / 87.79 | 0 |
+
+**Remaining unblocked misses**
+- Full size: target-maneuver 5.83% and dispersion 0.06%.
+- Half size: 12.1% and 0.1%.
+- Lead-error misses: 0. Every round the target did not dodge hits.
+
+**Residual:** at half size, 4 of 3,276 rounds have aim error 0.68–1.03°, all in seed-2 boost-weave runs with tMeet 1–4.5 s. Their solMiss is ≤ 2.4 wu, inside R = 6–9 wu. Cause not isolated.
+
+**Oracle check** (unblocked hit %)
+
+| set | CV (shipped) | oracle accel | oracle intent (next steer target) |
+|---|---|---|---|
+| boost + railgun subset (7 scen), full | 88.91 | 79.91 | 84.05 |
+| same, half-size | 89.64 | 73.51 | 78.18 |
+| all scenarios, full | 94.11 | 86.27 | 88.47 |
+
+Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so no oracle is shipped. The only case where intent was ahead was wasp-joust-railgun, by +3.4 pts, which is noise.
+
+### 9.3 Phase 2b order (proposed)
+1. **#3 flight-assist turn authority.** Every second of play depends on it, and it sets the speeds the tether and aim benches assume. It needs Robin's radius target (default below).
+2. **#4 NPC evasion/spacing.** It now owns all the remaining aim misses (5.8% full / 12% half are target manoeuvres), so this is where hit feel is tuned from now on.
+3. **#5 massline sling.** Reuses the tether bench and the new line lock/latch while they are fresh.
+4. **#6 weapon balance / TTK + heat.** Only meaningful once hit rates (#2, #4) are settled.
+5. **#8 target selection/lock.** Cheap on the aim bench's infrastructure.
+6. **#7 collision/ram.**
+7. **#9 docking autopilot.**
+8. **#10 mining.** Benches for 7, 9 and 10 still need building.
+
+### 9.4 Flight-assist turn radius — recommended default (pending the #3 sweep)
+**Measured (Kestrel, max yaw 2.646 rad/s)**
+- cruise W+turn: 0.96 rad/s = 36% of max yaw, 217 wu radius at 195 wu/s
+- boost: 0.94 rad/s at 345 wu/s (389 wu radius), decaying to about 0.56 rad/s on long holds
+- coast: 3.07 rad/s, with no path turn
+
+**Recommended targets**
+- cruise: about 1.5 rad/s = 55–60% of max yaw, about 130 wu radius
+- boost: about 1.0 rad/s = 35–40%, about 345 wu radius, held steady through long boosts rather than decaying
+- coast: unchanged
+

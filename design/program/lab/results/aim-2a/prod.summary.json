@@ -1,0 +1,1601 @@
+{
+ "schema": "spaceface.tuningLab.aimSummary.v1",
+ "source": "branch lab2a/locked-aim-muzzle 593488f17 (production code), seeds 1,2,3",
+ "variants": {
+  "baseline": {
+   "fired": 3274,
+   "outcomes": {
+    "hit": 2972,
+    "target-maneuver": 184,
+    "target-contact": 48,
+    "dispersion": 2,
+    "unreachable": 17,
+    "occluded": 39,
+    "pd-intercepted": 12
+   },
+   "hitPct": 90.78,
+   "unblockedHitPct": 94.11,
+   "aimErrDegMax": 0.4278,
+   "roundsOver0p5deg": 0,
+   "bigAimErr": [],
+   "maxCurveDeg": 2.5027697005127207e-06,
+   "perRun": [
+    {
+     "scenario": "wasp-hold-160",
+     "seed": 1,
+     "digest": "a49aa32657e24788",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-hold-160",
+     "seed": 2,
+     "digest": "b3525fdd7da2a8c4",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "wasp-hold-160",
+     "seed": 3,
+     "digest": "6dc914cff7c99c44",
+     "fired": 55,
+     "outcomes": {
+      "hit": 54,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-cruise-160",
+     "seed": 1,
+     "digest": "a78652621339c284",
+     "fired": 28,
+     "outcomes": {
+      "hit": 18,
+      "target-contact": 10
+     }
+    },
+    {
+     "scenario": "wasp-cruise-160",
+     "seed": 2,
+     "digest": "b1e7c5b3ffdbbb43",
+     "fired": 30,
+     "outcomes": {
+      "hit": 21,
+      "target-maneuver": 9
+     }
+    },
+    {
+     "scenario": "wasp-cruise-160",
+     "seed": 3,
+     "digest": "388eac4c46218b72",
+     "fired": 30,
+     "outcomes": {
+      "hit": 18,
+      "target-maneuver": 12
+     }
+    },
+    {
+     "scenario": "wasp-boost-160",
+     "seed": 1,
+     "digest": "a85ae115e4b95d4e",
+     "fired": 26,
+     "outcomes": {
+      "hit": 23,
+      "dispersion": 1,
+      "target-contact": 1,
+      "unreachable": 1
+     }
+    },
+    {
+     "scenario": "wasp-boost-160",
+     "seed": 2,
+     "digest": "bf704ff96c0066ce",
+     "fired": 28,
+     "outcomes": {
+      "hit": 25,
+      "target-contact": 3
+     }
+    },
+    {
+     "scenario": "wasp-boost-160",
+     "seed": 3,
+     "digest": "2b57f93939cc5c61",
+     "fired": 40,
+     "outcomes": {
+      "hit": 37,
+      "target-contact": 2,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-spin-160",
+     "seed": 1,
+     "digest": "50e4e8a2090228f2",
+     "fired": 59,
+     "outcomes": {
+      "hit": 58,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-spin-160",
+     "seed": 2,
+     "digest": "26e86dd7e853befe",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-spin-160",
+     "seed": 3,
+     "digest": "56925599d0048374",
+     "fired": 59,
+     "outcomes": {
+      "hit": 51,
+      "target-maneuver": 8
+     }
+    },
+    {
+     "scenario": "wasp-strafe-160",
+     "seed": 1,
+     "digest": "fb409f51c79cae5c",
+     "fired": 59,
+     "outcomes": {
+      "hit": 58,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-strafe-160",
+     "seed": 2,
+     "digest": "86579f7db706f365",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "wasp-strafe-160",
+     "seed": 3,
+     "digest": "7fd7477d9d90e0c9",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-160",
+     "seed": 1,
+     "digest": "be8d3d1554237302",
+     "fired": 24,
+     "outcomes": {
+      "hit": 13,
+      "target-maneuver": 9,
+      "unreachable": 2
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-160",
+     "seed": 2,
+     "digest": "02d366e5f2324dc5",
+     "fired": 26,
+     "outcomes": {
+      "hit": 19,
+      "target-maneuver": 5,
+      "unreachable": 2
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-160",
+     "seed": 3,
+     "digest": "4fc814bf94ecaeb6",
+     "fired": 28,
+     "outcomes": {
+      "hit": 15,
+      "target-maneuver": 10,
+      "unreachable": 3
+     }
+    },
+    {
+     "scenario": "wasp-hold-230",
+     "seed": 1,
+     "digest": "9e5f1196adc5252a",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "wasp-hold-230",
+     "seed": 2,
+     "digest": "a6feb57a29f44414",
+     "fired": 54,
+     "outcomes": {
+      "hit": 47,
+      "target-maneuver": 7
+     }
+    },
+    {
+     "scenario": "wasp-hold-230",
+     "seed": 3,
+     "digest": "c0e2b4715f467412",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "wasp-pack3-hold",
+     "seed": 1,
+     "digest": "61ec03b742d9aefb",
+     "fired": 59,
+     "outcomes": {
+      "hit": 58,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-pack3-hold",
+     "seed": 2,
+     "digest": "5d3bf47320be454c",
+     "fired": 59,
+     "outcomes": {
+      "hit": 48,
+      "occluded": 7,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "wasp-pack3-hold",
+     "seed": 3,
+     "digest": "914e6cd37eeed566",
+     "fired": 59,
+     "outcomes": {
+      "occluded": 2,
+      "hit": 57
+     }
+    },
+    {
+     "scenario": "bruiser-cruise-160",
+     "seed": 1,
+     "digest": "6adf967e537b3db2",
+     "fired": 29,
+     "outcomes": {
+      "hit": 29
+     }
+    },
+    {
+     "scenario": "bruiser-cruise-160",
+     "seed": 2,
+     "digest": "652f855689e25820",
+     "fired": 30,
+     "outcomes": {
+      "hit": 30
+     }
+    },
+    {
+     "scenario": "bruiser-cruise-160",
+     "seed": 3,
+     "digest": "8a5508bbb12e4845",
+     "fired": 33,
+     "outcomes": {
+      "hit": 32,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "reaver-strafe-160",
+     "seed": 1,
+     "digest": "8f25170895966ead",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "reaver-strafe-160",
+     "seed": 2,
+     "digest": "a5a227bca4a6f608",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "reaver-strafe-160",
+     "seed": 3,
+     "digest": "64890371f35f7a1c",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "corsair-boostweave-160",
+     "seed": 1,
+     "digest": "86f7e0df1c77565f",
+     "fired": 24,
+     "outcomes": {
+      "hit": 18,
+      "target-maneuver": 3,
+      "unreachable": 3
+     }
+    },
+    {
+     "scenario": "corsair-boostweave-160",
+     "seed": 2,
+     "digest": "b7b19ae28dc15349",
+     "fired": 24,
+     "outcomes": {
+      "hit": 22,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "corsair-boostweave-160",
+     "seed": 3,
+     "digest": "d226f0ab894e4ce4",
+     "fired": 28,
+     "outcomes": {
+      "hit": 22,
+      "target-maneuver": 6
+     }
+    },
+    {
+     "scenario": "mule-flee-boost",
+     "seed": 1,
+     "digest": "0dcdeb73568acab2",
+     "fired": 45,
+     "outcomes": {
+      "hit": 42,
+      "pd-intercepted": 3
+     }
+    },
+    {
+     "scenario": "mule-flee-boost",
+     "seed": 2,
+     "digest": "282c0dc03aa4d7ec",
+     "fired": 46,
+     "outcomes": {
+      "hit": 43,
+      "pd-intercepted": 3
+     }
+    },
+    {
+     "scenario": "mule-flee-boost",
+     "seed": 3,
+     "digest": "7eaff2c5e5e51b73",
+     "fired": 47,
+     "outcomes": {
+      "hit": 41,
+      "pd-intercepted": 6
+     }
+    },
+    {
+     "scenario": "wasp-cruise-autocannon",
+     "seed": 1,
+     "digest": "35edb2f57ac6c806",
+     "fired": 15,
+     "outcomes": {
+      "hit": 11,
+      "target-maneuver": 3,
+      "dispersion": 1
+     }
+    },
+    {
+     "scenario": "wasp-cruise-autocannon",
+     "seed": 2,
+     "digest": "ba7a7cd0c97f2ff0",
+     "fired": 15,
+     "outcomes": {
+      "hit": 12,
+      "target-maneuver": 3
+     }
+    },
+    {
+     "scenario": "wasp-cruise-autocannon",
+     "seed": 3,
+     "digest": "21c8b7233661283d",
+     "fired": 20,
+     "outcomes": {
+      "hit": 14,
+      "target-maneuver": 6
+     }
+    },
+    {
+     "scenario": "wasp-joust-railgun-400",
+     "seed": 1,
+     "digest": "0fde98828a2d1520",
+     "fired": 30,
+     "outcomes": {
+      "hit": 29,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-joust-railgun-400",
+     "seed": 2,
+     "digest": "b89579565db6ea45",
+     "fired": 28,
+     "outcomes": {
+      "hit": 26,
+      "target-contact": 1,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-joust-railgun-400",
+     "seed": 3,
+     "digest": "6d98b22db737c1bf",
+     "fired": 31,
+     "outcomes": {
+      "hit": 23,
+      "target-contact": 4,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "wasp-cruise-bankstream",
+     "seed": 1,
+     "digest": "42aa96d7e7494e20",
+     "fired": 28,
+     "outcomes": {
+      "hit": 18,
+      "target-contact": 10
+     }
+    },
+    {
+     "scenario": "wasp-cruise-bankstream",
+     "seed": 2,
+     "digest": "d1511a95ade997a6",
+     "fired": 30,
+     "outcomes": {
+      "hit": 21,
+      "target-maneuver": 9
+     }
+    },
+    {
+     "scenario": "wasp-cruise-bankstream",
+     "seed": 3,
+     "digest": "9c81eff13c849859",
+     "fired": 30,
+     "outcomes": {
+      "hit": 18,
+      "target-maneuver": 12
+     }
+    },
+    {
+     "scenario": "wasp-hold-G",
+     "seed": 1,
+     "digest": "1d2d2a6561230aef",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-hold-G",
+     "seed": 2,
+     "digest": "a8539cd1fdff735b",
+     "fired": 59,
+     "outcomes": {
+      "hit": 56,
+      "target-maneuver": 3
+     }
+    },
+    {
+     "scenario": "wasp-hold-G",
+     "seed": 3,
+     "digest": "5b80f0424d945802",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-G",
+     "seed": 1,
+     "digest": "efd7c413a5ce0c90",
+     "fired": 34,
+     "outcomes": {
+      "hit": 26,
+      "target-maneuver": 6,
+      "unreachable": 2
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-G",
+     "seed": 2,
+     "digest": "d3e046628a3f605c",
+     "fired": 33,
+     "outcomes": {
+      "hit": 28,
+      "target-maneuver": 3,
+      "unreachable": 2
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-G",
+     "seed": 3,
+     "digest": "a90f7f19c31dd61a",
+     "fired": 33,
+     "outcomes": {
+      "hit": 19,
+      "target-maneuver": 12,
+      "unreachable": 2
+     }
+    },
+    {
+     "scenario": "wasp-cruise-helm",
+     "seed": 1,
+     "digest": "a49aa32657e24788",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-cruise-helm",
+     "seed": 2,
+     "digest": "b3525fdd7da2a8c4",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "wasp-cruise-helm",
+     "seed": 3,
+     "digest": "6dc914cff7c99c44",
+     "fired": 55,
+     "outcomes": {
+      "hit": 54,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-rock-occluder",
+     "seed": 1,
+     "digest": "54c189d206c5cacf",
+     "fired": 59,
+     "outcomes": {
+      "occluded": 9,
+      "hit": 50
+     }
+    },
+    {
+     "scenario": "wasp-rock-occluder",
+     "seed": 2,
+     "digest": "bf9190b1caa991f3",
+     "fired": 59,
+     "outcomes": {
+      "occluded": 8,
+      "hit": 50,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-rock-occluder",
+     "seed": 3,
+     "digest": "0cbdbbfdf9406996",
+     "fired": 59,
+     "outcomes": {
+      "occluded": 13,
+      "hit": 44,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-joust-160",
+     "seed": 1,
+     "digest": "5e36c2706642512c",
+     "fired": 42,
+     "outcomes": {
+      "hit": 34,
+      "target-contact": 3,
+      "target-maneuver": 5
+     }
+    },
+    {
+     "scenario": "wasp-joust-160",
+     "seed": 2,
+     "digest": "64972548b15aa30f",
+     "fired": 37,
+     "outcomes": {
+      "hit": 35,
+      "target-contact": 2
+     }
+    },
+    {
+     "scenario": "wasp-joust-160",
+     "seed": 3,
+     "digest": "b5cf1a09ba19b3a6",
+     "fired": 40,
+     "outcomes": {
+      "hit": 33,
+      "target-contact": 7
+     }
+    },
+    {
+     "scenario": "dart-hold-200",
+     "seed": 1,
+     "digest": "e65f6043d7e64152",
+     "fired": 53,
+     "outcomes": {
+      "hit": 53
+     }
+    },
+    {
+     "scenario": "dart-hold-200",
+     "seed": 2,
+     "digest": "8b2ce2a2b08bfb73",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "dart-hold-200",
+     "seed": 3,
+     "digest": "1409f6c80adab879",
+     "fired": 47,
+     "outcomes": {
+      "hit": 47
+     }
+    },
+    {
+     "scenario": "zealot-strafe-230",
+     "seed": 1,
+     "digest": "e8a29bc6b1f30a08",
+     "fired": 57,
+     "outcomes": {
+      "hit": 57
+     }
+    },
+    {
+     "scenario": "zealot-strafe-230",
+     "seed": 2,
+     "digest": "f221272dcb9177d1",
+     "fired": 58,
+     "outcomes": {
+      "hit": 58
+     }
+    },
+    {
+     "scenario": "zealot-strafe-230",
+     "seed": 3,
+     "digest": "846e98e0b89ca161",
+     "fired": 58,
+     "outcomes": {
+      "hit": 58
+     }
+    },
+    {
+     "scenario": "wasp-hold-plasma-250",
+     "seed": 1,
+     "digest": "3b627f031f99e7bb",
+     "fired": 59,
+     "outcomes": {
+      "hit": 55,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "wasp-hold-plasma-250",
+     "seed": 2,
+     "digest": "864fd866dd0fad17",
+     "fired": 48,
+     "outcomes": {
+      "hit": 42,
+      "target-maneuver": 6
+     }
+    },
+    {
+     "scenario": "wasp-hold-plasma-250",
+     "seed": 3,
+     "digest": "adcb13db29a0f856",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-hold-autocannon-230",
+     "seed": 1,
+     "digest": "738e9065d072cdba",
+     "fired": 24,
+     "outcomes": {
+      "hit": 20,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "wasp-hold-autocannon-230",
+     "seed": 2,
+     "digest": "ccd9f07deadf7d73",
+     "fired": 34,
+     "outcomes": {
+      "hit": 34
+     }
+    },
+    {
+     "scenario": "wasp-hold-autocannon-230",
+     "seed": 3,
+     "digest": "e0cb711e34acf043",
+     "fired": 34,
+     "outcomes": {
+      "hit": 34
+     }
+    },
+    {
+     "scenario": "corsair-joust-railgun",
+     "seed": 1,
+     "digest": "ecd50b3edf87cd4f",
+     "fired": 30,
+     "outcomes": {
+      "hit": 25,
+      "target-contact": 2,
+      "target-maneuver": 3
+     }
+    },
+    {
+     "scenario": "corsair-joust-railgun",
+     "seed": 2,
+     "digest": "8e76534323110007",
+     "fired": 31,
+     "outcomes": {
+      "hit": 29,
+      "target-contact": 2
+     }
+    },
+    {
+     "scenario": "corsair-joust-railgun",
+     "seed": 3,
+     "digest": "0582c2b77329805c",
+     "fired": 31,
+     "outcomes": {
+      "hit": 28,
+      "target-contact": 1,
+      "target-maneuver": 2
+     }
+    }
+   ]
+  },
+  "half": {
+   "fired": 3276,
+   "outcomes": {
+    "hit": 2762,
+    "target-maneuver": 381,
+    "dispersion": 3,
+    "target-contact": 63,
+    "out-of-range": 3,
+    "unreachable": 19,
+    "occluded": 28,
+    "pd-intercepted": 17
+   },
+   "hitPct": 84.31,
+   "unblockedHitPct": 87.79,
+   "aimErrDegMax": 1.028,
+   "roundsOver0p5deg": 4,
+   "bigAimErr": [
+    {
+     "scenario": "wasp-boostweave-160",
+     "seed": 2,
+     "aimErrDeg": 0.6842,
+     "tMeet": 0.9867,
+     "solMiss": 2.1994,
+     "R": 6,
+     "outcome": "hit"
+    },
+    {
+     "scenario": "wasp-boostweave-160",
+     "seed": 2,
+     "aimErrDeg": 0.9238,
+     "tMeet": 1.3872,
+     "solMiss": 1.5333,
+     "R": 6,
+     "outcome": "target-maneuver"
+    },
+    {
+     "scenario": "wasp-boostweave-160",
+     "seed": 2,
+     "aimErrDeg": 0.7362,
+     "tMeet": 1.5144,
+     "solMiss": 1.0989,
+     "R": 6,
+     "outcome": "target-maneuver"
+    },
+    {
+     "scenario": "corsair-boostweave-160",
+     "seed": 2,
+     "aimErrDeg": 1.028,
+     "tMeet": 4.4812,
+     "solMiss": 2.3662,
+     "R": 9,
+     "outcome": "target-maneuver"
+    }
+   ],
+   "maxCurveDeg": 2.530841441520161e-06,
+   "perRun": [
+    {
+     "scenario": "wasp-hold-160",
+     "seed": 1,
+     "digest": "15349348860e1ad9",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-hold-160",
+     "seed": 2,
+     "digest": "af0c4956efa3c19e",
+     "fired": 59,
+     "outcomes": {
+      "hit": 52,
+      "target-maneuver": 7
+     }
+    },
+    {
+     "scenario": "wasp-hold-160",
+     "seed": 3,
+     "digest": "f59303d1ed0750a9",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-cruise-160",
+     "seed": 1,
+     "digest": "f6e1bdeef104f4ec",
+     "fired": 28,
+     "outcomes": {
+      "hit": 15,
+      "target-maneuver": 13
+     }
+    },
+    {
+     "scenario": "wasp-cruise-160",
+     "seed": 2,
+     "digest": "2d5ec5a4e7ff6e90",
+     "fired": 30,
+     "outcomes": {
+      "hit": 17,
+      "target-maneuver": 13
+     }
+    },
+    {
+     "scenario": "wasp-cruise-160",
+     "seed": 3,
+     "digest": "7abd26de23ec74ca",
+     "fired": 24,
+     "outcomes": {
+      "hit": 12,
+      "target-maneuver": 12
+     }
+    },
+    {
+     "scenario": "wasp-boost-160",
+     "seed": 1,
+     "digest": "6faaa005b199d68f",
+     "fired": 37,
+     "outcomes": {
+      "hit": 32,
+      "dispersion": 2,
+      "target-contact": 3
+     }
+    },
+    {
+     "scenario": "wasp-boost-160",
+     "seed": 2,
+     "digest": "4e5069fa740886b9",
+     "fired": 39,
+     "outcomes": {
+      "hit": 34,
+      "target-contact": 5
+     }
+    },
+    {
+     "scenario": "wasp-boost-160",
+     "seed": 3,
+     "digest": "643aed9790feb779",
+     "fired": 40,
+     "outcomes": {
+      "hit": 35,
+      "target-contact": 3,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-spin-160",
+     "seed": 1,
+     "digest": "3cca72cc52ceaea6",
+     "fired": 53,
+     "outcomes": {
+      "hit": 36,
+      "target-maneuver": 16,
+      "out-of-range": 1
+     }
+    },
+    {
+     "scenario": "wasp-spin-160",
+     "seed": 2,
+     "digest": "55e16fb4d27b23e7",
+     "fired": 59,
+     "outcomes": {
+      "hit": 47,
+      "target-maneuver": 12
+     }
+    },
+    {
+     "scenario": "wasp-spin-160",
+     "seed": 3,
+     "digest": "89805cb398b83a86",
+     "fired": 59,
+     "outcomes": {
+      "hit": 51,
+      "target-maneuver": 8
+     }
+    },
+    {
+     "scenario": "wasp-strafe-160",
+     "seed": 1,
+     "digest": "221d506198439ab7",
+     "fired": 59,
+     "outcomes": {
+      "hit": 53,
+      "target-maneuver": 6
+     }
+    },
+    {
+     "scenario": "wasp-strafe-160",
+     "seed": 2,
+     "digest": "af9616420f587e23",
+     "fired": 59,
+     "outcomes": {
+      "hit": 55,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "wasp-strafe-160",
+     "seed": 3,
+     "digest": "68e8f56fe21a9d46",
+     "fired": 59,
+     "outcomes": {
+      "hit": 49,
+      "target-maneuver": 10
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-160",
+     "seed": 1,
+     "digest": "8bbb3ce1f86bf869",
+     "fired": 23,
+     "outcomes": {
+      "hit": 16,
+      "target-maneuver": 1,
+      "unreachable": 2,
+      "target-contact": 4
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-160",
+     "seed": 2,
+     "digest": "1875830cf4dfacf7",
+     "fired": 30,
+     "outcomes": {
+      "hit": 17,
+      "target-maneuver": 11,
+      "dispersion": 1,
+      "unreachable": 1
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-160",
+     "seed": 3,
+     "digest": "5baac22d8ac56d4b",
+     "fired": 18,
+     "outcomes": {
+      "hit": 6,
+      "target-maneuver": 9,
+      "unreachable": 2,
+      "out-of-range": 1
+     }
+    },
+    {
+     "scenario": "wasp-hold-230",
+     "seed": 1,
+     "digest": "5deb7a8d098bd0db",
+     "fired": 54,
+     "outcomes": {
+      "target-maneuver": 14,
+      "hit": 40
+     }
+    },
+    {
+     "scenario": "wasp-hold-230",
+     "seed": 2,
+     "digest": "0aa62bcae3c25d39",
+     "fired": 59,
+     "outcomes": {
+      "hit": 47,
+      "target-maneuver": 12
+     }
+    },
+    {
+     "scenario": "wasp-hold-230",
+     "seed": 3,
+     "digest": "8a1c4009925aeac8",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "wasp-pack3-hold",
+     "seed": 1,
+     "digest": "de1fecf02e686f59",
+     "fired": 54,
+     "outcomes": {
+      "hit": 51,
+      "target-maneuver": 3
+     }
+    },
+    {
+     "scenario": "wasp-pack3-hold",
+     "seed": 2,
+     "digest": "f1ebb5a1421d73d3",
+     "fired": 59,
+     "outcomes": {
+      "hit": 42,
+      "occluded": 3,
+      "target-maneuver": 14
+     }
+    },
+    {
+     "scenario": "wasp-pack3-hold",
+     "seed": 3,
+     "digest": "9bf59a0ecc385270",
+     "fired": 57,
+     "outcomes": {
+      "occluded": 2,
+      "hit": 38,
+      "target-maneuver": 17
+     }
+    },
+    {
+     "scenario": "bruiser-cruise-160",
+     "seed": 1,
+     "digest": "96808a4044bd6626",
+     "fired": 28,
+     "outcomes": {
+      "hit": 23,
+      "target-maneuver": 5
+     }
+    },
+    {
+     "scenario": "bruiser-cruise-160",
+     "seed": 2,
+     "digest": "09eb06cf20f9d677",
+     "fired": 31,
+     "outcomes": {
+      "hit": 31
+     }
+    },
+    {
+     "scenario": "bruiser-cruise-160",
+     "seed": 3,
+     "digest": "f09eb0f0eaf77d35",
+     "fired": 31,
+     "outcomes": {
+      "hit": 30,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "reaver-strafe-160",
+     "seed": 1,
+     "digest": "7fdf0f6c0f82cefb",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "reaver-strafe-160",
+     "seed": 2,
+     "digest": "f03e4cd8ae3554ee",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "reaver-strafe-160",
+     "seed": 3,
+     "digest": "4936c366cd589ddb",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "corsair-boostweave-160",
+     "seed": 1,
+     "digest": "7c0c9d6d945aea7e",
+     "fired": 26,
+     "outcomes": {
+      "hit": 19,
+      "target-maneuver": 2,
+      "unreachable": 5
+     }
+    },
+    {
+     "scenario": "corsair-boostweave-160",
+     "seed": 2,
+     "digest": "4486edcadf847e0c",
+     "fired": 24,
+     "outcomes": {
+      "hit": 20,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "corsair-boostweave-160",
+     "seed": 3,
+     "digest": "e0ce6f3eeaf13e88",
+     "fired": 23,
+     "outcomes": {
+      "hit": 13,
+      "target-maneuver": 7,
+      "unreachable": 3
+     }
+    },
+    {
+     "scenario": "mule-flee-boost",
+     "seed": 1,
+     "digest": "862db268d2912cc0",
+     "fired": 44,
+     "outcomes": {
+      "hit": 43,
+      "pd-intercepted": 1
+     }
+    },
+    {
+     "scenario": "mule-flee-boost",
+     "seed": 2,
+     "digest": "05148477df57fba7",
+     "fired": 47,
+     "outcomes": {
+      "hit": 38,
+      "pd-intercepted": 8,
+      "target-contact": 1
+     }
+    },
+    {
+     "scenario": "mule-flee-boost",
+     "seed": 3,
+     "digest": "1ff8e7777a1f71c0",
+     "fired": 44,
+     "outcomes": {
+      "hit": 35,
+      "pd-intercepted": 8,
+      "target-contact": 1
+     }
+    },
+    {
+     "scenario": "wasp-cruise-autocannon",
+     "seed": 1,
+     "digest": "17817f6ca7c81899",
+     "fired": 14,
+     "outcomes": {
+      "hit": 8,
+      "target-maneuver": 6
+     }
+    },
+    {
+     "scenario": "wasp-cruise-autocannon",
+     "seed": 2,
+     "digest": "957747152d1a6dd5",
+     "fired": 16,
+     "outcomes": {
+      "hit": 8,
+      "target-maneuver": 8
+     }
+    },
+    {
+     "scenario": "wasp-cruise-autocannon",
+     "seed": 3,
+     "digest": "fd0768c39133b486",
+     "fired": 17,
+     "outcomes": {
+      "hit": 9,
+      "target-maneuver": 8
+     }
+    },
+    {
+     "scenario": "wasp-joust-railgun-400",
+     "seed": 1,
+     "digest": "d696b0ae4535a84a",
+     "fired": 31,
+     "outcomes": {
+      "hit": 26,
+      "target-contact": 1,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "wasp-joust-railgun-400",
+     "seed": 2,
+     "digest": "8b0c7672ab3c6b00",
+     "fired": 26,
+     "outcomes": {
+      "hit": 22,
+      "target-contact": 4
+     }
+    },
+    {
+     "scenario": "wasp-joust-railgun-400",
+     "seed": 3,
+     "digest": "b711f3c41f27a67a",
+     "fired": 30,
+     "outcomes": {
+      "hit": 22,
+      "target-contact": 4,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "wasp-cruise-bankstream",
+     "seed": 1,
+     "digest": "94b06d7c86f167bc",
+     "fired": 28,
+     "outcomes": {
+      "hit": 15,
+      "target-maneuver": 13
+     }
+    },
+    {
+     "scenario": "wasp-cruise-bankstream",
+     "seed": 2,
+     "digest": "4ab5b8b039b4edca",
+     "fired": 30,
+     "outcomes": {
+      "hit": 17,
+      "target-maneuver": 13
+     }
+    },
+    {
+     "scenario": "wasp-cruise-bankstream",
+     "seed": 3,
+     "digest": "1d569c2cbb5c80f2",
+     "fired": 25,
+     "outcomes": {
+      "hit": 12,
+      "target-maneuver": 13
+     }
+    },
+    {
+     "scenario": "wasp-hold-G",
+     "seed": 1,
+     "digest": "9748caa421c6c42a",
+     "fired": 59,
+     "outcomes": {
+      "hit": 55,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "wasp-hold-G",
+     "seed": 2,
+     "digest": "e62d691f523c6fe9",
+     "fired": 59,
+     "outcomes": {
+      "hit": 45,
+      "target-maneuver": 14
+     }
+    },
+    {
+     "scenario": "wasp-hold-G",
+     "seed": 3,
+     "digest": "5fd99225d25eef17",
+     "fired": 59,
+     "outcomes": {
+      "hit": 55,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-G",
+     "seed": 1,
+     "digest": "84263fd94f7e4db0",
+     "fired": 31,
+     "outcomes": {
+      "hit": 21,
+      "target-maneuver": 8,
+      "unreachable": 2
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-G",
+     "seed": 2,
+     "digest": "fc5d22fc50530615",
+     "fired": 32,
+     "outcomes": {
+      "hit": 27,
+      "target-maneuver": 3,
+      "unreachable": 2
+     }
+    },
+    {
+     "scenario": "wasp-boostweave-G",
+     "seed": 3,
+     "digest": "48f13006df88bf0f",
+     "fired": 27,
+     "outcomes": {
+      "hit": 23,
+      "target-contact": 2,
+      "unreachable": 2
+     }
+    },
+    {
+     "scenario": "wasp-cruise-helm",
+     "seed": 1,
+     "digest": "15349348860e1ad9",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-cruise-helm",
+     "seed": 2,
+     "digest": "af0c4956efa3c19e",
+     "fired": 59,
+     "outcomes": {
+      "hit": 52,
+      "target-maneuver": 7
+     }
+    },
+    {
+     "scenario": "wasp-cruise-helm",
+     "seed": 3,
+     "digest": "f59303d1ed0750a9",
+     "fired": 59,
+     "outcomes": {
+      "hit": 57,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-rock-occluder",
+     "seed": 1,
+     "digest": "f26bf49b04733b36",
+     "fired": 59,
+     "outcomes": {
+      "occluded": 7,
+      "hit": 49,
+      "target-contact": 2,
+      "target-maneuver": 1
+     }
+    },
+    {
+     "scenario": "wasp-rock-occluder",
+     "seed": 2,
+     "digest": "ab651e39c5054a50",
+     "fired": 59,
+     "outcomes": {
+      "occluded": 8,
+      "hit": 45,
+      "target-maneuver": 6
+     }
+    },
+    {
+     "scenario": "wasp-rock-occluder",
+     "seed": 3,
+     "digest": "f568a947edb040b4",
+     "fired": 59,
+     "outcomes": {
+      "occluded": 8,
+      "hit": 49,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-joust-160",
+     "seed": 1,
+     "digest": "deaff6bfa35c5276",
+     "fired": 37,
+     "outcomes": {
+      "hit": 28,
+      "target-contact": 9
+     }
+    },
+    {
+     "scenario": "wasp-joust-160",
+     "seed": 2,
+     "digest": "ad8edf29206e568f",
+     "fired": 36,
+     "outcomes": {
+      "hit": 32,
+      "target-contact": 1,
+      "out-of-range": 1,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "wasp-joust-160",
+     "seed": 3,
+     "digest": "03a408b5fe25b143",
+     "fired": 36,
+     "outcomes": {
+      "hit": 24,
+      "target-contact": 12
+     }
+    },
+    {
+     "scenario": "dart-hold-200",
+     "seed": 1,
+     "digest": "8a30a7b9b8209d24",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "dart-hold-200",
+     "seed": 2,
+     "digest": "9078ff082f3bce8e",
+     "fired": 59,
+     "outcomes": {
+      "hit": 56,
+      "target-maneuver": 3
+     }
+    },
+    {
+     "scenario": "dart-hold-200",
+     "seed": 3,
+     "digest": "0fc4ba6e225ada7e",
+     "fired": 59,
+     "outcomes": {
+      "hit": 55,
+      "target-maneuver": 4
+     }
+    },
+    {
+     "scenario": "zealot-strafe-230",
+     "seed": 1,
+     "digest": "8ef1dc2e78d1dd6c",
+     "fired": 57,
+     "outcomes": {
+      "hit": 57
+     }
+    },
+    {
+     "scenario": "zealot-strafe-230",
+     "seed": 2,
+     "digest": "fea93e753862d39b",
+     "fired": 58,
+     "outcomes": {
+      "hit": 58
+     }
+    },
+    {
+     "scenario": "zealot-strafe-230",
+     "seed": 3,
+     "digest": "e65df3920d54c578",
+     "fired": 58,
+     "outcomes": {
+      "hit": 58
+     }
+    },
+    {
+     "scenario": "wasp-hold-plasma-250",
+     "seed": 1,
+     "digest": "32e563d106426137",
+     "fired": 59,
+     "outcomes": {
+      "target-maneuver": 4,
+      "hit": 55
+     }
+    },
+    {
+     "scenario": "wasp-hold-plasma-250",
+     "seed": 2,
+     "digest": "bcd6015c915af4e6",
+     "fired": 55,
+     "outcomes": {
+      "hit": 42,
+      "target-maneuver": 13
+     }
+    },
+    {
+     "scenario": "wasp-hold-plasma-250",
+     "seed": 3,
+     "digest": "6bc455cbd5304102",
+     "fired": 59,
+     "outcomes": {
+      "hit": 59
+     }
+    },
+    {
+     "scenario": "wasp-hold-autocannon-230",
+     "seed": 1,
+     "digest": "f7970d104afabe26",
+     "fired": 34,
+     "outcomes": {
+      "hit": 20,
+      "target-maneuver": 14
+     }
+    },
+    {
+     "scenario": "wasp-hold-autocannon-230",
+     "seed": 2,
+     "digest": "f58e6667f844a182",
+     "fired": 34,
+     "outcomes": {
+      "hit": 29,
+      "target-maneuver": 5
+     }
+    },
+    {
+     "scenario": "wasp-hold-autocannon-230",
+     "seed": 3,
+     "digest": "10e6a3d08f9002f4",
+     "fired": 34,
+     "outcomes": {
+      "hit": 32,
+      "target-maneuver": 2
+     }
+    },
+    {
+     "scenario": "corsair-joust-railgun",
+     "seed": 1,
+     "digest": "79b1348cb72591c8",
+     "fired": 30,
+     "outcomes": {
+      "hit": 23,
+      "target-contact": 7
+     }
+    },
+    {
+     "scenario": "corsair-joust-railgun",
+     "seed": 2,
+     "digest": "dad09a617a07b86a",
+     "fired": 29,
+     "outcomes": {
+      "hit": 25,
+      "target-contact": 4
+     }
+    },
+    {
+     "scenario": "corsair-joust-railgun",
+     "seed": 3,
+     "digest": "35295db6efad98fc",
+     "fired": 34,
+     "outcomes": {
+      "hit": 31,
+      "target-maneuver": 3
+     }
+    }
+   ]
+  }
+ }
+}
