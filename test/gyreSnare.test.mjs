@@ -1356,3 +1356,87 @@ test('the cap-crossing absorb donates only its absorbed fraction of volume', asy
     'the crossing absorb donated a fraction of the meal volume, not all of it');
   t.cleanup();
 });
+
+// ── wave-18 coverage ────────────────────────────────────────────────────────────
+test('an absorbable in the cone∩annulus overlap counts once for the +N net read', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'core held before the overlap meal');
+  // The meal sits 60 wu nose-ward of the core: inside the suck annulus
+  // (clumpRadius + 88 ≈ 92) and inside the drawn basin (distMaw ≈ 51 ≤ 86), but
+  // outside the absorb skin — pre-fix it fed BOTH basinCount and suckCount →
+  // the HUD read 2 for one body.
+  const meal = rock(t.sim, core.pos.x - 60, core.pos.z, 6, 4);
+  for (let i = 0; i < 3; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const dCore = Math.hypot(meal.pos.x - core.pos.x, meal.pos.z - core.pos.z);
+  const dMaw = Math.hypot(meal.pos.x - (t.player.pos.x + T.mawDist), meal.pos.z - t.player.pos.z);
+  assert.ok(dCore < t.sys._rt.clumpRadius + T.suckBandWidth, `meal in the annulus (dCore=${dCore.toFixed(1)})`);
+  assert.ok(dMaw <= T.basinRadius, `meal in the basin (dMaw=${dMaw.toFixed(1)})`);
+  assert.equal(t.state.gyreSnare.basinCount, 1,
+    `cone∩annulus overlap counts once (got ${t.state.gyreSnare.basinCount})`);
+  release(t);
+  t.cleanup();
+});
+
+test('destroy() before init() is a no-op, not a crash', async () => {
+  // The registry runs destroy hooks across the manifest even when init never ran —
+  // _rt may simply not exist yet. Nothing tracked means nothing to clean.
+  const fresh = Object.create(gyreSnare);
+  assert.doesNotThrow(() => fresh.destroy());
+  assert.equal(fresh._rt.phase, 'off', 'destroy mints a fresh runtime');
+});
+
+test('an adopted ball with a stale authored deadline is not assassinated', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  core.data.despawnAt = t.state.simTime + 0.5; // authored deadline ~0.5s out — stashed at snag
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'timed core snagged');
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step(); // burst finishes → ball flying on its 9s deadline
+  assert.equal(t.sys._rt.ballId, core.id, 'ball flying');
+  assert.ok(Number.isFinite(core.data.despawnAt) && core.data.despawnAt > 2,
+    'the launch deadline replaced the authored one');
+  for (let i = 0; i < 90; i++) t.sim.step(); // ~1.5s — the authored stash is now in the past
+  // The adopter strips despawnAt to keep the body — restoring the stale stash here
+  // would kill it on the next lifetime sweep and silently defeat the adoption.
+  delete core.data.despawnAt;
+  t.sim.step();
+  assert.equal(core.data.gyreLaunched, undefined, 'adoption unmarks the ball');
+  assert.equal(core.data.despawnAt, undefined,
+    'a stale authored deadline is NOT resurrected under an adopter');
+  assert.equal(core.data.gyrePrevDespawnAt, undefined, 'the stale stash is consumed');
+  t.cleanup();
+});
+
+test('save:loaded with >8 live balls bounds the watch and adopts the freshest', async () => {
+  const t = await bootPhysics();
+  const balls = [];
+  for (let i = 0; i < 10; i++) {
+    const b = rock(t.sim, 400 + i * 50, 0, 6, 4);
+    b.data.gyreLaunched = true;
+    b.data.despawnAt = t.state.simTime + 4 + i; // balls[9] has the freshest deadline
+    b.data.gyreLaunchMeta = {
+      actorId: t.state.playerId, weaponId: 'wpn_gyre_snare', tag: 'gyre_launch',
+      magnitude: 120, holdUntilSim: t.state.simTime + 4 + i, clumpRadius: 6,
+    };
+    balls.push(b);
+  }
+  t.bus.emit('save:loaded', {});
+  t.sim.step();
+  assert.equal(t.sys._rt.ballIds.length, 8, 'the watch list stays bounded at 8');
+  // Overflow retires the earliest-tracked balls through the full hand-back —
+  // marks stripped, not orphaned.
+  assert.equal(balls[0].data.gyreLaunched, undefined, 'overflow ball handed back');
+  assert.equal(balls[0].data.gyreLaunchMeta, undefined, 'its credit meta goes with the mark');
+  assert.equal(balls[1].data.gyreLaunched, undefined, 'second overflow handed back too');
+  assert.equal(balls[9].data.gyreLaunched, true, 'the youngest ball keeps its mark');
+  assert.equal(t.sys._rt.ballId, balls[9].id,
+    'the HUD mirror adopts the freshest deadline, not iteration order');
+  assert.equal(t.state.gyreSnare.launchedId, balls[9].id,
+    'the mirror survives the load — the sweep re-adopts after the boundary reset');
+  t.cleanup();
+});

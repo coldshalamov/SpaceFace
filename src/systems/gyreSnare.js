@@ -137,7 +137,7 @@ export const gyreSnare = {
     // then sweep untracked residue — a held body left marked is pull/snag/suck-immune
     // forever, and a stashless ex-core is immortal debris.
     this._clearCoreMark();
-    this._rt.ballIds.length = 0; // same alias risk as the boundary drop — clear before the re-seed
+    if (this._rt) this._rt.ballIds.length = 0; // same alias risk as the boundary drop — clear before the re-seed
     this._sweepBoundaryResidue();
     this._rt = freshRuntime();
   },
@@ -162,11 +162,6 @@ export const gyreSnare = {
       // gyreLaunched stays: a ball mid-flight in the save is still a launched body (it
       // despawns on its own schedule).
       this._clearCoreMark();
-      // Forget the watch list BEFORE the sweep re-seeds it from live marks: a stale id
-      // that aliases a live gyreLaunched entity in the post-load map would eat an
-      // overflow _handBack and strip a legit serialized ball's mark + pull immunity.
-      rt.ballIds.length = 0;
-      this._sweepBoundaryResidue();
     } else if (!wasOff) {
       this._clearCoreMark();
     }
@@ -186,9 +181,20 @@ export const gyreSnare = {
     rt.basinCount = 0;
     rt.suckCount = 0;
     rt.orbitSeed = 0;
-    // A boundary drop also forgets the flying ball — its entity is about to vanish with the
-    // sector anyway, and stale ballPos would leak a dead clump overlay into the next scene.
-    if (boundary) { rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0; }
+    // A boundary drop also forgets the flying ball mirror — stale ballPos would leak a
+    // dead clump overlay into the next scene. The sweep then re-seeds watch + mirror
+    // from what actually lives in the new map: a serialized ball mid-flight keeps its
+    // HUD mirror (and launchedId) across a save:load, while a sector-exit ball — its
+    // entity gone — stays forgotten. The sweep must run AFTER these resets or they
+    // would wipe the mirror it just adopted.
+    if (boundary) {
+      rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
+      // Forget the watch list BEFORE the sweep re-seeds it from live marks: a stale id
+      // that aliases a live gyreLaunched entity in the post-load map would eat an
+      // overflow _handBack and strip a legit serialized ball's mark + pull immunity.
+      rt.ballIds.length = 0;
+      this._sweepBoundaryResidue();
+    }
     // Cue/haptic gates reset on EVERY drop: simTime restarts at 0 on a fresh run (a stale
     // stamp would silence the absorb tick for the old run's whole length), and a fresh
     // clump's first strain excursion should re-arm the latch instead of inheriting it hot.
@@ -217,13 +223,21 @@ export const gyreSnare = {
     }
   },
 
-  _restoreLifetime(e) {
+  _restoreLifetime(e, futureOnly = false) {
     // Stashed at snag: a freed (non-launched) core resumes its authored deadlines
     // instead of living forever as stasis residue.
     if (!e || !e.data) return;
     if (e.data.gyrePrevDespawnAt !== undefined) {
-      e.data.despawnAt = e.data.gyrePrevDespawnAt;
-      delete e.data.gyrePrevDespawnAt;
+      // futureOnly (adoption hand-back): the adopter owns the body's deadline now.
+      // A stash already in the past would assassinate their body on the next
+      // lifetime sweep — drop it and let the adopter's deadline stand.
+      const now = this.state && this.state.simTime;
+      if (futureOnly && Number.isFinite(now) && e.data.gyrePrevDespawnAt <= now) {
+        delete e.data.gyrePrevDespawnAt;
+      } else {
+        e.data.despawnAt = e.data.gyrePrevDespawnAt;
+        delete e.data.gyrePrevDespawnAt;
+      }
     }
     if (e.data.gyrePrevTtl !== undefined) {
       e.ttl = e.data.gyrePrevTtl;
@@ -254,7 +268,7 @@ export const gyreSnare = {
     // Symmetric with _restoreLifetime on drop: the authored deadlines the ball carried
     // before the lash caught it come back instead of leaving it immortal unless the
     // adopter deadlined it themselves.
-    this._restoreLifetime(ball);
+    this._restoreLifetime(ball, true);
     if (ball.physicsBody && ball.physicsBody !== false) {
       if (ball.data.gyrePrevImpactScale !== undefined) ball.physicsBody.impactDamageScale = ball.data.gyrePrevImpactScale;
       else delete ball.physicsBody.impactDamageScale;
@@ -268,6 +282,9 @@ export const gyreSnare = {
   _sweepBoundaryResidue() {
     const ents = this.state && this.state.entities;
     if (!ents || typeof ents.forEach !== 'function') return;
+    // With 2+ serialized balls, the HUD mirror adopts the YOUNGEST (freshest deadline)
+    // deterministically — tracked here across the entity walk.
+    let adoptScore = -Infinity;
     const mark = this.helpers && typeof this.helpers.markEntityVisualChanged === 'function'
       ? this.helpers.markEntityVisualChanged : null;
     ents.forEach((e) => {
@@ -306,8 +323,12 @@ export const gyreSnare = {
         // on a same-timeline reload left ballId null while the body still flew, so the
         // "ball live" dot and glass-clump overlay died under it. The member ledger never
         // serialized — the overlay falls back to the collider silhouette (members=null).
-        if (e.alive !== false && e.pos) {
-          const rt = this._rt;
+        // With 2+ serialized balls, prefer the youngest (freshest deadline) — otherwise
+        // last-writer-wins adopts whichever the map happens to iterate last.
+        const rt = this._rt;
+        const score = Number.isFinite(e.data.despawnAt) ? e.data.despawnAt : -Infinity;
+        if (rt && e.alive !== false && e.pos && score > adoptScore) {
+          adoptScore = score;
           rt.ballId = e.id;
           rt.launchedId = e.id;
           rt.ballMass = entityMass(e);
@@ -328,6 +349,7 @@ export const gyreSnare = {
   // rather than orphaned out of coverage; gone/dead ids just drop.
   _trackBall(id) {
     const rt = this._rt;
+    if (!rt) return; // destroy() before init() — nothing to watch
     if (!rt.ballIds.includes(id)) rt.ballIds.push(id);
     while (rt.ballIds.length > 8) {
       const e = this.state && this.state.entities ? this.state.entities.get(rt.ballIds[0]) : null;
@@ -986,7 +1008,12 @@ export const gyreSnare = {
         if (ball && ball.data && ball.data.despawnAt != null
           && Number.isFinite(state && state.simTime) && state.simTime >= ball.data.despawnAt
           && this.bus) {
-          this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: pub.ballPos.x, z: pub.ballPos.z } });
+          this.bus.emit('audio:cue', {
+            id: 'gyre_snare_ball_death', gain: 0.6,
+            // Sing at the live position — pub.ballPos is last tick's publish, up to
+            // ~9 wu stale at launchSpeed 520.
+            position: ball.pos ? { x: ball.pos.x, z: ball.pos.z } : { x: pub.ballPos.x, z: pub.ballPos.z },
+          });
         }
         // Hand-back: a live adopted body keeps nothing of ours — the shared helper
         // strips gyreLaunched and restores the stashed authored impactDamageScale.
