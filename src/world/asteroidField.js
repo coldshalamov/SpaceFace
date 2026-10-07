@@ -239,12 +239,17 @@ export function* queryAsteroidFieldSteps(state, pos, radius, out = [], batchRows
 
 // Nearest-first whole-field twin: emits every live unpromoted record exactly
 // once, bucketed outward from the player's cell by Chebyshev ring. The collect
-// is chunked (key scan + one yield per ring) so a whole-field walk rides a
-// slice clock; the O(R log R) distance sort it replaces couldn't suspend.
-// Ordering is nearest-first by cell — the field's own radius queries already
-// accept mint-cell imprecision for drifted rocks, and the caller's promote
-// contract is coverage over the key space with proximity preference only.
-export function* queryAsteroidFieldNearestSteps(state, pos, out = [], batchRows = 1024) {
+// is chunked (key scan + a yield every `batchRows` emitted records) so a
+// whole-field walk rides a slice clock; the O(R log R) distance sort it
+// replaces couldn't suspend. `maxRadius` stops emission once a ring's
+// minimum center distance exceeds it (+CELL slack covers centers anywhere
+// inside a boundary cell plus rec.radius reach — the margin over-selects,
+// never under). Ordering is nearest-first by cell — the field's own radius
+// queries already accept mint-cell imprecision for drifted rocks, and the
+// caller's promote contract is coverage over the key space with proximity
+// preference only.
+export function* queryAsteroidFieldNearestSteps(state, pos, out = [], batchRows = 1024,
+    maxRadius = Infinity) {
   out.length = 0;
   const field = state && state.world && state.world.asteroidField;
   if (!field || !pos) return out;
@@ -255,6 +260,7 @@ export function* queryAsteroidFieldNearestSteps(state, pos, out = [], batchRows 
   const px = Math.floor(x / ASTEROID_FIELD_CELL);
   const pz = Math.floor(z / ASTEROID_FIELD_CELL);
   const batch = Number.isFinite(batchRows) ? Math.max(1, batchRows | 0) : Infinity;
+  const radiusCap = Number.isFinite(maxRadius) ? finite(maxRadius) : Infinity;
   const rings = new Map();
   let scanned = 0;
   for (const key of grid.keys()) {
@@ -267,13 +273,19 @@ export function* queryAsteroidFieldNearestSteps(state, pos, out = [], batchRows 
     if (++scanned % batch === 0) yield;
   }
   const order = [...rings.keys()].sort((a, b) => a - b);
+  let emitted = 0;
   for (let i = 0; i < order.length; i++) {
-    for (const key of rings.get(order[i])) {
+    const ring = order[i];
+    // Ring k's records sit at least (k-1)*CELL away — a record can only be
+    // in-radius while (k-1)*CELL <= radiusCap + rec.radius <= radiusCap + CELL.
+    if (radiusCap !== Infinity && (ring - 1) * ASTEROID_FIELD_CELL > radiusCap + ASTEROID_FIELD_CELL) break;
+    for (const key of rings.get(ring)) {
       const bucket = grid.get(key);
       if (!bucket) continue;
       for (const rec of bucket) {
         if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
         out.push(rec);
+        if (++emitted % batch === 0) yield;
       }
     }
     yield;

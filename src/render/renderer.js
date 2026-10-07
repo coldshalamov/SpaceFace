@@ -12544,42 +12544,43 @@ export const render = {
         ? state.entities.get(state.playerId)
         : null;
       if (player && player.pos && !recook) {
-        const rockHits = [];
-        const rockQueryIter = queryAsteroidFieldSteps(state, player.pos,
-          firstFlightRockCookRadiusWu(state), rockHits);
-        for (;;) {
-          const rockStep = rockQueryIter.next();
-          if (rockStep.done) break;
-          if (cookStale()) return cookSuperseded;
-          await yieldLiveSectorGpu();
-        }
         const px = Number(player.pos.x) || 0;
         const pz = Number(player.pos.z) || 0;
-        rockHits.sort((left, right) => {
-          const dlx = (Number(left && left.pos && left.pos.x) || 0) - px;
-          const dlz = (Number(left && left.pos && left.pos.z) || 0) - pz;
-          const drx = (Number(right && right.pos && right.pos.x) || 0) - px;
-          const drz = (Number(right && right.pos && right.pos.z) || 0) - pz;
-          return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
-        });
-        // The O(H log H) sort can't suspend — land the cook's slice seam
-        // between it and the promote burst's own pacing.
-        if (cookStale()) return cookSuperseded;
-        await yieldLiveSectorGpu();
+        const rockCookRadius = firstFlightRockCookRadiusWu(state);
+        // Ring-ascending emit instead of collect-all + O(H log H) sort: the
+        // stream approximates exact-distance order at cell granularity and the
+        // promote consumes it directly — a dense field no longer pays a whole
+        // in-radius collect + unsuspendable sort to mint 25 keys.
+        const rockHits = [];
+        const rockEmit = queryAsteroidFieldNearestSteps(state, player.pos, rockHits,
+          1024, rockCookRadius);
         const seenRockKeys = new Set();
+        let rockCursor = 0;
+        let rockDone = false;
         let rockPromotesSinceYield = 0;
-        for (const rec of rockHits) {
-          if (seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
-          const key = asteroidFirstFlightCookKey(rec);
-          if (seenRockKeys.has(key)) continue;
-          if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
-          seenRockKeys.add(key);
-          // A promote fans a synchronous entity:spawned emit to ~24 listeners —
-          // pace the burst or the cook's slice clock parks for the whole tail.
-          if ((++rockPromotesSinceYield % 4) === 0) {
-            if (cookStale()) return cookSuperseded;
-            await yieldLiveSectorGpu();
+        while (!rockDone && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP) {
+          if (rockEmit.next().done) rockDone = true;
+          for (; rockCursor < rockHits.length
+              && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP; rockCursor += 1) {
+            const rec = rockHits[rockCursor];
+            const dx = rec.pos.x - px;
+            const dz = rec.pos.z - pz;
+            const reach = rockCookRadius + (Number(rec.radius) || 0);
+            if (dx * dx + dz * dz > reach * reach) continue;
+            const key = asteroidFirstFlightCookKey(rec);
+            if (seenRockKeys.has(key)) continue;
+            if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+            seenRockKeys.add(key);
+            // A promote fans a synchronous entity:spawned emit to ~24 listeners —
+            // pace the burst or the cook's slice clock parks for the whole tail.
+            if ((++rockPromotesSinceYield % 4) === 0) {
+              if (cookStale()) return cookSuperseded;
+              await yieldLiveSectorGpu();
+            }
           }
+          if (rockDone) break;
+          if (cookStale()) return cookSuperseded;
+          await yieldLiveSectorGpu();
         }
       }
       // Same deterministic arm as the jump census: registered sector:enter spawners fire
@@ -15380,42 +15381,42 @@ export const render = {
           ? state.entities.get(state.playerId)
           : null;
         if (player && player.pos) {
-          const rockHits = [];
-          const rockQueryIter = queryAsteroidFieldSteps(state, player.pos,
-            firstFlightRockCookRadiusWu(state), rockHits);
-          for (;;) {
-            const rockStep = rockQueryIter.next();
-            if (rockStep.done) break;
-            if (cookStale()) return cookSuperseded;
-            await yieldLiveSectorGpu();
-          }
           const px = Number(player.pos.x) || 0;
           const pz = Number(player.pos.z) || 0;
-          rockHits.sort((left, right) => {
-            const dlx = (Number(left && left.pos && left.pos.x) || 0) - px;
-            const dlz = (Number(left && left.pos && left.pos.z) || 0) - pz;
-            const drx = (Number(right && right.pos && right.pos.x) || 0) - px;
-            const drz = (Number(right && right.pos && right.pos.z) || 0) - pz;
-            return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
-          });
-          // The O(H log H) sort can't suspend — land the cook's slice seam
-          // between it and the promote burst's own pacing (F9 parity).
-          if (cookStale()) return cookSuperseded;
-          await yieldLiveSectorGpu();
+          const rockCookRadius = firstFlightRockCookRadiusWu(state);
+          // Ring-ascending emit instead of collect-all + O(H log H) sort (F9
+          // parity): the promote consumes the stream directly so a dense field
+          // no longer pays a whole in-radius collect + unsuspendable sort.
+          const rockHits = [];
+          const rockEmit = queryAsteroidFieldNearestSteps(state, player.pos, rockHits,
+            1024, rockCookRadius);
           const seenRockKeys = new Set();
+          let rockCursor = 0;
+          let rockDone = false;
           let rockPromotesSinceYield = 0;
-          for (const rec of rockHits) {
-            if (seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
-            const key = asteroidFirstFlightCookKey(rec);
-            if (seenRockKeys.has(key)) continue;
-            if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
-            seenRockKeys.add(key);
-            // A promote fans a synchronous entity:spawned emit to ~24 listeners —
-            // pace the burst or the cook's slice clock parks for the whole tail.
-            if ((++rockPromotesSinceYield % 4) === 0) {
-              if (cookStale()) return cookSuperseded;
-              await yieldLiveSectorGpu();
+          while (!rockDone && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP) {
+            if (rockEmit.next().done) rockDone = true;
+            for (; rockCursor < rockHits.length
+                && seenRockKeys.size < FIRST_FLIGHT_ROCK_COOK_CAP; rockCursor += 1) {
+              const rec = rockHits[rockCursor];
+              const dx = rec.pos.x - px;
+              const dz = rec.pos.z - pz;
+              const reach = rockCookRadius + (Number(rec.radius) || 0);
+              if (dx * dx + dz * dz > reach * reach) continue;
+              const key = asteroidFirstFlightCookKey(rec);
+              if (seenRockKeys.has(key)) continue;
+              if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+              seenRockKeys.add(key);
+              // A promote fans a synchronous entity:spawned emit to ~24 listeners —
+              // pace the burst or the cook's slice clock parks for the whole tail.
+              if ((++rockPromotesSinceYield % 4) === 0) {
+                if (cookStale()) return cookSuperseded;
+                await yieldLiveSectorGpu();
+              }
             }
+            if (rockDone) break;
+            if (cookStale()) return cookSuperseded;
+            await yieldLiveSectorGpu();
           }
         }
         // Deterministic population arm: systems that materialize bodies on sector:enter
@@ -18527,6 +18528,14 @@ export const render = {
       observePipelineAdmission(drain.finally(() => {
         if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(drain);
       }));
+      // A drive minted between the settle hold's exit and the released stamp
+      // lands after the post-opening pass's collection cut — arm the rescan so
+      // the late cohort sweeps under the pass instead of compiling cold inside
+      // flight. Post-release emits leave the flag alone: their drain is the
+      // ordinary paced in-flight path.
+      if (this._postOpeningPipelineAdmissionReleased !== true) {
+        this._postOpeningRescanRequested = true;
+      }
     }
   },
 
@@ -21496,20 +21505,31 @@ export const render = {
   _drainHiddenFreezeQueue() {
     const pending = this._pendingHiddenFreeze;
     if (!pending || pending.length === 0) return;
-    const viewSeq = this._viewSyncSeq || 0;
-    let minted = 0;
-    let scanned = 0;
-    let visited = 0;
-    let nodesWorked = 0;
-    let w = 0;
-    for (let r = 0; r < pending.length; r += 1) {
-      const mesh = pending[r];
-      if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
-          || visited >= HIDDEN_FREEZE_VISIT_PER_PASS
-          || nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS) {
-        pending[w++] = mesh;
-        continue;
-      }
+    // The drain rides every cook yield seam AND the per-pass sync call —
+    // its per-call caps are per-INVOCATION, so an unclocked drain stacks
+    // seams/frame × caps of invisible presented-frame work. Debit the wallet
+    // honestly in flight and let a spent wallet park the tail after the
+    // first row (progress is still guaranteed per call).
+    const drainNow = () => (typeof performance !== 'undefined'
+      && typeof performance.now === 'function' ? performance.now() : Date.now());
+    const drainStarted = drainNow();
+    const flightMode = this.state && this.state.mode === 'flight';
+    try {
+      const viewSeq = this._viewSyncSeq || 0;
+      let minted = 0;
+      let scanned = 0;
+      let visited = 0;
+      let nodesWorked = 0;
+      let w = 0;
+      for (let r = 0; r < pending.length; r += 1) {
+        const mesh = pending[r];
+        if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
+            || visited >= HIDDEN_FREEZE_VISIT_PER_PASS
+            || nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS
+            || (flightMode && visited > 0 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+          pending[w++] = mesh;
+          continue;
+        }
       visited += 1;
       const ud = mesh.userData || {};
       let iter = ud.sfHiddenFreezeIter || null;
@@ -21588,8 +21608,11 @@ export const render = {
       delete ud.sfHiddenFreezeQueued;
       delete ud.sfHiddenFreezeQueuedSeq;
       minted += 1;
+      }
+      pending.length = w;
+    } finally {
+      if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
     }
-    pending.length = w;
   },
 
   // The unfreeze rides the same bounded-drain shape as the freeze: a mass
