@@ -380,6 +380,7 @@ const EMITTED_CUES = {
   gyre_snare_absorb: { distinct: true }, gyre_snare_launch: { distinct: true },
   gyre_snare_strain: { distinct: true }, gyre_snare_ball_death: { distinct: true },
   gyre_snare_drop: { distinct: true }, gyre_snare_off: { distinct: true },
+  gyre_snare_full: { distinct: true },
   // Iron Maw prow tear (tacticalAI) — propulsion wind-down voice; boss moment stinger.
   'combat.subsystem.disabled': { distinct: true },
   'moment.stinger': { distinct: true },

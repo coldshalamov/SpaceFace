@@ -144,13 +144,14 @@ void main() {
 const BURST_FRAG = /* glsl */`
 uniform vec3 uCol;
 uniform float uT;         // 0..1 burst age
+uniform float uCalm;      // flash-accessibility scale — the burst respects reduced-flash
 varying vec2 vUv;
 void main() {
   float r = length(vUv);
   float edge = smoothstep(0.10, 0.0, abs(r - uT));
   float inner = smoothstep(1.0, 0.0, r) * 0.25 * (1.0 - uT);
   float a = (edge * 0.85 + inner) * (1.0 - uT) * (1.0 - uT);
-  gl_FragColor = vec4(uCol, a);
+  gl_FragColor = vec4(uCol, a * uCalm);
 }
 `;
 
@@ -280,7 +281,7 @@ export class GyreSnarePresentation {
     for (let i = 0; i < MAX_BURSTS; i++) {
       const mat = new THREE.ShaderMaterial({
         vertexShader: BURST_VERT, fragmentShader: BURST_FRAG,
-        uniforms: { uCol: { value: new THREE.Color(P.hot) }, uT: { value: 1 } },
+        uniforms: { uCol: { value: new THREE.Color(P.hot) }, uT: { value: 1 }, uCalm: { value: 1 } },
         transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
       });
       const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
@@ -318,6 +319,19 @@ export class GyreSnarePresentation {
     this._grip.visible = false;
     this._grip.frustumCulled = false;
     scene.add(this._grip);
+
+    // Gravity halo: a faint flat ring marking the clump's suck radius so the
+    // held ball reads as the gravity source it is, not just a circling rock.
+    const haloGeo = new THREE.RingGeometry(0.96, 1.0, 72);
+    haloGeo.rotateX(-Math.PI / 2);
+    this._haloMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(glass), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    this._halo = new THREE.Mesh(haloGeo, this._haloMat);
+    this._halo.visible = false;
+    this._halo.frustumCulled = false;
+    scene.add(this._halo);
 
     this._nose = { x: 0, z: 0 };
     this._mawPt = { x: 0, z: 0 };
@@ -364,6 +378,10 @@ export class GyreSnarePresentation {
     // Loose-rubble drift: each lump bobs in place around its spawn seat so the clump
     // reads as levitating debris in zero-G, not a rigid flywheel.
     (slot.basePos || (slot.basePos = new THREE.Vector3())).copy(m.position);
+    // Fly-in: the lump enters along the direction its victim approached from, starting
+    // on the clump's rim and easing into its seat — the stick is a motion, not a pop.
+    slot.fromX = finite(member.nx, 0) * finite(this._clumpRadius) * 0.95;
+    slot.fromZ = finite(member.nz, 0) * finite(this._clumpRadius) * 0.95;
     slot.bobPhase = i * 2.39;
     slot.bobRate = 1.15 + ((i * 0.61803398875) % 1) * 0.9;
     m.rotation.set(i * 1.7, i * 2.3, i * 0.9);
@@ -374,11 +392,14 @@ export class GyreSnarePresentation {
     for (const l of this._lumps) { l.used = false; l.mesh.visible = false; }
   }
 
-  _fireBurst(x, z, r) {
+  _fireBurst(x, z, r, calm = 1) {
     let slot = this._bursts[0];
     for (const b of this._bursts) if (b.t >= 1) { slot = b; break; }
     slot.t = 0;
     slot.r = r;
+    // The two brightest flashes in the vocabulary respect reduced-flash like
+    // everything else — scale the ring's alpha, not just its lifespan.
+    slot.mesh.material.uniforms.uCalm.value = calm;
     const p = this.toLocal ? this.toLocal(x, z, this._nose) : (this._nose.x = x, this._nose.z = z, this._nose);
     slot.mesh.position.set(p.x, 0.4, p.z);
     slot.mesh.visible = true;
@@ -470,8 +491,11 @@ export class GyreSnarePresentation {
       this._clumpKick *= Math.exp(-dt * 6);
       this._moteKick *= Math.exp(-dt * 5);
       this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * flashCalm);
+      // Net anticipation: absorbables already inside the cone make the mouth glow
+      // brighter before the catch — "×N IN NET" through the glass itself.
+      const net = Math.min(3, finite(mirror.basinCount, 0));
       this._discMat.uniforms.uTime.value = this.time;
-      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55) + this._discKick * 0.5) * flashCalm;
+      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12) + this._discKick * 0.5) * flashCalm;
       this._spiral.visible = calm !== 0;
       // The maw "gulps": each absorb surges the motes' private clock so they visibly
       // accelerate into the mouth for a beat instead of holding their metronome rate.
@@ -491,16 +515,26 @@ export class GyreSnarePresentation {
     if (phase === 'holding' && mirror.corePos) { cx = mirror.corePos.x; cz = mirror.corePos.z; }
     else if (mirror.launchedId != null && mirror.ballPos) { cx = mirror.ballPos.x; cz = mirror.ballPos.z; spinRate = 2.6; }
 
+    // The flying ball's grave is tracked off ballPos only — a newly held core must
+    // never poison where the OLD ball died (previously cx could be the held core).
+    if (mirror.launchedId != null && mirror.ballPos) {
+      const lb = this._lastBall || (this._lastBall = { x: 0, z: 0, r: 0 });
+      lb.x = mirror.ballPos.x; lb.z = mirror.ballPos.z;
+      lb.r = Math.max(1, finite(mirror.ballClumpRadius, this._clumpRadius));
+    }
+    // Ball-death fires the moment the tracker drops it — even mid-hold, so a ball
+    // dying while a new clump orbits still gets its grave burst at its own spot.
+    if (this._ballId != null && mirror.launchedId == null && this._lastBall) {
+      this._fireBurst(this._lastBall.x, this._lastBall.z, Math.max(6, this._lastBall.r * 1.6), flashCalm);
+      this._lastBall = null;
+    }
+
     if (cx == null) {
       this._clump.visible = false;
-      // The thrown ball reached its grave (impact or TTL) — douse the spot it died with
-      // a burst so the katamari's exit has the same voice its launch had.
-      if (this._ballId != null && this._lastBall) {
-        this._fireBurst(this._lastBall.x, this._lastBall.z, Math.max(6, this._lastBall.r * 1.6));
-      }
       this._lastBall = null;
       this._trail.visible = false;
       this._grip.visible = false;
+      this._halo.visible = false;
       if (phase === 'off' && this._ballId == null) this._clearLumps();
     } else {
       const p = this.toLocal(cx, cz, this._nose);
@@ -512,11 +546,7 @@ export class GyreSnarePresentation {
       this._clumpSpin += dt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
-      this._ballId = mirror.launchedId;
-      // Track the ball's last-known position + radius so its death frame can burst there.
       if (mirror.launchedId != null) {
-        const lb = this._lastBall || (this._lastBall = { x: 0, z: 0, r: 0 });
-        lb.x = cx; lb.z = cz; lb.r = this._clumpRadius;
         // Flight ribbon: stretched flat quad hanging off the ball's tail along launchDir.
         const dir = mirror.launchDir;
         const dl = Math.hypot(finite(dir && dir.x, 1), finite(dir && dir.z, 0)) || 1;
@@ -551,6 +581,18 @@ export class GyreSnarePresentation {
         this._grip.visible = false;
       }
 
+      // Gravity halo while held: the suck radius drawn faintly around the ball so
+      // "within a radius of the held mass" is legible space, not just pull behavior.
+      if (phase === 'holding') {
+        const suckR = this._clumpRadius + finite(GYRE_SNARE.suckBandWidth, 88);
+        this._halo.position.set(p.x, 0.42, p.z);
+        this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
+        this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm;
+        this._halo.visible = true;
+      } else if (this._halo.visible) {
+        this._halo.visible = false;
+      }
+
       const members = mirror.members;
       const want = Array.isArray(members) ? Math.min(members.length, MAX_LUMPS) : 0;
       let have = 0;
@@ -569,11 +611,18 @@ export class GyreSnarePresentation {
         if (l.basePos) {
           const bob = Math.sin(this.time * l.bobRate + l.bobPhase) * l.baseScale * 0.15 * calm;
           const sway = Math.sin(this.time * l.bobRate * 0.63 + l.bobPhase * 2.1) * l.baseScale * 0.06 * calm;
-          l.mesh.position.set(l.basePos.x + sway, l.basePos.y + bob, l.basePos.z - sway * 0.7);
+          // Entry path: rim → seat over ~0.3 s (ease-out), fading the bob in as it lands.
+          const ft = Math.min(1, Math.max(0, (this.time - l.spawnT) / 0.3));
+          const fe = 1 - (1 - ft) * (1 - ft);
+          l.mesh.position.set(
+            l.basePos.x + (l.fromX - l.basePos.x) * (1 - fe) + sway * fe,
+            l.basePos.y + bob * fe,
+            l.basePos.z + (l.fromZ - l.basePos.z) * (1 - fe) - sway * 0.7 * fe,
+          );
         }
       }
     }
-    if (mirror.launchedId == null) this._ballId = null;
+    this._ballId = mirror.launchedId;
 
     // ── phase transitions ────────────────────────────────────────────────────
     if (phase !== this._phase) {

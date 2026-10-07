@@ -114,7 +114,10 @@ export const gyreHud = {
       }
       return { text: `GYRE — ×${count} · ${mass}t`, cls: 'gyre-holding' };
     }
-    return { text: 'GYRE — SEARCHING', cls: '' };
+    // Net anticipation: material already inside the cone names the catch before it
+    // lands — "×N IN NET" instead of a bare SEARCHING sweep.
+    const net = g.basinCount || 0;
+    return { text: net > 0 ? `GYRE — ×${net} IN NET` : 'GYRE — SEARCHING', cls: '' };
   },
 
   _apply(dom, text, cls) {

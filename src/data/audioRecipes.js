@@ -3126,6 +3126,18 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 260, filterQ: 1.0,
     lfoRate: 0.7, lfoDepth: 0.15,
   },
+  // Saturation: one bright glass chime over a sub thump when the clump first crosses the
+  // mass cap — the FULL flag lands through the ear, not just the HUD.
+  {
+    id: 'sfx_gyre_full',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 990], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.01, sustain: 0.3, release: 0.5 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.2,
+    pitchRange: [0.97, 1.03],
+  },
   // Beam wake: a soft rising glass shimmer as the cone ignites — lighter than the snag bite
   // (which is the grip landing). The lash switching on, not the catch.
   {

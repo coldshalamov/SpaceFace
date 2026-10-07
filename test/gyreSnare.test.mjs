@@ -786,3 +786,45 @@ test('an adopted ball is stripped of gyreLaunched and its sleeper impactDamageSc
   assert.equal(ball.physicsBody.impactDamageScale, undefined, 'no 8x sleeper collider left behind');
   t.cleanup();
 });
+
+// -- net anticipation: basinCount feeds the ×N IN NET HUD read --
+test('absorbables inside the cone publish basinCount for the net-read', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist + 30, 10, 6, 4);
+  rock(t.sim, T.mawDist + 45, -15, 6, 4);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.ok(t.state.gyreSnare.basinCount >= 1, `basin count tracks cone material (got ${t.state.gyreSnare.basinCount})`);
+  release(t);
+  t.cleanup();
+});
+
+// -- saturation beat: gyre_snare_full latches once at the cap crossing --
+test('the first absorb past the mass cap fires exactly one FULL cue', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'core held before feeding the cap');
+  // Two 1500t meals outpace the 2400t cap — the second crossing must not re-fire.
+  rock(t.sim, core.pos.x + 8, core.pos.z, 1500, 6);
+  rock(t.sim, core.pos.x - 8, core.pos.z, 1500, 6);
+  for (let i = 0; i < 12; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const fulls = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_full');
+  assert.equal(fulls.length, 1, `FULL cue latched once (got ${fulls.length})`);
+  assert.ok(t.sys._rt.clumpMass >= T.maxClumpMass, 'clump actually saturated');
+  t.cleanup();
+});
+
+// -- Newton: the bowl pushes the ship back a touch --
+test('launching the clump kicks the ship a small counter-Δv', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 30, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const vxBefore = t.player.vel.x;
+  release(t);
+  assert.ok(t.player.vel.x < vxBefore, `recoil pushes off the +x nose (vx ${vxBefore.toFixed(2)}→${t.player.vel.x.toFixed(2)})`);
+  assert.ok(Math.abs(t.player.vel.x - vxBefore) <= 6.5, 'the kick stays a nudge, not a knockback');
+  t.cleanup();
+});

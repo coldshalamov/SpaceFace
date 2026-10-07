@@ -61,7 +61,9 @@ export const GYRE_SNARE = Object.freeze({
   holdMaxAccel: 1000,        // wu/s² — hold spring ceiling (strong enough to reel a lagging ball)
   holdBreakDist: 640,        // wu — core shoved beyond this slips the beam entirely (dropped)
   holdStrainDist: 320,       // wu — beyond this the beam reads "strained" to VFX/HUD
-  tumbleTorqueK: 2.2,        // torque-per-wobble on the held core — the loose zero-G spin
+  tumbleTorqueK: 2.2,        // gain steering the held core's spin toward tumbleTargetRadS
+  tumbleTargetRadS: 0.55,    // rad/s — lazy rubble drift; a servo target so the spin settles
+                           // instead of winding up open-loop over a long hold
   // ── Katamari growth ───────────────────────────────────────────────────────────────
   suckBandWidth: 88,         // wu — core sucks absorbables within core.radius + this
   suckAccel: 680,            // wu/s² — pull toward the core inside the suck band
@@ -88,10 +90,12 @@ export const GYRE_SNARE = Object.freeze({
   capActivateMin: 10,        // cap needed to open the beam
   capDrainPerS: 6.5,         // cap/s while the beam is live (empty tank = auto-bowl)
   capHoldMult: 1.35,         // ×drain while a clump is held (holding mass is heavier work)
-  // Hold drain scales with clump mass: a 240 t ball pulls 6.5·1.35·(1+240/60) ≈ 43.9 cap/s
-  // (6.75× base drain), which beats the starter hull's regen — the bigger the katamari,
-  // the shorter the fuse.
+  // Hold drain scales with clump mass up to a cap: the mass term saturates at
+  // capMassDrainMax so a FULL ball (2400t) costs the same fuse as a 130t one —
+  // ~6.5·1.35·(1+2.2) ≈ 28 cap/s → ~4-5s hold on the starter hull's regen curve
+  // instead of an instant dry-out. Bigger katamari, shorter fuse — bounded.
   capMassDrainRef: 60,       // t of clump mass per additional ×1 hold drain
+  capMassDrainMax: 2.2,      // ceiling on the mass drain term (drain maxes ~3.2× hold mult)
   // ── Presentation palette (glassy white) — the single source of truth read by
   // src/render/forceLanguage/gyreSnarePresentation.js: cone body 'glass', rim/maw ring
   // 'rim', launch burst 'hot', mouth glow disc 'maw', katamari lump fallback 'lump'.

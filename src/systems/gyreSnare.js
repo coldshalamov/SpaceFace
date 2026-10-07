@@ -92,6 +92,8 @@ function freshRuntime() {
     lastAbsorbCueS: -1e9,  // simTime of the last absorb tick — gates the glass-tick cue rate
     strainCueLatched: false, // gyre_snare_strain fires once per strain excursion
     orbitSeed: 0,          // per-clump phase so successive balls don't share a start angle
+    basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
+    fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
   };
 }
 
@@ -160,7 +162,7 @@ export const gyreSnare = {
     // Cue/haptic gates reset on EVERY drop: simTime restarts at 0 on a fresh run (a stale
     // stamp would silence the absorb tick for the old run's whole length), and a fresh
     // clump's first strain excursion should re-arm the latch instead of inheriting it hot.
-    rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false;
+    rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; rt.fullCueLatched = false;
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       // dropped = a live beam/hold released without launch; coreId is null when the beam
@@ -289,6 +291,7 @@ export const gyreSnare = {
     const tan = Math.tan(D.coneHalfAngleRad);
     const shipVx = finite(player.vel && player.vel.x);
     const shipVz = finite(player.vel && player.vel.z);
+    this._rt.basinCount = 0;
     for (let i = 0; i < cands.length; i++) {
       const e = cands[i];
       if (!e || e.alive === false || !e.pos) continue;
@@ -327,6 +330,13 @@ export const gyreSnare = {
       }
       if (!inBasin && !inWedge) continue;
       if (PULL_SKIP_TYPES.has(e.type)) continue;
+      // Mass in the funnel: absorbable bodies already inside the cone get counted so
+      // the HUD/maw can telegraph the catch before it lands ("×N IN NET").
+      if (ABSORBABLE.has(e.type)
+        && !(e.data && (e.data.gyreCore || e.data.gyreLaunched))
+        && !(e.flags && e.flags.persistent) && !(e.data && e.data.worldRecordId)) {
+        this._rt.basinCount += 1;
+      }
       // While the clump is held, the suck lane owns the annulus around the core —
       // without this skip a body inside both volumes eats basin+suck impulses same tick
       // (each clamped per queue, summing past the authored pullMaxAccel ceiling).
@@ -409,6 +419,7 @@ export const gyreSnare = {
     rt.clumpMass = rt.coreBaseMass;
     rt.clumpRadius = entityRadius(best);
     rt.totalAbsorbed = 0; // new clump ledger — the HUD count restarts with the core
+    rt.fullCueLatched = false;
     // Orbit seed must be finite for ANY id shape — spawnEntity passes spec.id through
     // verbatim and world data carries string ids ('poi_pwreck'); `id * 0.37` on a string
     // is NaN, which poisoned the orbit slot and silently zeroed every hold impulse.
@@ -464,8 +475,10 @@ export const gyreSnare = {
     // big the ball has become — the lash holds a 2400 t clump as surely as a 6 t pebble.
     const mass = entityMass(core);
     queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
-    // A lazy tumble — the ball reads as levitating rock, not a rigid joint.
-    queuePhysicsTorqueImpulse(core, { x: 0, y: mass * D.tumbleTorqueK * dt, z: 0 }, this._evidence(state.tick));
+    // A lazy tumble — steer the spin toward a small target ω so it settles into
+    // floating-rubble drift instead of winding up open-loop on a long hold.
+    const spinErr = D.tumbleTargetRadS - finite(core.angVel);
+    queuePhysicsTorqueImpulse(core, { x: 0, y: mass * spinErr * D.tumbleTorqueK * dt, z: 0 }, this._evidence(state.tick));
 
     // The beam keeps sweeping the basin into the ball: bodies near the maw get a pull
     // retargeted onto the CORE (the clump is what "increases gravity" now).
@@ -493,7 +506,8 @@ export const gyreSnare = {
       const e = cands[i];
       if (!e || e.alive === false || !e.pos || e.id === core.id) continue;
       if (e.id === state.playerId) continue;
-      if (!ABSORBABLE.has(e.type) || !isDynamic(e)) continue;
+      const absorbable = ABSORBABLE.has(e.type);
+      if (!isDynamic(e) || PULL_SKIP_TYPES.has(e.type)) continue;
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never re-absorbed
       // Persistent / world-record mass stays live — the katamari must not eat a quest item.
       if ((e.flags && e.flags.persistent) || (e.data && e.data.worldRecordId)) continue;
@@ -501,6 +515,16 @@ export const gyreSnare = {
       const dz = core.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz);
       const er = entityRadius(e);
+      if (!absorbable) {
+        // A non-absorbable body inside the annulus still feels the clump's gravity —
+        // courtesy tug toward the core at the same discounted rate the basin gives,
+        // or a 60 wu gravity ball has a dead zone around it.
+        if (dist > (rt.clumpRadius + er) * D.absorbOverlap && dist > 1e-4) {
+          const tug = D.suckAccel * D.nonAbsorbablePull * couplingScale(this._profile(e));
+          this._queueAccel(e, (dx / dist) * tug, (dz / dist) * tug, entityMass(e), dt, state);
+        }
+        continue;
+      }
       // Surface contact → merge into the ball (mass union; radius by volume, capped). The
       // meal sticks the moment its skin crosses the clump's — katamari stick-on-touch, not a
       // nested overlap, so a fast spiral can't orbit forever inside the band.
@@ -580,6 +604,12 @@ export const gyreSnare = {
         // pebble ticks high, a wreck thuds low.
         this.bus.emit('audio:cue', { id: 'gyre_snare_absorb', gain: 0.7, rate: 1.15 - Math.min(0.5, em / 160) });
       }
+      // Saturation beat: the absorb that first crosses the cap gets its own voice so
+      // the FULL moment lands through the ear, not just the HUD flag.
+      if (rt.clumpMass >= D.maxClumpMass && !rt.fullCueLatched) {
+        rt.fullCueLatched = true;
+        this.bus.emit('audio:cue', { id: 'gyre_snare_full', gain: 0.8 });
+      }
     }
   },
 
@@ -644,6 +674,13 @@ export const gyreSnare = {
       // position, full strength like player-hit/drill shakes.
       this.bus.emit('camera:shake', { amount: 0.3 + 0.25 * Math.min(1, rt.clumpMass / D.maxClumpMass) });
     }
+    // Newton: throwing a small moon pushes back. A gentle mass-scaled counter-Δv
+    // (capped 6 wu/s — a nudge, not a knockback) physically sells the heave.
+    const recoilDv = Math.min(6, 1.2 + rt.clumpMass / 500);
+    const shipMass = entityMass(player);
+    queuePhysicsImpulse(player, {
+      x: -dir.x * recoilDv * shipMass, y: 0, z: -dir.z * recoilDv * shipMass,
+    }, this._evidence(state.tick));
   },
 
   _finishLaunch(state) {
@@ -671,6 +708,7 @@ export const gyreSnare = {
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
+      basinCount: 0, ballClumpRadius: 0,
     });
     pub.phase = rt.phase;
     // Track a live bowling ball even in OFF: launchedId stays published until the entity is
@@ -709,12 +747,14 @@ export const gyreSnare = {
         rt.ballAbsorbs = 0;
       } else {
         pub.ballPos.x = ball.pos.x; pub.ballPos.z = ball.pos.z;
+        pub.ballClumpRadius = rt.ballClumpRadius;
         pub.ballTtl01 = ball.data.despawnAt != null && Number.isFinite(state.simTime)
           ? Math.max(0, Math.min(1, (ball.data.despawnAt - state.simTime) / D.ballTtlS)) : 1;
       }
     }
-    if (rt.ballId == null) pub.ballTtl01 = 1;
+    if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballClumpRadius = 0; }
     pub.launchedId = rt.ballId;
+    pub.basinCount = rt.basinCount || 0;
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {
       pub.coreId = null; pub.strain01 = 0;
@@ -820,7 +860,7 @@ export const gyreSnare = {
     // scales with clump mass: a huge ball can out-pull the hull's regen — the bigger the
     // katamari, the shorter the fuse on your hold.
     const drainMult = rt.phase === PHASE.HOLD
-      ? D.capHoldMult * (1 + rt.clumpMass / D.capMassDrainRef)
+      ? D.capHoldMult * (1 + Math.min(rt.clumpMass / D.capMassDrainRef, D.capMassDrainMax))
       : 1;
     const drain = D.capDrainPerS * drainMult * dt;
     this._spendCap(player, drain);
