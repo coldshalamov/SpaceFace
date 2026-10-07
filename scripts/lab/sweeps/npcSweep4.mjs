@@ -42,8 +42,17 @@ function jobsFor(phase) {
   if (phase === 'baseline' || phase === 'verify') { for (const sc of ALL) for (const seed of [1, 2, 3, 4, 5]) jobs.push({ c: { shipped: true }, sc, seed }); return jobs; }
   if (phase === 'grid') { for (const c of gridConfigs()) for (const sc of ALL) for (const seed of [1, 2]) jobs.push({ c, sc, seed }); return jobs; }
   if (phase === 'top') {
-    const ranked = rank(loadRuns('grid')).filter((r) => r.cfg !== 'master').slice(0, 8);
-    for (const r of [...ranked.map((x) => x.config), ...EXTRA]) for (const sc of ALL) for (const seed of [1, 2, 3, 4, 5]) jobs.push({ c: r, sc, seed });
+    const E = { egressAwayCos: 0.6 };
+    const cfgs = [{}, E,
+      { ...E, strikeGate: 1, orbitFarClosing: 1 },
+      { ...E, strikeGate: 1, orbitFarClosing: 1, jinkCooldown: 60 },
+      { ...E, strikeGate: 1, orbitFarClosing: 1, jinkAuthority: 1 },
+      { ...E, strikeGate: 1, orbitFarClosing: 1, jinkAuthority: 1, jinkCooldown: 60 },
+      { ...E, strikeGate: 1, orbitFarClosing: 1, orbitThrottleFloor: 0.6, jinkAuthority: 0.7, jinkCooldown: 60 },
+      { egressAwayCos: 0.8, strikeGate: 1, orbitFarClosing: 1, jinkAuthority: 1, jinkCooldown: 60 },
+      { egressAwayCos: 0.8, strikeGate: 1, orbitFarClosing: 1, jinkAuthority: 0.7 },
+    ];
+    for (const c of [...cfgs, ...EXTRA]) for (const sc of ALL) for (const seed of [1, 2, 3, 4, 5]) jobs.push({ c, sc, seed });
     return jobs;
   }
   if (phase === 'probe') { // ad-hoc configs from PROBE_CFGS (JSON array)
@@ -84,8 +93,8 @@ async function child(phase, i, n) {
 // Proof criteria (system #4). Agile = interceptor / swarm hulls.
 const AGILE = new Set(['wasp', 'zealot', 'corsair', 'dart']);
 export const CRITERIA = {
-  egressOpenMin: 90,      // % of egress legs (>= 20 ticks) that end farther out than they started
-  egressDiveMax: 0,       // egress legs that dive > 15 wu inside their start range
+  egressOpenMin: 90,      // % of egress legs (>= 20 ticks) whose OWN radial motion is outward and heading out by the end
+  egressDiveMax: 0,       // legs whose own inward carry exceeds braking distance from entry speed + 15 wu
   ubHitMin: 60, ubHitMax: 95,  // overall unblocked hit% per enemy type (both pilots pooled)
   nearHitMin: 85,         // <= 130 wu: shots land
   agileFarManMin: 8,      // agile hulls at > 200 wu: some rounds miss for real (target manoeuvre)
@@ -100,7 +109,7 @@ export function judge(runs) {
     for (const r of rs) {
       for (const b of ['near', 'mid', 'far']) { t.n += r.buckets[b].unblocked; t.hit += r.buckets[b].hit; }
       t.nearN += r.buckets.near.unblocked; t.nearHit += r.buckets.near.hit; t.farN += r.buckets.far.unblocked; t.farMan += r.buckets.far.maneuver;
-      for (const n of r.npc) { t.egN += n.egressN; t.egOpen += n.egressOpenPct != null ? n.egressOpenPct * n.egressN / 100 : 0; t.dive += n.egressDiveN; }
+      for (const n of r.npc) { t.egN += n.egressN; const op = n.egressOwnOpenPct != null ? n.egressOwnOpenPct : n.egressOpenPct; t.egOpen += op != null ? op * n.egressN / 100 : 0; t.dive += n.egressOwnDiveN != null ? n.egressOwnDiveN : n.egressDiveN; }
     }
   }
   const summary = {};

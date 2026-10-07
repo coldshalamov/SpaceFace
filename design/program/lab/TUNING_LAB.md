@@ -481,11 +481,13 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here):** #4 NPC evasion/spacing IN PROGRESS. Bench `npc` built
-(`scripts/lab/benches/npcEvasion.mjs`), baseline done (`results/npc-2b/baseline.w*.jsonl`), knob grid
-running/resumable: `node scripts/lab/sweeps/npcSweep4.mjs grid --workers 7` (shards
-`results/npc-2b/grid.w*.jsonl`, gitignored; `report` re-ranks from disk). Next: `top`, then the
-production branch. #5..#10 not started. #3 skipped (waiting on Robin's turn-radius call).
+**Status (restart from here, 2026-10-07 00:45 ET):** #4 NPC evasion/spacing IN PROGRESS, no PR yet.
+Bench `npc` + baseline + 49-config grid (2 seeds) done and committed. The `top` phase (9 curated configs
+x 20 scenarios x 5 seeds, own-motion egress metric) is running detached and is resumable:
+`nohup node scripts/lab/sweeps/npcSweep4.mjs top --workers 7 > /tmp/npc-top.log 2>&1 &`, then
+`node scripts/lab/sweeps/npcSweep4.mjs report` (writes `results/npc-2b/report.json`). Next: pick the
+config from `top`, cut `lab2b/npc-evasion` from origin/master with the production change + tests, verify
+with `npcSweep4.mjs verify` on that checkout, open the PR. #5..#10 not started. #3 skipped (Robin's call).
 
 ### 10.1 #4 NPC evasion + engagement spacing
 
@@ -533,3 +535,31 @@ All doctrines: 57.8% of egress legs open range, 166 dive inside their start rang
    authored 112), on-ring orbit throttle collapses to ~0 (`arrival/slowRadius`), and a volley jink only
    offsets the desired point; the strafe channel stays at 0.24 (intercept) / 0.48 (orbit) authority and
    is cut x0.35 when speed-limited, so jinks barely move the hull (wasp 20-35 wu/s p50).
+
+**Grid (49 configs = master + egress cone 0.6 x strikeGate x orbitFarClosing x orbitThrottleFloor
+{off,0.6} x jinkAuthority {off,0.7,1} x jinkCooldown {120,60}; 18 scenarios x 2 seeds = 1,764 runs,
+~25 min on 7 workers; `results/npc-2b/report.json`, shards gitignored).** No config passed all criteria
+under the first (raw-range) egress metric. Unblocked hit% per type (wasp / corsair / reaver / lancer /
+bruiser / dart / ghost / jackal) and egress opened % / dives:
+
+| config | hit% by type | egress open % | dives |
+|---|---|---|---|
+| master | 85.9 / 94.2 / 100 / 86.8 / 100 / 76.8 / 47.6 / 94.7 | 60.5 | 68 |
+| egress cone 0.6 only | 71.6 / 89.8 / 91.4 / 86.8 / 97.9 / 81.3 / 47.6 / 84.6 | 72.6 | 52 |
+| + strikeGate + orbitFarClosing | 78.3 / 89.5 / 89.5 / 86.8 / 97.9 / 81.3 / 47.6 / 84.6 | 77.1 | 37 |
+| + jinkAuthority 1 + jinkCooldown 60 (grid best) | 68.3 / 78.0 / 94.8 / 92.0 / 97.9 / 81.3 / 66.7 / 86.8 | 80.8 | 36 |
+
+Read-outs:
+- The egress cone is necessary but not sufficient: fixing only the egress point parks swarm hulls
+  outside pulse range (the pass never closed; see cause 2). strikeGate + orbitFarClosing restore the pass.
+- jinkAuthority is the knob that turns the jink into real misses (wasp far-range manoeuvre misses
+  ~40%, corsair ~25%); 0.7 vs 1.0 trades wasp hit% for corsair hit%.
+- The raw-range egress metric is confounded by (a) the cruising player's own motion and (b) the hull's
+  entry momentum (a wasp entering at 60 wu/s inward needs ~19 wu to stop). The bench now also scores
+  OWN-motion egress (enemy radial velocity integrated over the leg, outward by the last third, inward
+  carry <= braking distance from entry speed + 15 wu); `top` and `judge` use it.
+- Separate finding, not fixed here: interceptor-flyby hulls (reaver) thrash their heading during the
+  crossing-lane strike (angle error swings +-1.5..3 rad tick to tick even with no incoming fire) and
+  creep at 15-25 wu/s against a 44 wu/s budget; their passes rarely reach the 150-wu band. Suspect the
+  ship-collision pass-around (the target itself is inside the 180-wu lookahead) fighting the corridor
+  point. Needs its own trace.

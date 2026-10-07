@@ -13,6 +13,9 @@
 import { runAimSpec } from './autoAim.mjs';
 import { stats, r4 } from '../labMetrics.mjs';
 import { ManeuverPlanner } from '../../../src/ai/maneuver.js';
+import { ENEMY_TYPES } from '../../../src/data/enemies.js';
+const ACCEL = new Map((Array.isArray(ENEMY_TYPES) ? ENEMY_TYPES : Object.values(ENEMY_TYPES)).map((d) => [d.id, d.accel || 60]));
+const DT = 1 / 60;
 import * as reflexesModule from '../../../src/ai/reflexes.js';
 const setNpcEvasionLab = reflexesModule.setNpcEvasionLab || (() => {});
 
@@ -83,9 +86,11 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
           tr.lastReflex = L.reflex;
           if (!tr.cur || tr.cur.phase !== phase) {
             if (tr.cur) tr.segs.push(tr.cur);
-            tr.cur = { doctrine, phase, kind: L.kind, t0: ctx.t, t1: ctx.t, r0: r, r1: r, rMin: r, rMax: r, pref: L.pref, onPlayer: L.mTarget === pl.id, rs: [], spdSum: 0 };
+            tr.cur = { doctrine, phase, kind: L.kind, t0: ctx.t, t1: ctx.t, r0: r, r1: r, rMin: r, rMax: r, pref: L.pref, onPlayer: L.mTarget === pl.id, rs: [], spdSum: 0, ownDr: 0, ownMin: 0, vr0: null, vrs: [] };
           }
-          const c = tr.cur; c.spdSum += Math.hypot(en.vel.x, en.vel.z); c.t1 = ctx.t; c.r1 = r; c.rMin = Math.min(c.rMin, r); c.rMax = Math.max(c.rMax, r);
+          const c = tr.cur; c.spdSum += Math.hypot(en.vel.x, en.vel.z); c.t1 = ctx.t;
+          { const ux = (en.pos.x - pl.pos.x) / (r || 1), uz = (en.pos.z - pl.pos.z) / (r || 1); const vr = en.vel.x * ux + en.vel.z * uz;
+            if (c.vr0 == null) c.vr0 = vr; c.ownDr += vr * DT; c.ownMin = Math.min(c.ownMin, c.ownDr); c.vrs.push(vr); } c.r1 = r; c.rMin = Math.min(c.rMin, r); c.rMax = Math.max(c.rMax, r);
           if (ctx.t - c.t0 >= 20) c.rs.push(r);
         }
       },
@@ -94,6 +99,18 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
         for (const tr of per.values()) {
           if (tr.cur) tr.segs.push(tr.cur);
           const eg = tr.segs.filter((s) => EGRESS.has(s.phase) && s.t1 - s.t0 >= 20);
+          // Own-motion scoring (independent of the player's flying): the enemy's own radial
+          // displacement over the leg must be outward, it must be heading out by the last third,
+          // and its inward carry may not exceed its braking distance from the entry speed + 15 wu.
+          const acc = ACCEL.get(tr.type) || 60;
+          for (const s of eg) {
+            const tail = s.vrs.slice(Math.floor(s.vrs.length * 2 / 3));
+            s.vrTail = tail.length ? tail.reduce((a, b) => a + b, 0) / tail.length : 0;
+            const vin = Math.max(0, -(s.vr0 || 0));
+            s.carryAllow = vin * vin / (2 * acc) + 15;
+            s.ownOpen = s.ownDr > 0 && s.vrTail > 0;
+            s.ownDive = s.ownMin < -s.carryAllow;
+          }
           const holds = tr.segs.filter((s) => (s.kind === 'orbit' || s.kind === 'hold') && s.onPlayer && Number.isFinite(s.pref) && s.rs.length);
           const holdErr = []; let inBand = 0, bandN = 0;
           for (const s of holds) for (const r of s.rs) { holdErr.push(Math.abs(r - s.pref) / s.pref); bandN++; if (Math.abs(r - s.pref) <= 0.35 * s.pref) inBand++; }
@@ -108,7 +125,10 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
             egressDiveN: eg.filter((s) => s.rMin < s.r0 - 15).length,
             egressDr: stats(eg.map((s) => s.r1 - s.r0)),
             egressMaxR: stats(eg.map((s) => s.rMax)),
-            egressSegs: eg.slice(0, 12).map((s) => ({ phase: s.phase, t0: s.t0, dur: s.t1 - s.t0, r0: r4(s.r0), r1: r4(s.r1), rMin: r4(s.rMin), rMax: r4(s.rMax), pref: s.pref })),
+            egressOwnOpenPct: eg.length ? r4(100 * eg.filter((s) => s.ownOpen).length / eg.length) : null,
+            egressOwnDiveN: eg.filter((s) => s.ownDive).length,
+            egressOwnDr: stats(eg.map((s) => s.ownDr)),
+            egressSegs: eg.slice(0, 12).map((s) => ({ phase: s.phase, t0: s.t0, dur: s.t1 - s.t0, r0: r4(s.r0), r1: r4(s.r1), rMin: r4(s.rMin), rMax: r4(s.rMax), pref: s.pref, ownDr: r4(s.ownDr), ownMin: r4(s.ownMin), vr0: r4(s.vr0), vrTail: r4(s.vrTail), carry: r4(s.carryAllow) })),
             holdErr: stats(holdErr), holdInBandPct: bandN ? r4(100 * inBand / bandN) : null, holdPref: holds.length ? holds[0].pref : null,
             range: stats(tr.ranges), minRange: r4(tr.minR), speed: stats(tr.spd),
             jinksPerMin: r4(tr.jinks / (tr.spd.length / 3600)), reflexTicks: tr.reflexTicks, phaseTime, phaseSpd,

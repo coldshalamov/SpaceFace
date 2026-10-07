@@ -116,5 +116,1128 @@
     }
    }
   ]
+ },
+ "grid": {
+  "runs": 1764,
+  "configs": 49,
+  "passing": 0,
+  "top": [
+   {
+    "cfg": "egressAwayCos=0.6,strikeGate=1,orbitFarClosing=1,jinkAuthority=1,jinkCooldown=60",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": 1,
+     "orbitFarClosing": 1,
+     "orbitThrottleFloor": null,
+     "jinkAuthority": 1,
+     "jinkCooldown": 60
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 97.9",
+     "egressOpen 80.8",
+     "egressDive 36"
+    ],
+    "egOpenPct": 80.8,
+    "dive": 36,
+    "perType": {
+     "wasp": {
+      "ubHit": 68.3,
+      "nearHit": null,
+      "farMan": 40.4,
+      "farN": 171,
+      "egN": 52,
+      "egOpen": 86.5,
+      "dive": 9
+     },
+     "corsair": {
+      "ubHit": 78,
+      "nearHit": null,
+      "farMan": 25,
+      "farN": 168,
+      "egN": 21,
+      "egOpen": 100,
+      "dive": 1
+     },
+     "lancer": {
+      "ubHit": 92,
+      "nearHit": null,
+      "farMan": 7.3,
+      "farN": 165,
+      "egN": 0,
+      "egOpen": null,
+      "dive": 0
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 86.8,
+      "nearHit": null,
+      "farMan": 12.8,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 10
+     },
+     "reaver": {
+      "ubHit": 94.8,
+      "nearHit": null,
+      "farMan": 5.1,
+      "farN": 195,
+      "egN": 16,
+      "egOpen": 75,
+      "dive": 5
+     },
+     "bruiser": {
+      "ubHit": 97.9,
+      "nearHit": null,
+      "farMan": 2.4,
+      "farN": 125,
+      "egN": 14,
+      "egOpen": 71.4,
+      "dive": 4
+     },
+     "ghost": {
+      "ubHit": 66.7,
+      "nearHit": null,
+      "farMan": 32.2,
+      "farN": 59,
+      "egN": 14,
+      "egOpen": 50,
+      "dive": 7
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,strikeGate=1,orbitFarClosing=1,orbitThrottleFloor=0.6,jinkAuthority=1",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": 1,
+     "orbitFarClosing": 1,
+     "orbitThrottleFloor": 0.6,
+     "jinkAuthority": 1,
+     "jinkCooldown": null
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 96.8",
+     "egressOpen 79.1",
+     "egressDive 33"
+    ],
+    "egOpenPct": 79.1,
+    "dive": 33,
+    "perType": {
+     "wasp": {
+      "ubHit": 66.4,
+      "nearHit": null,
+      "farMan": 49,
+      "farN": 151,
+      "egN": 46,
+      "egOpen": 91.3,
+      "dive": 4
+     },
+     "reaver": {
+      "ubHit": 92.3,
+      "nearHit": null,
+      "farMan": 6.4,
+      "farN": 172,
+      "egN": 16,
+      "egOpen": 75,
+      "dive": 8
+     },
+     "bruiser": {
+      "ubHit": 96.8,
+      "nearHit": null,
+      "farMan": 3.6,
+      "farN": 138,
+      "egN": 14,
+      "egOpen": 85.7,
+      "dive": 2
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 81.7,
+      "nearHit": null,
+      "farMan": 17.9,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 9
+     },
+     "ghost": {
+      "ubHit": 65.5,
+      "nearHit": null,
+      "farMan": 32,
+      "farN": 25,
+      "egN": 14,
+      "egOpen": 42.9,
+      "dive": 5
+     },
+     "corsair": {
+      "ubHit": 78.7,
+      "nearHit": null,
+      "farMan": 24,
+      "farN": 125,
+      "egN": 19,
+      "egOpen": 73.7,
+      "dive": 4
+     },
+     "lancer": {
+      "ubHit": 88.1,
+      "nearHit": null,
+      "farMan": 12.6,
+      "farN": 151,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 1
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,strikeGate=1,orbitFarClosing=1,jinkAuthority=1",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": 1,
+     "orbitFarClosing": 1,
+     "orbitThrottleFloor": null,
+     "jinkAuthority": 1,
+     "jinkCooldown": null
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 96.8",
+     "egressOpen 79.0",
+     "egressDive 37"
+    ],
+    "egOpenPct": 79,
+    "dive": 37,
+    "perType": {
+     "wasp": {
+      "ubHit": 75.1,
+      "nearHit": null,
+      "farMan": 37.6,
+      "farN": 133,
+      "egN": 45,
+      "egOpen": 88.9,
+      "dive": 7
+     },
+     "reaver": {
+      "ubHit": 92.3,
+      "nearHit": null,
+      "farMan": 6.4,
+      "farN": 172,
+      "egN": 16,
+      "egOpen": 75,
+      "dive": 8
+     },
+     "lancer": {
+      "ubHit": 83.9,
+      "nearHit": null,
+      "farMan": 17,
+      "farN": 112,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 1
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 81.7,
+      "nearHit": null,
+      "farMan": 17.9,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 9
+     },
+     "bruiser": {
+      "ubHit": 96.8,
+      "nearHit": null,
+      "farMan": 3.6,
+      "farN": 138,
+      "egN": 14,
+      "egOpen": 85.7,
+      "dive": 2
+     },
+     "ghost": {
+      "ubHit": 65.5,
+      "nearHit": null,
+      "farMan": 32,
+      "farN": 25,
+      "egN": 14,
+      "egOpen": 50,
+      "dive": 7
+     },
+     "corsair": {
+      "ubHit": 80.4,
+      "nearHit": null,
+      "farMan": 21,
+      "farN": 138,
+      "egN": 19,
+      "egOpen": 73.7,
+      "dive": 3
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,strikeGate=1,orbitThrottleFloor=0.6,jinkAuthority=1",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": 1,
+     "orbitFarClosing": null,
+     "orbitThrottleFloor": 0.6,
+     "jinkAuthority": 1,
+     "jinkCooldown": null
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 96.8",
+     "egressOpen 78.1",
+     "egressDive 34"
+    ],
+    "egOpenPct": 78.1,
+    "dive": 34,
+    "perType": {
+     "wasp": {
+      "ubHit": 67.3,
+      "nearHit": null,
+      "farMan": 41.9,
+      "farN": 129,
+      "egN": 44,
+      "egOpen": 81.8,
+      "dive": 5
+     },
+     "corsair": {
+      "ubHit": 78.8,
+      "nearHit": null,
+      "farMan": 23.6,
+      "farN": 106,
+      "egN": 19,
+      "egOpen": 89.5,
+      "dive": 4
+     },
+     "lancer": {
+      "ubHit": 88.1,
+      "nearHit": null,
+      "farMan": 12.6,
+      "farN": 151,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 1
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 81.7,
+      "nearHit": null,
+      "farMan": 17.9,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 9
+     },
+     "reaver": {
+      "ubHit": 92.3,
+      "nearHit": null,
+      "farMan": 6.4,
+      "farN": 172,
+      "egN": 16,
+      "egOpen": 75,
+      "dive": 8
+     },
+     "bruiser": {
+      "ubHit": 96.8,
+      "nearHit": null,
+      "farMan": 3.6,
+      "farN": 138,
+      "egN": 14,
+      "egOpen": 85.7,
+      "dive": 2
+     },
+     "ghost": {
+      "ubHit": 65.5,
+      "nearHit": null,
+      "farMan": 32,
+      "farN": 25,
+      "egN": 14,
+      "egOpen": 42.9,
+      "dive": 5
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,strikeGate=1,orbitFarClosing=1,orbitThrottleFloor=0.6,jinkAuthority=1,jinkCooldown=60",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": 1,
+     "orbitFarClosing": 1,
+     "orbitThrottleFloor": 0.6,
+     "jinkAuthority": 1,
+     "jinkCooldown": 60
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 97.9",
+     "egressOpen 77.0",
+     "egressDive 35"
+    ],
+    "egOpenPct": 77,
+    "dive": 35,
+    "perType": {
+     "wasp": {
+      "ubHit": 69.6,
+      "nearHit": null,
+      "farMan": 34.5,
+      "farN": 168,
+      "egN": 53,
+      "egOpen": 88.7,
+      "dive": 7
+     },
+     "reaver": {
+      "ubHit": 94.8,
+      "nearHit": null,
+      "farMan": 5.1,
+      "farN": 195,
+      "egN": 16,
+      "egOpen": 75,
+      "dive": 5
+     },
+     "lancer": {
+      "ubHit": 85.9,
+      "nearHit": null,
+      "farMan": 13.8,
+      "farN": 167,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 1
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 86.8,
+      "nearHit": null,
+      "farMan": 12.8,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 10
+     },
+     "bruiser": {
+      "ubHit": 97.9,
+      "nearHit": null,
+      "farMan": 2.4,
+      "farN": 125,
+      "egN": 14,
+      "egOpen": 71.4,
+      "dive": 4
+     },
+     "ghost": {
+      "ubHit": 66.7,
+      "nearHit": null,
+      "farMan": 32.2,
+      "farN": 59,
+      "egN": 14,
+      "egOpen": 42.9,
+      "dive": 5
+     },
+     "corsair": {
+      "ubHit": 77.6,
+      "nearHit": null,
+      "farMan": 26.1,
+      "farN": 142,
+      "egN": 21,
+      "egOpen": 71.4,
+      "dive": 3
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,strikeGate=1,orbitThrottleFloor=0.6,jinkAuthority=1,jinkCooldown=60",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": 1,
+     "orbitFarClosing": null,
+     "orbitThrottleFloor": 0.6,
+     "jinkAuthority": 1,
+     "jinkCooldown": 60
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 97.9",
+     "egressOpen 74.6",
+     "egressDive 35"
+    ],
+    "egOpenPct": 74.6,
+    "dive": 35,
+    "perType": {
+     "corsair": {
+      "ubHit": 78,
+      "nearHit": null,
+      "farMan": 26.9,
+      "farN": 130,
+      "egN": 21,
+      "egOpen": 71.4,
+      "dive": 4
+     },
+     "lancer": {
+      "ubHit": 85.9,
+      "nearHit": null,
+      "farMan": 13.8,
+      "farN": 167,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 1
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "ghost": {
+      "ubHit": 66.7,
+      "nearHit": null,
+      "farMan": 32.2,
+      "farN": 59,
+      "egN": 14,
+      "egOpen": 42.9,
+      "dive": 5
+     },
+     "wasp": {
+      "ubHit": 61,
+      "nearHit": 100,
+      "farMan": 50.9,
+      "farN": 169,
+      "egN": 43,
+      "egOpen": 83.7,
+      "dive": 6
+     },
+     "jackal": {
+      "ubHit": 86.8,
+      "nearHit": null,
+      "farMan": 12.8,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 10
+     },
+     "reaver": {
+      "ubHit": 94.8,
+      "nearHit": null,
+      "farMan": 5.1,
+      "farN": 195,
+      "egN": 16,
+      "egOpen": 75,
+      "dive": 5
+     },
+     "bruiser": {
+      "ubHit": 97.9,
+      "nearHit": null,
+      "farMan": 2.4,
+      "farN": 125,
+      "egN": 14,
+      "egOpen": 71.4,
+      "dive": 4
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,orbitFarClosing=1,jinkAuthority=1,jinkCooldown=60",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": null,
+     "orbitFarClosing": 1,
+     "orbitThrottleFloor": null,
+     "jinkAuthority": 1,
+     "jinkCooldown": 60
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 97.9",
+     "egressOpen 73.0",
+     "egressDive 51"
+    ],
+    "egOpenPct": 73,
+    "dive": 51,
+    "perType": {
+     "wasp": {
+      "ubHit": 65.4,
+      "nearHit": null,
+      "farMan": 47,
+      "farN": 151,
+      "egN": 63,
+      "egOpen": 63.5,
+      "dive": 26
+     },
+     "reaver": {
+      "ubHit": 92.3,
+      "nearHit": null,
+      "farMan": 6.6,
+      "farN": 137,
+      "egN": 22,
+      "egOpen": 81.8,
+      "dive": 3
+     },
+     "bruiser": {
+      "ubHit": 97.9,
+      "nearHit": null,
+      "farMan": 2.4,
+      "farN": 125,
+      "egN": 14,
+      "egOpen": 71.4,
+      "dive": 4
+     },
+     "ghost": {
+      "ubHit": 66.7,
+      "nearHit": null,
+      "farMan": 32.2,
+      "farN": 59,
+      "egN": 14,
+      "egOpen": 50,
+      "dive": 7
+     },
+     "jackal": {
+      "ubHit": 86.8,
+      "nearHit": null,
+      "farMan": 12.8,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 10
+     },
+     "corsair": {
+      "ubHit": 78,
+      "nearHit": null,
+      "farMan": 25,
+      "farN": 168,
+      "egN": 21,
+      "egOpen": 100,
+      "dive": 1
+     },
+     "lancer": {
+      "ubHit": 92,
+      "nearHit": null,
+      "farMan": 7.3,
+      "farN": 165,
+      "egN": 0,
+      "egOpen": null,
+      "dive": 0
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,jinkAuthority=1,jinkCooldown=60",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": null,
+     "orbitFarClosing": null,
+     "orbitThrottleFloor": null,
+     "jinkAuthority": 1,
+     "jinkCooldown": 60
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 97.9",
+     "egressOpen 73.0",
+     "egressDive 52"
+    ],
+    "egOpenPct": 73,
+    "dive": 52,
+    "perType": {
+     "wasp": {
+      "ubHit": 65,
+      "nearHit": 100,
+      "farMan": 51.5,
+      "farN": 130,
+      "egN": 63,
+      "egOpen": 66.7,
+      "dive": 26
+     },
+     "reaver": {
+      "ubHit": 92.3,
+      "nearHit": null,
+      "farMan": 6.6,
+      "farN": 137,
+      "egN": 22,
+      "egOpen": 81.8,
+      "dive": 3
+     },
+     "lancer": {
+      "ubHit": 92,
+      "nearHit": null,
+      "farMan": 7.3,
+      "farN": 165,
+      "egN": 0,
+      "egOpen": null,
+      "dive": 0
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 86.8,
+      "nearHit": null,
+      "farMan": 12.8,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 10
+     },
+     "bruiser": {
+      "ubHit": 97.9,
+      "nearHit": null,
+      "farMan": 2.4,
+      "farN": 125,
+      "egN": 14,
+      "egOpen": 71.4,
+      "dive": 4
+     },
+     "ghost": {
+      "ubHit": 66.7,
+      "nearHit": null,
+      "farMan": 32.2,
+      "farN": 59,
+      "egN": 14,
+      "egOpen": 50,
+      "dive": 7
+     },
+     "corsair": {
+      "ubHit": 76.1,
+      "nearHit": null,
+      "farMan": 28.5,
+      "farN": 151,
+      "egN": 21,
+      "egOpen": 90.5,
+      "dive": 2
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,orbitThrottleFloor=0.6,jinkAuthority=1,jinkCooldown=60",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": null,
+     "orbitFarClosing": null,
+     "orbitThrottleFloor": 0.6,
+     "jinkAuthority": 1,
+     "jinkCooldown": 60
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 97.9",
+     "egressOpen 71.3",
+     "egressDive 50"
+    ],
+    "egOpenPct": 71.3,
+    "dive": 50,
+    "perType": {
+     "wasp": {
+      "ubHit": 60.3,
+      "nearHit": 100,
+      "farMan": 56.6,
+      "farN": 143,
+      "egN": 63,
+      "egOpen": 69.8,
+      "dive": 23
+     },
+     "reaver": {
+      "ubHit": 92.3,
+      "nearHit": null,
+      "farMan": 6.6,
+      "farN": 137,
+      "egN": 22,
+      "egOpen": 81.8,
+      "dive": 3
+     },
+     "bruiser": {
+      "ubHit": 97.9,
+      "nearHit": null,
+      "farMan": 2.4,
+      "farN": 125,
+      "egN": 14,
+      "egOpen": 71.4,
+      "dive": 4
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 86.8,
+      "nearHit": null,
+      "farMan": 12.8,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 10
+     },
+     "ghost": {
+      "ubHit": 66.7,
+      "nearHit": null,
+      "farMan": 32.2,
+      "farN": 59,
+      "egN": 14,
+      "egOpen": 42.9,
+      "dive": 5
+     },
+     "corsair": {
+      "ubHit": 78,
+      "nearHit": null,
+      "farMan": 26.9,
+      "farN": 130,
+      "egN": 21,
+      "egOpen": 71.4,
+      "dive": 4
+     },
+     "lancer": {
+      "ubHit": 85.9,
+      "nearHit": null,
+      "farMan": 13.8,
+      "farN": 167,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 1
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,orbitFarClosing=1,orbitThrottleFloor=0.6,jinkAuthority=1,jinkCooldown=60",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": null,
+     "orbitFarClosing": 1,
+     "orbitThrottleFloor": 0.6,
+     "jinkAuthority": 1,
+     "jinkCooldown": 60
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 97.9",
+     "egressOpen 70.7",
+     "egressDive 52"
+    ],
+    "egOpenPct": 70.7,
+    "dive": 52,
+    "perType": {
+     "corsair": {
+      "ubHit": 77.6,
+      "nearHit": null,
+      "farMan": 26.1,
+      "farN": 142,
+      "egN": 21,
+      "egOpen": 71.4,
+      "dive": 3
+     },
+     "reaver": {
+      "ubHit": 92.3,
+      "nearHit": null,
+      "farMan": 6.6,
+      "farN": 137,
+      "egN": 22,
+      "egOpen": 81.8,
+      "dive": 3
+     },
+     "bruiser": {
+      "ubHit": 97.9,
+      "nearHit": null,
+      "farMan": 2.4,
+      "farN": 125,
+      "egN": 14,
+      "egOpen": 71.4,
+      "dive": 4
+     },
+     "ghost": {
+      "ubHit": 66.7,
+      "nearHit": null,
+      "farMan": 32.2,
+      "farN": 59,
+      "egN": 14,
+      "egOpen": 42.9,
+      "dive": 5
+     },
+     "wasp": {
+      "ubHit": 64.5,
+      "nearHit": null,
+      "farMan": 45,
+      "farN": 160,
+      "egN": 63,
+      "egOpen": 68.3,
+      "dive": 26
+     },
+     "lancer": {
+      "ubHit": 85.9,
+      "nearHit": null,
+      "farMan": 13.8,
+      "farN": 167,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 1
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 86.8,
+      "nearHit": null,
+      "farMan": 12.8,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 10
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,orbitThrottleFloor=0.6,jinkAuthority=1",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": null,
+     "orbitFarClosing": null,
+     "orbitThrottleFloor": 0.6,
+     "jinkAuthority": 1,
+     "jinkCooldown": null
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 96.8",
+     "egressOpen 69.2",
+     "egressDive 57"
+    ],
+    "egOpenPct": 69.2,
+    "dive": 57,
+    "perType": {
+     "wasp": {
+      "ubHit": 64.8,
+      "nearHit": 100,
+      "farMan": 50.4,
+      "farN": 125,
+      "egN": 60,
+      "egOpen": 65,
+      "dive": 28
+     },
+     "reaver": {
+      "ubHit": 93.9,
+      "nearHit": null,
+      "farMan": 4.5,
+      "farN": 112,
+      "egN": 22,
+      "egOpen": 54.5,
+      "dive": 8
+     },
+     "bruiser": {
+      "ubHit": 96.8,
+      "nearHit": null,
+      "farMan": 3.6,
+      "farN": 138,
+      "egN": 14,
+      "egOpen": 85.7,
+      "dive": 2
+     },
+     "ghost": {
+      "ubHit": 65.5,
+      "nearHit": null,
+      "farMan": 32,
+      "farN": 25,
+      "egN": 14,
+      "egOpen": 42.9,
+      "dive": 5
+     },
+     "jackal": {
+      "ubHit": 81.7,
+      "nearHit": null,
+      "farMan": 17.9,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 9
+     },
+     "corsair": {
+      "ubHit": 78.8,
+      "nearHit": null,
+      "farMan": 23.6,
+      "farN": 106,
+      "egN": 19,
+      "egOpen": 89.5,
+      "dive": 4
+     },
+     "lancer": {
+      "ubHit": 88.1,
+      "nearHit": null,
+      "farMan": 12.6,
+      "farN": 151,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 1
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     }
+    }
+   },
+   {
+    "cfg": "egressAwayCos=0.6,jinkAuthority=1",
+    "config": {
+     "egressAwayCos": 0.6,
+     "strikeGate": null,
+     "orbitFarClosing": null,
+     "orbitThrottleFloor": null,
+     "jinkAuthority": 1,
+     "jinkCooldown": null
+    },
+    "n": 36,
+    "fails": [
+     "bruiser:ubHit 96.8",
+     "egressOpen 69.2",
+     "egressDive 59"
+    ],
+    "egOpenPct": 69.2,
+    "dive": 59,
+    "perType": {
+     "wasp": {
+      "ubHit": 66.7,
+      "nearHit": 100,
+      "farMan": 46.7,
+      "farN": 135,
+      "egN": 60,
+      "egOpen": 65,
+      "dive": 28
+     },
+     "reaver": {
+      "ubHit": 93.9,
+      "nearHit": null,
+      "farMan": 4.5,
+      "farN": 112,
+      "egN": 22,
+      "egOpen": 54.5,
+      "dive": 8
+     },
+     "bruiser": {
+      "ubHit": 96.8,
+      "nearHit": null,
+      "farMan": 3.6,
+      "farN": 138,
+      "egN": 14,
+      "egOpen": 85.7,
+      "dive": 2
+     },
+     "dart": {
+      "ubHit": 81.3,
+      "nearHit": null,
+      "farMan": 24.4,
+      "farN": 78,
+      "egN": 12,
+      "egOpen": 100,
+      "dive": 0
+     },
+     "jackal": {
+      "ubHit": 81.7,
+      "nearHit": null,
+      "farMan": 17.9,
+      "farN": 78,
+      "egN": 17,
+      "egOpen": 64.7,
+      "dive": 9
+     },
+     "ghost": {
+      "ubHit": 65.5,
+      "nearHit": null,
+      "farMan": 32,
+      "farN": 25,
+      "egN": 14,
+      "egOpen": 50,
+      "dive": 7
+     },
+     "corsair": {
+      "ubHit": 86.3,
+      "nearHit": null,
+      "farMan": 14.6,
+      "farN": 123,
+      "egN": 19,
+      "egOpen": 84.2,
+      "dive": 4
+     },
+     "lancer": {
+      "ubHit": 83.9,
+      "nearHit": null,
+      "farMan": 17,
+      "farN": 112,
+      "egN": 1,
+      "egOpen": 100,
+      "dive": 1
+     }
+    }
+   }
+  ]
  }
 }
