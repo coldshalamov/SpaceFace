@@ -1505,3 +1505,43 @@ test('losing the player mid-hold drops the clump as player_lost, not a launch', 
   assert.equal(t.sys._rt.launchedId, null, 'a dead player never bowls the clump');
   t.cleanup();
 });
+
+test('a second bowl mid-flight keeps both balls marked and they retire independently', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, a.id, 'A cored');
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step(); // burst done — A is flying
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the flying ball');
+  const aScale = a.physicsBody.impactDamageScale;
+
+  // Re-beam + snag + bowl a SECOND clump while A is still mid-flight.
+  const b = rock(t.sim, T.mawDist + 2, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, b.id, 'B cored on the re-beam');
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step();
+
+  assert.equal(b.data.gyreLaunched, true, 'B launched full-strength');
+  assert.ok(Number.isFinite(b.physicsBody.impactDamageScale) && b.physicsBody.impactDamageScale >= 1,
+    'B carries the weapon scale');
+  assert.equal(a.data.gyreLaunched, true, 'A keeps its mark mid-flight');
+  assert.equal(a.physicsBody.impactDamageScale, aScale, 'A keeps the weapon scale');
+  assert.ok(t.sys._rt.ballIds.includes(a.id) && t.sys._rt.ballIds.includes(b.id),
+    'the watch list holds both live balls');
+  assert.equal(t.sys._rt.ballId, b.id, 'the mirror tracks the freshest launch');
+
+  // A expires on its own deadline while B keeps flying — independent retire.
+  // (The lifetime sweep kills the body; the gyre mark dies with it — what the
+  // lash's book keeps is the watch-list slot and the HUD mirror.)
+  a.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 6; i++) t.sim.step();
+  assert.equal(a.alive, false, 'A retired on its own deadline');
+  assert.ok(!t.sys._rt.ballIds.includes(a.id), 'A left the watch list');
+  assert.equal(b.data.gyreLaunched, true, 'B still marked and flying');
+  assert.ok(t.sys._rt.ballIds.includes(b.id), 'B still watched');
+  t.cleanup();
+});

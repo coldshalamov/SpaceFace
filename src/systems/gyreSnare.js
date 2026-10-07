@@ -327,8 +327,9 @@ export const gyreSnare = {
         }
         // Re-adopt the flying ball into the HUD/clump mirror: a destroy()->init() cycle
         // on a same-timeline reload left ballId null while the body still flew, so the
-        // "ball live" dot and glass-clump overlay died under it. The member ledger never
-        // serialized — the overlay falls back to the collider silhouette (members=null).
+        // "ball live" dot and glass-clump overlay died under it. The bounded member
+        // ledger + absorb count serialize on gyreLaunchMeta — a ball launched before
+        // the field existed (older saves) just falls back to silhouette + ×0.
         // With 2+ serialized balls, prefer the youngest (freshest deadline) — otherwise
         // last-writer-wins adopts whichever the map happens to iterate last.
         const rt = this._rt;
@@ -343,8 +344,11 @@ export const gyreSnare = {
           // floor for balls launched before the field existed.
           rt.ballClumpRadius = meta && Number.isFinite(meta.clumpRadius)
             ? meta.clumpRadius : entityRadius(e);
-          rt.ballMembers = null;
-          rt.ballAbsorbs = 0;
+          // The ledger rides the meta now — a re-adopted ball republishes its real
+          // absorb count + member list so the HUD ×N and the glass-clump overlay
+          // survive the load instead of collapsing to the collider silhouette.
+          rt.ballMembers = meta && Array.isArray(meta.members) ? meta.members : null;
+          rt.ballAbsorbs = meta && Number.isFinite(meta.absorbs) ? meta.absorbs : 0;
         }
       }
     });
@@ -817,6 +821,10 @@ export const gyreSnare = {
         // pebble ticks high, a wreck thuds low.
         this.bus.emit('audio:cue', { id: 'gyre_snare_absorb', gain: 0.7, rate: 1.15 - Math.min(0.5, em / 160) });
       }
+      // Escalation reaches the camera too — swallowing a wreck should feel physically
+      // different from swallowing a pebble, so heavy meals carry a micro-shake while
+      // belt gravel stays silent.
+      if (em >= 80) this.bus.emit('camera:shake', { amount: 0.04 });
       // Saturation beat: the absorb that first crosses the cap gets its own voice so
       // the FULL moment lands through the ear, not just the HUD flag.
       if (rt.clumpMass >= D.maxClumpMass && !rt.fullCueLatched) {
@@ -852,6 +860,7 @@ export const gyreSnare = {
     // keeps the entity alive would otherwise orphan gyreLaunched + weapon scale forever.
     this._trackBall(core.id);
     rt.basinCount = 0; // the "N in net" read is basin-only — a flying ball owns none
+    rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.ballMass = rt.clumpMass;
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
     // clump overlay keeps riding the ball through its whole flight instead of shedding at OFF.
@@ -901,6 +910,11 @@ export const gyreSnare = {
       magnitude: rt.clumpMass * D.launchSpeed,
       holdUntilSim: core.data.despawnAt,
       clumpRadius: rt.clumpRadius,
+      // The absorb ledger serializes too — a re-adopted ball republishes its real
+      // ×N and the glass-clump overlay rebuilds its lumps instead of collapsing to
+      // the bare collider silhouette.
+      absorbs: rt.ballAbsorbs,
+      members: rt.ballMembers ? rt.ballMembers.slice() : null,
     };
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(core);
     if (this.bus) {
@@ -966,7 +980,7 @@ export const gyreSnare = {
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
-      graves: null,
+      graves: null, thrownBeat: false,
     });
     // Default each tick: the grave ring only blooms when the ball actually DIES — an
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
@@ -1106,8 +1120,16 @@ export const gyreSnare = {
     pub.absorbs = ridingBall ? rt.ballAbsorbs : rt.totalAbsorbed;
     pub.members = ridingBall ? rt.ballMembers : rt.members;
     pub.launchDir.x = rt.launchDir.x; pub.launchDir.z = rt.launchDir.z;
-    pub.launchWindup01 = rt.phase === PHASE.LAUNCH && D.launchWindupTicks > 0
-      ? rt.launchWindup / D.launchWindupTicks : 0;
+    // Progress (not remaining): 0 at the release edge, rising to 1.0 on the throw
+    // tick and holding through the burst — a "fully wound" cue keys on the ramp END,
+    // which a remaining-fraction ramp could never publish.
+    pub.launchWindup01 = rt.phase === PHASE.LAUNCH
+      ? (D.launchWindupTicks > 0 ? 1 - rt.launchWindup / D.launchWindupTicks : 1) : 0;
+    // The exact throw tick: coil drained AND the burst countdown already consuming —
+    // gyre:thrown, the pad thump, camera shake and the Newton kick all land here, so
+    // the grave ring blooms on this same tick instead of a frame early off windup01.
+    pub.thrownBeat = rt.phase === PHASE.LAUNCH
+      && rt.launchWindup <= 0 && rt.launchLeft < D.launchTicks;
     const core = rt.coreId != null ? state.entities.get(rt.coreId) : null;
     if (core && core.pos) {
       pub.corePos.x = core.pos.x; pub.corePos.z = core.pos.z;

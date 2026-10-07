@@ -363,6 +363,8 @@ export class GyreSnarePresentation {
     this._mawPt = { x: 0, z: 0 };
     this._ballPt = { x: 0, z: 0 };
     this._corePt = { x: 0, z: 0 };
+    this._throwBeat = false;   // latched once per launch: the big ring blooms on the sim's thrownBeat tick
+    this._lastGraveTick = -1;  // graves dedupe — one bloom per sim tick, not per render frame
   }
 
   _lumpMaterial(type) {
@@ -496,10 +498,12 @@ export class GyreSnarePresentation {
       this._coneBody.scale.set(endR * 0.97, len, endR * 0.97);
       this._maw.position.set(len, 0, 0);
       // The mouth gulps geometrically: each absorb kick dilates ring + disc, not just
-      // their opacity — the verb's face visibly swallows.
-      this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick)); // uniform — the torus circle spans local X and Y
+      // their opacity — the verb's face visibly swallows. During the coil the maw
+      // also draws tight off launchWindup01 — the glass itself tenses before the bloom.
+      const windup = phase === 'launching' ? clamp01(finite(mirror.launchWindup01)) : 0;
+      this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick + 0.08 * windup)); // uniform — the torus circle spans local X and Y
       this._disc.position.set(len + 1.5, 0, 0);
-      this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick));
+      this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick + 0.05 * windup));
 
       const holding = phase === 'holding';
       const strain = clamp01(finite(mirror.strain01));
@@ -524,6 +528,7 @@ export class GyreSnarePresentation {
       this._coneMat.uniforms.uPulse.value = Math.max(
         this._coneMat.uniforms.uPulse.value * Math.exp(-sdt * 6.3),
         strain * 0.7,
+        windup * 0.45, // coil tension: the glass winds up with the spring
       );
       this._coneMat.uniforms.uStrain.value = strain * calm;
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
@@ -554,15 +559,19 @@ export class GyreSnarePresentation {
       // is tethered it orbits ±75 wu off the maw plane, and the suction arrow should
       // point at the gravity well it really feeds — not an empty plane.
       // Beam frame: +x = nose→maw (dx,dz)/len; local ẑ maps to (-dz,dx)/len.
+      // Lerp toward the target instead of snapping — the moment the coil engages the
+      // funnel eases back to the maw over ~0.1 s rather than unbending in one frame.
+      const aimT = this._aimTarget || (this._aimTarget = new THREE.Vector3());
       if (holding && mirror.corePos) {
         const cl = this.toLocal(finite(mirror.corePos.x), finite(mirror.corePos.z), this._corePt);
         const ox = cl.x - mL.x, oz = cl.z - mL.z;
         const inv = len > 0 ? 1 / len : 0;
         const bx = dx * inv, bz = dz * inv;
-        this._spiralMat.uniforms.uAim.value.set(ox * bx + oz * bz, 0, -ox * bz + oz * bx);
+        aimT.set(ox * bx + oz * bz, 0, -ox * bz + oz * bx);
       } else {
-        this._spiralMat.uniforms.uAim.value.set(0, 0, 0);
+        aimT.set(0, 0, 0);
       }
+      this._spiralMat.uniforms.uAim.value.lerp(aimT, 1 - Math.exp(-sdt * 8));
       this._spiralMat.uniforms.uFade.value = 1;
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
@@ -626,8 +635,12 @@ export class GyreSnarePresentation {
       this._lastBall = null;
     }
     // Non-primary graves: a second ball retired on a quiet TTL gets its own ring at
-    // its own spot — the sim publishes {x,z,r} only on the retire tick.
-    if (Array.isArray(mirror.graves)) {
+    // its own spot — the sim publishes {x,z,r} only on the retire tick. Dedupe on
+    // state.tick: the list persists across render frames within a tick, so a 144 Hz
+    // panel would otherwise bloom the same grave 2-3 times (each burst steals a slot).
+    if (Array.isArray(mirror.graves) && mirror.graves.length
+      && state.tick !== this._lastGraveTick) {
+      this._lastGraveTick = state.tick;
       for (let i = 0; i < mirror.graves.length; i++) {
         const g = mirror.graves[i];
         this._fireBurst(finite(g.x), finite(g.z), Math.max(6, finite(g.r, 6) * 1.6), flashCalm);
@@ -787,9 +800,11 @@ export class GyreSnarePresentation {
       this._phase = phase;
     }
 
-    // The throw beat: the big ring blooms the tick the coil RELEASES (windup → 0),
-    // not the release edge — same beat the gyre:thrown haptic + camera:shake ride.
-    if (phase === 'launching' && !this._throwBeat && finite(mirror.launchWindup01, 1) <= 0.02) {
+    // The throw beat: the big ring blooms on the sim's thrownBeat flag — the FIRST
+    // burst tick, where gyre:thrown, the pad thump, camera shake and the Newton kick
+    // all land. Gating on windup01 alone fired a frame early (windup01 hits its end
+    // on the decrement tick, a tick before the first impulse).
+    if (phase === 'launching' && !this._throwBeat && mirror.thrownBeat === true) {
       this._throwBeat = true;
       const bx = mirror.ballPos ? finite(mirror.ballPos.x) : finite(mirror.corePos && mirror.corePos.x);
       const bz = mirror.ballPos ? finite(mirror.ballPos.z) : finite(mirror.corePos && mirror.corePos.z);
