@@ -17,7 +17,11 @@ import { massline2Flag } from '../data/featureFlags.js';
 // measured peak dropped to ~69 (ratio unchanged in kind, load halved). The envelope is
 // re-derived to the new measured peak at the same 0.85 proportion: 81 breaks where the old
 // physics needed 140, the 75% warning (60.75) fires again, and the line still holds (69 < 81).
-const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 81, maxImpulse: 90, graceTicks: 1 });
+// 2026-10 physics drift reshaped the tow again: measured tension now humps twice — ~59.8 at
+// tick ~240, then a sustained climb peaking ~71.2 at tick ~1180. The envelope is re-derived to
+// sit between them: 76 breaks above the global peak (71.2 < 76), and the 75% warning (57) trips
+// on the early groan (~tick 233) inside the 720-tick smoke window.
+const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 76, maxImpulse: 90, graceTicks: 1 });
 const STANDARD_TETHER_STRENGTH_REVISION = 2;
 const STANDARD_TETHER_PAYOUT_REVISION = 1;
 const BROKEN_ATTACHMENT_HISTORY_LIMIT = 128;

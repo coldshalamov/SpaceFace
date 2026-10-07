@@ -395,3 +395,104 @@ test('a pickup or persistent body never becomes the core', async () => {
   assert.notEqual(t.sys._rt.coreId, persistent.id, 'persistent mass never cores');
   t.cleanup();
 });
+
+// ── wave-2 coverage: strain, loss, boundaries, burst truncation ──────────────────
+test('a violently flung core breaks the hold at the strain distance (no launch)', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0);
+  hold(t);
+  assert.equal(t.sys._rt.phase, 'holding');
+  const { queueProjectileContinuation } = await import('../src/core/physicsAuthority.js');
+  queueProjectileContinuation(body, { velocity: { x: 2200, z: 0 }, yaw: 0 });
+  let dropped = null;
+  for (let i = 0; i < 90 && !dropped; i++) {
+    t.state.input.actions.gyreSnare = true;
+    t.sim.step();
+    if (t.sys._rt.phase === 'off') dropped = t.events.find((e) => e.name === 'gyre:dropped' && e.p.reason === 'strained');
+  }
+  assert.ok(dropped, 'a core hurled past holdBreakDist slips the beam with reason strained');
+  assert.equal(t.sys._rt.ballId, null, 'a strained clump is freed, never bowled');
+  assert.equal(body.data.gyreCore, undefined, 'strained core is unmarked');
+  assert.ok(!t.events.some((e) => e.name === 'gyre:launched'), 'strain break never launches');
+  t.cleanup();
+});
+
+test('a held core removed externally drops the beam and clears residue', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0);
+  hold(t);
+  assert.equal(t.sys._rt.phase, 'holding');
+  body.alive = false; // something else ate the core mid-hold
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_lost'));
+  assert.equal(body.data.gyreCore, undefined, 'core_lost still sweeps the mark');
+  t.cleanup();
+});
+
+test('sector:exit and game:newGame are silent boundary drops', async () => {
+  for (const [evt, reason] of [['sector:exit', 'sector_exit'], ['game:newGame', 'new_game']]) {
+    const t = await bootPhysics();
+    const body = rock(t.sim, T.mawDist, 0);
+    hold(t);
+    assert.equal(t.sys._rt.phase, 'holding', evt + ' setup holds a core');
+    const heard = t.events.length;
+    t.bus.emit(evt, {});
+    t.sim.step();
+    assert.equal(t.sys._rt.phase, 'off');
+    const dropped = t.events.find((e) => e.name === 'gyre:dropped');
+    assert.equal(dropped && dropped.p.reason, reason);
+    assert.equal(dropped.p.boundary, true, 'boundary drops advertise themselves');
+    assert.ok(!t.events.slice(heard).some((e) => e.name === 'audio:cue'),
+      evt + ' stays silent — a context reset does not talk');
+    assert.equal(t.sys._rt.ballId, null, 'a flying ball is forgotten across the boundary');
+    assert.equal(body.data.gyreCore, undefined);
+    t.cleanup();
+  }
+});
+
+test('a despawned ball retires launchedId so the mirror stops tracking it', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → bowl
+  assert.equal(t.sys._rt.ballId, body.id);
+  for (let i = 0; i < 10; i++) t.sim.step();
+  assert.equal(t.state.gyreSnare.launchedId, body.id, 'mirror tracks the live ball');
+  body.alive = false; // the ball met its grave (impact or TTL despawn)
+  t.sim.step();
+  assert.equal(t.state.gyreSnare.launchedId, null, 'mirror retires a dead ball');
+  assert.equal(t.state.gyreSnare.ballMass, 0);
+  t.cleanup();
+});
+
+test('the launch burst truncates when the player entity is removed mid-throw', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → bowl begins
+  assert.equal(t.sys._rt.launchLeft, T.launchTicks - 1, 'burst starts spanning its authored ticks');
+  t.state.entities.delete(t.player.id); // ship gone mid-burst — salvage, not scenery
+  t.state.entityList = t.state.entityList.filter((e) => e !== t.player);
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.equal(t.sys._rt.launchLeft, 0, 'player_lost truncates the remaining burst ticks');
+  assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'player_lost'));
+  assert.ok(speed(body) > 0 && speed(body) < T.launchSpeed,
+    `partial burst bowls at partial speed (${speed(body).toFixed(1)} < ${T.launchSpeed})`);
+  t.cleanup();
+});
+
+test('a world-record body is never snagged as a core', async () => {
+  const t = await bootPhysics();
+  const wr = rock(t.sim, T.mawDist, 0, 6, 4, 'asteroid');
+  wr.data.worldRecordId = 'wr-47a';
+  hold(t);
+  for (let i = 0; i < 60; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.notEqual(t.sys._rt.coreId, wr.id);
+  assert.equal(t.sys._rt.phase, 'beaming', 'world-record mass stays live in the field, never cores');
+  assert.equal(wr.data.gyreCore, undefined);
+  t.cleanup();
+});

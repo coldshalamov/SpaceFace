@@ -383,3 +383,43 @@ test('pointer cancel drops a held fire and the committed thrust before the next 
     dom.restore();
   }
 });
+
+test('a hold-to-toggle verb held through a dock does not re-latch on the way back', () => {
+  const dom = installFakeInputDom();
+  const host = Object.create(input);
+  const state = makeDomInputState();
+  state.ui = { screenStack: [] };
+  state.input.mouseNdc = { x: 0, y: 0 };
+  state.input.aimWorld = { x: 0, z: 0 };
+  state.input.aimAngle = 0;
+  state.input.aimIntentActive = false;
+  state.input.autoTargetVector = { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
+  state.input.autoTargetPath = { points: [], active: false };
+  state.settings.accessibility = { holdToToggle: { gyreSnare: true } };
+  const ctx = { state, bus: { emit() {} }, helpers: {} };
+  try {
+    host.init(ctx);
+    // Quote held BEFORE the screen opens — not a press that wants a toggle.
+    dom.windowTarget.dispatch('keydown', { code: 'Quote', target: null });
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true, 'held key runs the lash');
+
+    state.ui.screenStack.push('station');
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, false, 'a screen zeroes the verb');
+    assert.equal(host._holdToggleEdges.gyreSnare, true,
+      'the still-held key pins the toggle edge so it cannot re-arm as a fresh press');
+
+    state.ui.screenStack.pop();
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true,
+      'the still-held key is a hold, not a new edge — the verb rides the physical sample');
+    dom.windowTarget.dispatch('keyup', { code: 'Quote', target: null });
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, false,
+      'releasing after the dock actually drops the beam — no phantom latch left behind');
+    host.destroy();
+  } finally {
+    dom.restore();
+  }
+});

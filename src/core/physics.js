@@ -371,7 +371,7 @@ export const physics = {
     const sg02InitJoinMs = () => {
       const armedAt = this._sg02InitArmedAt;
       if (!Number.isFinite(armedAt) || armedAt <= 0) return initTimeoutMs;
-      return Math.max(0, initTimeoutMs - (Date.now() - armedAt));
+      return Math.max(0, initTimeoutMs - (perfNow() - armedAt));
     };
     // An explicit prepare is bounded by user action — a backoff residual short enough
     // to fit inside the init envelope is worth waiting out so the prepare mints a real
@@ -618,7 +618,7 @@ export const physics = {
           return null;
         });
       this._sg02Init = init;
-      this._sg02InitArmedAt = Date.now();
+      this._sg02InitArmedAt = perfNow();
     }
 
     if (!this._sg02) {

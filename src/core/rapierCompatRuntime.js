@@ -1,9 +1,13 @@
 // Shared Rapier compatibility runtime bootstrap.
+// Wall-clock here measures init backoff windows, not simulation time — route it through
+// perfRuntime (perfNow) like every other simulation-owner diagnostic clock.
 //
 // The upstream compat bundle's wasm-bindgen glue constructs exactly one function body,
 // `return this`, as a legacy global-object fallback. A strict CSP correctly blocks the general
 // Function constructor. During the single shared initialization below, replace it with a
 // capability-limited constructor that accepts only that inert getter and rejects all other source.
+
+import { perfNow } from './perfRuntime.js';
 
 const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initialization function';
 const RAPIER_GLOBAL_GETTER_SOURCE = 'return this';
@@ -31,7 +35,7 @@ export function loadRapierCompatRuntime({
   globalObject = globalThis,
 } = {}) {
   if (!rapierRuntimePromise) {
-    const now = Date.now();
+    const now = perfNow();
     if (rapierRuntimeFailures > 0 && now - rapierRuntimeLastFailureAt >= RAPIER_INIT_FAILURE_DECAY_MS) {
       rapierRuntimeFailures = 0;
       rapierRuntimeLastError = null;
@@ -54,9 +58,9 @@ export function loadRapierCompatRuntime({
       (error) => {
         rapierRuntimePromise = null;
         rapierRuntimeFailures += 1;
-        rapierRuntimeLastFailureAt = Date.now();
+        rapierRuntimeLastFailureAt = perfNow();
         rapierRuntimeLastError = error;
-        rapierRuntimeBlockedUntil = Date.now()
+        rapierRuntimeBlockedUntil = perfNow()
           + Math.min(rapierRuntimeFailures * RAPIER_INIT_BACKOFF_STEP_MS, RAPIER_INIT_BACKOFF_CAP_MS);
         throw error;
       },
@@ -68,13 +72,13 @@ export function loadRapierCompatRuntime({
 /** True while init is refusing attempts inside the failure backoff window. */
 export function rapierRuntimeBlocked() {
   return rapierRuntimeFailures >= RAPIER_INIT_FAILURES_BEFORE_BACKOFF
-    && Date.now() < rapierRuntimeBlockedUntil;
+    && perfNow() < rapierRuntimeBlockedUntil;
 }
 
 /** Milliseconds left in the refusal window — 0 when init accepts a new attempt. */
 export function rapierRuntimeBlockedRemainingMs() {
   if (rapierRuntimeFailures < RAPIER_INIT_FAILURES_BEFORE_BACKOFF) return 0;
-  return Math.max(0, rapierRuntimeBlockedUntil - Date.now());
+  return Math.max(0, rapierRuntimeBlockedUntil - perfNow());
 }
 
 export function createRapierCspFunctionConstructor(globalObject = globalThis) {

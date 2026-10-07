@@ -144,7 +144,7 @@ export const gyreSnare = {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       // dropped = a live beam/hold released without launch; coreId is null when the beam
       // closed empty (no clump ever snagged).
-      this.bus.emit(GYRE_EVENTS.dropped, { coreId, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
+      this.bus.emit(GYRE_EVENTS.dropped, { coreId, reason: String(reason || 'dropped'), boundary, tick: this.state && this.state.tick });
       // A live lash ending without a launch gets the descending release voice — quiet for
       // an empty-beam release, fuller when a clump slipped the beam. Boundaries stay silent
       // (a save/sector swap shouldn't talk).
@@ -378,6 +378,11 @@ export const gyreSnare = {
     if (!core || core.alive === false || !core.pos) { this._drop('core_lost'); return; }
     const t = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
 
+    // Strain break first: something violent flung the ball too far off the maw — the beam slips.
+    // Checking before the spring queue keeps a freed core from eating one last pull.
+    const coreDistMaw = Math.hypot(core.pos.x - maw.x, core.pos.z - maw.z);
+    if (coreDistMaw > D.holdBreakDist) { this._drop('strained'); return; }
+
     // Orbit slot: revolves around the maw, breathes in/out — "loosely floating in zero G".
     const orbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale)
       + Math.sin(t * D.orbitLiftRate + rt.orbitSeed) * D.orbitLiftRad;
@@ -402,10 +407,6 @@ export const gyreSnare = {
     queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
     // A lazy tumble — the ball reads as levitating rock, not a rigid joint.
     queuePhysicsTorqueImpulse(core, { x: 0, y: mass * D.tumbleTorqueK * dt, z: 0 }, this._evidence(state.tick));
-
-    // Strain break: something violent flung the ball too far off the maw — the beam slips.
-    const coreDistMaw = Math.hypot(core.pos.x - maw.x, core.pos.z - maw.z);
-    if (coreDistMaw > D.holdBreakDist) { this._drop('strained'); return; }
 
     // The beam keeps sweeping the basin into the ball: bodies near the maw get a pull
     // retargeted onto the CORE (the clump is what "increases gravity" now).
@@ -485,7 +486,7 @@ export const gyreSnare = {
     );
     // The clump's HEART visibly grows too: entity.radius is what the motion presenters scale
     // the core's mesh off — keep it in step with the physics record so growth is visceral.
-    if (finite(core.radius) && core.radius < rt.clumpRadius) {
+    if (!finite(core.radius) || core.radius < rt.clumpRadius) {
       core.radius = rt.clumpRadius;
       if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') {
         this.helpers.markEntityVisualChanged(core);
@@ -590,7 +591,11 @@ export const gyreSnare = {
     }
     pub.launchedId = rt.ballId;
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
-    if (rt.phase === PHASE.OFF) { pub.coreId = null; pub.strain01 = 0; pub.members = null; return pub; }
+    if (rt.phase === PHASE.OFF) {
+      pub.coreId = null; pub.strain01 = 0; pub.members = null;
+      pub.clumpMass = 0; pub.clumpRadius = 0; pub.absorbs = 0;
+      return pub;
+    }
     if (!player) return pub;
     const nose = this._noseDir(player, this._pubNose || (this._pubNose = { x: 1, z: 0 }));
     pub.nose.x = player.pos.x + nose.x * D.noseGap;

@@ -1362,6 +1362,7 @@ export const input = {
         htEdges.brake = this._held(state, 'brake') || this._held(state, 'reverse')
           || padHeld('brake') || tpHeld('brake');
         htEdges.bulletTime = this._held(state, 'bulletTime') || padHeld('bulletTime');
+        htEdges.gyreSnare = this._held(state, 'gyreSnare') || padHeld('gyreSnare');
         htEdges.massline = masslineHeldThroughModal;
         htEdges.reelIn = this._held(state, 'reelIn');
         htEdges.reelOut = this._held(state, 'reelOut');

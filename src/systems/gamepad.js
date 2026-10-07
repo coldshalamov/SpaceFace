@@ -825,7 +825,12 @@ export function createGamepad(ctx) {
     bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
     bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
     bus.on('gyre:absorbed', () => startPulse(HAPTIC_VERB_PULSES['gyre:absorbed'], 'gyre:absorbed'));
-    bus.on('gyre:dropped', () => startPulse(HAPTIC_VERB_PULSES['gyre:dropped'], 'gyre:dropped'));
+    bus.on('gyre:dropped', (payload) => {
+      // A save/sector boundary drop is a context reset, not a player verb — stay silent like the
+      // audio cue does instead of buzzing through a transition.
+      if (payload && payload.boundary) return;
+      startPulse(HAPTIC_VERB_PULSES['gyre:dropped'], 'gyre:dropped');
+    });
   }
 
   const gp = {

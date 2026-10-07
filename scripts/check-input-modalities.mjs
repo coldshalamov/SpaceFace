@@ -247,6 +247,8 @@ function installDom({ width = 1280, height = 800, touchDevice = true } = {}) {
 
   const fire = (map, type, event) => { for (const fn of map.get(type) || []) fn(event); };
   const overlay = () => doc.getElementById('sf-touch-overlay');
+  let lastMoveX = NaN;
+  let lastMoveY = NaN;
 
   return {
     doc,
@@ -264,8 +266,16 @@ function installDom({ width = 1280, height = 800, touchDevice = true } = {}) {
       });
     },
     move(x, y) {
+      // Browsers report movementX/Y as the delta between successive pointer packets. Emit the
+      // real delta — the dynamic combat stick's deadzone recenter (SFQ-B011) bleeds sub-deadzone
+      // packets, so a constant 1px-per-event stream can never accumulate into a command.
+      if (!Number.isFinite(lastMoveX)) { lastMoveX = x; lastMoveY = y; }
+      const movementX = x - lastMoveX;
+      const movementY = y - lastMoveY;
+      lastMoveX = x;
+      lastMoveY = y;
       fire(winListeners, 'mousemove', {
-        type: 'mousemove', clientX: x, clientY: y, movementX: 1, movementY: 1, target: body,
+        type: 'mousemove', clientX: x, clientY: y, movementX, movementY, target: body,
         preventDefault() {}, stopPropagation() {},
       });
     },
@@ -636,8 +646,8 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
   s.tick();
   checkEqual(s.state.input.autoTargetPath.points.length, 0,
     'entering combat-stick mode clears stale draw-path geometry');
-  // The harness emits movementX/Y=1 per move. Cross the authored 10 px deadzone deliberately;
-  // sub-deadzone tremor is supposed to remain neutral.
+  // The harness now emits real pointer deltas — each 15px packet is a deliberate move, well
+  // past the authored 10px deadzone; sub-deadzone tremor is supposed to remain neutral.
   for (let i = 0; i < 18; i += 1) {
     s.dom.move(300 + i * 12, 220 + i * 9);
     s.tick();

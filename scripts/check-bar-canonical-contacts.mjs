@@ -64,7 +64,7 @@ const routeState = {
 };
 let tags = barContactIntelTags({ role: 'merchant' }, routeState, 'station_helios');
 assert.equal(tags[0].label, 'Route', 'merchant intel should surface the best known trade route first');
-assert.match(tags[0].text, /Provisions -> Tethys Trade Hub \+8\/u/, 'merchant route intel should name cargo, buyer, and spread');
+assert.match(tags[0].text, /Provisions (?:->|→) Tethys Trade Hub \+8\/u/, 'merchant route intel should name cargo, buyer, and spread');
 assert.equal(tags[0].kind, 'ok', 'profitable route intel should use the positive tone');
 
 tags = barContactIntelTags({ role: 'pilot' }, {

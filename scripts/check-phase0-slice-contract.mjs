@@ -228,17 +228,21 @@ assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 17, 'expected te
 // 6 -> 4 and presentation cues 8 -> 6. The 2026-09-29 record under the landed physics packages
 // (C..F) moved hits/damage 4 -> 1. The 2026-09-30 post-D83 solid-contact re-record (eb1869826
 // et al., see the envelope notes) moved hits/damage 1 -> 6 (point-defense answers the missile
-// at the projectile) and presentation cues 4 -> 8. These assertions consume that accepted
+// at the projectile) and presentation cues 4 -> 8. The 2026-10-07 record under the landed
+// shockwave-sweep/tether-orbit/mobile-deck master (7ee4205d8) moved hits/damage 6 -> 5 and
+// presentation cues 9 -> 7 — golden-diff HEAD vs that master is bit-identical, so the re-pin
+// absorbs upstream drift, not branch behavior. These assertions consume that accepted
 // golden; they do not re-record it.
-assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 6, 'expected telemetry should pin observed projectile hit count');
-assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 6, 'expected telemetry should pin observed combat damage count');
+assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 5, 'expected telemetry should pin observed projectile hit count');
+assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 5, 'expected telemetry should pin observed combat damage count');
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
 // 2026-09-25 3d6491e1e (D46) restored the authored 47-A tether warn arc, which adds one presentation cue in the
 // accepted golden (6 -> 7); the pin follows the accepted record, it does not re-record it.
 // 2026-09-29: same physics-package re-record as above — cue and cueApplied track the hit fanout, 7 -> 4.
 // 2026-09-30: post-D83 solid-contact re-record moves cue 4 -> 8 (see envelope notes); the same-day
 // LEGACY_47A_MASSLINE_BREAK re-derivation restores the tether.near_break warning (t234), cue 8 -> 9.
-assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 9, 'expected telemetry should pin SG-08 presentation cue count');
+// 2026-10-07: the same master-merge re-record as the hits above moves cue/cueApplied 9 -> 7.
+assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 7, 'expected telemetry should pin SG-08 presentation cue count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected telemetry should pin scenario load count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');
