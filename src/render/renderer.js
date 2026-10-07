@@ -342,6 +342,7 @@ import {
   collectFirstFlightEffectRootsSteps,
   collectFirstFlightLayerDrawables,
   collectInstancePoolCompileRoots,
+  collectInstancePoolCompileRootsAndSubjects,
   collectInstancePoolCompileRootsAndSubjectsSteps,
   collectInstancePoolCompileRootsSteps,
   collectLateAdmittedCompileRoots,
@@ -2246,9 +2247,13 @@ function driveProtectedFirstFlightDrain(owner) {
     return typeof owner._drainProtectedFirstFlightBuilds === 'function'
       ? owner._drainProtectedFirstFlightBuilds() : 0;
   }
-  if (!owner._protectedFirstFlightDrainIter) {
+  const drainEpoch = owner.state && owner.state.world
+    && owner.state.world.enterSerial != null ? owner.state.world.enterSerial : null;
+  if (!owner._protectedFirstFlightDrainIter
+      && owner._protectedFirstFlightFaultEpoch !== drainEpoch) {
     owner._protectedFirstFlightDrainIter = owner._drainProtectedFirstFlightBuildsSteps();
   }
+  if (!owner._protectedFirstFlightDrainIter) return 0;
   const clock = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
   const started = clock();
@@ -2258,8 +2263,13 @@ function driveProtectedFirstFlightDrain(owner) {
     try {
       step = owner._protectedFirstFlightDrainIter.next();
     } catch (err) {
+      // A re-minting rethrow turns one skeleton fault into a presented-frame
+      // exception for the rest of the hold — park the lane for this enter
+      // instead; a fresh enter serial re-arms the mint.
       owner._protectedFirstFlightDrainIter = null;
-      throw err;
+      owner._protectedFirstFlightFaultEpoch = drainEpoch;
+      console.warn('[render] protected first-flight drain faulted; parked until the next enter', err);
+      break;
     }
     if (step.done) {
       built = step.value || 0;
@@ -2314,29 +2324,40 @@ function settleRebuildBridges(owner) {
   let processed = 0;
   for (const [id, slot] of bridges) {
     if (++processed > visitBound) break;
-    slot.frames += 1;
-    const e = state && state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(id) : null;
-    const live = slot.epoch === epoch && e && e.alive !== false;
-    let release = !live || slot.frames >= REBUILD_BRIDGE_MAX_SYNCS;
-    if (!release) {
-      // Whatever is mounted for the entity now — the parked replacement, a
-      // second rebuild's mount, or the reconcile's later build — is the mesh
-      // the bridge covers. An empty slot after a failed build keeps drawing
-      // until some mount becomes drawable; a vanished replacement releases.
-      const current = owner._meshes.get(id);
-      release = current ? rebuildBridgeDrawable(current) : slot.replacement != null;
-    }
-    if (!release) {
-      // Rotate the unreleased row to the map's tail so a permanently-parked
-      // front can't starve rows behind it — every slot is seen within
-      // ceil(size/cap) frames regardless of order.
+    try {
+      slot.frames += 1;
+      const e = state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(id) : null;
+      const live = slot.epoch === epoch && e && e.alive !== false;
+      let release = !live || slot.frames >= REBUILD_BRIDGE_MAX_SYNCS;
+      if (!release) {
+        // Whatever is mounted for the entity now — the parked replacement, a
+        // second rebuild's mount, or the reconcile's later build — is the mesh
+        // the bridge covers. An empty slot after a failed build keeps drawing
+        // until some mount becomes drawable; a vanished replacement releases.
+        const current = owner._meshes.get(id);
+        release = current ? rebuildBridgeDrawable(current) : slot.replacement != null;
+      }
+      if (!release) {
+        // Rotate the unreleased row to the map's tail so a permanently-parked
+        // front can't starve rows behind it — every slot is seen within
+        // ceil(size/cap) frames regardless of order.
+        bridges.delete(id);
+        bridges.set(id, slot);
+        continue;
+      }
       bridges.delete(id);
-      bridges.set(id, slot);
-      continue;
+      releaseRebuildBridge(owner, id, slot);
+    } catch (bridgeError) {
+      // One torn row (a poisoned slot/entity lookup or release) must not abort
+      // the pass. Give the row one retry at the tail — a transient fault
+      // settles next pass; past that the row drops like a released one rather
+      // than throwing into every presented frame.
+      slot.faults = (slot.faults | 0) + 1;
+      console.warn('[render] rebuild bridge settle failed for one row', bridgeError);
+      bridges.delete(id);
+      if (slot.faults < 2) bridges.set(id, slot);
     }
-    bridges.delete(id);
-    releaseRebuildBridge(owner, id, slot);
   }
 }
 
@@ -2399,7 +2420,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // each invocation's real cost bounded.
     if (feedMoved || owner._residentReattachFrame === 0 || pacedFrameSpend() < 2) {
       owner._residentReattachStamp = reattachFeed;
-      if (!owner._residentReattachIter) {
+      const reattachEpoch = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
+      if (!owner._residentReattachIter
+          && owner._residentReattachFaultEpoch !== reattachEpoch) {
         mintResidentReattachSweep(owner);
       }
     }
@@ -2422,8 +2445,13 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         try {
           step = iterator.next();
         } catch (err) {
+          // Park the lane for this enter rather than rethrowing through the
+          // service tail — the mint gate above re-arms on the next serial.
           owner._residentReattachIter = null;
-          throw err;
+          owner._residentReattachFaultEpoch = st.world
+            && st.world.enterSerial != null ? st.world.enterSerial : null;
+          console.warn('[render] resident reattach sweep faulted; parked until the next enter', err);
+          break;
         }
         if (step.done) {
           if (owner._residentReattachIter === iterator) owner._residentReattachIter = null;
@@ -2444,7 +2472,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // (census + grading + keepResidentSet release) inside one DOM-stalling task. It mints
     // only after the reattach sweep ran to completion, so dead-id meshes the
     // sweep could still move are never released by the first reconcile leg.
-    if (owner._meshReconcileDirty && !owner._reconcileIter && !owner._residentReattachIter) {
+    if (owner._meshReconcileDirty && !owner._reconcileIter && !owner._residentReattachIter
+        && owner._reconcileFaultEpoch
+          !== (st.world && st.world.enterSerial != null ? st.world.enterSerial : null)) {
       if (typeof owner._reconcileMeshesSteps === 'function') {
         owner._reconcileIter = owner._reconcileMeshesSteps({ keepResidentSet: true });
         owner._reconcileKeepGpu = true;
@@ -2469,8 +2499,14 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           try {
             step = iterator.next();
           } catch (err) {
+            // Re-request so the dropped pass still retries on the next
+            // enter — but park the lane for this one instead of rethrowing
+            // into every service tick of the keep-gpu window.
             abandonReconcile(owner);
-            throw err;
+            owner._meshReconcileDirty = true;
+            owner._reconcileFaultEpoch = liveEpoch;
+            console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
+            break;
           }
           if (step.done) {
             if (owner._reconcileIter === iterator) {
@@ -2799,7 +2835,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       // world's sweep runs even if the enter didn't re-set dirty.
       owner._meshReconcileDirty = true;
     }
-    if (owner._meshReconcileDirty && !owner._reconcileIter) {
+    if (owner._meshReconcileDirty && !owner._reconcileIter
+        && owner._reconcileFaultEpoch !== liveEpoch) {
       // The full pass is the poll's superset — close any suspended poll rather
       // than commit its departed-window verdicts after the reconcile lands.
       abandonResidencyPoll(owner);
@@ -2825,8 +2862,13 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         } catch (err) {
           // A throwing pass must not leave a closed iterator parked — next
           // frame would read done and treat a partial sweep as complete.
+          // Re-dirty so the dropped pass retries next enter; the fault stamp
+          // parks it for this one instead of rethrowing into every frame.
           abandonReconcile(owner);
-          throw err;
+          owner._meshReconcileDirty = true;
+          owner._reconcileFaultEpoch = liveEpoch;
+          console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
+          break;
         }
         if (step.done) {
           if (owner._reconcileIter === iterator) {
@@ -2859,7 +2901,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     if (owner._residencyPollIter && owner._residencyPollEpoch !== liveEpoch) {
       abandonResidencyPoll(owner);
     }
-    if (pollDue && !owner._residencyPollIter) {
+    if (pollDue && !owner._residencyPollIter
+        && owner._residencyPollFaultEpoch !== liveEpoch) {
       if (typeof owner._reconcileMeshResidencySteps === 'function') {
         owner._residencyPollIter = owner._reconcileMeshResidencySteps();
         owner._residencyPollEpoch = liveEpoch;
@@ -2877,8 +2920,12 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         try {
           step = iterator.next();
         } catch (err) {
+          // Parked for this enter the same way the reconcile lane is — the
+          // next poll cadence after a fresh serial re-mints.
           abandonResidencyPoll(owner);
-          throw err;
+          owner._residencyPollFaultEpoch = liveEpoch;
+          console.warn('[render] residency poll drive failed; parked until the next enter', err);
+          break;
         }
         if (step.done) {
           if (owner._residencyPollIter === iterator) {
@@ -13716,11 +13763,8 @@ export const render = {
                 } catch (driveError) {
                   closeCookStepsIter(sealCensusIter);
                   console.warn('[render] pool seal census drive failed; running the sync twin', driveError);
-                  sealCensus = {
-                    roots: runCookSyncTwin('pool seal census',
-                      () => collectInstancePoolCompileRoots(scene), []),
-                    subjects: null,
-                  };
+                  sealCensus = runCookSyncTwin('pool seal census',
+                    () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: null });
                   break;
                 }
                 if (censusStep.done) { sealCensus = censusStep.value; break; }
@@ -13739,21 +13783,15 @@ export const render = {
                 } catch (driveError) {
                   closeCookStepsIter(poolRootsIt);
                   console.warn('[render] pool roots census drive failed; running the sync twin', driveError);
-                  sealCensus = {
-                    roots: runCookSyncTwin('pool roots census',
-                      () => collectInstancePoolCompileRoots(scene), []),
-                    subjects: null,
-                  };
+                  sealCensus = runCookSyncTwin('pool roots census',
+                    () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: null });
                   break;
                 }
                 if (poolRootsStep.done) { sealCensus = { roots: poolRootsStep.value, subjects: null }; break; }
                 await sealPace();
               }
             } else {
-              sealCensus = {
-                roots: collectInstancePoolCompileRoots(scene),
-                subjects: null,
-              };
+              sealCensus = collectInstancePoolCompileRootsAndSubjects(scene);
             }
             const latePoolRoots = sealCensus.roots;
             poolSealRoots = latePoolRoots.length;
@@ -14112,7 +14150,13 @@ export const render = {
                 }
               }
             }
-          } catch (_) { /* census failure must not wedge the settle */ }
+          } catch (_) {
+            // A torn census must not read as empty — the pending===0 gate below
+            // would release the settle on a half-counted sweep. Treat the walk
+            // as still-pending (the settle loop re-mints a fresh iterator and
+            // retries, or ends by deadline like the drive-fail path's own 1).
+            pending = Math.max(pending, 1);
+          }
           if (names && names.length > 0) pendingLoadNames = names;
           return pending;
         };
@@ -14792,8 +14836,10 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(cookCensusIter);
               console.warn('[render] cook census drive failed; running the sync twin', driveError);
-              cookPoolRootsMemo = runCookSyncTwin('cook census',
-                () => collectInstancePoolCompileRoots(scene), []);
+              const censusValue = runCookSyncTwin('cook census',
+                () => collectInstancePoolCompileRootsAndSubjects(scene), null);
+              if (censusValue && Array.isArray(censusValue.roots)) cookPoolRootsMemo = censusValue.roots;
+              if (censusValue && Array.isArray(censusValue.subjects)) cookCensusSubjects = censusValue.subjects;
               break;
             }
             if (censusStep.done) {
@@ -15470,11 +15516,8 @@ export const render = {
           } catch (driveError) {
             closeCookStepsIter(poolCensusIter);
             console.warn('[render] pool census drive failed; running the sync twin', driveError);
-            poolCensus = {
-              roots: runCookSyncTwin('pool census',
-                () => collectInstancePoolCompileRoots(scene), []),
-              subjects: [],
-            };
+            poolCensus = runCookSyncTwin('pool census',
+              () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: [] });
             break;
           }
           if (censusStep.done) { poolCensus = censusStep.value; break; }
@@ -16497,76 +16540,62 @@ export const render = {
       const collectLateAdmissionCensus = async () => {
         const censusIter = typeof collectInstancePoolCompileRootsAndSubjectsSteps === 'function'
           ? collectInstancePoolCompileRootsAndSubjectsSteps(scene, 256) : null;
-        if (!censusIter) {
-          // Steps-less host fallback — still paced: each collector's own Steps
-          // twin exists in latePipelineAdmission, so this path survives only
-          // where those are unavailable too (then the sync collectors run).
-          let fallbackRoots = [];
-          let fallbackLateEntities = [];
-          let fallbackUncompiled = [];
-          if (typeof collectInstancePoolCompileRootsSteps === 'function') {
-            const rootsIt = collectInstancePoolCompileRootsSteps(scene);
-            for (;;) {
-              let rootsStep;
-              try {
-                rootsStep = rootsIt.next();
-              } catch (driveError) {
-                closeCookStepsIter(rootsIt);
-                console.warn('[render] pool roots census drive failed; running the sync twin', driveError);
-                fallbackRoots = runCookSyncTwin('pool roots census',
-                  () => collectInstancePoolCompileRoots(scene), []);
-                break;
-              }
-              if (rootsStep.done) { fallbackRoots = rootsStep.value; break; }
-              if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+        // Roots, late-admitted entities and the uncompiled sweep all derive
+        // from the one combined {roots, subjects} walk — the same derivation
+        // the healthy drive runs below, shared so a Steps-less host or a torn
+        // drive pays one atomic collect instead of three separate walks plus
+        // the per-root subject re-collects the null-subjects shape forced.
+        const deriveCensus = async (censusValue) => {
+          let meshWalkVisited = 0;
+          const meshRootSet = new Set();
+          for (const root of this._meshes.values()) {
+            if (root) meshRootSet.add(root);
+            if (++meshWalkVisited % 256 === 0 && await postPace()) {
+              return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
             }
-          } else {
-            fallbackRoots = collectInstancePoolCompileRoots(scene);
           }
-          if (typeof collectLateAdmittedCompileRootsSteps === 'function') {
-            const lateIt = collectLateAdmittedCompileRootsSteps(this._meshes, openingSubjects);
-            for (;;) {
-              let lateStep;
-              try {
-                lateStep = lateIt.next();
-              } catch (driveError) {
-                closeCookStepsIter(lateIt);
-                console.warn('[render] late-admitted census drive failed; running the sync twin', driveError);
-                fallbackLateEntities = runCookSyncTwin('late-admitted census',
-                  () => collectLateAdmittedCompileRoots(this._meshes, openingSubjects), []);
-                break;
-              }
-              if (lateStep.done) { fallbackLateEntities = lateStep.value; break; }
-              if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+          const lateRootSet = new Set();
+          const enclosingMemo = new Map();
+          const enclosingMeshRoot = (subject) => {
+            const chain = [];
+            let hit = null;
+            let node = subject;
+            while (node) {
+              if (meshRootSet.has(node)) { hit = node; break; }
+              if (enclosingMemo.has(node)) { hit = enclosingMemo.get(node); break; }
+              chain.push(node);
+              node = node.parent;
             }
-          } else {
-            fallbackLateEntities = collectLateAdmittedCompileRoots(this._meshes, openingSubjects);
+            for (const entry of chain) enclosingMemo.set(entry, hit);
+            return hit;
+          };
+          const uncompiled = [];
+          for (const subject of censusValue.subjects) {
+            if (await postPace()) {
+              return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+            }
+            if (opening.has(subject)) continue;
+            uncompiled.push(subject);
+            const holder = enclosingMeshRoot(subject);
+            if (holder) lateRootSet.add(holder);
           }
-          if (typeof collectUncompiledSceneDrawablesSteps === 'function') {
-            const uncompiledIt = collectUncompiledSceneDrawablesSteps(scene, openingSubjects);
-            for (;;) {
-              let uncompiledStep;
-              try {
-                uncompiledStep = uncompiledIt.next();
-              } catch (driveError) {
-                closeCookStepsIter(uncompiledIt);
-                console.warn('[render] uncompiled census drive failed; running the sync twin', driveError);
-                fallbackUncompiled = runCookSyncTwin('uncompiled census',
-                  () => collectUncompiledSceneDrawables(scene, openingSubjects), []);
-                break;
-              }
-              if (uncompiledStep.done) { fallbackUncompiled = uncompiledStep.value; break; }
-              if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+          // _meshes insertion order — the same order the registry walk produced.
+          const lateEntities = [];
+          for (const root of this._meshes.values()) {
+            if (++meshWalkVisited % 256 === 0 && await postPace()) {
+              return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
             }
-          } else {
-            fallbackUncompiled = collectUncompiledSceneDrawables(scene, openingSubjects);
+            if (lateRootSet.has(root)) lateEntities.push(root);
           }
           return {
-            roots: fallbackRoots,
-            lateEntities: fallbackLateEntities,
-            uncompiled: fallbackUncompiled,
-            subjects: null,
+            roots: censusValue.roots,
+            lateEntities,
+            uncompiled,
+            subjects: censusValue.subjects,
           };
+        };
+        if (!censusIter) {
+          return deriveCensus(collectInstancePoolCompileRootsAndSubjects(scene));
         }
         let census = null;
         for (;;) {
@@ -16575,67 +16604,14 @@ export const render = {
             censusStep = censusIter.next();
           } catch (driveError) {
             closeCookStepsIter(censusIter);
-            console.warn('[render] late-admission census drive failed; running the sync collectors', driveError);
-            return {
-              roots: runCookSyncTwin('pool roots census',
-                () => collectInstancePoolCompileRoots(scene), []),
-              lateEntities: runCookSyncTwin('late-admitted census',
-                () => collectLateAdmittedCompileRoots(this._meshes, openingSubjects), []),
-              uncompiled: runCookSyncTwin('uncompiled census',
-                () => collectUncompiledSceneDrawables(scene, openingSubjects), []),
-              subjects: null,
-            };
+            console.warn('[render] late-admission census drive failed; running the sync twin', driveError);
+            return deriveCensus(runCookSyncTwin('late-admission census',
+              () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: [] }));
           }
           if (censusStep.done) { census = censusStep.value; break; }
           if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
         }
-        let meshWalkVisited = 0;
-        const meshRootSet = new Set();
-        for (const root of this._meshes.values()) {
-          if (root) meshRootSet.add(root);
-          if (++meshWalkVisited % 256 === 0 && await postPace()) {
-            return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
-          }
-        }
-        const lateRootSet = new Set();
-        const enclosingMemo = new Map();
-        const enclosingMeshRoot = (subject) => {
-          const chain = [];
-          let hit = null;
-          let node = subject;
-          while (node) {
-            if (meshRootSet.has(node)) { hit = node; break; }
-            if (enclosingMemo.has(node)) { hit = enclosingMemo.get(node); break; }
-            chain.push(node);
-            node = node.parent;
-          }
-          for (const entry of chain) enclosingMemo.set(entry, hit);
-          return hit;
-        };
-        const uncompiled = [];
-        for (const subject of census.subjects) {
-          if (await postPace()) {
-            return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
-          }
-          if (opening.has(subject)) continue;
-          uncompiled.push(subject);
-          const holder = enclosingMeshRoot(subject);
-          if (holder) lateRootSet.add(holder);
-        }
-        // _meshes insertion order — the same order the registry walk produced.
-        const lateEntities = [];
-        for (const root of this._meshes.values()) {
-          if (++meshWalkVisited % 256 === 0 && await postPace()) {
-            return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
-          }
-          if (lateRootSet.has(root)) lateEntities.push(root);
-        }
-        return {
-          roots: census.roots,
-          lateEntities,
-          uncompiled,
-          subjects: census.subjects,
-        };
+        return deriveCensus(census || { roots: [], subjects: [] });
       };
       // flatMap(collectCompileSubjects) without the per-root re-traversal: bucket
       // the census subjects under their nearest enclosing compile root (nested
@@ -22195,6 +22171,7 @@ export const render = {
       let visited = 0;
       let nodesWorked = 0;
       let w = 0;
+      const tornFreezeMints = [];
       for (let r = 0; r < pending.length; r += 1) {
         const mesh = pending[r];
         if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
@@ -22270,6 +22247,7 @@ export const render = {
       } catch (_) {
         // A torn mint drops the row; sfHiddenFrozen stays true so the subtree
         // keeps the frozen prefix and a re-show restores it by stamp.
+        if (tornFreezeMints.length < 4) tornFreezeMints.push(mesh && mesh.name || '?');
         step = { done: true };
       }
       if (!step || step.done !== true) {
@@ -22285,6 +22263,9 @@ export const render = {
       minted += 1;
       }
       pending.length = w;
+      if (tornFreezeMints.length > 0) {
+        console.info('[render] hidden-freeze mints torn mid-walk; rows dropped:', tornFreezeMints.join(', '));
+      }
     } finally {
       if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
     }
@@ -22330,6 +22311,7 @@ export const render = {
     let visited = 0;
     let nodesWorked = 0;
     let w = 0;
+    const tornUnfreezeMints = [];
     for (let r = 0; r < pending.length; r += 1) {
       const mesh = pending[r];
       if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
@@ -22410,6 +22392,7 @@ export const render = {
           if (nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS) break;
         }
       } catch (_) {
+        if (tornUnfreezeMints.length < 4) tornUnfreezeMints.push(mesh && mesh.name || '?');
         step = { done: true };
       }
       if (!step || step.done !== true) {
@@ -22423,6 +22406,9 @@ export const render = {
       minted += 1;
     }
     pending.length = w;
+    if (tornUnfreezeMints.length > 0) {
+      console.info('[render] hidden-unfreeze mints torn mid-walk; rows dropped:', tornUnfreezeMints.join(', '));
+    }
     } finally {
       if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
     }
@@ -22515,11 +22501,23 @@ export const render = {
     const pending = this._meshReleasePending;
     this._meshReleasePending = null;
     if (!pending || pending.size === 0) return;
-    globalShipMicroMotion.releaseMeshSet(pending);
-    globalAsteroidMotion.releaseMeshSet(pending);
-    globalInfrastructureMotion.releaseMeshSet(pending);
-    globalForgeCrown.releaseMeshSet(pending);
-    globalLawArenaDressing.releaseMeshSet(pending);
+    const registries = [globalShipMicroMotion, globalAsteroidMotion,
+      globalInfrastructureMotion, globalForgeCrown, globalLawArenaDressing];
+    let rePend = false;
+    for (const registry of registries) {
+      try {
+        registry.releaseMeshSet(pending);
+      } catch (releaseError) {
+        // A throwing registry loses only its own rows for this pass — re-pend
+        // the set so the next flush retries them instead of pinning dead
+        // meshes in that registry's motion records for the session's life.
+        // Releases are idempotent, so the registries that already ran
+        // tolerate the re-drive.
+        rePend = true;
+        console.warn('[render] mesh-release registry flush failed; rows re-pended', releaseError);
+      }
+    }
+    if (rePend) this._meshReleasePending = pending;
   },
 
   _unbindPresentationMesh(entityId, mesh = null, disposeBound = false) {
@@ -23806,9 +23804,20 @@ export const render = {
     const steps = typeof this._drainMeshBuildQueueSteps === 'function'
       ? this._drainMeshBuildQueueSteps : render._drainMeshBuildQueueSteps;
     const iterator = steps.call(this, buildBudget);
-    let step = iterator.next();
-    while (!step.done) step = iterator.next();
-    return step.value;
+    const headBefore = this._meshBuildQueueHead | 0;
+    try {
+      let step = iterator.next();
+      while (!step.done) step = iterator.next();
+      return step.value;
+    } catch (drainError) {
+      // Row builds are already quarantined per-row (_meshBuildLastError /
+      // _noMesh); a throw here is the generator skeleton itself — letting it
+      // through the residency pump would re-throw every frame while the
+      // queue stays non-empty. Report the rows it provably drained instead.
+      try { iterator.return?.(); } catch (_) { /* already torn */ }
+      console.warn('[render] mesh build queue drain faulted mid-walk', drainError);
+      return Math.max(0, (this._meshBuildQueueHead | 0) - headBefore);
+    }
   },
 
   // Stepped twin: one yield per examined queue row so the outer generators'
@@ -29670,7 +29679,19 @@ function drainSceneEnvRebindQueue(owner) {
   const deadline = startedAt + 4;
   while (queue.length > 0) {
     const head = queue[0];
-    const step = head.iter.next();
+    let step;
+    try {
+      step = head.iter.next();
+    } catch (driveError) {
+      // A torn head (poisoned material/userData getter mid-walk) would
+      // otherwise rethrow into every presented frame forever — drop it like
+      // a done head so the rest of the service tail survives.
+      try { head.iter.return?.(); } catch (_) { /* already torn */ }
+      console.warn('[render] env rebind walk failed; dropping the entry', driveError);
+      queue.shift();
+      if (head.disposeTarget) { try { head.disposeTarget.dispose(); } catch (_) {} }
+      continue;
+    }
     if (step.done) {
       queue.shift();
       // The released env target frees only once nothing still samples it —
