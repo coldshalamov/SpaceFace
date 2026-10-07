@@ -81,6 +81,11 @@ export const GYRE_SNARE = Object.freeze({
   // ── Launch ────────────────────────────────────────────────────────────────────────
   launchSpeed: 520,          // wu/s — release Δv along the nose (mass-independent); the bowl visibly outruns a boosting player (~1.9x boost)
   launchTicks: 5,            // ticks the launch impulse is spread over (slingshot feel)
+  launchWindupTicks: 6,      // ~100 ms coil before the burst — the slingshot needs a beat
+                           // of anticipation, not just mechanical ticks
+  launchWindupPullWu: 7,     // wu — the clump drags aft of the maw during the coil
+  launchWindupSpringK: 110,  // 1/s² — spring to the coil point (strong, short reach)
+  launchWindupDamping: 9,    // 1/s — coil damping vs the ship's frame
   ballTtlS: 9,               // s — the bowling ball despawns after this flight window
   launchImpactScaleBase: 1.6,// damage scale floor on a launched ball
   launchImpactScalePerMass: 90, // +1 impactDamageScale per this many tons of clump mass

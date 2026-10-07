@@ -185,8 +185,8 @@ test('release bowls the clump along the nose at launch speed with kill-credit pr
   const preMass = t.sys._rt.clumpMass;
 
   release(t);
-  // Burn through the launch ticks.
-  for (let i = 0; i < T.launchTicks + 2; i++) t.sim.step();
+  // Burn through the coil + the launch ticks.
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) t.sim.step();
 
   assert.equal(t.sys._rt.phase, 'off', 'launch burst finished → back to off');
   assert.equal(body.data.gyreLaunched, true, 'ball marked thrown');
@@ -295,7 +295,7 @@ test('absorbed mass lands on the authored body — launch speed stays authored r
   assert.ok(core.physicsBody.radius > 4, 'authored collider radius grew with the clump');
 
   release(t);
-  for (let i = 0; i < T.launchTicks + 3; i++) t.sim.step();
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 3; i++) t.sim.step();
   const v = speed(core);
   assert.ok(v > T.launchSpeed * 0.7 && v < T.launchSpeed * 1.3,
     `grown ball bowls at authored speed ${T.launchSpeed}, got ${v.toFixed(1)}`);
@@ -339,9 +339,9 @@ test('re-tapping during the launch burst does not truncate the bowl', async () =
   for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   release(t);
   assert.equal(t.sys._rt.phase, 'launching');
-  // Re-press and release inside the 5-tick burst — the launch must finish its impulse.
+  // Re-press and release inside the coil/burst — the launch must finish its impulse.
   hold(t); release(t);
-  for (let i = 0; i < T.launchTicks + 2; i++) t.sim.step();
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) t.sim.step();
   const v = speed(body);
   assert.ok(v > T.launchSpeed * 0.7,
     `a release inside the burst still bowls at ${T.launchSpeed}, got ${v.toFixed(1)}`);
@@ -354,7 +354,7 @@ test('re-beaming while the ball still flies keeps the mirror on the ball', async
   hold(t);
   for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   release(t);
-  for (let i = 0; i < T.launchTicks + 2; i++) t.sim.step(); // burst done → OFF
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) t.sim.step(); // coil + burst done → OFF
   assert.equal(t.sys._rt.phase, 'off');
   assert.equal(t.state.gyreSnare.launchedId, body.id, 'mirror still tracks the flying ball');
   // A fresh grip opens a new beam without losing the ball's mirror track.
@@ -473,7 +473,12 @@ test('the launch burst truncates when the player entity is removed mid-throw', a
   const body = rock(t.sim, T.mawDist, 0);
   hold(t);
   for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
-  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → bowl begins
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → the coil begins
+  assert.equal(t.sys._rt.launchWindup, T.launchWindupTicks - 1, 'the wind-up coils before the burst');
+  assert.equal(t.sys._rt.launchLeft, T.launchTicks, 'no impulse lands during the coil');
+  for (let i = 0; i < T.launchWindupTicks - 1; i++) t.sim.step();
+  assert.equal(t.sys._rt.launchWindup, 0, 'coil spent — the burst starts');
+  t.sim.step();
   assert.equal(t.sys._rt.launchLeft, T.launchTicks - 1, 'burst starts spanning its authored ticks');
   t.state.entities.delete(t.player.id); // ship gone mid-burst — salvage, not scenery
   t.state.entityList = t.state.entityList.filter((e) => e !== t.player);
@@ -1033,7 +1038,7 @@ test('a mid-launch key press is a fresh edge — the beam re-opens, not eaten', 
   assert.equal(t.sys._rt.phase, 'launching');
   t.state.input.actions.gyreSnare = true; // re-press inside the ~5-tick burst
   t.sim.step(); // edge fires while LAUNCH — must not beam mid-burst, but not be eaten
-  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  for (let i = 0; i < T.launchWindupTicks + T.launchTicks + 2; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'beaming', 'the held key re-opened the beam after launch settled');
   release(t);
   t.cleanup();
@@ -1219,5 +1224,61 @@ test('the ball watch list hands a live marked ball back on eviction', async () =
   }
   assert.equal(a.data.gyreLaunched, undefined, 'the evicted ball is handed back, not orphaned');
   assert.equal(a.physicsBody.impactDamageScale, 0.2, 'authored scale restored on eviction');
+  t.cleanup();
+});
+
+test('the tumble servo parks the held core near tumbleTargetRadS', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 240; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id);
+  // 4 s of hold is plenty for the gain to settle: assert proximity, not exact equality —
+  // basin noise and the spring keep it a lazy drift, not a locked rate.
+  assert.ok(Math.abs(core.angVel - T.tumbleTargetRadS) < 0.25,
+    `held core settles into lazy rubble drift ~${T.tumbleTargetRadS} rad/s, got ${core.angVel}`);
+  t.cleanup();
+});
+
+test('a mode flip out of flight mid-hold drops with not_flight', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  t.state.mode = 'dock';
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'not_flight'));
+  t.cleanup();
+});
+
+test('save:loaded mid-launch retires the beam but the ball keeps its deadline and watch', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0, 8, 4);
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 2; i++) t.sim.step(); // coil underway — still mid-throw
+  t.bus.emit('save:loaded', {});
+  assert.equal(t.sys._rt.phase, 'off', 'boundary still drops the lash cold');
+  assert.equal(body.data.gyreLaunched, true, 'the flying ball keeps its mark post-load');
+  assert.ok(Number.isFinite(body.data.despawnAt), 'the ball deadline survives the load');
+  assert.ok(t.sys._rt.ballIds.includes(body.id), 'the sweep re-seeds the watch list from live marks');
+  t.cleanup();
+});
+
+test('releasing while HOLD with a vanished core drops launch_without_core, never a ghost bowl', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id);
+  t.state.entities.delete(core.id); // the clump vanished between ticks — release must not bowl air
+  t.state.entityList = t.state.entityList.filter((e) => e !== core);
+  release(t);
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'launch_without_core'));
+  assert.equal(t.events.some((e) => e.name === 'gyre:launched'), false);
   t.cleanup();
 });

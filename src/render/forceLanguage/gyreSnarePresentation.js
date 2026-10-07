@@ -64,6 +64,7 @@ uniform vec3 uColHot;
 uniform float uTime;
 uniform float uAlpha;
 uniform float uPulse;
+uniform float uCalm;      // reduced motion freezes the traveling shimmer too
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -71,8 +72,8 @@ void main() {
   vec3 V = normalize(cameraPosition - vW);
   float ndv = abs(dot(normalize(vN), V));
   float fres = pow(1.0 - ndv, 2.3);
-  float band = 0.5 + 0.5 * sin(vUv.y * 34.0 - uTime * 13.0);
-  float band2 = 0.5 + 0.5 * sin(vUv.y * 71.0 - uTime * 23.0);
+  float band = 0.5 + 0.5 * sin(vUv.y * 34.0 - uTime * 13.0 * uCalm);
+  float band2 = 0.5 + 0.5 * sin(vUv.y * 71.0 - uTime * 23.0 * uCalm);
   float rim = smoothstep(0.80, 1.0, vUv.y);
   float apex = smoothstep(0.20, 0.0, vUv.y);
   float a = uAlpha * (0.05 + fres * 0.38 + band * band2 * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.22);
@@ -93,11 +94,12 @@ const DISC_FRAG = /* glsl */`
 uniform vec3 uCol;
 uniform float uAlpha;
 uniform float uTime;
+uniform float uCalm;      // reduced motion holds the ring at its rest radius
 varying vec2 vUv;
 void main() {
   float r = length(vUv);
   float core = smoothstep(1.0, 0.0, r);
-  float ring = smoothstep(0.06, 0.0, abs(r - (0.55 + 0.18 * sin(uTime * 5.0))));
+  float ring = smoothstep(0.06, 0.0, abs(r - (0.55 + 0.18 * sin(uTime * 5.0 * uCalm))));
   gl_FragColor = vec4(uCol, uAlpha * (core * core * 0.5 + ring * 0.35));
 }
 `;
@@ -248,7 +250,7 @@ export class GyreSnarePresentation {
     // Mouth glow — soft disc behind the ring.
     this._discMat = new THREE.ShaderMaterial({
       vertexShader: DISC_VERT, fragmentShader: DISC_FRAG,
-      uniforms: { uCol: { value: new THREE.Color(P.maw) }, uAlpha: { value: 0.8 }, uTime: { value: 0 } },
+      uniforms: { uCol: { value: new THREE.Color(P.maw) }, uAlpha: { value: 0.8 }, uTime: { value: 0 }, uCalm: { value: 1 } },
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
     this._disc = new THREE.Mesh(new THREE.CircleGeometry(1, 32), this._discMat);
@@ -521,6 +523,7 @@ export class GyreSnarePresentation {
       // brighter before the catch — "×N IN NET" through the glass itself.
       const net = Math.min(3, finite(mirror.basinCount, 0));
       this._discMat.uniforms.uTime.value = this.time;
+      this._discMat.uniforms.uCalm.value = calm;
       this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12) + this._discKick * 0.5) * flashCalm;
       // Reduced-motion keeps a STATIC mote scatter instead of hiding the funnel
       // outright — the frozen motes still read "matter is being pulled" where

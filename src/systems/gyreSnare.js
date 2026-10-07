@@ -81,10 +81,10 @@ function freshRuntime() {
     coreId: null,
     clumpMass: 0,          // t — bookkeeping mass (base core + absorbed members)
     clumpRadius: 0,        // wu — volumetric union radius (for visuals/absorb tests)
-    coreBaseMass: 0,
     members: [],           // bounded absorb records for the clump lumps VFX
     // Launch bookkeeping.
     launchLeft: 0,         // ticks of the launch impulse burst still owed
+    launchWindup: 0,       // ticks of the pre-burst coil (anticipation) still owed
     launchDir: { x: 1, z: 0 },
     launchedId: null,      // the ball in flight (TTL/telemetry only — it is a free body)
     ballId: null,          // survives LAUNCH→OFF until the thrown clump despawns (mirror track)
@@ -136,6 +136,7 @@ export const gyreSnare = {
     // then sweep untracked residue — a held body left marked is pull/snag/suck-immune
     // forever, and a stashless ex-core is immortal debris.
     this._clearCoreMark();
+    this._rt.ballIds.length = 0; // same alias risk as the boundary drop — clear before the re-seed
     this._sweepBoundaryResidue();
     this._rt = freshRuntime();
   },
@@ -160,18 +161,23 @@ export const gyreSnare = {
       // gyreLaunched stays: a ball mid-flight in the save is still a launched body (it
       // despawns on its own schedule).
       this._clearCoreMark();
+      // Forget the watch list BEFORE the sweep re-seeds it from live marks: a stale id
+      // that aliases a live gyreLaunched entity in the post-load map would eat an
+      // overflow _handBack and strip a legit serialized ball's mark + pull immunity.
+      rt.ballIds.length = 0;
       this._sweepBoundaryResidue();
     } else if (!wasOff) {
       this._clearCoreMark();
     }
     const droppedPhase = rt.phase;
+    const droppedMass = rt.clumpMass;
     rt.phase = PHASE.OFF;
     rt.coreId = null;
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
-    rt.coreBaseMass = 0;
     rt.members.length = 0;
     rt.launchLeft = 0;
+    rt.launchWindup = 0;
     rt.launchedId = null;
     // The drop-side ledger dies with the clump too — a fresh beam must not publish the last
     // ball's absorb count (or reuse its orbit phase) while it searches for a new core.
@@ -198,6 +204,13 @@ export const gyreSnare = {
           id: coreId != null ? 'gyre_snare_drop' : 'gyre_snare_off',
           gain: coreId != null ? 0.9 : 0.5,
         });
+        // A strain break is the verb's biggest loss beat — land it in the body too
+        // (mass-scaled like the launch kick, smaller since nothing was thrown).
+        if (reason === 'strained') {
+          this.bus.emit('camera:shake', {
+            amount: 0.15 + 0.1 * Math.min(1, droppedMass / D.maxClumpMass),
+          });
+        }
       }
     }
   },
@@ -422,7 +435,10 @@ export const gyreSnare = {
       if (PULL_SKIP_TYPES.has(e.type)) continue;
       // Mass in the funnel: absorbable bodies already inside the cone get counted so
       // the HUD/maw can telegraph the catch before it lands ("×N IN NET").
+      // The "IN NET" read names mass actually inside the glass — bodies easing through
+      // the wedge's soft lip (lipT > 0, pull fading to zero past the drawn rim) don't count.
       if (ABSORBABLE.has(e.type)
+        && (inBasin || lipT === 0)
         && !(e.data && (e.data.gyreCore || e.data.gyreLaunched))
         && !(e.flags && e.flags.persistent) && !(e.data && e.data.worldRecordId)) {
         this._rt.basinCount += 1;
@@ -509,8 +525,7 @@ export const gyreSnare = {
     const rt = this._rt;
     rt.phase = PHASE.HOLD;
     rt.coreId = best.id;
-    rt.coreBaseMass = entityMass(best);
-    rt.clumpMass = rt.coreBaseMass;
+    rt.clumpMass = entityMass(best);
     rt.clumpRadius = entityRadius(best);
     rt.totalAbsorbed = 0; // new clump ledger — the HUD count restarts with the core
     rt.fullCueLatched = false;
@@ -753,6 +768,7 @@ export const gyreSnare = {
     this._noseDir(player, dir);
     rt.phase = PHASE.LAUNCH;
     rt.launchLeft = D.launchTicks;
+    rt.launchWindup = D.launchWindupTicks;
     rt.launchDir.x = dir.x;
     rt.launchDir.z = dir.z;
     // rt.coreId keeps pointing at the now-flying ball through the 5-tick burst — the
@@ -837,8 +853,8 @@ export const gyreSnare = {
     rt.coreId = null;
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
-    rt.coreBaseMass = 0;
     rt.members.length = 0;
+    rt.launchWindup = 0;
     // Same live-side ledger reset _drop does: after the ball dies a core-less re-beam
     // must not publish the dead clump's count/cue state as if it were live. The frozen
     // ball ledger (ballId/ballMass/ballMembers/ballClumpRadius/ballAbsorbs) survives —
@@ -866,7 +882,7 @@ export const gyreSnare = {
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
-      basinCount: 0, ballClumpRadius: 0,
+      basinCount: 0, ballClumpRadius: 0, launchWindup01: 0,
     });
     pub.phase = rt.phase;
     // Retire pass over EVERY watched launched id — not just the HUD's primary ball:
@@ -971,6 +987,8 @@ export const gyreSnare = {
     pub.absorbs = ridingBall ? rt.ballAbsorbs : rt.totalAbsorbed;
     pub.members = ridingBall ? rt.ballMembers : rt.members;
     pub.launchDir.x = rt.launchDir.x; pub.launchDir.z = rt.launchDir.z;
+    pub.launchWindup01 = rt.phase === PHASE.LAUNCH && D.launchWindupTicks > 0
+      ? rt.launchWindup / D.launchWindupTicks : 0;
     const core = rt.coreId != null ? state.entities.get(rt.coreId) : null;
     if (core && core.pos) {
       pub.corePos.x = core.pos.x; pub.corePos.z = core.pos.z;
@@ -1059,7 +1077,26 @@ export const gyreSnare = {
 
     if (rt.phase === PHASE.LAUNCH) {
       const core = rt.launchedId != null ? state.entities.get(rt.launchedId) : null;
-      if (core && core.alive !== false && rt.launchLeft > 0) {
+      if (core && core.alive !== false && rt.launchWindup > 0) {
+        // Wind-up beat: a ~100 ms coil that drags the clump slightly aft of the maw
+        // before the burst — the release reads as a slingshot, not an instant shove.
+        rt.launchWindup -= 1;
+        const wx = maw.x - rt.launchDir.x * D.launchWindupPullWu;
+        const wz = maw.z - rt.launchDir.z * D.launchWindupPullWu;
+        const shipVx = finite(player.vel && player.vel.x);
+        const shipVz = finite(player.vel && player.vel.z);
+        let ax = (wx - core.pos.x) * D.launchWindupSpringK
+          - (finite(core.vel.x) - shipVx) * D.launchWindupDamping;
+        let az = (wz - core.pos.z) * D.launchWindupSpringK
+          - (finite(core.vel.z) - shipVz) * D.launchWindupDamping;
+        const wa2 = ax * ax + az * az;
+        if (wa2 > D.holdMaxAccel * D.holdMaxAccel) {
+          const s = D.holdMaxAccel / Math.sqrt(wa2);
+          ax *= s; az *= s;
+        }
+        const mass = entityMass(core);
+        queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
+      } else if (core && core.alive !== false && rt.launchLeft > 0) {
         const mass = entityMass(core);
         // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = launchSpeed.
         const j = (D.launchSpeed * mass) / D.launchTicks;
@@ -1069,8 +1106,9 @@ export const gyreSnare = {
         rt.launchLeft -= 1;
       } else {
         rt.launchLeft = 0;
+        rt.launchWindup = 0;
       }
-      if (rt.launchLeft <= 0) this._finishLaunch(state);
+      if (rt.launchWindup <= 0 && rt.launchLeft <= 0) this._finishLaunch(state);
     } else if (rt.phase === PHASE.BEAM) {
       this._pullPass(dt, state, player, maw, nose);
       this._trySnag(state, maw);
