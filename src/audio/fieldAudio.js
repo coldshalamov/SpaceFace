@@ -147,6 +147,26 @@ export function collectFieldLoopSpecs(state, out = []) {
       position: gyre.ballPos,
     });
   }
+  // Secondary bowls get the same flight voice, keyed by entity id so each rumble
+  // dies with its own ball — a second launch was silent for its whole flight.
+  if (gyre && Array.isArray(gyre.balls)) {
+    for (let i = 0; i < gyre.balls.length && out.length < FIELD_LOOP_CAP; i++) {
+      const b = gyre.balls[i];
+      if (!b || b.id == null || b.id === gyre.launchedId || !Number.isFinite(b.x)) continue;
+      const mass = Number.isFinite(b.mass) ? b.mass : 0;
+      out.push({
+        key: FIELD_LOOP_PREFIX + 'gyreBall' + String(b.id),
+        fieldId: -2,
+        kind: 'gyreBall',
+        recipeId: 'sfx_field_loop_gyre_ball',
+        gain: 0.2,
+        trackId: b.id,
+        envelope: Math.min(1, 0.45 + mass / 2400),
+        phase: 'active',
+        position: { x: b.x, z: b.z },
+      });
+    }
+  }
   return out;
 }
 

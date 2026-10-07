@@ -85,6 +85,8 @@ function freshRuntime() {
     // Launch bookkeeping.
     launchLeft: 0,         // ticks of the launch impulse burst still owed
     launchWindup: 0,       // ticks of the pre-burst coil (anticipation) still owed
+    launchCarry: 0,        // aft-velocity the coil left on the ball — repaid inside the burst
+                           // so authored launchSpeed is the FINAL flight speed, not the impulse sum
     launchDir: { x: 1, z: 0 },
     launchedId: null,      // the ball in flight (TTL/telemetry only — it is a free body)
     ballId: null,          // survives LAUNCH→OFF until the thrown clump despawns (mirror track)
@@ -184,6 +186,7 @@ export const gyreSnare = {
     rt.members.length = 0;
     rt.launchLeft = 0;
     rt.launchWindup = 0;
+    rt.launchCarry = 0;
     rt.launchedId = null;
     // The drop-side ledger dies with the clump too — a fresh beam must not publish the last
     // ball's absorb count (or reuse its orbit phase) while it searches for a new core.
@@ -191,6 +194,7 @@ export const gyreSnare = {
     rt.basinCount = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    rt.holdLag = 0; // dead-state hygiene — the lag read is HOLD-only but resets like the rest
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     // A boundary drop also forgets the flying ball mirror — stale ballPos would leak a
@@ -523,7 +527,8 @@ export const gyreSnare = {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
     this._rt.basinCount = 0; // reset above the guard — a helper-less host must not
-    this._rt.towCount = 0;   // publish a frozen +N read forever
+    // towCount resets at the two callers: _suckPass runs before this lane in HOLD and
+    // its annulus tow would be wiped by a local reset here.
     this._rt.basinSpots.length = 0; //
     if (!queryRadius) return;
     const ownedCore = owned && owned.core && owned.core.pos ? owned.core : null;
@@ -796,6 +801,9 @@ export const gyreSnare = {
 
     // The beam keeps sweeping the basin into the ball: bodies near the maw get a pull
     // retargeted onto the CORE (the clump is what "increases gravity" now).
+    // towCount resets above BOTH lanes — a local reset inside _pullPass would wipe
+    // the suck lane's annulus count from the same tick.
+    rt.towCount = 0;
     this._suckPass(dt, state, player, core, rt);
     // Keep the wedge pull alive so the cone keeps feeding material into the ball —
     // outside the suck's annulus, which the core's own lane already owns.
@@ -848,11 +856,16 @@ export const gyreSnare = {
         // an ungated tug would stack basin-courtesy + suck-tug on the same body, pulled
         // toward two different anchors at ~2x the intended ceiling.
         if (dist > 1e-4 && rt.clumpMass < D.maxClumpMass) {
-          const tug = D.suckAccel * D.nonAbsorbablePull * couplingScale(this._profile(e));
+          const tugK = D.nonAbsorbablePull * couplingScale(this._profile(e));
+          const tug = D.suckAccel * tugK;
           this._queueAccel(e, (dx / dist) * tug, (dz / dist) * tug, entityMass(e), dt, state);
+          // Same towCount the basin lane publishes — loot riding the annulus is still
+          // under tow (the projectile exclusion matches _pullPass: a bullet isn't loot).
+          // Without it TOWING drops to 0 exactly while the dragged mass is closest.
+          if (e.type !== 'projectile' && tugK > 0.05) rt.towCount += 1;
           // Tugged mass inside the annulus glows at its discounted share too.
           if (this._spotScratch.length < D.basinSpotMax * 4) {
-            this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: D.nonAbsorbablePull * couplingScale(this._profile(e)) });
+            this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: tugK });
           }
         }
         continue;
@@ -987,6 +1000,7 @@ export const gyreSnare = {
     rt.phase = PHASE.LAUNCH;
     rt.launchLeft = D.launchTicks;
     rt.launchWindup = D.launchWindupTicks;
+    rt.launchCarry = 0;
     // The aim freezes at the RELEASE edge — the slingshot read. The ball doesn't fly
     // for ~117 ms (windup + first burst), and re-deriving at the burst would let the
     // player steer the throw mid-coil: you aim, then the coil bows you away.
@@ -1106,6 +1120,7 @@ export const gyreSnare = {
     rt.basinCount = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    rt.holdLag = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     rt.lastAbsorbCueS = -1e9;
@@ -1248,7 +1263,7 @@ export const gyreSnare = {
       ballTtlS: 0,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
-      liveBalls: 0, absorbDir: { x: 0, z: 0 },
+      liveBalls: 0, absorbDir: { x: 0, z: 0 }, balls: null,
     });
     if (pub.basinSpots === null) pub.basinSpots = [];
     pub.basinSpots.length = 0;
@@ -1271,6 +1286,29 @@ export const gyreSnare = {
     // still flying while the lash is closed; freezing it here would pin a phantom
     // extra-ball pip until the next beam opened.
     pub.liveBalls = rt.ballIds.length;
+    // Secondary live balls — a second bowl mid-flight would otherwise be silent and
+    // streak-less: trail/audio/HUD mirror only the primary's pos+ttl. Bounded and
+    // sorted by ttl so the soonest-dying ball owns the extra slots deterministically.
+    if (pub.balls === null) pub.balls = [];
+    pub.balls.length = 0;
+    for (let i = 0; i < rt.ballIds.length && pub.balls.length < 4; i++) {
+      const id = rt.ballIds[i];
+      if (id === rt.ballId) continue;
+      const e = state && state.entities ? state.entities.get(id) : null;
+      if (!e || e.alive === false || !e.data || !e.data.gyreLaunched || !e.pos) continue;
+      const ttlS = e.data.despawnAt != null && Number.isFinite(state && state.simTime)
+        ? Math.max(0, e.data.despawnAt - state.simTime) : 0;
+      const meta = e.data.gyreLaunchMeta;
+      pub.balls.push({
+        id, x: e.pos.x, z: e.pos.z,
+        vx: finite(e.vel && e.vel.x), vz: finite(e.vel && e.vel.z),
+        ttlS,
+        ttl01: D.ballTtlS > 0 ? Math.max(0, Math.min(1, ttlS / D.ballTtlS)) : 1,
+        mass: entityMass(e),
+        r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : entityRadius(e),
+      });
+    }
+    pub.balls.sort((a, b) => a.ttlS - b.ttlS);
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {
       pub.coreId = null; pub.strain01 = 0;
@@ -1459,16 +1497,25 @@ export const gyreSnare = {
         let az = (wz - core.pos.z) * D.launchWindupSpringK
           - (finite(core.vel && core.vel.z) - shipVz) * D.launchWindupDamping;
         const wa2 = ax * ax + az * az;
-        if (wa2 > D.holdMaxAccel * D.holdMaxAccel) {
-          const s = D.holdMaxAccel / Math.sqrt(wa2);
+        const wCap = D.launchWindupMaxAccel || D.holdMaxAccel;
+        if (wa2 > wCap * wCap) {
+          const s = wCap / Math.sqrt(wa2);
           ax *= s; az *= s;
         }
         const mass = entityMass(core);
         queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
       } else if (core && core.alive !== false && rt.launchLeft > 0) {
         const mass = entityMass(core);
+        if (rt.launchLeft === D.launchTicks) {
+          // The coil's residual aft-velocity is repaid by the burst: authored launchSpeed
+          // is the FINAL flight speed, not just the impulse sum — a heavier windup draw
+          // would otherwise leave the ball ~150 wu/s short of the read.
+          const fwd = finite(core.vel && core.vel.x) * rt.launchDir.x
+            + finite(core.vel && core.vel.z) * rt.launchDir.z;
+          rt.launchCarry = Math.max(0, -fwd);
+        }
         // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = launchSpeed.
-        const j = (D.launchSpeed * mass) / D.launchTicks;
+        const j = ((D.launchSpeed + rt.launchCarry) * mass) / D.launchTicks;
         queuePhysicsImpulse(core, {
           x: rt.launchDir.x * j, y: 0, z: rt.launchDir.z * j,
         }, this._evidence(state.tick));
@@ -1497,6 +1544,7 @@ export const gyreSnare = {
       }
       if (rt.launchWindup <= 0 && rt.launchLeft <= 0) this._finishLaunch(state);
     } else if (rt.phase === PHASE.BEAM) {
+      rt.towCount = 0;
       this._pullPass(dt, state, player, maw, nose);
       this._trySnag(state, maw);
     } else if (rt.phase === PHASE.HOLD) {

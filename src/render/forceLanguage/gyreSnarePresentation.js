@@ -22,7 +22,7 @@ function finite(v, d = 0) { return Number.isFinite(v) ? v : d; }
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
 const MAX_LUMPS = GYRE_SNARE.maxAbsorbRecords; // the member ledger's bound, one source
-const MAX_BURSTS = 4;
+const MAX_BURSTS = 8; // ballIds watches up to 8 — a grave pile of retired balls keeps every ring
 const SPIRAL_COUNT = 96;
 
 // Lump tint per absorbed type — the katamari reads what it ate.
@@ -48,7 +48,7 @@ void main() {
                + 0.55 * sin(uv.y * 47.0 - uTime * 15.0 - ang * 2.0)
                // strain tremble: a high-frequency shiver layered on the metronome
                // waves — under load the GLASS itself reads stressed, not just brighter.
-               + uStrain * 0.6 * sin(uv.y * 140.0 - uTime * 60.0 + ang * 6.0);
+               + uStrain * 0.6 * sin(uv.y * 110.0 - uTime * 60.0 + ang * 6.0);
   float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * uCalm;
   vec2 radial = p.xz;
   float rl = max(length(radial), 1e-4);
@@ -237,7 +237,9 @@ export class GyreSnarePresentation {
     });
     // Unit cylinder: apex (small) at -Y, mouth (unit radius) at +Y — then rotated so +Y→+X,
     // scaled x/z to mouth radius, y to beam length, offset so the apex sits at the group origin.
-    const coneGeo = new THREE.CylinderGeometry(1, 0.045, 1, 36, 14, true);
+    // 40 height segments: the strain shiver sweeps ~17 cycles down the cone —
+    // under ~22 at Nyquist it aliased into incoherent sparkle instead of a tremble.
+    const coneGeo = new THREE.CylinderGeometry(1, 0.045, 1, 36, 40, true);
     coneGeo.translate(0, 0.5, 0);           // apex at local origin, mouth at y=1
     this._cone = new THREE.Mesh(coneGeo, this._coneMat);
     this._cone.rotation.z = -Math.PI / 2;   // cylinder +Y → beam +X
@@ -343,6 +345,13 @@ export class GyreSnarePresentation {
     this._trail.visible = false;
     this._trail.frustumCulled = false;
     scene.add(this._trail);
+    // A second ribbon slot: the soonest-dying secondary ball streaks too — a
+    // second bowl mid-flight was invisible for its whole 9 s but the grave pop.
+    this._trail2Mat = this._trailMat.clone();
+    this._trail2 = new THREE.Mesh(trailGeo, this._trail2Mat);
+    this._trail2.visible = false;
+    this._trail2.frustumCulled = false;
+    scene.add(this._trail2);
 
     // Grip-spoke: a faint tether from the maw ring to the orbiting clump so the ball
     // visibly circles a held point, not bare space. Opacity rides strain — the tether
@@ -480,7 +489,8 @@ export class GyreSnarePresentation {
     if (this.disposed) return;
     const mirror = state.gyreSnare;
     const phase = mirror && mirror.phase ? mirror.phase : 'off';
-    const live = phase !== 'off' || (mirror && mirror.launchedId != null);
+    const live = phase !== 'off' || (mirror && mirror.launchedId != null)
+      || (mirror && mirror.balls && mirror.balls.length > 0); // a secondary ball still flying keeps the streak alive
     // A mid-flight ball-death burst must keep ticking after the mirror goes quiet —
     // early-returning here froze the ring at t≈0.03 as a faint glow stuck at the grave.
     // The close-ramp owns the quiet window too: latching _quiet on the first dead frame
@@ -545,8 +555,6 @@ export class GyreSnarePresentation {
       this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick + 0.10 * windup));
       // The coil also raises the cone's pulse floor — the glass visibly tenses while it
       // winds back, legible at combat range where a subtle maw choke alone was too quiet.
-      this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.55 * windup);
-
       const holding = phase === 'holding';
       const strain = clamp01(finite(mirror.strain01));
       // OFF→beam edge: ease the cone in over ~150 ms instead of popping full-alpha in one
@@ -572,10 +580,13 @@ export class GyreSnarePresentation {
       this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * fuseDim * (holding ? 1.2 : 0.8);
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
       // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
+      // Single canonical writer: the decayed carry maxes against the strain
+      // floor and the coil floor — the glass visibly tenses while it winds
+      // back, legible at combat range where a subtle maw choke alone was too quiet.
       this._coneMat.uniforms.uPulse.value = Math.max(
         this._coneMat.uniforms.uPulse.value * Math.exp(-sdt * 6.3),
         strain * 0.7,
-        windup * 0.45, // coil tension: the glass winds up with the spring
+        windup * 0.55, // coil tension: the glass winds up with the spring
       );
       this._coneMat.uniforms.uStrain.value = strain * calm;
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
@@ -761,6 +772,7 @@ export class GyreSnarePresentation {
       }
       this._lastBall = null;
       this._trail.visible = false;
+      this._trail2.visible = false;
       this._grip.visible = false;
       this._halo.visible = false;
       if (phase === 'off' && this._ballId == null && !this._closing && this._deathT <= 0) this._clearLumps();
@@ -819,6 +831,30 @@ export class GyreSnarePresentation {
         this._trail.visible = true;
       } else if (this._trail.visible) {
         this._trail.visible = false;
+      }
+
+      // Second streak slot: the soonest-dying secondary ball gets its own ribbon —
+      // a second bowl was invisible for its whole flight until the grave burst.
+      // Skips the entry that IS the primary (ballId is watched too — don't double-draw).
+      const b2 = mirror.balls && mirror.balls.length
+        ? (mirror.balls.find((b) => b && b.id !== mirror.launchedId) || null) : null;
+      if (b2 && Number.isFinite(b2.x) && Number.isFinite(b2.z)) {
+        const bp2 = this.toLocal(b2.x, b2.z, this._ballPt);
+        const vl = Math.hypot(finite(b2.vx), finite(b2.vz));
+        const dx2 = vl > 1e-3 ? finite(b2.vx) / vl : 1;
+        const dz2 = vl > 1e-3 ? finite(b2.vz) / vl : 0;
+        const ballR2 = finite(b2.r, 8);
+        const trailLen2 = Math.max(30, ballR2 * 3.2);
+        this._trail2.position.set(bp2.x - dx2 * trailLen2 * 0.5, 0.55, bp2.z - dz2 * trailLen2 * 0.5);
+        this._trail2.rotation.y = Math.atan2(-dz2, dx2);
+        this._trail2.scale.set(trailLen2, 1, Math.max(3, ballR2 * 1.15));
+        const ttlB = Math.max(0, Math.min(1, finite(b2.ttl01, 1)));
+        const massFade2 = 0.65 + 0.5 * Math.min(1, finite(b2.mass) / GYRE_SNARE.maxClumpMass);
+        // Slightly dimmer than the primary's streak — it's the older flight.
+        this._trail2Mat.uniforms.uAlpha.value = 0.22 * massFade2 * flashCalm * (0.3 + 0.7 * Math.min(1, ttlB / 0.12));
+        this._trail2.visible = true;
+      } else if (this._trail2.visible) {
+        this._trail2.visible = false;
       }
 
       // Grip-spoke: while the clump is held, draw the faint tether maw→clump so the
@@ -948,10 +984,12 @@ export class GyreSnarePresentation {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    this.scene.remove(this._beam, this._clump, this._trail, this._grip, this._halo);
+    this.scene.remove(this._beam, this._clump, this._trail, this._trail2, this._grip, this._halo);
     this._halo.geometry.dispose(); this._haloMat.dispose();
     this._veil.geometry.dispose(); this._veilMat.dispose();
     this._trail.geometry.dispose(); this._trailMat.dispose();
+    // _trail2 shares _trail's geometry (already disposed) — only its cloned material is its own.
+    this._trail2Mat.dispose();
     this._grip.geometry.dispose(); this._gripMat.dispose();
     this._bodyMat.dispose();
     for (const b of this._bursts) this.scene.remove(b.mesh);

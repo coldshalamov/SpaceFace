@@ -379,10 +379,16 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   drain();
   // A launch-phase drop carries coreId: null — the ball already flew, nothing tore —
   // so it lands the same soft flick, not the clump thud (the emitId contract, end-to-end).
-  bus.emit('gyre:dropped', { coreId: null, reason: 'player_lost' });
+  bus.emit('gyre:dropped', { coreId: null });
   state.tick += 1; gp.tick(1 / 60, state);
   assert.ok(gp.haptics.strong >= 0.18 && gp.haptics.strong < 0.4,
     `launch-phase drop keeps the soft flick (strong=${gp.haptics.strong})`);
+  drain();
+  // The quiet flag (docking, mode flips, player loss) silences like a boundary —
+  // context resets don't pulse even when a reason string rides along.
+  bus.emit('gyre:dropped', { coreId: 9, quiet: true, reason: 'player_lost' });
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.ok(gp.haptics.strong < 0.45, `quiet drop does not pulse (strong=${gp.haptics.strong})`);
   drain();
   // But 'strained' wins over the null coreId — a tear is never an empty drop.
   bus.emit('gyre:dropped', { coreId: null, reason: 'strained' });

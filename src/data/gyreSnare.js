@@ -109,8 +109,11 @@ export const GYRE_SNARE = Object.freeze({
                            // of anticipation, not just mechanical ticks
   launchWindupPullWu: 13,    // wu — the clump drags aft of the maw during the coil; at ~7 the
                            // gather was invisible against a 200 wu beam — 13 reads at a glance
-  launchWindupSpringK: 110,  // 1/s² — spring to the coil point (strong, short reach)
+  launchWindupSpringK: 160,  // 1/s² — spring to the coil point (strong, short reach)
   launchWindupDamping: 9,    // 1/s — coil damping vs the ship's frame
+  launchWindupMaxAccel: 2200, // wu/s² — windup clamp is its own ceiling, not holdMaxAccel:
+                              // a capped 2400 t clump must still visibly bow ~13 wu aft in
+                              // ~100 ms (the slingshot read dies if the coil can't pull it)
   ballTtlS: 9,               // s — the bowling ball despawns after this flight window
   launchImpactScaleBase: 1.6,// damage scale floor on a launched ball
   launchImpactScalePerMass: 90, // +1 impactDamageScale per this many tons of clump mass

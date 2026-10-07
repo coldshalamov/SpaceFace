@@ -104,8 +104,15 @@ export const gyreHud = {
       ? ` · ball ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(bttl)))}s` : '';
     // Other live balls still flying read even when the primary's countdown isn't
     // running — a second bowl mid-flight shouldn't make the first one's grave silent.
+    // When the soonest secondary is inside its warn window its countdown rides too:
+    // ". +2 balls 4s" — the pile's own quiet grave telegraphed like the primary's.
     if (extraBalls > 0) {
+      const soonest = Array.isArray(g.balls) && g.balls.length
+        && Number.isFinite(g.balls[0].ttlS) ? g.balls[0].ttlS : 0;
       ballTxt += ballTxt ? ` +${extraBalls}` : ` · +${extraBalls} ball${extraBalls > 1 ? 's' : ''}`;
+      if (soonest > 0 && soonest < GYRE_SNARE.ballTtlWarnS) {
+        ballTxt += ` ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(soonest)))}s`;
+      }
     }
     // Fuse speaks during BEAM too — a lashing <8 s from dry shouldn't announce itself
     // only through the after-the-fact dry toast.

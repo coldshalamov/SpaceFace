@@ -1982,3 +1982,56 @@ test('save:loaded mid-hold dies the member ledger — a re-beam inherits nothing
   assert.equal(t.state.gyreSnare.clumpMass, 0, 'nor its mass');
   t.cleanup();
 });
+
+test('a sensor-collider absorbable never cores — a ghost ball would hit nothing', async () => {
+  const t = await bootPhysics();
+  const ghost = rock(t.sim, T.mawDist, 0, 6, 4);
+  ghost.physicsBody.material = 'sensor'; // authored sensor collider — a thrown ball needs a real one
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.notEqual(t.sys._rt.coreId, ghost.id, 'a sensor body is never the held core');
+  assert.equal(ghost.data.gyreCore, undefined, 'no core mark either');
+  release(t);
+  t.cleanup();
+});
+
+test('loot inside the suck annulus counts towCount — the courtesy lane is still a tow', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 30, 8);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const clump = t.state.entities.get(t.sys._rt.coreId);
+  // Parked inside the clump's annulus: the pull pass's owned-annulus guard skips it,
+  // so the suck lane's courtesy tug is the only pull — and the only counter.
+  rock(t.sim, clump.pos.x + 20, clump.pos.z + 5, 4, 3, 'pickup');
+  for (let i = 0; i < 3; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.ok(t.state.gyreSnare.towCount >= 1,
+    `annulus-towed loot counts (got ${t.state.gyreSnare.towCount})`);
+  release(t);
+  t.cleanup();
+});
+
+test('a second live ball publishes balls[] — trail, rumble, and countdown get their slots', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the flying ball');
+  t.player.cap = 100;
+  const b = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.ballId, b.id, 'B is the newest primary');
+  const pub = t.state.gyreSnare;
+  assert.equal(pub.liveBalls, 2, 'both bowls are watched');
+  const extra = pub.balls.find((x) => x.id === a.id);
+  assert.ok(extra, 'the secondary ball publishes into balls[]');
+  assert.ok(extra.ttlS > 0 && extra.ttlS <= T.ballTtlS, `secondary carries its countdown (got ${extra.ttlS})`);
+  assert.ok(Number.isFinite(extra.x) && Number.isFinite(extra.ttl01), 'pos + ttl01 for the streak slot');
+  t.cleanup();
+});
