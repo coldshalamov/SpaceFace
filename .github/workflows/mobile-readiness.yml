@@ -1,0 +1,81 @@
+name: mobile-readiness
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/mobile-readiness-20261006]
+    paths: ['src/**', 'scripts/**', 'test/**', 'vercel.json', '.github/workflows/mobile-readiness.yml']
+  pull_request:
+    paths: ['src/render/**', 'src/systems/mobile/**', 'scripts/build-bundle.mjs', 'scripts/lib/retailRuntimeWorkers.mjs', 'scripts/probe-deployed-mobile.mjs', 'test/mobile-runtime-workers.test.mjs', 'vercel.json', '.github/workflows/mobile-readiness.yml']
+permissions:
+  contents: read
+concurrency:
+  group: mobile-readiness-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  retail-phone:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [webkit, chromium]
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      MOBILE_PROBE_URL: http://127.0.0.1:8765/
+      MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            src
+            scripts
+            test
+            styles
+            vendor
+            assets/cinematics
+            assets/ui
+            assets/background
+            assets/ships/release
+            assets/portraits
+            assets/audio
+            assets/fx/thruster
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Worker ownership, touch, gesture and real-GLB parity regressions
+        run: |
+          mkdir -p .devshots/mobile-build
+          set -o pipefail
+          node --test test/mobile-runtime-workers.test.mjs test/render-package-digest.test.mjs test/glb-prepass.test.mjs test/mobile-flight.test.mjs test/mobile-deck-instrument.test.mjs | tee .devshots/mobile-build/unit-tests.txt
+      - name: Build real retail assets and verify receipt parity
+        run: |
+          set -o pipefail
+          node scripts/check-bundle.mjs 2>&1 | tee .devshots/mobile-build/build.txt
+      - name: Install acceptance browser
+        run: npx playwright install --with-deps "$MOBILE_PROBE_ENGINE"
+      - name: Static retail route, real worker round trips, New Game and touch UI
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory build/web > .devshots/mobile-build/http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8765/ -o /dev/null && break; sleep 1; done
+          node scripts/check-runtime-worker-browser.mjs
+          node scripts/probe-deployed-mobile.mjs
+      - name: Preserve acceptance evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-readiness-${{ matrix.engine }}
+          path: |
+            .devshots/mobile-deployment/
+            .devshots/mobile-workers/
+            .devshots/mobile-build/
+            build/web/workers/
+          retention-days: 7
+          if-no-files-found: warn
