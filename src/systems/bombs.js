@@ -11,7 +11,7 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import {
   SHOCKWAVE_PASS_EVENT, SHOCKWAVE_SWEEP_LAW,
-  advanceSweepFront, createShockwaveSweep, resolveSweepPass,
+  advanceSweepFront, createShockwaveSweep, resolveSweepPass, sweptMassOf,
 } from '../combat/shockwaveSweep.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
@@ -1273,9 +1273,12 @@ export const bombs = {
         if (!pass) continue;
         passBudget--;
         if (physics && typeof physics.applyImpulse === 'function') {
-          // The magnitude reads the same floored mass the grade used, so a degenerate
-          // mass-0 body can never wear a tumble receipt backed by a zero impulse.
-          const mag = pass.deltaV * Math.max(SHOCKWAVE_SWEEP_LAW.minSweptMass, massOf(ent));
+          // The applied impulse is the graded deltaV TIMES THE BODY'S REAL MASS: the
+          // floor belongs to the grade (threshold stability), never to the delivery —
+          // a floor-mass impulse divided by a real 0.1-mass pickup would deliver a
+          // 60 WU/s receipt as a 1200 WU/s launch. sweptMassOf is the same read the
+          // grade used, so the receipt is the physical truth.
+          const mag = pass.deltaV * sweptMassOf(ent);
           const provenance = {
             actorId: sweep.ownerId == null ? null : sweep.ownerId,
             weaponId: sweep.weaponId,

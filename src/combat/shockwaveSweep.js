@@ -14,9 +14,10 @@
 // shows nothing; at or above it the object shudders (surface wobble); at or above
 // `tumbleDeltaV` it takes a lever-arm tumble kick — spin proportional to the shove and to
 // the wave's oblique arrival, inversely to the body's radius (ω = 2·ΔV·lever/R, the
-// off-center angular-impulse law; bigger rocks carry their spin slower). Heavies are
-// graded by the same math: the pass delivers a fixed momentum, so a light hull is tumbled
-// away while a mass-150 wreck only sways — the force decides the animation, not a die roll.
+// off-center angular-impulse law; bigger rocks carry their spin slower). The wave's
+// impulse couples to the body's cross-section (pressure × area), so the delivered
+// deltaV falls with radius: light debris flies, close rocks visibly tumble, far and
+// heavy matter sways — the force decides the animation, not a die roll.
 
 export const SHOCKWAVE_SWEEP_LAW = Object.freeze({
   // Front travel speed. A 150 WU concussion blast sweeps its full radius in ~0.5 s —
@@ -66,6 +67,16 @@ export const SHOCKWAVE_SWEEP_LAW = Object.freeze({
 });
 
 export const SHOCKWAVE_PASS_EVENT = 'combat:shockwavePass';
+
+/**
+ * The mass read every stage of the sweep law shares — the grade in resolveSweepPass and
+ * the applied impulse in bombs.js MUST agree, or a receipt would describe a shove the
+ * body never took (or, worse, a floor-mass impulse divided by a real 0.1-mass pickup:
+ * a 60 WU/s receipt delivered as 1200). Fallback chain mirrors the blast's massOf.
+ */
+export function sweptMassOf(entity) {
+  return positive(entity && entity.physicsBody && entity.physicsBody.mass, positive(entity && entity.mass, 1));
+}
 
 /**
  * Create a sweep record for one detonation, or null when the input is degenerate or the
@@ -153,7 +164,7 @@ export function resolveSweepPass(sweep, entity, frontRadius) {
   const deltaV = Math.min(
     SHOCKWAVE_SWEEP_LAW.maxPassDeltaV,
     (sweep.passImpulseWu || 0) * SHOCKWAVE_SWEEP_LAW.waveAreaGain * areaFactor * life
-      / Math.max(SHOCKWAVE_SWEEP_LAW.minSweptMass, positive(entity.physicsBody && entity.physicsBody.mass, positive(entity.mass, 1))),
+      / Math.max(SHOCKWAVE_SWEEP_LAW.minSweptMass, sweptMassOf(entity)),
   );
   if (!(deltaV >= SHOCKWAVE_SWEEP_LAW.nudgeDeltaV)) return null;
   let dirX = 0;

@@ -307,6 +307,56 @@ test('the live cap evicts only for a NEW bomb and never for a zero-impulse one',
   });
 });
 
+test('a passed body is never re-passed by the same front (dedup on success)', () => {
+  const sweep = createShockwaveSweep({ bombId: 31, x: 0, z: 0, blastRadius: 130, passImpulseWu: 300 });
+  const rock = body(112, { pos: { x: 12, z: 0 } });
+  const first = resolveSweepPass(sweep, rock, 30);
+  assert.ok(first, 'first read passes');
+  assert.equal(resolveSweepPass(sweep, rock, 60), null, 'second read, even at full reach: null');
+  assert.equal(resolveSweepPass(sweep, rock, sweep.maxRadius), null);
+});
+
+test('the per-tick pass budget bounds side effects and defers the farthest bodies', () => {
+  withTumbleFling(true, () => {
+    const t = bombScenario();
+    try {
+      // Sixty eligible rocks spread along the push axis: one front cannot answer them
+      // all inside one tick's 48-pass budget.
+      for (let i = 0; i < 60; i++) {
+        t.spawn({ type: 'asteroid', mass: 400, radius: 8, pos: { x: -30 - i * 2, z: 0 } });
+      }
+      t.drop('bomb_concussion');
+      t.tick(31);
+      t.system.commandDetonate(t.player.id);
+      const before = t.impulses.filter((r) => r.reason === 'shockwave_sweep').length;
+      t.tick(1);
+      const inTick = t.impulses.filter((r) => r.reason === 'shockwave_sweep').length - before;
+      assert.ok(inTick <= SHOCKWAVE_SWEEP_LAW.maxPassesPerTick, `one tick respects the budget (saw ${inTick})`);
+    } finally { t.close(); }
+  });
+});
+
+test('the applied impulse is the receipt truth: no floor-mass launch on light pickups', () => {
+  withTumbleFling(true, () => {
+    const t = bombScenario();
+    try {
+      // A mass-0.1 pickup near the blast: the grade floors at 2 for threshold
+      // stability, but the DELIVERED momentum must be receipt.deltaV x 0.1, so the
+      // real deltaV is the receipt's (<= 60), never floor/0.1 = 1200.
+      const pickup = t.spawn({ type: 'pickup', mass: 0.1, radius: 2, pos: { x: -40, z: 0 } });
+      t.drop('bomb_concussion');
+      t.tick(31);
+      t.system.commandDetonate(t.player.id);
+      t.tick(30);
+      const applied = t.impulses.filter((r) => r.entityId === pickup.id && r.reason === 'shockwave_sweep');
+      assert.ok(applied.length >= 1, 'the pickup was overtaken');
+      const worst = Math.max(...applied.map((r) => Math.hypot(r.impulse.x, r.impulse.z) / 0.1));
+      assert.ok(worst <= SHOCKWAVE_SWEEP_LAW.maxPassDeltaV + 1e-6,
+        `real deltaV on a 0.1-mass body stays at the cap (saw ${worst})`);
+    } finally { t.close(); }
+  });
+});
+
 function wreckSplitHarness() {
   const t = bombScenario();
   const wreckSystem = Object.create(aftermathWrecks);
