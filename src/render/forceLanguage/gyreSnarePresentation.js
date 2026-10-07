@@ -36,7 +36,8 @@ const CONE_VERT = /* glsl */`
 uniform float uTime;
 uniform float uPulse;
 uniform float uCalm;      // 0 = reduced motion: silhouette stays, ripple displacement off
-uniform float uStrain;    // 0..1 — clump strain: adds a high-frequency shiver to the glass
+uniform float uStrain;    // 0..1 — clump strain: WARNS the hue (chromatic, not motion — NOT calm-gated)
+uniform float uTremble;   // 0..1 — strain * calm: the high-frequency shiver (motion — calm-gated)
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -48,7 +49,7 @@ void main() {
                + 0.55 * sin(uv.y * 47.0 - uTime * 15.0 - ang * 2.0)
                // strain tremble: a high-frequency shiver layered on the metronome
                // waves — under load the GLASS itself reads stressed, not just brighter.
-               + uStrain * 0.6 * sin(uv.y * 110.0 - uTime * 60.0 + ang * 6.0);
+               + uTremble * 0.6 * sin(uv.y * 110.0 - uTime * 60.0 + ang * 6.0);
   float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * uCalm;
   vec2 radial = p.xz;
   float rl = max(length(radial), 1e-4);
@@ -63,10 +64,12 @@ void main() {
 const CONE_FRAG = /* glsl */`
 uniform vec3 uColGlass;
 uniform vec3 uColHot;
+uniform vec3 uColWarn;    // strain warn wash — 'about to tear' chromatic read
 uniform float uTime;
 uniform float uAlpha;
 uniform float uPulse;
 uniform float uCalm;      // reduced motion freezes the traveling shimmer too
+uniform float uStrain;    // raw strain — hue warn is a color read, NOT calm-gated
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -83,8 +86,11 @@ void main() {
   float rim = smoothstep(0.80, 1.0, vUv.y);
   float apex = smoothstep(0.20, 0.0, vUv.y);
   float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + band * band2 * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.22);
-  // uStrain warms the hue itself — the glass reads 'about to tear' without the pill.
-  vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4 + uStrain * 0.5, 0.0, 1.0));
+  vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4, 0.0, 1.0));
+  // Strain warning = a warm wash toward uColWarn, not the near-identical rim
+  // white — 'about to tear' is chromatic, not just kinetic. Raw strain (not
+  // calm-gated): a color read is not motion, reduced-motion users keep it.
+  col = mix(col, uColWarn, uStrain * 0.45);
   gl_FragColor = vec4(col, a);
 }
 `;
@@ -240,7 +246,8 @@ export class GyreSnarePresentation {
     this._coneMat = new THREE.ShaderMaterial({
       vertexShader: CONE_VERT, fragmentShader: CONE_FRAG,
       uniforms: {
-        uTime: { value: 0 }, uPulse: { value: 0 }, uCalm: { value: 1 }, uStrain: { value: 0 },
+        uTime: { value: 0 }, uPulse: { value: 0 }, uCalm: { value: 1 }, uStrain: { value: 0 }, uTremble: { value: 0 },
+        uColWarn: { value: new THREE.Color(P.warn) },
         uColGlass: { value: new THREE.Color(glass) },
         uColHot: { value: new THREE.Color(hot) },
         uAlpha: { value: 0.55 },
@@ -608,25 +615,9 @@ export class GyreSnarePresentation {
       this._beam.visible = true;
       this._beam.position.set(nL.x, 0.6, nL.z);
       this._beam.rotation.y = -Math.atan2(dz, dx);
-      this._cone.scale.set(endR, len, endR);
-      this._coneBody.scale.set(endR * 0.97, len, endR * 0.97);
-      this._maw.position.set(len, 0, 0);
-      // The mouth gulps geometrically: each absorb kick dilates ring + disc, not just
-      // their opacity — the verb's face visibly swallows. During the coil the maw
-      // engorges off launchWindup01 — the mouth swells full before it blows.
-      const windup = phase === 'launching' ? clamp01(finite(mirror.launchWindup01)) : 0;
-      this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick + 0.16 * windup)); // uniform — the torus circle spans local X and Y
-      this._disc.position.set(len + 1.5, 0, 0);
-      this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick + 0.10 * windup));
-      // The coil also raises the cone's pulse floor — the glass visibly tenses while it
-      // winds back, legible at combat range where a subtle maw choke alone was too quiet.
-      const holding = phase === 'holding';
-      // The throw is the payoff beat — the glass keeps HOLD-phase tension through
-      // the coil + burst instead of relaxing back to the weaker beaming floor.
-      const tense = holding || phase === 'launching';
-      const strain = clamp01(finite(mirror.strain01));
-      // OFF→beam edge: ease the cone in over ~150 ms instead of popping full-alpha in one
-      // frame — the glass opens with the wake shimmer, plus a small pulse bump.
+      // OFF→beam edge: ease the cone in over ~150 ms instead of popping full-alpha
+      // in one frame — the glass opens with the wake shimmer, plus a pulse bump.
+      // Hoisted before the mesh writes: drawLen below needs the ramp this frame.
       if (!this._beamWasOn) {
         this._beamWasOn = true;
         this._closing = false; // a re-wake mid-fade cancels the ramp cleanly
@@ -635,6 +626,26 @@ export class GyreSnarePresentation {
       }
       this._wakeRamp = Math.min(1, this._wakeRamp + sdt / 0.15);
       const wakeEase = this._wakeRamp * this._wakeRamp * (3 - 2 * this._wakeRamp); // smoothstep
+      // The beam projects: the glass GROWS nose→maw over the ignition ramp instead
+      // of fading in already-extended — a lash that shoots out to its reach.
+      const drawLen = len * Math.max(0.12, wakeEase);
+      this._cone.scale.set(endR, drawLen, endR);
+      this._coneBody.scale.set(endR * 0.97, drawLen, endR * 0.97);
+      this._maw.position.set(drawLen, 0, 0);
+      // The mouth gulps geometrically: each absorb kick dilates ring + disc, not just
+      // their opacity — the verb's face visibly swallows. During the coil the maw
+      // engorges off launchWindup01 — the mouth swells full before it blows.
+      const windup = phase === 'launching' ? clamp01(finite(mirror.launchWindup01)) : 0;
+      this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick + 0.16 * windup)); // uniform — the torus circle spans local X and Y
+      this._disc.position.set(drawLen + 1.5, 0, 0);
+      this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick + 0.10 * windup));
+      // The coil also raises the cone's pulse floor — the glass visibly tenses while it
+      // winds back, legible at combat range where a subtle maw choke alone was too quiet.
+      const holding = phase === 'holding';
+      // The throw is the payoff beat — the glass keeps HOLD-phase tension through
+      // the coil + burst instead of relaxing back to the weaker beaming floor.
+      const tense = holding || phase === 'launching';
+      const strain = clamp01(finite(mirror.strain01));
       // The capacitor dying thins the glass itself — a lash <8 s from dry fades up to
       // 30% in-world, not just in the pill (same telegraph language as the ball's ·Ns).
       const fuseS = finite(mirror.fuseS);
@@ -656,7 +667,11 @@ export class GyreSnarePresentation {
         strain * 0.7,
         windup * 0.55, // coil tension: the glass winds up with the spring
       );
-      this._coneMat.uniforms.uStrain.value = strain * calm;
+      // uStrain (hue warn) keeps RAW strain — a color read is not motion, so
+      // reduced-motion must not mute the 'about to tear' telegraph. uTremble
+      // (vertex shiver) is the motion term — that one IS calm-gated.
+      this._coneMat.uniforms.uStrain.value = strain;
+      this._coneMat.uniforms.uTremble.value = strain * calm;
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
@@ -690,7 +705,7 @@ export class GyreSnarePresentation {
       // so the spiral's metronome pace would otherwise betray the about-to-tear read.
       if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strain * 1.5);
       this._spiralMat.uniforms.uTime.value = this._moteT;
-      this._spiralMat.uniforms.uLen.value = len;
+      this._spiralMat.uniforms.uLen.value = drawLen;
       this._spiralMat.uniforms.uRad.value = endR;
       // Aim the funnel's endpoint at the held core's beam-local offset: while a mass
       // is tethered it orbits ±75 wu off the maw plane, and the suction arrow should
@@ -745,7 +760,8 @@ export class GyreSnarePresentation {
         this._coneMat.uniforms.uTime.value = this.time;
         this._coneMat.uniforms.uAlpha.value = 0.42 * kk * flashCalm;
         this._coneMat.uniforms.uPulse.value *= Math.exp(-sdt * 9);
-        this._coneMat.uniforms.uStrain.value *= Math.exp(-sdt * 9); // tremble dies with the ramp
+        this._coneMat.uniforms.uStrain.value *= Math.exp(-sdt * 9); // warn dies with the ramp
+        this._coneMat.uniforms.uTremble.value *= Math.exp(-sdt * 9); // tremble dies with the ramp
         // flashCalm rides every close-ramp alpha too — a reduced-flash user shouldn't
         // get a brighter 250 ms tail than those elements ever show while live.
         this._bodyMat.opacity = 0.1 * kk * flashCalm;

@@ -63,7 +63,7 @@ export const gyreHud = {
     this._visible = false;
     this._laneSeat = '';
     this._strainOn = false; // hysteresis: enter at 0.40, exit at 0.25 — no boundary flapping
-    this._bowlUntil = -1;   // simTime deadline — the BOWL read holds ~0.4 s past the 5-tick burst
+    this._bowlUntil = -1;   // simTime deadline — the BOWL read holds ~0.8 s past the 5-tick burst
     this._bowlMass = 0;
   },
 
