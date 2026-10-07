@@ -1769,6 +1769,11 @@ export const vfx = {
     this._explosionRupture = null;
     invokeVfxDisposer(this._tetherWebFx, 'Snarl cables');
     this._tetherWebFx = null;
+    // The gyre presentation holds ShaderMaterials/geometries/a lump pool + a scene handle —
+    // skipping teardown leaks GPU resources and leaves _initGyreSnare's stale-handle early
+    // return permanently muting gyre VFX after a scene rebuild.
+    invokeVfxDisposer(this._gyreSnareFx, 'gyre snare');
+    this._gyreSnareFx = null;
 
     invokeVfxDisposer(this._overflowJets, 'overflow jets');
     this._overflowJets = null;

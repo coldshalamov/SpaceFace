@@ -3049,7 +3049,7 @@ export const RECIPES = [
     id: 'sfx_gyre_launch',
     category: 'weapon',
     type: 'layered',
-    layers: ['sfx_gyre_launch_crack', 'sfx_gyre_launch_body'],
+    layers: ['sfx_gyre_launch_crack', 'sfx_gyre_launch_body', 'sfx_gyre_ball_whoosh'],
     gainMult: 1.0,
     pitchRange: [0.92, 1.05],
   },
@@ -3071,6 +3071,17 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.3 },
     filterType: 'lowpass', filterFreq: 2400, filterQ: 0.7,
     subBass: { startFreq: 170, endFreq: 34, dur: 0.32, gain: 0.7 },
+  },
+  // Ball flight: a soft airy whoosh tailing the launch transient — the katamari mass reads
+  // at distance instead of going silent the moment it leaves the maw. Rides inside the
+  // launch layer so it needs no per-tick loop plumbing.
+  {
+    id: 'sfx_gyre_ball_whoosh',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.18, sustain: 0.35, release: 1.4 },
+    filterType: 'bandpass', filterFreq: 720, filterQ: 0.9,
   },
   // Beam wake: a soft rising glass shimmer as the cone ignites — lighter than the snag bite
   // (which is the grip landing). The lash switching on, not the catch.

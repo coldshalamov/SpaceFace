@@ -38,9 +38,12 @@ const D = GYRE_SNARE;
 const PHASE = Object.freeze({ OFF: 'off', BEAM: 'beaming', HOLD: 'holding', LAUNCH: 'launching' });
 const ABSORBABLE = new Set(GYRE_ABSORBABLE_TYPES);
 // Types the beam's gravity never touches at all (the pull pass is for loose world mass).
+// Deliberately absent: 'projectile' — incoming fire eats the courtesy tug and bends into
+// the maw (~couple 1.35 · wedgeAccel). Emergent point-defense is part of the weapon's
+// identity: you can sweep a volley aside while winding up the ball, at cap cost.
 const PULL_SKIP_TYPES = new Set(['ship', 'station', 'fx', 'fieldEmitter', 'massSeed', 'masslineSnareAnchor']);
 // …except drones, which DO get tugged lightly (coupling-shrugged) — they're listed in neither set.
-const WEAPON_ID = 'tool_gyre_snare';
+const WEAPON_ID = 'wpn_gyre_snare';
 const PROV_TAG = 'gyre_snare';
 
 function finite(v, d = 0) { return Number.isFinite(v) ? v : d; }
@@ -78,6 +81,11 @@ function freshRuntime() {
     launchedId: null,      // the ball in flight (TTL/telemetry only — it is a free body)
     ballId: null,          // survives LAUNCH→OFF until the thrown clump despawns (mirror track)
     ballMass: 0,           // t — clump mass frozen at launch so the ball's HUD/VFX keeps it
+    ballMembers: null,     // frozen member ledger — the glass lumps ride the thrown ball to its grave
+    ballClumpRadius: 0,    // wu — clump radius frozen at launch (same deal as ballMass)
+    ballAbsorbs: 0,        // total absorbed count frozen at launch (HUD's ×N stays honest)
+    totalAbsorbed: 0,      // absorbs ever merged into this clump — NOT bounded by the VFX ledger
+    lastAbsorbCueS: -1e9,  // simTime of the last absorb tick — gates the glass-tick cue rate
     orbitSeed: 0,          // per-clump phase so successive balls don't share a start angle
   };
 }
@@ -139,7 +147,7 @@ export const gyreSnare = {
     rt.launchedId = null;
     // A boundary drop also forgets the flying ball — its entity is about to vanish with the
     // sector anyway, and stale ballPos would leak a dead clump overlay into the next scene.
-    if (boundary) { rt.ballId = null; rt.ballMass = 0; }
+    if (boundary) { rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0; }
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       // dropped = a live beam/hold released without launch; coreId is null when the beam
@@ -271,16 +279,23 @@ export const gyreSnare = {
       const dx = e.pos.x - maw.x;
       const dz = e.pos.z - maw.z;
       const distMaw = Math.hypot(dx, dz);
-      // In the basin (the cone's wide end) or inside the wedge?
+      // In the basin (the cone's wide end) or inside the wedge? The wedge's soft lip is a
+      // fade band, not extra grab range: pull eases to zero at the lip so the drawn cone
+      // edge IS the physics edge instead of bodies past the rim eating the full yank.
       let inBasin = distMaw <= D.basinRadius;
       let inWedge = false;
+      let lipT = 0;
       if (!inBasin) {
         const px = e.pos.x - player.pos.x;
         const pz = e.pos.z - player.pos.z;
         const axial = px * nose.x + pz * nose.z;
         if (axial > 0 && axial < D.mawDist + D.basinRadius) {
           const radial = Math.abs(px * nose.z - pz * nose.x);
-          inWedge = radial <= axial * tan + D.wedgeSoftLipWu; // + soft lip so the visual edge isn't a cliff
+          const rimR = axial * tan;
+          if (radial <= rimR + D.wedgeSoftLipWu) {
+            inWedge = true;
+            lipT = radial <= rimR ? 0 : (radial - rimR) / D.wedgeSoftLipWu;
+          }
         }
       }
       if (!inBasin && !inWedge) continue;
@@ -308,8 +323,9 @@ export const gyreSnare = {
         ax -= (finite(e.vel.x) - shipVx) * D.basinDamping;
         az -= (finite(e.vel.z) - shipVz) * D.basinDamping;
       } else {
-        // Wedge courtesy: gentle drift toward the maw down the cone.
-        const wedge = D.wedgeAccel * couple * (absorbable ? 1 : D.wedgeFalloff);
+        // Wedge courtesy: gentle drift toward the maw down the cone, easing to zero at
+        // the soft-lip outer edge (lipT 0 inside the drawn rim → 1 at the lip).
+        const wedge = D.wedgeAccel * couple * (absorbable ? 1 : D.wedgeFalloff) * (1 - lipT);
         if (distMaw > 1e-4) {
           ax -= (dx / distMaw) * wedge;
           az -= (dz / distMaw) * wedge;
@@ -357,6 +373,7 @@ export const gyreSnare = {
     rt.coreBaseMass = entityMass(best);
     rt.clumpMass = rt.coreBaseMass;
     rt.clumpRadius = entityRadius(best);
+    rt.totalAbsorbed = 0; // new clump ledger — the HUD count restarts with the core
     rt.orbitSeed = (best.id * 0.37) % (Math.PI * 2);
     best.data = best.data || {};
     best.data.gyreCore = true;
@@ -466,7 +483,9 @@ export const gyreSnare = {
       Math.cbrt(rt.clumpRadius ** 3 + er ** 3),
     );
     // Member ledger for the VFX lumps — bounded, keeps the approach direction so lumps
-    // land where the mass actually hit.
+    // land where the mass actually hit. totalAbsorbed stays unbounded so the HUD's ×N
+    // count doesn't freeze at the ledger cap while mass keeps climbing.
+    rt.totalAbsorbed += 1;
     if (rt.members.length < D.maxAbsorbRecords) {
       const nx = dist > 1e-4 ? -dx / dist : 0;
       const nz = dist > 1e-4 ? -dz / dist : 0;
@@ -499,7 +518,14 @@ export const gyreSnare = {
         nx: dist > 1e-4 ? -dx / dist : 0, nz: dist > 1e-4 ? -dz / dist : 0,
         tick: state.tick,
       });
-      this.bus.emit('audio:cue', { id: 'gyre_snare_absorb', gain: 0.7 });
+      // A dense belt feed can merge several bodies per tick — the absorb event fires for
+      // every one (HUD honesty) but the glass tick is rate-gated so it stays readable
+      // instead of stacking into noise.
+      const nowS = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
+      if (nowS - rt.lastAbsorbCueS >= D.absorbCueMinGapS) {
+        rt.lastAbsorbCueS = nowS;
+        this.bus.emit('audio:cue', { id: 'gyre_snare_absorb', gain: 0.7 });
+      }
     }
   },
 
@@ -520,6 +546,11 @@ export const gyreSnare = {
     rt.launchedId = core.id;
     rt.ballId = core.id; // outlives LAUNCH so render/HUD can track the bowling ball to its grave
     rt.ballMass = rt.clumpMass;
+    // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
+    // clump overlay keeps riding the ball through its whole flight instead of shedding at OFF.
+    rt.ballMembers = rt.members.slice();
+    rt.ballClumpRadius = rt.clumpRadius;
+    rt.ballAbsorbs = rt.totalAbsorbed;
     // The ball becomes a weapon: authored impact scale + provenance for kill credit + a
     // bounded flight so the map doesn't keep it forever.
     const scale = Math.min(
@@ -585,6 +616,9 @@ export const gyreSnare = {
       if (!ball || ball.alive === false || !ball.data || !ball.data.gyreLaunched || !ball.pos) {
         rt.ballId = null;
         rt.ballMass = 0;
+        rt.ballMembers = null;
+        rt.ballClumpRadius = 0;
+        rt.ballAbsorbs = 0;
       } else {
         pub.ballPos.x = ball.pos.x; pub.ballPos.z = ball.pos.z;
       }
@@ -592,14 +626,26 @@ export const gyreSnare = {
     pub.launchedId = rt.ballId;
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {
-      pub.coreId = null; pub.strain01 = 0; pub.members = null;
-      pub.clumpMass = 0; pub.clumpRadius = 0; pub.absorbs = 0;
+      pub.coreId = null; pub.strain01 = 0;
+      if (rt.ballId != null) {
+        // Ball still flying: publish the frozen clump so the lumps/mass/count ride it out.
+        pub.members = rt.ballMembers;
+        pub.clumpMass = rt.ballMass;
+        pub.clumpRadius = rt.ballClumpRadius;
+        pub.absorbs = rt.ballAbsorbs;
+      } else {
+        pub.members = null;
+        pub.clumpMass = 0; pub.clumpRadius = 0; pub.absorbs = 0;
+      }
       return pub;
     }
     if (!player) return pub;
     const nose = this._noseDir(player, this._pubNose || (this._pubNose = { x: 1, z: 0 }));
-    pub.nose.x = player.pos.x + nose.x * D.noseGap;
-    pub.nose.z = player.pos.z + nose.z * D.noseGap;
+    // Apex rides the hull skin, not the center — a 14 wu gap is invisible on a 14-radius
+    // Hitch but sprouts the cone 30 wu inside a capital hull's mesh.
+    const noseGap = D.noseGap + entityRadius(player);
+    pub.nose.x = player.pos.x + nose.x * noseGap;
+    pub.nose.z = player.pos.z + nose.z * noseGap;
     const maw = this._maw(player, this._pubMaw || (this._pubMaw = { x: 0, z: 0 }));
     pub.maw.x = maw.x; pub.maw.z = maw.z;
     pub.coneLen = Math.hypot(maw.x - pub.nose.x, maw.z - pub.nose.z);
@@ -607,7 +653,7 @@ export const gyreSnare = {
     pub.coreId = rt.coreId;
     pub.clumpMass = rt.clumpMass;
     pub.clumpRadius = rt.clumpRadius;
-    pub.absorbs = rt.members.length;
+    pub.absorbs = rt.totalAbsorbed;
     pub.members = rt.members;
     // launchedId published above from rt.ballId already covers the LAUNCH→OFF transition —
     // a re-beam while the ball still flies keeps its clump overlay instead of clobbering it.

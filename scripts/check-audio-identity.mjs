@@ -373,6 +373,11 @@ const EMITTED_CUES = {
   // row would stack a second hit on flag-on routes (audioSystem.js AUDIO_CUE_TO_RECIPE note).
   'massline.jettisonKick': { silent: true },
   'massline.bombDrop': { distinct: true },
+  // Gyre Snare (telekinetic katamari lash): wake shimmer, snag latch, per-absorb glass tick,
+  // launch bowl, lash release, beam power-down — each a dedicated recipe, never a click.
+  gyre_snare_beam: { distinct: true }, gyre_snare_snag: { distinct: true },
+  gyre_snare_absorb: { distinct: true }, gyre_snare_launch: { distinct: true },
+  gyre_snare_drop: { distinct: true }, gyre_snare_off: { distinct: true },
   // Iron Maw prow tear (tacticalAI) — propulsion wind-down voice; boss moment stinger.
   'combat.subsystem.disabled': { distinct: true },
   'moment.stinger': { distinct: true },

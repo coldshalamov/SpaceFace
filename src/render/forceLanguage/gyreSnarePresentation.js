@@ -375,8 +375,10 @@ export class GyreSnarePresentation {
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
       this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm;
+      // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
+      // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
       this._coneMat.uniforms.uPulse.value = Math.max(
-        this._coneMat.uniforms.uPulse.value * 0.9,
+        this._coneMat.uniforms.uPulse.value * Math.exp(-dt * 6.3),
         strain * 0.7,
       );
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
@@ -441,7 +443,9 @@ export class GyreSnarePresentation {
         this._fireBurst(mirror.corePos.x, mirror.corePos.z, Math.max(6, finite(mirror.clumpRadius, 8) * 2.2));
         this._coneMat.uniforms.uPulse.value = 1;
       }
-      if (phase === 'off') this._clearLumps();
+      // A live bowling ball keeps its frozen member ledger — the lumps ride the throw.
+      // Only drop them when the mirror itself stopped tracking a ball.
+      if (phase === 'off' && mirror.launchedId == null) this._clearLumps();
       this._phase = phase;
     }
 

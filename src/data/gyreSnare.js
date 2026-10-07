@@ -34,9 +34,10 @@ export const GYRE_SNARE = Object.freeze({
   // ── Pull phase (no core yet) ──────────────────────────────────────────────────────
   basinRadius: 86,           // wu — hard pull zone around the maw (the "increased gravity")
   basinAccel: 620,           // wu/s² — reference accel on a ref-mass body in the basin
-  wedgeAccel: 150,           // wu/s² — faint pull anywhere inside the cone wedge
-  wedgeSoftLipWu: 18,        // wu — bodies just inside the rim ease in instead of snapping
-  wedgeFalloff: 0.5,         // rim bodies get at most this share of wedgeAccel
+  wedgeAccel: 150,           // wu/s² — faint pull anywhere inside the drawn cone wedge
+  wedgeSoftLipWu: 18,        // wu — fade band PAST the visible rim: pull eases to zero at the
+                           // outer lip so the drawn cone edge is the real physics edge
+  wedgeFalloff: 0.5,         // non-absorbable bodies get at most this share of wedgeAccel
   nonAbsorbablePull: 0.45,   // ×accel on dynamic bodies that can never core/member (rocks the maw shoves)
   queryReachWu: 60,          // wu — extra query radius past the basin so the wedge reaches its lip
   basinDamping: 1.6,         // 1/s — velocity damping vs ship frame inside the basin (settle, don't orbit-shoot)
@@ -62,6 +63,8 @@ export const GYRE_SNARE = Object.freeze({
   suckAccel: 680,            // wu/s² — pull toward the core inside the suck band
   suckDamping: 1.1,          // 1/s — frame-damping on inbound mass so it settles, not orbits
   absorbOverlap: 1.15,       // contact = (clumpRadius + memberRadius) * this — just past skin touch
+  absorbCueMinGapS: 0.08,    // s — min gap between absorb glass ticks so a dense belt feed
+                           // doesn't stack identical cues into noise (events stay per-body)
   maxClumpRadius: 60,        // wu — volumetric union clamps here; mass keeps growing regardless
   maxClumpMass: 2400,        // t — mass cap (a hard ceiling so a ball can't out-scale a capital)
   maxAbsorbRecords: 28,      // member ledger bound for the VFX lumps
@@ -77,8 +80,9 @@ export const GYRE_SNARE = Object.freeze({
   capActivateMin: 10,        // cap needed to open the beam
   capDrainPerS: 6.5,         // cap/s while the beam is live (empty tank = auto-bowl)
   capHoldMult: 1.35,         // ×drain while a clump is held (holding mass is heavier work)
-  // Hold drain scales with clump mass: a 240 t ball pulls ~5.4× hold drain (~47 cap/s),
-  // which beats the starter hull's regen — the bigger the katamari, the shorter the fuse.
+  // Hold drain scales with clump mass: a 240 t ball pulls 6.5·1.35·(1+240/60) ≈ 43.9 cap/s
+  // (6.75× base drain), which beats the starter hull's regen — the bigger the katamari,
+  // the shorter the fuse.
   capMassDrainRef: 60,       // t of clump mass per additional ×1 hold drain
   // ── Presentation palette (glassy white) ───────────────────────────────────────────
   palette: Object.freeze({
