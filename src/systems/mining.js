@@ -3016,9 +3016,15 @@ export function richCoreWindowPctForTier(tier) {
   return RICH_CORE_WINDOW_HI + (RICH_CORE_WINDOW_LO - RICH_CORE_WINDOW_HI) * t;
 }
 
+// Phase 2b #10 (tuning lab): within a tier the rich-core ore is the CHEAPEST rare, then id. The tie
+// used to break on id alone, so cmdty_gem_emerald (1676 cr, the dearest tier-3 rare) won every tier
+// 0–3 core by alphabet: one core on a starter rock paid 5–13k cr, the loop's income swung by a
+// coefficient of variation ~0.9 and cores were 70–96 % of a session's credits. Cheapest-first pays
+// cmdty_ore_platinoid (140 cr) x 3–8 there — about one minute of ordinary mining per core.
 function richOreForTier(tier) {
   const target = Math.max(1, Math.floor(Number(tier) || 0) + 1);
-  const sorted = ORES.slice().sort((a, b) => (a.tier - b.tier) || a.id.localeCompare(b.id));
+  const sorted = ORES.slice().sort((a, b) => (a.tier - b.tier)
+    || (Number(a.baseValue) || 0) - (Number(b.baseValue) || 0) || a.id.localeCompare(b.id));
   const rare = sorted.find((ore) => ore.tier >= target && ore.tags && ore.tags.includes('rare'));
   const tiered = sorted.find((ore) => ore.tier >= target);
   return (rare || tiered || sorted[sorted.length - 1] || { id: 'cmdty_ore_iron' }).id;
