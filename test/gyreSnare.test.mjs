@@ -29,7 +29,7 @@ import { GYRE_SNARE } from '../src/data/gyreSnare.js';
 const DT = SIM_DT;
 const T = GYRE_SNARE;
 
-function boot(seed = 4242, { withPhysics = false } = {}) {
+function boot(seed = 4242, { withPhysics = false, playerRadius = 12 } = {}) {
   const sim = createSimulation({
     seed,
     bus: createBus(),
@@ -39,11 +39,11 @@ function boot(seed = 4242, { withPhysics = false } = {}) {
   state.mode = 'flight';
   state.input.actions = {};
   const player = sim.spawn({
-    type: 'ship', team: 0, pos: { x: 0, z: 0 }, radius: 12, collides: true,
+    type: 'ship', team: 0, pos: { x: 0, z: 0 }, radius: playerRadius, collides: true,
     vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
     hull: 200, hullMax: 200,
     flightModel: { inertia: 88 }, flags: {},
-    physicsBody: { schemaVersion: 1, radius: 12, mass: 28, inertiaY: 88, dynamic: true, ccd: true, material: 'ship', revision: 0 },
+    physicsBody: { schemaVersion: 1, radius: playerRadius, mass: 28, inertiaY: 88, dynamic: true, ccd: true, material: 'ship', revision: 0 },
     data: { combatProfileId: 'combat_profile_standard_ship' },
   });
   state.playerId = player.id;
@@ -55,8 +55,8 @@ function boot(seed = 4242, { withPhysics = false } = {}) {
   return { sim, state, bus: sim.bus, helpers, player, events, sys: sim.registry.get('gyreSnare'), physicsSys: sim.registry.get('physics') };
 }
 
-async function bootPhysics(seed = 4343) {
-  const t = boot(seed, { withPhysics: true });
+async function bootPhysics(seed = 4343, opts = {}) {
+  const t = boot(seed, { withPhysics: true, ...opts });
   t.state.settings.gameplay.physicsBackend = 'rapier-dynamic';
   const ready = await t.physicsSys.prepareBackend(t.state);
   assert.equal(ready, true, 'SG-02 rapier-dynamic backend should initialize headless');
@@ -494,5 +494,170 @@ test('a world-record body is never snagged as a core', async () => {
   assert.notEqual(t.sys._rt.coreId, wr.id);
   assert.equal(t.sys._rt.phase, 'beaming', 'world-record mass stays live in the field, never cores');
   assert.equal(wr.data.gyreCore, undefined);
+  t.cleanup();
+});
+
+// ── wedge pull math (apex-anchored, lip-faded, maw-plane clamped) ─────────────────
+// Geometry on the reference hull (radius 12, nose at origin, rot 0): apex (26,0),
+// coneLen 174, effTan = max(tan(0.42), 86/174) ≈ 0.494. A drone can never core/member,
+// so it stays in the wedge lane — the cleanest pull-only signal.
+function apexGap() { return T.noseGap + 12; }
+function effTan(coneLen) { return Math.max(Math.tan(T.coneHalfAngleRad), T.basinRadius / coneLen); }
+
+test('wedge pulls a mid-cone non-absorbable toward the maw without grabbing it', async () => {
+  const t = await bootPhysics();
+  const a = 60;                                     // axial wu ahead of the apex
+  const x = apexGap() + a, z = a * effTan(T.mawDist - apexGap()) * 0.7; // ~70% of the rim
+  const body = rock(t.sim, x, z, 6, 4, 'drone');
+  assert.ok(Math.hypot(body.pos.x - T.mawDist, body.pos.z) > T.basinRadius, 'fixture outside the basin');
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'beaming', 'a wedge-only body never snags');
+  assert.ok(body.vel.x > 0.2, `wedge courtesy pull drags toward the maw (vel.x=${body.vel.x.toFixed(2)})`);
+  t.cleanup();
+});
+
+test('wedge pull fades across the soft lip and ends at the maw plane', async () => {
+  const t = await bootPhysics();
+  const a = 60, coneLen = T.mawDist - apexGap();
+  const rim = a * effTan(coneLen);
+  const inner = rock(t.sim, apexGap() + a, rim * 0.7, 6, 4, 'drone');   // lipT 0
+  const lipped = rock(t.sim, apexGap() + a, rim + T.wedgeSoftLipWu * 0.95, 6, 4, 'drone'); // lipT ≈0.95
+  const outer = rock(t.sim, apexGap() + a, rim + T.wedgeSoftLipWu + 12, 6, 4, 'drone');    // past the lip
+  const beyond = rock(t.sim, T.mawDist + T.basinRadius + 30, 0, 6, 4, 'drone');            // axial > coneLen
+  hold(t);
+  for (let i = 0; i < 40; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.ok(speed(inner) > 3, `inside-rim body clearly pulled (${speed(inner).toFixed(1)})`);
+  assert.ok(speed(lipped) < speed(inner) * 0.4,
+    `lip-faded pull is a fraction of the in-rim pull (${speed(lipped).toFixed(1)} vs ${speed(inner).toFixed(1)})`);
+  assert.ok(speed(outer) < 1, `past the lip nothing moves (${speed(outer).toFixed(2)})`);
+  assert.ok(speed(beyond) < 1, `past the maw plane nothing moves (${speed(beyond).toFixed(2)})`);
+  t.cleanup();
+});
+
+test('published cone rim equals the wedge rim at the maw plane, floored at basinRadius', async () => {
+  const t = await bootPhysics(4242, { playerRadius: 60 }); // capital hull — apex rides far ahead
+  hold(t);
+  const pub = t.state.gyreSnare;
+  const coneLen = pub.coneLen;
+  assert.ok(Math.abs(coneLen - (T.mawDist - (T.noseGap + 60))) < 1, 'apex rides the hull skin');
+  assert.ok(pub.endRadius >= T.basinRadius, 'drawn rim never under-covers the pull basin');
+  // rim(coneLen) ≡ endRadius by construction — the physics edge IS the drawn edge.
+  assert.ok(Math.abs(coneLen * effTan(coneLen) - pub.endRadius) < 1e-6,
+    `rim at maw plane (${(coneLen * effTan(coneLen)).toFixed(2)}) == endRadius (${pub.endRadius})`);
+  t.cleanup();
+});
+
+test('pullMaxAccel clamps any single body impulse (fast inbound body in the basin)', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist + 30, 0, 6, 4, 'drone');
+  body.vel.x = -800; // frame damping + basin pull sum far past pullMaxAccel
+  hold(t);
+  const before = speed(body);
+  t.sim.step();
+  const dV = speed(body) - before;
+  assert.ok(dV <= T.pullMaxAccel * DT * 1.05,
+    `one-tick Δv honors the accel ceiling (${dV.toFixed(2)} <= ${(T.pullMaxAccel * DT).toFixed(2)})`);
+  t.cleanup();
+});
+
+// ── katamari caps ───────────────────────────────────────────────────────────────
+test('maxClumpMass clamps the union and a capped clump stops eating AND pulling', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  assert.equal(t.sys._rt.phase, 'holding');
+  const rt = t.sys._rt;
+  rt.clumpMass = T.maxClumpMass - 3;
+  const meal = rock(t.sim, T.mawDist + 14, 4, 50, 4); // inside merge distance
+  for (let i = 0; i < 30 && meal.alive !== false; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(meal.alive, false, 'the heavy meal merged');
+  assert.equal(rt.clumpMass, T.maxClumpMass, 'mass clamps at the authored ceiling');
+  // At cap a follower touching the clump skin is refused the merge (the _absorb
+  // early-return + continue) — collision nudges make contact velocity unreadable,
+  // so pin survival + the mass ceiling instead.
+  const mergeDist = (rt.clumpRadius + 2) * T.absorbOverlap;
+  const contact = rock(t.sim, core.pos.x + mergeDist * 0.9, core.pos.z, 4, 2);
+  // And a follower outside the basin but inside the suck band as the core orbits near:
+  // at cap the suck lane skips it, so basin can't reach it and nothing should move it.
+  const bandMeal = rock(t.sim, T.mawDist + T.basinRadius + 4, 0, 4, 2);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(contact.alive, true, 'a capped clump cannot absorb another meal');
+  assert.equal(bandMeal.alive, true);
+  assert.ok(speed(bandMeal) < 3,
+    `FULL ball stops vacuuming the band (${speed(bandMeal).toFixed(2)})`);
+  t.cleanup();
+});
+
+test('member ledger is bounded while totalAbsorbed keeps counting', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  const rt = t.sys._rt;
+  rt.members.length = 0;
+  for (let i = 0; i < T.maxAbsorbRecords; i++) rt.members.push({ type: 'asteroid', mass: 1, radius: 1, nx: 0, nz: 0 });
+  rt.totalAbsorbed = T.maxAbsorbRecords;
+  const meal = rock(t.sim, T.mawDist + 14, 4, 4, 2);
+  for (let i = 0; i < 40 && meal.alive !== false; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(meal.alive, false, 'meal absorbed');
+  assert.equal(rt.members.length, T.maxAbsorbRecords, 'VFX ledger stays bounded');
+  assert.equal(rt.totalAbsorbed, T.maxAbsorbRecords + 1, 'the ×N count never freezes at the ledger cap');
+  t.cleanup();
+});
+
+test('a dense belt feed rate-gates the absorb glass tick', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  // Park several meals right against the core skin so absorbs land within a few ticks.
+  for (let i = 0; i < 4; i++) rock(t.sim, T.mawDist + 12 + i * 3, (i % 2 ? 8 : -8), 3, 2);
+  for (let i = 0; i < 240; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const absorbs = t.events.filter((e) => e.name === 'gyre:absorbed').length;
+  const ticks = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_absorb').length;
+  assert.ok(absorbs >= 2, `several meals eaten (${absorbs})`);
+  assert.ok(ticks >= 1 && ticks < absorbs, `cue gate suppressed stacking (${ticks}/${absorbs})`);
+  t.cleanup();
+});
+
+// ── belt-gravel promotion ───────────────────────────────────────────────────────
+test('a belt-field rock inside the basin promotes into a live body the beam can catch', async () => {
+  const { insertAsteroidFieldRock } = await import('../src/world/asteroidField.js');
+  const t = await bootPhysics();
+  const rec = insertAsteroidFieldRock(t.state, { pos: { x: 210, z: 30 }, radius: 8, mass: 6 });
+  hold(t);
+  let promoted = null;
+  for (let i = 0; i < 90 && !promoted; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+    const ent = t.state.entities.get(rec.id);
+    if (ent && ent.alive !== false) promoted = ent;
+  }
+  assert.ok(promoted, 'the field record materialized into a real entity');
+  assert.equal(promoted.type, 'asteroid');
+  // Promotion is the whole point: the beam then works it like any loose body — either it
+  // is already the held core, a member, or inbound on the basin pull.
+  const rt = t.sys._rt;
+  assert.ok(
+    rt.coreId === rec.id || promoted.vel.x !== 0 || promoted.vel.z !== 0 || rt.phase === 'holding',
+    'promoted body enters the pull/snag pipeline',
+  );
+  t.cleanup();
+});
+
+
+// -- launched-ball immunity --
+test('a launched ball is pull/suck/snag-immune — it cannot be re-captured or re-absorbed', async () => {
+  const t = await bootPhysics();
+  const ball = rock(t.sim, T.mawDist + 30, 0, 6, 4);
+  ball.data.gyreLaunched = true; // a thrown clump back in the gravity zone
+  hold(t);
+  for (let i = 0; i < 60; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.notEqual(t.sys._rt.coreId, ball.id, 'thrown ball never re-cores');
+  assert.equal(t.sys._rt.phase, 'beaming', 'beam keeps searching past the dead ball');
+  assert.equal(ball.alive, true, 'never re-absorbed');
+  assert.ok(speed(ball) < 0.5, `no pull either (${speed(ball).toFixed(2)})`);
   t.cleanup();
 });

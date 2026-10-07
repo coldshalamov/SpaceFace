@@ -1323,7 +1323,13 @@ export const input = {
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
       acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false;
-      acts.gyreSnare = false;
+      // The gyre verb rides the same modal-preservation contract as massline: a screen
+      // opening must NOT synthesize a falling edge — zeroing it here would bowl the clump
+      // out from under a held key (and re-fire the beam on close). The lash stays held
+      // through the overlay exactly like the tether does.
+      const gyreHeldThroughModal = this._held(state, 'gyreSnare')
+        || !!(gp && gp.isConnected() && gp.actions.gyreSnare && gp.actions.gyreSnare.held);
+      acts.gyreSnare = gyreHeldThroughModal;
       const masslineHeldThroughModal = this._held(state, 'tether')
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
@@ -1362,7 +1368,7 @@ export const input = {
         htEdges.brake = this._held(state, 'brake') || this._held(state, 'reverse')
           || padHeld('brake') || tpHeld('brake');
         htEdges.bulletTime = this._held(state, 'bulletTime') || padHeld('bulletTime');
-        htEdges.gyreSnare = this._held(state, 'gyreSnare') || padHeld('gyreSnare');
+        htEdges.gyreSnare = gyreHeldThroughModal;
         htEdges.massline = masslineHeldThroughModal;
         htEdges.reelIn = this._held(state, 'reelIn');
         htEdges.reelOut = this._held(state, 'reelOut');

@@ -150,9 +150,10 @@ export const gyreSnare = {
     // A boundary drop also forgets the flying ball — its entity is about to vanish with the
     // sector anyway, and stale ballPos would leak a dead clump overlay into the next scene.
     if (boundary) { rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0; }
-    // Boundary drops also reset the cue/haptic gates: simTime restarts at 0 on a fresh run,
-    // so a stale lastAbsorbCueS would silence the absorb tick for the whole old run's length.
-    if (boundary) { rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; }
+    // Cue/haptic gates reset on EVERY drop: simTime restarts at 0 on a fresh run (a stale
+    // stamp would silence the absorb tick for the old run's whole length), and a fresh
+    // clump's first strain excursion should re-arm the latch instead of inheriting it hot.
+    rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false;
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       // dropped = a live beam/hold released without launch; coreId is null when the beam
@@ -475,6 +476,10 @@ export const gyreSnare = {
         continue;
       }
       if (dist > 1e-4) {
+        // A FULL clump can't keep another gram — stop vacuuming meals it will never
+        // merge. Same gate _absorb enforces at contact, extended to the pull lane so a
+        // capped ball doesn't drag leeches against its skin forever.
+        if (rt.clumpMass >= D.maxClumpMass) continue;
         const pull = D.suckAccel * couplingScale(this._profile(e));
         const mass = entityMass(e);
         let ax = (dx / dist) * pull;
@@ -575,6 +580,9 @@ export const gyreSnare = {
     );
     core.physicsBody = core.physicsBody || {};
     core.physicsBody.impactDamageScale = scale;
+    // Bump the body revision — RESOLVED_BODY_CACHE keys on (body, revision), so the
+    // authored-spec write must invalidate or the resolved spec reads stale.
+    core.physicsBody.revision = Math.max(0, Math.trunc(finite(core.physicsBody.revision))) + 1;
     core.data = core.data || {};
     delete core.data.gyreCore;
     core.data.gyreLaunched = true;
