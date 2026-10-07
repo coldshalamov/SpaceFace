@@ -486,6 +486,27 @@ test('releasing either chord key restores the ordinary boost dash immediately', 
     'releasing the turn key must hand the boost press back to the ordinary dash verb');
 });
 
+test('an unusable orbit geometry leaves the boost press with the normal dash', () => {
+  for (const invalid of ['coincident-anchor', 'non-finite-anchor']) {
+    const harness = makeFlightHarness();
+    if (invalid === 'coincident-anchor') harness.anchor.pos = { ...harness.player.pos };
+    else harness.anchor.vel.z = NaN;
+    harness.state.input.boost = true;
+    harness.player.boost = {
+      energy: 220, max: 220, drainRate: 36, regenRate: 28,
+      dashImpulse: 170, dashCost: 28, dashCd: 1.8, dashCdT: 0,
+      topSpeedPct: 0, burnDurS: 0, burnCdS: 0,
+    };
+    const system = Object.create(flightV3Module.flightV3);
+    system.init({ state: harness.state, bus: harness.bus });
+    system.update(DT, harness.state);
+    const command = consumePhysicsCommand(harness.player);
+    assert.equal(harness.player._flightFrame.orbitAssist.active, false, invalid);
+    assert.equal(command.impulses.length, 1, `${invalid}: input alone must not suppress a dash`);
+    assert.ok(harness.player.boost.dashCdT > 0);
+  }
+});
+
 test('a boost press mid-orbit holds the tangent on a short line', async () => {
   // Full-production regression: real flightV3 + rapier, 30 WU line, boost pressed mid-orbit and
   // released later. Before the chord-owned-boost fix the press-edge dash jumped the swing past

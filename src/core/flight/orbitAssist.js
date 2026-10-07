@@ -166,11 +166,13 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   const alignmentYawRate = headingError
     / (ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS / strengthScale);
   const hullMaxYawRate = positive(options.profile && options.profile.maxYawRate, 1);
+  const linePhase = String(options.tether.phase || 'slack');
+  const lineLoaded = linePhase === 'capture' || linePhase === 'loaded' || linePhase === 'overload';
   // Line-locked yaw: borrow the line's rate (with headroom) when it outruns the hull, up to the
   // physics ceiling. The input owner applies the lent rate to the yaw profile for this tick.
   let maxYawRate = hullMaxYawRate;
   let lentYawRate = null;
-  if (Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin > hullMaxYawRate) {
+  if (lineLoaded && Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin > hullMaxYawRate) {
     lentYawRate = Math.min(Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin,
       ORBIT_LINE_YAW_LOCK.absoluteYawCap);
     maxYawRate = Math.max(hullMaxYawRate, lentYawRate);
@@ -208,10 +210,10 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       saturated: desiredYawRate !== rawDesiredYawRate,
       hullMaxYawRate,
       lentYawRate,
-      yawCeiling: ORBIT_LINE_YAW_LOCK.absoluteYawCap,
+      yawCeiling: lineLoaded ? ORBIT_LINE_YAW_LOCK.absoluteYawCap : null,
       armShare,
       latchedDirection: fromAim ? selectedDirection : 0,
-      reason: String(options.tether.phase || 'slack') === 'slack' ? 'line-slack' : 'engaged',
+      reason: lineLoaded ? 'engaged' : 'line-slack',
     },
   };
 }

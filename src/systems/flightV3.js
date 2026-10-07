@@ -301,8 +301,8 @@ export const flightV3 = {
       // orbit helper can continuously trim yaw and the swing coordinator can lower sustained
       // boost to the speed the hull can actually track, but a boost press also carries a discrete
       // dash impulse (170 wu/s on the Wasp). That impulse lands outside the throttle governor and
-      // can jump angular speed above maxYawRate / radius in one tick, leaving no physical yaw
-      // authority capable of following it. While the explicit forward+turn orbit chord owns the
+      // can jump angular speed past the line's yaw ceiling in one tick. While the explicit
+      // forward+turn orbit chord owns the
       // helm, Shift therefore means continuous boost only; release either chord key (or turn the
       // assist Off) and the ordinary dash press is immediately available again.
       //
@@ -553,14 +553,6 @@ export const flightV3 = {
       // Holding past this point is just boost. The pre-kick event carries the 80 ms anticipation
       // beat to presentation (FOV/plume/audio) only when the press can actually produce thrust —
       // an empty capacitor stays silent rather than mimicking the success cue.
-      const dashWillFire = boost.dashImpulse > 0 && boost.dashCdT <= 0
-        && boost.energy >= boost.dashCost && boost.energy > 1;
-      if (dashWillFire) {
-        boost._overshootUntil = finite(state && state.simTime, 0) + BOOST_ACCEL_OVERSHOOT_S;
-        if (this.bus && typeof this.bus.emit === 'function') {
-          this.bus.emit('ship:boostPreKick', { shipId: e.id, windowS: BOOST_PREKICK_S });
-        }
-      }
       const dashed = this._triggerDash(e, boost, state);
       if (!dashed && boost.dashImpulse > 0) dashSpoken = true;
       else if (dashed && boost.energy <= 1) {
@@ -707,6 +699,15 @@ export const flightV3 = {
       ? this._driveAuthority.forward
       : 1;
     const scaled = imp * driveScale * cryoScale;
+    // A live rope can already carry more speed than a dash may add. A zero shove is
+    // not a dash: keep the capacitor/cooldown and all success cues for a useful press.
+    if (!(scaled > 1e-6)) return false;
+    if (boost.energy > 1) {
+      boost._overshootUntil = finite(state && state.simTime, 0) + BOOST_ACCEL_OVERSHOOT_S;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('ship:boostPreKick', { shipId: e.id, windowS: BOOST_PREKICK_S });
+      }
+    }
     queuePhysicsImpulse(e, { x: dirX * scaled * mass, y: 0, z: dirZ * scaled * mass });
     boost.energy = Math.max(0, boost.energy - boost.dashCost);
     boost.dashCdT = boost.dashCd;

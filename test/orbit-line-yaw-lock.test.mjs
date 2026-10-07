@@ -18,12 +18,12 @@ const DT = 1 / 60;
 // Ship at +x of the anchor on a line of `radius`, moving +z (counter-clockwise) at `speed`, nose
 // on the CCW tangent unless `rot` is given.
 function orbitStep({ radius = 36, speed = 200, lateral = 1, fromAim = false, latched = 0, rot = Math.PI / 2,
-  hullYaw = 2.646, hostMass = 20, anchorMass = 2000 } = {}) {
+  hullYaw = 2.646, hostMass = 20, anchorMass = 2000, phase = 'loaded', restLength = radius } = {}) {
   return stepAnchorRelativeOrbitAssist({
     dt: DT,
     host: { pos: { x: radius, z: 0 }, vel: { x: 0, z: speed }, rot, mass: hostMass },
     anchor: { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, mass: anchorMass, alive: true },
-    tether: { active: true, targetId: 'anchor', restLength: radius, phase: 'loaded' },
+    tether: { active: true, targetId: 'anchor', restLength, phase },
     flightIntent: { forward: 1, lateral, lateralFromAim: fromAim },
     latchedDirection: latched,
     input: { throttle: 1, strafe: 0, turn: lateral, boost: false, brake: false },
@@ -56,6 +56,18 @@ test('a swing the hull can already follow borrows nothing', () => {
   const r = orbitStep({ radius: 220, speed: 150 });    // 0.68 rad/s
   assert.equal(r.telemetry.lentYawRate, null);
   assert.equal(r.telemetry.maxYawRate, 2.646);
+});
+
+test('a slack line cannot lend yaw or the loaded-line speed allowance', () => {
+  const r = orbitStep({ radius: 36, speed: 200, phase: 'slack', restLength: 120 });
+  assert.equal(r.active, true, 'ordinary tangent steering remains available');
+  assert.equal(r.telemetry.reason, 'line-slack');
+  assert.equal(r.telemetry.lentYawRate, null);
+  assert.equal(r.telemetry.maxYawRate, r.telemetry.hullMaxYawRate);
+  assert.equal(r.telemetry.yawCeiling, null);
+  assert.equal(r.telemetry.saturated, true, 'yaw stays inside the hull envelope');
+  assert.ok(orbitSwingThrottleScale(r.telemetry, 200) < 0.5,
+    'a slack rope cannot authorize the loaded-line swing speed');
 });
 
 test('the yaw helper still never touches thrust', () => {
@@ -152,6 +164,24 @@ test('without a live line the dash is unchanged', () => {
   free.player.vel = { x: 0, z: cap.combatSpeed * cap.boostSpeedMult - 40 };
   const dv = dashImpulseAlongNose(free);
   assert.ok(Math.abs(dv - 170) < 1e-6, `free-flight dash keeps its full impulse, got ${dv}`);
+});
+
+test('a line dash already above its cap spends nothing and emits no success cue', () => {
+  const h = harness();
+  const profile = resolvePropulsionProfile(h.player, h.state);
+  h.player.vel = { x: 0, z: profile.combatSpeed * profile.boostSpeedMult + 100 };
+  const events = [];
+  h.bus.emit = (type) => events.push(type);
+  const system = Object.create(flightV3Module.flightV3);
+  system.init({ state: h.state, bus: h.bus });
+  system.update(DT, h.state);
+  const command = consumePhysicsCommand(h.player);
+  assert.equal(command.impulses.length, 0);
+  assert.equal(h.player.boost.dashCdT, 0);
+  assert.ok(h.player.boost.energy > 219, 'only the sustained boost pays its normal drain');
+  assert.equal(events.includes('ship:dash'), false);
+  assert.equal(events.includes('ship:boostPreKick'), false);
+  assert.ok(!(h.player.boost._overshootUntil > h.state.simTime));
 });
 
 test('input tags helm-cursor and twin-stick turn intent as aim-derived', () => {
