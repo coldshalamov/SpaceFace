@@ -2041,7 +2041,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 23
+      "glass": 1,
+      "hull": 22
     },
     "materialProfiles": [
       {
@@ -2057,7 +2058,7 @@
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
@@ -2788,7 +2789,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_inspection_platform.glb"
   },
-  "runtimeHash": "eb672208e3b7718f36c003e5bb32000cd912d0ce17f2f238c8e465e04abcaaaa",
+  "runtimeHash": "62e9b748ffc3bc54187568c362fa570ef5821e2875e02450560f3c74251a3e5d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

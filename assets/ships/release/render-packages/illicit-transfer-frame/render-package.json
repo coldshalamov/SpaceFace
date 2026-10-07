@@ -2206,7 +2206,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 24,
+      "hull": 23,
+      "rubber": 1,
       "warning": 1
     },
     "materialProfiles": [
@@ -2333,7 +2334,7 @@
       {
         "allowTextures": false,
         "planIndex": 32,
-        "role": "hull"
+        "role": "rubber"
       }
     ],
     "nodeCount": 33,
@@ -3018,7 +3019,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_illicit_transfer_frame.glb"
   },
-  "runtimeHash": "ebc60be54a151c987eebc187b7a11af47e1dfe031d9a8a90ef77cf8d85689be9",
+  "runtimeHash": "b6d1e68a7fd4121ee1fa5e1efdc05a43a9c59811b305854331de0b4142c88717",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

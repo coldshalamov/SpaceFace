@@ -1028,7 +1028,8 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 11,
+      "hull": 10,
+      "rubber": 1,
       "service": 1
     },
     "materialProfiles": [
@@ -1090,7 +1091,7 @@
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "rubber"
       }
     ],
     "nodeCount": 15,
@@ -1424,7 +1425,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_repair_scaffold_bent.glb"
   },
-  "runtimeHash": "f7358a0309ebd7ff4fcbf28b01a4217651e88d4f8049d5eedbc8b0de0c74d76f",
+  "runtimeHash": "fd0a240f8a21aec25a83b4509fb7bd6f43069d1e55c4de886118a5b72a866162",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1557,7 +1557,8 @@
     "materialProfileRoles": {
       "accent": 2,
       "ceramic": 2,
-      "mechanical": 3
+      "hull": 1,
+      "mechanical": 2
     },
     "materialProfiles": [
       {
@@ -1583,7 +1584,7 @@
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1791,7 +1792,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_railgun.glb"
   },
-  "runtimeHash": "50dd1ecd2c99c50d7b59c7c95aa5f5d64aba5abc49427f8ca072d8e4f8c1daeb",
+  "runtimeHash": "cdcd0060a08b50daf892741767dd4e0719a2a44c3c5fd69fbdb4747df2de93c3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

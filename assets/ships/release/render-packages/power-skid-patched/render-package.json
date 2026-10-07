@@ -1513,7 +1513,8 @@
       }
     ],
     "materialProfileRoles": {
-      "mechanical": 16,
+      "hull": 3,
+      "mechanical": 13,
       "radiator": 1
     },
     "materialProfiles": [
@@ -1525,7 +1526,7 @@
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": false,
@@ -1580,7 +1581,7 @@
       {
         "allowTextures": false,
         "planIndex": 16,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": false,
@@ -1600,7 +1601,7 @@
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "mechanical"
+        "role": "hull"
       }
     ],
     "nodeCount": 22,
@@ -2069,7 +2070,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_power_skid_patched.glb"
   },
-  "runtimeHash": "eae23c349c050b4f2aeb4c918624f156549c8cda3de322ef4608d5a70f8aa06b",
+  "runtimeHash": "1362db549214f3681ceb83d61c6f3c485241ec71baa0c721d630a0e022e9af1e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

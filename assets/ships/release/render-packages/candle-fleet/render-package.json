@@ -3955,8 +3955,9 @@
       "accent": 3,
       "ceramic": 3,
       "glass": 3,
-      "hull": 13,
+      "hull": 10,
       "mechanical": 6,
+      "rubber": 3,
       "signal": 12,
       "warning": 3
     },
@@ -4009,7 +4010,7 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -4079,7 +4080,7 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -4149,7 +4150,7 @@
       {
         "allowTextures": true,
         "planIndex": 39,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
@@ -5324,7 +5325,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_candle_fleet.glb"
   },
-  "runtimeHash": "831cf999fbf30ecbcd12e3d97a748a4e182dee8d6276f366e0201b32be760c0e",
+  "runtimeHash": "ab20a03e5f1be163293ced33c8f5a0429400f3e50233346b8abb0139ce400704",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

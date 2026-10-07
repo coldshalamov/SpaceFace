@@ -1655,7 +1655,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 18,
+      "glass": 1,
+      "hull": 17,
       "mechanical": 1
     },
     "materialProfiles": [
@@ -1667,7 +1668,7 @@
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
@@ -2275,7 +2276,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_comms_array.glb"
   },
-  "runtimeHash": "45fe54a41d5b2bb962fa08ec08ac704b46a4867c3cb448386de228d46ecafacc",
+  "runtimeHash": "dfc314a0816c3d56cd58dbf0127c308afce802c50f7d2e01144790331e348f7f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

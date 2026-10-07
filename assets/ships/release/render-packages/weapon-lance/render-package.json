@@ -1544,8 +1544,8 @@
     "materialProfileRoles": {
       "accent": 1,
       "ceramic": 2,
-      "hull": 1,
-      "mechanical": 3
+      "hull": 2,
+      "mechanical": 2
     },
     "materialProfiles": [
       {
@@ -1571,7 +1571,7 @@
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1779,7 +1779,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_lance.glb"
   },
-  "runtimeHash": "d98deacbad738860bcff459b6ac122906dc55733ffe2e93d38a9c83beb70d75d",
+  "runtimeHash": "ac5ca50152848abeb9cdd99322de68642108f38b4bef39c009ea6b445bc120fe",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

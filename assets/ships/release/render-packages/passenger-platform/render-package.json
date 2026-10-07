@@ -2701,13 +2701,14 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 32
+      "glass": 1,
+      "hull": 31
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
@@ -3736,7 +3737,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_passenger_platform.glb"
   },
-  "runtimeHash": "a7218736033e4886a38db9903ada83fe8845641bbedb6049122c100b0477af8e",
+  "runtimeHash": "990adbbf644ee1f15cb406849e747debac8a91acbd7a4b9798bf9180aabfe1e1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

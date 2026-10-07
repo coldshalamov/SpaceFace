@@ -2957,7 +2957,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 33,
+      "glass": 1,
+      "hull": 32,
       "mechanical": 1,
       "warning": 1
     },
@@ -3130,7 +3131,7 @@
       {
         "allowTextures": false,
         "planIndex": 39,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
@@ -4090,7 +4091,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_shuttle_dock.glb"
   },
-  "runtimeHash": "71b820a0bd44c6fe37582abd4c04eb188bc55fc9d628dce717256ad975485283",
+  "runtimeHash": "2bf246228931c1ab179419f6c17b43496767ba47b8306d75fcf07b115056f3a5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

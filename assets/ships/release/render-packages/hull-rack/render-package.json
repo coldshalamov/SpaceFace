@@ -2404,8 +2404,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 21,
-      "mechanical": 8
+      "hull": 18,
+      "mechanical": 8,
+      "rubber": 3
     },
     "materialProfiles": [
       {
@@ -2471,7 +2472,7 @@
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -2501,7 +2502,7 @@
       {
         "allowTextures": false,
         "planIndex": 24,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -2526,7 +2527,7 @@
       {
         "allowTextures": false,
         "planIndex": 30,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -3344,7 +3345,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_hull_rack.glb"
   },
-  "runtimeHash": "c0020fd97de0f91056db075d3ce5467013643e28a52170febc2128a17088ee8f",
+  "runtimeHash": "5facd31fd666a67e28f7d7c0af9d06538b159c37b8c8f6dee9cca187b21a9e3d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1785,8 +1785,8 @@
     "materialProfileRoles": {
       "accent": 1,
       "ceramic": 2,
-      "hull": 1,
-      "mechanical": 3
+      "hull": 2,
+      "mechanical": 2
     },
     "materialProfiles": [
       {
@@ -1822,7 +1822,7 @@
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "mechanical"
+        "role": "hull"
       }
     ],
     "nodeCount": 29,
@@ -2020,7 +2020,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
   },
-  "runtimeHash": "38841369f1519a2829aa5166d3a60534b45139caa4735b1587170e2dc8dae4f4",
+  "runtimeHash": "f56dc77a9f82d7854e0a839bc506eb8882ac92276ea2fa560aedaa3ea5f79d1f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

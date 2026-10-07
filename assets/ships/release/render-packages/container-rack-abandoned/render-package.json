@@ -1169,8 +1169,9 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 2,
-      "mechanical": 12
+      "hull": 1,
+      "mechanical": 12,
+      "rubber": 1
     },
     "materialProfiles": [
       {
@@ -1241,7 +1242,7 @@
       {
         "allowTextures": false,
         "planIndex": 16,
-        "role": "hull"
+        "role": "rubber"
       }
     ],
     "nodeCount": 17,
@@ -1629,7 +1630,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_container_rack_abandoned.glb"
   },
-  "runtimeHash": "6ad1f77ea583f6787cdb08b307a03dd49aeb445605fca18b66620d3e2f7e36a6",
+  "runtimeHash": "485bbb65fa03282699882e79f677fa5fd39e9584502c51c6e168325eb529b9d8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
