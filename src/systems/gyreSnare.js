@@ -150,6 +150,9 @@ export const gyreSnare = {
     // A boundary drop also forgets the flying ball — its entity is about to vanish with the
     // sector anyway, and stale ballPos would leak a dead clump overlay into the next scene.
     if (boundary) { rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0; }
+    // Boundary drops also reset the cue/haptic gates: simTime restarts at 0 on a fresh run,
+    // so a stale lastAbsorbCueS would silence the absorb tick for the whole old run's length.
+    if (boundary) { rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; }
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       // dropped = a live beam/hold released without launch; coreId is null when the beam
@@ -298,7 +301,9 @@ export const gyreSnare = {
         const px = e.pos.x - (player.pos.x + nose.x * noseGap);
         const pz = e.pos.z - (player.pos.z + nose.z * noseGap);
         const axial = px * nose.x + pz * nose.z;
-        if (axial > 0 && axial < coneLen + D.basinRadius) {
+        // Clamp at the maw plane — the basin sphere owns everything past it; letting the
+        // wedge reach basinRadius beyond would pull bodies an annulus wide of the drawn rim.
+        if (axial > 0 && axial <= coneLen) {
           const radial = Math.abs(px * nose.z - pz * nose.x);
           const rimR = axial * effTan;
           if (radial <= rimR + D.wedgeSoftLipWu) {
@@ -699,7 +704,7 @@ export const gyreSnare = {
   update(dt, state) {
     this.state = state;
     const rt = this._rt;
-    if (!state || state.mode !== 'flight') { if (rt.phase !== PHASE.OFF) this._drop('not_flight'); rt.wasHeld = false; this._publish(state, null); return; }
+    if (!state || state.mode !== 'flight') { if (rt.phase !== PHASE.OFF) this._drop('not_flight'); rt.wasHeld = false; if (state) this._publish(state, null); return; }
     const player = this._playerCapable(state);
     const held = this._held(state) && !!player;
 
