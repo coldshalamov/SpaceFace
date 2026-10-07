@@ -1,0 +1,120 @@
+{
+ "baseline": {
+  "runs": 110,
+  "configs": 1,
+  "passing": 0,
+  "top": [
+   {
+    "cfg": "shipped",
+    "config": {
+     "shipped": true
+    },
+    "n": 110,
+    "fails": [
+     "zealot:ubHit 100.0",
+     "zealot:farMan 0.0",
+     "reaver:ubHit 99.0",
+     "lawman:ubHit 100.0",
+     "bruiser:ubHit 99.5",
+     "jackal:ubHit 96.0",
+     "egressOpen 57.8",
+     "egressDive 166"
+    ],
+    "egOpenPct": 57.8,
+    "dive": 166,
+    "perType": {
+     "wasp": {
+      "ubHit": 84.6,
+      "nearHit": 98.8,
+      "farMan": 34.5,
+      "farN": 296,
+      "egN": 160,
+      "egOpen": 49.4,
+      "dive": 72
+     },
+     "zealot": {
+      "ubHit": 100,
+      "nearHit": null,
+      "farMan": 0,
+      "farN": 430,
+      "egN": 0,
+      "egOpen": null,
+      "dive": 0
+     },
+     "corsair": {
+      "ubHit": 92.4,
+      "nearHit": 100,
+      "farMan": 11.6,
+      "farN": 395,
+      "egN": 53,
+      "egOpen": 66,
+      "dive": 18
+     },
+     "reaver": {
+      "ubHit": 99,
+      "nearHit": null,
+      "farMan": 1.7,
+      "farN": 420,
+      "egN": 50,
+      "egOpen": 62,
+      "dive": 16
+     },
+     "lawman": {
+      "ubHit": 100,
+      "nearHit": null,
+      "farMan": 0,
+      "farN": 380,
+      "egN": 0,
+      "egOpen": null,
+      "dive": 0
+     },
+     "lancer": {
+      "ubHit": 88.1,
+      "nearHit": null,
+      "farMan": 12.8,
+      "farN": 360,
+      "egN": 2,
+      "egOpen": 100,
+      "dive": 2
+     },
+     "bruiser": {
+      "ubHit": 99.5,
+      "nearHit": null,
+      "farMan": 0.6,
+      "farN": 529,
+      "egN": 40,
+      "egOpen": 57.5,
+      "dive": 14
+     },
+     "dart": {
+      "ubHit": 79.1,
+      "nearHit": 100,
+      "farMan": 31.9,
+      "farN": 182,
+      "egN": 34,
+      "egOpen": 76.5,
+      "dive": 9
+     },
+     "ghost": {
+      "ubHit": 74.8,
+      "nearHit": null,
+      "farMan": 27.3,
+      "farN": 187,
+      "egN": 35,
+      "egOpen": 54.3,
+      "dive": 12
+     },
+     "jackal": {
+      "ubHit": 96,
+      "nearHit": 100,
+      "farMan": 8.6,
+      "farN": 244,
+      "egN": 50,
+      "egOpen": 60,
+      "dive": 23
+     }
+    }
+   }
+  ]
+ }
+}

@@ -129,6 +129,12 @@ export const VARIANTS = {
 export async function runScenario(id, { seed = 1, bundle = 'focused', params = {} } = {}) {
   const sc = SCENARIOS[id];
   if (!sc) throw new Error(`unknown aim scenario ${id}`);
+  return runAimSpec(id, sc, { seed, bundle, params });
+}
+
+// Shared engine (also used by the npc evasion bench). hooks: {onSetup(ctx), onTick(ctx), extra(ctx)}
+// ctx = {world, player, enemies, t, ticks}. extra(ctx) is merged into the run summary.
+export async function runAimSpec(id, sc, { seed = 1, bundle = 'focused', params = {} } = {}, hooks = {}) {
   setWeaponsAimLab(params.aimLab || {});
   const world = await createLabWorld({ seed, bundle, settings: { controlScheme: sc.scheme || 'pilot' } });
   try {
@@ -247,6 +253,8 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
       rd.pdIntercept = p.shipId; rd.done = true; liveById.delete(p.projectileId);
     });
     const ticks = s2t(sc.durationS);
+    const hookCtx = { world, enemies, t: 0, ticks, sc };
+    if (hooks.onSetup) hooks.onSetup(hookCtx);
     const kin = [];
     const tgtSpd = [], tgtAcc = [], rngTr = [];
     let lastTV = null;
@@ -270,8 +278,9 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
       if (fire) fireTicks++;
       const pk = PILOT[sc.pilot](t, { pl, tgt, dist: sc.dist, mem: pilotMem });
       if (process.env.LAB_TRACE && t % 60 === 0) console.error(`[trace] t=${t} d=${d.toFixed(0)} keys=${pk.join('+')} rot=${pl.rot.toFixed(2)} v=${Math.hypot(pl.vel.x, pl.vel.z).toFixed(0)} tgtV=${Math.hypot(tgt.vel.x, tgt.vel.z).toFixed(0)}`);
-      world.keys(pk, { fire });
+      world.keys(pk, { fire: fire && !sc.noFire });
       world.step();
+      if (hooks.onTick) { hookCtx.t = t; hooks.onTick(hookCtx); }
       register();
       applyScale();
       // Live rounds: follow the real projectile; check it flies straight (no homing).
@@ -328,7 +337,9 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
     for (const rd of ghosts) rd.inFlightAtEnd = true;
     const done = rounds.filter((r) => !r.inFlightAtEnd);
     for (const rd of done) classify(rd);
-    return summarize(id, sc, done, { seed, digest: digest(kin), fireTicks, weapon, tgtSpd: stats(tgtSpd), tgtAcc: stats(tgtAcc), rng: stats(rngTr) });
+    const out = summarize(id, sc, done, { seed, digest: digest(kin), fireTicks, weapon, tgtSpd: stats(tgtSpd), tgtAcc: stats(tgtAcc), rng: stats(rngTr) });
+    if (hooks.extra) Object.assign(out, hooks.extra(hookCtx, done));
+    return out;
   } finally {
     world.dispose();
     setWeaponsAimLab({});

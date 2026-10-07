@@ -478,3 +478,58 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 - boost: about 1.0 rad/s = 35–40%, about 345 wu radius, held steady through long boosts rather than decaying
 - coast: unchanged
 
+
+## 10. Phase 2b (2026-10-06/07)
+
+**Status (restart from here):** #4 NPC evasion/spacing IN PROGRESS. Bench `npc` built
+(`scripts/lab/benches/npcEvasion.mjs`), baseline done (`results/npc-2b/baseline.w*.jsonl`), knob grid
+running/resumable: `node scripts/lab/sweeps/npcSweep4.mjs grid --workers 7` (shards
+`results/npc-2b/grid.w*.jsonl`, gitignored; `report` re-ranks from disk). Next: `top`, then the
+production branch. #5..#10 not started. #3 skipped (waiting on Robin's turn-radius call).
+
+### 10.1 #4 NPC evasion + engagement spacing
+
+**Bench.** `node scripts/lab/run.mjs npc [--scenarios wasp-hold,...] [--seeds 1,2,3]`. Same engine as
+`aim` (`runAimSpec`, real locked aim = shipped 2a muzzle solve, invulnerable hulls so the doctrine
+cycles for 24 s). Per enemy it taps the maneuver planner's own request reason
+(`combat_doctrine:<id>:<phase>`) and records range, speed, preferredRange and reflex per tick.
+Scored: egress legs (extend/breakaway/peel/disengage/retreat/relocate, >= 20 ticks) must end farther out
+than they started and never dive > 15 wu inside their start range; orbit/hold phases on the player:
+|r - preferredRange|; hit% by fire range (<=130 / 130-200 / >200 wu) and target-manoeuvre misses.
+Scenarios: 9 combat types x {player holds at 300 wu, player cruises a 200-wu orbit} + wasp pack + wasp no-fire.
+
+**Lab seams** (`src/ai/reflexes.js` `NPC_EVASION_LAB` / `setNpcEvasionLab`; empty = master):
+`egressAwayCos` (egress heading clamped into a cone around away-from-target), `strikeGate` (+`strikeGateCap`:
+strike max clock only runs once inside the strike band), `orbitFarClosing` (orbit closing cap lifted to the
+intercept cap while > ring+60 wu out), `orbitThrottleFloor`, `jinkAuthority` (a jink/weave burst owns the
+strafe channel), `jinkWindow/jinkCooldown/jinkAmpScale/jinkDashGate/jinkEta/jinkMissPad`, `weaveWindow/
+weaveCooldown`, `markedAmpScale/markedMinRange`, `swarmExtendTicks/MaxTicks/Exit`.
+
+**Baseline (master AI, 5 seeds, `baseline.w*.jsonl`):**
+
+| type | unblocked hit% | near (<=130) hit% | far (>200) manoeuvre-miss% | egress legs | egress opened % | egress dives |
+|---|---|---|---|---|---|---|
+| wasp | 84.6 | 98.8 | 34.5 | 160 | 49.4 | 72 |
+| corsair | 92.4 | 100 | 11.6 | 53 | 66.0 | 18 |
+| reaver | 99.0 | - | 1.7 | 50 | 62.0 | 16 |
+| lancer | 88.1 | - | 12.8 | 2 | 100 | 2 |
+| bruiser | 99.5 | - | 0.6 | 40 | 57.5 | 14 |
+| dart | 79.1 | 100 | 31.9 | 34 | 76.5 | 9 |
+| ghost | 74.8 | - | 27.3 | 35 | 54.3 | 12 |
+| jackal | 96.0 | 100 | 8.6 | 50 | 60.0 | 23 |
+| zealot / lawman | no fight (escort with no ward parks at 460 wu; lawman is lawful) | | | | | |
+
+All doctrines: 57.8% of egress legs open range, 166 dive inside their start range.
+
+**Root causes (traced, `/tmp`-style probes reproduced in the bench):**
+1. `combatDoctrine.egressPoint` aims the 960-wu egress point along the hull's CURRENT velocity. At the
+   end of a strike that velocity still points at (or past) the target, so extend/breakaway/peel/
+   disengage legs fly through the player (wasp 97 -> 38 wu; the phase-1 118 -> 66).
+2. The strike never reaches its band. Swarm strike is an ORBIT at 120 wu, and ORBIT closing is capped at
+   `maxOrbitClosingSpeed` 24 wu/s; strike lasts at most 44 ticks (interceptor 54) from an ingress at
+   340 wu (interceptor 420). In master the pass only got close because bug 1 flew the hull through
+   the player during the "extend". Fixing 1 alone parks wasps at ~290 wu (outside pulse range).
+3. Enemies crawl: speed budgets are interceptSpeed 72 x hull scale x verve (reaver 44 wu/s against an
+   authored 112), on-ring orbit throttle collapses to ~0 (`arrival/slowRadius`), and a volley jink only
+   offsets the desired point; the strafe channel stays at 0.24 (intercept) / 0.48 (orbit) authority and
+   is cut x0.35 when speed-limited, so jinks barely move the hull (wasp 20-35 wu/s p50).

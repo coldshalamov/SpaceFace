@@ -17,6 +17,7 @@ import {
 } from './contracts.js';
 import { createSquadFrameDirector } from './squadFrame.js';
 import { temperamentFor } from './temperament.js';
+import { NPC_EVASION_LAB } from './reflexes.js';
 import {
   emptyReflexState,
   evaluateReflexes,
@@ -501,6 +502,12 @@ export class ManeuverPlanner {
         }
       }
     }
+    if (kind === ManeuverKind.ORBIT && target && NPC_EVASION_LAB.orbitFarClosing) {
+      const ringR = Number.isFinite(intent.preferredRange) ? intent.preferredRange : this.config.orbitRadius;
+      if (distance2(selfPose.pos, target.pos) > ringR + (NPC_EVASION_LAB.orbitFarMargin != null ? NPC_EVASION_LAB.orbitFarMargin : 60)) {
+        envelope.maxClosingSpeed = this.config.interceptSpeed * 1.5 * (hullScale && hullScale.closing > 0 ? hullScale.closing : 1);
+      }
+    }
     const closing = target ? closingSpeed(selfPose, target) : 0;
     const localClosingLimit = target
       ? closeApproachLimit(kind, intent, selfPose, target, this.config, envelope.maxClosingSpeed)
@@ -509,6 +516,7 @@ export class ManeuverPlanner {
     const speedLimited = speed > envelope.maxSpeed + this.config.speedBrakeSlack;
     const closingLimited = target && closing > localClosingLimit + this.config.closingBrakeSlack;
     let throttle = arrival < slowRadius ? saturate(arrival / slowRadius) : 1;
+    if (kind === ManeuverKind.ORBIT && NPC_EVASION_LAB.orbitThrottleFloor != null) throttle = Math.max(throttle, NPC_EVASION_LAB.orbitThrottleFloor);
 
     if (envelope.maxSpeed > 0 && speed > envelope.maxSpeed) {
       const over = speed - envelope.maxSpeed;
@@ -522,19 +530,23 @@ export class ManeuverPlanner {
     const tracked = desired.control === 'track' && desired.desiredPos && kind !== ManeuverKind.CLEAR_DEADLOCK;
     let rawForward;
     let rawRight;
+    // Lab seam: a lateral burst reflex (volley jink / hit weave) owns the strafe channel.
+    const labBurst = NPC_EVASION_LAB.jinkAuthority != null && reflex && (reflex.kind === 'volley_jink' || reflex.kind === 'hit_weave') && Math.abs(reflex.lateral || 0) >= 0.5;
     if (tracked) {
       const axes = desiredAxes(selfPose, desired, desiredUnit, hullScale, this.config);
       rawForward = allowReverse ? axes.forward : Math.max(0, axes.forward);
-      rawRight = axes.right * strafeAuthorityForKind(kind);
+      rawRight = axes.right * (labBurst ? Math.max(strafeAuthorityForKind(kind), NPC_EVASION_LAB.jinkAuthority) : strafeAuthorityForKind(kind));
       if (Math.abs(angleError) > turnGate) rawForward *= 0.35;
       if (envelope.maxSpeed > 0 && speed > envelope.maxSpeed) rawForward *= throttle;
     } else {
       rawForward = (allowReverse ? forwardDot : Math.max(0, forwardDot)) * throttle;
-      rawRight = rightDot * throttle * strafeAuthorityForKind(kind);
+      rawRight = labBurst
+        ? rightDot * Math.max(throttle, NPC_EVASION_LAB.jinkAuthority) * Math.max(strafeAuthorityForKind(kind), NPC_EVASION_LAB.jinkAuthority)
+        : rightDot * throttle * strafeAuthorityForKind(kind);
     }
     if (speedLimited || (!intent.crossingLane && closingLimited)) {
       rawForward = Math.min(rawForward, speedLimited ? 0.04 : 0.18);
-      if (!intent.crossingLane) {
+      if (!intent.crossingLane && !labBurst) {
         rawRight *= 0.35;
       }
     }
@@ -557,7 +569,7 @@ export class ManeuverPlanner {
       forward: rawForward,
       right: rawRight,
       torqueYaw: rawTorqueYaw,
-    }, this.config, { emergency: emergencyManeuver, slew: hullScale.slew * poiseSlew });
+    }, this.config, { emergency: emergencyManeuver || labBurst, slew: hullScale.slew * poiseSlew });
 
     const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)

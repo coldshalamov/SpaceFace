@@ -36,6 +36,26 @@ const TRIGGERS = Object.freeze({
 
 const TAU = Math.PI * 2;
 
+// Tuning-lab seam (lab/tuning-phase1 only). Empty = byte-identical master behaviour.
+// Keys: jinkWindow, jinkCooldown, jinkAmpScale, jinkDashGate, jinkEta, jinkMissPad, weaveWindow,
+// weaveCooldown, markedAmpScale, markedMinRange, egressAwayCos, orbitThrottleFloor,
+// swarmExtendTicks, swarmExtendMaxTicks, swarmExtendExit, reflexAccelScale.
+export const NPC_EVASION_LAB = {};
+export function setNpcEvasionLab(cfg = {}) {
+  for (const k of Object.keys(NPC_EVASION_LAB)) delete NPC_EVASION_LAB[k];
+  Object.assign(NPC_EVASION_LAB, cfg || {});
+  return NPC_EVASION_LAB;
+}
+const LAB_TRIGGER_KEYS = { [REFLEX_KIND.VOLLEY_JINK]: ['jinkWindow', 'jinkCooldown'], [REFLEX_KIND.HIT_WEAVE]: ['weaveWindow', 'weaveCooldown'] };
+function trig(kind) {
+  const base = TRIGGERS[kind];
+  const keys = LAB_TRIGGER_KEYS[kind];
+  if (!keys) return base;
+  const w = NPC_EVASION_LAB[keys[0]], c = NPC_EVASION_LAB[keys[1]];
+  if (w == null && c == null) return base;
+  return { ...base, windowTicks: w != null ? w : base.windowTicks, cooldownTicks: c != null ? c : base.cooldownTicks };
+}
+
 /**
  * Create a reflex evaluator. One engine per planner; per-entity state is kept in the caller's
  * runtime record (passed in) so save/reload semantics match the rest of the planner.
@@ -99,7 +119,7 @@ export function evaluateReflexes(seed, ctx) {
       // Slow drift cycle: ~2.2 s at 60 Hz, phase offset per pilot so wingmates don't
       // weave in lockstep (they'd read as one mirrored ghost).
       phase: hashUnit(seed, entityId, 'marked_weave_phase') * TAU,
-      amp: (18 + 42 * temperament.weave) * (temperament.aim > 0.65 ? 0.55 : 1),
+      amp: (18 + 42 * temperament.weave) * (temperament.aim > 0.65 ? 0.55 : 1) * (NPC_EVASION_LAB.markedAmpScale != null ? NPC_EVASION_LAB.markedAmpScale : 1),
       rate: 0.023,
     };
   }
@@ -180,20 +200,20 @@ function pickBurst(seed, ctx, obs) {
   const cooling = (kind) => rs.cooldowns != null && (rs.cooldowns.get(kind) || 0) > tick;
   const setCooldown = (kind) => {
     if (!rs.cooldowns) rs.cooldowns = new Map();
-    rs.cooldowns.set(kind, tick + TRIGGERS[kind].cooldownTicks);
+    rs.cooldowns.set(kind, tick + trig(kind).cooldownTicks);
   };
   const side = () => (hashUnit(seed, entityId, 'reflex_side', Math.floor(tick / 24)) < 0.5 ? -1 : 1);
 
   // 1) Volley jink: a live projectile on a near-miss course. The highest-priority
   //    reaction — ships that never dodge gunfire read as targets, not pilots.
-  if (!cooling(REFLEX_KIND.VOLLEY_JINK) && obs.incoming && temperament.dash > 0.2) {
+  if (!cooling(REFLEX_KIND.VOLLEY_JINK) && obs.incoming && temperament.dash > (NPC_EVASION_LAB.jinkDashGate != null ? NPC_EVASION_LAB.jinkDashGate : 0.2)) {
     setCooldown(REFLEX_KIND.VOLLEY_JINK);
     return {
       kind: REFLEX_KIND.VOLLEY_JINK,
       startTick: tick,
-      untilTick: tick + TRIGGERS[REFLEX_KIND.VOLLEY_JINK].windowTicks,
+      untilTick: tick + trig(REFLEX_KIND.VOLLEY_JINK).windowTicks,
       side: obs.incoming.side,
-      amp: 42 + 58 * temperament.dash,
+      amp: (42 + 58 * temperament.dash) * (NPC_EVASION_LAB.jinkAmpScale != null ? NPC_EVASION_LAB.jinkAmpScale : 1),
     };
   }
 
@@ -204,7 +224,7 @@ function pickBurst(seed, ctx, obs) {
     return {
       kind: REFLEX_KIND.HIT_WEAVE,
       startTick: tick,
-      untilTick: tick + TRIGGERS[REFLEX_KIND.HIT_WEAVE].windowTicks,
+      untilTick: tick + trig(REFLEX_KIND.HIT_WEAVE).windowTicks,
       side: side(),
       amp: 26 + 44 * temperament.weave,
     };
@@ -221,7 +241,7 @@ function pickBurst(seed, ctx, obs) {
     return {
       kind: REFLEX_KIND.BRAKE_CHECK,
       startTick: tick,
-      untilTick: tick + TRIGGERS[REFLEX_KIND.BRAKE_CHECK].windowTicks,
+      untilTick: tick + trig(REFLEX_KIND.BRAKE_CHECK).windowTicks,
       side: side(),
       amp: 30 + 40 * temperament.dash,
     };
@@ -236,7 +256,7 @@ function pickBurst(seed, ctx, obs) {
       return {
         kind: REFLEX_KIND.POUNCE,
         startTick: tick,
-        untilTick: tick + TRIGGERS[REFLEX_KIND.POUNCE].windowTicks,
+        untilTick: tick + trig(REFLEX_KIND.POUNCE).windowTicks,
         side: 0,
         amp: 0,
       };
@@ -250,7 +270,7 @@ function pickBurst(seed, ctx, obs) {
     return {
       kind: REFLEX_KIND.SCATTER_LOSS,
       startTick: tick,
-      untilTick: tick + TRIGGERS[REFLEX_KIND.SCATTER_LOSS].windowTicks,
+      untilTick: tick + trig(REFLEX_KIND.SCATTER_LOSS).windowTicks,
       side: side(),
       amp: 55 + 45 * temperament.weave,
     };
@@ -291,9 +311,9 @@ function nearestIncoming(self, contacts) {
     const speed2 = vx * vx + vz * vz;
     if (speed2 < 1) continue;
     const eta = -(dx * vx + dz * vz) / speed2; // seconds to closest approach
-    if (eta < 0 || eta > 1.15) continue;
+    if (eta < 0 || eta > (NPC_EVASION_LAB.jinkEta != null ? NPC_EVASION_LAB.jinkEta : 1.15)) continue;
     const miss = Math.hypot(dx + vx * eta, dz + vz * eta);
-    if (miss > selfR + 34) continue;
+    if (miss > selfR + (NPC_EVASION_LAB.jinkMissPad != null ? NPC_EVASION_LAB.jinkMissPad : 34)) continue;
     if (!best || miss < best.miss) {
       // Sidestep perpendicular to the projectile's own velocity, away from its pass side.
       const across = dx * (-vz) + dz * vx; // sign of which side self sits on
@@ -308,7 +328,7 @@ function markedByHostile(self, contacts) {
     if (c.kind !== ContactKind.SHIP || c.hostile !== true || c.alive === false) continue;
     if (c.targetId === self.id) {
       const d = distanceTo(self, c);
-      if (d > 160 && d < 900) return true;
+      if (d > (NPC_EVASION_LAB.markedMinRange != null ? NPC_EVASION_LAB.markedMinRange : 160) && d < 900) return true;
     }
   }
   return false;

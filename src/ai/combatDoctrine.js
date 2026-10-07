@@ -12,6 +12,7 @@ import {
   wrapAngle,
 } from './contracts.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+import { NPC_EVASION_LAB } from './reflexes.js';
 import { CAPITAL_BOSS_CHOREOGRAPHY } from '../data/combatDefs.js';
 import { capitalOpeningAnnouncement, resolveCapitalOpening } from '../combat/subsystems.js';
 
@@ -478,7 +479,7 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
   } else if (record.phase === 'strike') {
     record.closestDistance = Math.min(record.closestDistance, distance);
     const passed = runHasPassed(record, self, target, distance);
-    if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || age >= INTERCEPTOR_STRIKE_MAX_TICKS) {
+    if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || labStrikeTimedOut(record, tick, age, distance, INTERCEPTOR_STRIKE_MAX_TICKS, 225)) {
       if (dispatched && interceptorTargetStationary(target)) beginReform(record, tick);
       else beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
@@ -1065,11 +1066,11 @@ function updateSwarmPack(record, tick, self, target, distance) {
   } else if (record.phase === 'strike') {
     record.closestDistance = Math.min(record.closestDistance, distance);
     const passed = runHasPassed(record, self, target, distance);
-    if ((age >= SWARM_STRIKE_MIN_TICKS && passed) || age >= SWARM_STRIKE_MAX_TICKS) {
+    if ((age >= SWARM_STRIKE_MIN_TICKS && passed) || labStrikeTimedOut(record, tick, age, distance, SWARM_STRIKE_MAX_TICKS, 180)) {
       beginEgress(record, 'extend', tick, self, target, 'swarm_pass_complete');
     }
-  } else if (record.phase === 'extend' && age >= SWARM_EXTEND_TICKS &&
-    (distance >= 320 || age >= SWARM_EXTEND_MAX_TICKS)) {
+  } else if (record.phase === 'extend' && age >= (NPC_EVASION_LAB.swarmExtendTicks != null ? NPC_EVASION_LAB.swarmExtendTicks : SWARM_EXTEND_TICKS) &&
+    (distance >= (NPC_EVASION_LAB.swarmExtendExit != null ? NPC_EVASION_LAB.swarmExtendExit : 320) || age >= (NPC_EVASION_LAB.swarmExtendMaxTicks != null ? NPC_EVASION_LAB.swarmExtendMaxTicks : SWARM_EXTEND_MAX_TICKS))) {
     beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= SWARM_REFORM_TICKS) {
     advanceCycle(record, tick, 'ingress');
@@ -1686,6 +1687,17 @@ function interceptorTargetStationary(target) {
   return Math.hypot(vel.x, vel.z) <= INTERCEPTOR_STATIONARY_TARGET_SPEED;
 }
 
+// Lab seam: with strikeGate on, the strike's max clock only runs once the run is inside its band
+// (a pass that has not closed yet keeps closing, bounded by strikeGateCap ticks).
+function labStrikeTimedOut(record, tick, age, distance, maxTicks, band) {
+  if (!NPC_EVASION_LAB.strikeGate) return age >= maxTicks;
+  if (record.strikeBandTick == null || record.strikeBandTick < record.phaseStartedTick) {
+    record.strikeBandTick = distance <= band ? tick : null;
+  }
+  const cap = NPC_EVASION_LAB.strikeGateCap != null ? NPC_EVASION_LAB.strikeGateCap : 240;
+  return (record.strikeBandTick != null && tick - record.strikeBandTick >= maxTicks) || age >= cap;
+}
+
 function runHasPassed(record, self, target, distance) {
   if (!self || !target) return false;
   if (record.closestDistance < 220 && distance > record.closestDistance + 32) return true;
@@ -1761,6 +1773,23 @@ function egressPoint(self, target, side) {
     }
   }
   const lateral = side < 0 ? -1 : 1;
+  if (NPC_EVASION_LAB.egressAwayCos != null && target && target.pos) {
+    const ax = sx - finite(target.pos.x), az = sz - finite(target.pos.z);
+    const al = Math.hypot(ax, az);
+    if (al > 1) {
+      const ux = ax / al, uz = az / al;
+      const c = dx * ux + dz * uz;
+      const minCos = NPC_EVASION_LAB.egressAwayCos;
+      if (c < minCos) {
+        // Keep the sweep side of the run (its tangential sign), clamp the heading into the away cone.
+        const t = -dx * uz + dz * ux;
+        const sgn = t >= 0 ? 1 : -1;
+        const sn = Math.sqrt(Math.max(0, 1 - minCos * minCos));
+        dx = ux * minCos - uz * sn * sgn;
+        dz = uz * minCos + ux * sn * sgn;
+      }
+    }
+  }
   return Object.freeze({
     x: sx + dx * RUN_EGRESS_DISTANCE - dz * lateral * 80,
     z: sz + dz * RUN_EGRESS_DISTANCE + dx * lateral * 80,

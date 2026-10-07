@@ -11,6 +11,7 @@ import { table, writeResult } from './labMetrics.mjs';
 const BENCHES = {
   tether: () => import('./benches/tetherSpin.mjs'),
   aim: () => import('./benches/autoAim.mjs'),
+  npc: () => import('./benches/npcEvasion.mjs'),
 };
 
 function parseArgs(argv) {
