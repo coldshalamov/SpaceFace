@@ -15,11 +15,14 @@ import { stats, r4 } from '../labMetrics.mjs';
 import { ManeuverPlanner } from '../../../src/ai/maneuver.js';
 import { ENEMY_TYPES } from '../../../src/data/enemies.js';
 const ACCEL = new Map((Array.isArray(ENEMY_TYPES) ? ENEMY_TYPES : Object.values(ENEMY_TYPES)).map((d) => [d.id, d.accel || 60]));
+const TURN = new Map((Array.isArray(ENEMY_TYPES) ? ENEMY_TYPES : Object.values(ENEMY_TYPES)).map((d) => [d.id, d.turnRate || 1.5]));
 const DT = 1 / 60;
 import * as reflexesModule from '../../../src/ai/reflexes.js';
 const setNpcEvasionLab = reflexesModule.setNpcEvasionLab || (() => {});
 
-const EGRESS = new Set(['extend', 'breakaway', 'escape', 'recover', 'retreat', 'disengage', 'peel', 'regroup', 'relocate']);
+// Legs whose stated intent is to OPEN range. (relocate = the stalker's flank shift at its 580-wu band and
+// regroup = escort rejoin are range-keeping moves, scored by range, not by opening.)
+const EGRESS = new Set(['extend', 'breakaway', 'escape', 'recover', 'retreat', 'disengage', 'peel']);
 
 const S = (o) => ({ durationS: 24, weapon: 'wpn_pulse_laser_s', pilot: 'hold', dist: 300, mode: 'assist', ...o });
 // patrol_lawman (lawful: never engages a clean player) and choir_zealot (escort_screen: parks with no ward)
@@ -101,13 +104,15 @@ export async function runScenario(id, { seed = 1, bundle = 'focused', params = {
           const eg = tr.segs.filter((s) => EGRESS.has(s.phase) && s.t1 - s.t0 >= 20);
           // Own-motion scoring (independent of the player's flying): the enemy's own radial
           // displacement over the leg must be outward, it must be heading out by the last third,
-          // and its inward carry may not exceed its braking distance from the entry speed + 15 wu.
+          // and its inward carry may not exceed what the hull physically has to carry: a quarter
+          // turn at its turn rate at entry speed, plus braking distance from entry speed, + 15 wu.
           const acc = ACCEL.get(tr.type) || 60;
+          const turnS = (Math.PI / 2) / (TURN.get(tr.type) || 1.5);
           for (const s of eg) {
             const tail = s.vrs.slice(Math.floor(s.vrs.length * 2 / 3));
             s.vrTail = tail.length ? tail.reduce((a, b) => a + b, 0) / tail.length : 0;
             const vin = Math.max(0, -(s.vr0 || 0));
-            s.carryAllow = vin * vin / (2 * acc) + 15;
+            s.carryAllow = vin * turnS + vin * vin / (2 * acc) + 15;
             s.ownOpen = s.ownDr > 0 && s.vrTail > 0;
             s.ownDive = s.ownMin < -s.carryAllow;
           }

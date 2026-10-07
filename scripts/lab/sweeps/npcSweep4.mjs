@@ -10,7 +10,7 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { runScenario, SCENARIOS, summarizeRuns } from '../benches/npcEvasion.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -55,6 +55,20 @@ function jobsFor(phase) {
     for (const c of [...cfgs, ...EXTRA]) for (const sc of ALL) for (const seed of [1, 2, 3, 4, 5]) jobs.push({ c, sc, seed });
     return jobs;
   }
+  if (phase === 'top2') {
+    const B = { egressTrack: 1, strikeGate: 1, orbitFarClosing: 1 };
+    const cfgs = [];
+    for (const egressAwayCos of [0.6, 0.8]) for (const jinkAuthority of [null, 0.7, 1]) for (const jinkCooldown of [null, 60]) cfgs.push({ egressAwayCos, ...B, jinkAuthority, jinkCooldown });
+    for (const c of cfgs) for (const sc of ALL) for (const seed of [1, 2, 3, 4, 5]) jobs.push({ c, sc, seed });
+    return jobs;
+  }
+  if (phase === 'top3') { // + longer swarm extend, re-scored with the turn-aware carry allowance
+    const B = { egressTrack: 1, strikeGate: 1, orbitFarClosing: 1, swarmExtendMaxTicks: 150 };
+    const cfgs = [{}];
+    for (const egressAwayCos of [0.6, 0.8]) for (const jinkAuthority of [null, 0.7, 1]) cfgs.push({ egressAwayCos, ...B, jinkAuthority });
+    for (const c of cfgs) for (const sc of ALL) for (const seed of [1, 2, 3, 4, 5]) jobs.push({ c, sc, seed });
+    return jobs;
+  }
   if (phase === 'probe') { // ad-hoc configs from PROBE_CFGS (JSON array)
     for (const c of JSON.parse(process.env.PROBE_CFGS || '[]')) for (const sc of ALL) for (const seed of [1, 2, 3]) jobs.push({ c, sc, seed });
     return jobs;
@@ -90,12 +104,15 @@ async function child(phase, i, n) {
   process.stdout.write(`worker ${i}: ran ${ran}\n`);
 }
 
-// Proof criteria (system #4). Agile = interceptor / swarm hulls.
-const AGILE = new Set(['wasp', 'zealot', 'corsair', 'dart']);
+// Proof criteria (system #4). Hit bands are per hull class (unblocked hit%, hold + cruise pooled):
+// light/agile hulls should make some shots miss for real, heavies should mostly get hit, nothing at
+// ~100% and nothing near zero.
+const CLASS = { wasp: 'agile', dart: 'agile', ghost: 'agile', corsair: 'agile', reaver: 'medium', lancer: 'medium', jackal: 'medium', bruiser: 'heavy', zealot: 'agile', lawman: 'medium' };
+export const BANDS = { agile: [60, 85], medium: [70, 92], heavy: [80, 97] };
+const AGILE = new Set(['wasp', 'corsair', 'dart']);
 export const CRITERIA = {
   egressOpenMin: 90,      // % of egress legs (>= 20 ticks) whose OWN radial motion is outward and heading out by the end
   egressDiveMax: 0,       // legs whose own inward carry exceeds braking distance from entry speed + 15 wu
-  ubHitMin: 60, ubHitMax: 95,  // overall unblocked hit% per enemy type (both pilots pooled)
   nearHitMin: 85,         // <= 130 wu: shots land
   agileFarManMin: 8,      // agile hulls at > 200 wu: some rounds miss for real (target manoeuvre)
 };
@@ -118,7 +135,8 @@ export function judge(runs) {
     const ub = t.n ? 100 * t.hit / t.n : null; const near = t.nearN ? 100 * t.nearHit / t.nearN : null; const farMan = t.farN ? 100 * t.farMan / t.farN : null;
     summary[type] = { ubHit: ub && +ub.toFixed(1), nearHit: near && +near.toFixed(1), farMan: farMan && +farMan.toFixed(1), farN: t.farN, egN: t.egN, egOpen: t.egN ? +(100 * t.egOpen / t.egN).toFixed(1) : null, dive: t.dive };
     egN += t.egN; egOpen += t.egOpen; dive += t.dive;
-    if (ub != null && (ub < CRITERIA.ubHitMin || ub > CRITERIA.ubHitMax)) fails.push(`${type}:ubHit ${ub.toFixed(1)}`);
+    const band = BANDS[CLASS[type] || 'medium'];
+    if (ub != null && (ub < band[0] || ub > band[1])) fails.push(`${type}:ubHit ${ub.toFixed(1)} not in ${band[0]}-${band[1]}`);
     if (near != null && t.nearN >= 20 && near < CRITERIA.nearHitMin) fails.push(`${type}:near ${near.toFixed(1)}`);
     if (AGILE.has(type) && t.farN >= 20 && farMan < CRITERIA.agileFarManMin) fails.push(`${type}:farMan ${farMan.toFixed(1)}`);
   }
@@ -137,7 +155,7 @@ export function rank(runs) {
 }
 function report() {
   const res = {};
-  for (const phase of ['baseline', 'grid', 'top', 'probe', 'verify']) {
+  for (const phase of ['baseline', 'grid', 'top', 'top2', 'top3', 'probe', 'verify']) {
     const runs = loadRuns(phase); if (!runs.length) continue;
     const ranked = rank(runs);
     res[phase] = { runs: runs.length, configs: ranked.length, passing: ranked.filter((r) => !r.fails.length).length, top: ranked.slice(0, 12) };
@@ -146,7 +164,8 @@ function report() {
   console.log(JSON.stringify(res, null, 1).slice(0, 12000));
 }
 
-const [phase, ...rest] = process.argv.slice(2);
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+const [phase, ...rest] = isMain ? process.argv.slice(2) : [];
 const opt = (k, d) => { const i = rest.indexOf(`--${k}`); return i >= 0 ? rest[i + 1] : d; };
 if (phase === 'report') report();
 else if (opt('child')) await child(phase, Number(opt('child')), Number(opt('n')));

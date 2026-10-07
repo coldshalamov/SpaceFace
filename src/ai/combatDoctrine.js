@@ -363,6 +363,7 @@ export class CombatDoctrineRuntime {
     } else {
       updateRanged(record, tick, self, target, distance);
     }
+    if (NPC_EVASION_LAB.egressTrack) labTrackEgressPoint(record, self, target);
     return snapshot(record, target, directive, factionBehavior, self);
   }
 
@@ -1753,6 +1754,30 @@ function committedChargePoint(self, target, distance) {
     x: fx + (ex / len) * BRAWLER_CHARGE_OVERSHOOT_WU,
     z: fz + (ez / len) * BRAWLER_CHARGE_OVERSHOOT_WU,
   });
+}
+
+// Lab seam: keep a committed egress leg pointed out of the LIVE target's reach. The stored point
+// is re-aimed only when its bearing has left the away cone (a target that moved, or one the hull
+// is still carrying momentum past), keeping the leg's sweep side.
+const LAB_EGRESS_PHASES = new Set(['extend', 'breakaway', 'peel', 'disengage', 'escape']);
+function labTrackEgressPoint(record, self, target) {
+  if (!record || !record.flightPoint || !LAB_EGRESS_PHASES.has(record.phase) || !self || !self.pos || !target || !target.pos) return;
+  const sx = finite(self.pos.x), sz = finite(self.pos.z);
+  const fx = record.flightPoint.x - sx, fz = record.flightPoint.z - sz;
+  const fl = Math.hypot(fx, fz);
+  const ax = sx - finite(target.pos.x), az = sz - finite(target.pos.z);
+  const al = Math.hypot(ax, az);
+  if (!(fl > 1) || !(al > 1)) return;
+  const ux = ax / al, uz = az / al;
+  const minCos = NPC_EVASION_LAB.egressAwayCos != null ? NPC_EVASION_LAB.egressAwayCos : 0.6;
+  const c = (fx * ux + fz * uz) / fl;
+  if (c >= minCos) return;
+  const t = (-fx * uz + fz * ux) / fl;
+  const sgn = t >= 0 ? 1 : -1;
+  const sn = Math.sqrt(Math.max(0, 1 - minCos * minCos));
+  const dx = ux * minCos - uz * sn * sgn;
+  const dz = uz * minCos + ux * sn * sgn;
+  record.flightPoint = Object.freeze({ x: sx + dx * RUN_EGRESS_DISTANCE, z: sz + dz * RUN_EGRESS_DISTANCE });
 }
 
 function egressPoint(self, target, side) {
