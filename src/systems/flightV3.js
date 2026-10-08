@@ -12,6 +12,7 @@ import { consumeCeresBreakerControl, publishCeresWorkfleetActuation } from './ce
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
 import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
+import { cancelPhaseBlink, stepPhaseBlink } from './phaseBlink.js';
 // FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
 // (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
 import { perfNow } from '../core/perfRuntime.js';
@@ -221,7 +222,10 @@ export const flightV3 = {
     const player = state.entities && state.entities.get(state.playerId);
     if (player && playerFlightSimActive(state, player)) {
       const active = playerFlightControlsActive(state, player);
-      if (!active) this._cancelPlayerBoost(player);
+      if (!active) {
+        this._cancelPlayerBoost(player);
+        cancelPhaseBlink(player);
+      }
       const raw = active ? state.input : neutralInput();
       this._stepCraft(player, raw, dt, state, true);
       // Emit boost start/stop on the TRUE transition. _stepCraft set flags.boosting to the
@@ -234,6 +238,7 @@ export const flightV3 = {
     } else if (player) {
       settleBank(player, dt);
       this._cancelPlayerBoost(player);
+      cancelPhaseBlink(player);
     }
 
     for (const entity of flightCraftCandidates(state)) {
@@ -303,6 +308,24 @@ export const flightV3 = {
     let boosting = input.boost;
     if (isPlayer) {
       const autoBoost = !!(autopilot && autopilot.active);
+      // Veil Step (mod_veil_step → derived.phaseBlink) replaces the thruster boost.
+      // Shift throws a shadow ahead and the release puts the hull there. The
+      // capacitor still refills through the boost machine, with the key forced
+      // off so a dash impulse and the afterburner cannot also fire.
+      const veil = !autoBoost && !!(entity.data && entity.data.derived && entity.data.derived.phaseBlink);
+      let veilBusy = false;
+      if (veil) {
+        const phase = stepPhaseBlink({
+          entity,
+          held: !!(rawInput && rawInput.boost),
+          dt,
+          state,
+          bus: this.bus,
+          now: finite(state && state.simTime, 0),
+        });
+        veilBusy = !!(phase && phase.busy);
+        input.boost = false;
+      }
       // A held tether-orbit chord and a dash impulse are incompatible control contracts. The
       // orbit helper can continuously trim yaw and the swing coordinator can lower sustained
       // boost to the speed the hull can actually track, but a boost press also carries a discrete
@@ -326,8 +349,8 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost || orbitOwnsBoostPress,
-        suppressRegen: requestedTravelBurn,
+        suppressDash: autoBoost || orbitOwnsBoostPress || veil,
+        suppressRegen: requestedTravelBurn || veilBusy,
       });
       input.boost = boosting;
       if (boosting && finite(state && state.simTime, 0) < finite(entity.boost && entity.boost._overshootUntil, 0)) {
