@@ -29,6 +29,7 @@ import { createSaveFilmstrip } from '../orrery/saveFilmstrip.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import { capturePhotoPng } from './pause.js';
 import {
   backupKeptLine,
   importDestination,
@@ -1019,7 +1020,7 @@ export const saveLoadScreen = {
       const note = this._notices && this._notices[id];
       return {
         id,
-        name: slotLabel(id),
+        name: (meta && meta.label) || slotLabel(id),
         sub: occupied
           ? [shipLabel(meta.shipName), meta.sectorName, fmtPlaytime(meta.playtimeS), note && note.text].filter(Boolean).join(' · ') || 'Saved game'
           : [summary.context, note && note.text].filter(Boolean).join(' · '),
@@ -1047,7 +1048,9 @@ export const saveLoadScreen = {
         const frame = el('span', 'sf-slot-frame');
         frame.setAttribute('aria-hidden', 'true');
         frame.appendChild(el('span', 'sf-slot-berth'));
-        const art = item.occupied ? hullPosterUrl(slotShipId(slots[item.id], null), 'side') : null;
+        const filed = slots[item.id];
+        const still = filed && typeof filed.thumbnail === 'string' ? filed.thumbnail : null;
+        const art = item.occupied ? (still || hullPosterUrl(slotShipId(slots[item.id], null), 'side')) : null;
         if (art) {
           const img = el('img', 'sf-slot-thumb');
           img.alt = '';
@@ -1254,6 +1257,28 @@ export const saveLoadScreen = {
       items.push({ action: 'newGame', label: 'New game', primary: true });
     }
     refs.actions.innerHTML = '';
+    if (!refs.labelField) {
+      const field = el('label', 'sf-slot-label');
+      field.appendChild(el('span', 'k-caps', 'Name'));
+      const input = el('input');
+      input.type = 'text';
+      input.maxLength = 48;
+      input.className = 'sf-slot-label-input';
+      input.setAttribute('aria-label', 'Save name');
+      input.style.background = 'transparent';
+      input.style.color = 'rgb(236 230 216)';
+      input.style.border = '1px solid rgb(236 230 216 / .42)';
+      input.style.padding = '4px 8px';
+      input.style.font = 'inherit';
+      field.appendChild(input);
+      refs.labelField = field;
+      refs.labelInput = input;
+    }
+    if (refs.labelField.parentNode !== refs.caption) refs.caption.insertBefore(refs.labelField, refs.actions);
+    if (refs.labelInput && document.activeElement !== refs.labelInput) {
+      const next = (occupied && meta && meta.label) || '';
+      if (refs.labelInput.value !== next) refs.labelInput.value = next;
+    }
     if (!items.length) return;
     const list = words(items, {
       row: true, size: 'emph', ariaLabel: slotLabel(id) + ' actions',
@@ -1354,7 +1379,23 @@ export const saveLoadScreen = {
         if (!ok) return;
       }
       refs.selected = id;
-      ctx.bus.emit('game:save', { slot: id });
+      const presenting = !!(ctx.state && ctx.state.render && ctx.state.render.photoMode && ctx.state.render.photoMode.active);
+      let thumbnail;
+      let thumbnailSource;
+      if (!presenting && typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+        const canvas = document.querySelector('canvas');
+        const shot = capturePhotoPng(canvas);
+        if (shot && shot.ok) {
+          thumbnail = shot.dataUrl;
+          thumbnailSource = canvas;
+        }
+      }
+      ctx.bus.emit('game:save', {
+        slot: id,
+        label: refs.labelInput ? refs.labelInput.value : '',
+        thumbnail,
+        thumbnailSource,
+      });
       setTimeout(() => this._render(ctx), 120);
       return;
     }

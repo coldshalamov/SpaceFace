@@ -28,6 +28,7 @@ import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships
 import { createTimeEffects } from '../core/timeEffects.js';
 import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
 import { stampIronmanLatch } from './ironmanChoice.js';
+import { stampSlotCard } from './slotStill.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import {
@@ -298,7 +299,12 @@ export const save = {
         });
         return false;
       }
-      return this.save((p && p.slot) || 'quick', { reason: 'manual' });
+      return this.save((p && p.slot) || 'quick', {
+        reason: 'manual',
+        label: p && p.label,
+        thumbnail: p && p.thumbnail,
+        thumbnailSource: p && p.thumbnailSource,
+      });
     });
     bus.on('game:load', (p) => {
       // Loading out of a live run is legal — it is how a player leaves — but the run has to END,
@@ -1327,6 +1333,8 @@ export const save = {
       const t = nowMs();
       envelope = this.serialize(slot);
       serializeMs = nowMs() - t;
+      const prior = this._readIndex()[slot] || {};
+      stampSlotCard(envelope, options, prior);
     } catch (err) {
       console.error('[save] serialize failed', err);
       const timing = this._saveTiming({ slot, reason, autosave, started, serializeMs, ok: false, failure: 'serialize_failed' });
@@ -7278,6 +7286,10 @@ export function slotCardFromEnvelopeData(slot, env, sectorNameOf = null) {
     objectiveSummary: resumeObjectiveSummary({ navSummary, missionSummary, storySummary }),
     endingChoice: completedEndingChoiceFromSaveData(data) || undefined,
     version: env.version,
+    ...(typeof env.label === 'string' && env.label.trim() ? { label: env.label.trim().slice(0, 48) } : {}),
+    ...(typeof env.thumbnail === 'string' && env.thumbnail.indexOf('data:image/') === 0 && env.thumbnail.length <= 24 * 1024 * 2
+      ? { thumbnail: env.thumbnail }
+      : {}),
   };
 }
 
