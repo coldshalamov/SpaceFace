@@ -42,6 +42,7 @@ const {
   WINDOW_STATE_FILE,
   readWindowStateFile,
   sanitizeWindowState,
+  applyWindowMode,
   writeWindowStateFile,
 } = require('./windowState.cjs');
 const { configureAutoUpdate } = require('./autoUpdate.cjs');
@@ -179,6 +180,32 @@ ipcMain.handle(SHELL_PERF_METRICS_CHANNEL, () => app.getAppMetrics().map((m) => 
   cpuPercent: m.cpu && Number.isFinite(m.cpu.percentCPUUsage) ? m.cpu.percentCPUUsage : 0,
   workingSetKiB: m.memory && Number.isFinite(m.memory.workingSetSize) ? m.memory.workingSetSize : 0,
 })));
+
+// FB-106: Settings asks the shell which mode this window is in. The answer is the
+// sender's window only. Isolated evidence never reaches this with a persisted file;
+// the launch fullscreen flag above is untouched.
+const SHELL_WINDOW_MODE_GET = 'spaceface:window-mode-get';
+const SHELL_WINDOW_MODE_SET = 'spaceface:window-mode-set';
+function senderWindow(event) {
+  const contents = event && event.sender;
+  if (!contents || typeof BrowserWindow.fromWebContents !== 'function') return null;
+  const win = BrowserWindow.fromWebContents(contents);
+  if (!win || (typeof win.isDestroyed === 'function' && win.isDestroyed())) return null;
+  return win;
+}
+ipcMain.handle(SHELL_WINDOW_MODE_GET, (event) => {
+  const win = senderWindow(event);
+  if (!win) return { ok: false, reason: 'no-window' };
+  const mode = win.isFullScreen() ? 'fullscreen' : win.isMaximized() ? 'maximized' : 'windowed';
+  return { ok: true, mode };
+});
+ipcMain.handle(SHELL_WINDOW_MODE_SET, (event, payload) => {
+  const win = senderWindow(event);
+  const mode = applyWindowMode(win, payload && payload.mode);
+  if (!mode) return { ok: false, reason: 'bad-mode' };
+  const live = win.isFullScreen() ? 'fullscreen' : win.isMaximized() ? 'maximized' : 'windowed';
+  return { ok: true, mode: live };
+});
 
 // PQ-033.03 Steam: the optional steamworks.js binding (absent unless a Steam build adds it) behind two
 // allowlisted channels. Unlock requests carry only a known achievement id; status is the public view.

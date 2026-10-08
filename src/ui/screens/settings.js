@@ -616,6 +616,25 @@ export const settingsScreen = {
       rowSlider('Voice', () => a.voice == null ? 1 : a.voice, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'voice', v, persist));
     } else if (refs.active === 'Video') {
       const vd = s.video;
+      const shell = typeof window !== 'undefined' ? window.spacefaceShell : null;
+      if (shell && typeof shell.getWindowMode === 'function' && typeof shell.setWindowMode === 'function') {
+        if (!refs.windowMode) refs.windowMode = 'windowed';
+        rowSelect('Window', () => refs.windowMode, [
+          ['windowed', 'Windowed'],
+          ['maximized', 'Borderless'],
+          ['fullscreen', 'Fullscreen'],
+        ], (value) => {
+          refs.windowMode = value;
+          Promise.resolve(shell.setWindowMode(value)).then((res) => {
+            if (res && res.mode) refs.windowMode = res.mode;
+          }).catch(() => {});
+        });
+        Promise.resolve(shell.getWindowMode()).then((res) => {
+          if (!refs || !res || !res.mode || refs.windowMode === res.mode) return;
+          refs.windowMode = res.mode;
+          this._render(ctx);
+        }).catch(() => {});
+      }
       // One-click preset: writes the adaptive-quality tier (render scale, particle density, render
       // graph) and keeps the individual rows below as the source of truth for advanced edits.
       rowSelect('Quality preset', () => vd.qualityPreset || DEFAULT_QUALITY_PRESET,
