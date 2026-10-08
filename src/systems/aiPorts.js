@@ -1,3 +1,4 @@
+import { mothlightGunCadence } from '../data/mothlight.js';
 import {
   AI_CONTRACT_VERSION,
   ContactKind,
@@ -991,6 +992,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
   };
   // The id allocator recycles numbers. Copy the occupant token the spawn just
   // stamped; omit it when the body has none so a tokenless self stays tokenless.
+  const cadence = mothlightGunCadence(state, entity);
+  if (cadence) self.mothlightGunCadence = cadence;
   const generation = entity.occupantGeneration;
   if (generation != null && generation !== '') self.occupantGeneration = generation;
   return freeze(self);

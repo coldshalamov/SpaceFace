@@ -145,7 +145,14 @@ _syncBody(e, row) {
 }, _milestone(row, id) { if (!row.milestones.includes(id)) row.milestones.push(id); },
 _phase(e, row, phase) {
   row.phase = phase; row.phaseStartTick = this.state.tick; row.nextAttackTick = null;
-  if (phase === 'true_charge') { row.attack++; row.nextAttackTick = this.state.tick + C.chargeTicks; }
+  if (phase === 'true_charge') {
+    row.attack++; row.nextAttackTick = this.state.tick + C.chargeTicks;
+    // This one-tick action must land on a real tactical decision, never between cached frames.
+    // Alignment can lengthen the warning by at most one decision interval, never shorten it.
+    const ai = this.ctx.registry?.get('tacticalAI'), interval = ai?.decisionIntervalTicks, last = ai?.stack?.lastTick;
+    if (Number.isInteger(interval) && interval >= 1 && interval <= 12 && Number.isInteger(last) && last >= 0)
+      row.nextAttackTick += (interval - (row.nextAttackTick - last) % interval) % interval;
+  }
   if (phase === 'retreat') {
     this._milestone(row, 'empty'); setEntityDoctrine(e, { activity: { kind: 'flee', startedTick: this.state.tick }, roe: 'hold_fire' });
   }
@@ -155,6 +162,12 @@ _phase(e, row, phase) {
   const id = e.data?.intent?.targetId ?? e.data?.combat?.targetId ?? this.state.playerId;
   const target = this.state.entities.get(id);
   return target?.alive && dist(e.pos, target.pos) <= C.range ? target : null;
+}, gunCadence(e) {
+  const row = this._actors.get(e?.data?.mothlightKey);
+  if (this._restoring || e?.data?.lootTableId !== C.enemyId || this._find(row?.key) !== e || !this._ready(e)) return null;
+  return Object.freeze({ ownerId: e.id, ownerLife: e.occupantGeneration, sampledTick: this.state.tick,
+    phase: row.phase, phaseStartTick: row.phaseStartTick, nextAttackTick: row.nextAttackTick,
+    targetId: row.targetId, targetLife: row.targetLife });
 }, allowsFire(e) {
   const row = this._actors.get(e?.data?.mothlightKey), ws = e?.data?.weapons;
   if (!row || row.phase !== 'true_charge' || row.nextAttackTick !== this.state.tick

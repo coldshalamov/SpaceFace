@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Active continuation — 8 October 2026, 21:42 UTC
+## Active continuation — 8 October 2026, 21:56 UTC
 
 Branch: `dot/expansion-continuation-2026-10-08`, starting from current master
 `518c8d6fce7202f412d54995876c4ced0ddfd696`. Public clone, current source checkout,
@@ -41,10 +41,27 @@ preserving 140 intervening commits. The combined tree passes 22/22 route, owner 
 readiness cases, plus 2/2 measured native-body/source tests. This includes the full
 ordinary clamp and two cold Continue cycles on the new composition, not only the old base.
 
-Next gameplay unit: Mothlight's ordinary gun/Continue route, starting with
-`node --test --test-name-pattern="production director admits" test/mothlight.test.mjs`.
-Diagnose the real `enemy_mind_hold` condition without bypassing ordinary AI. The original
-scope remains open; preserve the reviewer ledger and the earlier remaining-concept list.
+Mothlight's ordinary gun/Continue route is now repaired and independently reviewed.
+The idle fixture legitimately lost sensor confidence. Ordinary input pursuit exposed a
+second defect: the iris warning and ranged doctrine used independent clocks whose gun
+windows never overlapped during the finite-lamp encounter. The owner now supplies a
+validated sensor cadence; the doctrine consumes that one clock while preserving target,
+EnemyMind, pressure/retreat, ROE, aim, LOS, native readiness and exact-tick weapon gates.
+Warnings last at least 66 ticks and align with real tactical decision cadence; copied,
+expired, malformed and wrong-life samples fail closed.
+
+On the composition with upstream `89c25c17e73317d54e2117fed721e9b322cd37bf`, root ran
+`node --test test/mothlight.test.mjs test/mothlight-doctrine.test.mjs test/mothlight-native-body.test.mjs`:
+15/15 passed in 27 seconds. The ordinary input route accepted shot 2 after a 67-tick
+warning and two cold Continues retained two remaining lamps without reminting destroyed
+lamp 1. The legitimate idle/low-confidence refusal remains a negative test. Both measured
+tender/lamp contracts are materialized and native-body comparisons pass. Existing CRLF
+style in combatDoctrine.js is preserved; CR-aware whitespace validation passes.
+
+Next original unit: inspect the existing Thimble Door geometry and quiet driver, then
+finish its live convoy-clearance, recorder recovery/payment, persistence and activation.
+Use the current source checkpoint below and original concept dossier; do not count the
+geometry-only scaffold as a finished encounter. The original scope remains open.
 
 Browser playability remains unverified. Playwright and exact locked dependencies are
 installed with manifests unchanged; its browser download failed with a truncated archive,

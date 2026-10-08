@@ -166,8 +166,9 @@ test('the scanner lesson uses the existing deck; its only choice and lifecycle c
   } finally { ui.destroy(); setPromptDeck(null); }
 });
 
-test('production director admits the original; actual scanner and full Continue retain native finite lamps', async () => {
+async function productionRoute(pursue) {
   const runtime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: 810 });
+  let restoredRuntime = null;
   try {
     const s = runtime.state, world = runtime.getSystem('world'), owner = runtime.getSystem('mothlight'), physics = runtime.getSystem('physics');
     assert.ok(owner, 'the normal production registry owns Mothlight');
@@ -180,15 +181,37 @@ test('production director admits the original; actual scanner and full Continue 
     world.enterSector(C.sectorId); world.relocatePlayerInSector(sectorLocalToGlobalForSector({ x: 2000, z: 1600 }, C.sectorId),
       { reason: 'mothlight-charted-fringe-fixture' });
     assert.equal(await physics.prepareBackend(s), true);
+    // Fly toward the tender with ordinary pilot keys, then brake in sensor range.
+    // No position/velocity writes, aim override, hostile suppression or firing grants.
+    const flyTicks = n => {
+      for (let i = 0; i < n; i++) {
+        const tender = [...owner._actors.values()].map(r => owner._find(r.key)).find(Boolean);
+        const keys = runtime.getSystem('input')._keys;
+        if (tender && pursue) {
+          const dx = tender.pos.x - player.pos.x, dz = tender.pos.z - player.pos.z;
+          const range = Math.hypot(dx, dz), heading = Math.atan2(dz, dx);
+          const error = Math.atan2(Math.sin(heading - player.rot), Math.cos(heading - player.rot));
+          const turn = error - (player.angVel || 0) * .5;
+          keys.KeyA = turn < -.06; keys.KeyD = turn > .06;
+          const speed = Math.hypot(player.vel.x, player.vel.z);
+          keys.KeyW = range > 500 && Math.abs(error) < .5 && speed < 45;
+          keys.Digit0 = range < 480 || speed > 48;
+        }
+        runtime.runTicks(1);
+      }
+    };
     const director = runtime.getSystem('encounterDirector'), requests = [];
     const request = director.requestAuthoredEncounter.bind(director);
     director.requestAuthoredEncounter = payload => {
+      if (payload.shapeId === C.encounterId) {
+        assert.equal(payload.respectPacing, true); assert.notEqual(payload.force, true);
+      }
       const result = request(payload); if (payload.shapeId === C.encounterId) requests.push(result); return result;
     };
     let count = 0;
-    // Cold runtime pacing starts with a65–85-second quiet chapter and20-second reentry grace.
+    // Cold runtime pacing starts with a 65–85-second quiet chapter and 20-second reentry grace.
     // Allow one capped two-minute window through those existing gates.
-    while (count++ < 7200 && !owner._introduced && s.mode === 'flight') runtime.runTicks(1);
+    while (count++ < 7200 && !owner._introduced && s.mode === 'flight') flyTicks(1);
     assert.equal(owner._introduced, true, `normal director admission: ${JSON.stringify({ requests,
       eligible: owner._eligible(), mode: s.mode, sectorId: s.world.currentSectorId,
       discovery: s.world.discovery[C.sectorId], storyBeat: s.story.beatIndex,
@@ -196,40 +219,76 @@ test('production director admits the original; actual scanner and full Continue 
       tensionPhase: s.tensionDirector?.phase, tensionGoalS: s.tensionDirector?.phaseGoalS,
       lastMeaningfulAt: s.encounterDirector?.lastMeaningfulAt })}`);
     const row = [...owner._actors.values()][0]; assert.ok(row);
-    count = 0; while (count++ < 300 && !owner._find(row.key, 'lamp_1')) runtime.runTicks(1);
+    count = 0; while (count++ < 300 && !owner._find(row.key, 'lamp_1')) flyTicks(1);
     const original = owner._find(row.key, 'lamp_1'), tender = owner._find(row.key); assert.ok(original); assert.ok(tender);
     assert.equal(original.physicsBody.mass, 2); assert.equal(tender.physicsBody.mass, 58);
     assert.equal(owner._nativeSolved(original), true); assert.equal(owner._nativeSolved(tender), true);
     let scanResults; runtime.bus.on('signal:scanResults', p => { scanResults = p; });
     // The production input reducer owns actions; exercise its ordinary C-key edge.
-    runtime.getSystem('input')._keys.KeyC = true; runtime.runTicks(1);
+    runtime.getSystem('input')._keys.KeyC = true; flyTicks(1);
     runtime.getSystem('input')._keys.KeyC = false;
     assert.match(scanResults?.signals.find(r => r.entityId === original.id)?.classification || '', /DECOY/);
     const credits = s.player.credits;
     const hit = getCombatKernel(owner.ctx).routeDamage({ attackerId: player.id, targetId: original.id,
       packet: scalarHitToDamagePacket({ damage: 8, damageType: 'energy', pos: { ...original.pos } }) });
     assert.equal(hit.ok, true); assert.equal(row.lamps.lamp_1.status, 'destroyed'); assert.equal(s.player.credits, credits);
-    const fireWindows = [];
-    count = 0; while (count++ < 3600 && !row.acceptedAttack && s.mode === 'flight') {
-      runtime.runTicks(1);
+    const fireWindows = [], shots = [], warnings = new Map();
+    runtime.bus.on('mothlight:phase', p => {
+      if (p.sourceKey === row.key && p.phase === 'true_charge') warnings.set(p.attack, { ...p });
+    });
+    runtime.bus.on('combat:fire', p => { if (p.ownerId === tender.id) shots.push({ ...p }); });
+    count = 0; while (count++ < (pursue ? 3600 : 600) && !row.acceptedAttack && s.mode === 'flight') {
+      flyTicks(1);
       if (row.nextAttackTick === s.tick) fireWindows.push({ phase: row.phase, tick: s.tick, ready: owner._nativeSolved(tender),
         allowed: owner.allowsFire(tender), targetId: row.targetId, targetLife: row.targetLife,
         target: owner._target(tender)?.id, range: Math.hypot(player.pos.x - tender.pos.x, player.pos.z - tender.pos.z),
-        rot: tender.rot, intent: { ...tender.data.intent }, weapons: tender.data.weapons, cap: tender.cap });
+        rot: tender.rot, intent: { ...tender.data.intent }, cap: tender.cap,
+        mind: structuredClone(runtime.getSystem('tacticalAI').stack.lastResult.decisions.find(d => d.entityId === tender.id)?.enemyMind),
+        contact: structuredClone(runtime.getSystem('tacticalAI').stack.memory.snapshot(tender.id).contacts.find(c => c.id === player.id)) });
+    }
+    if (!pursue) {
+      assert.ok(fireWindows.length >= 1);
+      assert.equal(row.acceptedAttack, null); assert.equal(shots.length, 0);
+      for (const window of fireWindows) {
+        assert.equal(window.intent.fireBlockReason, 'enemy_mind_hold');
+        assert.equal(window.mind.reason, 'contact_not_current');
+        assert.ok(window.contact.confidence < .45);
+      }
+      return;
     }
     assert.ok(row.acceptedAttack, `normal AI accepted gun action: ${JSON.stringify({ fireWindows, phase: row.phase,
       mode: s.mode, tenderAlive: tender.alive, playerAlive: player.alive, targetLife: player.occupantGeneration })}`);
+    assert.equal(shots.length, 1, 'one real weapon event confirms the ordinary accepted action');
+    const warning = warnings.get(row.acceptedAttack.attack); assert.ok(warning);
+    assert.equal(row.acceptedAttack.tick, warning.nextAttackTick);
+    assert.ok(warning.nextAttackTick - warning.phaseStartTick >= C.chargeTicks);
+    assert.ok(warning.nextAttackTick - warning.phaseStartTick < C.chargeTicks + runtime.getSystem('tacticalAI').decisionIntervalTicks);
     const stock = mothlightStock(row), key = row.key;
-    const saved = JSON.parse(JSON.stringify(runtime.getSystem('save').serialize('quick')));
-    assert.equal(runtime.getSystem('save').loadEnvelope(saved, 'quick'), true);
-    s.mode = 'flight'; s.ui.screenStack = []; s.ui.docked = false;
-    assert.equal(await physics.prepareBackend(s), true); runtime.runTicks(60);
-    const resumed = owner._actors.get(key); assert.ok(resumed);
-    assert.equal(mothlightStock(resumed), stock); assert.equal(resumed.lamps.lamp_1.status, 'destroyed');
-    assert.equal(owner._find(key, 'lamp_1'), null); assert.equal(resumed.nextAttackTick, null);
-    assert.equal(owner._nativeSolved(owner._find(key)), true); assert.equal(mothlightPresentation(s, tender), null);
-    console.log(JSON.stringify({ mothlightProduction: { seed: 810, tick: s.tick, sourceKey: key,
+    let saved = structuredClone(runtime.getSystem('save').serialize('quick'));
+    runtime.dispose();
+    for (let pass = 0; pass < 2; pass++) {
+      restoredRuntime?.dispose();
+      restoredRuntime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: 811 + pass });
+      const rs = restoredRuntime.state, resumedOwner = restoredRuntime.getSystem('mothlight');
+      assert.equal(await restoredRuntime.getSystem('save').loadEnvelope(saved, 'quick'), true);
+      rs.mode = 'flight'; rs.ui.screenStack = []; rs.ui.docked = false;
+      assert.equal(await restoredRuntime.getSystem('physics').prepareBackend(rs), true);
+      let resumedShots = 0;
+      restoredRuntime.bus.on('combat:fire', p => { if (p.ownerId === resumedOwner._find(key)?.id) resumedShots++; });
+      restoredRuntime.runTicks(60);
+      const resumed = resumedOwner._actors.get(key); assert.ok(resumed);
+      assert.equal(mothlightStock(resumed), stock); assert.equal(resumed.lamps.lamp_1.status, 'destroyed');
+      assert.equal(resumedOwner._find(key, 'lamp_1'), null); assert.equal(resumed.nextAttackTick, null);
+      assert.equal(resumed.acceptedAttack, null); assert.equal(resumedShots, 0, 'Continue cannot spend the prior warning');
+      assert.equal(resumedOwner._nativeSolved(resumedOwner._find(key)), true);
+      assert.equal(mothlightPresentation(rs, tender), null, 'old source identity is not the restored actor');
+      saved = structuredClone(restoredRuntime.getSystem('save').serialize('quick'));
+    }
+    console.log(JSON.stringify({ mothlightProduction: { seed: 810, sourceKey: key,
       stockRemaining: stock, destroyedLamp: 'lamp_1', acceptedShot: row.acceptedAttack.receiptId,
-      nextAttackTick: resumed.nextAttackTick, credits: s.player.credits } }));
-  } finally { runtime.dispose(); }
-});
+      warningTicks: warning.nextAttackTick - warning.phaseStartTick, coldContinues: 2 } }));
+  } finally { restoredRuntime?.dispose(); runtime.dispose(); }
+}
+
+test('idle ordinary Moth route preserves the low-confidence enemy-mind firing refusal', () => productionRoute(false));
+test('ordinary input pursuit earns a true Moth gun shot; scanner and repeated cold Continue retain finite lamps', () => productionRoute(true));
