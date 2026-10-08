@@ -134,7 +134,33 @@ export function handlineSenseLine(eventName, payload) {
     if (p.risk !== 'high') return null;
     return { key: 'pump-hot', name: 'PUMP HOT', detail: '' };
   }
-  return null;
+  return impactGradeLine(eventName, p);
+}
+
+/**
+ * A whip or a sweep already rates glance, solid, or crushing and then says
+ * only "impact". The callout names the grade. An unrated contact stays quiet.
+ * The number is the speed the receipt already carried.
+ */
+export function impactGradeLine(eventName, payload) {
+  const sweep = eventName === 'massline:sweepImpact';
+  const whip = eventName === 'tether:whipImpact';
+  if (!sweep && !whip) return null;
+  const p = payload || {};
+  const name = p.rating === 'crushing' ? (sweep ? 'CRUSHING SWEEP' : 'CRUSHING HIT')
+    : p.rating === 'solid' ? (sweep ? 'SOLID SWEEP' : 'SOLID HIT')
+    : p.rating === 'glance' ? (sweep ? 'GLANCE SWEEP' : 'GLANCE')
+    : null;
+  if (!name) return null;
+  const raw = sweep ? p.transverseSpeed : p.relSpeed;
+  const spd = Number.isFinite(raw) ? Math.round(raw) : null;
+  const id = p.victimId != null ? String(p.victimId) : 'hit';
+  const tick = p.tick != null ? String(p.tick) : '0';
+  return {
+    key: `${sweep ? 'sweep' : 'whip'}:${id}:${tick}`,
+    name,
+    detail: spd == null ? '' : String(spd),
+  };
 }
 
 function trickBaseName(trick) {
@@ -663,6 +689,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
     unsubs.push(bus.on('tether:snapCatch', onHandlineSense('tether:snapCatch')));
     unsubs.push(bus.on('tether:reelPump', onHandlineSense('tether:reelPump')));
+    unsubs.push(bus.on('tether:whipImpact', onHandlineSense('tether:whipImpact')));
+    unsubs.push(bus.on('massline:sweepImpact', onHandlineSense('massline:sweepImpact')));
     // SWARM-03 — the physics cause tag, on the lane that already names tricks.
     unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }
