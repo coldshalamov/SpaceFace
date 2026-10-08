@@ -52,6 +52,10 @@ const env = {
   normalizePartUrl: (url) => url,
   endAdmissionPhase: noop, recordAdmissionSlice: noop, tier1CausalCounters: () => null,
   buildComposedShipAsync: async () => { compositions++; return { root: {} }; },
+  // The fixture's owner never re-epochs: liveness is driven by admission.abort +
+  // ownerActive, so a real staleness verdict must never trigger — null keeps the
+  // production run on its live path exactly as pre-W116.
+  staleAuthoredRunVerdict: () => null,
   registerPreparedAuthoredAdmission: noop,
   prepareAuthoredShipVisualPipelines: async () => ({}),
   commitAuthoredBoundary: async () => true,
