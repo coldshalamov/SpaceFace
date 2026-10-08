@@ -24,6 +24,7 @@ import { registerMachineryReconciliation, unregisterMachineryReconciliation, inv
 //     never touches player state. Economy impact is via the event bus.
 
 import { anvilTrafficMethods } from './anvilWork.js';
+import { raceLeaseActive } from './racingSteer.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
@@ -5196,6 +5197,7 @@ export const traffic = {
   update(dt, state) {
     if (state.mode !== 'flight') return;
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (raceLeaseActive(state)) return;
     ensureActivityClassified(state);
     this._ensureState();
     if (state.world && state.world.currentSectorId === 'sector_pallas_drift') {

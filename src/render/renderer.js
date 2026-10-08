@@ -7,6 +7,7 @@ import { createAsyncAdmission } from './asyncAdmission.js';
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
+import { createRacingCourseView } from './racingCourseView.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
 import { pickDecodeRunwayCandidates, pickDecodeRunwayCandidatesSteps } from './decodeRunwayPick.js';
@@ -10190,6 +10191,8 @@ export const render = {
     const drawSize = applyRendererSize(renderer, state);
 
     const scene = new THREE.Scene();
+    this._racingCourseView?.dispose();
+    this._racingCourseView = createRacingCourseView(scene, state);
     // PERF item 18: the scene graph is refreshed exactly once per frame in _renderPostRoute,
     // before whichever post route draws. RenderGraph's AO path renders this scene twice per
     // frame; with the flag on, every render pass re-walked every Object3D.
@@ -19918,6 +19921,8 @@ export const render = {
   },
 
   destroy() {
+    this._racingCourseView?.dispose();
+    this._racingCourseView = null;
     try { this._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
     this._contextRestoreReceipt = null;
     // Never strand a context-loss pause on a dead renderer: teardown is not recovery, but the
@@ -27496,6 +27501,7 @@ export const render = {
   },
 
   prepareFrame(alpha, frameDt, presentationFrame = null) {
+    this._racingCourseView?.frame();
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
     this._lastFrameDt = Number.isFinite(frameDt) ? frameDt : 0.016667;

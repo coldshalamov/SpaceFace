@@ -255,6 +255,7 @@ export const save = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
+    this._ephemeralRacing = false;     // lifetime-owned, never serialized into a campaign
     this._restoring = false;           // guards autosave re-entrancy during load / boot enterSector
     this._pendingRunTransition = null; // latest load/new-game request queued by restore event re-entry
     this._lastAutosaveAt = -Infinity;  // wall-clock ms of last successful autosave (first is eligible)
@@ -292,7 +293,7 @@ export const save = {
     bus.on('game:save', (p) => {
       if (this._campaignSaveSuppressed()) {
         bus.emit('toast', {
-          text: 'This run is not saved — it ends when you leave the arena.',
+          text: 'Temporary flight: campaign save slots are protected. Local circuit records are kept.',
           kind: 'info',
           ttl: 4,
         });
@@ -383,19 +384,21 @@ export const save = {
     bus.on('game:started', clearPlayerDeathGate);
     // Registered during system init, before main installs its new-game bootstrap listener, so old
     // run work is invalidated synchronously at the route boundary.
-    bus.on('game:new', () => {
+    bus.on('game:new', (opts) => {
+      this._ephemeralRacing = opts?.racingSession === true;
       this._epochOpenedByNew = true;
       this._beginRunEpoch('game:new');
     });
-    bus.on('game:newGame', () => {
+    bus.on('game:newGame', (opts) => {
       // Public New Game already opened the epoch on `game:new`. The live route now also emits
       // the legacy `game:newGame` alias so VFX/title listeners reset; a second bump would
       // orphan the autosave generation started by `game:new`.
       if (this._epochOpenedByNew) return;
+      this._ephemeralRacing = opts?.racingSession === true;
       this._beginRunEpoch('game:newGame');
     });
     bus.on('game:started', () => { this._epochOpenedByNew = false; });
-    bus.on('save:loaded', () => { this._epochOpenedByNew = false; });
+    bus.on('save:loaded', () => { this._epochOpenedByNew = false; this._ephemeralRacing = false; });
 
     // Autosave triggers (§4.5): major progression milestones. Debounced ≤1/10s unless forced.
     bus.on('dock:docked', () => this.requestAutosave('dock'));
@@ -1291,6 +1294,8 @@ export const save = {
 
   /** Serialize the current state and persist it to localStorage under `slot`. */
   save(slot, options = {}) {
+    // The public function must obey the same guard as keyboard, interval and exit routes.
+    if (this._campaignSaveSuppressed()) return false;
     slot = slot || 'quick';
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
@@ -2328,6 +2333,7 @@ export const save = {
    * `lab` counts too: a Combat Lab session is the same ephemeral state by another name.
    */
   _campaignSaveSuppressed() {
+    if (this._ephemeralRacing === true) return true;
     const run = this.state && this.state.run;
     if (!run || run.phase === 'inactive') return false;
     return run.kind === 'survival' || run.kind === 'lab';
