@@ -18,17 +18,19 @@ export const SECOND_RINSE = Object.freeze({
   minAlong: 1600,
   sheetAlong: 32,
   sheetAcross: 16,
+  sheetLead: 30,
   whipAmp: 0.85,
   whipPeriod: 2.8,
   pinLength: 4,
-  mast: Object.freeze({ x: 0, z: 16 }),
-  buoy: Object.freeze({ x: 0, z: 52 }),
+  mast: Object.freeze({ x: 0, z: 24 }),
+  buoy: Object.freeze({ x: -42, z: 88 }),
   whiteCenters: Object.freeze([
-    Object.freeze({ x: -4, z: 28 }),
-    Object.freeze({ x: 0, z: 36 }),
-    Object.freeze({ x: 4, z: 44 }),
+    Object.freeze({ x: -48, z: 34 }),
+    Object.freeze({ x: -48, z: 52 }),
+    Object.freeze({ x: -48, z: 70 }),
   ]),
-  hailRadius: 80,
+  hailRadius: 240,
+  voiceInterval: 6,
 });
 
 const TAU = Math.PI * 2;
@@ -67,10 +69,10 @@ export function blueSheetLocal(simTime, flag) {
     z: h.z + along.z * u + across.z * v,
   });
   return [
-    corner(0, -W / 2),
-    corner(L, -W / 2),
-    corner(L, W / 2),
-    corner(0, W / 2),
+    corner(SECOND_RINSE.sheetLead, -W / 2),
+    corner(SECOND_RINSE.sheetLead + L, -W / 2),
+    corner(SECOND_RINSE.sheetLead + L, W / 2),
+    corner(SECOND_RINSE.sheetLead, W / 2),
   ];
 }
 
@@ -151,6 +153,18 @@ export function segmentsCross(a, b, c, d) {
   return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
 }
 
+// A hull travels through an interaction between fixed steps; touching an end counts too.
+export function sweptCircleHitsSegment(a, b, radius, c, d) {
+  return segmentsCross(a, b, c, d)
+    || Math.min(distToSeg(a.x, a.z, c, d), distToSeg(b.x, b.z, c, d),
+      distToSeg(c.x, c.z, a, b), distToSeg(d.x, d.z, a, b)) <= Math.max(0, radius);
+}
+
+export function sweptCircleHitsPoly(a, b, radius, corners) {
+  return circleHitsPoly(a.x, a.z, radius, corners) || circleHitsPoly(b.x, b.z, radius, corners)
+    || corners.some((p, i) => sweptCircleHitsSegment(a, b, radius, p, corners[(i + 1) % corners.length]));
+}
+
 /**
  * One tick of the verb. Cord wins over a clap on the same tick.
  * `wasOnBlue` is the previous tick's overlap. Hull and buoy are not pads.
@@ -191,9 +205,9 @@ export function secondRinsePocket(geometry = buildLaneGeometry(LANE_HELIOS_CERES
 }
 
 export const LINES = Object.freeze({
-  tuesday: 'HASP: Tuesday. The core calls lint a contaminant. I call it the load.',
-  boat: 'HASP: Blue, with the boat. It\u2019s off the pin. Don\u2019t put your burn on it.',
-  hover: 'HASP: Don\u2019t hover. It has to hit you.',
+  tuesday: 'HASP: Tuesday. The core calls lint a contaminant. Blue boat\u2019s loose. Catch the far end; mind the short cord at my mast.',
+  boat: 'HASP: White stays clipped. Blue, with the boat, needs a hull to catch it. Cross the mast cord and you\u2019ll cut it loose.',
+  hover: 'HASP: Let the blue end hit you. No burn. I\u2019ll work the clip.',
   shut: 'HASP: Shut. Boat\u2019s upside down. Leave it.',
   cut: 'HASP: You cut it. I won\u2019t call that clean.',
   stay: 'HASP: Lines stay up. File it with Concord.',

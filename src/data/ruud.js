@@ -46,11 +46,11 @@ export const RUUD = Object.freeze({
 });
 
 export const RUUD_LINES = Object.freeze({
-  discover: 'HOOK-LEFT — living suit on radiator fin Fin-3, cold face of Vesta Forge. Cab reads HOOK-LEFT. Plate reads Ruud. Scan for the filing.',
-  hello: 'HOOK-LEFT: Cab stamped the rotation at 04:10. The hook did not move.',
+  discover: 'HOOK-LEFT — living suit on Fin-3. A massline ring faces the cold approach. Scan for the filing.',
+  hello: 'HOOK-LEFT: Cab stamped the rotation at 04:10. The hook did not move. My ring takes a massline. The lane buoy has a berth.',
   hours: 'HOOK-LEFT: Nineteen hours. The stamp stopped the clock. I do not correct stamps.',
-  towing: 'HOOK-LEFT: Your line is on the ring.',
-  ignore: 'HOOK-LEFT: The hook is as you found it.',
+  towing: 'HOOK-LEFT: Your line is on the ring. Tow me to the lane buoy. Release close to the plate.',
+  ignore: 'HOOK-LEFT: Still on the fin side. The berth is at the lane buoy.',
   spared: 'HOOK-LEFT: Off the fin. On the buoy.',
   buoy: 'HOOK-LEFT: The berth plate still says complete.',
   hatch: 'HOOK-LEFT: The sign is bolted through the fin. A cab cannot read it.',

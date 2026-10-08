@@ -21,7 +21,7 @@ const LABELS = {
   },
   suit: {
     unchosen: 'HOOK-LEFT · plate Ruud · plumbed to Fin-3',
-    spared: 'HOOK-LEFT · plate Ruud · plumbed to Fin-3',
+    spared: 'HOOK-LEFT · plate Ruud · berthed at lane buoy',
     cut: 'HOOK-LEFT · backup bladder · no charge filed',
   },
   buoy: {
@@ -114,7 +114,11 @@ export function createRuud() {
       on('tether:latched', p => this._latch(p));
       on('tether:released', p => this._endLine(p));
       on('tether:cut', p => this._endLine(p));
-      on('tether:broken', () => { this._held = null; });
+      on('tether:broken', p => {
+        if (p?.targetId !== this._held) return;
+        // A deliberate cut publishes broken before released. A snapped line is no delivery.
+        if (p.reason !== 'tether_cut') this._held = null;
+      });
       on('physics:impact', p => this._impact(p));
       on('combat:damage', p => this._damage(p));
       on('entity:killed', p => this._killed(p));
@@ -283,7 +287,7 @@ export function createRuud() {
     _endLine(p) {
       if (!this._live()) return;
       const suit = this._get(this._id.suit);
-      if (!suit || p?.targetId !== suit.id) return;
+      if (!suit || p?.targetId !== suit.id || this._held !== suit.id) return;
       this._held = null;
       const m = this.state.ruud;
       if (m.disposition !== 'unchosen') return;
@@ -300,7 +304,17 @@ export function createRuud() {
       const pose = poseOf(m, now);
       for (const part of PARTS) {
         const e = this._get(this._id[part]);
-        if (e) e.data.ruudPose = { ...pose };
+        if (e) {
+          e.data.ruudPose = { ...pose };
+          if (part === 'suit') {
+            const fin = this._get(this._id.fin);
+            if (fin) {
+              const dx = fin.pos.x - e.pos.x, dz = fin.pos.z - e.pos.z;
+              const c = Math.cos(e.rot || 0), s = Math.sin(e.rot || 0);
+              e.data.ruudPose.umbilical = { x: dx * c + dz * s, z: -dx * s + dz * c };
+            }
+          }
+        }
       }
     },
     _plate() {
@@ -363,7 +377,10 @@ export function createRuud() {
       this._floor(e);
       const part = e.data.ruudPart;
       if (part !== 'suit' && part !== 'fin') return;
-      const playerHit = p.attackerId === this.state.playerId && (p.applied ?? 0) > 0;
+      // Collision damage can carry player attribution at arbitrarily low speed; only the
+      // impact listener owns the 14 WU/s cut threshold. Weapon provenance is a separate verb.
+      const playerHit = p.attackerId === this.state.playerId && (p.applied ?? 0) > 0
+        && p.origin?.kind === 'weapon';
       if (!playerHit) return;
       if (this.state.ruud.disposition === 'unchosen') this._cut();
       else this._say('weapon');
@@ -392,8 +409,7 @@ export function createRuud() {
       this._id[part] = null;
       const rec = this._record(part);
       if (rec) rec.hull = Math.max(1, rec.hull || 1);
-      if ((part === 'suit' || part === 'fin') && this.state.ruud.disposition === 'unchosen') this._cut();
-      else this._sync();
+      this._sync();
     },
     _tethered(id) {
       return this._held === id || (this.state.player?.tether?.active && this.state.player.tether.targetId === id);
@@ -444,8 +460,6 @@ export function createRuud() {
         }
       }
       if (this._held && !this._get(this._held)) this._held = null;
-      const pose = poseOf(m, now);
-      const mark = (e) => { if (e) e.data.ruudPose = { ...pose }; };
       if (m.disposition === 'unchosen') {
         if (fin) this._steer(fin, this._rest('fin'), dt, 4);
         if (suit) this._steer(suit, this._rest('suit'), dt, C.returnAcceleration);
@@ -461,9 +475,9 @@ export function createRuud() {
         }
       } else {
         if (buoy) this._steer(buoy, this._rest('buoy'), dt, 1.2);
-        if (suit && bladder) this._steer(suit, { x: bladder.pos.x, z: bladder.pos.z }, dt, 5);
+        if (suit && bladder) this._steer(suit, { x: bladder.pos.x - C.suitRadius - C.bladderRadius - 1, z: bladder.pos.z }, dt, 5);
       }
-      mark(fin); mark(suit); mark(buoy); mark(bladder);
+      this._paint(m, now);
       this._capture();
     },
   };

@@ -1,10 +1,10 @@
-// 372 — SECOND RINSE. Hasp hangs Tuesday's wash in a pocket off the Helios freight
+// 567 — SECOND RINSE. Hasp hangs Tuesday's wash in a pocket off the Helios freight
 // chord. Concord calls lint a contaminant inside the station, so the lines are outside.
 // The blue blanket with the boat is off its pin. It is not cargo.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { secondRinseEncounter } from '../../systems/secondRinse.js';
 
-export const encounterOrder = 372;
+export const encounterOrder = 567;
 export const trigger = deepFreeze({
   id: 'second_rinse',
   tier: 'ambient',

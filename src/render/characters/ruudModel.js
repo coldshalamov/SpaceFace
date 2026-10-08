@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RUUD as C } from '../../data/ruud.js';
 
-const FOUND = 0x8c5a28, HEAT = 0xff7a32, VERD = 0x3e6b58, SLATE = 0x2a3138, RUBBER = 0x12161a, FROST = 0xc5e4ea;
+const FOUND = 0x8c5a28, HEAT = 0xff7a32, VERD = 0x3e6b58, SLATE = 0x2a3138, RUBBER = 0x343d46, FROST = 0xc5e4ea;
 
 function materials() {
   const paint = (color, metal = 0.35, rough = 0.46) => new THREE.MeshStandardMaterial({ color, metalness: metal, roughness: rough });
@@ -120,6 +120,9 @@ function buildSuit(entity) {
   const m = materials();
   const body = new THREE.Group();
   body.name = 'work_suit';
+  // The powered work-suit fills its physical envelope; at flight scale its shoulder/arm
+  // silhouette must read separately from the umbilical and the small frosted face plate.
+  body.scale.setScalar(2);
   root.add(body);
   const shell = new THREE.Group();
   shell.name = 'suit_shell';
@@ -145,10 +148,10 @@ function buildSuit(entity) {
   const chain = new THREE.Group();
   chain.name = 'ANIM_chain';
   root.add(chain);
-  for (let i = 0; i < 5; i++) {
-    const link = add(chain, new THREE.BoxGeometry(0.55, 0.16, 0.22), i % 2 ? m.foundry : m.slate, 'box_link');
-    link.position.set(-0.9 - i * 0.62, -0.2 - i * 0.05, 0);
-    link.rotation.y = i % 2 ? 0.4 : 0;
+  const links = [];
+  for (let i = 0; i < 16; i++) {
+    const link = add(chain, new THREE.BoxGeometry(1, 0.16, 0.22), i % 2 ? m.foundry : m.slate, 'box_link');
+    links.push(link);
   }
   return stamp(root, entity, (e, time, a11y = {}) => {
     const p = poseOf(e);
@@ -156,6 +159,15 @@ function buildSuit(entity) {
     const reduced = !!a11y.reducedMotion;
     const clipped = p.clipped ? 1 : 0;
     chain.visible = p.chain === 1;
+    const end = p.umbilical || { x: -C.hang, z: 0 };
+    const length = Math.hypot(end.x, end.z);
+    const yaw = -Math.atan2(end.z, end.x);
+    for (let i = 0; i < links.length; i++) {
+      const t = (i + 0.5) / links.length;
+      links[i].position.set(end.x * t, -0.2 - Math.sin(t * Math.PI) * 0.6, end.z * t);
+      links[i].rotation.y = yaw;
+      links[i].scale.x = length / links.length * 0.94;
+    }
     arms.rotation.x = clipped ? 1.15 : (reduced ? 0.2 : 0.2 + Math.sin(t * 0.7) * 0.06);
     body.position.y = clipped || reduced ? 0 : Math.sin(t * 1.3) * 0.04;
   });

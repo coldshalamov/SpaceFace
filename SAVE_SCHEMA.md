@@ -16,6 +16,7 @@ Current save version: `14`
 - `solstice`
 - `rubric`
 - `ruckus`
+- `ruud`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -56,6 +57,7 @@ Current save version: `14`
 - `kilnback`
 - `mothlight`
 - `palletJack`
+- `secondRinse`
 - `towlineTable`
 - `borrowedVoice`
 - `lossLedger`
@@ -362,6 +364,7 @@ Current save version: `14`
 | `$.regionalEcology` | object | {} |
 | `$.rubric` | object | {} |
 | `$.ruckus` | object | {} |
+| `$.ruud` | object | {} |
 | `$.sableVenn` | null | null |
 | `$.salvage` | object | {} |
 | `$.scenario` | object | {} |
@@ -372,6 +375,7 @@ Current save version: `14`
 | `$.scenario.schemaVersion` | number | 1 |
 | `$.scenario.unresolvedActorIds` | array | length 0 |
 | `$.scissorwake` | null | null |
+| `$.secondRinse` | null | null |
 | `$.sectorSim` | object | {} |
 | `$.settings` | object | {} |
 | `$.settings.accessibility` | object | {} |

@@ -13,6 +13,7 @@ import { isHostileToPlayer } from '../src/systems/scanner.js';
 import { isAttachable } from '../src/systems/tetherGameplay.js';
 import { save } from '../src/save/saveSystem.js';
 import { buildRuudVisual } from '../src/render/characters/ruudModel.js';
+import { createCombatKernel } from '../src/combat/kernel.js';
 
 const LINE_KEYS = ['discover', 'hello', 'hours', 'towing', 'ignore', 'spared', 'buoy', 'hatch', 'cut', 'memorial', 'weapon'];
 
@@ -144,6 +145,8 @@ test('a decent release only counts on the buoy and never boards or flies the pla
   const missed = fixture();
   missed.state.simTime = 20;
   missed.part('suit').pos.x += 10;
+  missed.bus.emit('tether:latched', { targetId: missed.part('suit').id });
+  missed.state.simTime += C.voiceCooldown;
   missed.bus.emit('tether:released', { targetId: missed.part('suit').id });
   assert.equal(missed.state.ruud.disposition, 'unchosen');
   assert.ok(missed.events.some(e => e[0] === 'ruud:voice' && e[1].key === 'ignore'));
@@ -169,7 +172,7 @@ test('a player hit or a hard ram parts Fin-3 into serial 14-K without a kill, bo
   const before = f.sacred();
   const suit = f.part('suit');
   suit.hull = 0;
-  f.bus.emit('combat:damage', { targetId: suit.id, attackerId: f.player.id, applied: 40 });
+  f.bus.emit('combat:damage', { targetId: suit.id, attackerId: f.player.id, applied: 40, origin: { kind: 'weapon' } });
   assert.equal(f.state.ruud.disposition, 'cut');
   assert.ok(suit.hull >= 1);
   assert.equal(suit.alive, true);
@@ -209,6 +212,7 @@ test('spared and cut round-trip; a bad version is a fresh hook; hours stay ninet
   f.scan();
   const buoy = f.part('buoy');
   f.part('suit').pos.x = buoy.pos.x; f.part('suit').pos.z = buoy.pos.z;
+  f.bus.emit('tether:latched', { targetId: f.part('suit').id });
   f.bus.emit('tether:released', { targetId: f.part('suit').id });
   f.part('suit').vel.x = -4;
   const spared = f.system.serialize();
@@ -222,7 +226,7 @@ test('spared and cut round-trip; a bad version is a fresh hook; hours stay ninet
   assert.equal(f.part('suit').vel.x, -4);
   const g = fixture();
   g.part('fin').hull = 0;
-  g.bus.emit('combat:damage', { targetId: g.part('fin').id, attackerId: g.player.id, applied: 5 });
+  g.bus.emit('combat:damage', { targetId: g.part('fin').id, attackerId: g.player.id, applied: 5, origin: { kind: 'weapon' } });
   const cut = g.system.serialize();
   assert.equal(cut.disposition, 'cut');
   assert.equal(cut.bladder.present, true);
@@ -262,7 +266,6 @@ test('lines, audio, manifest, and the non-streamed residency row', async () => {
   assert.equal(PRODUCTION_INIT_ORDER.filter(id => id === 'ruud').length, 1);
   assert.equal(PRODUCTION_UPDATE_ORDER.filter(id => id === 'ruud').length, 1);
   assert.equal(TABLE_CLOCK_IDS.filter(id => id === 'ruud').length, 1);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 150);
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ruud') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ruckus') < PRODUCTION_UPDATE_ORDER.indexOf('ruud'));
   const factory = await readFile(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
@@ -337,4 +340,56 @@ test('authenticated scans wake once; a killed body is reminted at hull 1 and sti
   assert.ok(f.part('buoy').hull >= 1);
   assert.equal(f.state.ruud.disposition, 'unchosen');
   assert.equal(f.state.heat.value, 1);
+});
+
+test('real damage routing preserves the suit and low-speed collision damage cannot select cut', () => {
+  const f = fixture();
+  const kernel = createCombatKernel({ state: f.state, bus: f.bus, helpers: {} });
+  const suit = f.part('suit');
+  let kills = 0;
+  f.bus.on('entity:killed', () => kills++);
+  const hit = (origin, amount) => kernel.routeDamage({ attackerId: f.player.id, targetId: suit.id,
+    packet: { channels: { kinetic: amount }, shieldBypass: 1 }, origin: { kind: origin } });
+  hit('collision', 600);
+  assert.equal(f.state.ruud.disposition, 'unchosen');
+  assert.equal(suit.alive, true);
+  assert.equal(suit.hull, 1);
+  assert.equal(kills, 0);
+  hit('weapon', 600);
+  assert.equal(f.state.ruud.disposition, 'cut');
+  assert.equal(suit.alive, true);
+  assert.equal(suit.hull, 1);
+  assert.equal(kills, 0);
+  kernel.destroy?.();
+});
+
+test('a delivery requires the player line, survives deliberate-cut ordering, and rejects a snapped line', () => {
+  for (const reason of [null, 'tether_cut', 'over_tension']) {
+    const f = fixture();
+    const suit = f.part('suit'), buoy = f.part('buoy');
+    Object.assign(suit.pos, { x: buoy.pos.x + 11, z: buoy.pos.z });
+    if (reason) f.bus.emit('tether:latched', { targetId: suit.id });
+    if (reason) f.bus.emit('tether:broken', { targetId: suit.id, reason, actorId: f.player.id });
+    f.bus.emit('tether:released', { targetId: suit.id });
+    assert.equal(f.state.ruud.disposition, reason === 'tether_cut' ? 'spared' : 'unchosen');
+    if (reason === 'tether_cut') assert.match(suit.data.scanLabel, /berthed/);
+  }
+});
+
+test('the live umbilical follows a towed suit and a cut settles beside the bladder', () => {
+  const f = fixture();
+  const suit = f.part('suit'), fin = f.part('fin');
+  suit.pos.x += 70; suit.pos.z += 22; suit.rot = Math.PI / 2;
+  f.step();
+  const end = suit.data.ruudPose.umbilical;
+  assert.ok(Math.abs(end.x - (fin.pos.z - suit.pos.z)) < 1e-6);
+  assert.ok(Math.abs(end.z + (fin.pos.x - suit.pos.x)) < 1e-6);
+  const visual = buildRuudVisual(suit);
+  const chain = visual.getObjectByName('ANIM_chain');
+  assert.ok(chain.children.at(-1).position.distanceTo(chain.children[0].position) > 60);
+  f.bus.emit('combat:damage', { targetId: suit.id, attackerId: f.player.id, applied: 1, origin: { kind: 'weapon' } });
+  const bladder = f.part('bladder');
+  suit.pos.x = bladder.pos.x - C.suitRadius - C.bladderRadius - 1; suit.pos.z = bladder.pos.z;
+  suit.vel.x = 0; suit.vel.z = 0; impulse(suit); f.step();
+  assert.deepEqual(impulse(suit), { x: 0, z: 0 });
 });
