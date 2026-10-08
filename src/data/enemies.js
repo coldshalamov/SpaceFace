@@ -670,18 +670,4 @@ export const ENEMY_TYPES = [
     behavior: 'light engineered cutter; locks one crossing, misses when displaced, exposes its side in recovery',
     loot: { creditsRange: [80, 180], drops: [{ id: 'cmdty_electronics', chance: 0.45, qtyRange: [1, 2] }] },
   },
-  {
-    id: 'kilnback', name: 'Kilnback', shipId: 'ship_hawser',
-    silhouette: 'kilnback', factionId: 'faction_reach', aiArchetype: 'brawler',
-    combatDoctrineId: 'brawler_commit', levelRange: [2, 4],
-    hull: 220, armor: 24, armorFlat: 1, shield: 0, shieldRegen: 0,
-    cap: 80, capRegen: 0, maxSpeed: 45, accel: 18, turnRate: 0.55,
-    collisionRadius: 23, mass: 180, weapons: [],
-    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 140, leashRadius: 1000 },
-    rareSpecialist: true, physicalClass: 'specialist', shipClass: 'freighter', bountyCr: 240,
-    telegraph: { bark: 'warn', line: 'Furnace charging. Cross its nose, break a cask, or tow it into its own heat.', cue: 'furnace_preheat' },
-    counterHint: 'finite_coolant_directional_heat',
-    behavior: 'finite furnace tug; committed heat lanes, vulnerable coolant casks and a long vent window',
-    loot: { creditsRange: [70, 130], drops: [] },
-  },
 ];

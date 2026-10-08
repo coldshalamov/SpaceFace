@@ -8,6 +8,21 @@ export const KILNBACK = Object.freeze({
   acquireRange: 245, sightRange: 600, earliestSeconds: 240, encounterSeconds: 105,
 });
 export const KILNBACK_CASK_IDS = Object.freeze(['cask_port', 'cask_starboard']);
+// Retained checkpoint recipe. Add to the live roster only with its runtime/art integration.
+export const KILNBACK_ENEMY = Object.freeze({
+  id: 'kilnback', name: 'Kilnback', shipId: 'ship_hawser',
+  silhouette: 'kilnback', factionId: 'faction_reach', aiArchetype: 'brawler',
+  combatDoctrineId: 'brawler_commit', levelRange: [2, 4],
+  hull: 220, armor: 24, armorFlat: 1, shield: 0, shieldRegen: 0,
+  cap: 80, capRegen: 0, maxSpeed: 45, accel: 18, turnRate: 0.55,
+  collisionRadius: 23, mass: 180, weapons: [],
+  aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 140, leashRadius: 1000 },
+  rareSpecialist: true, physicalClass: 'specialist', shipClass: 'freighter', bountyCr: 240,
+  telegraph: { bark: 'warn', line: 'Furnace charging. Cross its nose, break a cask, or tow it into its own heat.', cue: 'furnace_preheat' },
+  counterHint: 'finite_coolant_directional_heat',
+  behavior: 'finite furnace tug; committed heat lanes, vulnerable coolant casks and a long vent window',
+  loot: { creditsRange: [70, 130], drops: [] },
+});
 const phases = new Set(['approach', 'preheat', 'burn', 'vent', 'retreat', 'lost']);
 const caskStates = new Set(['attached', 'releasing', 'drifting', 'spent', 'destroyed']);
 const bounded = (v, lo, hi, fallback) => Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : fallback;

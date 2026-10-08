@@ -5,15 +5,33 @@ import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js'
 import { queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
 import { FIELD_FLAGS } from '../src/data/fields.js';
 import { createFieldKernel, fieldContainsPoint } from '../src/core/fields/fieldKernel.js';
-import { KILNBACK as C, KILNBACK_CASK_IDS, kilnbackPointPose, kilnbackCoolant } from '../src/data/kilnback.js';
+import { KILNBACK as C, KILNBACK_ENEMY as R, KILNBACK_CASK_IDS, kilnbackPointPose, kilnbackCoolant } from '../src/data/kilnback.js';
+import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { kilnbackPhysicalBody, kilnbackCaskSocket } from '../src/data/kilnbackBody.js';
 import { kilnback, kilnbackEncounter } from '../src/systems/kilnback.js';
 import { kilnbackDecision } from '../src/ai/kilnback.js';
 import { authorizeAIEngagement } from '../src/ai/engagementAuthority.js';
 import { fields } from '../src/systems/fields.js';
-import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { normalizeActivity } from '../src/ai/doctrine.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
+
+// Explicit checkpoint construction through ordinary ship/native/combat helpers. Never register
+// the inactive recipe globally or call the unknown-enemy fallback to fabricate this fixture.
+function kilnbackFixtureSpec(pos = { x: 0, z: 0 }) {
+  const spec = makeShipEntitySpec(R.shipId, { team: 1, factionId: R.factionId, pos });
+  Object.assign(spec, { hull: R.hull, hullMax: R.hull, armorHp: R.armor, armorMax: R.armor,
+    armorFlat: R.armorFlat, shield: R.shield, shieldMax: R.shield, shieldRegenRate: R.shieldRegen,
+    cap: R.cap, capMax: R.cap, capRegen: R.capRegen, maxSpeed: R.maxSpeed, thrust: R.accel,
+    turnRate: R.turnRate, radius: R.collisionRadius, mass: R.mass, physicsBody: kilnbackPhysicalBody() });
+  Object.assign(spec.data, { lootTableId: R.id, shipClass: R.shipClass, weapons: [], fittings: [], miningBeam: null,
+    ai: { archetype: R.aiArchetype, combatDoctrineId: R.combatDoctrineId,
+      activity: normalizeActivity({ kind: R.aiDoctrine.defaultActivity, startedTick: 0 }), roe: R.aiDoctrine.roe,
+      motive: 'industrial_interdiction', engagementTrigger: 'furnace_lane', zoneId: 'fixture:kilnback',
+      approachTelegraph: R.telegraph.line, noFireResponseWindowS: 1 } });
+  return spec;
+}
 
 function fixture(native = null, bearing = 0) {
   const oldFlag = FIELD_FLAGS.enabled; FIELD_FLAGS.enabled = true;
@@ -26,7 +44,7 @@ function fixture(native = null, bearing = 0) {
     radius: 4, mass: 40, pos: { x: Math.cos(bearing) * 90, z: Math.sin(bearing) * 90 },
     physicsBody: { schemaVersion: 1, dynamic: true, shape: 'ball', radius: 4, mass: 40, inertiaY: 80 }, data: {} });
   s.playerId = player.id; player.isPlayer = true;
-  const caster = helpers.spawnEntity(makeEnemySpawnSpec(C.enemyId, 2, { x: 0, z: 0 }, { startedTick: 0, context: 'encounter' }));
+  const caster = helpers.spawnEntity(kilnbackFixtureSpec());
   caster.data.encounter = { id: 'fixture:kilnback' }; // the actual director stamps this authored relation
   caster.rot = bearing;
   const system = sim.registry.get('kilnback'), field = sim.registry.get('fields');
@@ -166,7 +184,7 @@ test('encounter adapter spawns one caster and refuses a second live furnace', ()
     const live = { id: 'fixture:normal-director', plan: { ships: [] }, data: {}, ids: [] };
     let spawned = 0, aborted = null;
     const director = { now: () => h.s.simTime, spawnShips(l) {
-      const e = h.helpers.spawnEntity(makeEnemySpawnSpec(C.enemyId, 2, { x: 0, z: 0 }, { startedTick: 0, context: 'encounter' }));
+      const e = h.helpers.spawnEntity(kilnbackFixtureSpec());
       l.ids.push(e.id); spawned++; return [e.id]; }, say() {}, abort(_l, reason) { aborted = reason; } };
     kilnbackEncounter.fire(director, live, h.s);
     assert.equal(spawned, 1); assert.equal(aborted, null); assert.equal(live.phase, 'conflict');
@@ -176,6 +194,7 @@ test('encounter adapter spawns one caster and refuses a second live furnace', ()
 });
 
 test('ordinary fields keep their prior shape and invalid/infinite thermal recipes fail closed', () => {
+  assert.equal(ENEMY_TYPES.some(e => e.id === R.id), false, 'inactive Kilnback stays outside the production roster');
   const kernel = createFieldKernel();
   assert.equal(Object.hasOwn(kernel.register({ id: 'ordinary', kind: 'well', durationS: 4 }), 'thermal'), false);
   const h = fixture();
