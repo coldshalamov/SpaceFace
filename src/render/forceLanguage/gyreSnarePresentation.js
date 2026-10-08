@@ -835,7 +835,7 @@ export class GyreSnarePresentation {
       }
       this._spiralMat.uniforms.uAim.value.lerp(aimT, 1 - Math.exp(-sdt * 8));
       // The drawn vortex stirs the way the sim's basin actually does — swirlBlend is
-      // already eased sim-side (~0.25 s re-stir), so this needs no extra smoothing.
+      // already eased sim-side (~0.5 s re-stir), so this needs no extra smoothing.
       this._spiralMat.uniforms.uSwirl.value = finite(mirror.swirlBlend, 1);
       // Dying-cap honesty reaches the funnel too — motes thin with the glass's own
       // fuse telegraph instead of inhaling full-bright on a lash <8 s from dry.
@@ -1077,7 +1077,11 @@ export class GyreSnarePresentation {
             x: mirror.ballPos.x, z: mirror.ballPos.z, dx, dz,
             r: finite(mirror.ballClumpRadius, this._clumpRadius),
             ttl01: mirror.ballTtl01, mass: mirror.ballMass,
-            alpha: 0.3, wind: finite(mirror.launchWindup01),
+            // The coil retracts the ribbon (wind), but the burst RE-GROWS it:
+            // windup01 pins at 1.0 through the burst, so burst01 unwinds the
+            // wind factor — the ball's first ~83 ms of flight isn't bare.
+            alpha: 0.3,
+            wind: finite(mirror.launchWindup01) * (1 - finite(mirror.launchBurst01)),
           };
           _t1id = mirror.launchedId;
         } else {

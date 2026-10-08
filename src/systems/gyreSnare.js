@@ -136,7 +136,7 @@ function freshRuntime() {
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
     orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
     orbitDir: 1,           // ±1 — revolution direction from the same hash, so successive clumps don't all circle one way
-    swirlBlend: 1,         // eased stir sign — chases orbitDir over ~0.25 s so a snag can't flip the funnel's spiral mid-feed
+    swirlBlend: 1,         // eased stir sign — chases orbitDir over ~0.5 s (dt·4 across a range of 2) so a snag can't flip the funnel's spiral mid-feed
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
@@ -1508,7 +1508,7 @@ export const gyreSnare = {
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballVx: 0, ballVz: 0, ballMass: 0, ballTtl01: 1,
       ballTtlS: 0,
-      basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
+      basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, launchBurst01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
       liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
     });
@@ -1583,7 +1583,7 @@ export const gyreSnare = {
       // Same dead-state hygiene for the launch channels: a boundary/dock/death drop
       // landing on the single thrownBeat tick would otherwise latch it for the whole
       // OFF phase, and launchWindup01 pins at 1.0 after every launch.
-      pub.thrownBeat = false; pub.launchWindup01 = 0;
+      pub.thrownBeat = false; pub.launchWindup01 = 0; pub.launchBurst01 = 0;
       if (rt.ballId != null) {
         // Ball still flying: publish the frozen clump so the lumps/mass/count ride it out.
         pub.members = rt.ballMembers;
@@ -1632,6 +1632,11 @@ export const gyreSnare = {
     // which a remaining-fraction ramp could never publish.
     pub.launchWindup01 = rt.phase === PHASE.LAUNCH
       ? (D.launchWindupTicks > 0 ? 1 - rt.launchWindup / D.launchWindupTicks : 1) : 0;
+    // Burst progress on its own channel — windup01 pins at 1.0 through the burst
+    // (a "fully wound" cue needs the ramp END), so presentation lanes that want
+    // to RE-GROW through the throw (the flight ribbon) need the burst clock.
+    pub.launchBurst01 = rt.phase === PHASE.LAUNCH && rt.launchWindup <= 0
+      ? 1 - rt.launchLeft / D.launchTicks : 0;
     // The exact throw tick — the first burst tick ONLY, the same condition the
     // gyre:thrown emit uses: launchLeft already consumed exactly once. gyre:thrown,
     // the pad thump, camera shake and the Newton kick all land here, so the grave
@@ -1689,6 +1694,9 @@ export const gyreSnare = {
       if (this.bus) this.bus.emit('audio:cue', { id: 'gyre_snare_strain', gain: 0.7 });
       // Strain reaches the hands too — one warning pulse on the latch edge, not a rumble
       // the whole excursion (the sustained voice + HUD carry that).
+      // The warn latch shares its name with the terminal drop reason 'strained'
+      // (deliberate — one word for the tear at both scopes); gyre:dropped carries
+      // it on payload.reason, not the event name, so the channels don't collide.
       if (this.bus) this.bus.emit(GYRE_EVENTS.strained, { tick: state && state.tick });
     } else if (pub.strain01 < 0.25) {
       rt.strainCueLatched = false;
