@@ -43,6 +43,29 @@ test('one listener fault never starves the rest of the dispatch', () => {
   assert.deepEqual(seen, ['after-fault']);
 });
 
+test('a burst of bad payloads never suppresses the next valid event or another bus', () => {
+  const first = createBus();
+  const second = createBus();
+  const seen = [];
+  const handler = (payload) => {
+    if (!payload.valid) throw new Error('invalid payload');
+    seen.push(payload.id);
+  };
+  first.on('cargo:grant', handler);
+  second.on('cargo:grant', handler);
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    for (let i = 0; i < 12; i++) first.emit('cargo:grant', { valid: false });
+    first.emit('cargo:grant', { valid: true, id: 'same-bus' });
+    second.emit('cargo:grant', { valid: true, id: 'other-bus' });
+  } finally {
+    console.error = originalError;
+  }
+  assert.deepEqual(seen, ['same-bus', 'other-bus'],
+    'error logging may be throttled, but delivery must not depend on wall-clock fault history');
+});
+
 test('once() fires exactly once even when the payload handler re-emits', () => {
   const bus = createBus();
   const seen = [];
