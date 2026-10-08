@@ -1267,6 +1267,7 @@ export const saveLoadScreen = {
       input.type = 'text';
       input.maxLength = 48;
       input.setAttribute('aria-label', 'Save name');
+      input.placeholder = 'Name this save';
       input.autocomplete = 'off';
       input.spellcheck = false;
       field.appendChild(input);

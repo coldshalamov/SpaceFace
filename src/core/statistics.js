@@ -32,6 +32,17 @@ function formatDuration(seconds) {
   return s + ' s';
 }
 
+function counter(career, key) {
+  const bag = career && career.counters;
+  if (!bag || typeof bag !== 'object') return 0;
+  return num(bag[key]);
+}
+
+function counted(label, value, unit) {
+  const n = num(value);
+  if (n <= 0) return null;
+  return [label, formatStat(n, unit)];
+}
 function pairs(obj) {
   const rows = [];
   const bag = obj && typeof obj === 'object' ? obj : {};
@@ -51,7 +62,15 @@ export function statisticsModel({ career = {}, playerStats = {} } = {}) {
   const flight = [
     ['Distance flown', formatStat(career.distanceFlownWu, 'wu')],
     ...pairs(career.timeBySector).map(([name, , raw]) => [name + ' time', formatDuration(raw)]),
-  ];
+    counted('Jumps', counter(career, 'jumps')),
+    counted('Docks', counter(career, 'docks')),
+  ].filter(Boolean);
+  const lineExtras = [
+    counted('Throws', counter(career, 'throws')),
+    counted('Latches', counter(career, 'latches')),
+    counted('Razor releases', counter(career, 'razorReleases')),
+    counted('Crushing impacts', counter(career, 'crushingImpacts')),
+  ].filter(Boolean);
   const fight = [
     ['Kills', formatStat(stats.kills != null ? stats.kills : career.kills)],
     ...pairs(career.killsByWeapon).map(([name, value]) => [name + ' kills', value]),
@@ -63,18 +82,22 @@ export function statisticsModel({ career = {}, playerStats = {} } = {}) {
     ['Biggest profit', formatStat(stats.biggestSingleProfit, 'cr')],
     ['Smuggled', formatStat(stats.smuggledValue, 'cr')],
     ['Passive earned', formatStat(stats.totalPassiveEarnedLifetime, 'cr')],
-  ];
+    ['Ore hauled', formatStat(counter(career, 'oreUnits'), 'u')],
+    counted('Contracts', counter(career, 'contracts')),
+  ].filter(Boolean);
   const law = [];
   if (stats.wantedTier != null) law.push(['Wanted', String(stats.wantedTier)]);
   if (stats.heat != null) law.push(['Heat', formatStat(stats.heat)]);
   if (stats.fines != null) law.push(['Fines', formatStat(stats.fines, 'cr')]);
+  const wantedTimes = counted('Times wanted', counter(career, 'wantedTimes'));
+  if (wantedTimes) law.push(wantedTimes);
   const lawGroup = law.length
     ? { id: 'law', label: 'Law', rows: law }
     : { id: 'law', label: 'Law', rows: [], note: 'No heat, no fines, not wanted.' };
   return {
     groups: [
       { id: 'flight', label: 'Flight', rows: flight },
-      { id: 'line', label: 'Line', rows: [['Biggest throw', formatStat(career.biggestThrowSpeed, 'wu/s')]] },
+      { id: 'line', label: 'Line', rows: [['Biggest throw', formatStat(career.biggestThrowSpeed, 'wu/s')], ...lineExtras] },
       { id: 'fight', label: 'Fight', rows: fight },
       { id: 'trade', label: 'Trade', rows: trade },
       lawGroup,
