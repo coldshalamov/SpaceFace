@@ -84,6 +84,9 @@ export const GYRE_SNARE = Object.freeze({
                            // saturates; a fast ship dragging the clump lags ~this far
   holdLagStrainMax: 0.3,     // the lag channel's strain01 ceiling — below the 0.4 STRAIN
                            // latch, so dragging shades the glass but never cries "tearing"
+  holdLagStrainMassGain: 0.3,// extra strain01 ceiling per unit mass fraction — a capped
+                           // katamari hauled hard can reach the warn band (the lash
+                           // straining under a moon IS the near-tear read), a pebble can't
   holdBackReactionFrac: 0.02,// the orbit spring's counter-force fraction the helm eats —
                            // the lash is not massless: telekinesis under load tugs the ship
   holdBackReactionMassCap: 150, // t — reaction rides min(clumpMass, this): a capped katamari

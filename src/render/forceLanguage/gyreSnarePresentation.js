@@ -502,7 +502,15 @@ export class GyreSnarePresentation {
     for (const l of this._lumps) if (!l.used) { slot = l; break; }
     if (!slot) {
       if (this._lumps.length >= MAX_LUMPS) return;
-      const geo = jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, 31 + i * 7919);
+      // Seed on the member's own identity, not its ledger index — a want<have
+      // rebuild re-adds the same members and their silhouettes should survive
+      // it instead of re-jittering into new rocks.
+      let h = 31;
+      const tp = member.type || '';
+      for (let c = 0; c < tp.length; c++) h = ((h * 31) + tp.charCodeAt(c)) | 0;
+      const seed = Math.abs(h + Math.round(finite(member.mass) * 7)
+        + Math.round(finite(member.nx) * 977) + Math.round(finite(member.nz) * 1291)) | 0;
+      const geo = jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, seed);
       slot = { mesh: new THREE.Mesh(geo), used: false, baseScale: 1, spawnT: 0 };
       this._clump.add(slot.mesh);
       this._lumps.push(slot);
@@ -552,18 +560,24 @@ export class GyreSnarePresentation {
     for (const l of this._lumps) { l.used = false; l.mesh.visible = false; }
   }
 
-  _fireBurst(x, z, r, calm = 1) {
+  _fireBurst(x, z, r, calm = 1, dir = null) {
     // Steal the MOST-decayed slot, not slot 0 — a full pool mid-expansion would
     // otherwise always cut the same ring.
     let slot = this._bursts[0];
     for (const b of this._bursts) if (b.t > slot.t) slot = b;
     slot.t = 0;
     slot.r = r;
+    slot.stretch = dir ? 1.9 : 1;
     // The two brightest flashes in the vocabulary respect reduced-flash like
     // everything else — scale the ring's alpha, not just its lifespan.
     slot.mesh.material.uniforms.uCalm.value = calm;
     const p = this.toLocal(x, z, this._nose);
     slot.mesh.position.set(p.x, 0.4, p.z);
+    // A directed burst stretches its ring along the throw axis — the payoff
+    // aims downrange instead of blooming radially. rotation.z spins the plane
+    // in its own XY before the X-tilt lays it flat, so the stretch lands on
+    // world (dir.x, dir.z).
+    slot.mesh.rotation.z = dir ? Math.atan2(-dir.z, dir.x) : 0;
     slot.mesh.visible = true;
   }
 
@@ -1349,7 +1363,7 @@ export class GyreSnarePresentation {
       const bx = mirror.ballPos ? finite(mirror.ballPos.x) : finite(mirror.corePos && mirror.corePos.x);
       const bz = mirror.ballPos ? finite(mirror.ballPos.z) : finite(mirror.corePos && mirror.corePos.z);
       const br = Math.max(6, finite(mirror.ballClumpRadius, finite(mirror.clumpRadius, 8)) * 2.2);
-      this._fireBurst(bx, bz, br, flashCalm);
+      this._fireBurst(bx, bz, br, flashCalm, mirror.launchDir);
       this._coneMat.uniforms.uPulse.value = 1;
     }
 
@@ -1358,7 +1372,7 @@ export class GyreSnarePresentation {
       if (b.t >= 1) { if (b.mesh.visible) b.mesh.visible = false; continue; }
       b.t = Math.min(1, b.t + sdt * 1.7);
       const s = b.r * (0.25 + b.t * 1.6);
-      b.mesh.scale.setScalar(s);
+      b.mesh.scale.set(s * (b.stretch || 1), s, 1);
       b.mesh.material.uniforms.uT.value = b.t;
     }
   }

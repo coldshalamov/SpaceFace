@@ -3041,7 +3041,9 @@ export const RECIPES = [
     baseFreq: 480, freqSweep: [480, 900], sweepTimeS: 0.05,
     gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.07 },
     filterType: 'bandpass', filterFreq: 1700, filterQ: 2.2,
-    pitchRange: [0.9, 1.25],
+    // Random band must stay narrower than the graded-rate arc (~-0.5 to +0.3):
+    // a ±20% scatter let two similar meals audibly read out of growth order.
+    pitchRange: [0.97, 1.05],
   },
   // First catch: the net's empty -> occupied edge — a soft low tick sibling of the
   // absorb gulp, quiet enough to sit under the beam shimmer without promising a meal.

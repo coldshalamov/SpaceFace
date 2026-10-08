@@ -1182,8 +1182,9 @@ export const gyreSnare = {
       // Escalation reaches the camera too — swallowing a wreck should feel physically
       // different from swallowing a pebble: heavy meals shake, mid meals get a
       // micro-shake (30-80t is the most common satisfying meal — it shouldn't be silent),
+      // light meals whisper (10-30t gets every other channel — camera joins at 0.01),
       // and belt gravel stays quiet.
-      if (em >= 30) this.bus.emit('camera:shake', { amount: em >= 80 ? 0.04 : 0.02 });
+      if (em >= 10) this.bus.emit('camera:shake', { amount: em >= 80 ? 0.04 : em >= 30 ? 0.02 : 0.01 });
       // Saturation beat: the absorb that first crosses the cap gets its own voice so
       // the FULL moment lands through the ear, not just the HUD flag.
       if (rt.clumpMass >= D.maxClumpMass && !rt.fullCueLatched) {
@@ -1206,6 +1207,10 @@ export const gyreSnare = {
     delete core.data.gyreCore;
     this._restoreLifetime(core, true);
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(core);
+    // Involuntary losses narrate themselves (cap_dry/strained/drained all toast or
+    // voice) — the quietest path in the file shouldn't be the one where someone
+    // else's cargo simply de-rezzes mid-hold.
+    if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare — clump reclaimed', ttl: 1.6 });
     this._drop('core_adopted');
   },
 
@@ -1731,9 +1736,12 @@ export const gyreSnare = {
           0, 1,
         ),
         // Mild second-order read: the orbit spring's residual lag shades the glass
-        // while the ship drags the clump behind — capped below the 0.4 STRAIN/cue
-        // thresholds so lag can tense the lash but never cry "tearing".
-        clamp(rt.holdLag / D.holdLagRefWu, 0, 1) * D.holdLagStrainMax,
+        // while the ship drags the clump behind. The ceiling scales with payload —
+        // a pebble's lag stays sub-warn, but hauling a capped katamari hard can
+        // legitimately reach the 0.4 strain band: the lash IS near tearing there.
+        clamp(rt.holdLag / D.holdLagRefWu, 0, 1)
+          * (D.holdLagStrainMax
+            + D.holdLagStrainMassGain * Math.min(1, rt.clumpMass / D.maxClumpMass)),
       ) : 0;
       // Smoothed lag normalized — the presentation leans the maw toward the dragged
       // clump (the glass stretching); strain01 stays on the RAW residual (an honest
