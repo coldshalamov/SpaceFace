@@ -51,7 +51,10 @@ function boot({ onboarding = false, run = null } = {}) {
     }
   };
   const count = (name) => events.filter((e) => e.name === name).length;
-  return { state, helpers, events, advanceTo, count, close() { engine.destroy(); host.destroy(); } };
+  const spawnStation = (pos) => helpers.spawnEntity({ type: 'station', pos, vel: { x: 0, z: 0 }, rot: 0,
+    radius: 120, hull: 1000, hullMax: 1000, data: { stationId: 'station_pacing_test' } });
+  return { state, helpers, events, advanceTo, count, spawnStation,
+    close() { engine.destroy(); host.destroy(); } };
 }
 
 test('with the live pacing policy Orra arrives after one six-second warning', () => {
@@ -88,6 +91,24 @@ test('an arena run holds the rival without warning every retry', () => {
     assert.equal(h.count('nemesis:announced'), 0);
     assert.equal(h.state.nemesis.active, null);
   } finally { h.close(); }
+});
+
+test('a far station corridor readout does not hold the rival; a station doorstep does', () => {
+  // The docking readout's fallback phase is 'approach' anywhere in a manifest station's sector.
+  const far = boot();
+  try {
+    far.spawnStation({ x: 6000, z: 0 });
+    far.state.dockingCorridor = { phase: 'approach', distCenter: 6000 };
+    far.advanceTo(200);
+    assert.equal(far.count('nemesis:engaged'), 1, 'open space in a station sector still gets the rival');
+  } finally { far.close(); }
+  const near = boot();
+  try {
+    near.spawnStation({ x: 900, z: 0 });
+    near.state.dockingCorridor = { phase: 'approach', distCenter: 900 };
+    near.advanceTo(300);
+    assert.equal(near.count('nemesis:announced'), 0, 'no beat on the doorstep, and no false warning');
+  } finally { near.close(); }
 });
 
 test('the live policy still vetoes a different pending or active rival beat', () => {
