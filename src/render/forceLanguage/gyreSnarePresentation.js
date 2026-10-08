@@ -425,6 +425,7 @@ export class GyreSnarePresentation {
     this._secGroup.add(this._secVeil);
     this._secLumps = [];
     this._secId = null;   // which balls[] id the overlay currently tracks
+    this._secIdHash = 0;  // written after the first bob read — 0 keeps the seed benign
     this._secN = -1;      // lump ledger size last laid out (rebuild key)
     scene.add(this._secGroup);
 
@@ -744,8 +745,8 @@ export class GyreSnarePresentation {
       const windup = phase === 'launching' ? clamp01(finite(mirror.launchWindup01)) : 0;
       const coilR = endR * (1 - windup * 0.07);
       const coilBack = windup * Math.min(6, endR * 0.5);
-      this._cone.scale.set(coilR, drawLen, coilR);
-      this._coneBody.scale.set(coilR * 0.97, drawLen, coilR * 0.97);
+      this._cone.scale.set(coilR, drawLen - coilBack, coilR);
+      this._coneBody.scale.set(coilR * 0.97, drawLen - coilBack, coilR * 0.97);
       this._maw.position.set(drawLen - coilBack, 0, 0);
       // The mouth gulps geometrically: each absorb kick dilates ring + disc, not just
       // their opacity — the verb's face visibly swallows. During the coil the maw
@@ -788,7 +789,7 @@ export class GyreSnarePresentation {
       // A thrown lash is SPENT glass: during the burst no pull lane runs, so the
       // cone dims ~28% — but the ~100 ms COIL stays full-bright and taut (its own
       // tension language), and the spent dim lands only as the sling releases.
-      const spent = phase === 'launching' && finite(mirror.launchWindup01) <= 0 ? 0.72 : 1;
+      const spent = phase === 'launching' && finite(mirror.launchBurst01) > 0 ? 0.72 : 1;
       this._lastSpent = spent; // the close-ramp's mote pace reads the last live spend
       this._coneMat.uniforms.uAlpha.value = (tense ? 0.62 : 0.42) * spent * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
@@ -1259,7 +1260,7 @@ export class GyreSnarePresentation {
       // The ~100 ms coil keeps the spoke drawn — the slingshot's most taut beat was
       // stretching a bare ball. The line thins + brightens as the wind-up peaks and
       // cuts at thrownBeat (the burst's first tick), not when the phase flag drops.
-      const winding = phase === 'launching' && !mirror.thrownBeat;
+      const winding = phase === 'launching' && finite(mirror.launchBurst01) === 0;
       if (phase === 'holding' || winding) {
         const wind = winding ? clamp01(finite(mirror.launchWindup01)) : 0;
         const gL = this.toLocal(cx, cz, this._ballPt);

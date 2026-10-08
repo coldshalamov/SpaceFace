@@ -318,6 +318,12 @@ export const gyreSnare = {
         // The rubble rides the freed body for ~0.5 s (pub.tornPos) — the whip
         // reads as the lash LOSING the ball, not rubble de-rezzing mid-flight.
         rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S) };
+        // Same-tick freshness: the tear ring blooms where the body IS — coreId
+        // clears above, so _publish won't rewrite corePos this tick; last tick's
+        // published spot is stale by up to a shove's worth (a teleport past
+        // holdBreakDist is exactly the case the tear covers).
+        const pub = this._ensurePub(st);
+        pub.corePos.x = torn.pos.x; pub.corePos.z = torn.pos.z;
       }
     }
     if (this.bus && !wasOff) {
