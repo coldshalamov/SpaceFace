@@ -424,7 +424,11 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .s
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial::before { background:radial-gradient(circle at 67% 44%, rgb(4 6 9 / .5), rgb(4 6 9 / .78) 55%, rgb(4 6 9 / .9) 100%) !important; }
 /* the left column spreads over the instrument's height — "safe" so an overflowing story stays
    top-aligned and scrolls to its first band instead of clipping it above the visible edge */
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { display:flex; flex-direction:column; justify-content:flex-start; justify-content:safe space-evenly; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { display:flex; flex-direction:column; justify-content:flex-start; justify-content:safe space-evenly;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
+@media (max-height:800px) {
+  html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__ledger { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
+}
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story > .sf-crres__band + .sf-crres__band { margin-top:0; }
 /* the build: the draft it converged on stands solid */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step:last-child::before { background:rgb(246 241 230);
