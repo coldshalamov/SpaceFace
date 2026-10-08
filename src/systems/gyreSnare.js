@@ -105,6 +105,10 @@ function freshRuntime() {
   return {
     phase: PHASE.OFF,
     wasHeld: false,
+    // A cap_dry close already narrated itself ('drained — clump away/lash off');
+    // while the key is still down the re-armed rising edge must not double-narrate
+    // 'needs charge to wake'. Clears when the key releases.
+    dryDenyDone: false,
     // Clump ledger (hold phase): the core entity + what it has eaten.
     coreId: null,
     clumpMass: 0,          // t — bookkeeping mass (base core + absorbed members)
@@ -1334,6 +1338,9 @@ export const gyreSnare = {
         // The honest speed at the release edge is launchSpeedEff (post-mass-penalty);
         // carry isn't known until the burst, so the authored floor would lie.
         speed: rt.launchSpeedEff, dir: { x: dir.x, z: dir.z }, members: rt.members.length,
+        // members is the bounded VFX-ledger count (≤28) — the honest absorb total
+        // rides beside it so consumers don't silently under-report past the cap.
+        absorbs: rt.totalAbsorbed,
         tick: state.tick,
       });
     }
@@ -1359,6 +1366,7 @@ export const gyreSnare = {
     rt.launchCarry = 0;   // consumed by the burst — the launch ledger dies with its phase
     rt.launchFwd = 0;
     rt.launchSpeedEff = 0;
+    rt.launchDir.x = 1; rt.launchDir.z = 0; // drop-path symmetry — a clean bowl leaves no stale aim
     // The beam ended in a THROW, not a release or a tear — a previous lash's 'strained'
     // must not dress a clean bowl's close ramp as a slip.
     rt.dropReason = 'launched';
@@ -1842,13 +1850,14 @@ export const gyreSnare = {
           // snag bite that fires when mass actually grips.
           this.bus.emit('audio:cue', { id: 'gyre_snare_beam', gain: 0.55 });
         }
-      } else if (this.bus) {
+      } else if (this.bus && !rt.dryDenyDone) {
         // A denied wake is still a wake attempt — the refusal needs the same voice
         // every other tool's no-cap edge gets, or the held key reads dead.
         this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake', ttl: 1.6 });
         this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.7 });
       }
     }
+    if (!held) rt.dryDenyDone = false; // a released key re-arms the deny voice
     if (!held && rt.wasHeld) {
       // Deliberate release bowls a held clump; every other close (beam with no core, mid-launch,
       // or the player gone/docked) is a drop — never a launch from a dock seat or a corpse.
@@ -2039,12 +2048,14 @@ export const gyreSnare = {
         this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare drained — clump away', ttl: 1.6 });
         this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.5 });
       }
+      rt.dryDenyDone = true; // the drain toast IS the wake attempt's narration
       this._launch(state, player);
     }
     // An empty beam dying of thirst gets the same attribution: the cone vanishes and
     // the pill goes dark — say why, or the lash reads as self-closing.
     else if (dry && rt.phase === PHASE.BEAM) {
       if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare drained — lash off', ttl: 1.6 });
+      rt.dryDenyDone = true;
       this._drop('cap_dry');
     }
 
