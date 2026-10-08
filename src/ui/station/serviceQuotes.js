@@ -3,7 +3,7 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -278,6 +278,17 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'refuel') {
+    // The berth's services list outranks the tank math: no pump here, no quote at all.
+    if (!stationOffersService(state, 'refuel')) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'This berth has no fuel berth — refuel where the services list names it',
+        buttonLabel: 'Refuel',
+        disabled: true,
+        disabledReason: 'no fuel berth here — try a trade hub or a depot',
+        chips: [{ text: 'no pump', kind: 'bad' }],
+      };
+    }
     const fuel = state && state.fuel || { current: 0, max: 0 };
     const current = Math.round(fuel.current || 0);
     const max = Math.round(fuel.max || 0);
@@ -326,6 +337,17 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'repair') {
+    // Same berth contract as the pump: no yard here, no quote.
+    if (!stationOffersService(state, 'repair')) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'This berth has no repair yard — weld where the services list names it',
+        buttonLabel: 'Repair Hull',
+        disabled: true,
+        disabledReason: 'no repair yard here — try a station with repair services',
+        chips: [{ text: 'no yard', kind: 'bad' }],
+      };
+    }
     const missing = repairMissing(entity);
     const repairUnit = serviceUnitCr(state, SERVICE_PRICES.repairCrPerHp);
     const cost = Math.round(missing.total * repairUnit);

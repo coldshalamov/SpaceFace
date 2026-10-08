@@ -192,6 +192,19 @@ export function serviceUnitCr(state, baseCr) {
   return baseCr * (1 - rankServiceDiscount(state, info && info.factionId));
 }
 
+/**
+ * Whether the docked berth actually runs this service — the contract the yard's own
+ * enqueue gate enforces (stationServices.enqueuePlayerJob refuses a job the berth does not
+ * offer) and the quote layer is expected to mirror. A berth with no services list is read
+ * the same way the yard reads it: unknown, so the verb stays allowed.
+ */
+export function stationOffersService(state, service) {
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  const info = stationId ? stationInfo(state, stationId) : null;
+  if (!info || !Array.isArray(info.services) || !info.services.length) return true;
+  return info.services.includes(service);
+}
+
 /** Live hull-insurance defaults. The deductible is the named sink PQ-155.01 reads. */
 export const INSURANCE_DEFAULTS = Object.freeze({
   rate: 0.6,
@@ -3315,6 +3328,21 @@ export const economy = {
     if (!this._stationServicesDocked()) {
       this.bus.emit('toast', { text: 'Dock first', kind: 'error', ttl: 2 });
       return;
+    }
+    // The berth's own services list is the contract: a trade post with no pump does not fill
+    // your tank, and a mining outpost with no yard does not weld your hull. Without this gate
+    // the yard refuses the job and the instant-fallback below silently becomes the pump.
+    if (type === 'refuel' || type === 'repair') {
+      const need = type === 'refuel' ? 'refuel' : 'repair';
+      if (!stationOffersService(state, need)) {
+        this.bus.emit('toast', {
+          text: need === 'refuel'
+            ? 'No fuel berth here — the yard has no pump'
+            : 'No repair yard here — the yard cannot weld',
+          kind: 'error', ttl: 3,
+        });
+        return;
+      }
     }
     if (type === 'refuel') {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
