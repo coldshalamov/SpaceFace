@@ -2294,7 +2294,7 @@ Saturation: all four lanes `saturated: false` → streak 0/3; W118 spawns on `ea
 
 Saturation: all four lanes `saturated: false` → streak 0/3; W119 spawns on `ce56958f0`.
 
-## Wave 119 (HEAD `ce56958f0`) — drift-gate collect epoch re-key, pendingIter fails closed, under-budget governor short-circuit, soft-budget tail drains, sliced restore epilogue/combat legs, async deferred lane, publisher self-clear
+## Wave 119 (HEAD `ce56958f0`) — drift-gate collect epoch re-key, pendingIter fails closed, under-budget governor short-circuit, soft-budget tail drains, sliced restore epilogue/combat legs, async deferred lane, publisher self-clear, post-present resume seams, WeakMap bus fault rows, warn routing
 
 ### lod-in-frame — `saturated: false` (2 findings, `b9851308f`)
 
@@ -2318,4 +2318,12 @@ Saturation: all four lanes `saturated: false` → streak 0/3; W119 spawns on `ce
 - **boot B5 (L-M) — `primeDrawnCullStamps` `setFromObject` tails**: DEFERRED — the commit-tail Box3 is the documented last-resort measure for non-enveloped authored roots; L-M impact vs emit-contract risk.
 - **boot B6 (S/S) — `installPreparedBoundaryPublisher` lacked the disposer twin's stale-epoch self-clear**: a refused publisher slot stayed armed (every later consult kept bouncing off it) and retained its closure chain. Mirror of `installPreparedBoundaryDisposer`'s named-`installed` + guarded `delete` now.
 
-Saturation: lod + popin + boot `saturated: false` → streak 0/3; hitches lane auditing; W120 spawns on the merged HEAD once all four land.
+### in-flight-hitches — `saturated: false` (5 findings, `f23553b9b`)
+
+- **hitches F1 (H/S) — the W118 `composeYield` defect survived in four other resume seams**: `armFrameDrain` (`decodeTaskBudget.js`), both `yieldLiveSectorGpu` twins, `gpuQueuePace`'s `waitForPresentedFrame`, and saveSystem's `_restoreFrameYield` all resolved inline inside a rAF/timer callback — the paced drain's next chunk resumed at timer priority inside the presented frame's render beat. Every seam now resumes through `postTaskAtBackgroundPriorityBounded` (the cycle-free `gpuQueuePace` takes `options.scheduleTask`; call sites renderer/bloom/startupGpuResidency ×2 inject it; saveSystem got a local `postRestoreTaskAtBackgroundPriorityBounded` twin so the save layer stays render-free).
+- **hitches F2 (M/S) — bus fault dedup minted a composite `${label}|${event}|${token}` key + two map hops per throw**: `noteBusHandlerError` now keeps `busErrorRows` WeakMap-keyed on listener identity (re-registration folds into the same row — the contract the W112 composite key faked), plus a 256-cap `busErrorRowsByKey` for non-fn listeners and a 512-cap oldest-evict `busErrorIndex` so the rows stay enumerable. Zero allocs on the fault path.
+- **hitches F3 (M-H/S) — no way to name the hot throwing listener without a headed run**: new `busFaultSummary(limit)` returns the top-N fault rows (label, event, count, lastError head) and `diagnostics()` now stamps it onto `state.render.busFaults` + returns it — storming listeners are finally visible in the diagnostics dump.
+- **hitches F4 (L/S) — `policiesMs` charged inter-leg yield waits as authored work**: `pacePolicyWalk` accumulates real `legMs` spans; `policiesStartedAtMs` gone.
+- **hitches F5 (L-M/S-M) — last unrouted verbatim warn sites on repeatable failure paths**: renderer ×8 (resource-dispose/teardown/dynamic-buffer-owner/sector-abort/asteroid-pool families → `stormWarn`; appearance retirement ×3 → `stormWarn` with entity id in args), partsLibrary ×6 (queued-composition, trade-hub overlay, pool-witness probes, palette warm probe → `dedupWarn`), renderPackageLoader ×2, physics SG-02 ×2, embeddedKtx2 ×2, GLTFLoader ×1 → `dedupWarn`/`dedupError`. A verbatim warn inside a presented frame is itself the stall renderer.js documents. The live-sector cook eval harness binds the new `postTaskAtBackgroundPriorityBounded` identifier onto its frame pump.
+
+Saturation: all 4 lanes `saturated: false` → streak 0/3; W120 spawns on the landed HEAD `f23553b9b`.
