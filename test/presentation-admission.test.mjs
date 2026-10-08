@@ -24,6 +24,31 @@ test('browser-facing authored entities cannot act before their exact identity is
   assert.equal(presentationAllowsTargetLock(ship, browserState), true);
 });
 
+test('a ship settled on a visible procedural fallback stays lockable after authored failure', () => {
+  const browserState = { render: { scene: {} } };
+  const ship = initializePresentationAdmission({ type: 'ship', alive: true, data: {} });
+  // The boundary wrap publishes whether the ship carries a drawn procedural body; a terminal
+  // 'unavailable' verdict on that ship is not empty air — the fallback is the hull to aim at.
+  ship.presentationFallbackVisible = true;
+  setPresentationAdmission(ship, PRESENTATION_ADMISSION.unavailable);
+  assert.equal(presentationAllowsTargetLock(ship, browserState), true);
+});
+
+test('an authored-only hull that fails admission stays off the lock', () => {
+  const browserState = { render: { scene: {} } };
+  const withheld = initializePresentationAdmission({
+    type: 'ship', alive: true, data: { defId: 'ship_wasp' },
+  });
+  withheld.presentationFallbackVisible = false;
+  setPresentationAdmission(withheld, PRESENTATION_ADMISSION.unavailable);
+  assert.equal(presentationAllowsTargetLock(withheld, browserState), false,
+    'a withheld fallback leaves nothing to aim at');
+  const unstamped = initializePresentationAdmission({ type: 'ship', alive: true, data: {} });
+  setPresentationAdmission(unstamped, PRESENTATION_ADMISSION.unavailable);
+  assert.equal(presentationAllowsTargetLock(unstamped, browserState), false,
+    'a ship that never published a fallback stamp fails closed');
+});
+
 test('headless simulation remains independent of render admission', () => {
   const ship = initializePresentationAdmission({ type: 'ship', alive: true, data: {} });
   assert.equal(presentationAllowsPlayerFacingAction(ship, {}), true);
