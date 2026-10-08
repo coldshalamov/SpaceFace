@@ -264,7 +264,8 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     // disposes or the unregister pass below — controllers would stay
     // registered for a dead entity forever.
     const detachDriver = (driver) => {
-      try { driver?.dispose(); }
+      if (!driver) return;
+      try { driver.dispose(); }
       catch (error) {
         noteLaneFault(state, 'teardown.authoredMotion.driverDispose');
         dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error);

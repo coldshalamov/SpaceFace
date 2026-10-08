@@ -45,7 +45,7 @@ import { attachAuthoredMotionDriver, attachAuthoredMotionDriverSteps, bindInstan
 import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { invalidateShadowCasterPolicy } from './shadowCasterPolicy.js';
-import { armCallbackAfterPresent } from './compilePresentSlice.js';
+import { armCallbackAfterPresent, postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
 import { notePacedFrameSpend, pacedFrameSpend, PACED_FRAME_BUDGET_MS, forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 import { createAsyncAdmission, AUTHORED_ASYNC_DEADLINE_MS } from './asyncAdmission.js';
 import {
@@ -3440,7 +3440,7 @@ async function commitAuthoredCargoCapsuleBoundary(
   options = {},
 ) {
   // The whole commit is one atomic span — debit the paced ledger for its real cost.
-  const commitLegStarted = monotonicNow();
+  let commitLegStarted = monotonicNow();
   detachBoundaryResolvingMarker(boundary);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
@@ -3477,7 +3477,7 @@ async function commitAuthoredCargoCapsuleBoundary(
     if (typeof options.touchAuthoredExactTarget === 'function') {
       try { options.touchAuthoredExactTarget(authored.root); }
       catch (error) {
-        warnOnce(`cargo-publish-touch:${entity && entity.id}`, '[partsLibrary] cargo publish touch failed', error);
+        dedupWarn('partsLibrary:cargo-publish-touch', '[partsLibrary] cargo publish touch failed', entity && entity.id, error);
       }
     }
     boundary.userData.authoredAssetState = 'authored';
@@ -3488,7 +3488,7 @@ async function commitAuthoredCargoCapsuleBoundary(
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
       catch (error) {
-        warnOnce(`cargo-swap-observer:${entity && entity.id}`, '[partsLibrary] cargo swap observer failed', error);
+        dedupWarn('partsLibrary:cargo-swap-observer', '[partsLibrary] cargo swap observer failed', entity && entity.id, error);
       }
     }
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
@@ -4501,7 +4501,7 @@ async function commitAuthoredPlaceBoundary(
     if (typeof options.touchAuthoredExactTarget === 'function') {
       try { options.touchAuthoredExactTarget(authored.root); }
       catch (error) {
-        warnOnce(`place-publish-touch:${admissionEntity && admissionEntity.id}`, '[partsLibrary] place publish touch failed', error);
+        dedupWarn('partsLibrary:place-publish-touch', '[partsLibrary] place publish touch failed', admissionEntity && admissionEntity.id, error);
       }
     }
     if (authored.root.userData.ceresWorkfleetAuthoredSource) {
@@ -4518,7 +4518,7 @@ async function commitAuthoredPlaceBoundary(
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity: admissionEntity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
       catch (error) {
-        warnOnce(`place-swap-observer:${admissionEntity && admissionEntity.id}`, '[partsLibrary] place swap observer failed', error);
+        dedupWarn('partsLibrary:place-swap-observer', '[partsLibrary] place swap observer failed', admissionEntity && admissionEntity.id, error);
       }
     }
     setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
@@ -4578,7 +4578,7 @@ async function commitAuthoredPlaceBoundary(
         }
       }
     }
-    catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
+    catch (error) { dedupWarn('partsLibrary:place-fallback-cleanup', '[partsLibrary] place fallback cleanup failed after authored swap', error); }
     notePacedFrameSpend(monotonicNow() - commitLegStarted);
   }
   return true;
@@ -9213,7 +9213,7 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
     }
   } else if (!staleRunVerdict) {
     boundary.userData.authoredAssetState = 'authored-with-cleanup-error';
-    console.warn('[partsLibrary] authored ship is live, but post-swap bookkeeping failed', error);
+    dedupWarn('partsLibrary:post-swap-bookkeeping', '[partsLibrary] authored ship is live, but post-swap bookkeeping failed', error);
   }
 }
 
@@ -9516,7 +9516,7 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
       const refresh = boundary.userData.refreshWholeShipLodFamily;
       if (typeof refresh === 'function') refresh(options.committedAuthored || null);
     } catch (error) {
-      console.warn('[partsLibrary] whole-ship LOD family refresh failed', error);
+      dedupWarn('partsLibrary:lod-family-refresh', '[partsLibrary] whole-ship LOD family refresh failed', error);
     }
     return false;
   }
@@ -9782,7 +9782,7 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
         if (ownerGone) {
           console.info('[partsLibrary] whole-ship LOD demotion aborted; owner inactive', { causes });
         } else {
-          console.warn('[partsLibrary] whole-ship LOD demotion failed; keeping active level', error, { causes });
+          dedupWarn('partsLibrary:lod-demotion', '[partsLibrary] whole-ship LOD demotion failed; keeping active level', error, { causes });
         }
       } finally {
         if (pendingLevel === requested) pendingLevel = null;
@@ -9979,7 +9979,7 @@ async function commitAuthoredBoundary(
     // admission continuation — instead of inside the first presented bloom pass.
     if (typeof options.touchAuthoredExactTarget === 'function') {
       try { options.touchAuthoredExactTarget(authored.root); }
-      catch (error) { console.warn('[partsLibrary] authored publish touch failed', error); }
+      catch (error) { dedupWarn('partsLibrary:ship-publish-touch', '[partsLibrary] authored publish touch failed', entity && entity.id, error); }
     }
     for (const admission of authored.packagePoolAdmissions || EMPTY_ARRAY) {
       activateRenderPackagePoolAdmission(admission);
@@ -9998,7 +9998,7 @@ async function commitAuthoredBoundary(
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
-      catch (error) { console.warn('[partsLibrary] authored swap callback failed', error); }
+      catch (error) { dedupWarn('partsLibrary:ship-swap-callback', '[partsLibrary] authored swap callback failed', entity && entity.id, error); }
     }
     return true;
   };
@@ -10046,7 +10046,7 @@ async function commitAuthoredBoundary(
         }
       }
     }
-    catch (error) { console.warn('[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
+    catch (error) { dedupWarn('partsLibrary:ship-fallback-cleanup', '[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
     notePacedFrameSpend(monotonicNow() - commitLegStarted);
   }
   return true;
@@ -11139,11 +11139,14 @@ function composeYield() {
     return new Promise((resolve) => {
       // rAF wins under real frames; a starved rAF (hidden/occluded tab) converges
       // the slice cadence on the timer instead of parking the compose mid-build.
+      // Both arms dispatch the resume at background priority — a timer-priority
+      // continuation races the compositor beat and lands the next leg inside the
+      // present it was meant to escape (the yieldToNextPresent contract).
       let fired = false;
       const fire = () => {
         if (fired) return;
         fired = true;
-        resolve();
+        postTaskAtBackgroundPriorityBounded(resolve);
       };
       globalThis.requestAnimationFrame(fire);
       setTimeout(fire, 48);

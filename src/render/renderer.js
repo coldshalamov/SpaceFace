@@ -3197,7 +3197,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       let step;
       try {
         step = iterator.next();
-      } catch (_) {
+      } catch (err) {
+        noteLaneFault(owner.state, 'sectorExitCleanup');
+        laneWarn(owner.state, 'sectorExitCleanup', '[render] sector-exit cleanup iterator faulted; dropped', err);
         try { iterator.return?.(); } catch (_) { /* best effort */ }
         owner._sectorExitCleanupIter = null;
         break;
