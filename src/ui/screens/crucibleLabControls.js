@@ -14,7 +14,7 @@ import { getCombatKernel } from '../../combat/kernel.js';
 import { isAttachable } from '../../systems/tetherGameplay.js';
 import { massline2Flag } from '../../data/featureFlags.js';
 import { releaseAssistMode } from '../../systems/masslineThrow.js';
-import { hasPendingSandboxLaunch, installSandboxGameStartedHook, spawnTargetsNow } from '../sandbox/sandboxSetup.js';
+import { hasPendingPhysicsToyLaunch, installSandboxGameStartedHook, spawnTargetsNow } from '../sandbox/sandboxSetup.js';
 import { el } from '../kit/index.js';
 
 export const CRUCIBLE_LAB_SPEED_SOURCE = 'crucible-lab:speed';
@@ -118,6 +118,8 @@ function isLiveCombatLab(ctx) {
 
 function isLiveLabSession(ctx) {
   const run = ctx && ctx.state && ctx.state.run;
+  // A scored Crucible run is live flight — never the lab, whatever sandbox/mode flags say.
+  if (run && run.kind === 'survival' && run.phase !== 'inactive') return false;
   if (run && (run.kind === 'lab' || run.kind === 'sandbox') && run.phase !== 'inactive') return true;
   if (ctx && ctx.state && (ctx.state.sandbox || ctx.state.mode === 'flight')) return true;
   return !!(run && run.kind === 'lab' && run.phase !== 'inactive');
@@ -516,8 +518,9 @@ function showFlightToy(ctx) {
 function onGameNew() {
   // The toy follows an explicit request: the practice button, or a Sandbox launch in flight.
   // A mounted Sandbox screen alone proves nothing — it is prewarmed hidden on every title visit,
-  // and keying on that turned every New Game into the physics toy.
-  if (practiceArmed || hasPendingSandboxLaunch()) {
+  // and keying on that turned every New Game into the physics toy. A Crucible run rides the same
+  // requestSandboxGame seam but carries survivalSetup, so the toy keys on the physics-toy launch.
+  if (practiceArmed || hasPendingPhysicsToyLaunch()) {
     practiceArmed = false;
     pendingToy = true;
     return;
