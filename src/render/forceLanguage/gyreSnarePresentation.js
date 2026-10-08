@@ -649,7 +649,7 @@ export class GyreSnarePresentation {
       // leans a few wu toward the displaced hold point — the stretch reads in the
       // glass, not only in the thin grip-spoke. Same beam-local offset the funnel
       // aims at (already smoothed — no snap on snag).
-      const lagLean = Math.max(-6, Math.min(6, (this._aimTarget ? this._aimTarget.z : 0) * 0.12))
+      const lagLean = Math.max(-6, Math.min(6, (this._leanZ || 0) * 0.12))
         * Math.min(1, finite(mirror.holdLag01));
       this._maw.position.z += lagLean;
       this._disc.position.z += lagLean;
@@ -742,6 +742,8 @@ export class GyreSnarePresentation {
         const inv = len > 0 ? 1 / len : 0;
         const bx = dx * inv, bz = dz * inv;
         aimT.set(ox * bx + oz * bz, 0, -ox * bz + oz * bx);
+        this._leanZ = aimT.z; // pre-dip clump offset — the maw lean rides the drag
+                             // alone, not the meal's hit side (two signals, one glass)
         // Gulp dip: while the absorb kick is hot the funnel leans toward the side the
         // meal hit (world dir → beam-local, same transform as the core offset above).
         if (this._moteKick > 0.02 && (this._gulpDirX || this._gulpDirZ)) {
@@ -752,6 +754,7 @@ export class GyreSnarePresentation {
         }
       } else {
         aimT.set(0, 0, 0);
+        this._leanZ = 0;
       }
       this._spiralMat.uniforms.uAim.value.lerp(aimT, 1 - Math.exp(-sdt * 8));
       this._spiralMat.uniforms.uFade.value = spent; // motes die with the glass's spent dim too

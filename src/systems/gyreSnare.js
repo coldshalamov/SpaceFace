@@ -141,6 +141,8 @@ function freshRuntime() {
     holdLag: 0,            // wu — core's distance off its orbit slot: the spring's residual error,
                            // a mild second-order tension read for ordinary dragging (strained only
                            // trips past holdStrainDist — lag shades the glass before that)
+    holdLagSm: 0,          // one-poled lag (~0.13 s) feeding the lean channel — a raw single-frame
+                           // residual would jiggle the glass on hard maneuvers
     dropReason: null,      // last _drop cause ('strained', 'released', ...) — presentation reads it for the close shape
   };
 }
@@ -212,6 +214,7 @@ export const gyreSnare = {
     const droppedPhase = rt.phase;
     const droppedMass = rt.clumpMass;
     const droppedDir = rt.orbitDir; // captured before the reset — the tear snap needs the last revolution
+    const droppedOrbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale); // whip scale — dead at the next line
     rt.dropReason = reason || 'dropped'; // a strain break is a tear, not a polite release — the close reads the reason
     rt.phase = PHASE.OFF;
     rt.coreId = null;
@@ -232,6 +235,7 @@ export const gyreSnare = {
     rt.towCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0; // dead-state hygiene — the lag read is HOLD-only but resets like the rest
+    rt.holdLagSm = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     rt.orbitDir = 1;
@@ -301,8 +305,12 @@ export const gyreSnare = {
             let iz = rx * droppedDir + rz * 0.4;
             const il = Math.hypot(ix, iz) || 1; ix /= il; iz /= il;
             const m = entityMass(torn);
+            // The whip scales with the orbit's tangential speed: a capped moon
+            // already carries ~61 wu/s of revolve, so a flat snap vanishes on big
+            // clumps — 25% of tangential (floored at tearSnapWuS) reads at both ends.
+            const snapV = Math.max(D.tearSnapWuS, D.orbitRate * droppedOrbitR * D.tearSnapOrbitFrac);
             queuePhysicsImpulse(torn,
-              { x: ix * m * D.tearSnapWuS, y: 0, z: iz * m * D.tearSnapWuS },
+              { x: ix * m * snapV, y: 0, z: iz * m * snapV },
               this._evidence(st.tick));
           }
         }
@@ -847,6 +855,12 @@ export const gyreSnare = {
     // calm float, grows while a fast-moving ship drags the ball behind: the milder
     // "lashing" read strain01 folds in at publish (capped below the tear band).
     rt.holdLag = Math.hypot(tx - core.pos.x, tz - core.pos.z);
+    // The funnel's stir chases the ball's real revolution over ~0.25 s — a snag
+    // rolling -1 re-stirs the vortex smoothly instead of flipping it mid-feed.
+    rt.swirlBlend += clamp(rt.orbitDir - rt.swirlBlend, -dt * 4, dt * 4);
+    // The lean channel one-poles the lag (~0.13 s) — a raw single-frame residual
+    // would jiggle the glass whenever the ship jinks.
+    rt.holdLagSm += (rt.holdLag - rt.holdLagSm) * Math.min(1, dt * 8);
 
     // Spring → orbit slot, damped vs ship frame so the ball tracks the ship.
     const shipVx = finite(player.vel && player.vel.x);
@@ -1060,12 +1074,13 @@ export const gyreSnare = {
       if (nowS - rt.lastAbsorbCueS >= D.absorbCueMinGapS) {
         rt.lastAbsorbCueS = nowS;
         // Meal size in the ear too: the tick drops pitch as the victim gets heavier — a
-        // pebble ticks high, a wreck thuds low. And the whole arc creeps upward as the
-        // katamari eats — the 20th meal sounds hungrier than the 1st (escalation you
-        // hear, not just see in the clump radius).
+        // pebble ticks high, a wreck thuds low. And the whole arc creeps upward with the
+        // GROWTH CURVE (mass fraction, not meal count) — a capped moon's 40th meal still
+        // escalates while a pebble pile can't fake hunger at count 20.
         this.bus.emit('audio:cue', {
           id: 'gyre_snare_absorb', gain: 0.7,
-          rate: 1.15 - Math.min(0.5, em / 160) + Math.min(0.3, rt.totalAbsorbed * 0.015),
+          rate: 1.15 - Math.min(0.5, em / 160)
+            + 0.3 * Math.pow(Math.min(1, rt.clumpMass / D.maxClumpMass), 0.75),
         });
         // The haptic ride shares the gate: a dense belt feed would otherwise hold the
         // pad in a continuous buzz exactly where the audio designers decided it should
@@ -1128,6 +1143,7 @@ export const gyreSnare = {
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
+    rt.holdLagSm = 0;
     rt.basinSpots.length = 0;
     rt.ballMass = rt.clumpMass;
     // The floor itself sags with throw mass: a capped moon bowls ~22% slower than a
@@ -1239,6 +1255,7 @@ export const gyreSnare = {
     rt.towCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;
+    rt.holdLagSm = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     rt.orbitDir = 1;
@@ -1519,9 +1536,10 @@ export const gyreSnare = {
         // thresholds so lag can tense the lash but never cry "tearing".
         clamp(rt.holdLag / D.holdLagRefWu, 0, 1) * D.holdLagStrainMax,
       ) : 0;
-      // Raw lag normalized — the presentation leans the maw toward the dragged clump
-      // (the glass stretching), while strain01 stays the capped/deduced read.
-      pub.holdLag01 = rt.phase === PHASE.HOLD ? clamp(rt.holdLag / D.holdLagRefWu, 0, 1) : 0;
+      // Smoothed lag normalized — the presentation leans the maw toward the dragged
+      // clump (the glass stretching); strain01 stays on the RAW residual (an honest
+      // twitch there is a real read), the lean rides the one-poled channel.
+      pub.holdLag01 = rt.phase === PHASE.HOLD ? clamp(rt.holdLagSm / D.holdLagRefWu, 0, 1) : 0;
     } else { pub.strain01 = 0; pub.coreAngVel = 0; pub.holdLag01 = 0; }
     // The newest member's approach direction — the gulp dips toward the side the mass
     // actually hit instead of reading omnidirectional. nx/nz ride the member ledger.

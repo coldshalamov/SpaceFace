@@ -2069,6 +2069,66 @@ test('a too-heavy rock parked inside the suck annulus still eats the courtesy tu
   t.cleanup();
 });
 
+test('the funnel swirl eases to the clump\'s real orbitDir — no mid-feed flip', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  // Whatever sign the hash rolled, ~0.33 s of hold has the eased stir on it —
+  // wave-41: swirlBlend was declared/read but never updated, so a -1 core ran a
+  // permanently counter-rotating funnel for the whole hold.
+  const dir = t.sys._rt.orbitDir;
+  assert.ok(Math.sign(t.sys._rt.swirlBlend) === dir,
+    `swirlBlend (${t.sys._rt.swirlBlend.toFixed(2)}) stirs the way the ball revolves (${dir})`);
+  // Flip the roll: the vortex re-stirs over ~0.25 s — one tick may not flip it.
+  const before = t.sys._rt.swirlBlend;
+  t.sys._rt.orbitDir = -dir; // as if the next snag rolled the other sign
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.ok(Math.abs(t.sys._rt.swirlBlend - before) <= DT * 4 + 1e-6,
+    `one tick moves the stir by at most dt*4 (moved ${(t.sys._rt.swirlBlend - before).toFixed(3)})`);
+  for (let i = 0; i < 45; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.ok(t.sys._rt.swirlBlend * (-dir) > 0.9,
+    `swirlBlend converged to the new sign (got ${t.sys._rt.swirlBlend.toFixed(2)})`);
+  t.cleanup();
+});
+
+test('a strain break whips the freed clump along its last orbit tangent', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const dir = t.sys._rt.orbitDir;
+  // Isolated call — the ONLY impulse queued on the body is the parting snap.
+  t.sys._drop('strained');
+  const cmd = consumePhysicsCommand(body);
+  assert.ok(cmd && cmd.impulses && cmd.impulses.length >= 1, 'the snap crosses the membrane');
+  const imp = cmd.impulses[cmd.impulses.length - 1];
+  const maw = t.sys._maw(t.player, {});
+  let rx = body.pos.x - maw.x, rz = body.pos.z - maw.z;
+  const rl = Math.hypot(rx, rz) || 1; rx /= rl; rz /= rl;
+  const tanx = -rz * dir, tanz = rx * dir; // the last revolution's tangent
+  const hyp = Math.hypot(imp.x, imp.z) || 1;
+  assert.ok((imp.x * tanx + imp.z * tanz) / hyp > 0.85,
+    `the snap rides the last orbit tangent (share=${((imp.x * tanx + imp.z * tanz) / hyp).toFixed(2)})`);
+  const radial = (imp.x * rx + imp.z * rz) / hyp;
+  assert.ok(radial > 0.25 && radial < 0.6, `...biased outward (share=${radial.toFixed(2)})`);
+  const snapV = Math.max(T.tearSnapWuS,
+    T.orbitRate * Math.max(T.orbitRadiusMin, 4 * T.orbitRadiusScale) * T.tearSnapOrbitFrac);
+  assert.ok(Math.abs(hyp - 6 * snapV) < 1e-6,
+    `impulse = mass × snapV (got ${hyp.toFixed(3)} vs ${(6 * snapV).toFixed(3)})`);
+  t.cleanup();
+  // And the whip belongs to the tear alone — a polite release never snaps.
+  const t2 = await bootPhysics();
+  const calm = rock(t2.sim, T.mawDist, 0, 6, 4);
+  hold(t2);
+  for (let i = 0; i < 10; i++) { t2.state.input.actions.gyreSnare = true; t2.sim.step(); }
+  t2.sys._drop('released');
+  assert.equal(consumePhysicsCommand(calm), null, 'a polite release never snaps its clump');
+  t2.cleanup();
+});
+
 test('liveBalls republishes while the lash is OFF — a retired ball clears the +N', async () => {
   const t = await bootPhysics();
   const ball = rock(t.sim, T.mawDist, 0, 6, 4);
