@@ -97,7 +97,7 @@ export const GYRE_SNARE = Object.freeze({
                            // a fresh snag, and the halo reads the escalating appetite
   suckAccel: 680,            // wu/s² — pull toward the core inside the suck band
   suckDamping: 1.1,          // 1/s — frame-damping on inbound mass so it settles, not orbits
-  absorbEpsilonWu: 4,      // contact = clumpRadius + memberRadius + this — just past skin
+  absorbEpsilonWu: 4,        // contact = clumpRadius + memberRadius + this — just past skin
                            // touch at a FIXED margin: a 1.15x factor scaled with the ball
                            // and a capped clump ate things ~10 wu before resting contact
   absorbCueMinGapS: 0.08,    // s — min gap between absorb glass ticks so a dense belt feed

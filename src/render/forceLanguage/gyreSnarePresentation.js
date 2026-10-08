@@ -665,6 +665,10 @@ export class GyreSnarePresentation {
       const fuseS = finite(mirror.fuseS);
       const fuseDim = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
         ? 0.7 + 0.3 * (fuseS / GYRE_SNARE.fuseWarnVisS) : 1;
+      this._fuseDim = fuseDim; // basin glows run outside this branch — they read the cached dim
+      // The verb's face reads the payload too: a 2000 t moon loads the mouth + glass
+      // brighter than a 6 t pebble — escalation lands before FULL ever fires.
+      const massFrac = Math.min(1, finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1)));
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
       // A thrown lash is SPENT glass: during launch no pull lane runs, so the cone
@@ -684,6 +688,7 @@ export class GyreSnarePresentation {
         this._coneMat.uniforms.uPulse.value * Math.exp(-sdt * 6.3),
         strain * 0.7,
         windup * 0.55, // coil tension: the glass winds up with the spring
+        massFrac * 0.1, // payload tension: a loaded lash thrums higher than an empty one
       );
       // uStrain (hue warn) keeps RAW strain — a color read is not motion, so
       // reduced-motion must not mute the 'about to tear' telegraph. uTremble
@@ -699,6 +704,10 @@ export class GyreSnarePresentation {
         // approach direction (world frame) biases the funnel's aim while the kick lasts.
         this._gulpDirX = finite(mirror.absorbDir && mirror.absorbDir.x);
         this._gulpDirZ = finite(mirror.absorbDir && mirror.absorbDir.z);
+        // And the existing lumps shiver on the hit side — capture the gulp angle in
+        // CLUMP space at impact so the ripple weights each lump by angular proximity
+        // (rotation.y = -clumpSpin → local angle = world angle - clumpSpin).
+        this._gulpLocalA = Math.atan2(this._gulpDirZ, this._gulpDirX) - this._clumpSpin;
       }
       if (absorbsNow < this._absorbSeen) this._absorbSeen = 0; // new clump ledger
       this._absorbSeen = absorbsNow;
@@ -710,7 +719,7 @@ export class GyreSnarePresentation {
       // contradicts the telegraph the cone is making.
       // `spent` joins the lash's LAUNCH dim so the mouth fades with the glass it sits on
       // through the post-thrownBeat burst instead of glowing on a dead funnel.
-      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * spent * flashCalm * fuseDim * wakeEase);
+      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + massFrac * 0.08 + strain * 0.3 + this._discKick * 0.35) * spent * flashCalm * fuseDim * wakeEase);
       // Net anticipation: absorbables already inside the cone make the mouth glow
       // brighter before the catch — "×N IN NET" through the glass itself.
       const net = Math.min(3, finite(mirror.basinCount, 0));
@@ -757,7 +766,9 @@ export class GyreSnarePresentation {
         this._leanZ = 0;
       }
       this._spiralMat.uniforms.uAim.value.lerp(aimT, 1 - Math.exp(-sdt * 8));
-      this._spiralMat.uniforms.uFade.value = spent; // motes die with the glass's spent dim too
+      // Dying-cap honesty reaches the funnel too — motes thin with the glass's own
+      // fuse telegraph instead of inhaling full-bright on a lash <8 s from dry.
+      this._spiralMat.uniforms.uFade.value = spent * fuseDim;
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
       // down over ~0.25 s instead of popping — the collapse is part of the payoff.
@@ -865,7 +876,7 @@ export class GyreSnarePresentation {
       // and warms toward rim-hot in hue, so 'about to be grabbed' reads at a glance.
       // wakeEase gates them too: the sim's pull is live on frame one but the glass
       // takes ~150 ms to project — glows must not outrun the drawn rim.
-      g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * wakeEase;
+      g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * wakeEase * (this._fuseDim || 1);
       g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
       g.visible = true;
     }
@@ -1032,6 +1043,16 @@ export class GyreSnarePresentation {
             l.basePos.y + bob * fe,
             l.basePos.z + (l.fromZ - l.basePos.z) * (1 - fe) - sway * 0.7 * fe,
           );
+          // Absorb shiver: while the gulp kick is hot the whole ball jolts — each lump
+          // rides outward along its own seat dir, weighted by angular proximity to the
+          // side the meal hit. The katamari reacts where it was struck, not just grows.
+          if (this._moteKick > 0.01) {
+            const la = Math.atan2(l.basePos.z, l.basePos.x);
+            const prox = 0.35 + 0.65 * Math.max(0, Math.cos(la - (this._gulpLocalA || 0)));
+            const sh = this._moteKick * prox * l.baseScale * 0.35 * calm;
+            l.mesh.position.x += Math.cos(la) * sh;
+            l.mesh.position.z += Math.sin(la) * sh;
+          }
         }
         // And it tumbles: a quiet per-lump yaw/roll drift (staggered at spawn) sells
         // levitating debris on large clumps where each lump is individually readable.

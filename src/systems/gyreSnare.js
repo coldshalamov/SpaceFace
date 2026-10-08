@@ -1464,6 +1464,10 @@ export const gyreSnare = {
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {
       pub.coreId = null; pub.strain01 = 0;
+      // OFF zeroes the other transient HOLD channels too — a lagged clump's last
+      // drag or spin can't publish forever. corePos DELIBERATELY stays last-seen:
+      // the strain-break ring blooms there when the close ramp starts.
+      pub.holdLag01 = 0; pub.coreAngVel = 0;
       if (rt.ballId != null) {
         // Ball still flying: publish the frozen clump so the lumps/mass/count ride it out.
         pub.members = rt.ballMembers;

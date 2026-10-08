@@ -404,3 +404,13 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   drain();
   pulseAt('gyre:dropped', 0.45);
 });
+
+test('the Gyre Snare pad tables are pinned — the lash never silently unbinds', () => {
+  // The three load-bearing pad entries for the verb: the RB+Y chord (below), the
+  // lifecycle quarantine (deep-pinned in input-lifecycle.test.mjs ~:233 — a dropped
+  // entry fails that literal), and the hold-to-toggle whitelist (deep-pinned in
+  // fb-hold-to-toggle.test.mjs :88). This asserts the public binding surface so a
+  // table edit can't silently regress pad play.
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.gyreSnare], ['r1+alt'],
+    'the lash holds RB+Y under the boost hand');
+});
