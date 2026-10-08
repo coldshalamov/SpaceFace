@@ -242,6 +242,8 @@ export const gyreHud = {
       dom.pill.classList.toggle('gyre-launched', cls === 'gyre-launched');
       dom.pill.classList.toggle('gyre-ball', cls === 'gyre-ball');
       dom.pill.classList.toggle('gyre-full', cls === 'gyre-full');
+      dom.pill.classList.toggle('gyre-search', cls === 'gyre-search');
+      dom.pill.classList.toggle('gyre-heavy', cls === 'gyre-heavy');
     }
     if (!this._visible) {
       dom.pill.style.display = 'flex';
@@ -257,6 +259,10 @@ export const gyreHud = {
   },
 
   _hide(dom) {
+    // The strain latch is per-hold hysteresis — a hidden pill (or a new hold
+    // starting inside the 0.25-0.4 dead band) must not inherit the previous
+    // excursion's STRAIN face for its first few ticks.
+    this._strainOn = false;
     releaseBottomLaneClaim('gyre');
     if (dom && this._visible) {
       dom.pill.style.display = 'none';

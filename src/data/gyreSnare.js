@@ -46,10 +46,10 @@ export const GYRE_SNARE = Object.freeze({
   wedgeSoftLipWu: 18,        // wu — fade band PAST the visible rim: pull eases to zero at the
                            // outer lip so the drawn cone edge is the real physics edge
   wedgeFalloff: 0.5,         // non-absorbable bodies get at most this share of wedgeAccel.
-                           // Deliberately a touch above the basin rate: a body already
-                           // committed to the chute keeps more of its tug so it doesn't
-                           // visibly stall at the rim; the basin discount is the courtesy
-                           // rate for mass merely loitering under the cone.
+                           // The SHARE reads above the basin's nonAbsorbablePull (0.5 vs 0.45),
+                           // but the absolute accel lands ~4x lower (150*0.5 vs 620*0.45) —
+                           // deliberate: a body crossing laterally out of the basin keeps a
+                           // courtesy tug, not the basin's grab, so the rim reads 'release'.
   nonAbsorbablePull: 0.45,   // ×accel on dynamic bodies that can never core/member (rocks the maw shoves)
   queryReachWu: 60,          // wu — extra query radius past the basin so the wedge reaches its lip
   basinDamping: 1.6,         // 1/s — velocity damping vs ship frame inside the basin (settle, don't orbit-shoot)

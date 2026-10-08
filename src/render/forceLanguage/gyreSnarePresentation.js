@@ -642,8 +642,10 @@ export class GyreSnarePresentation {
     mesh.rotation.y = Math.atan2(-spec.dz, spec.dx);
     mesh.scale.set(trailLen, 1, Math.max(3, spec.r * 1.15));
     const ttl01 = Math.max(0, Math.min(1, finite(spec.ttl01, 1)));
-    const massFade = 0.65 + 0.5 * Math.min(1, finite(spec.mass) / GYRE_SNARE.maxClumpMass);
-    mat.uniforms.uAlpha.value = spec.alpha * massFade * flashCalm
+    // Alpha floor: a pebble's 9 s flight keeps a readable streak at range — the
+    // throw's mass still grades the shimmer but can't drop the ribbon to ~0.2.
+    const massFade = 0.8 + 0.3 * Math.min(1, finite(spec.mass) / GYRE_SNARE.maxClumpMass);
+    mat.uniforms.uAlpha.value = Math.max(spec.alpha * massFade, 0.28) * flashCalm
       * (1 - (spec.wind || 0)) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.25));
     mesh.visible = true;
   }
@@ -1444,7 +1446,8 @@ export class GyreSnarePresentation {
       // replaced the slot (a fresh sb cancels it via the branch above).
       if (this._secGraveT != null) {
         this._secGraveT -= sdt;
-        const fling = Math.max(8, finite(this._secR, 8) * 2.2);
+        // Same formula as the primary's _scatterLumps — one grave language.
+        const fling = Math.max(16, finite(this._secR, 8) * 1.3) / 0.15;
         for (const lm of this._secLumps) {
           lm.position.x += (lm.userData.scatX || 0) * fling * sdt;
           lm.position.y += 1.5 * sdt;

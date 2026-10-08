@@ -581,22 +581,29 @@ export const gyreSnare = {
   // Promote the freshest surviving watched ball into the primary lane — same
   // rehydration the boundary adoption uses: entityMass + the meta's frozen
   // member ledger so the overlay/ribbon/×N read survives the retire.
+  // Scored by despawnAt like the boundary sweep (adoptScore): the watch list's
+  // push order is launch order at home but map-iteration order after a reload —
+  // the latest deadline is the youngest flight either way.
   _promoteNextBall(rt, state) {
     if (!rt || !state || !state.entities) return;
+    let best = null;
+    let bestScore = -Infinity;
     for (let wi = rt.ballIds.length - 1; wi >= 0; wi--) {
       const wid = rt.ballIds[wi];
       const e = state.entities.get(wid);
       if (!e || e.alive === false || !e.pos || !e.data || !e.data.gyreLaunched) continue;
-      const wmeta = e.data.gyreLaunchMeta;
-      rt.ballId = wid;
-      rt.launchedId = wid;
-      rt.ballMass = entityMass(e);
-      rt.ballClumpRadius = wmeta && Number.isFinite(wmeta.clumpRadius)
-        ? wmeta.clumpRadius : entityRadius(e);
-      rt.ballMembers = wmeta && Array.isArray(wmeta.members) ? wmeta.members : null;
-      rt.ballAbsorbs = wmeta && Number.isFinite(wmeta.absorbs) ? wmeta.absorbs : 0;
-      return;
+      const score = Number.isFinite(e.data.despawnAt) ? e.data.despawnAt : -Infinity;
+      if (score > bestScore) { bestScore = score; best = e; }
     }
+    if (!best) return;
+    const wmeta = best.data.gyreLaunchMeta;
+    rt.ballId = best.id;
+    rt.launchedId = best.id;
+    rt.ballMass = entityMass(best);
+    rt.ballClumpRadius = wmeta && Number.isFinite(wmeta.clumpRadius)
+      ? wmeta.clumpRadius : entityRadius(best);
+    rt.ballMembers = wmeta && Array.isArray(wmeta.members) ? wmeta.members : null;
+    rt.ballAbsorbs = wmeta && Number.isFinite(wmeta.absorbs) ? wmeta.absorbs : 0;
   },
 
   _unwatchBall(id) {
