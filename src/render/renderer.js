@@ -346,6 +346,7 @@ import {
   collectFirstFlightEffectRoots,
   collectFirstFlightEffectRootsSteps,
   collectFirstFlightLayerDrawables,
+  collectFirstFlightLayerDrawablesSteps,
   collectInstancePoolCompileRoots,
   collectInstancePoolCompileRootsAndSubjects,
   collectInstancePoolCompileRootsAndSubjectsSteps,
@@ -12770,11 +12771,17 @@ export const render = {
       // emission submits that same geometry inside the measured frame. Declare every drawable the
       // pools/first-flight effect roots already own so the receipt's allowed set covers the 0->N
       // growth without weakening the gate for objects that do not exist yet.
-      const pooledResourceSubjects = collectFirstFlightLayerDrawables([
-        ...derivedPoolRoots,
-        ...vfxRoots,
-        ...(yield* collectFirstFlightEffectRootsSteps(scene)),
-      ]);
+      const pooledResourceSubjects = typeof collectFirstFlightLayerDrawablesSteps === 'function'
+        ? yield* collectFirstFlightLayerDrawablesSteps([
+          ...derivedPoolRoots,
+          ...vfxRoots,
+          ...(yield* collectFirstFlightEffectRootsSteps(scene)),
+        ])
+        : collectFirstFlightLayerDrawables([
+          ...derivedPoolRoots,
+          ...vfxRoots,
+          ...(yield* collectFirstFlightEffectRootsSteps(scene)),
+        ]);
       yield;
       const openingRoute = this._selectPostRoute();
       let propPackageVisited = 0;
@@ -15529,10 +15536,41 @@ export const render = {
         cookStretchDebitAt = cookStretchSliceAt;
       };
       // One pool census memo serves the cohort tails and the buffer-roots sweep
-      // — three whole-scene walks minted the same root set before.
+      // — three whole-scene walks minted the same root set before. The first
+      // consult is async now: cooks that skipped the fused census (skipCompile /
+      // holdLeftoverFx without warmFirstFlightFx) used to pay the whole-scene
+      // traverse atomically at first consult; it rides the Steps twin under the
+      // shared stretch clock instead. A Steps-less host keeps the sync mint.
       let cookPoolRootsMemo = null;
-      const cookPoolCompileRoots = () => {
-        if (!cookPoolRootsMemo) cookPoolRootsMemo = collectInstancePoolCompileRoots(scene);
+      const cookPoolCompileRoots = async () => {
+        if (cookPoolRootsMemo) return cookPoolRootsMemo;
+        if (typeof collectInstancePoolCompileRootsSteps === 'function') {
+          const poolRootsIter = collectInstancePoolCompileRootsSteps(scene);
+          for (;;) {
+            if (cookStale()) {
+              closeCookStepsIter(poolRootsIter);
+              return cookSuperseded;
+            }
+            let poolRootsStep;
+            try {
+              poolRootsStep = poolRootsIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(poolRootsIter);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookPoolRoots');
+              console.warn('[render] cook pool roots census drive failed; running the sync twin', driveError);
+              cookPoolRootsMemo = runCookSyncTwin('cook pool roots census',
+                () => collectInstancePoolCompileRoots(scene), []);
+              break;
+            }
+            if (poolRootsStep.done) {
+              cookPoolRootsMemo = Array.isArray(poolRootsStep.value) ? poolRootsStep.value : [];
+              break;
+            }
+            await paceCookStretch();
+          }
+        } else {
+          cookPoolRootsMemo = collectInstancePoolCompileRoots(scene);
+        }
         return cookPoolRootsMemo;
       };
       // Draw one material at a time on the bloom target. A whole-scene bloom.render
@@ -15705,20 +15743,22 @@ export const render = {
             lateAdmittedCohort = collectLateAdmittedCompileRoots(this._meshes, openingSubjects);
           }
         }
+        const cookPoolRoots = await cookPoolCompileRoots();
+        if (cookPoolRoots === cookSuperseded) return cookSuperseded;
         const lateRoots = options.skipCompile === true || (options.holdLeftoverFx === true && !warmFirstFlightFx)
           ? openingRoots
           : warmFirstFlightFx
             ? [
               ...openingRoots,
               ...firstFlightRoots,
-              ...cookPoolCompileRoots().filter(isAsteroidInstancePoolRoot),
+              ...cookPoolRoots.filter(isAsteroidInstancePoolRoot),
             ]
             : [
               ...openingRoots,
               ...firstFlightRoots,
               ...preparedRoots,
               ...(cookLateAdmittedRoots || lateAdmittedCohort || []),
-              ...cookPoolCompileRoots(),
+              ...cookPoolRoots,
             ];
         // holdLeftoverFx keeps leftover FX out of the cohort because their menu-linked programs
         // stay resident — but a lit material's menu variant is shadowless (numDirLightShadows=0)
@@ -16014,7 +16054,9 @@ export const render = {
       const bufferFirstFlightFx = options.skipCompile !== true
         && (options.holdLeftoverFx !== true || warmFirstFlightFx);
       if (bufferFirstFlightFx) {
-        for (const root of cookPoolCompileRoots()) {
+        const bufferPoolRoots = await cookPoolCompileRoots();
+        if (bufferPoolRoots === cookSuperseded) return cookSuperseded;
+        for (const root of bufferPoolRoots) {
           if (isAsteroidInstancePoolRoot(root)) {
             addFirstFlightBufferRoot(root);
           }
@@ -16201,9 +16243,37 @@ export const render = {
       const vfxRoots = typeof state.render.collectVfxGpuResidencyRoots === 'function'
         ? state.render.collectVfxGpuResidencyRoots() || []
         : [];
-      const layerRoots = options.skipCompile === true
-        ? []
-        : collectFirstFlightLayerDrawables([...firstFlightRoots, ...vfxRoots]);
+      let layerRoots = [];
+      if (options.skipCompile !== true) {
+        const layerRootsArg = [...firstFlightRoots, ...vfxRoots];
+        if (typeof collectFirstFlightLayerDrawablesSteps === 'function') {
+          const layerIter = collectFirstFlightLayerDrawablesSteps(layerRootsArg);
+          for (;;) {
+            if (cookStale()) {
+              closeCookStepsIter(layerIter);
+              return cookSuperseded;
+            }
+            let layerStep;
+            try {
+              layerStep = layerIter.next();
+            } catch (driveError) {
+              closeCookStepsIter(layerIter);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookLayerDrawables');
+              console.warn('[render] cook layer drawable collect failed; running the sync twin', driveError);
+              layerRoots = runCookSyncTwin('cook layer drawables',
+                () => collectFirstFlightLayerDrawables(layerRootsArg), []);
+              break;
+            }
+            if (layerStep.done) {
+              layerRoots = Array.isArray(layerStep.value) ? layerStep.value : [];
+              break;
+            }
+            await paceCookStretch();
+          }
+        } else {
+          layerRoots = collectFirstFlightLayerDrawables(layerRootsArg);
+        }
+      }
       if (layerRoots.length > 0 && !cookOverBudget()) {
         const restoreLayers = await driveRevealCohort(layerRoots);
         if (restoreLayers === null) return cookSuperseded;

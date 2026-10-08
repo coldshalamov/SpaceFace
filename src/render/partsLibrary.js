@@ -3236,8 +3236,12 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   }
 
   let authored;
+  const capsuleBuildTrace = { root: null };
   try {
-    authored = buildAuthoredCargoCapsuleRoot(entity, record, scene, boundary);
+    authored = await driveAuthoredBuildStepsAsync(
+      buildAuthoredCargoCapsuleRootSteps(entity, record, scene, boundary, capsuleBuildTrace),
+      capsuleBuildTrace, entity, boundary, options,
+    );
   } catch (error) {
     return failAuthoredCargoCapsuleAdmission(
       boundary,
@@ -3248,6 +3252,12 @@ async function upgradeAuthoredCargoCapsuleBoundary(
       error,
       options,
     );
+  }
+  if (!authored) {
+    // Stale verdict mid-build — the driver already disposed the partial; the
+    // newer admission owns the boundary now.
+    releaseBoundaryResidency(renderer, boundary, 'capsule-build-aborted', options.admissionEpoch);
+    return false;
   }
   registerPreparedAuthoredAdmission(scene, boundary, authored);
   let authoredDisposed = false;
@@ -3472,6 +3482,19 @@ function releaseDetachedCargoCapsuleSubstrate(root) {
 }
 
 function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
+  const steps = buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundary);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Stepped twin of the build body — the whole commit used to be one atomic
+// block (instantiatePart + staticBatch flush + canonicalize traverse +
+// LOD/motion installs) inside the commit continuation. Yields between legs
+// let the async driver pace the build across frames exactly like
+// composedShipSteps; the sync twin above keeps single-pass semantics.
+// `buildTrace.root` carries the partial out so an aborted run can dispose it.
+function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundary, buildTrace = null) {
   const palette = paletteFor(entity);
   const root = new THREE.Group();
   root.name = `GLTFKit_${entity.data.payloadStableId || 'cargo_capsule'}`;
@@ -3479,6 +3502,7 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   root.userData.interactionKind = 'payload';
   root.userData.authoredPayloadAssetId = entity.data.authoredPayloadAssetId;
   root.userData.assetId = record.assetId;
+  if (buildTrace) buildTrace.root = root;
 
   const bindings = createBindings();
   const mutableMaterials = new Map();
@@ -3491,15 +3515,18 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   // would scale it 32/27.8 = 1.15x and break that number at draw time; the capsule keeps the fit.
   const scale = authoredPayloadDrawScale(entity, targetRadius, authoredEnvelope);
   const authoredLength = Math.max(Number(boundsSize[0]) || authoredEnvelope, 1e-6);
-  instantiatePart(record, root, {
+  yield* instantiatePartSteps(record, root, {
     position: [0, 0, 0],
     rotation: [0, 0, 0],
     targetLength: authoredLength * scale,
     label: 'CargoCapsule',
   }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
+  yield;
   staticBatches.flush();
+  yield;
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
+  yield;
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
   // Payload bodies that carry a sealed motion bank (e.g. the rigged cargo pod) get the
@@ -4108,10 +4135,14 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   }
 
   let authored = null;
+  const placeBuildTrace = { root: null };
   try {
-    authored = buildPlacePropRoot(entity, record, scene, boundary, {
-      overlayRecord, layoutEntity: options.admissionEntity || entity,
-    });
+    authored = await driveAuthoredBuildStepsAsync(
+      buildPlacePropRootSteps(entity, record, scene, boundary, {
+        overlayRecord, layoutEntity: options.admissionEntity || entity,
+      }, placeBuildTrace),
+      placeBuildTrace, entity, boundary, options,
+    );
   } catch (error) {
     return failAuthoredPlaceAdmission(
       boundary, fallbackRoot, entity, renderer, options, setActive,
@@ -4651,6 +4682,20 @@ function unionMeasuredVisualBounds(vb, measured, scale) {
 }
 
 function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) {
+  const steps = buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Stepped twin of the place build — station/place authored upgrades used to
+// pay the whole compose (two instantiatePart calls incl. the overlay,
+// staticBatch flush, canonicalize traverse, center/install/Lod/motion legs)
+// atomically inside the commit continuation, mid-approach inside live
+// flight. Yields between legs pace the build across frames like
+// composedShipSteps; `buildTrace.root` carries the partial out for disposal
+// when the driving run goes stale mid-build.
+function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options = {}, buildTrace = null) {
   const palette = paletteFor(entity || {});
   const root = new THREE.Group();
   const data = entity && entity.data || {};
@@ -4690,7 +4735,8 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
     authoredEnvelope,
     censusScale,
   });
-  instantiatePart(record, root, {
+  if (buildTrace) buildTrace.root = root;
+  yield* instantiatePartSteps(record, root, {
     position: [0, 0, 0],
     rotation: [0, 0, 0],
     targetLength: authoredLength * scale,
@@ -4702,13 +4748,14 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
       overlayRecord.bounds && overlayRecord.bounds.size && overlayRecord.bounds.size[0] || 1,
       1e-6,
     );
-    instantiatePart(overlayRecord, root, {
+    yield* instantiatePartSteps(overlayRecord, root, {
       position: [0, 0, 0],
       rotation: [0, 0, 0],
       targetLength: overlayLength * scale,
       label: 'FactionOverlay',
     }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
   }
+  yield;
   if (record.flightStaticV3 === true) {
     root.userData.spacefaceFlightStaticV3 = true;
     root.userData.flightRenderPackage = {
@@ -4723,8 +4770,10 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
     };
   }
   staticBatches.flush();
+  yield;
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
+  yield;
   normalizePlacePropBindings(bindings);
   centerAuthoredPlaceRoot(root, record, scale, latchPlaceTransform(data) || tallyThreePlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data));
   // Stations key on the placeFile stem recorded on the boundary (e.g. place_station_trade_hub),
@@ -4734,6 +4783,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings);
   installStationOpaqueDepthPrepass(root, entity, bindings);
   specializeClaimRelayOpaqueMaterials(root, placeId);
+  yield;
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
   if(isLatchActor(entity))root.userData.latchNineAuthoredSource={assetId:record.assetId,file:record.url};
@@ -9150,11 +9200,16 @@ let retainedDisposeDrainScheduled = false;
 // Persistent across fires like the despawn drain's ledger: a saturated stretch
 // ages out after 2 skips and forces a leg instead of deferring reclaim forever.
 let retainedDisposeLedgerSkips = 0;
+// FIFO starvation watermark: each drain pass bumps the seq; a corpse that has
+// sat >8 drains behind fat heads is latency, not correctness — note it once.
+let retainedDisposeDrainSeq = 0;
+const RETAINED_DISPOSE_STARVE_DRAINS = 8;
 function scheduleRetainedDisposeDrain() {
   if (retainedDisposeDrainScheduled) return;
   retainedDisposeDrainScheduled = true;
   setTimeout(() => {
     retainedDisposeDrainScheduled = false;
+    retainedDisposeDrainSeq += 1;
     const started = monotonicNow();
     let ranLeg = false;
     let forcedRan = false;
@@ -9171,6 +9226,14 @@ function scheduleRetainedDisposeDrain() {
       }
       if (legSpent) forcedRan = true;
       const head = retainedDisposeQueue[0];
+      if (!head.starveNoted
+          && retainedDisposeDrainSeq - (head.enqueuedSeq || 0) > RETAINED_DISPOSE_STARVE_DRAINS) {
+        head.starveNoted = true;
+        console.info(
+          `[partsLibrary] detached teardown waited ${retainedDisposeDrainSeq - (head.enqueuedSeq || 0)}`
+          + ` drains behind ${retainedDisposeQueue.length} queued corpses`,
+        );
+      }
       if (!head.iter) {
         try { head.iter = disposeDetachedObjectSteps(head.root); }
         catch (error) {
@@ -9183,8 +9246,28 @@ function scheduleRetainedDisposeDrain() {
         ranLeg = true;
         if (head.iter.next().done) retainedDisposeQueue.shift();
       } catch (error) {
+        // A throwing iterator is dead — .next() on a thrown generator just
+        // reports done, so shift()-dropping the entry abandoned the subtree
+        // suffix it never tore down (leaked GPU resources). Mint a fresh
+        // teardown pass for the root once and requeue it; dispose is
+        // idempotent, so the retry only costs the nodes still standing.
+        if (!head.retried) {
+          head.retried = true;
+          let retryIter = null;
+          try {
+            retryIter = disposeDetachedObjectSteps(head.root);
+          } catch (retryError) {
+            console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', retryError);
+          }
+          retainedDisposeQueue.shift();
+          if (retryIter) {
+            head.iter = retryIter;
+            retainedDisposeQueue.push(head);
+          }
+        } else {
+          retainedDisposeQueue.shift();
+        }
         console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', error);
-        retainedDisposeQueue.shift();
         continue;
       }
       if (monotonicNow() - started >= 4) break;
@@ -9204,7 +9287,7 @@ function scheduleRetainedDisposeDrain() {
 // drives it, so queue order and the 4 ms leg bound hold for every lane.
 export function queuePacedDetachedTeardown(root, iter) {
   if (!root || !iter) return false;
-  retainedDisposeQueue.push({ root, iter });
+  retainedDisposeQueue.push({ root, iter, enqueuedSeq: retainedDisposeDrainSeq });
   scheduleRetainedDisposeDrain();
   return true;
 }
@@ -9275,7 +9358,7 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
   // before this runs, so the traversal only touches already-orphaned state.
   const releaseRetainedRoot = (root) => {
     if (!root) return;
-    retainedDisposeQueue.push({ root, iter: null });
+    retainedDisposeQueue.push({ root, iter: null, enqueuedSeq: retainedDisposeDrainSeq });
     scheduleRetainedDisposeDrain();
   };
 
@@ -10827,16 +10910,10 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
             }
           }
           const partial = composeTrace.root;
-          partial.traverse((object) => {
-            const instance = object && object.userData ? object.userData.renderPackageInstance : null;
-            if (instance && typeof instance.dispose === 'function') {
-              try { instance.dispose('compose-aborted'); } catch { /* best-effort */ }
-            }
-            if (object && object.userData && object.userData.spacefaceStaticBatch === true
-              && object.geometry && typeof object.geometry.dispose === 'function') {
-              try { object.geometry.dispose(); } catch { /* best-effort */ }
-            }
-          });
+          for (let preScan = disposeAbortPartialPreScanSteps(partial); ;) {
+            if (preScan.next().done) break;
+            await composeYield();
+          }
           // The compose-aborted partial rides the paced detached-teardown
           // queue like its sibling abort legs — sync traverse stays the
           // no-queue fallback.
@@ -10854,6 +10931,77 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
   }
   notePacedFrameSpend(now() - sliceStarted);
   return step.value;
+}
+
+// Async driver for the place/capsule build Steps twins — same contract as
+// buildComposedShipAsync: pace at the compose frame budgets, check the stale
+// verdict per slice so a re-admission/owner death exits before the next leg
+// burns GPU work, and dispose the partial buildTrace.root on abort so a
+// cancelled run never leaks instances/static-batch geometry.
+async function driveAuthoredBuildStepsAsync(steps, buildTrace, entity, ownerBoundary, options = {}) {
+  const now = () => (
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now()
+  );
+  let sliceStarted = now();
+  const frameBudgetMs = () => (options.admissionVisible === true || options.admissionDeadline === true)
+    ? COMPOSE_FRAME_MS_URGENT : COMPOSE_FRAME_MS;
+  let step = steps.next();
+  while (!step.done) {
+    const sliceMs = now() - sliceStarted;
+    if (sliceMs >= frameBudgetMs() || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
+      notePacedFrameSpend(sliceMs);
+      await composeYield();
+      sliceStarted = now();
+      if (staleAuthoredRunVerdict(ownerBoundary, options)
+        || (entity && entity.alive === false)
+        || (ownerBoundary && !ownerBoundary.parent)) {
+        try { steps.return(undefined); } catch { /* generator teardown is best-effort */ }
+        if (buildTrace && buildTrace.root) {
+          const partial = buildTrace.root;
+          for (let preScan = disposeAbortPartialPreScanSteps(partial); ;) {
+            if (preScan.next().done) break;
+            await composeYield();
+          }
+          try {
+            if (!queuePacedDetachedTeardown(partial, disposeDetachedObjectSteps(partial))) {
+              disposeDetachedObject(partial);
+            }
+          } catch { /* partial-root disposal is best-effort */ }
+          buildTrace.root = null;
+        }
+        return null;
+      }
+    }
+    step = steps.next();
+  }
+  notePacedFrameSpend(now() - sliceStarted);
+  return step.value;
+}
+
+// Abort pre-scan shared by the compose/build abort legs — the partial's
+// package instances and static-batch geometries get their early dispose so a
+// cancelled run frees GPU allocations before the paced teardown queue reaches
+// the root. Stepped so a fat partial no longer pays one atomic traverse
+// inside the abandoning frame.
+function* disposeAbortPartialPreScanSteps(partial) {
+  const stack = [partial];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    const instance = object.userData ? object.userData.renderPackageInstance : null;
+    if (instance && typeof instance.dispose === 'function') {
+      try { instance.dispose('compose-aborted'); } catch { /* best-effort */ }
+    }
+    if (object.userData && object.userData.spacefaceStaticBatch === true
+      && object.geometry && typeof object.geometry.dispose === 'function') {
+      try { object.geometry.dispose(); } catch { /* best-effort */ }
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
 }
 
 function flightRootTemplateKey({
@@ -11338,6 +11486,7 @@ function instantiateFlightRootTemplate(
           ...(object.userData || {}),
           spacefaceFlightTemplatePath: (path.sourcePath || []).join('/'),
         };
+        noteFlightTemplateMarker(root, object);
       }
     }
   }
@@ -11489,6 +11638,7 @@ function* instantiateFlightRootTemplateSteps(
           ...(object.userData || {}),
           spacefaceFlightTemplatePath: (path.sourcePath || []).join('/'),
         };
+        noteFlightTemplateMarker(root, object);
       }
     }
   }
@@ -11708,13 +11858,37 @@ function objectAtRootPath(root, path) {
   return object;
 }
 
+// Marker → object index per template instance root. findFlightTemplateObject
+// used to pay one full non-early-exit traverse per binding path (~30–80 whole
+// walks per instance inside one commit leg); the index mints that walk once
+// per root and the recreate stampers below insert their late markers so
+// first-match traversal order semantics are preserved.
+const flightTemplateObjectIndexes = new WeakMap();
+
+function flightTemplateObjectIndex(root) {
+  let index = flightTemplateObjectIndexes.get(root);
+  if (!index) {
+    index = new Map();
+    root.traverse((object) => {
+      const marker = object && object.userData ? object.userData.spacefaceFlightTemplatePath : null;
+      if (typeof marker === 'string' && !index.has(marker)) index.set(marker, object);
+    });
+    flightTemplateObjectIndexes.set(root, index);
+  }
+  return index;
+}
+
+function noteFlightTemplateMarker(root, object) {
+  const marker = object && object.userData ? object.userData.spacefaceFlightTemplatePath : null;
+  if (typeof marker !== 'string') return;
+  const index = flightTemplateObjectIndexes.get(root);
+  if (index && !index.has(marker)) index.set(marker, object);
+}
+
 function findFlightTemplateObject(root, path) {
   if (!root || !Array.isArray(path)) return null;
   const marker = path.join('/');
-  let found = null;
-  root.traverse((object) => {
-    if (found === null && object.userData?.spacefaceFlightTemplatePath === marker) found = object;
-  });
+  const found = flightTemplateObjectIndex(root).get(marker) || null;
   return found || objectAtRootPath(root, path);
 }
 

@@ -392,6 +392,33 @@ function createGeometryWorkItems(drawables, options = {}) {
   return { work, uniqueGeometries: seenGeometries.size };
 }
 
+// Stepped twin — the drawable scan is linear but unbounded; a cohort of tens
+// of thousands paid one atomic mint behind the boundary yield. Yields at
+// stride boundaries keep the same work list semantics.
+function* createGeometryWorkItemsSteps(drawables, options = {}) {
+  const work = [];
+  const seenGeometries = new Set();
+  const ignoreStamps = options.ignoreResidentStamps === true;
+  let visited = 0;
+  for (const object of drawables) {
+    if ((++visited % 1024) === 0) yield;
+    const geometry = object.geometry;
+    const firstGeometryUse = !seenGeometries.has(geometry);
+    if (firstGeometryUse) seenGeometries.add(geometry);
+    if (!firstGeometryUse && !object.isInstancedMesh) continue;
+    if (!ignoreStamps
+        && geometry.userData && geometry.userData.spacefaceGpuResident === true
+        && !object.isInstancedMesh) continue;
+    let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
+    if (object.isInstancedMesh) {
+      estimatedBytes += attributeByteLength(object.instanceMatrix);
+      estimatedBytes += attributeByteLength(object.instanceColor);
+    }
+    work.push({ object, geometry, estimatedBytes });
+  }
+  return { work, uniqueGeometries: seenGeometries.size };
+}
+
 function partitionGeometryWork(work, options = {}) {
   const maxDrawables = Math.max(1, Number(options.geometryBatchDrawables)
     || STARTUP_GEOMETRY_BATCH_DRAWABLES);
@@ -401,6 +428,32 @@ function partitionGeometryWork(work, options = {}) {
   let current = [];
   let bytes = 0;
   for (const item of work) {
+    if (current.length > 0
+        && (current.length >= maxDrawables || bytes + item.estimatedBytes > maxBytes)) {
+      batches.push({ work: current, estimatedBytes: bytes });
+      current = [];
+      bytes = 0;
+    }
+    current.push(item);
+    bytes += item.estimatedBytes;
+  }
+  if (current.length > 0) batches.push({ work: current, estimatedBytes: bytes });
+  return batches;
+}
+
+// Stepped twin — same linear scan; yields at stride boundaries so a giant
+// work list does not mint its batches inside one atomic leg.
+function* partitionGeometryWorkSteps(work, options = {}) {
+  const maxDrawables = Math.max(1, Number(options.geometryBatchDrawables)
+    || STARTUP_GEOMETRY_BATCH_DRAWABLES);
+  const maxBytes = Math.max(1, Number(options.geometryBatchBytes)
+    || STARTUP_GEOMETRY_BATCH_BYTES);
+  const batches = [];
+  let current = [];
+  let bytes = 0;
+  let visited = 0;
+  for (const item of work) {
+    if ((++visited % 1024) === 0) yield;
     if (current.length > 0
         && (current.length >= maxDrawables || bytes + item.estimatedBytes > maxBytes)) {
       batches.push({ work: current, estimatedBytes: bytes });
@@ -563,10 +616,25 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   } else {
     drawables = collectStartupGeometryDrawables(subjects, options);
   }
-  // The work-list mint is an unstepped linear scan — a boundary yield keeps a
-  // big cohort from fusing collect->mint->partition into one task.
+  // The work-list mint rides its Steps twin under the boundary yield — a big
+  // cohort no longer pays the whole drawable scan inside one task, while the
+  // unconditional yield keeps a small cohort's collect->mint fuse broken the
+  // way the boundary always did.
   await collectYield();
-  const { work, uniqueGeometries } = createGeometryWorkItems(drawables, options);
+  let work, uniqueGeometries;
+  if (typeof createGeometryWorkItemsSteps === 'function') {
+    const workIt = createGeometryWorkItemsSteps(drawables, options);
+    for (;;) {
+      const workStep = workIt.next();
+      if (workStep.done) {
+        ({ work, uniqueGeometries } = workStep.value);
+        break;
+      }
+      await collectYield();
+    }
+  } else {
+    ({ work, uniqueGeometries } = createGeometryWorkItems(drawables, options));
+  }
   if (!renderer || typeof renderer.render !== 'function'
       || typeof renderer.setRenderTarget !== 'function'
       || typeof renderer.getRenderTarget !== 'function') {
@@ -603,7 +671,17 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
     ? options.paceQueue
     : makeGpuQueuePacer(renderer);
   await yieldToMain();
-  const batches = partitionGeometryWork(work, options);
+  let batches;
+  if (typeof partitionGeometryWorkSteps === 'function') {
+    const partitionIt = partitionGeometryWorkSteps(work, options);
+    for (;;) {
+      const partitionStep = partitionIt.next();
+      if (partitionStep.done) { batches = partitionStep.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    batches = partitionGeometryWork(work, options);
+  }
   const geometryProgress = beginBootWork(renderer, 'geometry', batches.length);
   const material = residencyMaterialFor(renderer);
   const target = residencyScratchTargetFor(renderer);
