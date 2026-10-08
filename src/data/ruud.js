@@ -22,6 +22,8 @@ export const RUUD = Object.freeze({
   buoy: BUOY,
   bladderOffset: Object.freeze({ x: 8, z: 0 }),
   hang: 16,
+  coldInset: 10.4,
+  towSlack: 14,
   spareBuoy: 16,
   spareFin: 28,
   cutSpeed: 14,

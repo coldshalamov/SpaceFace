@@ -15,6 +15,8 @@ function materials() {
     rubber: paint(RUBBER, 0.04, 0.86),
     frost: new THREE.MeshStandardMaterial({ color: FROST, metalness: 0.08, roughness: 0.28, emissive: FROST, emissiveIntensity: 0.18 }),
     heat: new THREE.MeshStandardMaterial({ color: 0x3a2418, metalness: 0.4, roughness: 0.42, emissive: HEAT, emissiveIntensity: 1.15 }),
+    shear: paint(0x140e0c, 0.62, 0.58),
+    breath: new THREE.MeshBasicMaterial({ color: FROST, transparent: true, opacity: 0.28, depthWrite: false, toneMapped: false }),
   };
   for (const [name, m] of Object.entries(mats)) m.name = `RUUD_${name}`;
   return mats;
@@ -63,6 +65,7 @@ function stamp(root, entity, motion) {
   root.userData.animated = true;
   root.userData.visualLanguage = 'ruud-hook-left';
   root.userData.updateAuthoredMotion = motion;
+  root.userData.disposeRuud = () => disposeRuudVisual(root);
   root.userData.authoredAssetState = 'authored';
   root.userData.authoredVisualRoot = 'authored-root';
   motion(entity, 0, {});
@@ -84,30 +87,42 @@ function buildFin(entity) {
   const root = new THREE.Group();
   root.name = 'RUUD_FIN3';
   const m = materials();
+  // Rest yaw is zero. The suit sits +X of the fin, toward the foundry.
+  // Spin the blade so the cold tip points at the suit and the cherry root points out along the slag ray.
+  const turn = new THREE.Group();
+  turn.name = 'cold_face_out';
+  turn.rotation.y = Math.PI;
+  root.add(turn);
   const shell = new THREE.Group();
   shell.name = 'radiator_fin';
-  root.add(shell);
+  turn.add(shell);
   add(shell, plate([[-9, -0.35], [-8.2, -2.4], [1.2, -2.1], [2.4, -0.4], [2.4, 0.4], [1.2, 2.1], [-8.2, 2.4], [-9, 0.35]], 0.42, 0.12), m.slate, 'fin_blade').position.y = 0.2;
   add(shell, plate([[-9.4, -0.2], [-7.6, -0.55], [-7.6, 0.55], [-9.4, 0.2]], 0.2, 0.04), m.frost, 'cold_tip').position.y = 0.72;
   add(shell, new THREE.CylinderGeometry(1.15, 1.35, 1.6, 16), m.foundry, 'root_collar').position.set(3.1, 0.7, 0);
   add(shell, new THREE.TorusGeometry(0.72, 0.16, 8, 18), m.verd, 'hose_gland').position.set(2.15, 0.85, 0);
   for (const z of [-1.35, 1.35]) add(shell, new THREE.BoxGeometry(0.28, 0.22, 0.55), m.foundry, 'blade_bolt').position.set(-2.2, 0.7, z);
   bake(shell);
-  const rootGlow = add(root, new THREE.CylinderGeometry(0.72, 0.86, 0.7, 16), m.heat, 'cherry_root');
+  const rootGlow = add(turn, new THREE.CylinderGeometry(0.72, 0.86, 0.7, 16), m.heat, 'cherry_root');
   rootGlow.position.set(3.15, 0.7, 0);
-  const hatch = new THREE.Group();
-  hatch.name = 'ANIM_hatch';
-  hatch.position.set(-1.4, 0.85, 0);
-  root.add(hatch);
-  add(hatch, new THREE.BoxGeometry(2.4, 0.16, 1.7), m.foundry, 'bolted_sign');
-  add(hatch, new THREE.CylinderGeometry(0.12, 0.12, 0.34, 8), m.slate, 'through_bolt').position.set(0.7, 0.12, 0.45);
-  const pawl = add(root, new THREE.BoxGeometry(0.55, 0.12, 0.18), m.foundry, 'ANIM_pawl');
+  const sign = add(turn, new THREE.BoxGeometry(2.4, 0.16, 1.7), m.foundry, 'bolted_sign');
+  sign.position.set(-1.4, 0.95, 0);
+  add(turn, new THREE.CylinderGeometry(0.12, 0.12, 0.34, 8), m.slate, 'through_bolt').position.set(-0.7, 1.08, 0.45);
+  const latch = new THREE.Group();
+  latch.name = 'ANIM_latch';
+  latch.position.set(-0.15, 1.16, 0.95);
+  turn.add(latch);
+  add(latch, new THREE.BoxGeometry(0.7, 0.08, 0.16), m.slate, 'gantry_hasp');
+  const pawl = add(turn, new THREE.BoxGeometry(0.55, 0.12, 0.18), m.foundry, 'ANIM_pawl');
   pawl.position.set(1.2, 1.15, 0.9);
+  const shear = add(turn, new THREE.BoxGeometry(0.55, 0.9, 1.35), m.shear, 'ANIM_shear');
+  shear.position.set(-9.15, 0.7, 0);
+  shear.visible = false;
   return stamp(root, entity, (e, time, a11y = {}) => {
     const p = poseOf(e);
     const t = Number.isFinite(p.simTime) ? p.simTime : (Number.isFinite(time) ? time : 0);
     const reduced = !!a11y.reducedMotion;
-    hatch.rotation.z = p.hatch ? -1.15 : 0;
+    latch.rotation.z = p.hatch ? -1.15 : 0;
+    shear.visible = p.sheared === 1;
     pawl.rotation.z = reduced || !p.chain ? 0 : Math.sin(t * (Math.PI * 2) / C.tickEvery) > 0.92 ? -0.55 : 0;
     m.heat.emissiveIntensity = reduced ? 1.05 : 1.02 + Math.sin(t * 2.2) * 0.08;
     m.heat.emissive.setHex(HEAT);
@@ -127,7 +142,7 @@ function buildSuit(entity) {
   add(shell, new THREE.CapsuleGeometry(0.72, 1.15, 4, 10), m.rubber, 'torso');
   add(shell, new THREE.SphereGeometry(0.46, 14, 10), m.rubber, 'blank_collar').position.y = 1.15;
   add(shell, new THREE.CylinderGeometry(0.5, 0.42, 0.16, 14), m.foundry, 'neck_ring').position.y = 0.95;
-  add(shell, new THREE.CylinderGeometry(0.34, 0.34, 0.12, 12), m.frost, 'cold_face').position.set(0.42, 1.22, 0);
+  add(shell, new THREE.CylinderGeometry(0.34, 0.34, 0.12, 12), m.frost, 'cold_face').position.set(-0.62, 1.22, 0);
   add(shell, new THREE.TorusGeometry(0.34, 0.07, 6, 14), m.foundry, 'massline_ring').position.set(0, 0.15, 0.55);
   for (const y of [-0.2, 0.35]) add(shell, new THREE.TorusGeometry(0.55, 0.06, 6, 12), m.verd, 'seal').position.y = y;
   add(shell, new THREE.CapsuleGeometry(0.22, 0.7, 3, 8), m.rubber, 'leg').position.set(-0.28, -1.15, 0);
@@ -145,17 +160,52 @@ function buildSuit(entity) {
   const chain = new THREE.Group();
   chain.name = 'ANIM_chain';
   root.add(chain);
+  const hose = add(chain, new THREE.CylinderGeometry(0.07, 0.07, 1, 8), m.slate, 'cooled_hose');
+  hose.castShadow = false;
+  const ribs = [];
   for (let i = 0; i < 5; i++) {
-    const link = add(chain, new THREE.BoxGeometry(0.55, 0.16, 0.22), i % 2 ? m.foundry : m.slate, 'box_link');
-    link.position.set(-0.9 - i * 0.62, -0.2 - i * 0.05, 0);
-    link.rotation.y = i % 2 ? 0.4 : 0;
+    const rib = add(chain, new THREE.TorusGeometry(0.13, 0.028, 5, 8).rotateX(Math.PI / 2), i % 2 ? m.foundry : m.verd, 'hose_rib');
+    rib.castShadow = false;
+    ribs.push(rib);
   }
+  const breath = new THREE.Group();
+  breath.name = 'ANIM_breath';
+  body.add(breath);
+  for (let i = 0; i < 3; i++) {
+    const puff = add(breath, new THREE.PlaneGeometry(0.28, 0.16), m.breath, 'frost_puff');
+    puff.castShadow = false;
+    puff.position.set(-0.95 - i * 0.16, 1.24, (i - 1) * 0.07);
+    puff.rotation.y = Math.PI / 2;
+  }
+  const up = new THREE.Vector3(0, 1, 0);
+  const dir = new THREE.Vector3();
   return stamp(root, entity, (e, time, a11y = {}) => {
     const p = poseOf(e);
     const t = Number.isFinite(p.simTime) ? p.simTime : (Number.isFinite(time) ? time : 0);
     const reduced = !!a11y.reducedMotion;
     const clipped = p.clipped ? 1 : 0;
-    chain.visible = p.chain === 1;
+    const hasLen = Number.isFinite(p.linkLen);
+    const len = hasLen ? p.linkLen : (p.chain === 1 ? 5.6 : 0);
+    const rawX = Number.isFinite(p.linkX) ? p.linkX : -1;
+    const rawZ = Number.isFinite(p.linkZ) ? p.linkZ : 0;
+    const live = (p.chain === 1 || p.moored === 1 || p.seated === 1) && len > 0.15;
+    chain.visible = live;
+    if (live) {
+      dir.set(rawX, 0, rawZ);
+      if (dir.lengthSq() < 1e-8) dir.set(-1, 0, 0);
+      dir.normalize();
+      const start = 0.85;
+      hose.scale.set(1, len, 1);
+      hose.position.set(dir.x * (start + len * 0.5), 1.15, dir.z * (start + len * 0.5));
+      hose.quaternion.setFromUnitVectors(up, dir);
+      for (let i = 0; i < ribs.length; i++) {
+        const d = start + ((i + 1) / (ribs.length + 1)) * len;
+        ribs[i].position.set(dir.x * d, 1.15, dir.z * d);
+        ribs[i].quaternion.copy(hose.quaternion);
+      }
+    }
+    breath.visible = clipped === 1;
+    m.breath.opacity = !clipped || reduced ? 0.22 : 0.14 + Math.abs(Math.sin(t * 1.7)) * 0.2;
     arms.rotation.x = clipped ? 1.15 : (reduced ? 0.2 : 0.2 + Math.sin(t * 0.7) * 0.06);
     body.position.y = clipped || reduced ? 0 : Math.sin(t * 1.3) * 0.04;
   });
