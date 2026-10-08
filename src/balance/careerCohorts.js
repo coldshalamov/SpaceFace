@@ -25,7 +25,7 @@ import { SECTORS, dangerTier } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { TECH_NODES } from '../data/tech.js';
-import { ORIGIN_ROLE_KITS } from '../careers/origins/careerOriginContracts.js';
+import { ORIGIN_ROLE_KITS, careerStarterModuleIds } from '../careers/origins/careerOriginContracts.js';
 import {
   HAULER_STEP_PARAMS,
   HAULER_ROLE_HULL_DEF_ID,
@@ -294,6 +294,21 @@ function bootSim(seed) {
     hullDamageHp: 0, // outstanding unrepaired hull damage (persists between fights)
     currentShipId: NEW_GAME.shipId,
   };
+}
+
+/** A career start wears its role kit in the Hitch's utility slot, in place of the
+ *  generic drill amp. The adjudicator and the flown hull read the same list. */
+function applyCareerStarterFit(ctx, career) {
+  const ids = careerStarterModuleIds(career);
+  const fittings = fittingsFromDefaultModules(NEW_GAME.shipId, ids);
+  const owned = ctx.state.player && ctx.state.player.ownedShips && ctx.state.player.ownedShips[0];
+  if (owned) owned.fittings = fittings;
+  if (ctx.ships && typeof ctx.ships.recomputeEntity === 'function' && ctx.state.playerId != null) {
+    ctx.ships.recomputeEntity(ctx.state.playerId, fittings);
+  }
+  const kit = ORIGIN_ROLE_KITS[career];
+  if (kit && ctx.ownedModules) ctx.ownedModules.add(kit.defId);
+  return fittings;
 }
 
 /** Date.now is blocked in cohorts; save.serializeData writes lastSavedAt via new Date(). */
@@ -912,7 +927,7 @@ export function assessLoadoutViability(career, phase = 'starter') {
     plan = {
       shipId: starter ? NEW_GAME.shipId : HAULER_ROLE_HULL_DEF_ID,
       required: starter
-        ? [...NEW_GAME.fittedModules, kit.defId]
+        ? careerStarterModuleIds('hauler')
         : ['wpn_pulse_laser_s', 'mod_engine_ion_m', 'mod_shield_booster_s', kit.defId],
       minCargo: starter ? 40 : 120,
     };
@@ -920,7 +935,7 @@ export function assessLoadoutViability(career, phase = 'starter') {
     plan = {
       shipId: starter ? NEW_GAME.shipId : HUNTER_ROLE_HULL_DEF_ID,
       required: starter
-        ? [...NEW_GAME.fittedModules, kit.defId]
+        ? careerStarterModuleIds('hunter')
         : ['wpn_pulse_laser_s', 'wpn_autocannon_s', 'mod_engine_ion_m', 'mod_shield_booster_s', kit.defId],
       minCargo: starter ? 40 : 10,
     };
@@ -928,7 +943,7 @@ export function assessLoadoutViability(career, phase = 'starter') {
     plan = {
       shipId: starter ? NEW_GAME.shipId : PROSPECTOR_ROLE_HULL_DEF_ID,
       required: starter
-        ? [...NEW_GAME.fittedModules, kit.defId]
+        ? careerStarterModuleIds('prospector')
         : ['wpn_pulse_laser_s', 'mod_mining_laser_s', 'mod_engine_ion_m', 'mod_shield_booster_s', kit.defId],
       minCargo: starter ? 40 : 55,
     };
@@ -958,6 +973,7 @@ export function assessLoadoutViability(career, phase = 'starter') {
 function runHauler(horizonS, options = {}) {
   const seed = options.seed != null ? options.seed : SEED_BY_CAREER.hauler;
   const ctx = bootSim(seed);
+  applyCareerStarterFit(ctx, 'hauler');
   const costs = emptyCosts();
   const budget = emptyBudget();
   const kit = ORIGIN_ROLE_KITS.hauler;
@@ -1549,6 +1565,7 @@ function runHunter(horizonS, options = {}) {
   const seed = options.seed != null ? options.seed : SEED_BY_CAREER.hunter;
   const forceDeathAtLoop = options.forceDeathAtLoop != null ? options.forceDeathAtLoop : 6;
   const ctx = bootSim(seed);
+  applyCareerStarterFit(ctx, 'hunter');
   const costs = emptyCosts();
   const budget = emptyBudget();
   const kit = ORIGIN_ROLE_KITS.hunter;
@@ -2060,6 +2077,7 @@ function runHunter(horizonS, options = {}) {
 function runProspector(horizonS, options = {}) {
   const seed = options.seed != null ? options.seed : SEED_BY_CAREER.prospector;
   const ctx = bootSim(seed);
+  applyCareerStarterFit(ctx, 'prospector');
   const costs = emptyCosts();
   const budget = emptyBudget();
   const kit = ORIGIN_ROLE_KITS.prospector;
