@@ -355,6 +355,24 @@ export class GyreSnarePresentation {
       this._bursts.push({ mesh: m, t: 1, r: 1 });
     }
 
+    // ── absorb contact glints: a brief additive spark where each meal actually
+    // stuck. The mouth gulps on every absorb, but on a capped clump the skin is
+    // ~60 wu from the maw — the contact point deserves its own flash. Pooled 2
+    // deep; a fast feed reuses the stalest slot. Rides the clump group so the
+    // spark sits in the same space the lump pops into (clump-local gulp angle).
+    this._glints = [];
+    for (let i = 0; i < 2; i++) {
+      const gm = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(P.hot), transparent: true, opacity: 0,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      });
+      const g = new THREE.Mesh(new THREE.CircleGeometry(1, 20), gm);
+      g.rotation.x = -Math.PI / 2; // flat on the play plane, like the basin glows
+      g.visible = false;
+      this._clump.add(g);
+      this._glints.push({ mesh: g, t: 0 });
+    }
+
     // ── bowling-ball streak: a fading additive ribbon trailing the thrown clump so its
     // flight reads at range (the whoosh dies ~2 s in; the grave burst only fires at 9 s).
     const trailGeo = new THREE.PlaneGeometry(1, 1);
@@ -543,7 +561,7 @@ export class GyreSnarePresentation {
       x: b.x, z: b.z,
       dx: vl > 1e-3 ? finite(b.vx) / vl : 1,
       dz: vl > 1e-3 ? finite(b.vz) / vl : 0,
-      r: finite(b.r, 8), ttl01: b.ttl01, mass: b.mass, alpha,
+      r: finite(b.r, 8), ttl01: b.ttl01, mass: b.mass, alpha, vl,
     };
   }
 
@@ -557,7 +575,10 @@ export class GyreSnarePresentation {
       return;
     }
     const lp = this.toLocal(spec.x, spec.z, this._ballPt);
-    const trailLen = Math.max(30, spec.r * 3.2);
+    // Streak length reads SPEED, not size: a ricochet-stalled ball dragging a
+    // 30 wu ribbon lies about its flight — 40 wu at bowl speed down to a 6 wu
+    // whisper when the ball has no heading left.
+    const trailLen = Math.max(6, Math.min(40, finite(spec.vl) * 0.12));
     mesh.position.set(lp.x - spec.dx * trailLen * 0.5, 0.55, lp.z - spec.dz * trailLen * 0.5);
     mesh.rotation.y = Math.atan2(-spec.dz, spec.dx);
     mesh.scale.set(trailLen, 1, Math.max(3, spec.r * 1.15));
@@ -717,12 +738,29 @@ export class GyreSnarePresentation {
         // CLUMP space at impact so the ripple weights each lump by angular proximity
         // (rotation.y = -clumpSpin → local angle = world angle - clumpSpin).
         this._gulpLocalA = Math.atan2(this._gulpDirZ, this._gulpDirX) - this._clumpSpin;
+        // Contact spark at the skin the meal hit — same clump-local seat the
+        // fly-in lump uses, so the flash blooms exactly where the stick happened.
+        let gs = this._glints[0];
+        for (const g2 of this._glints) if (g2.t < gs.t) gs = g2;
+        const gr = Math.max(2, this._clumpRadius * 0.9);
+        gs.mesh.position.set(Math.cos(this._gulpLocalA) * gr, 0.35, Math.sin(this._gulpLocalA) * gr);
+        gs.mesh.scale.setScalar(1.6 + this._clumpRadius * 0.06);
+        gs.t = 1;
       }
       if (absorbsNow < this._absorbSeen) this._absorbSeen = 0; // new clump ledger
       this._absorbSeen = absorbsNow;
       this._discKick *= Math.exp(-sdt * 4.2);
       this._clumpKick *= Math.exp(-sdt * 6);
       this._moteKick *= Math.exp(-sdt * 5);
+      // Contact glints burn ~100 ms then die — fast enough that a sustained feed
+      // strobes along the rim instead of smearing into one glow.
+      for (const g2 of this._glints) {
+        if (g2.t <= 0) continue;
+        g2.t *= Math.exp(-sdt * 10);
+        if (g2.t < 0.02) { g2.t = 0; g2.mesh.visible = false; continue; }
+        g2.mesh.material.opacity = g2.t * 0.5 * flashCalm;
+        g2.mesh.visible = true;
+      }
       // The mouth rides the same ignition ramp + dying-cap dim as the glass — a ring
       // that pops at full alpha a frame early or stays bright under a dying fuse
       // contradicts the telegraph the cone is making.
@@ -903,6 +941,13 @@ export class GyreSnarePresentation {
       // takes ~150 ms to project — glows must not outrun the drawn rim.
       g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * wakeEase * (this._fuseDim || 1);
       g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
+      // basinSpots[0] is the strongest pull — the rock about to cross snagRadius.
+      // It burns hottest + brightens a step past its k so "THIS one is about to be
+      // grabbed" reads out of the uniform field of glowing candidates.
+      if (i === 0) {
+        g.material.color.lerp(this._colHot, 0.4);
+        g.material.opacity = Math.min(0.3, g.material.opacity * 1.6);
+      }
       g.visible = true;
     }
 
@@ -947,6 +992,14 @@ export class GyreSnarePresentation {
       // settling: a snap, not a monotone squash. (Also clears cancelled ramp shrink.)
       this._clump.scale.setScalar(
         1 - 0.12 * this._clumpKick + 0.10 * Math.sin(this._clumpKick * Math.PI));
+      // Coil wind: the payload visibly compresses through the ~100 ms draw — a
+      // drawn spring, not a passive ball waiting for the burst. x/z squash −8%,
+      // a hair of y-stretch, riding the sim's 0→1 windup ramp.
+      const wind = clamp01(finite(mirror.launchWindup01));
+      if (wind > 0) {
+        const squash = this._clump.scale.x;
+        this._clump.scale.set(squash * (1 - 0.08 * wind), squash * (1 + 0.05 * wind), squash * (1 - 0.08 * wind));
+      }
       this._clumpSpin += sdt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);

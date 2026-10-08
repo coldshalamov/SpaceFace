@@ -68,6 +68,7 @@ export const GYRE_SNARE = Object.freeze({
   // 60 wu ball circles a spot inside its own skin and the mouth glow drowns inside the katamari.
   orbitRadiusScale: 1.2,
   orbitRate: 0.85,           // rad/s — the loose zero-G revolve
+  orbitRatePonderR: 14,      // wu — clump radius past which revolve rate falls off (rate × min(1, R/clumpRadius)); a big ball reads ponderous, not fast
   orbitWobbleRad: 0.22,      // rad — deterministic wander layered on the orbit angle
   orbitWobbleRate: 0.37,     // rad/s
   orbitLiftRad: 3.5,         // wu — extra radial breathing (clump bobs toward/away from maw); kept under half of orbitRadiusMin so a small core's bob can't swallow its revolve
@@ -144,11 +145,11 @@ export const GYRE_SNARE = Object.freeze({
                            // grave countdown (the ribbon's own fade is a separate shape)
   capHoldMult: 1.35,         // ×drain while a clump is held (holding mass is heavier work)
   // Hold drain scales with clump mass up to a cap: the mass term saturates at
-  // capMassDrainMax so a FULL ball (2400t) costs the same fuse as a 130t one —
-  // ~6.5·1.35·(1+2.2) ≈ 28 cap/s → ~4-5s hold on the starter hull's regen curve
-  // instead of an instant dry-out. Bigger katamari, shorter fuse — bounded.
+  // capMassDrainMax so a FULL ball (2400t) costs the same fuse as a ~110t one —
+  // ~6.5·1.35·(1+1.8) ≈ 25 cap/s → ~5-6s hold on the starter hull's regen curve:
+  // bigger katamari, shorter fuse — but the fantasy peak keeps a real payoff window.
   capMassDrainRef: 60,       // t of clump mass per additional ×1 hold drain
-  capMassDrainMax: 2.2,      // ceiling on the mass drain term (drain maxes ~3.2× hold mult)
+  capMassDrainMax: 1.8,      // ceiling on the mass drain term (drain maxes ~2.8× hold mult)
   // ── Presentation palette (glassy white) — the single source of truth read by
   // src/render/forceLanguage/gyreSnarePresentation.js: cone body 'glass', rim/maw ring
   // 'rim', launch burst 'hot', mouth glow disc 'maw', katamari lump fallback 'lump'.

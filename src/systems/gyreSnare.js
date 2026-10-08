@@ -862,7 +862,12 @@ export const gyreSnare = {
     // Orbit slot: revolves around the maw, breathes in/out — "loosely floating in zero G".
     const orbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale)
       + Math.sin(t * D.orbitLiftRate + rt.orbitSeed) * D.orbitLiftRad;
-    const angle = rt.orbitSeed + rt.orbitDir * t * D.orbitRate
+    // Ponderous heavy: revolve rate falls off past orbitRatePonderR — a capped
+    // 60 wu moon lumbers at ~0.2 rad/s instead of whipping tangentially faster
+    // than a pebble (mass-invariant rate made the biggest ball read lightest).
+    const orbitRateEff = D.orbitRate
+      * Math.min(1, D.orbitRatePonderR / Math.max(1, rt.clumpRadius));
+    const angle = rt.orbitSeed + rt.orbitDir * t * orbitRateEff
       + Math.sin(t * D.orbitWobbleRate + rt.orbitSeed) * D.orbitWobbleRad;
     const tx = maw.x + Math.cos(angle) * orbitR;
     const tz = maw.z + Math.sin(angle) * orbitR;
