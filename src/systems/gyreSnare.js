@@ -930,6 +930,8 @@ export const gyreSnare = {
     rt.clumpRadius = entityRadius(best);
     rt.totalAbsorbed = 0; // new clump ledger — the HUD count restarts with the core
     rt.fullCueLatched = false;
+    rt.fuseCueLatched = false; // the latch's contract is 'once per hold' — a warn spent
+                             // searching must not silence the hold it was actually for
     // Orbit seed must be finite for ANY id shape — spawnEntity passes spec.id through
     // verbatim and world data carries string ids ('poi_pwreck'); `id * 0.37` on a string
     // is NaN, which poisoned the orbit slot and silently zeroed every hold impulse.
@@ -1582,9 +1584,17 @@ export const gyreSnare = {
             // (e.g. missing pos): unwatched ⇒ disarmed, same as every exit path.
             this._disarmBall(e);
           } else if (e && e.data) {
-            // Corpse walking the splice lane: the shadow can't ride a body that
-            // can't act — shed BOTH marks so a dead corpse can't re-stamp credit
-            // post-load or resurrect as a pull-immune ball.
+            if (e.alive !== false) {
+              // Live body whose mark vanished while its deadline survived (a foreign
+              // adopter that kept despawnAt — documented ones strip it and get the
+              // _handBack lane): same unwatched ⇒ disarmed contract — the weapon
+              // scale and the lifetime stash shed with the marks, not just the keys.
+              this._disarmBall(e);
+              delete e.data.gyrePrevDespawnAt;
+              delete e.data.gyrePrevTtl;
+            }
+            // Corpse or live, the shadow ledger is dead — shed BOTH marks so a dead
+            // corpse can't re-stamp credit post-load or resurrect as a pull-immune ball.
             delete e.data.gyreLaunchMeta;
             delete e.data.gyreLaunched;
           }
@@ -1969,7 +1979,11 @@ export const gyreSnare = {
     const modalHeld = this._modalHeld(state);
 
     // Verb edges — rising opens the beam; falling bowls the clump (or just closes an empty beam).
-    if (held && !rt.wasHeld && rt.phase === PHASE.OFF) {
+    // The wake edge is modal-gated like the release edge: a verb press that can't be
+    // seen must not commit cap or open the funnel blind (pad level-reads CAN produce
+    // held under input.blocked — keyboard can't). A chord held through the lift still
+    // fires on the first visible tick — the same deferred-commit contract as release.
+    if (held && !rt.wasHeld && !modalHeld && rt.phase === PHASE.OFF) {
       const cap = this._cap(player);
       if (cap >= D.capActivateMin) {
         rt.phase = PHASE.BEAM;

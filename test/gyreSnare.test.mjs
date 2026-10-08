@@ -678,6 +678,37 @@ test('a key release behind a live modal defers the bowl to the first visible tic
   t.cleanup();
 });
 
+test('a verb press wholly inside a live modal never wakes the beam — it opens on the first visible tick', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 30, 6);
+  // Pad level-reads CAN produce held under input.blocked (the sim-ticking modal)
+  // where keyboard can't — wave-75 caught a tap born inside the block arming a
+  // beam the player never saw (stuck ON until cap_dry, since the release inside
+  // the block left no falling edge to defer).
+  t.state.input.blocked = true;
+  t.state.input.actions.gyreSnare = true;
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'a press behind the modal never commits the wake');
+  t.state.input.actions.gyreSnare = false;
+  t.sim.step();
+  t.state.input.blocked = false;
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'a tap wholly inside the modal is swallowed — no stuck beam');
+  // A chord held THROUGH the lift still wakes on the first visible tick —
+  // the same deferred-commit contract as the release edge.
+  t.state.input.blocked = true;
+  t.state.input.actions.gyreSnare = true;
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'the press stays armed, not opened, under the block');
+  t.state.input.blocked = false;
+  t.sim.step();
+  // The wake landed on the first visible tick (the parked rock may already have
+  // snagged to HOLD in the same pass — the beamOn event is the honest pin).
+  assert.ok(t.events.some((e) => e.name === 'gyre:beamOn'),
+    'the held chord fires its wake edge on the first visible tick');
+  t.cleanup();
+});
+
 // ── snag eligibility ──────────────────────────────────────────────────────────────
 test('a pickup or persistent body never becomes the core', async () => {
   const t = await bootPhysics();
