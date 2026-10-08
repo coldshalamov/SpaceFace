@@ -3,6 +3,7 @@
 // CareerOrigins only records which authored link comes next.
 
 import { hash32 } from '../../core/rng.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
 
 export const ORIGIN_ROUTE_STATUS = Object.freeze({
   IDLE: 'idle',
@@ -29,6 +30,17 @@ export const ORIGIN_ROLE_KITS = Object.freeze({
     tradeoff: 'Occupies the Hitch utility slot; favors mass handling over market or combat tools.',
   }),
 });
+
+// The Hitch ships with one utility slot, and the generic new-game fit fills it with the
+// drill amp. A career's role kit is that same slot. Requiring the amp AND the kit is a
+// loadout the hull cannot wear — the kit replaces the amp.
+export const CAREER_STARTER_DISPLACED_UTILITY = 'mod_drill_amp';
+
+export function careerStarterModuleIds(careerId) {
+  const kit = ORIGIN_ROLE_KITS[careerId];
+  const base = (NEW_GAME.fittedModules || []).filter((id) => id !== CAREER_STARTER_DISPLACED_UTILITY);
+  return Object.freeze(kit ? [...base, kit.defId] : base.slice());
+}
 
 // The three first-dock paths must read differently through physical game authorities, not just
 // through copy.  This compact contract is also persisted into the acceptance receipt so save/load,

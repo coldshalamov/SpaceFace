@@ -41,6 +41,7 @@ import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
 import { isLawProtectedBody } from '../systems/lawSecurity.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';
 import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/masslineReleaseGeometry.js';
+import { announceStrokeGrade } from './stuntCallout.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -392,6 +393,15 @@ export const MASSLINE_HUD_CSS = `
   stroke-dasharray:5 4; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 #sf-ml2 .ml2-ink-flown { fill:none; stroke:rgba(242,185,80,0.22); stroke-width:1.6;
   stroke-linecap:round; vector-effect:non-scaling-stroke; }
+/* A graded stroke keeps the verdict colours the release pill already uses. Live ink stays gold. */
+#sf-ml2 svg.ml2-ink[data-grade="razor"] .ml2-ink-ahead { stroke:rgba(133,233,202,0.92); }
+#sf-ml2 svg.ml2-ink[data-grade="razor"] .ml2-ink-flown { stroke:rgba(133,233,202,0.38); }
+#sf-ml2 svg.ml2-ink[data-grade="clean"] .ml2-ink-ahead { stroke:rgba(169,232,208,0.9); }
+#sf-ml2 svg.ml2-ink[data-grade="clean"] .ml2-ink-flown { stroke:rgba(169,232,208,0.36); }
+#sf-ml2 svg.ml2-ink[data-grade="good"] .ml2-ink-ahead { stroke:rgba(232,226,212,0.88); }
+#sf-ml2 svg.ml2-ink[data-grade="good"] .ml2-ink-flown { stroke:rgba(232,226,212,0.34); }
+#sf-ml2 svg.ml2-ink[data-grade="messy"] .ml2-ink-ahead { stroke:rgba(255,208,138,0.9); stroke-dasharray:2 6; }
+#sf-ml2 svg.ml2-ink[data-grade="messy"] .ml2-ink-flown { stroke:rgba(255,208,138,0.4); }
 #sf-ml2 .ml2-throw { width:26px; height:26px; margin:-13px 0 0 -13px; }
 #sf-ml2 .ml2-throw .ml2-diamond { width:100%; height:100%; transform:rotate(45deg);
   border:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); box-shadow:0 0 10px var(--ml2-c,var(--dp-lamp, #f2b950));
@@ -980,7 +990,23 @@ export function resolveDrawFlightInk(state) {
     stroke,
     fade,
     points: points.length,
+    grade: drawInkGrade(stroke && stroke.band),
   };
+}
+
+/** The verdict colour a completed stroke may wear. Live ink, and any band the law does not name, stays unmarked. */
+export function drawInkGrade(band) {
+  if (band === 'razor' || band === 'clean' || band === 'good' || band === 'messy') return band;
+  return '';
+}
+
+function paintInkGrade(svg, grade) {
+  if (!svg || typeof svg.getAttribute !== 'function') return;
+  const next = grade || '';
+  const current = svg.getAttribute('data-grade') || '';
+  if (current === next) return;
+  if (next) svg.setAttribute('data-grade', next);
+  else if (typeof svg.removeAttribute === 'function') svg.removeAttribute('data-grade');
 }
 
 export const masslineHud = {
@@ -1773,6 +1799,7 @@ export const masslineHud = {
     const ink = resolveDrawFlightInk(state);
     if (!ink) {
       if (state && state.masslineInk) state.masslineInk = null;
+      paintInkGrade(svg, '');
       setStyle(svg, 'display', 'none');
       return;
     }
@@ -1782,7 +1809,10 @@ export const masslineHud = {
     }
     if (ink.stroke && !state.masslineInk) {
       state.masslineInk = { fadeStart: finite(state.simTime) };
+      // The follower published the band and never said it. One announce, on the frame it lands.
+      announceStrokeGrade(ink.stroke);
     }
+    paintInkGrade(svg, ink.grade);
     const paint = (path, points) => {
       let d = '';
       for (const p of points) {

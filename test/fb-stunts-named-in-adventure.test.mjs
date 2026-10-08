@@ -141,3 +141,44 @@ test('FB-012: ordinary kill produces no stunt callout', () => {
 
   callout.destroy();
 });
+
+test('FB-012: wrecking ball, clothesline, and tow kill name the momentum in adventure', () => {
+  const doc = fakeDocument();
+  const bus = fakeBus();
+  const state = {
+    seed: 4242,
+    mode: 'flight',
+    run: null,
+    ui: { screenStack: [], docked: false },
+    playerId: 1,
+    settings: { video: { motionReduce: true } },
+  };
+  const callout = createStuntCallout({ state, bus, doc });
+  const acts = [
+    ['wrecking_ball', 'Wrecking Ball', 6400],
+    ['clothesline', 'Clothesline', 2100],
+    ['tow_kill', 'Tow-kill', 880],
+  ];
+  for (const [trickId, name, momentum] of acts) {
+    bus.emit('stunt:trickDetected', {
+      trickId,
+      name,
+      actorId: 1,
+      episodeId: `ep-${trickId}`,
+      modifiers: { collateralCount: 1 },
+      metrics: { availableMomentum: momentum, usefulDeltaV: 12 },
+    });
+  }
+  callout.update(0);
+  const text = calloutTextFor(callout.root);
+  assert.match(text, /Wrecking Ball/);
+  assert.match(text, /6400/);
+  assert.match(text, /Clothesline/);
+  assert.match(text, /2100/);
+  assert.match(text, /Tow-kill/);
+  assert.match(text, /880/);
+  assert.doesNotMatch(text, /\b12\b/, 'useful delta-v does not replace available momentum');
+  assert.doesNotMatch(text, /×\d\.\d\d/);
+  assert.doesNotMatch(text, /Banked/);
+  callout.destroy();
+});
