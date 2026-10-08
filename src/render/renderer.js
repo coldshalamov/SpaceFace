@@ -1976,8 +1976,16 @@ export function* reattachResidentGpuMeshesSteps(owner) {
   let attached = 0;
   const deferred = [];
   let scanned = 0;
+  // Matched rows pay _bindPresentationMesh subtree walks — a pure row-count
+  // stride can't bound that, so the wall clock yields on a >=2 ms stride too.
+  const reattachNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  let reattachStrideAt = reattachNow();
   for (const [id, mesh] of owner._meshes) {
-    if ((++scanned % 64) === 0) yield;
+    if ((++scanned % 64) === 0 || reattachNow() - reattachStrideAt >= 2) {
+      reattachStrideAt = reattachNow();
+      yield;
+    }
     if (!mesh) continue;
     const stamped = mesh.userData ? mesh.userData.sfStableEntityKey : undefined;
     const entity = resolveWorldPresentationEntity(state, id);
@@ -2026,7 +2034,12 @@ export function* reattachResidentGpuMeshesSteps(owner) {
   }
   owner._meshReleaseBatchBegin?.();
   try {
+    let rekeyed = 0;
     for (const [oldId, mesh, entity] of rekeys) {
+      if ((++rekeyed % 64) === 0 || reattachNow() - reattachStrideAt >= 2) {
+        reattachStrideAt = reattachNow();
+        yield;
+      }
       if (owner._meshes.get(oldId) !== mesh || owner._meshes.has(entity.id)) continue;
       if (typeof owner._unbindPresentationMesh === 'function') owner._unbindPresentationMesh(oldId, mesh);
       owner._meshes.delete(oldId);
@@ -17570,8 +17583,13 @@ export const render = {
       // re-collect as unstaged on the next admission like any deferred leg.
       const unstagedCollectBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
       for (let i = 0; i < depthSubjects.length; i += 512) {
+        // An unsigned census window must not mint the atomic per-call traverse —
+        // defer the remaining chunks; the arm's flagged unstaged re-collect
+        // owns them once the stepped memo lands.
+        const chunkSig = freshDepthLightSig();
+        if (chunkSig == null) break;
         const unstagedPart = collectUnstagedShadowCasters(
-          renderer, depthSubjects.slice(i, i + 512), scene, freshDepthLightSig(), unstagedCollectBudget);
+          renderer, depthSubjects.slice(i, i + 512), scene, chunkSig, unstagedCollectBudget);
         if (isUnstagedCollectOverCover(unstagedPart)) break;
         if (unstagedPart.length > 0) unstagedDepthSubjects.push(...unstagedPart);
         if (await postPace()) return postSupersededResult();
@@ -17655,8 +17673,10 @@ export const render = {
         const unstagedRescanDelta = [];
         const rescanCollectBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
         for (let i = 0; i < rescanDelta.length; i += 512) {
+          const rescanSig = freshDepthLightSig();
+          if (rescanSig == null) break;
           const unstagedPart = collectUnstagedShadowCasters(
-            renderer, rescanDelta.slice(i, i + 512), scene, freshDepthLightSig(), rescanCollectBudget);
+            renderer, rescanDelta.slice(i, i + 512), scene, rescanSig, rescanCollectBudget);
           if (isUnstagedCollectOverCover(unstagedPart)) break;
           if (unstagedPart.length > 0) unstagedRescanDelta.push(...unstagedPart);
           if (await postPace()) return postSupersededResult();
@@ -26062,10 +26082,13 @@ export const render = {
         if (entity && runClosures && userData.updateDamageState) {
           if (entity.hull !== userData._dmgHull || entity.shield !== userData._dmgShield
             || entity.alive !== userData._dmgAlive) {
+            // Latches commit after the call: a faulting updateDamageState retried
+            // by the row-fault machinery must still read stale (pre-commit
+            // latches would claim the transition applied and skip it forever).
+            userData.updateDamageState(entity, simNow);
             userData._dmgHull = entity.hull;
             userData._dmgShield = entity.shield;
             userData._dmgAlive = entity.alive;
-            userData.updateDamageState(entity, simNow);
           }
         }
         if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, simNow);
@@ -29169,6 +29192,15 @@ export const render = {
     // the storming epoch and serves the last signature — already the
     // conservative direction — until a fresh bump re-arms the mint.
     if (!memo.pendingIter || memo.pendingEpoch !== epoch) {
+      if (memo.stormEpoch !== -1 && memo.stormEpoch !== epoch) {
+        // A pin names the epoch that earned it: across a real flip the fresh
+        // epoch must get a mint attempt and re-earn a pin through new
+        // supersedes — inheriting the supersede count would re-pin every
+        // later epoch sight-unseen, so a quieted storm kept serving the stale
+        // signature ~1 s+ with no mint ever tried for the new epoch.
+        memo.stormEpoch = -1;
+        memo.superseded = 0;
+      }
       if (memo.pendingIter && typeof memo.pendingIter.return === 'function') {
         try { memo.pendingIter.return(); } catch (_) { /* discard */ }
         memo.pendingIter = null;
@@ -29309,9 +29341,13 @@ export const render = {
     const memoSig = this._shadowCensusForFrame();
     if (memoSig) return memoSig;
     const cache = this._depthCollectSigCache || (this._depthCollectSigCache = {
-      seq: -1, sig: null,
+      seq: -1, sig: null, epoch: -1,
     });
-    if (cache.seq === this._viewSyncSeq) return cache.sig;
+    // The seq term alone can't cover the mintable window: paceEpochNow() < 0
+    // means no view syncs run, so _viewSyncSeq stands still — a mid-window
+    // light mutation would otherwise serve the pre-mutation sig all window.
+    const sigEpoch = shadowCensusEpoch();
+    if (cache.seq === this._viewSyncSeq && cache.epoch === sigEpoch) return cache.sig;
     if (!scene || paceEpochNow() >= 0
         || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS) return null;
     const mintStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -29322,6 +29358,7 @@ export const render = {
     if (mintElapsed > 0) noteForcedFrameSpend(mintElapsed);
     cache.seq = this._viewSyncSeq;
     cache.sig = sig;
+    cache.epoch = sigEpoch;
     return sig;
   },
 
@@ -29482,6 +29519,17 @@ export const render = {
           // epoch inside the drive would miss the gap and stage under a sig the
           // live census can never reproduce.
           const armSigEpoch = shadowCensusEpoch();
+          // The sig the verdict/leftover compares must answer is the one the
+          // marks actually keyed under. An arm armed inside an unsigned window
+          // (lightSig null: routine on every sector enter — the served memo is
+          // unsigned until the stepped mint lands) would compare marks against
+          // `null` — mark.l is always a real string so every check misses: the
+          // undrawable verdict would deny-park every root the leg just staged,
+          // the unstaged re-prove would re-collect honest sets, and the leftover
+          // eval would over-withhold. Mark compares take `markSig` instead, which
+          // re-consults the live memo at use time — the stepped mint may have
+          // landed between the arm's mint and the compare.
+          const markSig = lightSig != null ? lightSig : this._shadowCensusForFrame();
           // Per-root collect under a wall-clock deadline AND a shared node budget:
           // one fat subtree's traverse + signature mints is atomic inside the arm,
           // so an unbounded root used to push the whole arm's task past budget. A
@@ -29514,7 +29562,7 @@ export const render = {
                 && cache.epoch === armSigEpoch) {
               const still = [];
               for (const mesh of cache.meshes) {
-                if (!casterDepthMarkCurrent(mesh, lightSig, camera)) still.push(mesh);
+                if (!casterDepthMarkCurrent(mesh, markSig, camera)) still.push(mesh);
               }
               cache.meshes = still;
               if (still.length > 0) unstagedByRoot.set(sliceRoots[collected], still);
@@ -29528,11 +29576,17 @@ export const render = {
             // wallet spent by the prefix made a mid-slice fat root's own scale
             // apply only at head position, starving every root behind it. The
             // arm's wall-clock deadline still bounds the whole leg.
+            // Unsigned window: the signature collect would mint an atomic
+            // whole-scene lightCensusSignature per root call right here — up to
+            // 32 traverses inside one arm under a deadline that can't interrupt
+            // it. Defer every unvisited root to the next arm instead; the
+            // skipped-tail splice below requeues them still-withheld.
+            if (markSig == null) break;
             const collectNodeBudget = {
               remaining: SHADOW_DEPTH_PASS_NODE_CAP * ((entry && entry.depthNodeScale) || 1),
             };
             const found = collectUnstagedShadowCasters(
-              renderer, [sliceRoots[collected]], scene, lightSig, collectNodeBudget);
+              renderer, [sliceRoots[collected]], scene, markSig, collectNodeBudget);
             if (isUnstagedCollectOverCover(found)) {
               if (entry && (entry.depthNodeScale | 0) >= 8) {
                 // Still over the node cap at maximum scale: the subtree can
@@ -29560,7 +29614,7 @@ export const render = {
                   seq: shadowCasterPolicyDirtySeq(abortedRoot),
                   recheck: Math.ceil((96 + (this._parkedRecheckStamp % 32))
                     * Math.min(8, 1 << (cycles - 1)) * (abortedGlassAdj ? 0.5 : 1)),
-                  lightSig: this._shadowCensusForFrame(),
+                  lightSig: markSig,
                   lightSigEpoch: shadowCensusEpoch(),
                   oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
                   oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
@@ -29665,12 +29719,17 @@ export const render = {
               // no marks could land) leaves its roots queued for the normal
               // retry rather than parking on a verdict it never evaluated.
               const legAborted = !!(legResult && legResult.aborted === true);
-              if (legDriveFailed !== true && legAborted !== true && legSet) {
+              // The verdict only means something under a real sig: an arm whose
+              // mint served null could never prove unmarkedness (mark.l is never
+              // literal null) — denying on that compare parked every root the
+              // leg successfully staged. Roots stay queued for the next arm.
+              const verdictSig = lightSig != null ? lightSig : this._shadowCensusForFrame();
+              if (legDriveFailed !== true && legAborted !== true && legSet && verdictSig != null) {
                 const entryByRoot = new Map(slice);
                 for (const [deferRoot, deferMeshes] of unstagedByRoot) {
                   let allUnmarked = deferMeshes.length > 0;
                   for (const mesh of deferMeshes) {
-                    if (!legSet.has(mesh) || casterDepthMarkCurrent(mesh, lightSig, camera)) {
+                    if (!legSet.has(mesh) || casterDepthMarkCurrent(mesh, verdictSig, camera)) {
                       allUnmarked = false;
                       break;
                     }
@@ -29695,7 +29754,7 @@ export const render = {
                     seq: shadowCasterPolicyDirtySeq(deferRoot),
                     recheck: Math.ceil((96 + (this._parkedRecheckStamp % 32))
                       * Math.min(8, 1 << (cycles - 1)) * (deferGlassAdj ? 0.5 : 1)),
-                    lightSig: this._shadowCensusForFrame(),
+                    lightSig: verdictSig,
                     lightSigEpoch: shadowCensusEpoch(),
                     oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
                     oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
@@ -29740,10 +29799,11 @@ export const render = {
       // inside the next presented shadow refresh, the cold link this prevents.
       let leftoverByRoot = null;
       if (unstagedByRoot) {
+        const leftoverSig = lightSig != null ? lightSig : this._shadowCensusForFrame();
         for (const [root, meshes] of unstagedByRoot) {
           let set = null;
           for (const mesh of meshes) {
-            if (casterDepthMarkCurrent(mesh, lightSig, camera)) continue;
+            if (casterDepthMarkCurrent(mesh, leftoverSig, camera)) continue;
             (set || (set = [])).push(mesh);
           }
           if (set) (leftoverByRoot || (leftoverByRoot = new Map())).set(root, set);
@@ -29924,7 +29984,9 @@ export const render = {
       // mark-check twin also keeps already-staged casters out of the withhold:
       // enabling the map used to drop every linked caster's shadow for the drain.
       const toggleBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
-      this._shadowCensusMemo = null;
+      // The light census is unchanged by a shadowMap.enabled flip — discarding
+      // the memo here minted an artificial unsigned window where every capable
+      // caster read unstaged and withheld until the stepped re-mint landed.
       const census = this._shadowCensusForFrame();
       // Walk top-level roots one at a time so the node-budget abort only blurs
       // the root it died inside: a completed root whose unstaged set is empty is
