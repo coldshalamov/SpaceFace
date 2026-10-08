@@ -127,6 +127,8 @@ uniform float uLen;
 uniform float uRad;
 uniform float uSize;
 uniform vec3 uAim;   // beam-local pull target — the HELD core's offset from the maw plane
+uniform float uSwirl; // eased stir sign from the sim — the drawn funnel reverses with
+                     // a -1 snag, matching the basin's real re-stir (never a flip)
 attribute float aSeed;
 varying float vFade;
 varying float vGulp;
@@ -140,7 +142,7 @@ void main() {
   // inward/tight as t→1 — the funnel reads as matter being pulled to the gravity well.
   float x = uLen * (mix(0.78, 0.15, wide) + mix(0.22, 0.85, wide) * t);
   float r = uRad * (1.45 - 1.15 * t) * mix(1.0, 0.75, wide);
-  float a = aSeed * 6.2832 + uTime * (1.6 + aSeed * 2.2) * mix(1.0, 0.6, wide);
+  float a = aSeed * 6.2832 + uTime * (1.6 + aSeed * 2.2) * mix(1.0, 0.6, wide) * uSwirl;
   vec3 p = vec3(x, cos(a) * r, sin(a) * r);
   // While a core is held the well it orbits is off-axis from the maw — bend the
   // funnel's last stretch toward it so the suction arrow points at the real mass.
@@ -308,7 +310,7 @@ export class GyreSnarePresentation {
       vertexShader: SPIRAL_VERT, fragmentShader: SPIRAL_FRAG,
       uniforms: {
         uTime: { value: 0 }, uLen: { value: 1 }, uRad: { value: 1 }, uFade: { value: 1 },
-        uAim: { value: new THREE.Vector3() },
+        uAim: { value: new THREE.Vector3() }, uSwirl: { value: 1 },
         uSize: { value: 3.4 }, uCol: { value: new THREE.Color(glass) },
       },
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
@@ -675,6 +677,7 @@ export class GyreSnarePresentation {
       // dims ~28% (still the follow-through, just not a live gravity zone) — the
       // tense floor keeps it visibly taut without implying it can still grab.
       const spent = phase === 'launching' ? 0.72 : 1;
+      this._lastSpent = spent; // the close-ramp's mote pace reads the last live spend
       this._coneMat.uniforms.uAlpha.value = (tense ? 0.62 : 0.42) * spent * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
       // for the cone to occlude background glow and read as a surface, not a hologram.
@@ -725,7 +728,10 @@ export class GyreSnarePresentation {
       const net = Math.min(3, finite(mirror.basinCount, 0));
       this._discMat.uniforms.uTime.value = this.time;
       this._discMat.uniforms.uCalm.value = calm;
-      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12) + this._discKick * 0.5) * flashCalm * fuseDim * wakeEase;
+      // Searching-breathe: an idle lash still reads "active gravity well" — a slow
+      // ~0.8 Hz shimmer on the empty disc (silenced once mass is in the net: the +N
+      // anticipation owns that brighter read).
+      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12 + (net === 0 ? 0.05 * Math.sin(this.time * 5.03) : 0)) + this._discKick * 0.5) * flashCalm * fuseDim * wakeEase;
       // Reduced-motion keeps a STATIC mote scatter instead of hiding the funnel
       // outright — the frozen motes still read "matter is being pulled" where
       // visible=false left the cone with no suction signifier at all.
@@ -766,6 +772,9 @@ export class GyreSnarePresentation {
         this._leanZ = 0;
       }
       this._spiralMat.uniforms.uAim.value.lerp(aimT, 1 - Math.exp(-sdt * 8));
+      // The drawn vortex stirs the way the sim's basin actually does — swirlBlend is
+      // already eased sim-side (~0.25 s re-stir), so this needs no extra smoothing.
+      this._spiralMat.uniforms.uSwirl.value = finite(mirror.swirlBlend, 1);
       // Dying-cap honesty reaches the funnel too — motes thin with the glass's own
       // fuse telegraph instead of inhaling full-bright on a lash <8 s from dry.
       this._spiralMat.uniforms.uFade.value = spent * fuseDim;
@@ -790,7 +799,9 @@ export class GyreSnarePresentation {
         this._closeT += sdt;
         const k = Math.max(0, 1 - this._closeT / (this._closeSpan || 0.25));
         const kk = k * k;
-        if (calm !== 0) this._moteT += sdt; // motes keep spiraling while they die (frozen under reduced-motion, same as live)
+        // The dying funnel keeps its last pace — a post-launch close inhaling at full
+      // pre-spend speed while the glass collapses would betray the spent read.
+      if (calm !== 0) this._moteT += sdt * (this._lastSpent == null ? 1 : this._lastSpent);
         this._spiralMat.uniforms.uTime.value = this._moteT;
         this._spiralMat.uniforms.uFade.value = kk; // the scatter fades on the same 250ms ramp as the glass
         this._coneMat.uniforms.uTime.value = this.time;
@@ -912,7 +923,11 @@ export class GyreSnarePresentation {
       this._deathT = 0;
       const p = this.toLocal(cx, cz, this._nose);
       this._clump.visible = true;
-      this._clump.position.set(p.x, 0.6, p.z);
+      // Loose zero-G also drifts UP: a slow ±0.3 wu bob seeded on the clump's orbit
+      // phase breaks the rigid-hover look — lumps bob internally already; the ball
+      // itself was the only rigid body in the composition. calm-gated like the bob.
+      this._clump.position.set(
+        p.x, 0.6 + Math.sin(this.time * 0.7 + finite(mirror.orbitSeed)) * 0.3 * calm, p.z);
       // Feed squash-pop: each absorb compresses the clump ~12% then SPRINGS back —
       // sin(π·kick) peaks mid-decay so the tail rebounds ~+4% oversize before
       // settling: a snap, not a monotone squash. (Also clears cancelled ramp shrink.)

@@ -116,6 +116,8 @@ function freshRuntime() {
     launchWindup: 0,       // ticks of the pre-burst coil (anticipation) still owed
     launchCarry: 0,        // aft-velocity the coil left on the ball — repaid inside the burst
                            // so authored launchSpeed is the FINAL flight speed, not the impulse sum
+    launchFwd: 0,          // raw dir-projection velocity at first burst tick — the honest thrown
+                           // speed = launchSpeedEff + max(0, launchFwd) (hot bowl rides free)
     launchSpeedEff: 0,     // wu/s — launchSpeed after the throw-mass penalty; computed in
                            // _launch off the frozen ballMass, reset in _finishLaunch
     launchDir: { x: 1, z: 0 },
@@ -227,6 +229,7 @@ export const gyreSnare = {
     rt.launchLeft = 0;
     rt.launchWindup = 0;
     rt.launchCarry = 0;
+    rt.launchFwd = 0;
     rt.launchSpeedEff = 0;
     rt.launchDir.x = 1; rt.launchDir.z = 0; // ledger symmetry — dead data, but nothing stale survives a boundary drop mid-burst
     rt.launchedId = null;
@@ -1247,6 +1250,7 @@ export const gyreSnare = {
     rt.absorbDir.x = 0; rt.absorbDir.z = 0;
     rt.launchWindup = 0;
     rt.launchCarry = 0;   // consumed by the burst — the launch ledger dies with its phase
+    rt.launchFwd = 0;
     rt.launchSpeedEff = 0;
     // The beam ended in a THROW, not a release or a tear — a previous lash's 'strained'
     // must not dress a clean bowl's close ramp as a slip.
@@ -1421,6 +1425,11 @@ export const gyreSnare = {
     for (let i = 0; i < rt.basinSpots.length; i++) pub.basinSpots.push(rt.basinSpots[i]);
     pub.phase = rt.phase;
     pub.dropReason = rt.dropReason;
+    // The funnel's drawn spiral + the clump's float phase ride the same eased stir /
+    // orbit seed the sim uses — a -1 snag re-stirs the GLASS too, not just the pull.
+    // Safe unconditionally: _drop/_finishLaunch already reset both to 1/0.
+    pub.swirlBlend = rt.swirlBlend;
+    pub.orbitSeed = rt.orbitSeed;
     // Burn-only fuse read: seconds of cap left at the CURRENT drain rate — hold drain
     // scales with clump mass, so the bigger the katamari the shorter the fuse. Regen
     // isn't counted, making it the honest worst case; the HUD draws it as a countdown.
@@ -1701,6 +1710,7 @@ export const gyreSnare = {
           const fwd = finite(core.vel && core.vel.x) * rt.launchDir.x
             + finite(core.vel && core.vel.z) * rt.launchDir.z;
           rt.launchCarry = Math.max(0, -fwd);
+          rt.launchFwd = fwd;
           // launchSpeedEff was frozen in _launch off ballMass — the burst just
           // repays coil carry on top of it.
         }
@@ -1715,7 +1725,13 @@ export const gyreSnare = {
           // HERE — the throw is over, not while the ball was still winding back. Pad
           // players ride gyre:thrown; gyre:launched stays the release-edge record.
           if (this.bus) {
-            this.bus.emit(GYRE_EVENTS.thrown, { tick: state && state.tick });
+            // Post-carry effective speed — fwd was measured THIS tick, so the thrown
+            // speed is honest: launchSpeedEff + positive residual (ship translating
+            // into the throw bowls hotter; an aft draw still lands the floor).
+            this.bus.emit(GYRE_EVENTS.thrown, {
+              tick: state && state.tick,
+              speed: rt.launchSpeedEff + Math.max(0, rt.launchFwd),
+            });
             this.bus.emit('camera:shake', {
               amount: 0.3 + 0.25 * Math.min(1, rt.ballMass / D.maxClumpMass),
             });
