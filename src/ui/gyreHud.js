@@ -160,8 +160,10 @@ export const gyreHud = {
       const bs = g && g.balls;
       if (bs && bs.length) {
         const warnS = GYRE_SNARE.ballTtlWarnS;
-        const n = Math.floor(bs[0].ttlS || 0); // floors like the primary countdown — never overstates the flight left
-        const sTxt = bs[0].ttlS > 0 && bs[0].ttlS < warnS ? ` · ${Math.min(warnS - 1, Math.max(1, n))}s` : '';
+        const sTxt = bs[0].ttlS > 0 && bs[0].ttlS < warnS
+          // floors like the primary countdown — never overstates the flight left
+          ? ` · ${Math.min(warnS - 1, Math.max(1, Math.floor(bs[0].ttlS || 0)))}s`
+          : '';
         return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sTxt}`, cls: 'gyre-ball' };
       }
       return { text: '', cls: '' };

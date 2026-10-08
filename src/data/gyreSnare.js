@@ -109,7 +109,9 @@ export const GYRE_SNARE = Object.freeze({
   suckBandMassGain: 0.5,     // extra band wu per wu of clump radius — the annulus widens
                            // as the ball grows: a capped 60 wu katamari is hungrier than
                            // a fresh snag, and the halo reads the escalating appetite
-  suckAccel: 680,            // wu/s² — pull toward the core inside the suck band
+  suckAccel: 800,            // wu/s² — pull toward the core inside the suck band:
+                           // ~30% over basinAccel so "gravity increases around the held
+                           // mass" is felt as escalation, not just drawn as the halo
   suckSwirlFrac: 0.28,       // tangential share of the suck pull — meals corkscrew the
                            // last stretch instead of ray-shooting (matches the funnel's
                            // own swirl language + the basin's mawSwirlAccel)
@@ -122,6 +124,8 @@ export const GYRE_SNARE = Object.freeze({
                            // (Δv = em·3/coreMass — a heavier ball shrugs more)
   absorbKnockFloor: 0.15,    // wu/s — Δv floor under the meal-mass knock: a wreck merging into a
                            // capped clump still rocks the tether instead of dying to 0.05
+  absorbKnockSpeedRef: 80,   // wu/s — closing-speed reference for the knock's speed grade:
+                           // an 80 wu/s meal doubles its flinch (clamped +150%)
   absorbCueMinGapS: 0.08,    // s — min gap between absorb glass ticks so a dense belt feed
                            // doesn't stack identical cues into noise (events stay per-body)
   maxClumpRadius: 60,        // wu — volumetric union clamps here; mass keeps growing regardless

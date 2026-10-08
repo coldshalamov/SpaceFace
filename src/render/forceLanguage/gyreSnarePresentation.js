@@ -589,13 +589,16 @@ export class GyreSnarePresentation {
     }
   }
 
-  _fireBurst(x, z, r, calm = 1, dir = null) {
+  _fireBurst(x, z, r, calm = 1, dir = null, rate = 1.7) {
     // Steal the MOST-decayed slot, not slot 0 — a full pool mid-expansion would
     // otherwise always cut the same ring.
     let slot = this._bursts[0];
     for (const b of this._bursts) if (b.t > slot.t) slot = b;
     slot.t = 0;
     slot.r = r;
+    // Climax beats linger: the throw/tear rings run slower (rate ~1.1 → ~0.9 s)
+    // than the routine catch/coil bloom (~0.59 s) so the payoff outlives it.
+    slot.rate = rate;
     slot.stretch = dir ? 1.9 : 1;
     // The two brightest flashes in the vocabulary respect reduced-flash like
     // everything else — scale the ring's alpha, not just its lifespan.
@@ -1206,6 +1209,18 @@ export class GyreSnarePresentation {
         this._clump.position.x += (Math.sin(this.time * 47) * 0.7 + Math.sin(this.time * 31 + 1.7) * 0.3) * tremble * 1.4;
         this._clump.position.z += Math.cos(this.time * 41 + 0.6) * tremble * 1.1;
       }
+      // Expiry telegraph on the payload itself: inside ballTtlWarnS the flying
+      // ball's rubble + veil shimmer loose — the katamari tells its own grave,
+      // not just its fading ribbon and the HUD countdown.
+      if (mirror.launchedId != null && phase !== 'holding') {
+        const warnK = clamp01(1 - finite(mirror.ballTtlLeftS, 99) / Math.max(0.5, GYRE_SNARE.ballTtlWarnS));
+        if (warnK > 0) {
+          const shimmer = 0.5 + 0.5 * Math.sin(this.time * 26);
+          this._veilMat.opacity += warnK * shimmer * 0.06 * flashCalm;
+          this._clump.position.x += Math.sin(this.time * 43) * warnK * 0.35 * calm;
+          this._clump.position.z += Math.cos(this.time * 37 + 1.2) * warnK * 0.35 * calm;
+        }
+      }
       // Flight ribbons: two stretched flat quads behind flying balls. The PRIMARY
       // rides the frozen launchDir + the coil gate (its streak gathers while the
       // wind-up holds it); once it retires the slot hands its ribbon to the
@@ -1397,7 +1412,9 @@ export class GyreSnarePresentation {
           this._secId = sb.id;
           this._secN = sbm ? sbm.length : 0;
           for (let i = 0; i < this._secLumps.length; i++) this._secLumps[i].visible = false;
-          const n = Math.min(this._secN, 6);
+          // Radius-graded: a capped 60 wu secondary still reads as a katamari
+          // (~11 lumps) instead of the sparse 6 a pebble needs — bounded at 12.
+          const n = Math.min(this._secN, Math.min(12, 4 + Math.floor(this._secR / 8)));
           for (let i = 0; i < n; i++) {
             const member = sbm[i];
             let lm = this._secLumps[i];
@@ -1493,7 +1510,7 @@ export class GyreSnarePresentation {
         // release edge shouldn't mute the vocabulary (mirror.launchedId is the marker).
         const fx = cx != null ? cx : finite(mirror.ballPos.x, finite(mirror.corePos.x));
         const fz = cx != null ? cz : finite(mirror.ballPos.z, finite(mirror.corePos.z));
-        this._fireBurst(fx, fz, Math.max(6, finite(mirror.clumpRadius, 8) * 1.1), flashCalm);
+        this._fireBurst(fx, fz, Math.max(6, finite(mirror.clumpRadius, 8) * 1.1), flashCalm, null, 1.1);
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.5);
         this._throwBeat = false;
       }
@@ -1513,14 +1530,14 @@ export class GyreSnarePresentation {
       const bx = mirror.ballPos ? finite(mirror.ballPos.x) : finite(mirror.corePos && mirror.corePos.x);
       const bz = mirror.ballPos ? finite(mirror.ballPos.z) : finite(mirror.corePos && mirror.corePos.z);
       const br = Math.max(6, finite(mirror.ballClumpRadius, finite(mirror.clumpRadius, 8)) * 2.2);
-      this._fireBurst(bx, bz, br, flashCalm, mirror.launchDir);
+      this._fireBurst(bx, bz, br, flashCalm, mirror.launchDir, 1.1);
       this._coneMat.uniforms.uPulse.value = 1;
     }
 
     // ── bursts ───────────────────────────────────────────────────────────────
     for (const b of this._bursts) {
       if (b.t >= 1) { if (b.mesh.visible) b.mesh.visible = false; continue; }
-      b.t = Math.min(1, b.t + sdt * 1.7);
+      b.t = Math.min(1, b.t + sdt * (b.rate || 1.7));
       const s = b.r * (0.25 + b.t * 1.6);
       b.mesh.scale.set(s * (b.stretch || 1), s, 1);
       b.mesh.material.uniforms.uT.value = b.t;

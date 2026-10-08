@@ -1225,7 +1225,14 @@ export const gyreSnare = {
       // Mass-proportional impulse alone shrugs to nothing at the fantasy's
       // climax (40 t into 2400 t ≈ 0.05 wu/s) — a Δv floor keeps big meals
       // felt on big balls without touching the pebble branch.
-      const knock = Math.max(em * D.absorbKnockPerMass, entityMass(core) * D.absorbKnockFloor);
+      // Speed-graded: a 200 wu/s inbound wreck should rock the tether harder
+      // than a drifter — closing speed along the approach axis, clamped so a
+      // railgun-fast meal can't detonate the hold spring (≤2.5× the authored).
+      const relX = finite(e.vel && e.vel.x) - finite(core.vel && core.vel.x);
+      const relZ = finite(e.vel && e.vel.z) - finite(core.vel && core.vel.z);
+      const closing = Math.max(0, relX * (dx / dist) + relZ * (dz / dist));
+      const speedK = 1 + Math.min(1.5, closing / Math.max(1, D.absorbKnockSpeedRef));
+      const knock = Math.max(em * D.absorbKnockPerMass, entityMass(core) * D.absorbKnockFloor) * speedK;
       queuePhysicsImpulse(core,
         { x: (dx / dist) * knock,
           y: 0,
