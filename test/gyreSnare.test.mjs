@@ -2068,6 +2068,52 @@ test('a courtesy-tugged pickup in the annulus publishes abs:false', async () => 
   t.cleanup();
 });
 
+test('the suck lane corkscrews — tangential share rides the eased stir', () => {
+  // boot() not bootPhysics(): with no physics system draining the queue the
+  // queued impulses survive the step for consumption — and the body never moves,
+  // so the radial/tangential decomposition stays clean.
+  const t = boot();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const core = t.state.entities.get(t.sys._rt.coreId);
+  // Absorbable inside the band but well past skin contact (fresh-snag reach ~55 wu).
+  const meal = rock(t.sim, core.pos.x + 30, core.pos.z, 2, 2);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // spatial index registers the spawn
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const cmd = consumePhysicsCommand(meal);
+  assert.ok(cmd && cmd.impulses && cmd.impulses.length >= 1, 'the annulus pulls its meal');
+  let ix = 0, iz = 0;
+  for (const imp of cmd.impulses) { ix += imp.x; iz += imp.z; }
+  const dx = core.pos.x - meal.pos.x, dz = core.pos.z - meal.pos.z;
+  const dist = Math.hypot(dx, dz);
+  const rx = dx / dist, rz = dz / dist;
+  const radial = ix * rx + iz * rz;   // radial share (∝ pull)
+  const perp = ix * -rz + iz * rx;    // tangential share (∝ pull·suckSwirlFrac·swirlBlend)
+  const swirl = t.sys._rt.swirlBlend;
+  assert.ok(radial > 0, `the meal is dragged inward (radial=${radial.toFixed(1)})`);
+  assert.ok(Math.sign(perp) === Math.sign(swirl),
+    `the corkscrew rides the stir sign (perp=${perp.toFixed(1)}, swirl=${swirl.toFixed(2)})`);
+  // Ratio ≈ frac·swirl (damping is ~zero on a fresh, still meal) — a ray-shooting
+  // lane (frac=0) is what this regressed against.
+  const ratio = perp / radial;
+  assert.ok(Math.abs(ratio - T.suckSwirlFrac * swirl) < 0.12,
+    `tangential/radial ≈ suckSwirlFrac·swirlBlend (got ${ratio.toFixed(3)} vs ${(T.suckSwirlFrac * swirl).toFixed(3)})`);
+  // Flip the eased stir: the corkscrew re-stirs, same convention as the basin.
+  t.sys._rt.swirlBlend = -swirl;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const cmd2 = consumePhysicsCommand(meal);
+  const imp2 = cmd2 && cmd2.impulses && cmd2.impulses[cmd2.impulses.length - 1];
+  if (imp2) {
+    const dx2 = core.pos.x - meal.pos.x, dz2 = core.pos.z - meal.pos.z;
+    const d2 = Math.hypot(dx2, dz2);
+    const perp2 = imp2.x * -(dz2 / d2) + imp2.z * (dx2 / d2);
+    assert.ok(Math.sign(perp2) === -Math.sign(swirl),
+      `flipping the stir flips the corkscrew (perp=${perp2.toFixed(1)})`);
+  }
+});
+
 test('suck-band floor: a fresh snag\'s reach stays inside the basin, mass re-widens it', () => {
   const t = boot(9401);
   const rt = t.sys._rt;

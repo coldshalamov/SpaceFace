@@ -355,7 +355,10 @@ export const gyreSnare = {
         delete e.data.gyrePrevDespawnAt;
       }
     }
-    if (e.data.gyrePrevTtl !== undefined) {
+    // 'in' not '!== undefined': an absent authored ttl stashes undefined and must
+    // restore ABSENT (e.ttl = undefined) — otherwise a released body keeps the
+    // Infinity the snag planted instead of round-tripping as authored.
+    if ('gyrePrevTtl' in e.data) {
       // The countdown channel is RELATIVE — frozen at snag, it can't go stale like an
       // absolute despawnAt. Resuming it under futureOnly is the honest authored state:
       // an adopter keeping the body strips deadlines itself, and a released hand-back
@@ -1168,7 +1171,10 @@ export const gyreSnare = {
         this.bus.emit('audio:cue', { id: 'gyre_snare_full', gain: 0.8 });
         // The escalation arc's ceiling beat reaches the hands too — every other
         // latch pulses the pad (absorb even lerps with mass); FULL completes it.
-        this.bus.emit(GYRE_EVENTS.full, { mass: rt.clumpMass, tick: state.tick });
+        this.bus.emit(GYRE_EVENTS.full, {
+          id: core.id, coreId: core.id, playerId: state.playerId || null,
+          mass: rt.clumpMass, tick: state.tick,
+        });
       }
     }
     return true;
@@ -1338,7 +1344,11 @@ export const gyreSnare = {
     // ballId/ballMass deliberately survive: the clump visual keeps riding the thrown mass until it
     // despawns, and the HUD's "ball live" dot reads the same flag.
     if (this.bus) {
-      this.bus.emit(GYRE_EVENTS.beamOff, { phase: PHASE.LAUNCH, reason: 'launched', tick: this.state && this.state.tick });
+      this.bus.emit(GYRE_EVENTS.beamOff, {
+        id: (this.state && this.state.playerId) || null,
+        playerId: (this.state && this.state.playerId) || null,
+        phase: PHASE.LAUNCH, reason: 'launched', tick: this.state && this.state.tick,
+      });
     }
   },
 
@@ -1695,7 +1705,11 @@ export const gyreSnare = {
       rt.fuseCueLatched = true;
       if (this.bus) {
         this.bus.emit('audio:cue', { id: 'gyre_snare_fuse_low', gain: 0.45 });
-        this.bus.emit(GYRE_EVENTS.fuseLow, { tick: state && state.tick });
+        this.bus.emit(GYRE_EVENTS.fuseLow, {
+          id: (this.state && this.state.playerId) || null,
+          playerId: (this.state && this.state.playerId) || null,
+          tick: state && state.tick,
+        });
       }
     }
     // Strain gets its own voice on the same hysteresis the HUD uses: the glass tension
@@ -1708,7 +1722,11 @@ export const gyreSnare = {
       // The warn latch shares its name with the terminal drop reason 'strained'
       // (deliberate — one word for the tear at both scopes); gyre:dropped carries
       // it on payload.reason, not the event name, so the channels don't collide.
-      if (this.bus) this.bus.emit(GYRE_EVENTS.strained, { tick: state && state.tick });
+      if (this.bus) this.bus.emit(GYRE_EVENTS.strained, {
+        id: (this.state && this.state.playerId) || null,
+        playerId: (this.state && this.state.playerId) || null,
+        tick: state && state.tick,
+      });
     } else if (pub.strain01 < 0.25) {
       rt.strainCueLatched = false;
     }
