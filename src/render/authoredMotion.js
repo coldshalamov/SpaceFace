@@ -266,11 +266,17 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     // disposes or the unregister pass below — controllers would stay
     // registered for a dead entity forever.
     const detachDriver = (driver) => {
-      try { driver?.dispose(); }
+      if (!driver) return;
+      try { driver.dispose(); }
       catch (error) {
         noteLaneFault(state, 'teardown.authoredMotion.driverDispose');
         dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error);
       }
+      // The bank loop in the caller's finally re-disposes every banked driver on
+      // abandon — the stamp skips entries detach already tore down so a driver
+      // never pays a second dispose (and none reads a sibling's torn-down state
+      // under a different teardown order).
+      driver._sfBankDisposed = true;
     };
     detachDriver(propulsion);
     detachDriver(tallyDriver);
@@ -373,6 +379,7 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
         catch (error) { dedupWarn('authoredMotion:abandonDetach', '[authoredMotion] abandon detach failed', error); }
       }
       for (const driver of driverBank) {
+        if (driver && driver._sfBankDisposed) continue;
         try { driver?.dispose?.(); }
         catch (error) { dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error); }
       }

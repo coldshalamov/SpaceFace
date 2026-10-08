@@ -3194,7 +3194,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       let step;
       try {
         step = iterator.next();
-      } catch (_) {
+      } catch (err) {
+        noteLaneFault(owner.state, 'sectorExitCleanup');
+        laneWarn(owner.state, 'sectorExitCleanup', '[render] sector-exit cleanup iterator faulted; dropped', err);
         try { iterator.return?.(); } catch (_) { /* best effort */ }
         owner._sectorExitCleanupIter = null;
         break;
@@ -9614,7 +9616,7 @@ function disposeRendererMeshRoots(owner, scene, disposeGpu) {
       try { owner._unbindPresentationMesh?.(id, mesh, true); } catch (_) { /* best effort */ }
       try { releaseAsteroidInstancesForEntity(owner._asteroidInstancePool, id); } catch (_) { /* best effort */ }
       removeRendererRoot(scene, mesh);
-      if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`, true, this.state);
+      if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`, true, state);
       const entity = state?.entities?.get?.(id);
       clearEntityMeshReference(entity, mesh);
       meshes.delete?.(id);

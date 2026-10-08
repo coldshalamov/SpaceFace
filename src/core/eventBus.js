@@ -50,6 +50,59 @@ function busListenerToken(listenerOrIndex) {
   return id;
 }
 
+// The dedup above bounds only the LOGGING — a persistently-throwing listener
+// still pays the throw + Error + stack construction on every emit for the rest
+// of the session. After BUS_QUARANTINE_THRESHOLD consecutive faults on one event
+// the listener is quarantined: dispatch skips it until an escalating re-probe
+// window opens (1 s, doubling to a 30 s cap — the tryPresentedCall ladder). A
+// successful probe clears the row. Keyed per (fn, event): a handler fault is
+// payload-shape dependent, so breaking on one event never mutes it on another.
+const BUS_QUARANTINE_THRESHOLD = 8;
+const BUS_QUARANTINE_MAX_MS = 30000;
+const busListenerFaults = new WeakMap(); // fn -> Map<event, { faults, quarantinedUntil, quarantineMs }>
+
+function busNow() {
+  return (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now() : Date.now();
+}
+
+function invokeBusListener(fn, payload, event, label) {
+  const rows = busListenerFaults.get(fn);
+  const row = rows && rows.get(event);
+  if (row && row.quarantinedUntil > busNow()) return;
+  try {
+    fn(payload, event);
+    if (row) { row.faults = 0; row.quarantinedUntil = 0; row.quarantineMs = 0; }
+  } catch (err) {
+    noteBusHandlerError(event, err, label, fn);
+    if (row && row.quarantinedUntil > 0) {
+      // Failed re-probe: extend the window without re-charging the fault count.
+      row.quarantineMs = Math.min(row.quarantineMs * 2, BUS_QUARANTINE_MAX_MS);
+      row.quarantinedUntil = busNow() + row.quarantineMs;
+      return;
+    }
+    const entry = row || { faults: 0, quarantinedUntil: 0, quarantineMs: 0, lastFaultAt: 0 };
+    if (!row) {
+      let map = rows;
+      if (!map) { map = new Map(); busListenerFaults.set(fn, map); }
+      map.set(event, entry);
+    }
+    // The row-fault cadence: faults spaced a second or more apart heal — a
+    // listener that fails occasionally is not a storm. Dense faults park.
+    const faultAt = busNow();
+    entry.faults = (faultAt - entry.lastFaultAt >= 1000) ? 1 : entry.faults + 1;
+    entry.lastFaultAt = faultAt;
+    if (entry.faults >= BUS_QUARANTINE_THRESHOLD) {
+      entry.faults = 0;
+      entry.quarantineMs = 1000;
+      entry.quarantinedUntil = busNow() + entry.quarantineMs;
+      console.error(
+        `[bus] ${label} for "${event}": listener quarantined after ${BUS_QUARANTINE_THRESHOLD} consecutive faults; re-probing on an escalating window`,
+      );
+    }
+  }
+}
+
 function noteBusHandlerError(event, err, label, listener) {
   const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
     ? performance.now() : Date.now();
@@ -89,8 +142,7 @@ function dispatchRange(fns, payload, event, start, end) {
   const last = Math.min(fns.length, end);
   let i = start;
   for (; i < last; i++) {
-    try { fns[i](payload, event); }
-    catch (err) { noteBusHandlerError(event, err, 'handler error', fns[i]); }
+    invokeBusListener(fns[i], payload, event, 'handler error');
   }
   return i;
 }
@@ -351,8 +403,7 @@ export function createBus() {
         while (emitSlice === slice && slice.index < slice.fns.length) {
           const fn = slice.fns[slice.index];
           slice.index += 1;
-          try { fn(slice.payload, slice.event); }
-          catch (err) { noteBusHandlerError(slice.event, err, 'handler error', fn); }
+          invokeBusListener(fn, slice.payload, slice.event, 'handler error');
         }
         if (emitSlice === slice) emitSlice = null;
         else break; // clear() or a re-entrant sliced emit swapped the global — stop here
@@ -400,8 +451,7 @@ export function createBus() {
       const fn = slice.fns[slice.index];
       slice.index += 1;
       ran += 1;
-      try { fn(slice.payload, slice.event); }
-      catch (err) { noteBusHandlerError(slice.event, err, 'handler error', fn); }
+      invokeBusListener(fn, slice.payload, slice.event, 'handler error');
       // The caller's deadline plus the shared paced ledger — a frame that already
       // spent its paced budget doesn't also get this drain's whole wallet.
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
@@ -468,8 +518,7 @@ export function createBus() {
       const fn = head.fns[head.index];
       head.index += 1;
       ran += 1;
-      try { fn(head.payload, head.event); }
-      catch (err) { noteBusHandlerError(head.event, err, 'presentation handler error', fn); }
+      invokeBusListener(fn, head.payload, head.event, 'presentation handler error');
       if (head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }
