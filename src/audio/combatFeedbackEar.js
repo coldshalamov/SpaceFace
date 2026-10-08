@@ -5,10 +5,14 @@
 export const DISTRESS_CALL_RECIPE = 'sfx_ui_alert';
 export const MINE_DETONATION_RECIPE = 'sfx_explosion_small';
 export const WARDED_SHOT_RECIPE = 'sfx_shield_blowout_pop';
+export const MINING_NOISE_RECIPE = 'sfx_ui_alert';
 
 export const DISTRESS_ADMIT_TICKS = 90;
 export const MINE_ADMIT_TICKS = 8;
 export const WARD_ADMIT_TICKS = 10;
+// The meter can flicker across the danger line. One warning, then a gap
+// long enough that a held beam is not a wall of alerts.
+export const MINING_NOISE_ADMIT_TICKS = 180;
 
 /** One voice per key inside gapTicks. Same book the audio host keeps on rt. */
 export function admitEarCue(book, key, nowTick, gapTicks) {
@@ -66,6 +70,26 @@ export function wardedShotCue(payload) {
   };
 }
 
+/**
+ * Mining noise just crossed into "they can hear you". One darker alert than a
+ * mayday (same recipe, lower rate) and a duck so the warning sits over the beam.
+ * Below-threshold payloads stay silent — the sim only emits the crossing.
+ */
+export function miningNoiseDangerCue(payload) {
+  if (!payload || !Number.isFinite(payload.level)) return null;
+  if (Number.isFinite(payload.threshold) && !(payload.level > payload.threshold)) return null;
+  return {
+    recipeId: MINING_NOISE_RECIPE,
+    gain: 0.7,
+    rate: 0.72,
+    key: 'miningNoise',
+    gapTicks: MINING_NOISE_ADMIT_TICKS,
+    critical: true,
+    duck: true,
+    position: null,
+  };
+}
+
 export function playAdmittedEarCue(host, cue, nowTick) {
   if (!host || !cue || typeof host.play !== 'function') return null;
   const rt = host.rt || (host.rt = {});
@@ -75,5 +99,7 @@ export function playAdmittedEarCue(host, cue, nowTick) {
     gain: cue.gain,
     position: cue.position,
     critical: cue.critical === true,
+    duck: cue.duck === true,
+    rate: Number.isFinite(cue.rate) ? cue.rate : undefined,
   });
 }

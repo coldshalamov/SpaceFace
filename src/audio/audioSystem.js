@@ -21,7 +21,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
-import { distressCallCue, mineDetonationCue, playAdmittedEarCue, wardedShotCue } from './combatFeedbackEar.js';
+import { distressCallCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -2426,6 +2426,13 @@ export const audio = {
     bus.on('combat:warded', (p) => playAdmittedEarCue(
       this,
       wardedShotCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // danger:miningNoise fired on the threshold crossing and nothing played it.
+    // One darker alert, ducked, so the beam does not bury "they can hear you".
+    bus.on('danger:miningNoise', (p) => playAdmittedEarCue(
+      this,
+      miningNoiseDangerCue(p),
       this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
     ));
     bus.on('massline:releaseCancelled', () => this.play(combatVerbRecipe('massline:releaseCancelled'), { gain: 0.28 }));
