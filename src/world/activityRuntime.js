@@ -1711,6 +1711,7 @@ function classifyWorld(state, runtime) {
       || (isRedKiteEntity(entity) && data.homeSectorId === state.world?.currentSectorId)
       || (data.persistenceOwner === 'palletJack' && data.homeSectorId === state.world?.currentSectorId)
       || (data.persistenceOwner === 'mothlight' && data.homeSectorId === state.world?.currentSectorId)
+      || (data.persistenceOwner === 'secondRinse' && data.homeSectorId === state.world?.currentSectorId)
       || data.activityActorSlotId
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
       || namedAceActor
