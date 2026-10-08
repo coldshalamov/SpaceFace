@@ -907,8 +907,13 @@ export const gyreSnare = {
     if (coreDistMaw > D.holdBreakDist) { this._drop('strained'); return; }
 
     // Orbit slot: revolves around the maw, breathes in/out — "loosely floating in zero G".
-    const orbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale)
-      + Math.sin(t * D.orbitLiftRate + rt.orbitSeed) * D.orbitLiftRad;
+    const orbitBaseR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale);
+    const orbitR = orbitBaseR
+      // Lift scales with the revolve radius (capped 2x): a fixed 3.5 wu bob
+      // reads as breathing on a pebble but goes invisible on a capped moon
+      // orbiting at ~72 wu — the loose float must not go rigid at the climax.
+      + Math.sin(t * D.orbitLiftRate + rt.orbitSeed)
+        * D.orbitLiftRad * Math.min(2, orbitBaseR / D.orbitRadiusMin);
     const orbitRateEff = this._orbitRate(rt);
     const angle = rt.orbitSeed + rt.orbitDir * t * orbitRateEff
       + Math.sin(t * D.orbitWobbleRate + rt.orbitSeed) * D.orbitWobbleRad;

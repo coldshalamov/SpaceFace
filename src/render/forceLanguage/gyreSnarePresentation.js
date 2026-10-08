@@ -660,6 +660,15 @@ export class GyreSnarePresentation {
     const calm = reducedMotion ? 0 : 1;
     const flashCalm = reducedFlash ? 0.55 : 1;
 
+    // The snag's victim-side confirmation: the basin hot-glow dies the same tick
+    // the rock becomes the core — bloom one ring where it was grabbed so 'the
+    // rock got grabbed' lands AT the rock, not only as a lump flying inward.
+    if (this._lastPhase === 'beaming' && phase === 'holding' && mirror.corePos) {
+      this._fireBurst(finite(mirror.corePos.x), finite(mirror.corePos.z),
+        Math.max(4, finite(this._clumpRadius, 8) * 0.7), flashCalm);
+    }
+    this._lastPhase = phase;
+
     // ── beam ─────────────────────────────────────────────────────────────────
     if (phase === 'beaming' || phase === 'holding' || phase === 'launching') {
       const nx = finite(mirror.nose && mirror.nose.x);
@@ -802,6 +811,12 @@ export class GyreSnarePresentation {
         const gr = Math.max(2, this._clumpRadius * 0.9);
         gs.mesh.position.set(Math.cos(this._gulpLocalA) * gr, 0.35, Math.sin(this._gulpLocalA) * gr);
         gs.mesh.scale.setScalar(2 + this._clumpRadius * 0.18);
+        // World-pin the bright half: a capped ball tumbles ~3 rad/s and would drag
+        // 'the spark where it stuck' ~0.3 rad around the skin. Counter-rotate the
+        // local angle by the spin delta so the contact flash holds its azimuth.
+        gs.a0 = this._gulpLocalA;
+        gs.spin0 = this._clumpSpin;
+        gs.r = gr;
         gs.t = 1;
       }
       if (absorbsNow < this._absorbSeen) this._absorbSeen = 0; // new clump ledger
@@ -815,6 +830,10 @@ export class GyreSnarePresentation {
         if (g2.t <= 0) continue;
         g2.t *= Math.exp(-sdt * 10);
         if (g2.t < 0.02) { g2.t = 0; g2.mesh.visible = false; continue; }
+        if (g2.t > 0.5 && g2.a0 != null) {
+          const la = g2.a0 - (this._clumpSpin - g2.spin0);
+          g2.mesh.position.set(Math.cos(la) * g2.r, 0.35, Math.sin(la) * g2.r);
+        }
         g2.mesh.material.opacity = g2.t * 0.5 * flashCalm;
         g2.mesh.visible = true;
       }
@@ -889,6 +908,11 @@ export class GyreSnarePresentation {
       // flashCalm rides here too — the mote gulp can brighten ~3.4x at the rim,
       // the vocabulary's third-brightest flash; reduced-flash can't skip it.
       this._spiralMat.uniforms.uFade.value = spent * fuseDim * flashCalm;
+      // The motes converge INTO the rim the warn wash targets — a funnel feeding
+      // cool-white sparks into an amber mouth contradicts the tear read. Warm them
+      // with the same decayed strain (lighter weight than the rim — moving motes
+      // don't need to scream it).
+      this._spiralMat.uniforms.uCol.value.copy(this._colGlass).lerp(this._colWarn, strainW * 0.4);
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
       // down over ~0.25 s instead of popping — the collapse is part of the payoff.
@@ -1301,7 +1325,9 @@ export class GyreSnarePresentation {
           0.6 + Math.sin(this.time * 0.7 + (finite(sb.id) % 7)) * 0.3 * calm, lp.z);
         const ballR = Math.max(2.5, finite(sb.r, 8));
         this._secVeil.scale.setScalar(ballR * 1.22);
-        this._secVeilMat.opacity = 0.07 * flashCalm;
+        // Mass-graded like its siblings — a capped secondary katamari flies with
+        // more than a pebble's whisper veil.
+        this._secVeilMat.opacity = (0.05 + 0.04 * Math.min(1, finite(sb.mass) / GYRE_SNARE.maxClumpMass)) * flashCalm;
         // Rebuild key is (id, member-count): launch-meta members are FROZEN at
         // throw, so sbm.length only moves on a re-adopt — a live-members refactor
         // would silently never re-lay-out the lumps if this stayed id-only.
