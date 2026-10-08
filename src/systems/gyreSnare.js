@@ -504,12 +504,13 @@ export const gyreSnare = {
   // orphan is a benign immune body, not a permanently-armed collider.
   _disarmBall(ball) {
     // 'gyrePrevImpactScale' is the disarm ledger: _launch always writes the key
-    // (undefined when the authored scale was absent) and this consumes it. An
+    // (null when the authored scale was absent — it must round-trip through
+    // clonePlain, which drops undefined-valued keys) and this consumes it. An
     // already-disarmed body — evicted-but-still-marked is the live case — has
     // its authored scale back in place; a second disarm would DELETE it.
     if (!ball.data || !('gyrePrevImpactScale' in ball.data)) return;
     if (ball.physicsBody && ball.physicsBody !== false) {
-      if (ball.data.gyrePrevImpactScale !== undefined) ball.physicsBody.impactDamageScale = ball.data.gyrePrevImpactScale;
+      if (ball.data.gyrePrevImpactScale != null) ball.physicsBody.impactDamageScale = ball.data.gyrePrevImpactScale;
       else delete ball.physicsBody.impactDamageScale;
       const rev = Number(ball.physicsBody.revision);
       ball.physicsBody.revision = (Number.isFinite(rev) ? Math.max(0, Math.trunc(rev)) : 0) + 1;
@@ -1444,8 +1445,12 @@ export const gyreSnare = {
       // would make shouldSyncPhysicsBodyEntity spawn a body the entity declined.
       core.physicsBody = core.physicsBody || {};
       // Stash any authored scale so the adoption hand-back restores it rather than
-      // leaving the entity un-damped (or keeping the weapon scale) forever.
-      core.data.gyrePrevImpactScale = core.physicsBody.impactDamageScale;
+      // leaving the entity un-damped (or keeping the weapon scale) forever. ?? null:
+      // clonePlain/JSON drops undefined-valued keys — a serialized ball would load
+      // armed but ledger-less, and _disarmBall's 'in' gate would early-return on it
+      // forever (a permanently-armed collider). null round-trips; ?? preserves an
+      // authored 0 (0 ?? null === 0).
+      core.data.gyrePrevImpactScale = core.physicsBody.impactDamageScale ?? null;
       core.physicsBody.impactDamageScale = scale;
       // Bump the body revision — RESOLVED_BODY_CACHE keys on (body, revision), so the
       // authored-spec write must invalidate or the resolved spec reads stale.

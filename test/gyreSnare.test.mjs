@@ -860,6 +860,44 @@ test('a pre-disarmed ball retires without losing the restored authored scale', a
   t.cleanup();
 });
 
+test('a serialized ball keeps its disarm ledger — null survives clonePlain where undefined did not', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → bowl
+  assert.equal(t.sys._rt.ballId, body.id);
+  assert.ok(body.physicsBody.impactDamageScale > 1, 'launch wrote the weapon scale');
+  assert.equal(body.data.gyrePrevImpactScale, null,
+    'no authored scale — the ledger serializes as null, not a dropped undefined');
+  // The real save path JSON-serializes entity.data — prove the disarm ledger
+  // round-trips (an undefined-valued key would vanish here).
+  const savedData = JSON.parse(JSON.stringify(body.data));
+  assert.equal('gyrePrevImpactScale' in savedData, true, 'the ledger survives clonePlain');
+  assert.equal(savedData.gyreLaunched, true, 'the mark round-trips too');
+
+  // Post-load: the loaded body carries the serialized ledger + the armed scale
+  // (physicsBody round-trips through makeEntity the same way).
+  const t2 = await bootPhysics();
+  const loaded = rock(t2.sim, T.mawDist + 30, 0);
+  loaded.data = savedData;
+  loaded.physicsBody = loaded.physicsBody || {};
+  loaded.physicsBody.impactDamageScale = 8; // the armed weapon scale on the loaded body
+  t2.bus.emit('save:loaded', {});
+  t2.sim.step();
+  assert.ok(t2.sys._rt.ballIds.includes(loaded.id), 'the loaded ball is re-watched');
+  // A foreign adopter strips the deadline — the hand-back must still shed the
+  // 8x: a ledger-less ball was a permanently-armed collider (the wave-88 hole).
+  delete loaded.data.despawnAt;
+  t2.sim.step();
+  assert.equal(loaded.data.gyreLaunched, undefined, 'the adopted ball is unmarked');
+  assert.equal(loaded.physicsBody.impactDamageScale, undefined,
+    'the weapon scale sheds — authored was absent, so disarm deletes the stamp');
+  assert.equal('gyrePrevImpactScale' in loaded.data, false, 'the ledger is consumed');
+  t.cleanup();
+  t2.cleanup();
+});
+
 test('a live primary retired unmarked still disarms and sheds the ledger', async () => {
   const t = await bootPhysics();
   const body = rock(t.sim, T.mawDist, 0);

@@ -1043,31 +1043,26 @@ export class GyreSnarePresentation {
       // with the same decayed strain (lighter weight than the rim — moving motes
       // don't need to scream it).
       this._spiralMat.uniforms.uCol.value.copy(this._colGlass).lerp(this._colWarn, strainW * 0.4);
-      // The gravity zone is legible space before the first body enters it: park
-      // the hold-phase halo at the maw during BEAM — a faint flat ring at the
-      // basin's pull edge (the suck lane's own ring takes over on snag).
-      if (phase === 'beaming') {
-        this._halo.position.set(mL.x, 0.42, mL.z);
-        this._halo.scale.setScalar(finite(GYRE_SNARE.basinRadius, 86)
-          * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
-        this._haloMat.opacity = 0.06 * flashCalm * wakeEase;
-        this._halo.visible = true;
-      } else if (phase === 'launching' && this._halo.visible) {
-        this._halo.visible = false;
-      }
-      // The basin pull lane runs through the hold too — bodies inside the cone
-      // still get dragged to the maw — so the pull edge stays drawn, fainter:
-      // the suck annulus owns the bright read now, the basin is the outer zone.
-      if (phase === 'holding') {
+      // The gravity zone is legible space before the first body enters it AND
+      // through the hold — the basin pull lane drags bodies to the maw in both
+      // phases, so _basinHalo owns the pull edge: brighter while searching (it
+      // is the only ring then), fainter once the suck annulus takes the bright
+      // read on snag. (_halo stays suck-ring-only — drawing the basin edge on
+      // it here was dead code: the cx==null branch force-hides it every frame.)
+      if (phase === 'beaming' || phase === 'holding') {
         this._basinHalo.position.set(mL.x, 0.42, mL.z);
         this._basinHalo.scale.setScalar(finite(GYRE_SNARE.basinRadius, 86)
-          * (1 + 0.02 * Math.sin(this.time * 1.7) * calm));
-        this._basinHaloMat.opacity = 0.03 * flashCalm;
+          * (1 + (phase === 'beaming' ? 0.035 : 0.02) * Math.sin(this.time * 1.7) * calm));
+        this._basinHaloMat.opacity = (phase === 'beaming' ? 0.06 * wakeEase : 0.03) * flashCalm;
         this._basinHalo.visible = true;
       } else if (this._basinHalo.visible) {
         this._basinHalo.visible = false;
       }
     } else {
+      // The basin pull lane dies with the beam — its edge ring is a scene-level
+      // child (beam.visible can't cover it) and must not linger parked at the
+      // maw's last spot through the close + quiet-latch sleep.
+      if (this._basinHalo.visible) this._basinHalo.visible = false;
       // The gulp kicks decay on the close path too — a drop/tear mid-feed followed
       // by a fast re-beam would otherwise carry a stale gulp into the new funnel's
       // first frames (the mouth/disc kicks own ~24% and ~+1.0 of leftover surge).
@@ -1307,6 +1302,8 @@ export class GyreSnarePresentation {
       this._grip.visible = false;
       this._halo.visible = false;
       if (phase === 'off' && this._ballId == null && !this._closing && this._deathT <= 0) this._clearLumps();
+      // (Basin edge hides in the close path — _basinHalo is drawn above only
+      // while the beam block runs, so it can't be touched here during beaming.)
     } else {
       this._deathT = 0;
       this._closeTear = false; // a re-beam mid-tear-follow hands the clump group to the new core
