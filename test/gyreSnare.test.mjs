@@ -25,6 +25,7 @@ import { gyreSnare } from '../src/systems/gyreSnare.js';
 import { physics } from '../src/core/physics.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { readRecentImpulseProvenance, clearImpulseProvenance, resolveCollisionConsequence } from '../src/combat/impulseKernel.js';
+import { collisionConsequences } from '../src/systems/collisionConsequences.js';
 import { GYRE_SNARE } from '../src/data/gyreSnare.js';
 import { gyreHud } from '../src/ui/gyreHud.js';
 
@@ -2681,6 +2682,112 @@ test('the strain edge is strict: exactly holdBreakDist holds, a hair past it tea
   assert.equal(t.sys._rt.phase, 'off', 'dist > holdBreakDist tears');
   assert.equal(t.state.gyreSnare.dropReason, 'strained');
   assert.equal(t.state.gyreSnare.tornId, core.id, 'the freed core publishes its track');
+  t.cleanup();
+});
+
+test('the thrown clump cannot hurt the hull that threw it', async () => {
+  const t = await bootPhysics();
+  const ball = rock(t.sim, T.mawDist, 0, 60, 8);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) t.sim.step();
+  assert.equal(ball.data.gyreLaunched, true, 'the ball is a live weapon');
+  assert.ok(ball.physicsBody.impactDamageScale > 1, 'the weapon scale is armed');
+
+  // The consequence router refuses playerId targets outright (the kernel's own
+  // comment: "The player never consumes this path") — a slammed-back clump can
+  // carry a weapon-scaled packet and stamped pilot provenance and still route
+  // zero hull damage home.
+  const consequences = Object.create(collisionConsequences);
+  const routed = [];
+  consequences.init({
+    state: t.state, bus: t.bus, helpers: t.helpers,
+    registry: {
+      get: (id) => (id === 'combat'
+        ? { kernel: { routeDamage: (p) => (routed.push(p), { ok: true }) } }
+        : null),
+    },
+  });
+  try {
+    const hullBefore = t.player.hull;
+    consequences._resolveTarget(
+      t.player, ball, {}, ball.physicsBody.mass * 200, t.state.tick, null, false,
+    );
+    assert.equal(routed.length, 0, 'no damage packet routes to the pilot');
+    assert.equal(t.player.hull, hullBefore, 'the hull is untouched by its own clump');
+  } finally {
+    consequences.destroy();
+    t.cleanup();
+  }
+});
+
+test('two identical runs replay an identical throw — carry, burst, and credit', async () => {
+  async function run() {
+    const t = await bootPhysics(7777);
+    const core = rock(t.sim, T.mawDist + 20, 12, 5, 4);
+    rock(t.sim, T.mawDist + 30, -6, 6, 4); // a meal for the carry
+    for (let i = 0; i < 200 && t.sys._rt.members.length === 0; i++) {
+      t.state.input.actions.gyreSnare = true; t.sim.step();
+    }
+    assert.equal(t.sys._rt.members.length, 1, 'the meal was carried');
+    for (let i = 0; i < 40; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+    t.state.input.actions.gyreSnare = false; t.sim.step(); // release → launch
+    for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) t.sim.step();
+    for (let i = 0; i < 30; i++) t.sim.step(); // free flight
+    const prov = readRecentImpulseProvenance(core, t.state.tick);
+    const snap = {
+      x: core.pos.x, z: core.pos.z, vx: core.vel.x, vz: core.vel.z,
+      mass: core.physicsBody.mass, phase: t.sys._rt.phase,
+      launched: core.data.gyreLaunched === true,
+      prov: prov && {
+        actorId: prov.actorId, tag: prov.tag,
+        appliedTick: prov.appliedTick, holdUntilTick: prov.holdUntilTick,
+      },
+    };
+    t.cleanup();
+    return snap;
+  }
+  const a = await run();
+  const b = await run();
+  assert.deepEqual(a, b, 'identical seed/inputs → identical throw, flight, and credit');
+});
+
+test('the absorb edge is exact: at skin+epsilon the meal merges, a hair past it gets dragged', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  assert.equal(t.sys._rt.phase, 'holding');
+  const rt = t.sys._rt;
+  // A fresh spawn misses the next _suckPass — the spatial hash rebuilds in the
+  // physics half of the step — so a parked probe is first SEEN one step later,
+  // unmoved. Park against the core's observed drift, then step twice: the
+  // index step leaves it parked, the second step is its first visible check.
+  let px = core.pos.x, pz = core.pos.z;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const drx = core.pos.x - px, drz = core.pos.z - pz;
+  // Slight inward bias so the sub-tick drift error can only land it INSIDE the
+  // edge — still at the skin, never a nested overlap.
+  const at = rock(t.sim,
+    core.pos.x + drx + rt.clumpRadius + 4 + T.absorbEpsilonWu - 0.4,
+    core.pos.z + drz,
+    3, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // hash index step
+  assert.equal(at.alive, true, 'a brand-new body is invisible to the lane for one step');
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // first visible check
+  assert.equal(at.alive, false, 'dist <= clumpRadius + er + epsilon merges');
+  // A hair past it: the merge gate fails and the suck lane drags instead —
+  // it survives the refusing tick (the pull only lands it a later tick).
+  px = core.pos.x; pz = core.pos.z;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const drx2 = core.pos.x - px, drz2 = core.pos.z - pz;
+  const past = rock(t.sim,
+    core.pos.x + drx2 + rt.clumpRadius + 4 + T.absorbEpsilonWu + 1.5,
+    core.pos.z + drz2,
+    3, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // index step
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // first visible check
+  assert.equal(past.alive, true, 'a hair past the epsilon edge is dragged, not eaten');
   t.cleanup();
 });
 

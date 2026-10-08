@@ -161,8 +161,6 @@ function freshRuntime() {
     holdLag: 0,            // wu — core's distance off its orbit slot: the spring's residual error,
                            // a mild second-order tension read for ordinary dragging (strained only
                            // trips past holdStrainDist — lag shades the glass before that)
-    holdLagSm: 0,          // one-poled lag (~0.13 s) feeding the lean channel — a raw single-frame
-                           // residual would jiggle the glass on hard maneuvers
     dropReason: null,      // last _drop cause ('strained', 'released', ...) — presentation reads it for the close shape
   };
 }
@@ -264,7 +262,6 @@ export const gyreSnare = {
     rt.towCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0; // dead-state hygiene — the lag read is HOLD-only but resets like the rest
-    rt.holdLagSm = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     rt.orbitDir = 1;
@@ -1040,9 +1037,6 @@ export const gyreSnare = {
     // sign flip (dt·4 across a range of 2) — a snag rolling -1 re-stirs the
     // vortex smoothly instead of flipping it mid-feed.
     rt.swirlBlend += clamp(rt.orbitDir - rt.swirlBlend, -dt * 4, dt * 4);
-    // The lean channel one-poles the lag (~0.13 s) — a raw single-frame residual
-    // would jiggle the glass whenever the ship jinks.
-    rt.holdLagSm += (rt.holdLag - rt.holdLagSm) * Math.min(1, dt * 8);
 
     // Spring → orbit slot, damped vs ship frame so the ball tracks the ship.
     const shipVx = finite(player.vel && player.vel.x);
@@ -1399,7 +1393,6 @@ export const gyreSnare = {
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
-    rt.holdLagSm = 0;
     rt.basinSpots.length = 0;
     rt.ballMass = rt.clumpMass;
     // The floor itself sags with throw mass: a capped moon bowls ~22% slower than a
@@ -1519,7 +1512,6 @@ export const gyreSnare = {
     rt.towCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;
-    rt.holdLagSm = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     rt.orbitDir = 1;
@@ -1597,6 +1589,7 @@ export const gyreSnare = {
           // The credit shadow sheds too: it rides the mark only while the ball can
           // still ACT — a deadline-passed body's kills are already settled.
           this._disarmBall(e);
+          clearImpulseProvenance(e);
           delete e.data.gyreLaunchMeta;
           // The mark sheds too: the lifetime sweep should kill this body in the same
           // step, but if the skip path ever lets it live (unready index, a future
@@ -1730,6 +1723,7 @@ export const gyreSnare = {
           this._disarmBall(ball);
           // The credit shadow sheds with the corpse: it rides the mark only while the
           // ball can still act — a deadline-passed body's kills are already settled.
+          clearImpulseProvenance(ball);
           delete ball.data.gyreLaunchMeta;
           // The mark sheds too — the sweep should kill this body in-step, but a
           // survivor must not stay marked: pull/snag/suck-immune debris forever.
