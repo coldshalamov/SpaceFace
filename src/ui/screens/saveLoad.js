@@ -883,11 +883,19 @@ export const saveLoadScreen = {
     // SFQ-B228: a restore that fails before the start transition emits save:error, not
     // game:startFailed — the shell lifts (loadingPresenter) but this screen kept the load
     // latched and its stage hull released. Reset the same way so the slot is retryable now,
-    // not after the next full remount. Only load-shaped receipts qualify; write-path quota
-    // noise while the screen is open must not touch the stage.
+    // not after the next full remount. Load-shaped means the restore receipts AND the
+    // envelope-stage refusals a requested load can die behind (parse/checksum/version/
+    // migration/size — the _prepareEnvelope* vocabulary); a latched load that never reached
+    // a restore must still give the stage back. The loadRequested guard keeps write-path
+    // and import noise (this screen's own importer, autosave quota) away from the stage.
+    const LOAD_STAGE_REASONS = new Set([
+      'load_failed', 'restore_prepare_failed',
+      'read_failed', 'no_save', 'no_data', 'parse_failed', 'bad_format', 'checksum',
+      'newer_version', 'migration_failed', 'invalid_player', 'save_size_limit',
+    ]);
     const unsubLoadFailed = ctx.bus.on('save:error', (payload = {}) => {
       const reason = payload && payload.reason;
-      if (reason !== 'load_failed' && reason !== 'restore_prepare_failed') return;
+      if (!LOAD_STAGE_REASONS.has(reason) && !String(reason || '').startsWith('import_')) return;
       if (!loadRequested) return;
       loadRequested = false;
       cancelHullRelease();

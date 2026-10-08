@@ -29,7 +29,7 @@ import { mountDataState, settleDataState } from './uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from './mapAuthority.js';
 
 const DEBOUNCE_S = 2;        // same station inside this simTime window = one attempt
-const BANNER_TTL_MS = 12000; // long enough to read the fault and take the verb
+const BANNER_TTL_MS = 8000; // long enough to read the fault and take the verb, short enough to leave flight alone
 const DENY_CODES = Object.freeze({
   abandoned: 'STATION_DARK',
   private: 'BERTH_RESTRICTED',

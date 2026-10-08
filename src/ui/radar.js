@@ -46,9 +46,9 @@ import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instrument
 import { injectOrrery } from './orrery/tokens.js';
 import GLYPHS from '../../assets/ui/kit/assets/radar/radar-glyph-paths.json' with { type: 'json' };
 
-const COMPACT_SIZE = 188;
+const COMPACT_SIZE = 208;
 const COMPACT_C = COMPACT_SIZE / 2;
-const COMPACT_R = 90;
+const COMPACT_R = 100;
 const EXPAND_SIZE = 290;
 const EXPAND_C = EXPAND_SIZE / 2;
 const EXPAND_R = 141;
@@ -569,8 +569,8 @@ function contactGlyphKey(entity) {
   return ROLE_GLYPH.get(role) || null;
 }
 
-const GLYPH_SCALE_NEUTRAL = 0.62;
-const GLYPH_SCALE_HOSTILE = 0.72;
+const GLYPH_SCALE_NEUTRAL = 0.75;
+const GLYPH_SCALE_HOSTILE = 0.85;
 
 // ---- Glow: one soft sprite per colour and size, drawn additively under a glyph -----------------
 // Pre-rendered once (a radial gradient on a tiny canvas), so the 10 Hz draw only ever blits.
@@ -760,6 +760,11 @@ function contactColor(entity, playerTeam, colorblindMode, state, hostileOf) {
   }
   if (semanticState === 'hostile') return TACTICAL_MAP_PALETTE.hostile;
   if (semanticState === 'friendly') return TACTICAL_MAP_PALETTE.friendly;
+  // Unaligned traffic reads its trade: industrial hulls sage, lawful hulls steel-blue, everything
+  // else the quiet neutral. Stance already won above; colourblind mode keeps the stance-only map.
+  const glyphKey = contactGlyphKey(entity);
+  if (glyphKey === 'freighter' || glyphKey === 'miner') return TACTICAL_MAP_PALETTE.worker;
+  if (glyphKey === 'patrol') return TACTICAL_MAP_PALETTE.lawful;
   return TACTICAL_MAP_PALETTE.neutral;
 }
 
@@ -1376,7 +1381,9 @@ const RADAR_LEGEND_ITEMS = [
   { label: 'STATION', colour: TACTICAL_MAP_PALETTE.station, title: 'Cyan hex — stations you can dock and trade at. Read sector-wide, even past the rim.' },
   { label: 'GATE', colour: TACTICAL_MAP_PALETTE.gate, title: 'Violet ring — jump gates. Read sector-wide, even past the rim.' },
   { label: 'ALLY', colour: TACTICAL_MAP_PALETTE.friendly, title: 'Green — allied faction ships.' },
-  { label: 'TRAFFIC', colour: TACTICAL_MAP_PALETTE.neutral, title: 'Blue-grey — nearby traffic. Ordinary ships resolve only in the close band (half the dial radius); your target, mission contacts and capitals always show.' },
+  { label: 'HAULER', colour: TACTICAL_MAP_PALETTE.worker, title: 'Sage — industrial traffic: haulers, miners, tenders.' },
+  { label: 'PATROL', colour: TACTICAL_MAP_PALETTE.lawful, title: 'Steel-blue — lawful traffic: patrols, escorts, couriers.' },
+  { label: 'TRAFFIC', colour: TACTICAL_MAP_PALETTE.neutral, title: 'Blue-grey — other nearby traffic. Ordinary ships resolve only in the close band (half the dial radius); your target, mission contacts and capitals always show.' },
 ];
 
 const PING_HIT_PX = 14;
@@ -2006,6 +2013,8 @@ export function createRadar(ctx) {
         if (!mark.entity) continue;
         if (mark.type === 'pickup') { drawGlow(g, mark.x, mark.y, 12, GLOW_RGB.objective, 0.5); continue; }
         if (mark.type === 'wreck') { drawGlow(g, mark.x, mark.y, 11, GLOW_RGB.wreck, 0.34); continue; }
+        // Glow budget: plain traffic reads flat in its trade hue; only salient contacts glow.
+        if (!mark.named && !isSalientShip(mark.entity, targetId)) continue;
         const rgb = glowRgbOf(contactColor(mark.entity, playerTeam, colorblindMode, state, hostileOf));
         drawGlow(g, mark.x, mark.y, mark.named ? 15 : 12, rgb, 0.32 + flareOf(mark.x, mark.y) * 0.25);
       }
