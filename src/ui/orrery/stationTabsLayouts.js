@@ -1080,6 +1080,8 @@ ${T} .sx-dossier__terms > li { grid-column:1 / -1; grid-template-columns:subgrid
 ${T} .sx-dossier__terms .sx-term__v { flex-direction:row !important; align-items:baseline !important; gap:10px !important; flex-wrap:wrap; }
 ${T} .sx-dossier__terms .sx-term__sub { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-dossier__terms > li::before { top:50% !important; margin-top:-.5px; }
+${T} .sx-dossier > .sx-dossier__foot { position:sticky !important; bottom:0; z-index:2; padding:14px 0 6px !important; background:linear-gradient(0deg, rgb(0 0 0 / .9) calc(100% - 14px), rgb(0 0 0 / 0)) !important;
+  -webkit-mask-image:linear-gradient(90deg, #000 55%, transparent); mask-image:linear-gradient(90deg, #000 55%, transparent); }
 /* the jump reading hangs under the ring's foot with its own room */
 ${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:-14px !important; }
 /* the dispatch facts at a size the decision needs */
