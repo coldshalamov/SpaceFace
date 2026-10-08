@@ -43,6 +43,8 @@ export const MAX_LINE_NAMES = 3;
 export const STUNT_CALLOUT_STYLE_ID = 'sf-stuntcall-css';
 export const SPEED_DIAL_SELECTOR = '.orr-speeddial';
 export const SPEED_DIAL_CLEARANCE_PX = 48;
+export const STABLE_LOAD_SELECTOR = '.sf-stableload--visible';
+export const STABLE_LOAD_CLEARANCE_PX = 12;
 
 const BONE = '236 230 216';
 
@@ -498,15 +500,17 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
 
   function seatClearOfSpeedDial() {
     const view = doc.defaultView;
-    const dial = typeof doc.querySelector === 'function' ? doc.querySelector(SPEED_DIAL_SELECTOR) : null;
-    if (!view || !dial || typeof dial.getBoundingClientRect !== 'function'
-      || typeof root.getBoundingClientRect !== 'function') return;
-    const dialRect = dial.getBoundingClientRect();
+    if (!view || typeof doc.querySelector !== 'function' || typeof root.getBoundingClientRect !== 'function') return;
     const ownRect = root.getBoundingClientRect();
-    const overlaps = dialRect.height > 0 && dialRect.left < ownRect.right && dialRect.right > ownRect.left;
-    root.style.bottom = overlaps
-      ? `max(32vh, ${Math.round(view.innerHeight - dialRect.top + SPEED_DIAL_CLEARANCE_PX)}px)`
-      : '';
+    let top = Infinity;
+    for (const [selector, gap] of [[SPEED_DIAL_SELECTOR, SPEED_DIAL_CLEARANCE_PX], [STABLE_LOAD_SELECTOR, STABLE_LOAD_CLEARANCE_PX]]) {
+      const node = doc.querySelector(selector);
+      if (!node || typeof node.getBoundingClientRect !== 'function') continue;
+      const rect = node.getBoundingClientRect();
+      if (!(rect.height > 0) || rect.left >= ownRect.right || rect.right <= ownRect.left) continue;
+      top = Math.min(top, rect.top - gap);
+    }
+    root.style.bottom = Number.isFinite(top) ? `max(32vh, ${Math.round(view.innerHeight - top)}px)` : '';
   }
 
   function wake() {

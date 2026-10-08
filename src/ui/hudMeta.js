@@ -27,6 +27,22 @@ function manifestCargoLabel(id) {
   return String(id || 'cargo').replace(/^cmdty_/, '').replace(/_/g, ' ').toUpperCase();
 }
 
+export const STABLE_LOAD_DIAL_CLEARANCE_PX = 44;
+
+export function seatStableLoadClearOfSpeedDial(line, doc) {
+  const view = doc && doc.defaultView;
+  const dial = doc && typeof doc.querySelector === 'function' ? doc.querySelector('.orr-speeddial') : null;
+  if (!line || !line.style || !view || !dial || typeof dial.getBoundingClientRect !== 'function'
+    || typeof line.getBoundingClientRect !== 'function') return null;
+  const dialRect = dial.getBoundingClientRect();
+  const ownRect = line.getBoundingClientRect();
+  const overlaps = dialRect.height > 0 && dialRect.left < ownRect.right && dialRect.right > ownRect.left;
+  line.style.bottom = overlaps
+    ? `max(248px, ${Math.round(view.innerHeight - dialRect.top + STABLE_LOAD_DIAL_CLEARANCE_PX)}px)`
+    : '';
+  return line.style.bottom;
+}
+
 export function createHudMeta(ctx) {
   const { bus, state } = ctx;
 
@@ -43,6 +59,15 @@ export function createHudMeta(ctx) {
   document.getElementById('hud').appendChild(stableLoad);
   let stableLoadArmed = false;     // Phase 1+ has begun → the line exists
   let stableLoadHidden = false;    // player toggled it off (it returns)
+  const showStableLoad = () => {
+    stableLoad.classList.add('sf-stableload--visible');
+    seatStableLoadClearOfSpeedDial(stableLoad, document);
+  };
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('resize', () => {
+      if (stableLoad.classList.contains('sf-stableload--visible')) seatStableLoadClearOfSpeedDial(stableLoad, document);
+    });
+  }
 
   // ── the civilian-tag flicker (B2 / Elroy) ─────────────────────────────────────────────────
   const tagFlicker = document.createElement('div');
@@ -149,7 +174,7 @@ export function createHudMeta(ctx) {
 
     if (phase >= 1) {
       stableLoadArmed = true;
-      if (!stableLoadHidden) stableLoad.classList.add('sf-stableload--visible');
+      if (!stableLoadHidden) showStableLoad();
     }
 
     // specific lies
@@ -157,7 +182,7 @@ export function createHudMeta(ctx) {
       // ensure the STABLE LOAD line is showing even if the player toggled it off earlier — the HUD
       // re-asserts its courtesy. (The doc: "The line stays.")
       stableLoadHidden = false;
-      stableLoad.classList.add('sf-stableload--visible');
+      showStableLoad();
     }
     if (lie === 'civilian_tag_flicker') {
       // armed; the actual flicker fires on hud:tagFlicker (the kill)
