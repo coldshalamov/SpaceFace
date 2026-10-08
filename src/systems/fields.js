@@ -517,7 +517,10 @@ export const fields = {
     const rt=ensureRuntime(this.state);
     // orbit_node fields are pure functions of (host, simTime, index) — they respawn on the
     // first orbit rescan; persisting them would restore orphaned frozen repulsors.
-    return {revision:1,fields:this._kernel.list().filter(f=>f.tag!=='external'&&f.tag!==ORBIT_NODE_TYPE).slice(0,32).map(f=>({...f,
+    const durable = this._kernel.list().filter(f=>f.tag!=='external'&&f.tag!==ORBIT_NODE_TYPE);
+    // Finite source attacks must not disappear behind an unrelated mature deploy ledger.
+    const ordered = [...durable.filter(f=>f.thermal), ...durable.filter(f=>!f.thermal)];
+    return {revision:1,fields:ordered.slice(0,32).map(f=>({...f,
       durationS:Number.isFinite(f.durationS)?f.durationS:null,expireAt:Number.isFinite(f.expireAt)?f.expireAt:null})),
       deployed:rt.deployed,anchored:rt.anchored,npcFields:rt.npcFields,hitches:rt.hitches,cooldowns:rt.cooldowns};
   },
@@ -1635,6 +1638,15 @@ export const fields = {
     return record;
   },
   thermalPointCooled(point) { return !!this._kernel && thermalPointCooled(this._kernel.list(), point); },
+  thermalFieldsForSource(sourceKey, ownerLife = null) {
+    const now = nowOf(this.state);
+    return (this._kernel?.list() || []).filter(f => f.thermal?.sourceKey === sourceKey
+      && (ownerLife == null || f.thermal.ownerLife === ownerLife)
+      && f.createdAt <= now && f.expireAt > now).slice(0, 16).map(f => ({
+        id: f.id, kind: f.thermal.kind, ownerLife: f.thermal.ownerLife,
+        center: { ...f.center }, dir: { ...f.dir }, radius: f.radius,
+        halfAngleRad: f.halfAngleRad, createdAt: f.createdAt, expireAt: f.expireAt }));
+  },
 
   unregisterExternal(id) {
     return this._kernel ? this._kernel.unregister(id) : false;
@@ -2263,7 +2275,7 @@ export const fields = {
       // PQ-013: external authored profiles (the planet's attraction) stay in the SNAPSHOT (the
       // predictor must see the bend) but out of the deploy-tool presentation records — the planet
       // carries its own visual language (bands/sheath), never an Intake funnel or a HUD chip.
-      if (f.tag === 'external' || f.tag === ORBIT_NODE_TYPE) continue;
+      if (f.tag === 'external' || f.tag === ORBIT_NODE_TYPE || f.thermal) continue;
       let rec = active[n];
       if (!rec) rec = active[n] = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
       n++;

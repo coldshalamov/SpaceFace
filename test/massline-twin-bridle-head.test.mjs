@@ -15,6 +15,8 @@ import { readTumbleStatus } from '../src/combat/tumbleStatus.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
 import { ATTACHMENT_DEFS, DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../src/data/combatDefs.js';
+import { createSg02DynamicBodyOwner, createSg02CombatPhysicsPort } from '../src/core/sg02DynamicBodyOwner.js';
+import { kilnbackPhysicalBody } from '../src/data/kilnbackBody.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { MODULES } from '../src/data/modules.js';
@@ -257,9 +259,9 @@ test('a specialist cuts a player bridle and a heavy NPC takes the throw', () => 
   assert.deepEqual(
     heavies.map((row) => row.id),
     ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman', 'forge_regent',
-      'brood_queen', 'brood_tendril'],
+      'brood_queen', 'brood_tendril', 'kilnback'],
   );
-  assert.ok(heavies.every((row) => row.id === 'brood_tendril' || Number(row.mass) >= ANCHOR.mass),
+  assert.ok(heavies.every((row) => ['brood_tendril', 'kilnback'].includes(row.id) || Number(row.mass) >= ANCHOR.mass),
     'the shrug is proven at the Anchor mass; a lighter live heavy would sit outside that proof');
   {
     const TENDRIL = ENEMY_TYPES.find((row) => row.id === 'brood_tendril');
@@ -446,6 +448,47 @@ test('a specialist cuts a player bridle and a heavy NPC takes the throw', () => 
   assert.ok(h.events.some((entry) => entry.type === 'massline:npcCounterplay'
     && entry.payload.verb === 'cut_bridle'
     && entry.payload.role === 'specialist'));
+});
+
+test('the live 180-mass Kilnback accepts a real native bridle and its own inverse-mass catch law', async () => {
+  const def = ENEMY_TYPES.find(row => row.id === 'kilnback'); assert.ok(def);
+  const h = harness(), native = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  const previous = COMBAT_FLAGS.weaponImpulseConsequences; COMBAT_FLAGS.weaponImpulseConsequences = true;
+  let tumble;
+  try {
+    h.source.mass = 16; h.source.physicsBody = { dynamic: true, shape: 'ball', radius: 8, mass: 16 };
+    h.source.vel = { x: -80, z: 0 }; h.source.data.role = 'fighter';
+    const tug = entity(13, 'ship', 200, 0, { team: 1, mass: def.mass, maxSpeed: def.maxSpeed,
+      radius: def.collisionRadius, physicsBody: kilnbackPhysicalBody(),
+      data: { lootTableId: def.id, shipClass: def.shipClass, ai: { combatDoctrineId: def.combatDoctrineId } } });
+    assert.equal(tug.physicsBody.mass, 180); assert.equal(def.mass, 180);
+    h.state.entities.set(tug.id, tug); h.state.entityList.push(tug);
+    native.syncFromEntities(h.state.entityList); native.step(DT, h.state.tick);
+    assert.equal(native.records.get(tug.id).colliders.length, 3);
+    const port = createSg02CombatPhysicsPort(native), helpers = { combatPhysics: port };
+    const attachments = createAttachmentService({ state: h.state, catalog: h.catalog, helpers, bus: h.bus });
+    const statuses = createStatusService({ state: h.state, catalog: h.catalog, helpers, bus: h.bus });
+    h.system.helpers = helpers; h.system.registry = { get(id) {
+      return id === 'actions' || id === 'combat' ? { kernel: { attachments, catalog: h.catalog, statuses } } : null;
+    } };
+    tumble = Object.create(tumbleStates); tumble.init({ state: h.state, bus: h.bus, helpers, registry: h.system.registry });
+    const impulses = []; h.bus.on(HITSTUN_IMPULSE_EVENT, p => impulses.push(p));
+    step(h, { aim: h.source.pos }); step(h, { aim: h.source.pos, latch: true });
+    step(h, { aim: tug.pos, dt: .1 }); step(h, { aim: tug.pos, latch: true });
+    const line = Object.values(h.state.combat.attachments.byId).find(a => a.state === 'active');
+    assert.ok(line, '180-mass industrial cargo is an admitted endpoint');
+    const nativeLine = native.attachments.get(line.id);
+    assert.equal(nativeLine?.ownerEntity, h.source); assert.equal(nativeLine?.targetEntity, tug,
+      'the real native spring owner binds the same current endpoints; no duplicate hard joint is required');
+    const share = impulses.find(p => p.victimId === tug.id); assert.ok(share); assert.equal(share.victimMass, 180);
+    const law = resolveHitstunLaw({ deltaV: share.deltaV, victimCruise: resolveGovernedCombatSpeed(tug, h.state, 0),
+      attackerMass: share.attackerMass, victimMass: share.victimMass });
+    assert.equal(!!readTumbleStatus(h.state, tug), law.durationS > 0,
+      'Kilnback receives the real 180-mass consequence, rather than inheriting the unrelated 420-mass shrug proof');
+    for (let i = 0; i < 12; i++) native.step(DT, h.state.tick + i);
+    assert.ok(Number.isFinite(tug.vel.x));
+    assert.notEqual(tug.vel.x, 0, 'native momentum moves the admitted furnace and supplies burnback counterplay');
+  } finally { tumble?.destroy(); native.dispose(); COMBAT_FLAGS.weaponImpulseConsequences = previous; }
 });
 
 test('unused system is hash-inert and the HUD names a non-reel A/B linked state', () => {

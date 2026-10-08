@@ -59,6 +59,8 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'tallyThree', 'lastShift', 'lastShiftPrompt',
   'redKite', 'redKitePrompt', 'sableVenn',
   'ilexArk', 'ilexArkPrompt',
+  'kilnback',
+  'towlineTable', 'towlineTablePrompt',
   // Bark receipts/suppression are keyed per entity id and per run; a fresh run must not
   // inherit the previous run's said-latches on recycled ids.
   'barkDirector',

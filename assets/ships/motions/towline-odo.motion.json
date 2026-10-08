@@ -1,0 +1,64 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "towline_odo_controls",
+  "sourceAssetId": "SF_SHIP_TOWLINE_ODO",
+  "sourceGlbSha256": "09208a4c2c93754a5fcd0f2f43f22f9a411de2f711db5f538ce4db200850fca4",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "towline_winch",
+      "node": "MOTION_TOWLINE_WINCH",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -8,
+          3.25,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "towline_winch",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

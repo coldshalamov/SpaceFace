@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "63fa3a8fdfc0b872cdef6a63499da066222bbbbc684e741c116d79a06c528dcf",
+  "contentHash": "5931cfb60c65f992edc3b6c26306b8d7d23e1ff9a2e9de585a4d8d49f3d8aa35",
   "dynamicGroups": [
     {
       "id": "sf.render.dead-hulk.node.lod0-hook-nav-port.dynamic",
@@ -3106,8 +3106,8 @@
       "uri": "place_dead_hulk.glb"
     },
     "sourceManifest": {
-      "bytes": 237468,
-      "sha256": "f81482b5db5fb8bc80a607c9567b9ad00b30b25338d4719e7335e0df7f5c11d3",
+      "bytes": 253149,
+      "sha256": "1474bb0268e8ec1fa038df8f8af21a0d2be65d83b2c451800588b984a3757e31",
       "uri": "pilots.json"
     }
   },
@@ -4333,7 +4333,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dead_hulk.glb"
   },
-  "runtimeHash": "701c3fad9036323cb182aae7c6a9abb7ee63ca8fd944088c551277f18c52ff5f",
+  "runtimeHash": "51151b2cf5537023a37edf27292cc0fda7df370206ba1ab979dca952c75759f8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

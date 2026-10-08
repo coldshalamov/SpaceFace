@@ -4,6 +4,11 @@ import { isRedKiteCourier, createRedKiteVisualDriver } from './redKiteVisuals.js
 import { isSableVennWorkshop, createSableVennVisualDriver } from './sableVennVisuals.js';
 import { isIlexArkEntity } from '../data/ilexArkBody.js';
 import { createIlexArkVisualDriver } from './ilexArkVisuals.js';
+import { isKilnbackEntity, createKilnbackVisualDriver } from './kilnbackVisuals.js';
+import { isScissorwakeEntity } from '../data/scissorwakeBody.js';
+import { createScissorwakeVisualDriver } from './scissorwakeVisuals.js';
+import { isTowlineCrewEntity } from '../data/towlineTableBodies.js';
+import { createTowlineTableVisualDriver } from './towlineTableVisuals.js';
 import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
 // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
 //
@@ -110,11 +115,17 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   const redKite=isRedKiteCourier(entity);
   const sable=isSableVennWorkshop(entity);
   const ilex=isIlexArkEntity(entity);
-  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex)) return null;
+  const kilnback=isKilnbackEntity(entity);
+  const scissorwake=isScissorwakeEntity(entity);
+  const towline=isTowlineCrewEntity(entity);
+  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline)) return null;
   const tallyDriver=tally?createTallyThreeVisualDriver(root,entity):null;
   const redKiteDriver=redKite?createRedKiteVisualDriver(root,entity):null;
   const sableDriver=sable?createSableVennVisualDriver(root,entity):null;
   const ilexDriver=ilex?createIlexArkVisualDriver(root,entity):null;
+  const kilnbackDriver=kilnback?createKilnbackVisualDriver(root,entity):null;
+  const scissorwakeDriver=scissorwake?createScissorwakeVisualDriver(root,entity):null;
+  const towlineDriver=towline?createTowlineTableVisualDriver(root,entity):null;
   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
   const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):latch?createLatchNineVisualDriver(root,entity):null;
   const priorDriveUpdate=root.userData.updateDriveState;
@@ -159,6 +170,9 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     tallyDriver?.dispose();
     redKiteDriver?.dispose();
     ilexDriver?.dispose();
+    kilnbackDriver?.dispose();
+    scissorwakeDriver?.dispose();
+    towlineDriver?.dispose();
     sableDriver?.dispose();
     if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
       if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
@@ -214,6 +228,9 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     tallyDriver?.update(liveEntity, simNow, a11y, state);
     redKiteDriver?.update(liveEntity, simNow, a11y, state);
     ilexDriver?.update(liveEntity, simNow, a11y, state);
+    kilnbackDriver?.update(liveEntity, simNow, a11y, state);
+    scissorwakeDriver?.update(liveEntity, simNow, a11y, state);
+    towlineDriver?.update(liveEntity, simNow, a11y, state);
     sableDriver?.update(liveEntity, simNow, a11y, state);
 
   };

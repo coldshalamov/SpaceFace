@@ -53,6 +53,8 @@ Current save version: `14`
 - `redKite`
 - `sableVenn`
 - `ilexArk`
+- `kilnback`
+- `towlineTable`
 - `lossLedger`
 - `provenance`
 - `factionPresence`
@@ -229,6 +231,7 @@ Current save version: `14`
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
 | `$.ilexArk` | null | null |
+| `$.kilnback` | null | null |
 | `$.lastShift` | null | null |
 | `$.latchNine` | null | null |
 | `$.lawSecurity` | object | {} |
@@ -463,6 +466,7 @@ Current save version: `14`
 | `$.stunts` | null | null |
 | `$.survivorPod` | object | {} |
 | `$.tensionDirector` | null | null |
+| `$.towlineTable` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |
 | `$.uiScreenMemory.bags` | object | {} |

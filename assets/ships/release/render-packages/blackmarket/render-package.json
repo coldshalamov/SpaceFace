@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c2ca50a690994176104d0b1b42bb13c8eae79f6c2a794144ad12295ccd0d387c",
+  "contentHash": "8dfdc5e843e286cac13fd623baac50bbe64d9b665a30e08aac6d65efacfde4bf",
   "dynamicGroups": [
     {
       "id": "sf.render.blackmarket.node.lod0-hook-nav-port.dynamic",
@@ -6678,8 +6678,8 @@
       "uri": "place_station_blackmarket.glb"
     },
     "sourceManifest": {
-      "bytes": 237468,
-      "sha256": "f81482b5db5fb8bc80a607c9567b9ad00b30b25338d4719e7335e0df7f5c11d3",
+      "bytes": 253149,
+      "sha256": "1474bb0268e8ec1fa038df8f8af21a0d2be65d83b2c451800588b984a3757e31",
       "uri": "pilots.json"
     }
   },
@@ -9524,7 +9524,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_blackmarket.glb"
   },
-  "runtimeHash": "0c6a65cd7e493ff354cf8def2d96a38a719236420954ea19e717c8406534377a",
+  "runtimeHash": "bf224ef621db34829fa78c36396bce59b87ffae52d3ed4fec4887647dc8e8515",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -8,7 +8,7 @@ export const KILNBACK = Object.freeze({
   acquireRange: 245, sightRange: 600, earliestSeconds: 240, encounterSeconds: 105,
 });
 export const KILNBACK_CASK_IDS = Object.freeze(['cask_port', 'cask_starboard']);
-// Retained checkpoint recipe. Add to the live roster only with its runtime/art integration.
+// Canonical furnace recipe; the encounter owner controls its one finite introduction.
 export const KILNBACK_ENEMY = Object.freeze({
   id: 'kilnback', name: 'Kilnback', shipId: 'ship_hawser',
   silhouette: 'kilnback', factionId: 'faction_reach', aiArchetype: 'brawler',
@@ -23,12 +23,22 @@ export const KILNBACK_ENEMY = Object.freeze({
   behavior: 'finite furnace tug; committed heat lanes, vulnerable coolant casks and a long vent window',
   loot: { creditsRange: [70, 130], drops: [] },
 });
+// The furnace retains the same engine/helm when a coolant part leaves; native force/torque
+// remain bounded while the lighter compound responds through its actual mass and inertia.
+export function kilnbackFlightModel(body, base = {}) {
+  const massScale = KILNBACK_ENEMY.mass / body.mass, inertiaScale = 15425 / body.inertiaY;
+  return { ...base, flightClass: 'hauler', mass: body.mass, inertia: body.inertiaY,
+    mainAccel: KILNBACK_ENEMY.accel * massScale, reverseAccel: 7.2 * massScale,
+    strafeAccel: 9 * massScale, maxSpeed: KILNBACK_ENEMY.maxSpeed,
+    maxYawRate: KILNBACK_ENEMY.turnRate, angularAccel: 1.65 * inertiaScale,
+    angularBrake: 2.75 * inertiaScale, normalMaxSpeedMult: 1, boostMult: 1, boostMaxSpeedMult: 1 };
+}
 const phases = new Set(['approach', 'preheat', 'burn', 'vent', 'retreat', 'lost']);
-const caskStates = new Set(['attached', 'releasing', 'drifting', 'spent', 'destroyed']);
+const caskStates = new Set(['attached', 'releasing', 'drifting', 'spent', 'destroyed', 'collected']);
 const bounded = (v, lo, hi, fallback) => Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : fallback;
 export function freshKilnbackActor(key, tick = 0) {
   return { key, phase: 'approach', phaseStartTick: tick, attack: 0, pulse: 0,
-    aimAngle: 0, aimPoint: null, targetId: null, bodyRevision: 0, ventUntilTick: 0,
+    aimAngle: 0, aimPoint: null, targetId: null, rewardCaskId: null, rewardClaimed: false, bodyRevision: 0, ventUntilTick: 0,
     casks: Object.fromEntries(KILNBACK_CASK_IDS.map(id => [id,
       { status: 'attached', coolant: KILNBACK.coolantPerCask, collar: KILNBACK.collarHull,
         hull: KILNBACK.caskHull, pose: null, fieldCreated: false }])),
@@ -41,6 +51,13 @@ export function normalizeKilnbackActor(raw, key, tick = 0) {
   for (const field of ['phaseStartTick', 'attack', 'pulse', 'bodyRevision', 'ventUntilTick'])
     row[field] = Math.floor(bounded(raw[field], 0, Number.MAX_SAFE_INTEGER, row[field]));
   row.pulse = Math.min(6, row.pulse);
+  if (row.phaseStartTick > tick) {
+    // A corrupt/future phase must earn a full new warning, never resume an unseen burn.
+    row.phase = 'vent'; row.pulse = 6; row.phaseStartTick = tick;
+  }
+  row.rewardCaskId = KILNBACK_CASK_IDS.includes(raw.rewardCaskId) ? raw.rewardCaskId : null;
+  row.rewardClaimed = raw.rewardClaimed === true;
+  row.selfBurnAttack = typeof raw.selfBurnAttack === 'string' ? raw.selfBurnAttack.slice(0, 180) : null;
   row.aimAngle = bounded(raw.aimAngle, -Math.PI * 2, Math.PI * 2, 0);
   row.targetId = raw.targetId ?? null;
   row.targetLife = Number.isSafeInteger(raw.targetLife) ? raw.targetLife : null;

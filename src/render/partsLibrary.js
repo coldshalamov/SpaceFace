@@ -4,6 +4,10 @@ import { tallyThreePlaceTransform } from '../data/tallyThreeBody.js';
 import { isRedKiteEntity, RED_KITE_RADIUS } from '../data/redKiteBody.js';
 import { isSableVennEntity, SABLE_VENN_RADIUS } from '../data/sableVennBody.js';
 import { isIlexArkEntity, isIlexVaultEntity, ILEX_ARK_RADIUS } from '../data/ilexArkBody.js';
+import { isKilnbackEntity, isKilnbackCask } from './kilnbackVisuals.js';
+import { KILNBACK_RADIUS } from '../data/kilnbackBody.js';
+import { isScissorwakeEntity, SCISSORWAKE_RADIUS } from '../data/scissorwakeBody.js';
+import { isTowlineCrewEntity, isTowlineCleanupEntity, towlineCrewRadius } from '../data/towlineTableBodies.js';
 import { recordCeresWorkfleetAuthoredSource, recordLatchAuthoredSource } from '../core/machineryPresentation.js';
 import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
 import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
@@ -192,6 +196,8 @@ function authoredPayloadIsRiggedPod(entity) {
   return entity?.data?.payloadType === 'jettisoned_cargo';
 }
 export function authoredPayloadFileForEntity(entity) {
+  if (isKilnbackCask(entity)) return 'wholeships/kilnback_cask.glb';
+  if (isTowlineCleanupEntity(entity)) return 'wholeships/towline_debris.glb';
   if (isIlexVaultEntity(entity)) return 'wholeships/ilex_vault.glb';
   if (authoredPayloadIsRiggedPod(entity)) return AUTHORED_RIGGED_POD_FILE;
   return authoredPayloadIsSpindle(entity) ? AUTHORED_SP07_PAYLOAD_FILE : AUTHORED_CARGO_CAPSULE_FILE;
@@ -202,6 +208,7 @@ export function authoredPayloadSlotForEntity(entity) {
 // Draw-time fit: the spindle is authored 1:1 in WU (scale 1 always); the capsule keeps
 // the longest-axis fit. Exported for the PQ-195.00 render-selector contract test.
 export function authoredPayloadDrawScale(entity, targetRadius, authoredEnvelope) {
+  if (isKilnbackCask(entity) || isTowlineCleanupEntity(entity)) return 1;
   if (isIlexVaultEntity(entity)) return 1;
   if (authoredPayloadIsSpindle(entity)) return 1;
   return (targetRadius * 2) / authoredEnvelope;
@@ -1254,6 +1261,7 @@ const REQUIRED_WHOLE_SHIP_ASSET_REFS = Object.freeze(new Set([
  * kit cannot substitute while those bodies decode. Traffic-role maps still win over defId, so
  * Helios Lark/Span/Cradle stay on courier/hauler/miner. */
 export function requiresProductionWholeShipForEntity(entity) {
+  if (isKilnbackEntity(entity) || isScissorwakeEntity(entity) || isTowlineCrewEntity(entity)) return true;
   if (isIlexArkEntity(entity)) return true;
   if (isRedKiteEntity(entity)) return true;
   if (isSableVennEntity(entity)) return true;
@@ -1677,6 +1685,9 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
   }),
 });
 const WHOLE_SHIP_LOD_FAMILY_BY_FILE = Object.freeze(Object.fromEntries([
+  ...['kilnback', 'scissorwake', 'towline_mara', 'towline_odo', 'towline_kit'].map((family) => [
+    `wholeships/${family}.glb`, Object.freeze({lod0:`wholeships/${family}.glb`,lod1:`wholeships/${family}_lod1.glb`,lod2:`wholeships/${family}_lod2.glb`}),
+  ]),
   ['wholeships/ilex_ark.glb', Object.freeze({lod0:'wholeships/ilex_ark.glb',lod1:'wholeships/ilex_ark_lod1.glb',lod2:'wholeships/ilex_ark_lod2.glb'})],
   ['wholeships/red_kite.glb', Object.freeze({lod0:'wholeships/red_kite.glb',lod1:'wholeships/red_kite_lod1.glb',lod2:'wholeships/red_kite_lod2.glb'})],
   ['wholeships/sable_patchwork.glb', Object.freeze({lod0:'wholeships/sable_patchwork.glb',lod1:'wholeships/sable_patchwork_lod1.glb',lod2:'wholeships/sable_patchwork_lod2.glb'})],
@@ -2077,7 +2088,11 @@ function placeStampEnvelopeBounds(entity, bounds, boundary) {
 
 /** Source-origin fit shared by raw and packaged Ceres hull composition. */
 export function wholeShipHullPlacement(record) {
-  const scale = String(record.assetId).startsWith('SF_SHIP_ILEX_ARK') ? 1 / ILEX_ARK_RADIUS
+  const towlineId = /^SF_SHIP_TOWLINE_(MARA|ODO|KIT)/.exec(String(record.assetId))?.[1]?.toLowerCase();
+  const scale = towlineId ? 1 / towlineCrewRadius(towlineId)
+    : String(record.assetId).startsWith('SF_SHIP_KILNBACK') ? 1 / KILNBACK_RADIUS
+    : String(record.assetId).startsWith('SF_SHIP_SCISSORWAKE') ? 1 / SCISSORWAKE_RADIUS
+    : String(record.assetId).startsWith('SF_SHIP_ILEX_ARK') ? 1 / ILEX_ARK_RADIUS
     : String(record.assetId).startsWith('SF_SHIP_RED_KITE') ? 1 / RED_KITE_RADIUS
     : String(record.assetId).startsWith('SF_SHIP_SABLE_PATCHWORK') ? 1 / SABLE_VENN_RADIUS
     : record.assetId === CERES_BREAKER_ASSET ? CERES_BREAKER_NORMALIZED_SCALE : null;
@@ -2086,6 +2101,12 @@ export function wholeShipHullPlacement(record) {
 
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
+  if (isKilnbackEntity(entity)) return liveWholeShipSelection('wholeships/kilnback.glb','SF_SHIP_KILNBACK','kilnback');
+  if (isScissorwakeEntity(entity)) return liveWholeShipSelection('wholeships/scissorwake.glb','SF_SHIP_SCISSORWAKE','scissorwake');
+  if (isTowlineCrewEntity(entity)) {
+    const family='towline_'+entity.data.towlineMemberId;
+    return liveWholeShipSelection('wholeships/'+family+'.glb',entity.data.authoredAssetId,family);
+  }
   if (isIlexArkEntity(entity)) return liveWholeShipSelection('wholeships/ilex_ark.glb','SF_SHIP_ILEX_ARK','ilex_ark');
   if (isRedKiteEntity(entity)) return liveWholeShipSelection('wholeships/red_kite.glb','SF_SHIP_RED_KITE','red_kite');
   if (isSableVennEntity(entity)) return liveWholeShipSelection('wholeships/sable_patchwork.glb','SF_SHIP_SABLE_PATCHWORK','sable_patchwork');
@@ -3517,17 +3538,18 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
 
   const center = Array.isArray(record.bounds?.center) ? record.bounds.center : [0, 0, 0];
+  const sourceOrigin = isIlexVaultEntity(entity) || isKilnbackCask(entity) || isTowlineCleanupEntity(entity);
   root.position.set(
-    isIlexVaultEntity(entity) ? 0 : -(Number(center[0]) || 0) * scale,
-    isIlexVaultEntity(entity) ? 0 : -(Number(center[1]) || 0) * scale,
-    isIlexVaultEntity(entity) ? 0 : -(Number(center[2]) || 0) * scale,
+    sourceOrigin ? 0 : -(Number(center[0]) || 0) * scale,
+    sourceOrigin ? 0 : -(Number(center[1]) || 0) * scale,
+    sourceOrigin ? 0 : -(Number(center[2]) || 0) * scale,
   );
   root.userData.authoredWorldScale = scale;
   root.userData.collisionEnvelopeRadius = targetRadius;
   root.userData.visualBounds = {
     // Committed frame: the recenter above lands authored bounds-center at origin — stamping
     // the authored center would mis-describe the drawn body to every cull/stamp consumer.
-    center: isIlexVaultEntity(entity) ? [...center] : [0, 0, 0],
+    center: sourceOrigin ? [...center] : [0, 0, 0],
     size: boundsSize.map((value) => (Number(value) || 0) * scale),
   };
   // PQ-195.00: the slot follows the entity's authored body — `place` for the spindle, `pod`
@@ -10354,6 +10376,9 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   if (hullRecord && isRedKiteEntity(entity)) root.userData.redKiteAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   if (hullRecord && isSableVennEntity(entity)) root.userData.sableVennAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   if (hullRecord && isIlexArkEntity(entity)) root.userData.ilexArkAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
+  if (hullRecord && isKilnbackEntity(entity)) root.userData.kilnbackAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
+  if (hullRecord && isScissorwakeEntity(entity)) root.userData.scissorwakeAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
+  if (hullRecord && isTowlineCrewEntity(entity)) root.userData.towlineAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   yield;
   let hullPartRoot = null;
   if (hullRecord) {
@@ -10499,7 +10524,8 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
   ensureStandardSockets(hull, hullRecord);
-  if (!ceresWorkfleetRole(entity) && !isRedKiteEntity(entity) && !isSableVennEntity(entity) && !isIlexArkEntity(entity)) attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
+  if (!ceresWorkfleetRole(entity) && !isRedKiteEntity(entity) && !isSableVennEntity(entity) && !isIlexArkEntity(entity)
+    && !isKilnbackEntity(entity) && !isScissorwakeEntity(entity) && !isTowlineCrewEntity(entity)) attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually

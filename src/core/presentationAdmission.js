@@ -49,6 +49,8 @@ export function hasExplicitAuthoredPayloadPresentation(entity) {
   if (!entity || entity.alive === false || entity.type !== 'payload') return false;
   const assetId = entity.data?.authoredPayloadAssetId;
   return assetId === 'pod_cargo_container' || assetId === 'place_breakaway_sp07'
+    || (assetId === 'SF_PROP_KILNBACK_CASK' && entity.data?.persistenceOwner === 'kilnback')
+    || (assetId === 'SF_PROP_TOWLINE_DEBRIS' && entity.data?.persistenceOwner === 'towlineTable')
     || (assetId === 'SF_PROP_ILEX_VAULT' && entity.data?.persistenceOwner === 'ilexArk');
 }
 

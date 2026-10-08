@@ -703,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "803c65d5ab467972d056b23ec4269790aae9bcf25ccc1ba35b34f96e290c17a6",
+  "contentHash": "847ccb258ad852b68ce8a41cae5fec3a73933ef478f4948818e1e6e84e5ba927",
   "dynamicGroups": [
     {
       "id": "sf.render.massline-express-liner-v1-lod2.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -2780,8 +2780,8 @@
       "uri": "massline_express_liner_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 237468,
-      "sha256": "f81482b5db5fb8bc80a607c9567b9ad00b30b25338d4719e7335e0df7f5c11d3",
+      "bytes": 253149,
+      "sha256": "1474bb0268e8ec1fa038df8f8af21a0d2be65d83b2c451800588b984a3757e31",
       "uri": "pilots.json"
     }
   },
@@ -4109,7 +4109,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb"
   },
-  "runtimeHash": "636ec1f6fc5ff60a9f1a6f062ebdf448b8914c6134884ec5fca1cb1a17b387f6",
+  "runtimeHash": "d8862a007a347fba035d7c90612a56825afc663411c4072c79d6b8ad93d75356",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

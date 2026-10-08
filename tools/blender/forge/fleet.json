@@ -1048,6 +1048,62 @@
       "part_id": "wholeship_ilex_vault",
       "npc_root": "SF_PROP_ILEX_VAULT_ROOT",
       "note": "Original recoverable botanical vault: same geometry as each attached Ilex conservatory, source scale1 and canonical payload admission."
+    },
+    "kilnback": {
+      "layout": "npc",
+      "file": "kilnback",
+      "asset_id": "SF_SHIP_KILNBACK",
+      "part_id": "wholeship_kilnback",
+      "npc_root": "SF_SHIP_KILNBACK_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "kilnback_cask": {
+      "layout": "npc",
+      "file": "kilnback_cask",
+      "asset_id": "SF_PROP_KILNBACK_CASK",
+      "part_id": "wholeship_kilnback_cask",
+      "npc_root": "SF_PROP_KILNBACK_CASK_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "scissorwake": {
+      "layout": "npc",
+      "file": "scissorwake",
+      "asset_id": "SF_SHIP_SCISSORWAKE",
+      "part_id": "wholeship_scissorwake",
+      "npc_root": "SF_SHIP_SCISSORWAKE_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "towline_mara": {
+      "layout": "npc",
+      "file": "towline_mara",
+      "asset_id": "SF_SHIP_TOWLINE_MARA",
+      "part_id": "wholeship_towline_mara",
+      "npc_root": "SF_SHIP_TOWLINE_MARA_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "towline_odo": {
+      "layout": "npc",
+      "file": "towline_odo",
+      "asset_id": "SF_SHIP_TOWLINE_ODO",
+      "part_id": "wholeship_towline_odo",
+      "npc_root": "SF_SHIP_TOWLINE_ODO_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "towline_kit": {
+      "layout": "npc",
+      "file": "towline_kit",
+      "asset_id": "SF_SHIP_TOWLINE_KIT",
+      "part_id": "wholeship_towline_kit",
+      "npc_root": "SF_SHIP_TOWLINE_KIT_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "towline_debris": {
+      "layout": "npc",
+      "file": "towline_debris",
+      "asset_id": "SF_PROP_TOWLINE_DEBRIS",
+      "part_id": "wholeship_towline_debris",
+      "npc_root": "SF_PROP_TOWLINE_DEBRIS_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
     }
   }
 }

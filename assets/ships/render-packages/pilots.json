@@ -3123,6 +3123,123 @@
       "metadataUrl": "assets/ships/release/render-packages/kestrel-lod2/render-package.json"
     },
     {
+      "key": "kilnback",
+      "assetId": "sf.render.kilnback",
+      "runtimeAssetId": "SF_SHIP_KILNBACK",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_kilnback",
+      "sourceUrl": "assets/ships/release/parts/wholeships/kilnback.glb",
+      "releaseSha256": "7c0b5a8d3cf6d26b3fb5dd8d96781e47f3cd0bd0868b506cff4bb42a51e4083e",
+      "releaseBytes": 709396,
+      "dynamicNameIncludes": [
+        "MOTION_KILNBACK_SLAT_1",
+        "MOTION_KILNBACK_SLAT_2",
+        "MOTION_KILNBACK_SLAT_3",
+        "MOTION_KILNBACK_SLAT_4",
+        "MOTION_KILNBACK_SLAT_5",
+        "MOTION_KILNBACK_SLAT_6",
+        "MOTION_KILNBACK_CASK_PORT",
+        "MOTION_KILNBACK_CASK_STARBOARD"
+      ],
+      "outputDir": "assets/ships/release/render-packages/kilnback",
+      "metadataUrl": "assets/ships/release/render-packages/kilnback/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "kilnback-cask",
+      "assetId": "sf.render.kilnback-cask",
+      "runtimeAssetId": "SF_PROP_KILNBACK_CASK",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_kilnback_cask",
+      "sourceUrl": "assets/ships/release/parts/wholeships/kilnback_cask.glb",
+      "releaseSha256": "c180f3923bb305e1955a7b5d284db7cbecbbe0648507d6440571d2b4762972e1",
+      "releaseBytes": 354424,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/kilnback-cask",
+      "metadataUrl": "assets/ships/release/render-packages/kilnback-cask/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "kilnback-cask-lod1",
+      "assetId": "sf.render.kilnback-cask-lod1",
+      "runtimeAssetId": "SF_PROP_KILNBACK_CASK",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_kilnback_cask_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/kilnback_cask_lod1.glb",
+      "releaseSha256": "b432149849ddd15101277d86223750b9ab0fd7bb2150373763ad7b7a489b91aa",
+      "releaseBytes": 332456,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/kilnback-cask-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/kilnback-cask-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "kilnback-cask-lod2",
+      "assetId": "sf.render.kilnback-cask-lod2",
+      "runtimeAssetId": "SF_PROP_KILNBACK_CASK",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_kilnback_cask_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/kilnback_cask_lod2.glb",
+      "releaseSha256": "11b4e358fdc7440d3403977621e8e3d1f70a10cd880f0e5f6e92d13d442ea85b",
+      "releaseBytes": 326284,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/kilnback-cask-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/kilnback-cask-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "kilnback-lod1",
+      "assetId": "sf.render.kilnback-lod1",
+      "runtimeAssetId": "SF_SHIP_KILNBACK",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_kilnback_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/kilnback_lod1.glb",
+      "releaseSha256": "f80a7ff4344cede7ed25685e89fa132fdcb587a20fc57eacd86e10c1eae3a3d5",
+      "releaseBytes": 573740,
+      "dynamicNameIncludes": [
+        "MOTION_KILNBACK_SLAT_1",
+        "MOTION_KILNBACK_SLAT_2",
+        "MOTION_KILNBACK_SLAT_3",
+        "MOTION_KILNBACK_SLAT_4",
+        "MOTION_KILNBACK_SLAT_5",
+        "MOTION_KILNBACK_SLAT_6",
+        "MOTION_KILNBACK_CASK_PORT",
+        "MOTION_KILNBACK_CASK_STARBOARD"
+      ],
+      "outputDir": "assets/ships/release/render-packages/kilnback-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/kilnback-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "kilnback-lod2",
+      "assetId": "sf.render.kilnback-lod2",
+      "runtimeAssetId": "SF_SHIP_KILNBACK",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_kilnback_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/kilnback_lod2.glb",
+      "releaseSha256": "d3b2acdee86bd26d9825e264eb862d97f0e6ddfdc4e4b376d23060e9510cd604",
+      "releaseBytes": 504964,
+      "dynamicNameIncludes": [
+        "MOTION_KILNBACK_SLAT_1",
+        "MOTION_KILNBACK_SLAT_2",
+        "MOTION_KILNBACK_SLAT_3",
+        "MOTION_KILNBACK_SLAT_4",
+        "MOTION_KILNBACK_SLAT_5",
+        "MOTION_KILNBACK_SLAT_6",
+        "MOTION_KILNBACK_CASK_PORT",
+        "MOTION_KILNBACK_CASK_STARBOARD"
+      ],
+      "outputDir": "assets/ships/release/render-packages/kilnback-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/kilnback-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
       "key": "lane-beacon",
       "assetId": "sf.render.lane-beacon",
       "runtimeAssetId": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
@@ -4378,6 +4495,63 @@
       "sceneRoot": true
     },
     {
+      "key": "scissorwake",
+      "assetId": "sf.render.scissorwake",
+      "runtimeAssetId": "SF_SHIP_SCISSORWAKE",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_scissorwake",
+      "sourceUrl": "assets/ships/release/parts/wholeships/scissorwake.glb",
+      "releaseSha256": "02c769c72a414d85836104210aa035d6af122f8f5e6e3b0c2aaa39f07bfdae89",
+      "releaseBytes": 535324,
+      "dynamicNameIncludes": [
+        "MOTION_SCISSORWAKE_BLADE_PORT",
+        "MOTION_SCISSORWAKE_BLADE_STARBOARD",
+        "MOTION_SCISSORWAKE_SPOOL"
+      ],
+      "outputDir": "assets/ships/release/render-packages/scissorwake",
+      "metadataUrl": "assets/ships/release/render-packages/scissorwake/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "scissorwake-lod1",
+      "assetId": "sf.render.scissorwake-lod1",
+      "runtimeAssetId": "SF_SHIP_SCISSORWAKE",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_scissorwake_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/scissorwake_lod1.glb",
+      "releaseSha256": "32617a8188fefca188af705af3552560560b5db3ba2fce655207dcabd1a3f9df",
+      "releaseBytes": 430828,
+      "dynamicNameIncludes": [
+        "MOTION_SCISSORWAKE_BLADE_PORT",
+        "MOTION_SCISSORWAKE_BLADE_STARBOARD",
+        "MOTION_SCISSORWAKE_SPOOL"
+      ],
+      "outputDir": "assets/ships/release/render-packages/scissorwake-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/scissorwake-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "scissorwake-lod2",
+      "assetId": "sf.render.scissorwake-lod2",
+      "runtimeAssetId": "SF_SHIP_SCISSORWAKE",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_scissorwake_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/scissorwake_lod2.glb",
+      "releaseSha256": "e9a81fdb6a12c207b43bd22835249e6e6bb5567b1f59ad541496a0c6630038f5",
+      "releaseBytes": 395156,
+      "dynamicNameIncludes": [
+        "MOTION_SCISSORWAKE_BLADE_PORT",
+        "MOTION_SCISSORWAKE_BLADE_STARBOARD",
+        "MOTION_SCISSORWAKE_SPOOL"
+      ],
+      "outputDir": "assets/ships/release/render-packages/scissorwake-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/scissorwake-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
       "key": "scrap-cage",
       "assetId": "sf.render.scrap-cage",
       "runtimeAssetId": "place_scrap_cage",
@@ -4681,6 +4855,207 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/tanker-coupling",
       "metadataUrl": "assets/ships/release/render-packages/tanker-coupling/render-package.json"
+    },
+    {
+      "key": "towline-debris",
+      "assetId": "sf.render.towline-debris",
+      "runtimeAssetId": "SF_PROP_TOWLINE_DEBRIS",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_towline_debris",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_debris.glb",
+      "releaseSha256": "03474a63a5f4607a44ca05708555d6de0dc0bae22da5cb0f2f335e376ec444e5",
+      "releaseBytes": 332908,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/towline-debris",
+      "metadataUrl": "assets/ships/release/render-packages/towline-debris/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-debris-lod1",
+      "assetId": "sf.render.towline-debris-lod1",
+      "runtimeAssetId": "SF_PROP_TOWLINE_DEBRIS",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_towline_debris_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_debris_lod1.glb",
+      "releaseSha256": "406125f6cb54078ddd1b976550817e3b61873dcfd06356cce5197666195fee8b",
+      "releaseBytes": 326524,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/towline-debris-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/towline-debris-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-debris-lod2",
+      "assetId": "sf.render.towline-debris-lod2",
+      "runtimeAssetId": "SF_PROP_TOWLINE_DEBRIS",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_towline_debris_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_debris_lod2.glb",
+      "releaseSha256": "6bb1cbdc15ac565ab960c36dc5a0fc9e078b1967b4543b1b21db777fb8f6e15e",
+      "releaseBytes": 322108,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/towline-debris-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/towline-debris-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-kit",
+      "assetId": "sf.render.towline-kit",
+      "runtimeAssetId": "SF_SHIP_TOWLINE_KIT",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_towline_kit",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit.glb",
+      "releaseSha256": "3d91571e34a7b8db6ccf747d840a32dfbfc1652d8ead5c7e52c73144bd54112c",
+      "releaseBytes": 397308,
+      "dynamicNameIncludes": [
+        "MOTION_TOWLINE_ACKNOWLEDGE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/towline-kit",
+      "metadataUrl": "assets/ships/release/render-packages/towline-kit/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-kit-lod1",
+      "assetId": "sf.render.towline-kit-lod1",
+      "runtimeAssetId": "SF_SHIP_TOWLINE_KIT",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_towline_kit_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit_lod1.glb",
+      "releaseSha256": "b4788545abca3225b0727af8dd08162fd660a2c9cc745da1c76f2f940e304372",
+      "releaseBytes": 364152,
+      "dynamicNameIncludes": [
+        "MOTION_TOWLINE_ACKNOWLEDGE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/towline-kit-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/towline-kit-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-kit-lod2",
+      "assetId": "sf.render.towline-kit-lod2",
+      "runtimeAssetId": "SF_SHIP_TOWLINE_KIT",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_towline_kit_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_kit_lod2.glb",
+      "releaseSha256": "f37eb627777c178644c423e03afbbc0a7c496401e2402b0a8bbbcc49de44bf55",
+      "releaseBytes": 349944,
+      "dynamicNameIncludes": [
+        "MOTION_TOWLINE_ACKNOWLEDGE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/towline-kit-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/towline-kit-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-mara",
+      "assetId": "sf.render.towline-mara",
+      "runtimeAssetId": "SF_SHIP_TOWLINE_MARA",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_towline_mara",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_mara.glb",
+      "releaseSha256": "b72c8af5d7e1450a6455f40524e04ba4b34652d64a2084af7d40bcaed4fa772e",
+      "releaseBytes": 396616,
+      "dynamicNameIncludes": [
+        "MOTION_TOWLINE_JAW_PORT",
+        "MOTION_TOWLINE_JAW_STARBOARD"
+      ],
+      "outputDir": "assets/ships/release/render-packages/towline-mara",
+      "metadataUrl": "assets/ships/release/render-packages/towline-mara/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-mara-lod1",
+      "assetId": "sf.render.towline-mara-lod1",
+      "runtimeAssetId": "SF_SHIP_TOWLINE_MARA",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_towline_mara_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_mara_lod1.glb",
+      "releaseSha256": "193e7606bcd466cef962cd4bc65fbfcf769db0826a1f5757eebd8634d7822c48",
+      "releaseBytes": 366904,
+      "dynamicNameIncludes": [
+        "MOTION_TOWLINE_JAW_PORT",
+        "MOTION_TOWLINE_JAW_STARBOARD"
+      ],
+      "outputDir": "assets/ships/release/render-packages/towline-mara-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/towline-mara-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-mara-lod2",
+      "assetId": "sf.render.towline-mara-lod2",
+      "runtimeAssetId": "SF_SHIP_TOWLINE_MARA",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_towline_mara_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_mara_lod2.glb",
+      "releaseSha256": "89a1e624508d5edbcfdc69c87f67804e3d563a953c9e735e590b42389a21c97c",
+      "releaseBytes": 353588,
+      "dynamicNameIncludes": [
+        "MOTION_TOWLINE_JAW_PORT",
+        "MOTION_TOWLINE_JAW_STARBOARD"
+      ],
+      "outputDir": "assets/ships/release/render-packages/towline-mara-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/towline-mara-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-odo",
+      "assetId": "sf.render.towline-odo",
+      "runtimeAssetId": "SF_SHIP_TOWLINE_ODO",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_towline_odo",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_odo.glb",
+      "releaseSha256": "bea0694016d29e87c5c42c10bd0a59eff38ce8422d828e6c931ec71a48240172",
+      "releaseBytes": 396624,
+      "dynamicNameIncludes": [
+        "MOTION_TOWLINE_WINCH"
+      ],
+      "outputDir": "assets/ships/release/render-packages/towline-odo",
+      "metadataUrl": "assets/ships/release/render-packages/towline-odo/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-odo-lod1",
+      "assetId": "sf.render.towline-odo-lod1",
+      "runtimeAssetId": "SF_SHIP_TOWLINE_ODO",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_towline_odo_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_odo_lod1.glb",
+      "releaseSha256": "53f2e9edbb7e9c06bb86f268a3a8ba1d8e7ff3ffed8d5144dbb834ccb41df8fd",
+      "releaseBytes": 362076,
+      "dynamicNameIncludes": [
+        "MOTION_TOWLINE_WINCH"
+      ],
+      "outputDir": "assets/ships/release/render-packages/towline-odo-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/towline-odo-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "towline-odo-lod2",
+      "assetId": "sf.render.towline-odo-lod2",
+      "runtimeAssetId": "SF_SHIP_TOWLINE_ODO",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_towline_odo_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/towline_odo_lod2.glb",
+      "releaseSha256": "045a20eed22b0939583ea4b5ae01dcf62b7e372b9fe2626020f7f1fb892a028c",
+      "releaseBytes": 348880,
+      "dynamicNameIncludes": [
+        "MOTION_TOWLINE_WINCH"
+      ],
+      "outputDir": "assets/ships/release/render-packages/towline-odo-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/towline-odo-lod2/render-package.json",
+      "sceneRoot": true
     },
     {
       "key": "traffic-signal",

@@ -1,0 +1,2278 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.towline-mara-lod1.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.4149999618530273,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.4149999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -12.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -12.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.anchor.socket-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.4000000059604645,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -12.399999618530273,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -12.399999618530273,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.towline-mara-lod1",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "e152cedeb734d7270f4f72dd12c9f389f6cf7776ef6c1a6977e262a839badb58",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-port-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-port-livery"
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-starboard-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-starboard-livery"
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.motion-towline-jaw-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.towline-mara-lod1.node.motion-towline-jaw-port"
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.motion-towline-jaw-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.towline-mara-lod1.node.motion-towline-jaw-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          4.9992194175720215,
+          2.6000256538391113,
+          4.391354560852051
+        ],
+        "min": [
+          -11.999186515808105,
+          -1.7000257968902588,
+          -4.391354560852051
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "68d0c17cd6688a1a094a846f138c952eb1ec1b41aae6ad88259d1f33d2adbc9a",
+      "id": "sf.render.towline-mara-lod1.node.collision-towline-mara-core.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_TOWLINE_MARA_CORE",
+      "nodeId": "sf.render.towline-mara-lod1.node.collision-towline-mara-core",
+      "primitiveIndex": 0,
+      "vertexCount": 842
+    },
+    {
+      "bounds": {
+        "max": [
+          12.489054679870605,
+          1.3499739170074463,
+          -2.796379804611206
+        ],
+        "min": [
+          0.9775615930557251,
+          -1.1499738693237305,
+          -7.998982906341553
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cc8ffd8126c850f33b6b9305482becaf1c898e8de49e4e155c0ebc3f6d9a0ec3",
+      "id": "sf.render.towline-mara-lod1.node.collision-towline-mara-jaw-port.primitive.0",
+      "indexCount": 846,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_TOWLINE_MARA_JAW_PORT",
+      "nodeId": "sf.render.towline-mara-lod1.node.collision-towline-mara-jaw-port",
+      "primitiveIndex": 0,
+      "vertexCount": 715
+    },
+    {
+      "bounds": {
+        "max": [
+          12.489054679870605,
+          1.3499739170074463,
+          7.998982906341553
+        ],
+        "min": [
+          0.9775615930557251,
+          -1.1499738693237305,
+          2.796379566192627
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1aeb8f71a48958757c8a83e1e911ba1067b663e3237251faa5154fb6fc8d4b4a",
+      "id": "sf.render.towline-mara-lod1.node.collision-towline-mara-jaw-starboard.primitive.0",
+      "indexCount": 846,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_TOWLINE_MARA_JAW_STARBOARD",
+      "nodeId": "sf.render.towline-mara-lod1.node.collision-towline-mara-jaw-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 714
+    },
+    {
+      "bounds": {
+        "max": [
+          12.489631652832031,
+          1.3477933406829834,
+          7.997616767883301
+        ],
+        "min": [
+          1.0096074342727661,
+          -1.1475670337677002,
+          -7.997193813323975
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "572769d2313b14705bdf6f4c46157c8ee55e1fb8f511c995db2d1288d294af6b",
+      "id": "sf.render.towline-mara-lod1.node.lod1-armor.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "9f540323b13d9cdecfc4cca31ac0d5ae3dd8e4b3910b7167b55aa0ae151e247a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 142
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.916417121887207,
+          0.763450026512146,
+          3.063499927520752
+        ],
+        "min": [
+          -12.220083236694336,
+          -1.163450002670288,
+          -3.063499927520752
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9bb7ffe9640d64334a74b2bc3b06c2086a3c8a9775d37ced65e6d7694ab9a99e",
+      "id": "sf.render.towline-mara-lod1.node.lod1-hook-drive-core.primitive.0",
+      "indexCount": 708,
+      "indexed": true,
+      "materialHash": "57389ed4946f5598885af1092a1cb82c83ff7d828b986fd0447ec327312cfbe8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 256
+    },
+    {
+      "bounds": {
+        "max": [
+          5.000026702880859,
+          2.599348306655884,
+          4.394942760467529
+        ],
+        "min": [
+          -12.000030517578125,
+          -1.4972262382507324,
+          -4.394845008850098
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8708df90f7822ec6c5a708e0f0ba503b05be6a54115ef7255cea554b8901682c",
+      "id": "sf.render.towline-mara-lod1.node.lod1-hull.primitive.0",
+      "indexCount": 984,
+      "indexed": true,
+      "materialHash": "5792cbd80e5c98d664f1fa6f6ef9efeacf468abfccc6cf7216e898926ba1566d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 237
+    },
+    {
+      "bounds": {
+        "max": [
+          3.9722299575805664,
+          2.8872158527374268,
+          0.7454854846000671
+        ],
+        "min": [
+          3.4268860816955566,
+          2.822784900665283,
+          -0.7454855442047119
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "37201bc4f69a0e63730814422f0bc61679c7dde105ac1b0dd0228cb24c2ad24f",
+      "id": "sf.render.towline-mara-lod1.node.lod1-lights-warm.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "6ffa1c89a2535b9be6b18ae340dfee7debe1a4f9d7c12731b07c276cb7389b27",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5983803272247314,
+          2.848565101623535,
+          2.6326308250427246
+        ],
+        "min": [
+          -3.1607108116149902,
+          2.8114349842071533,
+          -2.842590093612671
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab06644a63e9a9ed9bab94582aa34c72611f845983f3c0056b36655a26e0d59f",
+      "id": "sf.render.towline-mara-lod1.node.lod1-livery.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "4d38a4deacf048f5c0f7e15b5e4865c218bb63318456528ad3d8fc2abcccd5fa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          10.797266006469727,
+          2.6048150062561035,
+          6.428144454956055
+        ],
+        "min": [
+          -12.220000267028809,
+          -1.6998149156570435,
+          -6.428144454956055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "163fb5dd25cc4fb63ac4a1c9fbd8ef19645b8af00e92a0cc08f2d127a2d3b634",
+      "id": "sf.render.towline-mara-lod1.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 2280,
+      "indexed": true,
+      "materialHash": "d7a05d855847234bf2b143b195780b9965ca1bf22bd4cb09fa196ab723b0847f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 791
+    },
+    {
+      "bounds": {
+        "max": [
+          11.146904945373535,
+          1.5669057330759377,
+          -5.027598473479067
+        ],
+        "min": [
+          9.052813529968262,
+          1.2928658762303977,
+          -5.672116187165464
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7e7b1e5e306ff963052a6d691ca65d69f6c156829f8b16799597b87806e51711",
+      "id": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-port-livery.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "4d38a4deacf048f5c0f7e15b5e4865c218bb63318456528ad3d8fc2abcccd5fa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_TOWLINE_JAW_PORT_Livery",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-port-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 104
+    },
+    {
+      "bounds": {
+        "max": [
+          11.147132873535156,
+          1.5671626207036655,
+          5.672401641094568
+        ],
+        "min": [
+          9.052813529968262,
+          1.2928372743921597,
+          5.027558113849279
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5f3ffa0b66eb7498a0a877fee4bb1d6d3a1e5ce3f9e8da1f3586d28c0c6c219",
+      "id": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-starboard-livery.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "4d38a4deacf048f5c0f7e15b5e4865c218bb63318456528ad3d8fc2abcccd5fa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_TOWLINE_JAW_STARBOARD_Livery",
+      "nodeId": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-starboard-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 99
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "4d38a4deacf048f5c0f7e15b5e4865c218bb63318456528ad3d8fc2abcccd5fa",
+      "id": "material:4d38a4deacf048f5c0f7e15b",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "57389ed4946f5598885af1092a1cb82c83ff7d828b986fd0447ec327312cfbe8",
+      "id": "material:57389ed4946f5598885af109",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "5792cbd80e5c98d664f1fa6f6ef9efeacf468abfccc6cf7216e898926ba1566d",
+      "id": "material:5792cbd80e5c98d664f1fa6f",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6ffa1c89a2535b9be6b18ae340dfee7debe1a4f9d7c12731b07c276cb7389b27",
+      "id": "material:6ffa1c89a2535b9be6b18ae3",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9f540323b13d9cdecfc4cca31ac0d5ae3dd8e4b3910b7167b55aa0ae151e247a",
+      "id": "material:9f540323b13d9cdecfc4cca3",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d7a05d855847234bf2b143b195780b9965ca1bf22bd4cb09fa196ab723b0847f",
+      "id": "material:d7a05d855847234bf2b143b1",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.towline-mara-lod1.node.collision-towline-mara-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_TOWLINE_MARA_CORE",
+      "nodeName": "COLLISION_TOWLINE_MARA_CORE",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.collision-towline-mara-jaw-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_TOWLINE_MARA_JAW_PORT",
+      "nodeName": "COLLISION_TOWLINE_MARA_JAW_PORT",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.collision-towline-mara-jaw-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_TOWLINE_MARA_JAW_STARBOARD",
+      "nodeName": "COLLISION_TOWLINE_MARA_JAW_STARBOARD",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-hook-drive-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm",
+      "nodeName": "LOD1_Lights_Warm",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-port-livery",
+      "localTransform": [
+        1.0470457077026367,
+        0,
+        0,
+        0,
+        0,
+        1.0470457077026367,
+        0,
+        0,
+        0,
+        0,
+        1.0470457077026367,
+        0,
+        6.099859237670898,
+        -0.00011414289474487305,
+        0.00014257431030273438,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_TOWLINE_JAW_PORT_Livery",
+      "nodeName": "LOD1_MOTION_TOWLINE_JAW_PORT_Livery",
+      "nodePath": [
+        0,
+        9,
+        0
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.motion-towline-jaw-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1.0470457077026367,
+        0,
+        0,
+        0,
+        0,
+        1.0470457077026367,
+        0,
+        0,
+        0,
+        0,
+        1.0470457077026367,
+        0,
+        10.099859237670898,
+        1.4298858046531677,
+        -5.349857330322266,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-starboard-livery",
+      "localTransform": [
+        1.0471596717834473,
+        0,
+        0,
+        0,
+        0,
+        1.0471596717834473,
+        0,
+        0,
+        0,
+        0,
+        1.0471596717834473,
+        0,
+        6.099973201751709,
+        0,
+        -0.00002002716064453125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_TOWLINE_JAW_STARBOARD_Livery",
+      "nodeName": "LOD1_MOTION_TOWLINE_JAW_STARBOARD_Livery",
+      "nodePath": [
+        0,
+        10,
+        0
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.motion-towline-jaw-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1.0471596717834473,
+        0,
+        0,
+        0,
+        0,
+        1.0471596717834473,
+        0,
+        0,
+        0,
+        0,
+        1.0471596717834473,
+        0,
+        10.099973201751709,
+        1.4299999475479126,
+        5.349979877471924,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.motion-towline-jaw-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        1.4299999475479126,
+        -5.349999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_TOWLINE_JAW_PORT",
+      "nodeName": "MOTION_TOWLINE_JAW_PORT",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        1.4299999475479126,
+        -5.349999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.motion-towline-jaw-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        1.4299999475479126,
+        5.349999904632568,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_TOWLINE_JAW_STARBOARD",
+      "nodeName": "MOTION_TOWLINE_JAW_STARBOARD",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        1.4299999475479126,
+        5.349999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_SHIP_TOWLINE_MARA_ROOT",
+      "nodeName": "SF_SHIP_TOWLINE_MARA_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.4149999618530273,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.4149999618530273,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -12.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -12.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.socket-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.4000000059604645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Massline",
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-mara-lod1.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -12.399999618530273,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-mara-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -12.399999618530273,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "6be784329ff2991069ab41c86baa8725425ac6e54f3a1993ea708c95a9be45ba"
+    },
+    "sourceGlb": {
+      "bytes": 366904,
+      "sha256": "193e7606bcd466cef962cd4bc65fbfcf769db0826a1f5757eebd8634d7822c48",
+      "uri": "towline_mara_lod1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 253149,
+      "sha256": "1474bb0268e8ec1fa038df8f8af21a0d2be65d83b2c451800588b984a3757e31",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 424172,
+    "sha256": "b92a4f9803b87b5923b7320d268d7f118591f3ec52943c0e010f95d0758b30e0",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.13477420806884766,
+        0.593595027923584,
+        0
+      ],
+      "max": [
+        12.489631652832031,
+        2.8872158527374268,
+        7.998982906341553
+      ],
+      "min": [
+        -12.220083236694336,
+        -1.7000257968902588,
+        -7.998982906341553
+      ],
+      "size": [
+        24.709714889526367,
+        4.5872416496276855,
+        15.997965812683105
+      ]
+    },
+    "hidden": [
+      2,
+      3,
+      4
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4,
+          1.4299999475479126,
+          -5.349999904632568,
+          1
+        ],
+        "name": "MOTION_TOWLINE_JAW_PORT",
+        "planIndex": 11,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "towline_jaw_port",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              4
+            ],
+            [
+              0,
+              1,
+              0,
+              5.349999904632568
+            ],
+            [
+              0,
+              0,
+              1,
+              1.4299999475479126
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_TOWLINE_JAW_PORT",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "towline_jaw_port"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_TOWLINE_JAW_PORT",
+            "recordIds": [
+              "sf.render.towline-mara-lod1.node.motion-towline-jaw-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4,
+          1.4299999475479126,
+          5.349999904632568,
+          1
+        ],
+        "name": "MOTION_TOWLINE_JAW_STARBOARD",
+        "planIndex": 13,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "towline_jaw_starboard",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              4
+            ],
+            [
+              0,
+              1,
+              0,
+              -5.349999904632568
+            ],
+            [
+              0,
+              0,
+              1,
+              1.4299999475479126
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_TOWLINE_JAW_STARBOARD",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "towline_jaw_starboard"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_TOWLINE_JAW_STARBOARD",
+            "recordIds": [
+              "sf.render.towline-mara-lod1.node.motion-towline-jaw-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1.4149999618530273,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.towline-mara-lod1.anchor.socket-camera-focus",
+              "sf.render.towline-mara-lod1.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -12.300000190734863,
+          -0.20000000298023224,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.towline-mara-lod1.anchor.socket-engine-main",
+              "sf.render.towline-mara-lod1.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.199999809265137,
+          -0.4000000059604645,
+          0,
+          1
+        ],
+        "name": "SOCKET_Massline",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Massline",
+            "recordIds": [
+              "sf.render.towline-mara-lod1.anchor.socket-massline",
+              "sf.render.towline-mara-lod1.node.socket-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -12.399999618530273,
+          -0.20000000298023224,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.towline-mara-lod1.anchor.socket-trail-main",
+              "sf.render.towline-mara-lod1.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "drive": 1,
+      "hull": 5,
+      "mechanical": 1,
+      "signal": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "accent"
+      }
+    ],
+    "motionBank": {
+      "bytes": 2032,
+      "rigId": "towline_mara_controls",
+      "sha256": "7076509850dedbd10936baf3ee21f514d7fa242f0eb2c0902a7d523dee8b452f",
+      "uri": "assets/ships/motions/towline-mara.motion.json"
+    },
+    "nodeCount": 19,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_CORE",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Warm",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0470457077026367,
+          0,
+          0,
+          0,
+          0,
+          1.0470457077026367,
+          0,
+          0,
+          0,
+          0,
+          1.0470457077026367,
+          0,
+          10.099859237670898,
+          1.4298858046531677,
+          -5.349857330322266,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_JAW_PORT_Livery",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0471596717834473,
+          0,
+          0,
+          0,
+          0,
+          1.0471596717834473,
+          0,
+          0,
+          0,
+          0,
+          1.0471596717834473,
+          0,
+          10.099973201751709,
+          1.4299999475479126,
+          5.349979877471924,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_JAW_STARBOARD_Livery",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/towline_mara_lod1.glb"
+  },
+  "runtimeHash": "71a385fcd45bafd6f6f8a843728c3c5425cea0b704549a1693176c130d1b05c2",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          12.489631652832031,
+          2.8872158527374268,
+          7.998982906341553
+        ],
+        "min": [
+          -12.220083236694336,
+          -1.7000257968902588,
+          -7.998982906341553
+        ]
+      },
+      "id": "sf.render.towline-mara-lod1.body",
+      "nodeIds": [
+        "sf.render.towline-mara-lod1.node.collision-towline-mara-core",
+        "sf.render.towline-mara-lod1.node.collision-towline-mara-jaw-port",
+        "sf.render.towline-mara-lod1.node.collision-towline-mara-jaw-starboard",
+        "sf.render.towline-mara-lod1.node.lod1-armor",
+        "sf.render.towline-mara-lod1.node.lod1-hook-drive-core",
+        "sf.render.towline-mara-lod1.node.lod1-hull",
+        "sf.render.towline-mara-lod1.node.lod1-lights-warm",
+        "sf.render.towline-mara-lod1.node.lod1-livery",
+        "sf.render.towline-mara-lod1.node.lod1-mechanicaldark",
+        "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-port-livery",
+        "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-starboard-livery",
+        "sf.render.towline-mara-lod1.node.motion-towline-jaw-port",
+        "sf.render.towline-mara-lod1.node.motion-towline-jaw-starboard",
+        "sf.render.towline-mara-lod1.node.sf-ship-towline-mara-root",
+        "sf.render.towline-mara-lod1.node.socket-camera-focus",
+        "sf.render.towline-mara-lod1.node.socket-engine-main",
+        "sf.render.towline-mara-lod1.node.socket-massline",
+        "sf.render.towline-mara-lod1.node.socket-trail-main"
+      ]
+    }
+  ]
+}

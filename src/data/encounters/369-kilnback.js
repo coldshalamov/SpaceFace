@@ -4,7 +4,7 @@ export const encounterOrder = 369;
 export const trigger = deepFreeze({ id: 'kilnback_intro', tier: 'minor', deck: 'combat', weight: 0.35,
   zoneTypes: ['mining_belt', 'outlaw_zone', 'ambush_lane'], script: 'selfRegistered', fallbackScript: 'ambush',
   pressureCost: 30, cooldownS: 1200, proximity: true,
-  gates: { minSectorTier: 1, maxSecurity: 0.8, storyBeatMin: 1 } });
+  gates: { minSectorTier: 1, maxSecurity: 0.8, storyBeatMin: 1, uniqueOnce: true, sectorIds: ['sector_ceres_belt'] } });
 export const runtime = kilnbackEncounter;
 export default defineEncounter(trigger, {
   shape: { situation: 'ambush', place: trigger.zoneTypes, twist: 'none', actor: 'faction_reach' },

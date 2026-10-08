@@ -17,8 +17,8 @@ import { normalizeActivity } from '../src/ai/doctrine.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 
-// Explicit checkpoint construction through ordinary ship/native/combat helpers. Never register
-// the inactive recipe globally or call the unknown-enemy fallback to fabricate this fixture.
+// Focused construction through ordinary ship/native/combat helpers. The separate production
+// route test uses the actual registered enemy factory and authored encounter admission.
 function kilnbackFixtureSpec(pos = { x: 0, z: 0 }) {
   const spec = makeShipEntitySpec(R.shipId, { team: 1, factionId: R.factionId, pos });
   Object.assign(spec, { hull: R.hull, hullMax: R.hull, armorHp: R.armor, armorMax: R.armor,
@@ -36,7 +36,7 @@ function kilnbackFixtureSpec(pos = { x: 0, z: 0 }) {
 function fixture(native = null, bearing = 0) {
   const oldFlag = FIELD_FLAGS.enabled; FIELD_FLAGS.enabled = true;
   const ph = { name: 'physics', init() { this._sg02 = native; } };
-  const sim = createSimulation({ seed: 83, systems: [ph, fields, kilnback] });
+  const sim = createSimulation({ seed: 83, systems: [ph, fields, { name: 'scissorwake', serialize() { return { introduced: true }; } }, kilnback] });
   const s = sim.state, helpers = sim.registry.ctx.helpers;
   s.settings.gameplay.physicsBackend = native ? 'rapier-dynamic' : 'legacy';
   s.mode = 'flight'; s.tick = 120; s.simTime = 2; s.world.currentSectorId = C.sectorId;
@@ -52,7 +52,7 @@ function fixture(native = null, bearing = 0) {
   const tick = () => {
     s.tick++; s.simTime = s.tick / 60;
     system.update(1 / 60, s); field.update(1 / 60, s);
-    if (native) { native.syncFromEntities(s.entityList); native.step(1 / 60); }
+    if (native) { native.syncFromEntities(s.entityList); native.step(1 / 60, s.tick); }
   };
   const damage = (entity, amount, pos = entity.pos) => {
     const packet = scalarHitToDamagePacket({ damage: amount, damageType: 'kinetic', pos: { ...pos } });
@@ -180,7 +180,7 @@ test('native compound removes its part before admitting detached mass, and a phy
 test('encounter adapter spawns one caster and refuses a second live furnace', () => {
   const h = fixture();
   try {
-    h.helpers.removeEntity(h.caster.id);
+    h.helpers.removeEntity(h.caster.id); h.s.simTime = C.earliestSeconds;
     const live = { id: 'fixture:normal-director', plan: { ships: [] }, data: {}, ids: [] };
     let spawned = 0, aborted = null;
     const director = { now: () => h.s.simTime, spawnShips(l) {
@@ -190,11 +190,14 @@ test('encounter adapter spawns one caster and refuses a second live furnace', ()
     assert.equal(spawned, 1); assert.equal(aborted, null); assert.equal(live.phase, 'conflict');
     kilnbackEncounter.fire(director, { ...live, id: 'duplicate' }, h.s);
     assert.equal(spawned, 1); assert.equal(aborted, 'kilnback_already_live');
+    const original = h.s.entityList.find(e => e.alive && e.data?.lootTableId === C.enemyId);
+    h.helpers.removeEntity(original.id); kilnbackEncounter.fire(director, { ...live, id: 'repeat' }, h.s);
+    assert.equal(spawned, 1); assert.equal(aborted, 'kilnback_introduction_complete');
   } finally { h.close(); }
 });
 
 test('ordinary fields keep their prior shape and invalid/infinite thermal recipes fail closed', () => {
-  assert.equal(ENEMY_TYPES.some(e => e.id === R.id), false, 'inactive Kilnback stays outside the production roster');
+  assert.equal(ENEMY_TYPES.find(e => e.id === R.id), R, 'live roster shares the canonical finite furnace recipe');
   const kernel = createFieldKernel();
   assert.equal(Object.hasOwn(kernel.register({ id: 'ordinary', kind: 'well', durationS: 4 }), 'thermal'), false);
   const h = fixture();
@@ -203,5 +206,79 @@ test('ordinary fields keep their prior shape and invalid/infinite thermal recipe
       thermal: { family: 'kilnback', kind: 'burn', sourceKey: 'bad' } }), null);
     assert.equal(h.field.registerThermal({ id: 'bad', radius: 90, durationS: 4,
       thermal: { family: 'invented', kind: 'burn', sourceKey: 'bad' } }), null);
+  } finally { h.close(); }
+});
+
+
+test('lethal hull damage removes original cask mass before core wreck capture', () => {
+  const h = fixture();
+  try {
+    let massAtKill = null;
+    h.sim.bus.on('entity:killed', p => { if (p.id === h.caster.id) massAtKill = h.caster.mass; });
+    assert.equal(h.damage(h.caster, 1000).ok, true);
+    assert.equal(massAtKill, 150); assert.equal(h.row.phase, 'lost');
+    h.tick();
+    const casks = KILNBACK_CASK_IDS.map(id => h.system._find(h.row.key, id));
+    assert.ok(casks.every(Boolean)); assert.equal(casks.reduce((sum, e) => sum + e.mass, massAtKill), 180);
+    assert.equal(casks.filter(e => e.data.salvagePool.cmdty_fuel_cells === 1).length, 1);
+    h.sim.bus.emit('entity:killed', { id: h.caster.id }); h.tick();
+    assert.equal(h.s.entityList.filter(e => e.alive && e.data?.kilnbackCaskId).length, 2);
+  } finally { h.close(); }
+});
+
+test('one original intact cask uses explicit existing cargo acceptance; decline/loss cannot mint a replacement', () => {
+  const h = fixture();
+  try {
+    h.system.sever(h.row.key, 'cask_port'); h.system.sever(h.row.key, 'cask_starboard'); h.tick();
+    const cask = h.system._find(h.row.key, 'cask_port');
+    assert.equal(cask.data.salvagePool.cmdty_fuel_cells, 1);
+    const event = { pickupId: cask.id, collectorId: h.player.id, commodityId: 'cmdty_fuel_cells', amount: 1 };
+    h.sim.bus.emit('pickup:collected', event); event.acceptedAmount = 0; event.rejectedAmount = 1;
+    h.system.serialize(); assert.equal(h.row.rewardClaimed, false); assert.equal(cask.alive, true);
+    const accepted = { ...event, acceptedAmount: 1, rejectedAmount: 0 };
+    h.sim.bus.emit('pickup:collected', accepted);
+    const saved = h.system.serialize(); assert.equal(h.row.rewardClaimed, true);
+    assert.equal(cask.alive, false); assert.equal(h.row.casks.cask_port.status, 'collected');
+    h.system.deserialize(saved); h.system.afterContinue(); h.tick();
+    assert.equal(h.system._find(h.row.key, 'cask_port'), null);
+    assert.deepEqual(h.system._find(h.row.key, 'cask_starboard').data.salvagePool, {});
+    const remaining = h.system._find(h.row.key, 'cask_starboard'); h.helpers.removeEntity(remaining.id); h.tick();
+    assert.equal(h.system._find(h.row.key, 'cask_starboard'), null);
+    assert.equal(h.system.serialize().actors[0].casks.cask_starboard.status, 'destroyed');
+  } finally { h.close(); }
+});
+
+test('thermal save capacity keeps finite lanes and presentation never becomes a generic force tool', () => {
+  const h = fixture();
+  try {
+    for (let i = 0; i < 36; i++) h.field._kernel.register({ id: `a:${i}`, kind: 'well', createdAt: h.s.simTime, durationS: 500 });
+    h.tick(); h.until(() => h.row.phase === 'burn');
+    const lanes = h.field.thermalFieldsForSource(h.row.key, h.caster.occupantGeneration);
+    assert.equal(lanes.length, 1); assert.ok(lanes[0].expireAt > h.s.simTime);
+    assert.ok(h.field.serialize().fields.some(f => f.id === lanes[0].id));
+    assert.equal(h.s.fields.active.some(f => f.id === lanes[0].id), false);
+    h.system.sever(h.row.key, 'cask_port'); h.system.sever(h.row.key, 'cask_starboard'); h.tick();
+    assert.equal(h.row.phase, 'retreat'); assert.equal(h.row.pulse, 1);
+  } finally { h.close(); }
+});
+
+
+test('a reused source life cannot inherit the finite attack or cask custody', () => {
+  const h = fixture();
+  try {
+    h.tick(); const attack = h.row.attack; h.caster.occupantGeneration++;
+    h.tick(); assert.equal(h.row.attack, attack);
+    assert.equal(h.system._find(h.row.key), null); assert.equal(h.system.bind(h.caster), null);
+  } finally { h.close(); }
+});
+
+
+test('a future restored burn enters a quiet vent before any new full warning', () => {
+  const h = fixture();
+  try {
+    const saved = h.system.serialize(); saved.actors[0].phase = 'burn'; saved.actors[0].phaseStartTick = h.s.tick + 100;
+    h.system.deserialize(saved); h.system.afterContinue(); h.tick();
+    assert.equal(h.system.serialize().actors[0].phase, 'vent');
+    assert.equal(h.field._kernel.list().filter(f => f.thermal).length, 0); assert.equal(h.player.hull, 1000);
   } finally { h.close(); }
 });
