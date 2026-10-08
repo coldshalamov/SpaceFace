@@ -562,7 +562,7 @@ export class GyreSnarePresentation {
     // The two brightest flashes in the vocabulary respect reduced-flash like
     // everything else — scale the ring's alpha, not just its lifespan.
     slot.mesh.material.uniforms.uCalm.value = calm;
-    const p = this.toLocal ? this.toLocal(x, z, this._nose) : (this._nose.x = x, this._nose.z = z, this._nose);
+    const p = this.toLocal(x, z, this._nose);
     slot.mesh.position.set(p.x, 0.4, p.z);
     slot.mesh.visible = true;
   }

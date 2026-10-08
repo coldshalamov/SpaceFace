@@ -865,7 +865,10 @@ export const gyreSnare = {
       // Mass-graded snag voice: a pebble cracks bright, a rock the size of a
       // building thumps — same convention as the launch cue below. The grip
       // shake grades by mass too — coring a wreck lands heavier than a pebble.
-      this.bus.emit('audio:cue', { id: 'gyre_snare_snag', rate: 1.08 - Math.min(0.3, rt.clumpMass / 500) });
+      this.bus.emit('audio:cue', {
+        id: 'gyre_snare_snag', rate: 1.08 - Math.min(0.3, rt.clumpMass / 500),
+        position: { x: best.pos.x, z: best.pos.z },
+      });
       // /200 grades against a realistic snag mass, not the 2400t cap — a ~40t
       // pebble lands ~0.12 and a 200t wreck the full 0.20; versus maxClumpMass
       // every real snag was a flat ~0.10 and the differentiation was dead code.
@@ -930,8 +933,10 @@ export const gyreSnare = {
       queuePhysicsImpulse(player, { x: -ax * towMass * dt, y: 0, z: -az * towMass * dt }, this._evidence(state.tick));
     }
     // A lazy tumble — steer the spin toward a small target ω so it settles into
-    // floating-rubble drift instead of winding up open-loop on a long hold.
-    const spinErr = D.tumbleTargetRadS - finite(core.angVel);
+    // floating-rubble drift instead of winding up open-loop on a long hold. The
+    // target escalates with strain: a clump about to tear visibly spins up
+    // instead of floating serenely through its own death throe.
+    const spinErr = D.tumbleTargetRadS * (1 + this._ensurePub(state).strain01) - finite(core.angVel);
     // Torque budgets inertia, not mass: Δω needs inertiaY·spinErr (~0.4·m·r²) — at a
     // capped r=60 ball a mass-sized impulse lands at ~1/1440 of intent and the servo
     // silently dies exactly when the big ball needs it. Fall back to the same
@@ -972,7 +977,7 @@ export const gyreSnare = {
    * a capped katamari out-reaches the beam's basin deliberately, never ~2× past it.
    * The floor band shrinks on a fresh snag: suckBandWidth 88 alone already
    * out-reaches basinRadius 86, so the "appetite widens with mass" arc had no
-   * headroom at the small end — min(88, 40 + r) keeps a pebble's reach honest. */
+   * headroom at the small end — min(88, 50 + r) keeps a pebble's reach honest. */
   _suckRadius(rt) {
     return Math.min(D.basinRadius * 1.5,
       rt.clumpRadius * (1 + D.suckBandMassGain) + Math.min(D.suckBandWidth, D.suckBandFloor + rt.clumpRadius));
@@ -1590,15 +1595,6 @@ export const gyreSnare = {
     if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlS = 0; pub.ballClumpRadius = 0; pub.ballVx = 0; pub.ballVz = 0; }
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
-    // First-catch edge: the net going empty -> occupied gets a soft tick so the
-    // "xN IN NET" read has ears too. HOLD's absorbs have their own voice.
-    if (this.bus) {
-      const caught = rt.phase === PHASE.BEAM && rt.basinCount > 0;
-      if (caught && !rt.basinCatchLatched) {
-        rt.basinCatchLatched = true;
-        this.bus.emit('audio:cue', { id: 'gyre_snare_catch', gain: 0.3, rate: 1.35 });
-      } else if (!caught) rt.basinCatchLatched = false;
-    }
     pub.towCount = rt.towCount || 0;
     pub.tooHeavyCount = rt.tooHeavyCount || 0;
     // Live-ball count publishes on EVERY phase incl. OFF — the HUD's '+N' counts balls
@@ -1675,6 +1671,19 @@ export const gyreSnare = {
     pub.nose.z = player.pos.z + nose.z * noseGap;
     const maw = this._maw(player, this._pubMaw || (this._pubMaw = { x: 0, z: 0 }));
     pub.maw.x = maw.x; pub.maw.z = maw.z;
+    // First-catch edge: the net going empty -> occupied gets a soft tick so the
+    // "xN IN NET" read has ears too — positioned at the maw where the mass
+    // actually entered the funnel. HOLD's absorbs have their own voice.
+    if (this.bus) {
+      const caught = rt.phase === PHASE.BEAM && rt.basinCount > 0;
+      if (caught && !rt.basinCatchLatched) {
+        rt.basinCatchLatched = true;
+        this.bus.emit('audio:cue', {
+          id: 'gyre_snare_catch', gain: 0.3, rate: 1.35,
+          position: { x: maw.x, z: maw.z },
+        });
+      } else if (!caught) rt.basinCatchLatched = false;
+    }
     pub.coneLen = Math.hypot(maw.x - pub.nose.x, maw.z - pub.nose.z);
     // The drawn rim may over-cover the basin (short apex on a capital hull widens the
     // mouth past the pull zone) but never under-cover it — the cone edge is the physics
