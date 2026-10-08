@@ -2148,7 +2148,7 @@ function closeCookStepsIter(iter) {
 // throw take the whole cook tail down.
 function runCookSyncTwin(label, run, fallback = undefined) {
   try { return run(); } catch (syncError) {
-    console.warn(`[render] ${label} sync twin failed; keeping the partial result`, syncError);
+    stormWarn(`cook-sync-twin:${label}`, `[render] ${label} sync twin failed; keeping the partial result`, syncError);
     return fallback;
   }
 }
@@ -2273,13 +2273,18 @@ function presentationRowQuarantined(owner, mesh) {
 // prepareFrame tail call sites: a throw here reaches the frame-level catch and
 // kills the whole presented pass (PRESENTATION STALLED blast radius). Each site
 // degrades to its last state for the epoch — warn once per epoch per label and
-// continue the pass instead.
+// continue the pass instead. A persistently-faulting tail no longer pays
+// throw+stack capture every frame: the same ≤3 faults at ≥1 s spacing contract
+// the row quarantine uses, then it parks for the epoch.
 function tryPresentedCall(owner, label, run, fallback = undefined) {
+  const epoch = serviceFaultEpoch(owner.state);
+  const key = `_presentedTailFault_${label}`;
+  const latched = owner[key] || (owner[key] = { epoch: -1, warned: false, faults: 0, retryAt: 0 });
+  if (latched.epoch !== epoch) { latched.epoch = epoch; latched.warned = false; latched.faults = 0; latched.retryAt = 0; }
+  if (latched.faults >= PRESENTATION_ROW_FAULT_MAX || Date.now() < latched.retryAt) return fallback;
   try { return run(); } catch (tailError) {
-    const epoch = serviceFaultEpoch(owner.state);
-    const key = `_presentedTailFault_${label}`;
-    const latched = owner[key] || (owner[key] = { epoch: -1, warned: false });
-    if (latched.epoch !== epoch) { latched.epoch = epoch; latched.warned = false; }
+    latched.faults += 1;
+    latched.retryAt = Date.now() + 1000;
     if (!latched.warned) {
       latched.warned = true;
       noteLaneFault(owner.state, `presentedTail.${label}`);
@@ -10239,7 +10244,7 @@ export const render = {
           // inside its own traverse via preCountRoot, before its rewrites), and
           // the checked sync's receiverDelta settles the rewrites themselves.
           if (fallback) this._noteShadowMeshRemoved?.(fallback);
-          invalidateShadowCasterPolicy(target);
+          this._invalidateShadowPolicy(target);
           const lodLevel = target.userData && target.userData.lod
             ? target.userData.lod.level : null;
           const swapPolicy = this._syncShadowCasterPolicyChecked(
@@ -11910,7 +11915,7 @@ export const render = {
             // The arm's per-root signature collect re-derives the real unstaged set under
             // the live census — an over-cover abort queues whole-subtree for that
             // re-derivation, the same contract the settings toggle runs.
-            invalidateShadowCasterPolicy(root);
+            this._invalidateShadowPolicy(root);
             if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
             // Same parked-record carry the checked-sync feeders run — an
             // over-cover queue of a previously parked root otherwise re-pays
@@ -12515,7 +12520,7 @@ export const render = {
       // the rewrites. The count rides the sync's own traverse (preCountRoot)
       // instead of a second subtree walk. No whole-scene recount on a per-package
       // commit path.
-      invalidateShadowCasterPolicy(root);
+      this._invalidateShadowPolicy(root);
       const lodLevel = root.userData && root.userData.lod ? root.userData.lod.level : null;
       // The flag traverse + unstaged collect cover only the grafted subtree —
       // the rest of the root carries flags its own mount already minted — while
@@ -17417,7 +17422,7 @@ export const render = {
           const drainResult = await pipelineAdmissions.waitForCaptured(drainPlan, { timeoutMs: 15000 });
           queued = { skipped: false, pendingCount, timedOut: drainResult && drainResult.timedOut === true };
         } catch (error) {
-          console.warn('[render] post-opening pipeline drain failed', error);
+          stormWarn('post-opening-pipeline-drain', '[render] post-opening pipeline drain failed', error);
           queued = {
             skipped: false,
             pendingCount,
@@ -21991,7 +21996,7 @@ export const render = {
     }
     const unresolvable = fresh.filter((enemyId) => !markedEnemyIds.has(enemyId));
     if (unresolvable.length > 0) {
-      console.warn('[render] deferred swarm warm skipped unresolvable enemyIds', unresolvable);
+      stormWarn('deferred-swarm-warm-unresolvable', '[render] deferred swarm warm skipped unresolvable enemyIds', unresolvable);
     }
     if (markedEnemyIds.size === 0) return null;
     // Mark before building: a second trigger (cleanup -> draft -> wavePlanned) must not
@@ -22352,7 +22357,7 @@ export const render = {
           // forfeit to one bad exemplar.
           let reKick = null;
           try { reKick = retry(); }
-          catch (error) { console.warn('[render] deferred swarm warm re-kick threw', error); }
+          catch (error) { stormWarn('deferred-swarm-warm-rekick', '[render] deferred swarm warm re-kick threw', error); }
           if (reKick) reKicks.push(reKick);
         }
         // The re-kicks share the settle deadline — a hung retry must not
@@ -23589,6 +23594,7 @@ export const render = {
       if (this._withheldDepthCasters) this._withheldDepthCasters.delete(mesh);
       if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.delete(mesh);
       if (this._policyStepsParked) this._policyStepsParked.delete(mesh);
+      if (this._policyRootFaults) this._policyRootFaults.delete(mesh);
       const covParkedMesh = this._coverageCollectParked && this._coverageCollectParked.get(mesh);
       if (covParkedMesh) {
         if (covParkedMesh.iter && typeof covParkedMesh.iter.return === 'function') {
@@ -23877,6 +23883,7 @@ export const render = {
         if (this._withheldDepthCasters) this._withheldDepthCasters.delete(owner);
         if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.delete(owner);
         if (this._policyStepsParked) this._policyStepsParked.delete(owner);
+        if (this._policyRootFaults) this._policyRootFaults.delete(owner);
         const covParkedOwner = this._coverageCollectParked && this._coverageCollectParked.get(owner);
         if (covParkedOwner) {
           if (covParkedOwner.iter && typeof covParkedOwner.iter.return === 'function') {
@@ -24031,6 +24038,7 @@ export const render = {
     if (this._withheldDepthCasters) this._withheldDepthCasters.clear();
     if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.clear();
     if (this._policyStepsParked) this._policyStepsParked.clear();
+    if (this._policyRootFaults) this._policyRootFaults.clear();
     if (this._coverageCollectParked) {
       for (const cov of this._coverageCollectParked.values()) {
         if (cov && cov.iter && typeof cov.iter.return === 'function') {
@@ -27246,7 +27254,7 @@ export const render = {
               } catch (upgradeError) {
                 closeCookStepsIter(iter);
                 if (attempt === 0) {
-                  console.warn('[boot] opening upgrade-promise walk faulted; re-minting', upgradeError);
+                  stormWarn('boot-upgrade-promise-walk', '[boot] opening upgrade-promise walk faulted; re-minting', upgradeError);
                   break;
                 }
                 console.warn('[boot] opening upgrade-promise walk faulted twice; skipping the settle wait', upgradeError);
@@ -28855,13 +28863,23 @@ export const render = {
    * `shadowCasterBand(root) !== 1` — the promotion class — so same-band per-frame
    * syncs never pay the signature walk.
    */
+  // Every hierarchy/material invalidation the renderer drives also un-latches the
+  // root's fault park: the dirtySeq bump IS explicit evidence the tree changed, so a
+  // rec serving stale no-change from a transient mid-rebind fault must clear — the
+  // next eval retries for real instead of sitting out the deferral.
+  _invalidateShadowPolicy(root) {
+    const invalidated = invalidateShadowCasterPolicy(root);
+    if (this._policyRootFaults) this._policyRootFaults.delete(root);
+    return invalidated;
+  },
+
   _syncShadowCasterPolicyChecked(root, lodLevel, entity, extra = null) {
     // A remounted mid-teardown despawn corpse carries partially-written
     // castShadow flags (disposeObjectNode clears them per visited node) that
     // the dirtySeq early-outs below would wrongly skip — force one re-traverse.
     if (root && root.userData && root.userData.sfDespawnPartialTeardown === true) {
       delete root.userData.sfDespawnPartialTeardown;
-      invalidateShadowCasterPolicy(root);
+      this._invalidateShadowPolicy(root);
       // A mid-teardown light drop never reached the census mutation hook —
       // re-mint the lightSig memo unconditionally on remount so the remounted
       // tree's lights can't serve a stale signature.
@@ -29476,7 +29494,7 @@ export const render = {
       // only a *subsequent* invalidation re-collects. Under a narrowed scope the
       // rest of the root was never evaluated — skip the stamp so the next
       // whole-root sync still collects it.
-      invalidateShadowCasterPolicy(root);
+      this._invalidateShadowPolicy(root);
       if (!scopedSync) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
       // Fresh unstaged meshes — a parked root's park no longer describes it.
       if (parked && this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(root);
@@ -29750,6 +29768,7 @@ export const render = {
           if (root && root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
           if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
           if (root && this._policyStepsParked) this._policyStepsParked.delete(root);
+          if (root && this._policyRootFaults) this._policyRootFaults.delete(root);
         }
       }
     }
@@ -29763,6 +29782,7 @@ export const render = {
           }
           if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
           if (root && this._policyStepsParked) this._policyStepsParked.delete(root);
+          if (root && this._policyRootFaults) this._policyRootFaults.delete(root);
         }
       }
     }
@@ -30484,6 +30504,7 @@ export const render = {
           }
           if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
           if (root && this._policyStepsParked) this._policyStepsParked.delete(root);
+          if (root && this._policyRootFaults) this._policyRootFaults.delete(root);
           continue;
         }
         const { lodLevel, entity } = entry;
@@ -30699,7 +30720,7 @@ export const render = {
           // Same invalidate+stamp the withheld path pays: a queued band-1 root
           // whose dirtySeq still equals its stamp must re-collect — the census
           // drifted while shadows were OFF so its marks describe a dead light set.
-          invalidateShadowCasterPolicy(child);
+          this._invalidateShadowPolicy(child);
           child.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(child);
           // Same parked-scale carry the checked-sync feeders run — a queued root
           // whose park earned an oversized node-scale keeps it instead of
@@ -30739,7 +30760,7 @@ export const render = {
         } else {
           cache.set(root, meshes);
         }
-        invalidateShadowCasterPolicy(root);
+        this._invalidateShadowPolicy(root);
         root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
         // Resolve entity/lodLevel now — the arm's restore calls _shadowPolicyOptions
         // with whatever's queued, and a null entity forces allowCast=true (band-1

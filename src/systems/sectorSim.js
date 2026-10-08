@@ -424,7 +424,7 @@ export const sectorSim = {
     try {
       return auto.offscreenRiskPass(days, (sectorId) => this.effectiveDanger(sectorId)) || 0;
     } catch (err) {
-      console.error('[sectorSim] offscreenRiskPass', err);
+      dedupError('sectorSim/offscreenRiskPass', '[sectorSim] offscreenRiskPass', err);
       return 0;
     }
   },
@@ -453,7 +453,7 @@ export const sectorSim = {
         }
       }
     } catch (err) {
-      console.error('[sectorSim] injectConflictTension', err);
+      dedupError('sectorSim/injectConflictTension', '[sectorSim] injectConflictTension', err);
     }
   },
 
@@ -1012,7 +1012,7 @@ export const sectorSim = {
 
   _guard(label, fn) {
     try { return fn(); }
-    catch (err) { console.error(`[sectorSim] ${label}`, err); return undefined; }
+    catch (err) { dedupError(`sectorSim/guard/${label}`, `[sectorSim] ${label}`, err); return undefined; }
   },
 };
 

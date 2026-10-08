@@ -7900,7 +7900,7 @@ function admitNextUpgradeJob(state) {
           }
         };
         work.then(release, release).catch(error => {
-          console.warn('[partsLibrary] deferred authored residency retirement failed', error);
+          dedupWarn('partsLibrary:residency-retirement', '[partsLibrary] deferred authored residency retirement failed', error);
         });
       } else {
         releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
@@ -9433,7 +9433,7 @@ function scheduleRetainedDisposeDrain() {
           try {
             retryIter = disposeDetachedObjectSteps(head.root);
           } catch (retryError) {
-            console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', retryError);
+            dedupWarn('partsLibrary:lod-stale-root-cleanup', '[partsLibrary] whole-ship LOD stale root cleanup failed', retryError);
           }
           retainedDisposeQueue.shift();
           if (retryIter) {

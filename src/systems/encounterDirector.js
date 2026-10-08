@@ -424,7 +424,7 @@ export const encounterDirector = {
       if (accelerateBoundRaiderEscape(this.state, entity, attackerId, ctx)) return true;
       return releaseBoundRaiderForRetaliation(this.state, entity, ctx);
     } catch (err) {
-      dedupWarn(`encounterDirector/predation-retaliation-release/${targetId}`, '[encounterDirector] predation retaliation release failed', err);
+      dedupWarn('encounterDirector/predation-retaliation-release', '[encounterDirector] predation retaliation release failed', targetId, err);
       return false;
     }
   },
@@ -1150,7 +1150,7 @@ export const encounterDirector = {
       script.fire(this, live, state);
     } catch (err) {
       this.abort(live, 'script_error');
-      if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] fire failed', live.shapeId, err);
+      dedupWarn('encounterDirector/fire', '[encounterDirector] fire failed', live.shapeId, err);
       return;
     }
     // Predation is a plan-level feature: a self-registered runtime (whose live.script label still
@@ -1162,7 +1162,7 @@ export const encounterDirector = {
       try {
         ENCOUNTER_SCRIPTS.convoy.initPredation(this, live, state);
       } catch (err) {
-        if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] predation init failed', live.shapeId, err);
+        dedupWarn('encounterDirector/predation-init', '[encounterDirector] predation init failed', live.shapeId, err);
       }
     }
     if (dir.live[live.id] && live.ids.length) {
@@ -1189,7 +1189,7 @@ export const encounterDirector = {
         try {
           ENCOUNTER_SCRIPTS.convoy.tickPredation(this, live, state, now);
         } catch (err) {
-          dedupWarn(`encounterDirector/predation-tick/${live.shapeId}`, '[encounterDirector] predation tick failed', live.shapeId, err);
+          dedupWarn('encounterDirector/predation-tick', '[encounterDirector] predation tick failed', live.shapeId, err);
         }
       }
       if (!script || typeof script.tick !== 'function') continue;
@@ -1197,7 +1197,7 @@ export const encounterDirector = {
         script.tick(this, live, state, now);
       } catch (err) {
         this.abort(live, 'script_error');
-        if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] tick failed', live.shapeId, err);
+        dedupWarn('encounterDirector/tick', '[encounterDirector] tick failed', live.shapeId, err);
       }
     }
   },
@@ -2529,7 +2529,7 @@ export const encounterDirector = {
         convoyScript.event(this, live, this.state, name, payload);
       } catch (err) {
         this.abort(live, 'script_error');
-        if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] custody event failed', live.shapeId, name, err);
+        dedupWarn('encounterDirector/custody-event', '[encounterDirector] custody event failed', live.shapeId, name, err);
         return;
       }
     }
@@ -2538,7 +2538,7 @@ export const encounterDirector = {
       script.event(this, live, this.state, name, payload);
     } catch (err) {
       this.abort(live, 'script_error');
-      if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] event failed', live.shapeId, name, err);
+      dedupWarn('encounterDirector/event', '[encounterDirector] event failed', live.shapeId, name, err);
     }
   },
 
