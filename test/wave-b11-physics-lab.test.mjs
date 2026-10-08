@@ -11,6 +11,8 @@ import {
   requestLatch,
   requestThrow,
   requestResetRoom,
+  requestRefill,
+  requestInvulnerable,
   ensurePhysicsLabRoute,
   notePracticeLaunch,
   mountCrucibleLabControls,
@@ -265,6 +267,89 @@ test('Wave B11: an ordinary New Game is not the physics toy while a Sandbox scre
     sandboxScreen.onHide();
     globalThis.document = prevDoc;
   }
+});
+
+test('Wave B11: a Crucible launch through the sandbox seam is not the physics toy', () => {
+  // Quick play / Enter stage a scored run via requestSandboxGame with a `survivalSetup` payload.
+  // pendingConfig is non-null either way, so the toy must key on the ABSENCE of survivalSetup —
+  // a Crucible run is the scored arcade mode, and must not gain state.sandbox or the lab rack.
+  const { doc, makeNode } = createDomStub();
+  doc.body = makeNode('body');
+  const prevDoc = globalThis.document;
+  globalThis.document = doc;
+  const bus = createBus();
+  const ctx = {
+    registry: { get() { return null; } },
+    bus,
+    state: {
+      player: { credits: 0 },
+      playerId: 1,
+      entities: { get: () => ({ pos: { x: 0, z: 0 } }) },
+      sandbox: false,
+    },
+    helpers: {
+      spawnEntity(spec) { return { id: 1, ...spec, alive: true }; },
+    },
+  };
+  try {
+    assert.equal(ensurePhysicsLabRoute(ctx), true); // wires game:new/game:started; no practice arm
+    requestSandboxGame(bus, { survivalSetup: { seed: 7, hullId: 'ship_kestral', arenaId: 'lagrange_crucible' } });
+    bus.emit('game:started');
+    assert.notEqual(ctx.state.sandbox, true, 'a scored Crucible run is not the physics toy');
+    assert.equal(findText(doc.body, 'Spawn bodies'), null, 'no lab rack on a Crucible run');
+    assert.equal(findText(doc.body, 'Invulnerable'), null, 'no cheat controls on a Crucible run');
+    bus.emit('game:exitToMenu');
+  } finally {
+    globalThis.document = prevDoc;
+  }
+});
+
+test('Wave B11: a plain Sandbox launch still mounts the physics toy', () => {
+  // The complementary gate: a non-survival requestSandboxGame config with no practice arm
+  // remains the physics toy.
+  const { doc, makeNode } = createDomStub();
+  doc.body = makeNode('body');
+  const prevDoc = globalThis.document;
+  globalThis.document = doc;
+  const bus = createBus();
+  const ctx = {
+    registry: { get() { return null; } },
+    bus,
+    state: {
+      player: { credits: 0 },
+      playerId: 1,
+      entities: { get: () => ({ pos: { x: 0, z: 0 } }) },
+      sandbox: false,
+    },
+    helpers: {
+      spawnEntity(spec) { return { id: 1, ...spec, alive: true }; },
+    },
+  };
+  try {
+    assert.equal(ensurePhysicsLabRoute(ctx), true);
+    requestSandboxGame(bus, { targetDrones: { count: 2, distance: 120 } });
+    bus.emit('game:started');
+    assert.equal(ctx.state.sandbox, true, 'a plain Sandbox launch is still the physics toy');
+    assert.ok(findText(doc.body, 'Spawn bodies'), 'the lab rack mounts on a Sandbox launch');
+    bus.emit('game:exitToMenu');
+  } finally {
+    globalThis.document = prevDoc;
+  }
+});
+
+test('Wave B11: a live scored run refuses lab controls even if a rack were mounted', () => {
+  // Defence in depth behind the launch gate: while a scored survival run is live, refill and
+  // invulnerable requests are refused even though sandbox/mode flags would pass the lab check.
+  const { ctx } = createToyHarness();
+  ctx.state.run = { kind: 'survival', phase: 'active' };
+  assert.equal(applyCrucibleLabControl(ctx, requestInvulnerable(true)), false,
+    'no invulnerable during a scored run');
+  assert.equal(applyCrucibleLabControl(ctx, requestRefill()), false,
+    'no hull refill during a scored run');
+  // …and the same requests still work once the session is a live lab run.
+  ctx.state.run = { kind: 'lab', phase: 'active' };
+  assert.ok(applyCrucibleLabControl(ctx, requestInvulnerable(true)), 'invulnerable applies in the lab');
+  assert.ok(applyCrucibleLabControl(ctx, requestRefill()), 'refill applies in the lab');
 });
 
 test('Wave B11: the lab is on the front door, not behind a dev flag', () => {

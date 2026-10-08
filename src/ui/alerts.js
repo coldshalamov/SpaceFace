@@ -16,6 +16,7 @@
 //
 import { BINDINGS, promptLabel } from './bindings.js';
 import { stationName } from './sectorLawPresenter.js';
+import { hazardLanguageFor } from '../data/hazardLanguage.js';
 
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
 // binding-sourced dock alert (no ttl). The dock key handling lives in input.js.
@@ -76,6 +77,14 @@ const HAZARD_ALERT_TEXT = Object.freeze({
   nebula: 'NEBULA',
 });
 
+/** The authored language says what the field burns — the pill carried only the type name until
+ *  now, so "radiation cooks cargo too" never reached the player. Suffix the damage tag. */
+function hazardDamageSuffix(type) {
+  const entry = hazardLanguageFor(type);
+  const damages = entry && entry.damages;
+  return Array.isArray(damages) && damages.length ? ' · ' + damages.join('+').toUpperCase() : '';
+}
+
 /** WORLD-25: one persistent HUD alert on hazard entry, cleared on exit.
  *  Radiation and nebula only. Boss intensity changes are not an entry. */
 export function hazardAlertCommand(payload) {
@@ -92,7 +101,7 @@ export function hazardAlertCommand(payload) {
     action: 'raise',
     key,
     sev: type === 'radiation' ? 'danger' : 'warn',
-    text: HAZARD_ALERT_TEXT[type],
+    text: HAZARD_ALERT_TEXT[type] + hazardDamageSuffix(type),
     ttl: Infinity,
   };
 }
@@ -494,7 +503,7 @@ export function createAlerts(ctx) {
     raise({
       key: `hazard:${type}`,
       sev: HAZARD_SEV[type] || 'info',
-      text: `${type.replace(/_/g, ' ').toUpperCase()} FIELD`,
+      text: `${type.replace(/_/g, ' ').toUpperCase()} FIELD${hazardDamageSuffix(type)}`,
       ttl: Infinity,
     });
   });

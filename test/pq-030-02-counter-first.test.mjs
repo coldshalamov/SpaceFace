@@ -35,7 +35,7 @@ import {
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { SPECIALIST_PLANS, specialistPlanById } from '../src/ai/specialistPlans.js';
+import { SPECIALIST_PLANS, specialistPlanById, specialistPlanByEnemyId } from '../src/ai/specialistPlans.js';
 import { planEncounters } from '../src/systems/encounterDirector.js';
 import {
   HOSTILE_SWEEP_BEHAVIOUR,
@@ -309,8 +309,15 @@ test('NPC sweep path is the leftover cutter; corsair_blade is unique among cut_l
 
   const spoolingCorsairs = ENEMY_TYPES.filter((row) =>
     row.silhouette === 'corsair_blade' && row.telegraph && row.telegraph.cue === 'attach_spool');
-  assert.equal(spoolingCorsairs.length, 1);
-  assert.equal(spoolingCorsairs[0].id, specialistPlanById('tether_cutter').enemyId);
+  // The read "corsair blade + attach-spool" names *a* cutter — scissorwake is the second hull
+  // carrying it (SCISSORWAKE_PLAN spreads the cut_line plan off the table). What stays unique:
+  // only the cutters may wear the cue, and every wearer resolves to a cut_line plan.
+  assert.deepEqual(spoolingCorsairs.map((row) => row.id).sort(),
+    ['scissorwake', 'tether_control_raider']);
+  for (const row of spoolingCorsairs) {
+    const plan = specialistPlanByEnemyId(row.id);
+    assert.equal(plan && plan.verb, 'cut_line', `${row.id} wears the cutter read with no cut_line plan`);
+  }
   console.log(`SEED=${SEED} LEFTOVER=${HOSTILE_SWEEP_LEFTOVER_METHOD} taut=${NPC_LINE_CUT_TAUT_RATIO}`
     + ` silhouette=${cutLine[0].silhouette} unique_cut_line=${cutLine.length}`);
 });

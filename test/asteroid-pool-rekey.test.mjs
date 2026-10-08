@@ -178,6 +178,8 @@ test('presentation bind restores mesh/view refs on a promoted same-id entity', (
     _livingHullPresentation: null,
     _presentationHandleScratch: {},
     _persistentSubmitLanes: createPersistentSubmitLanes(),
+    // The bind defers its pre-entry subtree freeze to the bounded cull-freeze queue (08f7d869e).
+    _queueHiddenSubtreeFreeze: render._queueHiddenSubtreeFreeze,
     _presentationWorld: {
       handleForEntityId: (id) => ({ slot: id }),
       bindMesh: (handle, mesh, entity) => { bound.push({ handle, mesh, entity }); return true; },
@@ -201,6 +203,8 @@ test('presentation bind restores mesh/view refs on a promoted same-id entity', (
   assert.equal(bound[0].mesh, warmedRoot);
   assert.equal(warmedRoot.userData.authoredAssetState, 'authored',
     'binding must not reset the warm record state');
+  assert.deepEqual(context._pendingHiddenFreeze, [warmedRoot],
+    'the not-yet-visible root is queued for the deferred freeze, not frozen inside the bind');
 
   const keptView = { root: null, extra: 'keep' };
   const reissued = makeEntity({ id: 43, type: 'asteroid', pos: { x: 9, z: 0 }, radius: 3 });

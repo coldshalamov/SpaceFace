@@ -1016,6 +1016,22 @@
         "MOTION_TALLY_SCAN"
       ],
       "note": "Distinct claim assessor; source origin fit, examination and accepted-receipt instrument motion."
+    },
+    "red_kite": {
+      "layout": "npc",
+      "file": "red_kite",
+      "asset_id": "SF_SHIP_RED_KITE",
+      "part_id": "wholeship_red_kite",
+      "npc_root": "SF_SHIP_RED_KITE_ROOT",
+      "note": "Original asymmetrical Red Kite courier: open fork stern, pressure dart, sail, seated handoff case and actual nine source-projected native assemblies."
+    },
+    "sable_patchwork": {
+      "layout": "npc",
+      "file": "sable_patchwork",
+      "asset_id": "SF_SHIP_SABLE_PATCHWORK",
+      "part_id": "wholeship_sable_patchwork",
+      "npc_root": "SF_SHIP_SABLE_PATCHWORK_ROOT",
+      "note": "Original Sable Venn workshop: three pressure pontoons with two physical bridges and actual longitudinal gaps; captive tools, warm-window office and finite articulated trial/purchase gestures."
     }
   }
 }

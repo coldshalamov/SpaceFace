@@ -3,6 +3,7 @@
 // Visibility never equals death; pins and physics-reach decide fidelity.
 
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { isRedKiteEntity } from '../data/redKiteBody.js';
 import {
   TABLE_REFERENCE_SPEED_WU,
   TABLE_SIM_ASPECT,
@@ -1705,6 +1706,9 @@ function classifyWorld(state, runtime) {
       || (ai && ai.namedAceId)
     );
     ctx.missionCritical = !!(data.jobId || data.missionId || data.missionTag || data.missionPinned
+      // One budgeted named courier must physically finish/return across the whole
+      // surveyed course, including corners beyond the player's local physics reach.
+      || (isRedKiteEntity(entity) && data.homeSectorId === state.world?.currentSectorId)
       || data.activityActorSlotId
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
       || namedAceActor

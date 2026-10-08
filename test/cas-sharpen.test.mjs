@@ -131,15 +131,20 @@ test('below-res bloom frame runs composite into rtPost then CasFilter to screen'
   const harness = rendererHarness();
   const bloom = createBloom(harness.renderer, 640, 360);
   try {
+    // The halo pyramid's depth belongs to the look owner (tier 2 is the wide neon pyramid); this
+    // pins where the composite lands and that CAS runs once after it, around whatever depth ships.
+    const halo = (events) => events.filter((e) => e.startsWith('render:quad:')
+      && e !== 'render:quad:640x360' && e !== 'render:quad:screen');
     // Below-res: 640x360 buffer on a 1280x720 display footprint.
     bloom.setSize(640, 360, 1280, 720);
     assert.equal(bloom.diagnostics().casSharpenActive, true);
     bloom.render({ kind: 'scene' }, { kind: 'camera' });
     const renders = harness.events.filter((e) => e.startsWith('render:'));
+    const pyramid = halo(renders);
+    assert.ok(pyramid.length >= 2, 'the bloom pyramid still runs below the composite');
     assert.deepEqual(renders, [
       'render:scene:640x360',
-      'render:quad:320x180',
-      'render:quad:160x90',
+      ...pyramid,
       'render:quad:640x360', // composite presents into rtPost instead of screen
       'render:quad:screen',  // CasFilter sharpens rtPost onto the canvas
     ]);
@@ -153,8 +158,7 @@ test('below-res bloom frame runs composite into rtPost then CasFilter to screen'
     bloom.render({ kind: 'scene' }, { kind: 'camera' });
     assert.deepEqual(harness.events.filter((e) => e.startsWith('render:')), [
       'render:scene:640x360',
-      'render:quad:320x180',
-      'render:quad:160x90',
+      ...pyramid,
       'render:quad:screen',
     ]);
     assert.equal(bloom.diagnostics().passFamilies.cas, 0);

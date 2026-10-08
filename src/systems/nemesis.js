@@ -118,7 +118,8 @@ export function createNemesisSystem() {
     },
     _killed(p) {
       const m = this.state.nemesis, a = m.active;
-      if (!a || !p || m.ending) return;
+      if (!p || m.ending) return;
+      if (!a) { this._killedLeaving(p); return; }
       const id = p.id ?? p.victimId;
       const kill = classifyPlayerKill(p, this.state.playerId, m.tumbles, nowOf(this.state));
       // Orra directly experiences their own hull's final hit, even after the sensor drops it.
@@ -130,6 +131,27 @@ export function createNemesisSystem() {
           ? p.presentation.playerCaused : p.killerId === this.state.playerId;
         this._finish(caused ? 'destroyed' : 'lost');
       } else if (id === this.state.playerId) this._finish('player_defeated');
+    },
+    // An escaped captain is still a real hull while the encounter host flies it out. Run it down
+    // before it clears the area and the arc ends here — the next return would resurrect Orra.
+    _killedLeaving(p) {
+      const rows = this.state.nemesisDeployment && this.state.nemesisDeployment.departures;
+      if (!Array.isArray(rows) || !rows.length) return;
+      const m = this.state.nemesis, id = p.id ?? p.victimId;
+      const row = rows.find((r) => r && r.id === id);
+      const ship = entity(this.state, id);
+      if (!row || (ship && !localTag(ship, row.requestId))) return;
+      const caused = p.presentation && typeof p.presentation.playerCaused === 'boolean'
+        ? p.presentation.playerCaused : p.killerId === this.state.playerId;
+      const outcome = caused ? 'destroyed' : 'lost', now = nowOf(this.state);
+      if (m.pending) this._cancelPending('rival destroyed after escape');
+      m.ending = outcome; m.phase = 'resolved';
+      this._log('outcome', `${outcome} while leaving after an escape`, row.requestId);
+      this._voice(outcome, NEMESIS_LINES[outcome], null, row.requestId);
+      const receipt = { encounterId: row.requestId, bossId: id, crewIds: [id], aceId: RIVAL.id,
+        outcome, afterEscape: true, t: now };
+      this._emit('namedAce:defeated', { aceId: RIVAL.id, entityId: id, t: now });
+      this._emit('nemesis:resolved', { ...receipt, ending: outcome });
     },
     _observation(p) {
       const a = this.state.nemesis.active;

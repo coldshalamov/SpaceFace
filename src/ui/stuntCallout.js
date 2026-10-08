@@ -41,6 +41,8 @@ export const MAX_CALLOUT_LINES = 3;
 export const MAX_LINE_NAMES = 3;
 /** Style-sheet id for the layer's namespaced sheet. */
 export const STUNT_CALLOUT_STYLE_ID = 'sf-stuntcall-css';
+export const SPEED_DIAL_SELECTOR = '.orr-speeddial';
+export const SPEED_DIAL_CLEARANCE_PX = 48;
 
 const BONE = '236 230 216';
 
@@ -486,10 +488,25 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const readout = comboReadout(combo, st.tick);
     pruneLines(Number.isFinite(Number(now)) ? Number(now) : wallNow());
     const hasLines = lineNodes.size > 0;
+    const wasHidden = root.hidden;
     root.hidden = !hasLines && !readout;
     if (root.hidden) return false;
+    if (wasHidden) seatClearOfSpeedDial();
     renderMeter(readout);
     return true;
+  }
+
+  function seatClearOfSpeedDial() {
+    const view = doc.defaultView;
+    const dial = typeof doc.querySelector === 'function' ? doc.querySelector(SPEED_DIAL_SELECTOR) : null;
+    if (!view || !dial || typeof dial.getBoundingClientRect !== 'function'
+      || typeof root.getBoundingClientRect !== 'function') return;
+    const dialRect = dial.getBoundingClientRect();
+    const ownRect = root.getBoundingClientRect();
+    const overlaps = dialRect.height > 0 && dialRect.left < ownRect.right && dialRect.right > ownRect.left;
+    root.style.bottom = overlaps
+      ? `max(32vh, ${Math.round(view.innerHeight - dialRect.top + SPEED_DIAL_CLEARANCE_PX)}px)`
+      : '';
   }
 
   function wake() {

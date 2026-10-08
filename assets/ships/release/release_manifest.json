@@ -4963,6 +4963,90 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "wholeship_red_kite",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/red_kite.glb",
+      "release": "assets/ships/release/parts/wholeships/red_kite.glb",
+      "sourceSha256": "1688cf6f0c0f6250d175ebb9a6f7ce85d4b1b124bf6887caf1976f3c7c2a2952",
+      "releaseSha256": "f7a5a62b9cbd495e4027e8bce87dbea740641d5cc62cfa2c8564f0c5e207b13a",
+      "sourceBytes": 1104084,
+      "releaseBytes": 556828,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 56,
+      "contractNodeCount": 16
+    },
+    {
+      "id": "wholeship_red_kite_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/red_kite_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/red_kite_lod1.glb",
+      "sourceSha256": "67e00e859c5b316af65807ab4786ab9a404409e042152999f9b7bd1ae3cca019",
+      "releaseSha256": "fee2fc968b4da71df77041a9066506152f1725654e5544614b355c8e4d9d7102",
+      "sourceBytes": 720080,
+      "releaseBytes": 461860,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 56,
+      "contractNodeCount": 16
+    },
+    {
+      "id": "wholeship_red_kite_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/red_kite_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/red_kite_lod2.glb",
+      "sourceSha256": "21d98c066a7e842e404031b6fa6876e488cdb0ad45e0382668e917df75896fc5",
+      "releaseSha256": "ba5e0cd18f0e31c01a44f6286f896e62c92b8070359cb435fd23b2e464d91a9f",
+      "sourceBytes": 580236,
+      "releaseBytes": 423988,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 56,
+      "contractNodeCount": 16
+    },
+    {
+      "id": "wholeship_sable_patchwork",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/sable_patchwork.glb",
+      "release": "assets/ships/release/parts/wholeships/sable_patchwork.glb",
+      "sourceSha256": "65901daa1d913606283b04d4867134583e5e39724a3e4164ed8eedbc317ded1e",
+      "releaseSha256": "eee1214b4b9ebf65db677a2e6623e69ecb4a05843df46d8a70e79923fef5d78e",
+      "sourceBytes": 1499992,
+      "releaseBytes": 671740,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 72,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "wholeship_sable_patchwork_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/sable_patchwork_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/sable_patchwork_lod1.glb",
+      "sourceSha256": "266db71d6da5b79c2ea1120d02987974fc2980460bd4ec07c30bc0b07532fb5e",
+      "releaseSha256": "9f0964d6a7d3d2c49c093ad1226ce98b1c2152b0d6967b52d7a757529dbe6818",
+      "sourceBytes": 841992,
+      "releaseBytes": 510308,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 72,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "wholeship_sable_patchwork_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/sable_patchwork_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/sable_patchwork_lod2.glb",
+      "sourceSha256": "7598462d3c2a420afb75a4e00ad8fc33f15ed015800ced3c8477f9db4b409d98",
+      "releaseSha256": "aaf2fcd7ec6d0589e2f1d6cdbaf101a838d3c46d47c489d6f09ff5b3cfb7b0c7",
+      "sourceBytes": 605544,
+      "releaseBytes": 445552,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 72,
+      "contractNodeCount": 22
     }
   ]
 }

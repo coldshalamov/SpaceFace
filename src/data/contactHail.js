@@ -4,6 +4,7 @@
 // pirateParley remains the sole authority for toll choices/payment/escalation.
 import { hash32 } from '../core/rng.js';
 import { tallyThreeHail } from './tallyThree.js';
+import { RED_KITE } from './redKite.js';
 import { COMMODITIES } from './commodities.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
@@ -558,6 +559,12 @@ export function contactHailAvailability(state) {
   if (!state || state.mode !== 'flight' || state.ui && state.ui.docked) return unavailable('not_in_flight');
   if (!target) return unavailable('unresolved_target');
   if (target.alive === false) return unavailable('dead_target');
+  if (target.data?.redKiteActorId === RED_KITE.actorId || target.data?.redKiteMark === 'poi_red_kite_start') {
+    if (!player?.alive) return unavailable('no_player');
+    if (state.world?.currentSectorId !== RED_KITE.sectorId || distanceBetween(player, target) > RED_KITE.hailRange) return unavailable('out_of_reveal_range');
+    return { enabled: true, reason: null, targetId: target.id, kind: 'red_kite',
+      label: 'HAIL RED KITE', distance: distanceBetween(player, target), entity: target };
+  }
   const tally=tallyThreeHail(state,target,player);
   if(tally)return tally;
   if (target.type !== 'ship' && target.type !== 'drone') return unavailable('unsupported_target');

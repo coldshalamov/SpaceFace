@@ -3419,6 +3419,13 @@ export const crucibleResultsScreen = {
     if (this._dial && this._dial.active() && result && result.seed != null && again.parentElement) {
       again.parentElement.appendChild(el('p', 'k-t-fine sf-crres__seed', `Seed ${result.seed}`));
     }
+    const dialHost = this._dial && this._dial.active() && rootEl.querySelector
+      ? rootEl.querySelector('.sf-crres__dial') : null;
+    if (dialHost && typeof ResizeObserver === 'function') {
+      this._dialSeat = new ResizeObserver(() => seatDialAboveFoot(dialHost, foot));
+      for (const child of [...rootEl.children]) if (child !== dialHost) this._dialSeat.observe(child);
+      this._dialSeat.observe(rootEl);
+    }
     this._regions = { title: h, story, ledger, foot, again };
     rootEl.dataset.kReady = '1';
     if (typeof again.focus === 'function') {
@@ -3461,6 +3468,8 @@ export const crucibleResultsScreen = {
   },
 
   dispose() {
+    if (this._dialSeat) this._dialSeat.disconnect();
+    this._dialSeat = null;
     if (this._dial) this._dial.dispose();
     this._dial = null;
     // PQ-146 Phase 3: the run is told — the trick callout layer goes with the plate. A retry
@@ -3468,6 +3477,22 @@ export const crucibleResultsScreen = {
     try { releaseStuntCallout(); } catch { /* release is best-effort */ }
   },
 };
+
+export const DIAL_FOOT_MIN_INSET_PX = 112;
+export const DIAL_FOOT_GAP_PX = 12;
+
+export function seatDialAboveFoot(dialHost, foot, view = globalThis) {
+  if (!dialHost || !dialHost.style || !foot) return null;
+  const parent = dialHost.offsetParent;
+  const laidOut = !!parent && foot.offsetParent === parent && parent.clientHeight > 0;
+  const top = laidOut ? foot.offsetTop
+    : (typeof foot.getBoundingClientRect === 'function' ? foot.getBoundingClientRect().top : 0);
+  const height = laidOut ? parent.clientHeight : Number(view && view.innerHeight);
+  if (!(top > 0) || !(height > 0)) return null;
+  const bottom = Math.max(DIAL_FOOT_MIN_INSET_PX, Math.ceil(height - top + DIAL_FOOT_GAP_PX));
+  dialHost.style.bottom = `${bottom}px`;
+  return bottom;
+}
 
 /**
  * SWARM-05 §7.4 — the celebration band. Built once per plate from the settled result: the
@@ -3553,8 +3578,8 @@ export function resultCelebration(result) {
       const gate = SWARM_ARENA_STAR_GATES[arenaId];
       if (!Number.isInteger(gate) || stars >= gate) continue;
       const arena = survivalArenaById(arenaId);
-      const name = arena && typeof arena.name === 'string' ? arena.name : arenaId;
-      lines.push(`${name} opens at ${gate} stars — ${gate - stars} to go.`);
+      const name = arena && (arena.label || arena.name);
+      if (typeof name === 'string' && name) lines.push(`${name} opens at ${gate} stars — ${gate - stars} to go.`);
       break;
     }
   } catch { /* the profile read is optional */ }

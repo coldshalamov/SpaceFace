@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 // Each worker owns its process-level rejection events. The Node test runner treats an
 // unhandled rejection as its own failure, even when a test installs a diagnostic listener.
 function run(scenario) {
   const result = spawnSync(process.execPath, [
-    new URL('./helpers/authored-decode-prefetch-fixture.mjs', import.meta.url).pathname,
+    // fileURLToPath, not URL.pathname: on Windows the pathname is /C:/..., which node resolves
+    // to C:\C:\... and the fixture never loads.
+    fileURLToPath(new URL('./helpers/authored-decode-prefetch-fixture.mjs', import.meta.url)),
     scenario,
   ], { encoding: 'utf8', env: process.env });
   assert.equal(result.status, 0, result.stderr || result.stdout);

@@ -287,7 +287,9 @@ test('WORLD-25 seed 4242 hazard entry raises one alert and exit clears it', () =
     assert.equal(changed.length, 1, `${type} entry emits one hazard:changed`);
     assert.equal(changed[0].phase, 'enter');
     assert.equal(changed[0].zoneType, type);
-    assert.deepEqual(alertTexts(root), [type === 'radiation' ? 'RADIATION' : 'NEBULA']);
+    assert.deepEqual(alertTexts(root), [
+      type === 'radiation' ? 'RADIATION · SHIELDS+CARGO+HULL OVER TIME' : 'NEBULA · SENSOR VISIBILITY',
+    ]);
     assert.equal(player.shield, 20, 'the alert tick does not add hazard damage');
     assert.equal(player.hull, 40);
 

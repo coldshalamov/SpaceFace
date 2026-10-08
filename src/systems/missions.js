@@ -41,6 +41,7 @@
 //   • Secondary/story-only deltas with no other channel (e.g. B4 "opposing -10") → faction:repDelta.
 //
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
+import { RED_KITE, validRedKiteReceipt } from '../data/redKite.js';
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES, DOCK_SETTLED_TYPES,
   CONTRACT_DESK_SERVICES, hasContractsDesk,
@@ -8095,6 +8096,26 @@ export const missions = {
   // =========================================================================================
   // COMPLETION / FAILURE / EXPIRY (settle)
   // =========================================================================================
+  // SF20-05: the course owner supplies the exact physical first finish; missions reserves one
+  // reward before synchronous credit/presentation callbacks. Retries never mint a contract.
+  settleRedKiteRelay(receiptId) {
+    const receipt = this.registry?.get('redKite')?.firstCompletionReceipt?.(receiptId);
+    if (!validRedKiteReceipt(receipt)) return { ok: false, reason: 'finish_receipt_invalid' };
+    const prior = this.state.missions.redKiteFirstReward;
+    if (prior) return { ok: true, duplicate: true, ...prior };
+    const economy = this.registry?.get('economy');
+    if (!economy || typeof economy.grantCredits !== 'function') return { ok: false, reason: 'credit_owner_pending' };
+    const before = Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.round(Number(this.state.player.credits) || 0)));
+    const journal = { receiptId: receipt.id, courseVersion: RED_KITE.courseVersion,
+      creditedCr: Math.min(RED_KITE.firstRewardCr, Number.MAX_SAFE_INTEGER - before), at: this.state.simTime || 0 };
+    this.state.missions.redKiteFirstReward = journal;
+    this.bus.emit('economy:grantCredits', { amount: RED_KITE.firstRewardCr, reason: 'mission:red-kite:first-completion' });
+    this._logCompletion('red_kite_relay', journal.creditedCr, true);
+    this.bus.emit('mission:completed', { missionId: 'red-kite:first-completion', type: 'red_kite_relay',
+      source: 'redKite', sourceReceiptId: receipt.id, factionId: null, repMult: 0, rewardCr: journal.creditedCr });
+    this.bus.emit('toast', { text: `First relay filed — ${journal.creditedCr} cr. Later runs record your time without another payment.`, kind: 'good', ttl: 5 });
+    return { ok: true, duplicate: false, ...journal };
+  },
   _completeMission(m, index) {
     const state = this.state;
     if (m.status !== 'active') return;
@@ -11471,6 +11492,7 @@ export const missions = {
     state.missions.active = [];
     state.missions.completedLog = [];
     state.missions.receipts = [];
+    delete state.missions.redKiteFirstReward;
     delete state.missions.setPieceSettlements;
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
@@ -11540,6 +11562,7 @@ export const missions = {
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
+    if (m.redKiteFirstReward) serialized.redKiteFirstReward = { ...m.redKiteFirstReward };
     if (m.starterJobStep && Object.keys(m.starterJobStep).length) {
       serialized.starterJobStep = { ...m.starterJobStep };
     }
@@ -11575,6 +11598,12 @@ export const missions = {
     state.missions.boards = data.boards || {};
     state.missions.completedLog = data.completedLog || [];
     state.missions.receipts = normalizeMissionReceipts(data.receipts);
+    const relay = data.redKiteFirstReward;
+    if (relay && relay.courseVersion === RED_KITE.courseVersion
+      && typeof relay.receiptId === 'string' && relay.receiptId.startsWith(`${RED_KITE.courseId}:run:`)
+      && Number.isInteger(relay.creditedCr) && relay.creditedCr >= 0 && relay.creditedCr <= RED_KITE.firstRewardCr
+      && Number.isFinite(relay.at) && relay.at >= 0) state.missions.redKiteFirstReward = { ...relay };
+    else delete state.missions.redKiteFirstReward;
     const setPieceSettlements = normalizeSetPieceSettlements(data.setPieceSettlements, state.missions.receipts);
     if (Object.keys(setPieceSettlements).length) state.missions.setPieceSettlements = setPieceSettlements;
     else delete state.missions.setPieceSettlements;

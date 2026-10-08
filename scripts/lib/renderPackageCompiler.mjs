@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, rename, rm } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 
 import { Accessor, Logger, NodeIO, PropertyType } from '@gltf-transform/core';
@@ -140,15 +140,26 @@ export async function compileRenderPackage(options = {}) {
 // UNKNOWN/EPERM/EBUSY on a following write and fail full-pilot rebuilds at random files. Bounded
 // retry keeps package writes deterministic; non-transient codes still throw immediately.
 const RETRYABLE_WRITE_CODES = new Set(['UNKNOWN', 'EPERM', 'EBUSY']);
+let packageWriteSequence = 0;
 
 export async function writeFileWithRetry(path, bytes, attempts = 15) {
-  for (let i = 0; ; i++) {
-    try {
-      return await writeFile(path, bytes);
-    } catch (error) {
-      if (i >= attempts - 1 || !RETRYABLE_WRITE_CODES.has(error?.code)) throw error;
-      await new Promise((resolveRetry) => setTimeout(resolveRetry, 120 * (i + 1)));
+  // Readers serving the live game must see a complete old or complete new file.
+  // A sibling publication also avoids opening their current file for truncation,
+  // which Windows can refuse while an indexer or asset request holds it open.
+  const temporary = `${path}.${process.pid}.${packageWriteSequence++}.tmp`;
+  try {
+    await writeFile(temporary, bytes, { flag: 'wx' });
+    for (let i = 0; ; i++) {
+      try {
+        await rename(temporary, path);
+        return;
+      } catch (error) {
+        if (i >= attempts - 1 || !RETRYABLE_WRITE_CODES.has(error?.code)) throw error;
+        await new Promise((resolveRetry) => setTimeout(resolveRetry, 120 * (i + 1)));
+      }
     }
+  } finally {
+    await rm(temporary, { force: true });
   }
 }
 

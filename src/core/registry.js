@@ -34,6 +34,9 @@ import { scissorwake } from '../systems/scissorwake.js';
 import { tallyThree } from '../systems/tallyThree.js';
 import { lastShift } from '../systems/lastShift.js';
 import { lastShiftPrompt } from '../ui/lastShiftPrompt.js';
+import { redKite } from '../systems/redKite.js';
+import { redKitePrompt } from '../ui/redKitePrompt.js';
+import { sableVenn } from '../systems/sableVenn.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
@@ -156,7 +159,7 @@ import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voi
 import { sectorPostcard } from '../ui/sectorPostcard.js';             // A1: arrival identity card + one 'news' rumor line
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';             // A3: dockDeny.js surfaced — scan line + one 'comms' denial
 import { stationBroadcast } from '../systems/stationBroadcast.js';    // A5: ambient station flavor (window-timer only; lowest voice priority)
-import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type 'warn' counterplay hint + state.ui.hazardRead
+import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type counterplay hint (tutorial channel) + state.ui.hazardRead
 import { noFireAdvisory } from '../data/stationBubbles.js';            // BP-11 A2: station no-fire ring 'warn' advisory on player fire
 import { bulkHaulTag } from '../ui/prompts/bulkHaulTag.js';             // T3-17: TOW-THE-CHUNK oversized mining chunk prompt
 import { dangerGradient } from '../ui/dangerGradient.js';              // A9: dangerTier tint+badge overlay on existing starmap nodes (guarded applier)
@@ -466,6 +469,9 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['tallyThree', tallyThree],
     ['lastShift', lastShift],
     ['lastShiftPrompt', lastShiftPrompt],
+    ['redKite', redKite],
+    ['redKitePrompt', redKitePrompt],
+    ['sableVenn', sableVenn],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],

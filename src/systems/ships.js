@@ -14,6 +14,7 @@ import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { SECTORS } from '../data/sectors.js';
+import { sableShipworksAvailable } from '../data/sableVenn.js';
 import {
   describeHullRole,
   flightClassForHull,
@@ -196,7 +197,9 @@ export function shipworksStationAccess(state) {
       outfitReason: 'Shipworks services unavailable at this berth',
     };
   }
-  return { ...shipworksAccessForServices(station.services), stationId: station.id };
+  const access=shipworksAccessForServices(station.services);
+  if(!access.outfit&&sableShipworksAvailable(state,station.id))return {...access,outfit:true,outfitReason:null,stationId:station.id};
+  return { ...access, stationId: station.id };
 }
 
 // Heads share the existing Massline input grammar and are mutually exclusive fittings. This fixed
@@ -2139,7 +2142,8 @@ export const ships = {
     }
     // Charge only after an explicit Buy & Fit has succeeded, so a rejected fit cannot spend credits.
     if (price > 0) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyModule:' + defId });
-    this.bus.emit('module:purchased', { defId, price, fitSlotIndex: equipped ? fitSlotIndex : null });
+    this.bus.emit('module:purchased', { defId, price, fitSlotIndex: equipped ? fitSlotIndex : null,
+      instanceId: item.instanceId, shipIndex: equipped ? shipIndex : null });
     this.bus.emit('toast', { text: (equipped ? 'Purchased and equipped ' : 'Purchased ') + def.name, kind: 'success', ttl: 3 });
     return true;
   },

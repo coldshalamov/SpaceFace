@@ -375,7 +375,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "56a797e29b148ac2e56ce6aeb4ea7eb7df164edb795b17fc3061b6c96306bcaa",
+  "contentHash": "11b0145ac365bf326b99eaf57ad6470cf9aac7cb30687a7dba4cae7604de3586",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive.dynamic",
@@ -4322,8 +4322,8 @@
       "uri": "place_ceres_breaker_cutter_head.glb"
     },
     "sourceManifest": {
-      "bytes": 228237,
-      "sha256": "1b69c49c46221b1db63f9802a590b029dab2580b07d02e256102f6026b2a4503",
+      "bytes": 233013,
+      "sha256": "d6494120852205f84844c9e2afda112b18a480a4e84edd3df88c04a37381558c",
       "uri": "pilots.json"
     }
   },
@@ -6210,7 +6210,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb"
   },
-  "runtimeHash": "812fa769ea9f902668e4cce7a6f91c728f93bf8b70c5847843183b2ede181b29",
+  "runtimeHash": "4635656e29d3511415836f091ddd7e3587e2512bfe04fa07030c7350411e509b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

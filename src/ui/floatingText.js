@@ -350,6 +350,9 @@ export function createFloatingText(ctx) {
   function update(dt) {
     if (activeCount <= 0) return;
     if (!helpers.worldToScreen) return;
+    // Viewport for the edge-overshoot fade — the same measures worldToScreen maps NDC against.
+    const vw = typeof window !== 'undefined' && Number.isFinite(window.innerWidth) ? window.innerWidth : 1280;
+    const vh = typeof window !== 'undefined' && Number.isFinite(window.innerHeight) ? window.innerHeight : 720;
     for (let i = 0; i < POOL; i++) {
       const n = nodes[i];
       if (!n.alive) continue;
@@ -370,7 +373,20 @@ export function createFloatingText(ctx) {
         n._sfHudTransform = nextTransform;
         n.el.style.transform = nextTransform;
       }
-      const nextOpacity = String(s.onScreen ? (1 - t * t) : 0);
+      // Edge-overshoot fade (was a binary onScreen gate): a float straddling the frustum edge
+      // strobed between its fade value and 0 every frame as onScreen flipped. It now dims over
+      // ~12% of the viewport past each edge. A failed projection — non-finite coords or the
+      // {0,0} sentinel — still paints nothing.
+      let nextOpacity = '0';
+      const ex = s.x + drift;
+      const ey = s.y + rise;
+      if (Number.isFinite(ex) && Number.isFinite(ey)
+        && (s.onScreen !== false || s.x !== 0 || s.y !== 0)) {
+        const overX = Math.max(0, Math.abs(ex - vw * 0.5) - vw * 0.5) / (vw * 0.12);
+        const overY = Math.max(0, Math.abs(ey - vh * 0.5) - vh * 0.5) / (vh * 0.12);
+        const over = Math.max(overX, overY);
+        nextOpacity = String(over >= 1 ? 0 : (1 - t * t) * (1 - over));
+      }
       if (n._sfOpacity !== nextOpacity) {
         n._sfOpacity = nextOpacity;
         n.el.style.opacity = nextOpacity;

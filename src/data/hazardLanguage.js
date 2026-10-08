@@ -14,7 +14,7 @@
 //     Zone-type colors are DERIVED from ZONE_TYPES (one source of truth); the same phenomenon
 //     keeps the same glyph across its sector-hazard and zone forms (radiation ≡ radiation_field).
 //   • hazardHints — SYSTEMS-only entry (registry, NOT UPDATE_ORDER): on the FIRST entry into a
-//     hazard *type* per session it speaks ONE counterplay hint via voice.say({channel:'warn'}),
+//     hazard *type* per session it speaks ONE counterplay hint via voice.say({channel:'tutorial'}),
 //     then stays silent for that type (tutorial-memory; packet failureMode: hint spam). It also
 //     mirrors the active hazard's language onto additive UI state (state.ui.hazardRead) for the
 //     HUD/render layer to read. No DOM, no window needed — headless-clean.
@@ -174,7 +174,9 @@ export const hazardHints = {
     this._hinted.add(type);
     const helpers = (this._ctx && this._ctx.helpers) || {};
     if (helpers.voice && typeof helpers.voice.say === 'function') {
-      helpers.voice.say({ channel: 'warn', text: entry.hint, kind: 'hazardHint' });
+      // 'warn' is not an arbiter channel — it fell to info priority and lost the floor to
+      // barks/news exactly when the hint mattered. This is teaching, so it rides 'tutorial'.
+      helpers.voice.say({ channel: 'tutorial', text: entry.hint, kind: 'hazardHint' });
     }
   },
 

@@ -263,6 +263,10 @@ export function injectHudCss() {
   body.ui-modal-open .sf-toast { pointer-events:none; cursor:default; }
   .sf-toast--in { transform:none; opacity:1; }
   .sf-toast--out { transform:none; opacity:0; }
+  /* While tick()'s JS tail-fade owns opacity (last 300ms), the CSS transition fights it — each
+     per-frame write started a new .16s ease toward an already-stale target. The class is toggled
+     by toasts.js at fade start and cleared on dismiss/regroup so --out keeps its exit beat. */
+  .sf-toast--jsfade { transition:none; }
   /* The card is a dismiss control (role=button, tabindex=0): keyboard arrivals need a visible
      ring, and pointer hover brightens the line so clickability reads before the click. */
   .sf-toast:hover .sf-toast__text { text-shadow:0 0 10px rgb(255 255 255 / .28); }
@@ -332,11 +336,12 @@ export function injectHudCss() {
      ring, the cooldown-ring dasharray progress arc, four corner brackets that close on lock, a
      centre pip. Light only, no boxes. States are the ORRERY voice — warm bone at rest, paper
      readings while tracking, the Hand amber when locked; red stays threat-only, never cyan. */
-  .sf-lockring { display:none; position:absolute; left:50%; top:50%; width:72px; height:72px;
+  .sf-lockring { position:absolute; left:50%; top:50%; width:72px; height:72px;
     transform:translate(-50%,-50%) scale(1); transform-origin:50% 50%;
     pointer-events:none; z-index:14; opacity:0; will-change:transform;
-    transition:opacity .15s ease; }
-  .sf-lockring.active { display:block; opacity:1; }
+    visibility:hidden;
+    transition:opacity .15s ease, visibility 0s linear .15s; }
+  .sf-lockring.active { visibility:visible; opacity:1; transition:opacity .15s ease; }
   .sf-lockring.sf-lockring--latch { animation:sf-lockring-latch 160ms cubic-bezier(.2,.7,.2,1) 1; }
   .sf-lockring svg { display:block; width:100%; height:100%; overflow:visible; }
   .sf-lockring .sf-lockring__scale { fill:none; stroke:var(--k-hair); stroke-width:1;
@@ -420,9 +425,10 @@ export function injectHudCss() {
      cargo eight-point star. data-shape (targetBracketShape) picks the emblem; colour is the
      state voice — warm bone at rest, paper while tracking, the Hand when locked, red only for
      an actual missile threat. Shape carries the class, so the mark stays legible greyscale. */
-  .sf-lockdiamond { display:none; position:absolute; left:0; top:0; width:32px; height:32px; pointer-events:none; z-index:13;
-    opacity:0; transition:opacity .12s ease; will-change:transform; }
-  .sf-lockdiamond.visible { display:block; opacity:1; }
+  .sf-lockdiamond { position:absolute; left:0; top:0; width:32px; height:32px; pointer-events:none; z-index:13;
+    opacity:0; visibility:hidden; will-change:transform;
+    transition:opacity .12s ease, visibility 0s linear .12s; }
+  .sf-lockdiamond.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
   .sf-lockdiamond__inner { position:absolute; inset:2px; color:var(--k-bone-62); will-change:transform; }
   .sf-lockdiamond__inner svg { display:block; width:100%; height:100%; overflow:visible;
     fill:none; stroke:currentColor; stroke-width:1.5; stroke-linejoin:round;
@@ -466,9 +472,10 @@ export function injectHudCss() {
   .sf-hud-glitch-overlay.active { display:block; opacity:.85; }
 
   /* Gravity Mark — a persistent world-space contracting well read, independent of selection. */
-  .sf-gravity-mark { display:none; position:absolute; left:0; top:0; width:46px; height:46px;
-    pointer-events:none; z-index:12; opacity:0; transition:opacity .12s ease; will-change:transform; }
-  .sf-gravity-mark.visible { display:block; opacity:1; }
+  .sf-gravity-mark { position:absolute; left:0; top:0; width:46px; height:46px;
+    pointer-events:none; z-index:12; opacity:0; visibility:hidden; will-change:transform;
+    transition:opacity .12s ease, visibility 0s linear .12s; }
+  .sf-gravity-mark.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
   .sf-gravity-mark__ring { position:absolute; inset:3px; border:2px solid var(--hud-paper);
     border-radius:50%;
     animation:sf-gravity-mark-contract .9s cubic-bezier(.4,0,.2,1) infinite; }
@@ -482,9 +489,10 @@ export function injectHudCss() {
   }
 
   /* Momentum Sink — static opposing brackets name the player's moving reference frame. */
-  .sf-momentum-sink { display:none; position:absolute; left:0; top:0; width:58px; height:58px;
-    pointer-events:none; z-index:12; opacity:0; transition:opacity .12s ease; will-change:transform; }
-  .sf-momentum-sink.visible { display:block; opacity:1; }
+  .sf-momentum-sink { position:absolute; left:0; top:0; width:58px; height:58px;
+    pointer-events:none; z-index:12; opacity:0; visibility:hidden; will-change:transform;
+    transition:opacity .12s ease, visibility 0s linear .12s; }
+  .sf-momentum-sink.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
   .sf-momentum-sink__bracket { position:absolute; inset:5px; border-left:1px solid var(--k-hair);
     border-right:3px solid var(--hud-amber); }
   .sf-momentum-sink__bracket::before, .sf-momentum-sink__bracket::after {
@@ -503,10 +511,11 @@ export function injectHudCss() {
   /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
      intercepts the moving target. A hollow reticle-ring the player walks their crosshair onto. Tints
      amber→green as the crosshair converges (solved via the SAME lead solver the guns use). */
-  .sf-leadpip { display:none; position:absolute; left:0; top:0; width:22px; height:22px; pointer-events:none; z-index:13;
-    opacity:0; transition:opacity .1s ease; will-change:transform;
+  .sf-leadpip { position:absolute; left:0; top:0; width:22px; height:22px; pointer-events:none; z-index:13;
+    opacity:0; visibility:hidden; will-change:transform;
+    transition:opacity .1s ease, visibility 0s linear .1s;
     --pip-glow:255,196,84; }
-  .sf-leadpip.visible { display:block; opacity:.92; }
+  .sf-leadpip.visible { visibility:visible; opacity:.92; transition:opacity .1s ease; }
   .sf-leadpip.on-solution { --pip-glow:120,240,150; }
   .sf-leadpip__svg { width:100%; height:100%; overflow:visible; }
   .sf-leadpip__full, .sf-leadpip__arc {

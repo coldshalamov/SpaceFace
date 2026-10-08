@@ -4561,6 +4561,20 @@ function dressProxyColliderDesc(R, desc, entity, spec, material, captureContactI
 function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, captureContactImpacts = true, parameters = {}) {
   const scale = proxyScaleFor(entity, manifest);
   const hasConvexHull = typeof R.ColliderDesc.convexHull === 'function';
+  // Authored assemblies retain their physical gaps. One union hull would fill the
+  // courier's stern fork and the sail's notch, changing the actual passable space.
+  if (Array.isArray(manifest.convexParts)) {
+    if (!hasConvexHull || manifest.convexParts.length < 1 || manifest.convexParts.length > MAX_PROXY_PRIMITIVES)
+      throw new Error(`Invalid authored convex assembly: ${manifest.id}`);
+    return manifest.convexParts.map(part => {
+      if (!part?.id || !Array.isArray(part.points) || part.points.length < 3
+          || !part.points.every(p => Number.isFinite(p.x) && Number.isFinite(p.z)))
+        throw new Error(`Invalid authored convex part: ${manifest.id}/${part?.id}`);
+      const desc = convexPrismDesc(R, part.points, scale, parameters);
+      if (!desc) throw new Error(`Degenerate authored convex part: ${manifest.id}/${part.id}`);
+      return dressProxyColliderDesc(R, desc, entity, spec, material, captureContactImpacts);
+    });
+  }
   if (Array.isArray(manifest.compactHull) && manifest.compactHull.length >= 3 && hasConvexHull) {
     const hullDesc = convexPrismDesc(R, manifest.compactHull, scale, parameters);
     if (hullDesc) {
@@ -4743,6 +4757,7 @@ function colliderPoint(collider, point) {
 }
 function contactPrimitiveId(rec,index) {
   const manifest=proxyManifestForBody(rec.entity,rec.spec);
+  if (Array.isArray(manifest?.convexParts)) return manifest.convexParts[index]?.id ?? `native:${index}`;
   if (!manifest || manifest.compactHull || manifest.planarPolygon) return `native:${index}`;
   return expandProxyPrimitives(manifest,{entity:rec.entity})[index]?.id ?? `native:${index}`;
 }

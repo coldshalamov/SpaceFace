@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
+  "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
   "installCommand": "ELECTRON_SKIP_BINARY_DOWNLOAD=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci",
   "buildCommand": "npm run build:bundle",
   "outputDirectory": "build/web",

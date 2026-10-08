@@ -739,6 +739,13 @@ export const ui = {
     let lastEndpointCy = null;
     let lastFlightPathDrawing = null;
     let lastFlightCursorActive = null;
+    // Drop hysteresis: a one-frame pointer.active dip (focus bounce, a modal boundary
+    // crossing) used to flash the OS cursor back over the reticle for a single frame.
+    let flightCursorDropTimer = null;
+    // Sticky reticle fallback: once the pointer has been seen, its last coordinates stay
+    // valid — teleporting the reticle to screen center on a transient dip read as the
+    // cursor flicking to a different location.
+    let flightPointerSeen = false;
 
     // Bind-sheet copy lives in Help / Settings. The flight windshield no longer mounts a key laundry.
     setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
@@ -770,9 +777,31 @@ export const ui = {
         && typeof document.exitPointerLock === 'function') {
         try { document.exitPointerLock(); } catch (_) { /* best effort: the next frame retries */ }
       }
-      if (lastFlightCursorActive !== active) {
-        lastFlightCursorActive = active;
-        document.body.classList.toggle('sf-flight-cursor', active);
+      if (active) {
+        if (flightCursorDropTimer) {
+          clearTimeout(flightCursorDropTimer);
+          flightCursorDropTimer = null;
+        }
+        if (!lastFlightCursorActive) {
+          lastFlightCursorActive = true;
+          document.body.classList.add('sf-flight-cursor');
+        }
+      } else if (lastFlightCursorActive) {
+        // Over a screen the OS cursor is the pointer — drop instantly. A pointer dip in
+        // pure flight gets a grace window so one cleared frame cannot blink the cursor.
+        if (!visible) {
+          lastFlightCursorActive = false;
+          document.body.classList.remove('sf-flight-cursor');
+        } else if (flightCursorDropTimer == null) {
+          flightCursorDropTimer = setTimeout(() => {
+            flightCursorDropTimer = null;
+            const p = this.state && this.state.input && this.state.input.pointerScreen;
+            if (!(visible && p && p.active)) {
+              lastFlightCursorActive = false;
+              document.body.classList.remove('sf-flight-cursor');
+            }
+          }, 140);
+        }
       }
       // `reticle` created above is the only element with id 'aim-reticle': the old
       // getElementById could only ever resolve to it (or nothing) — skip the per-frame lookup.
@@ -820,10 +849,12 @@ export const ui = {
         autoTargetFlightPath.style.opacity = nextFlightPathOpacity;
       }
       if (!visible) return;
+      if (active) flightPointerSeen = true;
       const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
       const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
-      const x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
-      const y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
+      const holdLast = flightPointerSeen && Number.isFinite(pointer.x) && Number.isFinite(pointer.y);
+      const x = (active || holdLast) ? pointer.x : fallbackX;
+      const y = (active || holdLast) ? pointer.y : fallbackY;
       if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
         || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
         const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
