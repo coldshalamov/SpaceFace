@@ -2175,6 +2175,27 @@ test('the basin pull ramps in over the cone projection — the gravity edge move
   t.cleanup();
 });
 
+test('the snag itself waits for the drawn edge — a parked body cannot core inside the wake window', async () => {
+  const t = await bootPhysics();
+  // Dead-center on the maw: inside snagRadius from tick one — only the wake gate
+  // (beamWake/0.15 >= 0.7) stands between it and coring.
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  t.state.input.actions.gyreSnare = true;
+  t.sim.step(); // arm — the pull lanes (and the beamWake counter) open next step
+  assert.equal(t.sys._rt.phase, 'beaming');
+  // The gate opens at ~0.105 s — the 7th pull tick. Through the window the body
+  // may only be basin-dragged, never cored.
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'beaming', 'no snag inside the projection window');
+  assert.equal(t.sys._rt.coreId, null, 'the parked body is prey, not core, until the edge exists');
+  for (let i = 0; i < 4 && t.sys._rt.phase === 'beaming'; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(t.sys._rt.phase, 'holding', 'the catch lands once the drawn edge exists');
+  assert.ok(t.sys._rt.coreId != null);
+  t.cleanup();
+});
+
 
 // ── wave-21 coverage ────────────────────────────────────────────────────────────
 test('thrownBeat fires on exactly one tick — the first burst tick, with gyre:thrown', async () => {

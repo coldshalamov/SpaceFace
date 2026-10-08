@@ -748,7 +748,9 @@ export const gyreSnare = {
   _pullPass(dt, state, player, maw, nose, owned) {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
-    this._rt.beamWake += dt; // the lane only runs while the lash is live
+    this._rt.beamWake = Math.min(0.15, this._rt.beamWake + dt); // saturates at the
+    // ramp's end — every reader clamps vs 0.15, so an unbounded counter in a long
+    // hold is dead bookkeeping.
     this._rt.basinCount = 0; // reset above the guard — a helper-less host must not
     // towCount resets at the two callers: _suckPass runs before this lane in HOLD and
     // its annulus tow would be wiped by a local reset here.
@@ -1525,6 +1527,8 @@ export const gyreSnare = {
     rt.lastAbsorbCueS = -1e9;
     rt.strainCueLatched = false;
     rt.fullCueLatched = false;
+    rt.basinCatchLatched = false; // drop/finishLaunch reset symmetry — _publish clears
+    // it on every non-BEAM tick anyway, but the latch belongs to the beam ledger
     rt.launchedId = null;
     // ballId/ballMass deliberately survive: the clump visual keeps riding the thrown mass until it
     // despawns, and the HUD's "ball live" dot reads the same flag.
