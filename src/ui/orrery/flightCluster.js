@@ -21,7 +21,7 @@ import { arcGauge, orbitRing, ring } from './instruments.js';
 import { createSpring } from './motion.js';
 import { createCounter } from './text.js';
 import { createSpeedDial, SPEED_DIAL } from './speedDial.js';
-import { hullPosterUrl } from '../hullPosters.js';
+import { nextFlightDecision, NEXT_DECISION_CLASS } from './nextDecision.js';
 
 // The colour phase is decided by the displayed reading (speedDial.js owns it; the contract is pinned here).
 export { speedPhase } from './speedDial.js';
@@ -52,7 +52,7 @@ const CSS = `
 .orr-cluster > svg { position:absolute; left:0; top:0; width:${W}px; height:${H}px; overflow:visible; }
 /* free type over a live world needs a soft, edge-less shadow — never a box. Every glyph also carries
    a tight halo of the void, so a label stays legible over a bright foundry floor or a sunlit hull */
-.orr-cluster__keytag, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__payload, .orr-cluster__count {
+.orr-cluster__keytag, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__payload, .orr-cluster__count, .orr-cluster__next {
   text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 3px rgb(3 4 7 / .85), 0 0 9px rgb(3 4 7 / .6); }
 /* small type gets its own pool of shadow, sized to the words, not the block — hugging the text */
 .orr-cluster__keytag::before { content:""; position:absolute; inset:-7px -18px; z-index:-1; pointer-events:none;
@@ -66,6 +66,14 @@ const CSS = `
 .orr-cluster__legend b.is-hull i { font-style:normal; font-size:12px; font-weight:500; color:var(--dp-ink-dim, #b7b4a6); margin-left:1px; }
 .orr-cluster__legend .orr-label { font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); }
 .orr-cluster__legend .is-critical, .orr-cluster__legend .is-critical i { color:var(--dp-danger, #ff5038); }
+/* SFQ-B202 / B208 / B209 — the next decision sits under the legend, off the hull art and off
+   the arrival fade. Large text uses the same scale token as the rest of the UI. Reduced motion
+   never waits on this line: it is not an orr-cluster__fade child. */
+.orr-cluster__next { position:absolute; left:${P.x - 62}px; top:${P.y + 146}px; width:250px; margin:0;
+  font-family:var(--dp-face-label, inherit); font-weight:560; line-height:1.25;
+  font-size:max(12px, calc(13px * var(--sf-text-scale, 1))); color:var(--dp-danger, #ff5038);
+  pointer-events:none; animation:none !important; }
+.orr-cluster__next[hidden] { display:none !important; }
 .orr-cluster__read { position:absolute; display:flex; flex-direction:column; gap:3px; }
 .orr-cluster__read .orr-value { font-size:15px; }
 .orr-cluster__key { position:absolute; width:48px; height:48px; margin:-24px 0 0 -24px;
@@ -253,6 +261,10 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   hullRow.val.classList.add('is-hull');
   const shieldRow = legendRow('shield', 'Shield');
   const armorRow = legendRow('armor', 'Armor');
+  const nextEl = el('p', NEXT_DECISION_CLASS);
+  nextEl.setAttribute('role', 'status');
+  nextEl.setAttribute('aria-live', 'polite');
+  nextEl.hidden = true;
 
   // ---- the ordnance crescent + the Hand --------------------------------------------------------------
   const crescentTrack = svg('path', { d: '', class: 'orr-core orr-faint', 'stroke-width': 1 });
@@ -366,7 +378,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   payload.style.visibility = 'hidden';
   const massCounter = createCounter(massEl, { format: (n) => `${Math.round(n)} T` });
 
-  root.append(dial.el, energyRead, heatRead, legend, payload);
+  root.append(dial.el, energyRead, heatRead, legend, nextEl, payload);
 
   // ---- update --------------------------------------------------------------------------------------
   const last = {};
@@ -470,6 +482,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         strain.setTone(st > 0.85 ? 'threat' : 'phos');
         strainEl.textContent = `STRAIN ${Math.round(st * 100)}%`;
       }
+    }
+    const decision = nextFlightDecision(d);
+    if (changed('decision', decision)) {
+      nextEl.textContent = decision;
+      nextEl.hidden = decision === '';
     }
   }
 
