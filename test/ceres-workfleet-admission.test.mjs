@@ -538,3 +538,26 @@ test('actual LOD2 renderer submission clears a cutter throat on zero consumed fo
     t.view.syncEntityViews(1);assert.equal(core.material.emissiveIntensity,0);assert.equal(decorative,0);
   } finally {disposeRendererOwnedResources(t.view);t.sim.dispose();}
 });
+
+test('an awake on-glass authored root receives the live GameState from the renderer frame', () => {
+  const t=fixture(), e=t.entities.find(entity=>entity.data.ceresWorkfleetRole==='cutterHead');
+  const mesh=mount(t,e,propulsionRoot(e)); reconcile(t);
+  const world=t.view._presentationWorld;
+  Object.assign(world,{alive:[1],slotGenerations:[1],meshRefs:[mesh],entityIds:[e.id],flags:[0],entityRefs:[e],
+    dirtyMasks:[0],radii:[e.radius],boundCount:1,refreshVisibleEntity(){},clearDirty(){},poseHasDelta:()=>false});
+  mesh.userData.lod={level:'lod0',resolve:()=> 'lod0'};
+  mesh.userData.updateLod=()=>{};mesh.userData._appliedLodLevel='lod0';
+  Object.assign(t.view,{_presentationQueryOptions:{},
+    _presentationQueries:{query:()=>({visibleCount:1,visibleSlots:[0],visibleGenerations:[1],hiddenCount:0,
+      candidateCount:1,culledCount:0,newlyVisibleCount:0})},
+    _entityViewCullBounds:()=>({x:0,z:0,halfX:10000,halfZ:10000,glassHalfX:10000,glassHalfZ:10000}),
+    _hasCompletedPresentationPose:()=>true,_entityFrame:createRenderEntityFrame(),_entityViewDiagnostics:{},
+    _hlodDiagnostics:{},_persistentSubmitLanes:createPersistentSubmitLanes(),viewport:{width:1280,height:720},_presentationFrameDt:0});
+  t.view._frameMembrane.origin={x:0,z:0};
+  const calls=[];mesh.userData.updateAuthoredMotion=(...args)=>{calls.push(args);};
+  try {
+    assert.doesNotThrow(()=>t.view.syncEntityViews(1),'the frame must not throw while posing an awake authored root');
+    assert.ok(calls.length>0,'an awake on-glass authored root runs its motion closure');
+    assert.equal(calls.at(-1)[3],t.state,'the closure is handed the live GameState');
+  } finally {disposeRendererOwnedResources(t.view);t.sim.dispose();}
+});
