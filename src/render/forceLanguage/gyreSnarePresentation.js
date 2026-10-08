@@ -904,7 +904,11 @@ export class GyreSnarePresentation {
       // so the spiral's metronome pace would otherwise betray the about-to-tear read.
       // `spent` slows the funnel with the glass it feeds — a dead lane that still
       // inhales at full gulp speed through the ~0.2 s LAUNCH betrays the thrown read.
-      if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strainW * 1.5) * spent;
+      // The funnel holds its breath through the draw: launchWindup01 pins at 1.0
+      // through the coil + burst, so motes stall instead of inhaling at full gulp
+      // while the glass visibly winds back for an outward throw.
+      if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strainW * 1.5)
+        * spent * (1 - Math.min(1, finite(mirror.launchWindup01)));
       this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = drawLen;
       this._spiralMat.uniforms.uRad.value = endR * spent; // the funnel narrows with the spent lash
@@ -915,7 +919,11 @@ export class GyreSnarePresentation {
       // Lerp toward the target instead of snapping — the moment the coil engages the
       // funnel eases back to the maw over ~0.1 s rather than unbending in one frame.
       const aimT = this._aimTarget || (this._aimTarget = new THREE.Vector3());
-      if (holding && mirror.corePos) {
+      // corePos publishes live through the coil (rt.coreId clears only at
+      // _finishLaunch), so the funnel keeps aiming at the ball it is winding
+      // back — unbending to the empty plane while the payload visibly drags
+      // ~24 wu aft of the maw reads as the suction losing its target.
+      if ((holding || phase === 'launching') && mirror.corePos) {
         const cl = this.toLocal(finite(mirror.corePos.x), finite(mirror.corePos.z), this._corePt);
         const ox = cl.x - mL.x, oz = cl.z - mL.z;
         const inv = len > 0 ? 1 / len : 0;
@@ -1109,7 +1117,13 @@ export class GyreSnarePresentation {
     if (cx == null) {
       // A thrown ball's rubble shrinks INTO its grave over ~0.25 s (the k² language of
       // the close-ramp) instead of teleporting out under the blooming ring.
-      if (this._ballId != null && !this._closing && this._deathT <= 0) this._deathT = 0.25;
+      // Adoption retirements (ballGrave === false: the body went to another lane
+      // still live) skip the scatter like the ring — flinging rubble under a
+      // still-flying ball reads as a mid-air burst for a body that never died.
+      if (this._ballId != null && !this._closing && this._deathT <= 0) {
+        if (mirror.ballGrave !== false) this._deathT = 0.25;
+        else this._clearLumps();
+      }
       if (this._deathT > 0) {
         this._deathT -= sdt;
         const k = Math.max(0, this._deathT / 0.25);

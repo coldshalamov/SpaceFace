@@ -31,7 +31,7 @@ export const GYRE_HUD_CSS = `
 }
 .sf-gyre-pill.gyre-holding { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-search { color: var(--dp-lamp-dim, #8a6b3a); } /* beam live, nothing gripped yet */
-.sf-gyre-pill.gyre-heavy { color: var(--dp-lamp-dim, #8a6b3a); border-left-color: var(--dp-lamp, #f2b950); } /* a body it can never eat — warmer than plain search */
+.sf-gyre-pill.gyre-heavy { color: var(--dp-lamp, #f2b950); text-shadow: var(--dp-emit-lamp, none); } /* a body it can never eat — warm like held, not hot */
 .sf-gyre-pill.gyre-strain { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
 .sf-gyre-pill.gyre-launched { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-ball { border-left-color: var(--dp-lamp-dim, #8a6b3a); }

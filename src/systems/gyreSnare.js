@@ -231,11 +231,12 @@ export const gyreSnare = {
     const droppedMass = rt.clumpMass;
     // The tear snap's whip scale — captured before the reset zeroes clumpRadius
     // (which would unfloor the ponderous rate). Strain drops only.
-    let droppedDir = 1, droppedOrbitR = 0, droppedRate = 0;
+    let droppedDir = 1, droppedOrbitR = 0, droppedRate = 0, droppedClumpR = 0;
     if (!wasOff && reason === 'strained') {
       droppedDir = rt.orbitDir;
       droppedOrbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale);
       droppedRate = this._orbitRate(rt);
+      droppedClumpR = rt.clumpRadius; // the whip grades on the clump it WAS
     }
     rt.dropReason = reason || 'dropped'; // a strain break is a tear, not a polite release — the close reads the reason
     rt.phase = PHASE.OFF;
@@ -313,13 +314,14 @@ export const gyreSnare = {
         const il = Math.hypot(ix, iz) || 1; ix /= il; iz /= il;
         const m = entityMass(torn);
         // The whip must OUTRUN the revolve's tangential speed or the snap reads
-        // weaker than the motion it interrupts — a capped moon circles ~18 wu/s
-        // (ponderous-floored 0.255 rad/s × ~72 wu), so the frac lands the flick
-        // just past its own revolve while tearSnapWuS keeps a pebble snappy.
-        const snapV = Math.max(D.tearSnapWuS, droppedRate * droppedOrbitR * D.tearSnapOrbitFrac);
-        // frac 2.0 keeps the term live: pebble revolve (~12 wu/s) sits just under
-        // the 24 wu/s floor while a capped moon's ~18.4 wu/s whips ~37 — the tear
-        // grades by how fast the payload was actually circling when it slipped.
+        // weaker than the motion it interrupts. The frac term is mass-graded by
+        // clumpRadius/maxClumpRadius — a routine clump's graded term lands under
+        // the floor and the tear reads as one clean flick; only a near-cap ball
+        // earns the whip past it (~37 wu/s at cap). Monotone in size — a heavier
+        // slip always reads more violent than a smaller one.
+        const snapV = Math.max(D.tearSnapWuS,
+          droppedRate * droppedOrbitR * D.tearSnapOrbitFrac
+            * Math.min(1, droppedClumpR / D.maxClumpRadius));
         queuePhysicsImpulse(torn,
           { x: ix * m * snapV, y: 0, z: iz * m * snapV },
           this._evidence(st.tick | 0));

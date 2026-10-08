@@ -2610,6 +2610,7 @@ test('a strain break whips the freed clump along its last orbit tangent', async 
   for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'holding');
   const dir = t.sys._rt.orbitDir;
+  const clumpR = t.sys._rt.clumpRadius; // pre-drop — _drop resets the ledger
   // Isolated call — the ONLY impulse queued on the body is the parting snap.
   t.sys._drop('strained');
   const cmd = consumePhysicsCommand(body);
@@ -2625,7 +2626,10 @@ test('a strain break whips the freed clump along its last orbit tangent', async 
   const radial = (imp.x * rx + imp.z * rz) / hyp;
   assert.ok(radial > 0.25 && radial < 0.6, `...biased outward (share=${radial.toFixed(2)})`);
   const snapV = Math.max(T.tearSnapWuS,
-    T.orbitRate * Math.max(T.orbitRadiusMin, 4 * T.orbitRadiusScale) * T.tearSnapOrbitFrac);
+    T.orbitRate * Math.max(T.orbitRadiusMin, 4 * T.orbitRadiusScale) * T.tearSnapOrbitFrac
+      * Math.min(1, clumpR / T.maxClumpRadius));
+  assert.equal(snapV, T.tearSnapWuS,
+    `a routine clump rides the floor — the graded term is top-end only (got ${snapV.toFixed(2)})`);
   assert.ok(Math.abs(hyp - 6 * snapV) < 1e-6,
     `impulse = mass × snapV (got ${hyp.toFixed(3)} vs ${(6 * snapV).toFixed(3)})`);
   t.cleanup();
@@ -2651,9 +2655,12 @@ test('a strain break whips the freed clump along its last orbit tangent', async 
   const hhyp = Math.hypot(himp.x, himp.z);
   const heavyRate = T.orbitRate * Math.max(0.3, Math.min(1, T.orbitRatePonderR / 60));
   const snapHeavy = Math.max(T.tearSnapWuS,
-    heavyRate * Math.max(T.orbitRadiusMin, 60 * T.orbitRadiusScale) * T.tearSnapOrbitFrac);
+    heavyRate * Math.max(T.orbitRadiusMin, 60 * T.orbitRadiusScale) * T.tearSnapOrbitFrac
+      * Math.min(1, 60 / T.maxClumpRadius));
+  assert.ok(snapHeavy > T.tearSnapWuS,
+    `a capped ball earns the graded term past the floor (got ${snapHeavy.toFixed(2)})`);
   assert.ok(Math.abs(hhyp - 6 * snapHeavy) < 1e-6,
-    `ponderous snap = mass × floored rate × orbitR × frac (got ${hhyp.toFixed(3)} vs ${(6 * snapHeavy).toFixed(3)})`);
+    `ponderous snap = mass × floored rate × orbitR × frac × mass-grade (got ${hhyp.toFixed(3)} vs ${(6 * snapHeavy).toFixed(3)})`);
   t3.cleanup();
 });
 

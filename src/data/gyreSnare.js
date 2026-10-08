@@ -94,14 +94,15 @@ export const GYRE_SNARE = Object.freeze({
   tumbleTorqueK: 2.2,        // gain steering the held core's spin toward tumbleTargetRadS
   tumbleTargetRadS: 0.55,    // rad/s — lazy rubble drift; a servo target so the spin settles
                            // instead of winding up open-loop over a long hold
-  tearSnapWuS: 24,           // wu/s — parting whip FLOOR on a strain break: an
-                           // ejection read (~2x cruise), not a drift-off — the
-                           // frac term carries big balls past it (~2x orbit)
-  tearSnapOrbitFrac: 2.0,    // the whip scales to this fraction of orbit tangential speed — pebbles
-                             // sit just under the floor while a capped moon whips ~37 wu/s
-                           // it must OUTRUN the revolve (~18 wu/s on a ponderous-floored
-                           // capped moon) or the snap reads weaker than the motion it
-                           // interrupts; the floor keeps a pebble's snap snappy
+  tearSnapWuS: 24,           // wu/s — parting whip floor on a strain break: an ejection
+                           // read (~2x cruise), not a drift-off. Binds every routine
+                           // clump — only a near-cap ball's graded term clears it.
+  tearSnapOrbitFrac: 2.0,    // whip = orbit tangential speed × this frac × clumpRadius/
+                             // maxClumpRadius — mass-graded so the snap is monotone in
+                             // size: routine clumps ride the floor (a clean flick) while
+                             // a capped moon whips ~37 wu/s. It must OUTRUN its own
+                             // revolve (~18 wu/s ponderous-floored) or the snap reads
+                             // weaker than the motion it interrupts.
   // ── Katamari growth ───────────────────────────────────────────────────────────────
   suckBandWidth: 88,         // wu — core sucks absorbables within core.radius + this
   suckBandFloor: 50,         // wu — floor band on a fresh snag: min(88, 50 + clumpRadius)
