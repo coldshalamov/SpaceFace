@@ -1258,6 +1258,64 @@ test('the basin catch voice ticks once, count-grades new peaks, and never re-tic
   t.cleanup();
 });
 
+// -- the re-tick positions where the lane grew --
+test('the appetite re-tick speaks at the maw in BEAM and at the clump seat in HOLD', async () => {
+  const t = await bootPhysics();
+  const cues = () => t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_catch');
+  // (a) BEAM: a fresh basin arrival past the first-catch peak re-ticks at the maw.
+  rock(t.sim, T.mawDist + 45, 10, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.basinCount, 1);
+  rock(t.sim, T.mawDist + 55, -20, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // index step
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // counted — new peak 2
+  assert.equal(t.state.gyreSnare.basinCount, 2);
+  assert.equal(cues().length, 2, 'the new shown peak re-ticked');
+  const beamAt = cues()[1].p.position;
+  assert.ok(Math.abs(beamAt.x - t.state.gyreSnare.maw.x) < 1e-6
+    && Math.abs(beamAt.z - t.state.gyreSnare.maw.z) < 1e-6,
+    'a basin arrival speaks at the maw where the mass entered the funnel');
+
+  // (b) HOLD: clear the funnel so the next growth is unambiguously the annulus
+  // lane, drop the beam to reset the peak ratchet, then snag a core and feed
+  // it. dSuck > dBasin → the tick lands at the clump's LIVE seat (an always-maw
+  // tick points the ear at empty space).
+  release(t);
+  for (const e of t.state.entities.values()) {
+    if (e !== t.player && e.type === 'asteroid' && e.alive !== false && e.data && !e.data.gyreCore) e.alive = false;
+  }
+  rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  assert.equal(t.sys._rt.phase, 'holding');
+  const clump = t.state.entities.get(t.sys._rt.coreId);
+  const before = cues().length;
+  // Two meals parked inside the suck annulus (outside the merge radius): the
+  // annulus owns them outright — they never touch basinCount.
+  rock(t.sim, clump.pos.x + 30, clump.pos.z + 10, 4, 3);
+  rock(t.sim, clump.pos.x - 26, clump.pos.z + 24, 4, 3);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // index step
+  // Publish runs before this step's physics integration, so the seat it reads
+  // is exactly this pre-step pos — an exact pin, not a tolerance.
+  const seatX = clump.pos.x; const seatZ = clump.pos.z;
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // counted — shownN past peak
+  assert.ok(cues().length > before, 'an annulus arrival re-ticks the appetite voice');
+  const holdAt = cues()[cues().length - 1].p.position;
+  assert.ok(Math.abs(holdAt.x - seatX) < 1e-6 && Math.abs(holdAt.z - seatZ) < 1e-6,
+    `the suck lane speaks at the clump's live seat (tick ${JSON.stringify(holdAt)} vs seat ${seatX},${seatZ})`);
+  // Unless the seat happened to BE the maw this tick (orbit phase), the pick
+  // must not read as the maw — a basin-grown and a suck-grown tick differ.
+  const seatIsMaw = Math.abs(seatX - t.state.gyreSnare.maw.x) < 1
+    && Math.abs(seatZ - t.state.gyreSnare.maw.z) < 1;
+  if (!seatIsMaw) {
+    assert.ok(!(Math.abs(holdAt.x - t.state.gyreSnare.maw.x) < 1e-6
+      && Math.abs(holdAt.z - t.state.gyreSnare.maw.z) < 1e-6),
+      'and not the maw — a basin-grown tick and a suck-grown tick must not share a spot');
+  }
+  release(t);
+  t.cleanup();
+});
+
 // -- saturation beat: gyre_snare_full latches once at the cap crossing --
 test('the absorb that fills the mass cap fires exactly one FULL cue', async () => {
   const t = await bootPhysics();
@@ -3146,6 +3204,47 @@ test('a second live ball publishes balls[] — trail, rumble, and countdown get 
   assert.ok(extra, 'the secondary ball publishes into balls[]');
   assert.ok(extra.ttlS > 0 && extra.ttlS <= T.ballTtlS, `secondary carries its countdown (got ${extra.ttlS})`);
   assert.ok(Number.isFinite(extra.x) && Number.isFinite(extra.ttl01), 'pos + ttl01 for the streak slot');
+  t.cleanup();
+});
+
+test('a displaced primary joins balls[] under a fresh core — and never double-dresses mid-throw', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 6; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  // Feed it one meal first — the frozen ledger is only non-empty for a ball
+  // that actually absorbed (a lone rock serializes an empty slice).
+  const seed = t.state.entities.get(t.sys._rt.coreId);
+  rock(t.sim, seed.pos.x + 20, seed.pos.z + 4, 4, 3);
+  for (let i = 0; i < 14; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.ok(t.state.gyreSnare.absorbs >= 1, 'the clump ate before the throw');
+  release(t);
+  // Inside the coil/burst the ball still owns the core mark (rt.coreId ===
+  // rt.ballId until _finishLaunch) — self-publishing there would dress the
+  // same body in the primary clump group AND the secondary overlay at once.
+  for (let i = 0; i < 3; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'launching', 'still inside the throw');
+  assert.equal(t.sys._rt.coreId, a.id, 'the thrown ball still rides its own mark');
+  assert.ok(!t.state.gyreSnare.balls.some((x) => x.id === a.id),
+    'the thrown ball never double-dresses as a secondary during the coil');
+  for (let i = 0; i < 12; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.equal(t.sys._rt.coreId, null);
+  assert.ok(!t.state.gyreSnare.balls.some((x) => x.id === a.id),
+    'un-displaced, the primary keeps only its own lane');
+  // Re-beam and snag a fresh core — the still-flying ball is displaced and
+  // joins the secondary lane with its frozen member ledger for the overlay.
+  t.player.cap = 100;
+  const b = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  assert.equal(t.sys._rt.coreId, b.id, 'a fresh core owns the clump group');
+  const displaced = t.state.gyreSnare.balls.find((x) => x.id === a.id);
+  assert.ok(displaced, 'the displaced primary publishes into balls[]');
+  assert.ok(Array.isArray(displaced.members) && displaced.members.length > 0,
+    'its frozen member ledger rides along for the overlay');
+  release(t);
   t.cleanup();
 });
 

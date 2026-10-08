@@ -1822,10 +1822,13 @@ export const gyreSnare = {
     bTmp.length = 0;
     for (let i = 0; i < rt.ballIds.length; i++) {
       const id = rt.ballIds[i];
-      // The primary skips this lane only while it still owns the clump group
-      // (no live core): a new snag mid-flight hands the overlay to the fresh
-      // core and the still-flying ball would draw bald for its remaining TTL.
-      if (id === rt.ballId && rt.coreId == null) continue;
+      // The primary skips this lane only while it still owns the clump group —
+      // either no live core at all, or the thrown ball itself riding its own mark
+      // through the coil/burst (rt.coreId stays set until _finishLaunch): self-
+      // publishing there double-dressed it in the primary group AND the
+      // secondary overlay for ~11 ticks. A new snag mid-flight hands the overlay
+      // to the fresh core — only THEN does the displaced ball join this lane.
+      if (id === rt.ballId && (rt.coreId == null || rt.coreId === id)) continue;
       const e = state && state.entities ? state.entities.get(id) : null;
       if (!e || e.alive === false || !e.data || !e.data.gyreLaunched || !e.pos) continue;
       const ttlS = e.data.despawnAt != null && Number.isFinite(state && state.simTime)
@@ -1858,6 +1861,10 @@ export const gyreSnare = {
       // landing on the single thrownBeat tick would otherwise latch it for the whole
       // OFF phase, and launchWindup01 pins at 1.0 after every launch.
       pub.thrownBeat = false; pub.launchWindup01 = 0; pub.launchBurst01 = 0;
+      // The documented contract is "during HOLD (0 otherwise)" — without the
+      // reset the mirror would keep the last annulus radius after a HOLD->OFF
+      // close and lie to any reader that doesn't gate on phase itself.
+      pub.suckRadius = 0;
       if (rt.ballId != null) {
         // Ball still flying: publish the frozen clump so the lumps/mass/count ride it out.
         pub.members = rt.ballMembers;
@@ -1885,6 +1892,9 @@ export const gyreSnare = {
     pub.nose.z = player.pos.z + nose.z * noseGap;
     const maw = this._maw(player, this._pubMaw || (this._pubMaw = { x: 0, z: 0 }));
     pub.maw.x = maw.x; pub.maw.z = maw.z;
+    // Fetched here (not just at the publish below) so the escalation tick can
+    // position at the clump's LIVE seat — pub.corePos is one publish stale.
+    const core = rt.coreId != null && state.entities ? state.entities.get(rt.coreId) : null;
     // First-catch edge: the net going empty -> occupied gets a soft tick so the
     // "xN IN NET" read has ears too — positioned at the maw where the mass
     // actually entered the funnel. HOLD's absorbs have their own voice.
@@ -1914,7 +1924,10 @@ export const gyreSnare = {
       if ((rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && shownN > rt.catchTickPeak) {
         rt.catchTickPeak = shownN;
         const n = Math.min(6, shownN);
-        const at = dSuck > dBasin ? pub.corePos : maw;
+        // The lane that grew picks the position — an annulus arrival speaks at
+        // the clump's live seat (pub.corePos lags a publish; fall back to it
+        // only if the entity lookup itself missed), a basin arrival at the maw.
+        const at = dSuck > dBasin ? (core && core.pos ? core.pos : pub.corePos) : maw;
         this.bus.emit('audio:cue', {
           id: 'gyre_snare_catch',
           gain: 0.16 + 0.03 * n,
@@ -1962,7 +1975,6 @@ export const gyreSnare = {
     // ring blooms on this same tick instead of a frame early off windup01.
     pub.thrownBeat = rt.phase === PHASE.LAUNCH
       && rt.launchLeft === D.launchTicks - 1;
-    const core = rt.coreId != null && state.entities ? state.entities.get(rt.coreId) : null;
     if (core && core.pos) {
       pub.corePos.x = core.pos.x; pub.corePos.z = core.pos.z;
       // The held body's real spin — the VFX lumps ride it instead of an authored rate.
