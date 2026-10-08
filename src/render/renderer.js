@@ -29338,6 +29338,10 @@ export const render = {
     // would claim a whole-root evaluation the walk never ran.
     if (!scopedSync && band === 1 && unstaged !== null && root.userData) {
       root.userData[STAGE_SELF_DIRTY_KEY] = dirtySeq;
+      // A completed collect proves the root against the serve it ran under —
+      // re-key the drift epoch so a proven-clean (or proven-withheld) root
+      // doesn't re-pay the whole-subtree flag walk every pass after a flip.
+      root.userData[STAGE_COLLECT_EPOCH_KEY] = censusEpochNow;
     }
     let syncOpts = opts;
     let withheldMeshes = null;
@@ -29382,6 +29386,15 @@ export const render = {
       // Catch-all: a queued root with no withhold state still counts — queued
       // alone means its depth signatures were never marked, so a live restore
       // here would draw unlinked depth variants inside the presented refresh.
+      syncOpts = { ...opts, allowCast: false };
+    } else if (collectGate && !censusFreshNow) {
+      // The collect consult was unprovable this pass — the census memo serves a
+      // stale epoch while its stepped re-mint pends — and the root isn't already
+      // withheld or queued. A live sync would re-enable cast flags on meshes
+      // never marked under the new census: the presented-frame variant compile
+      // the staging lane exists to kill. Withhold whole-subtree like the
+      // unsigned-window admission twin; no dirty stamp lands (unstaged stays
+      // null), so the root re-proves under the live sig next pass at no cost.
       syncOpts = { ...opts, allowCast: false };
     }
     // Over the whole-root traverse cap for this pass: skip only the traverse —
