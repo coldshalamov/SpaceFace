@@ -724,9 +724,11 @@ export class GyreSnarePresentation {
     if (this._lastPhase === 'beaming' && phase === 'holding' && mirror.corePos) {
       // mirror.clumpRadius, not the cached field — it refreshes later in update(),
       // so on a fresh snag the field is still stale and every catch would bloom
-      // the 4 wu floor regardless of what was grabbed.
+      // the 6 wu floor regardless of what was grabbed. Sizing at ~1.5×R keeps the
+      // verb's biggest early beat in parity with the ring language (the basin
+      // glow it replaces already spans ~2.6× the body's radius).
       this._fireBurst(finite(mirror.corePos.x), finite(mirror.corePos.z),
-        Math.max(4, finite(mirror.clumpRadius, 8) * 0.7), flashCalm);
+        Math.max(6, finite(mirror.clumpRadius, 8) * 1.5), flashCalm);
     }
     this._lastPhase = phase;
 
@@ -951,8 +953,11 @@ export class GyreSnarePresentation {
       if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strainW * 1.5)
         * spent * (1 - Math.min(1, finite(mirror.launchWindup01)));
       this._spiralMat.uniforms.uTime.value = this._moteT;
-      this._spiralMat.uniforms.uLen.value = drawLen;
-      this._spiralMat.uniforms.uRad.value = endR * spent; // the funnel narrows with the spent lash
+      // The funnel rides the same coil transform as the glass — without it the
+      // frozen gulp point floats ~6 wu past the retracted rim and the scatter
+      // sits ~7% proud of the tapered cone for the whole ~100 ms draw.
+      this._spiralMat.uniforms.uLen.value = drawLen - coilBack;
+      this._spiralMat.uniforms.uRad.value = coilR * spent; // narrows with the spent lash AND the taper
       // Aim the funnel's endpoint at the held core's beam-local offset: while a mass
       // is tethered it orbits ±75 wu off the maw plane, and the suction arrow should
       // point at the gravity well it really feeds — not an empty plane.
@@ -1395,14 +1400,11 @@ export class GyreSnarePresentation {
       // ring would advertise a dead well.
       const capFade = Math.max(0, 1 - finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1)));
       if (phase === 'holding' && capFade > 0.03) {
-        // Drawn reach must track the sim's suck annulus exactly — band + mass gain,
-        // floor-banded like _suckRadius and clamped at 1.5× the basin, so the halo
-        // never advertises more (or less, on a fresh snag) than the real pull.
-        const suckR = Math.min(
-          finite(GYRE_SNARE.basinRadius, 86) * 1.5,
-          this._clumpRadius * (1 + finite(GYRE_SNARE.suckBandMassGain, 0.5))
-            + Math.min(finite(GYRE_SNARE.suckBandWidth, 88),
-              finite(GYRE_SNARE.suckBandFloor, 50) + this._clumpRadius));
+        // The drawn reach IS the sim's annulus — pub.suckRadius carries the
+        // floor-banded, basin-capped formula so a data tuning edit can't desync
+        // the ring from the pull it advertises (clumpRadius floor covers the
+        // first-publish tick before the mirror fills).
+        const suckR = finite(mirror.suckRadius, 0) || this._clumpRadius;
         this._halo.position.set(p.x, 0.42, p.z);
         this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
         this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6);

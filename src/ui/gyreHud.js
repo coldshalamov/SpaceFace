@@ -28,7 +28,9 @@ export const GYRE_HUD_CSS = `
   box-shadow: none;
   text-shadow: var(--dp-emit, none);
   pointer-events: none; white-space: nowrap;
+  transition: transform .18s ease-out;
 }
+.sf-gyre-pill.gyre-eat { transform: scale(1.1); } /* a meal just landed — the counter gulps */
 .sf-gyre-pill.gyre-holding { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-search { color: var(--dp-lamp-dim, #8a6b3a); } /* beam live, nothing gripped yet */
 .sf-gyre-pill.gyre-heavy { color: var(--dp-lamp, #f2b950); text-shadow: var(--dp-emit-lamp, none); } /* a body it can never eat — warm like held, not hot */
@@ -68,6 +70,8 @@ export const gyreHud = {
     this._bowlUntil = -1;   // simTime deadline — the BOWL read holds ~0.8 s past the 5-tick burst
     this._bowlMass = null;  // null until a launch edge arms it — the mid-coil-attach
     this._bowlN = null;     //   fallback must be able to tell armed from absent
+    this._lastAbsorbs = 0;  // absorb ledger delta → the counter's ~150 ms gulp
+    this._eatUntil = -1;
   },
 
   destroy() {
@@ -89,7 +93,13 @@ export const gyreHud = {
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const seat = claimBottomLaneSeat('gyre', LANE_PRIORITY.active, FIELD_LANE_BASE, now);
     if (!seat.visible) { this._hide(dom); return; }
+    // The counter gulps too: maw/lumps/glints/audio/pad all celebrate a meal but
+    // the ×N·Mt read used to swap silently — a ~150 ms scale-pop on each absorb.
+    const ab = g && Number.isFinite(g.absorbs) ? g.absorbs : 0;
+    if (g && g.phase === 'holding' && ab > this._lastAbsorbs) this._eatUntil = now + 0.15;
+    this._lastAbsorbs = ab;
     this._apply(dom, text, cls, strain, fuse);
+    dom.pill.classList.toggle('gyre-eat', now < this._eatUntil);
     this._applyLaneSeat(dom.pill, seat.bottom);
   },
 

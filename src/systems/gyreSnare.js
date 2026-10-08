@@ -1895,6 +1895,10 @@ export const gyreSnare = {
     pub.endRadius = Math.max(pub.coneLen * Math.tan(D.coneHalfAngleRad), D.basinRadius);
     pub.coreId = rt.coreId;
     pub.maxClumpMass = D.maxClumpMass;
+    // The suck annulus publishes its own drawn radius — the halo reads the sim's
+    // formula instead of re-computing it, so a tuning edit can't silently desync
+    // the drawn ring from the real pull (same contract as endRadius above).
+    pub.suckRadius = rt.phase === PHASE.HOLD && rt.coreId != null ? this._suckRadius(rt) : 0;
     // A re-beam while the thrown ball still flies keeps ITS frozen ledger — opening a fresh
     // search must not strip the old ball's lumps or collapse its eventual death-burst to
     // the 6 wu floor. The live ledger only wins while a new core is held.
