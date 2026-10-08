@@ -466,6 +466,8 @@ html body #screens > .k-screen.orr-demo-end .k-foot .k-word.k-word--primary::aft
   transform:none !important; width:auto !important; height:17px !important; margin-left:12px; padding:0 5px; vertical-align:4px;
   box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42) !important; border-radius:3px; background:none !important;
   font-family:var(--dp-face-label, "Archivo"); font-size: 12px !important; letter-spacing:.08em; color:rgb(236 230 216 / .78) !important; text-shadow:none; }
+html body #screens > .k-screen:is(.orr-demo-end, .sf-crucible-results) .k-foot .k-word.k-word--primary.orr-lampkey::after { color:rgb(28 20 6 / .66) !important;
+  box-shadow:inset 0 0 0 1px rgb(28 20 6 / .4) !important; }
 
 /* armory: the offers on a rail at the left, one line each (the verb, the name, the price); the one
    under the pointer or focus is read out at the right -- its words, where it goes on the ship, how it
