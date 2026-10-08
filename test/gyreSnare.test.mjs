@@ -2771,6 +2771,8 @@ test('protected adoption at the release edge bowls nothing', () => {
 test('mid-launch protected adoption hands the half-thrown ball back', () => {
   const t = boot(9292);
   const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  const authoredDespawn = t.state.simTime + 500;
+  core.data.despawnAt = authoredDespawn; // authored deadline — long past any flight TTL
   t.state.input.actions.gyreSnare = true;
   for (let i = 0; i < 15; i++) t.sim.step();
   assert.equal(t.sys._rt.phase, 'holding');
@@ -2787,6 +2789,12 @@ test('mid-launch protected adoption hands the half-thrown ball back', () => {
   assert.equal(core.data.gyreLaunched, undefined, 'the mark sheds on hand-back');
   assert.equal(core.data.gyreLaunchMeta, undefined, 'the credit shadow sheds');
   assert.equal(core.physicsBody.impactDamageScale, undefined, 'the weapon payload disarmed');
+  // The lash's own ~9 s flight stamp is NOT a foreign-owner deadline — the
+  // future-only restore must see past it and resurrect the authored stash
+  // instead of letting the aborted throw's TTL kill the handed-back body.
+  assert.equal(core.data.despawnAt, authoredDespawn,
+    `authored despawnAt restored, not the aborted flight's TTL (got ${core.data.despawnAt})`);
+  assert.equal(core.data.gyrePrevDespawnAt, undefined, 'the stash consumed on restore');
   assert.ok(!t.events.some((e) => e.name === 'gyre:thrown'), 'the throw never completed');
   assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_adopted'),
     'drop reason is core_adopted');

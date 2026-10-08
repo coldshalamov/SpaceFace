@@ -431,6 +431,15 @@ export const gyreSnare = {
     // credit rides the adopter's body: clear it here (NOT in _disarmBall — the
     // evicted-but-still-marked path deliberately keeps credit to its own TTL).
     clearImpulseProvenance(ball);
+    // The lash stamps its OWN flight deadline on the ball — indistinguishable from a
+    // foreign-owner deadline by nullness alone, so the future-only restore would
+    // preserve it and a pin landing mid-throw would still kill the body on the
+    // aborted flight's ~9 s TTL. The stamped value is self-identifying via the meta:
+    // drop it before the restore so the authored stash round-trips.
+    if (ball.data.gyreLaunchMeta
+      && ball.data.despawnAt === ball.data.gyreLaunchMeta.holdUntilSim) {
+      delete ball.data.despawnAt;
+    }
     // Symmetric with _restoreLifetime on drop, but future-only: the authored deadlines
     // the ball carried before the lash caught it come back ONLY while still in the
     // future and only when the new owner left despawnAt unset — a stale stash or a
@@ -1378,6 +1387,7 @@ export const gyreSnare = {
     // must not dress a clean bowl's close ramp as a slip.
     rt.dropReason = 'launched';
     rt.fuseCueLatched = false;
+    rt.strainCueNextTick = 0; // ledger symmetry with _drop — dead data, nothing stale survives
     // Same live-side ledger reset _drop does: after the ball dies a core-less re-beam
     // must not publish the dead clump's count/cue state as if it were live. The frozen
     // ball ledger (ballId/ballMass/ballMembers/ballClumpRadius/ballAbsorbs) survives —
@@ -1737,6 +1747,9 @@ export const gyreSnare = {
     pub.clumpMass = ridingBall ? rt.ballMass : rt.clumpMass;
     pub.clumpRadius = ridingBall ? rt.ballClumpRadius : rt.clumpRadius;
     pub.absorbs = ridingBall ? rt.ballAbsorbs : rt.totalAbsorbed;
+    // READ-ONLY CONTRACT: members/basinSpots publish live sim-owned arrays into the
+    // mirror — no per-tick slice. Presentation consumers read only; a mutation would
+    // corrupt the ledger mid-pass.
     pub.members = ridingBall ? rt.ballMembers : rt.members;
     pub.launchDir.x = rt.launchDir.x; pub.launchDir.z = rt.launchDir.z;
     // Progress (not remaining): 0 at the release edge, rising to 1.0 on the throw
