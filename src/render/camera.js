@@ -1609,8 +1609,9 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     holdRemaining() { return _holdT; },
     // PQ-159.02 death cam: hold the wreck and ease out so the kill is a picture, not a cut.
     deathCam() {
-      if (isMotionReduced(state)) return;
+      // The picture goes overhead even when reduced motion skips the hold and the zoom.
       _deathCam = true;
+      if (isMotionReduced(state)) return;
       this.hold(DEATH_CAM_HOLD_S);
       this.pushZoom(DEATH_CAM_PUSH_ZOOM, DEATH_CAM_HOLD_S);
     },
@@ -2176,11 +2177,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       c.kickOffset.set(_kick.x, 0, _kick.z);
       const reduced = isMotionReduced(state);
       const stern = !!p && !_deathCam && resolveSteeringView(state, { death: _deathCam }) === 'racing';
-      _overheadPose.eyeX = c.focus.x + offset.x + c.shakeOffset.x + c.kickOffset.x;
-      _overheadPose.eyeZ = c.focus.z + offset.z + c.shakeOffset.z + c.kickOffset.z;
+      _overheadPose.eyeX = c.focus.x + offset.x;
+      _overheadPose.eyeZ = c.focus.z + offset.z;
       _overheadPose.eyeY = offset.y;
-      _overheadPose.lookX = c.focus.x + c.kickOffset.x;
-      _overheadPose.lookZ = c.focus.z + c.kickOffset.z;
+      _overheadPose.lookX = c.focus.x;
+      _overheadPose.lookZ = c.focus.z;
       racingRigOf(state && state.settings, _racingRig);
       const hullRadius = p && Number.isFinite(p.radius) ? Math.max(0, p.radius) : 0;
       _racingRig.distance = Math.max(_racingRig.distance, hullRadius * 2.2);
@@ -2201,8 +2202,16 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         c.clearanceScale = scale;
         c.clearanceDiag = _glide.diag;
       }
+      camX += c.shakeOffset.x + c.kickOffset.x;
+      camZ += c.shakeOffset.z + c.kickOffset.z;
       cam.position.set(camX, camY, camZ);
-      applyChaseLookAt(cam, camX, camY, camZ, pose.lookX, pose.lookZ, _lookAtCache);
+      // Kick slides the whole frame. Shake stays on the eye. Neither may orbit the look point.
+      applyChaseLookAt(
+        cam, camX, camY, camZ,
+        pose.lookX + c.kickOffset.x,
+        pose.lookZ + c.kickOffset.z,
+        _lookAtCache,
+      );
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so
       // we never clobber the heading (safe with the no-yaw-follow rule).
