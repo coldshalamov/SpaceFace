@@ -2129,6 +2129,35 @@ test('a strain break whips the freed clump along its last orbit tangent', async 
   t2.cleanup();
 });
 
+test('the 9th live ball evicts the oldest watch — disarmed but still marked', async () => {
+  const t = await bootPhysics();
+  const balls = [];
+  for (let n = 0; n < 9; n++) {
+    const b = rock(t.sim, T.mawDist + n * 4, 0, 40, 6);
+    hold(t);
+    for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+    assert.equal(t.sys._rt.coreId, b.id, `ball ${n} cored`);
+    release(t);
+    for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+    assert.equal(t.sys._rt.ballId, b.id, `ball ${n} launched`);
+    balls.push(b);
+  }
+  // _trackBall overflow: cap is 8 — the oldest LIVE marked ball is evicted, keeps its
+  // mark + pull immunity (a mid-flight _handBack would drop those mid-flight), but
+  // sheds the weapon payload so an unwatched orphan isn't a sleeper collider.
+  assert.equal(t.sys._rt.ballIds.length, T.ballWatchMax, 'the watch list caps at 8');
+  assert.ok(!t.sys._rt.ballIds.includes(balls[0].id), 'the oldest ball is the evictee');
+  assert.equal(balls[0].data.gyreLaunched, true, 'the evictee keeps its launch mark');
+  assert.equal(balls[0].data.gyreLaunchMeta, undefined, 'the evictee sheds the launch meta');
+  assert.equal(balls[0].physicsBody.impactDamageScale, undefined,
+    'the 8x sleeper scale is disarmed (no authored value to restore)');
+  for (let n = 1; n < 9; n++) {
+    assert.ok(t.sys._rt.ballIds.includes(balls[n].id), `ball ${n} stays watched`);
+    assert.equal(balls[n].data.gyreLaunched, true, `ball ${n} stays marked`);
+  }
+  t.cleanup();
+});
+
 test('liveBalls republishes while the lash is OFF — a retired ball clears the +N', async () => {
   const t = await bootPhysics();
   const ball = rock(t.sim, T.mawDist, 0, 6, 4);

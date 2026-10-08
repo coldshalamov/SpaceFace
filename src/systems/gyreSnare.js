@@ -109,6 +109,8 @@ function freshRuntime() {
     clumpMass: 0,          // t — bookkeeping mass (base core + absorbed members)
     clumpRadius: 0,        // wu — volumetric union radius (for visuals/absorb tests)
     members: [],           // bounded absorb records for the clump lumps VFX
+    absorbDir: { x: 0, z: 0 }, // newest meal's approach dir — UNBOUNDED channel (the
+                             // ledger caps at 28; a frozen gulp dir past that is stale)
     // Launch bookkeeping.
     launchLeft: 0,         // ticks of the launch impulse burst still owed
     launchWindup: 0,       // ticks of the pre-burst coil (anticipation) still owed
@@ -221,6 +223,7 @@ export const gyreSnare = {
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
     rt.members.length = 0;
+    rt.absorbDir.x = 0; rt.absorbDir.z = 0;
     rt.launchLeft = 0;
     rt.launchWindup = 0;
     rt.launchCarry = 0;
@@ -1032,9 +1035,12 @@ export const gyreSnare = {
     // land where the mass actually hit. totalAbsorbed stays unbounded so the HUD's ×N
     // count doesn't freeze at the ledger cap while mass keeps climbing.
     rt.totalAbsorbed += 1;
+    const nx = dist > 1e-4 ? -dx / dist : 0;
+    const nz = dist > 1e-4 ? -dz / dist : 0;
+    // The gulp direction rides its own unbounded channel — the member ledger caps
+    // out and would freeze the dip on the 28th meal while absorbs keep landing.
+    rt.absorbDir.x = nx; rt.absorbDir.z = nz;
     if (rt.members.length < D.maxAbsorbRecords) {
-      const nx = dist > 1e-4 ? -dx / dist : 0;
-      const nz = dist > 1e-4 ? -dz / dist : 0;
       rt.members.push({ type: e.type, mass: em, radius: er, nx, nz });
     }
     if (this.helpers.removeEntity) this.helpers.removeEntity(e.id);
@@ -1238,6 +1244,7 @@ export const gyreSnare = {
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
     rt.members.length = 0;
+    rt.absorbDir.x = 0; rt.absorbDir.z = 0;
     rt.launchWindup = 0;
     rt.launchCarry = 0;   // consumed by the burst — the launch ledger dies with its phase
     rt.launchSpeedEff = 0;
@@ -1312,6 +1319,7 @@ export const gyreSnare = {
           // unwatched ⇒ disarmed — same invariant the overflow/adoption paths keep:
           // the payload never outlives the watch, even when the body dies this step.
           this._disarmBall(e);
+          if (rt.launchedId === rt.ballIds[i]) rt.launchedId = null;
           rt.ballIds.splice(i, 1);
           continue;
         }
@@ -1320,6 +1328,7 @@ export const gyreSnare = {
           if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.data.despawnAt == null) {
             this._handBack(e);
           }
+          if (rt.launchedId === rt.ballIds[i]) rt.launchedId = null;
           rt.ballIds.splice(i, 1);
         }
       }
@@ -1468,6 +1477,10 @@ export const gyreSnare = {
       // drag or spin can't publish forever. corePos DELIBERATELY stays last-seen:
       // the strain-break ring blooms there when the close ramp starts.
       pub.holdLag01 = 0; pub.coreAngVel = 0;
+      // Same dead-state hygiene for the launch channels: a boundary/dock/death drop
+      // landing on the single thrownBeat tick would otherwise latch it for the whole
+      // OFF phase, and launchWindup01 pins at 1.0 after every launch.
+      pub.thrownBeat = false; pub.launchWindup01 = 0;
       if (rt.ballId != null) {
         // Ball still flying: publish the frozen clump so the lumps/mass/count ride it out.
         pub.members = rt.ballMembers;
@@ -1545,11 +1558,11 @@ export const gyreSnare = {
       // twitch there is a real read), the lean rides the one-poled channel.
       pub.holdLag01 = rt.phase === PHASE.HOLD ? clamp(rt.holdLagSm / D.holdLagRefWu, 0, 1) : 0;
     } else { pub.strain01 = 0; pub.coreAngVel = 0; pub.holdLag01 = 0; }
-    // The newest member's approach direction — the gulp dips toward the side the mass
-    // actually hit instead of reading omnidirectional. nx/nz ride the member ledger.
-    const lastM = pub.members && pub.members.length ? pub.members[pub.members.length - 1] : null;
-    pub.absorbDir.x = lastM ? finite(lastM.nx) : 0;
-    pub.absorbDir.z = lastM ? finite(lastM.nz) : 0;
+    // The newest meal's approach direction — the gulp dips toward the side the mass
+    // actually hit. Rides rt.absorbDir, not the bounded member ledger: once the
+    // ledger caps out the dip must keep updating with every meal, not freeze.
+    pub.absorbDir.x = finite(rt.absorbDir.x);
+    pub.absorbDir.z = finite(rt.absorbDir.z);
     // The capacitor's dying gasp warns the hands/ears ~3 s out — a pad-first player
     // gets no `·Ns` pill read, so the forced bowl must not arrive unattributed.
     // Latched per hold like strain; _drop/_finishLaunch re-arm it for the next lash.
