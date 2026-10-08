@@ -373,6 +373,7 @@ import {
   collectPotentialShadowCastSubjects,
   collectPotentialShadowCastSubjectsSteps,
   collectUnstagedShadowCasters,
+  collectUnstagedShadowCastersBulkSteps,
   collectUnstagedShadowCastersFlag,
   compileShadowDepthPipelines,
   compileShadowDepthPipelinesSteps,
@@ -29364,12 +29365,14 @@ export const render = {
     // walk every frame. A later invalidate bumps past the stamp and recollects.
     // A narrowed collect only proved the scope: stamping the root's seq here
     // would claim a whole-root evaluation the walk never ran.
-    if (!scopedSync && band === 1 && unstaged !== null && root.userData) {
-      root.userData[STAGE_SELF_DIRTY_KEY] = dirtySeq;
-      // A completed collect proves the root against the serve it ran under —
-      // re-key the drift epoch so a proven-clean (or proven-withheld) root
-      // doesn't re-pay the whole-subtree flag walk every pass after a flip.
+    if (!scopedSync && unstaged !== null && root.userData) {
+      // A completed unscoped collect proves the root against the serve it ran under —
+      // re-key the drift epoch at ANY band so a clean band<1 collect doesn't leave
+      // stampedCollectEpoch at -1 and re-pay the whole-subtree walk on the next eval's
+      // drift re-open. The self-dirty stamp stays band-1-only: a band<1 collect gated
+      // on !queued never consulted the dirtySeq compare the stamp would claim to settle.
       root.userData[STAGE_COLLECT_EPOCH_KEY] = censusEpochNow;
+      if (band === 1) root.userData[STAGE_SELF_DIRTY_KEY] = dirtySeq;
     }
     let syncOpts = opts;
     let withheldMeshes = null;
@@ -30369,6 +30372,47 @@ export const render = {
           let collected = 0;
           let abortedPark = null;
           const deferredRoots = this._deferredDepthStageRoots;
+          // Flip-triggered bulk re-stage: a census flip re-queues the whole cohort,
+          // and N per-root subtree collects are N walks + N bookkeeping passes. One
+          // stepped DFS over the live scene attributes casters to every pending
+          // ancestor under the identical signature verdict — completed roots take
+          // their unstaged set wholesale; roots the walk never finished (shared
+          // budget, deferred compile, a root outside the scene) fall through to the
+          // ordinary per-root path untouched.
+          let bulkRestage = null;
+          if (sliceRoots.length >= 4 && scene && typeof scene.traverse === 'function'
+              && typeof collectUnstagedShadowCastersBulkSteps === 'function') {
+            const bulkSet = new Set();
+            for (const bulkRoot of sliceRoots) {
+              if (deferredRoots && deferredRoots.has(bulkRoot)) continue;
+              bulkSet.add(bulkRoot);
+            }
+            if (bulkSet.size >= 4) {
+              const bulkSig = lightSig != null ? lightSig : this._depthCollectLightSig(scene);
+              const bulkIter = bulkSig != null
+                ? collectUnstagedShadowCastersBulkSteps([scene], bulkSet, renderer, bulkSig,
+                  { remaining: SHADOW_DEPTH_PASS_NODE_CAP * 4 })
+                : null;
+              if (bulkIter) {
+                let bulkStep = null;
+                try {
+                  while (armNow() < collectDeadline) {
+                    bulkStep = bulkIter.next();
+                    if (bulkStep.done) break;
+                  }
+                } catch (bulkError) {
+                  laneWarn(this, 'shadowDepthArm',
+                    '[render] bulk restage collect faulted; falling back to per-root collects', bulkError);
+                  bulkStep = null;
+                }
+                if (bulkStep && bulkStep.done === true && bulkStep.value) {
+                  bulkRestage = bulkStep.value;
+                } else {
+                  try { bulkIter.return(); } catch (_) { /* deadline/fault abandon */ }
+                }
+              }
+            }
+          }
           while (collected < sliceRoots.length) {
             const entry = slice[collected] && slice[collected][1];
             // A deferred stepped compile already owns this root's casters — offering
@@ -30376,6 +30420,26 @@ export const render = {
             // clears, and the next arm re-collects normally.
             if (deferredRoots && deferredRoots.has(sliceRoots[collected])) {
               collected += 1;
+              continue;
+            }
+            // The bulk walk completed this root's subtree: its attributed unstaged set
+            // is the whole-subtree proof the per-root collect would mint — same mesh
+            // list, same cache mint, zero re-walk.
+            if (bulkRestage && bulkRestage.completedRoots
+                && bulkRestage.completedRoots.has(sliceRoots[collected])) {
+              const bulkFound = bulkRestage.unstagedByRoot.get(sliceRoots[collected]) || [];
+              if (entry) {
+                entry.unstagedCache = bulkFound.length > 0
+                  ? {
+                    seq: shadowCasterPolicyDirtySeq(sliceRoots[collected]),
+                    epoch: armSigEpoch,
+                    meshes: bulkFound,
+                  } : null;
+              }
+              if (bulkFound.length > 0) unstagedByRoot.set(sliceRoots[collected], bulkFound);
+              for (const mesh of bulkFound) unstaged.push(mesh);
+              collected += 1;
+              if (collected < sliceRoots.length && armNow() >= collectDeadline) break;
               continue;
             }
             // A root requeued after a completed collect carries its unstaged
@@ -30758,17 +30822,17 @@ export const render = {
         // either the arm's pinned sig or the census sig that landed since
         // both prove staged. Comparing under only one reads honestly-staged
         // meshes as leftovers and requeues roots whose marks are live.
-        const leftoverSig = lightSig != null ? lightSig : this._shadowCensusForFrame();
-        // The live serve only counts while it is fresh — a pending re-mint
-        // still serves the dead epoch, and a dead-sig match is not live-census
-        // staging evidence. AnyCurrent is deliberately NOT consulted here: it
-        // re-proves discriminants under the mark's own stored sig, so a
-        // consistent dead-sig mark would read "marked" and the restore would
-        // link a live-census depth variant that was never staged (cold link).
         const leftoverMemo = this._shadowCensusMemo;
         const leftoverLiveSig = (leftoverMemo
             && leftoverMemo.epoch === shadowCensusEpoch() && !leftoverMemo.pendingIter)
           ? this._shadowCensusForFrame() : null;
+        // An unsigned arm must not witness the raw serve either — while pendingIter runs
+        // the memo still serves the dead epoch, and a dead-sig match reads a never-staged
+        // mesh as marked, skipping its requeue (cold link). AnyCurrent is deliberately NOT
+        // consulted here: it re-proves discriminants under the mark's own stored sig, so a
+        // consistent dead-sig mark would read "marked" and the restore would link a
+        // live-census depth variant that was never staged.
+        const leftoverSig = lightSig != null ? lightSig : leftoverLiveSig;
         const leftoverSigs = leftoverSig != null ? [leftoverSig] : [];
         if (leftoverLiveSig != null && leftoverLiveSig !== leftoverSig) {
           leftoverSigs.push(leftoverLiveSig);
