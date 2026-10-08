@@ -31,6 +31,7 @@ export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
 import { createPursuitSlot, stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
+import { raceGridHolding } from './racingSteer.js';
 import {
   corridorStateFor,
   proxyScaleFor,
@@ -1106,14 +1107,20 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
     rt.cmdThrottle = throttle;
     rt.cmdStrafe = strafe;
   }
+  const gridHeld = isPlayer && raceGridHolding(state);
+  if (gridHeld) {
+    turn = 0;
+    throttle = 0;
+    strafe = 0;
+  }
   const o = out || {};
   o.throttle = throttle;
   o.strafe = strafe;
   o.turn = clamp(turn, -1, 1);
-  o.boost = boost;
-  o.boostPressed = boost && !previousBoost;
-  o.boostReleased = !boost && previousBoost;
-  o.brake = !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
+  o.boost = boost && !gridHeld;
+  o.boostPressed = o.boost && !previousBoost;
+  o.boostReleased = !o.boost && previousBoost;
+  o.brake = !gridHeld && !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
   o.assistMode = resolveAssistMode(entity, state, raw);
   o.drawFlight = isPlayer && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
   // Reset every key downstream code may have written last tick: autopilot/orbit-assist

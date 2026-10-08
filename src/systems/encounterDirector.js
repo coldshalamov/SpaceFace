@@ -46,6 +46,7 @@
 import {
   readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason,
 } from '../ai/tensionPolicy.js';
+import { raceLeaseActive } from './racingSteer.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
@@ -357,7 +358,7 @@ export const encounterDirector = {
     this._tickEscalationSeeds(dir, state, now);
     // The onboarding rail suppresses ordinary pacing, not the authored opening beats:
     // earlyWindowGuaranteeDay items are themselves the first-minute content the rail teaches.
-    if (!isDocked(state)) this._pump(dir, state, now);
+    if (!isDocked(state) && !raceLeaseActive(state)) this._pump(dir, state, now);
     this._tickLive(dir, state, now);
     this._tickStaleEncounters(dir, state, now);
     this._tickHarassMercy(dir, state, now);

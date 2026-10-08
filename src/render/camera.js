@@ -24,6 +24,7 @@ import {
   stepBoostLag,
   stepLatchSpring,
 } from '../presentation/flightOverheadMath.js';
+import { resolveSteeringView, racingChaseTarget, racingRigOf } from '../systems/racingSteer.js';
 
 // M2 floating origin: chase focus / camera pose are frame-local. Entity.pos stays galactic-global.
 const _frameOriginScratch = { x: 0, z: 0 };
@@ -2172,7 +2173,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       let camY = offset.y;
       let dollyX = 0;
       let dollyZ = 0;
-      if (typeof clearanceAt === 'function' && typeof clearanceAt.roofAt === 'function') {
+      const stern = !_deathCam && resolveSteeringView(state, { death: _deathCam }) === 'racing' && p;
+      if (!stern && typeof clearanceAt === 'function' && typeof clearanceAt.roofAt === 'function') {
         // Dolly along the ray from the look-at target through the camera: the framing direction is
         // untouched, the shot simply pulls up and back ahead of anything it would otherwise enter.
         const tx = c.focus.x + c.kickOffset.x;
@@ -2187,16 +2189,38 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         c.clearanceScale = s;
         c.clearanceDiag = _glide.diag;
       }
-      cam.position.set(camX + dollyX, camY, camZ + dollyZ);
-      applyChaseLookAt(
-        cam,
-        camX + dollyX,
-        camY,
-        camZ + dollyZ,
-        c.focus.x + c.kickOffset.x,
-        c.focus.z + c.kickOffset.z,
-        _lookAtCache,
-      );
+      if (stern) {
+        const pose = racingChaseTarget(
+          c.focus,
+          p.rot,
+          playerSpeed,
+          racingRigOf(state && state.settings),
+          isMotionReduced(state),
+        );
+        const sx = c.shakeOffset.x + c.kickOffset.x;
+        const sz = c.shakeOffset.z + c.kickOffset.z;
+        cam.position.set(pose.eyeX + sx, pose.eyeY, pose.eyeZ + sz);
+        applyChaseLookAt(
+          cam,
+          pose.eyeX + sx,
+          pose.eyeY,
+          pose.eyeZ + sz,
+          pose.lookX,
+          pose.lookZ,
+          _lookAtCache,
+        );
+      } else {
+        cam.position.set(camX + dollyX, camY, camZ + dollyZ);
+        applyChaseLookAt(
+          cam,
+          camX + dollyX,
+          camY,
+          camZ + dollyZ,
+          c.focus.x + c.kickOffset.x,
+          c.focus.z + c.kickOffset.z,
+          _lookAtCache,
+        );
+      }
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so
       // we never clobber the heading (safe with the no-yaw-follow rule).

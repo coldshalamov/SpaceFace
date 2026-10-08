@@ -191,6 +191,16 @@ import {
   RACE_GATE_RADIUS_WU,
   RACE_BAND_MULT,
 } from '../data/raceCourses.js';
+import { raceGateGlobals, startLineFor } from '../data/raceLevels.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import {
+  planeGateCross,
+  raceObjectiveUnits,
+  racingAssistIntents,
+  rememberRaceRecord,
+  resetPoseLocal,
+  resolveLapAfterFinalGate,
+} from './racingSteer.js';
 // FB-068 — external target loss names its cause from the shared kill-causality vocabulary,
 // so a void contract's receipt says what actually took the objective down.
 import { compactKillCausality, killCauseFamily } from '../combat/killCausality.js';
@@ -1380,7 +1390,10 @@ export const missions = {
     // authority and boards only a complete, normal offer shape; discovery-only salvage hooks keep
     // their existing consumers and cannot accidentally become malformed board entries.
     bus.on('mission:offered', (p) => this._onExternalBoardOffer(p));
-    bus.on('jump:chargeStart', (p) => this._projectMissionTargetDecodes(p && p.targetSectorId));
+    bus.on('jump:chargeStart', (p) => {
+      this._dnfAuthoredRaces('race_left_course');
+      this._projectMissionTargetDecodes(p && p.targetSectorId);
+    });
     bus.on('poi:identified', (p) => this._reconcileLandmarkQuestOffers(p || {}));
 
     // ── Docking: refresh expired boards, run delivery/passenger/escort/salvage objectives ────
@@ -1399,6 +1412,7 @@ export const missions = {
         this._refreshNavigation({ silent: true });
       }
       this.ensureBoard(stationId);
+      this._dnfAuthoredRaces('race_left_course');
       this._onDockedObjectives(stationId);
       this._onContract47aB3Docked(stationId);
       this._storyTrigger('dock', { stationId });
@@ -1570,6 +1584,7 @@ export const missions = {
     // ── Lazy mission-target spawning when the player enters a target sector ───────────────────
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
     bus.on('sector:exit', (p) => this._onSectorExit(p));
+    bus.on('race:reset', () => this._resetAuthoredRace());
     // Census arm: mission-target spawns land inside the sector cook deterministically. The
     // cook drives the chunked twin across its slice clock; the emit listener drains the same
     // steps synchronously, so both paths mint the identical cohort.
@@ -4137,6 +4152,7 @@ export const missions = {
       chainNextSeed: (
         offer.campaign47aBeat != null
         || (typeof offer.storyTag === 'string' && offer.storyTag.startsWith('campaign47a:'))
+        || !!(offer.params && offer.params.racingContractId)
       )
         ? null
         : (offer.source !== SET_PIECE_MISSION_SOURCE && def && def.chainable)
@@ -4166,7 +4182,9 @@ export const missions = {
       case CAPITAL_BOSS_TYPE:
         return 1;
       case 'race':
-        // One objective unit per gate: the log reads N/N the same way a clear contract does.
+        // Multi-lap authored circuits count every gate of every lap. A board race has no
+        // laps field, so its target stays one unit per gate.
+        if (params && Number(params.laps) > 1) return raceObjectiveUnits(params);
         return Math.max(1, (params && Array.isArray(params.gates) && params.gates.length) || 1);
       case SPLIT_MANIFEST_TYPE:
         // One unit per net landed — the manifest itself decides when the contract settles.
@@ -7490,6 +7508,179 @@ export const missions = {
   },
 
   /**
+   * Dock or jump abandons an authored circuit. Collateral on these offers is zero and they
+   * carry no faction, so the ordinary fail path does not debt the wallet or standing.
+   * Procedural board races have no racingContractId and are left alone.
+   */
+  _dnfAuthoredRaces(reason) {
+    const active = this.state.missions.active || [];
+    for (let i = active.length - 1; i >= 0; i--) {
+      const m = active[i];
+      if (!m || m.status !== 'active' || m.type !== 'race' || !m.params || !m.params.racingContractId) continue;
+      this._failMission(m, i, reason || 'race_left_course');
+    }
+  },
+
+  /** Back to the last clean gate. The clock is not restarted. */
+  _resetAuthoredRace() {
+    const active = this.state.missions.active || [];
+    let found = null;
+    for (const mission of active) {
+      if (mission && mission.status === 'active' && mission.type === 'race'
+        && mission.params && mission.params.racingContractId) {
+        found = mission;
+        break;
+      }
+    }
+    if (!found) return;
+    const params = found.params;
+    const world = this.registry && this.registry.get && this.registry.get('world');
+    if (!world || typeof world.relocatePlayerInSector !== 'function') return;
+    let pose = null;
+    if ((params.nextGate | 0) <= 0) pose = startLineFor(params);
+    else {
+      const local = resetPoseLocal(params);
+      if (local) {
+        const global = sectorLocalToGlobalForSector(
+          { x: local.x, z: local.z },
+          params.courseSectorId || found.destSectorId,
+          { x: 0, z: 0 },
+        );
+        pose = { x: global.x, z: global.z, heading: local.heading };
+      }
+    }
+    if (!pose) return;
+    params.planeSample = null;
+    world.relocatePlayerInSector(pose, { reason: 'race_reset' });
+    this.bus.emit('toast', {
+      text: 'Reset behind the last clean gate. The clock keeps running.',
+      kind: 'info',
+      ttl: 3,
+    });
+  },
+
+  /**
+   * Authored circuits: grid hold, plane gates, laps, draft/boost/leash. Reached only when
+   * params.racingContractId is set, so an FB-066 bubble race never enters.
+   */
+  _driveAuthoredRace(m, index, state) {
+    const params = m.params || {};
+    const gates = Array.isArray(params.gates) ? params.gates : [];
+    if (gates.length < 2) return;
+    const player = state.entities && state.playerId != null
+      ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos || player.alive === false) return;
+    const now = state.simTime || 0;
+    if (Number(params.gridHoldS) > 0 && !Number.isFinite(params.gridUntilSimS)) {
+      params.gridUntilSimS = now + Number(params.gridHoldS);
+    }
+    if (Number.isFinite(params.gridUntilSimS) && now < params.gridUntilSimS) return;
+    if (!Number.isFinite(params.raceStartSimS)) params.raceStartSimS = now;
+
+    const globals = raceGateGlobals(params);
+    if (globals.length !== gates.length) return;
+    const assist = racingAssistIntents({ params, player, simTime: now, gatesGlobal: globals });
+    if (assist.patch) Object.assign(params, assist.patch);
+    for (const row of assist.impulses) {
+      if (row && row.impulse) queuePhysicsImpulse(player, row.impulse);
+    }
+
+    const gateCount = gates.length;
+    const next = Math.max(0, Math.min(gateCount, params.nextGate | 0));
+    if (next >= gateCount) return;
+    const gate = globals[next];
+    let from;
+    if (next > 0) from = globals[next - 1];
+    else if ((params.lap | 0) > 0 || params.raceOpened) from = globals[gateCount - 1];
+    else {
+      const a = globals[0];
+      const b = globals[1];
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const len = Math.hypot(dx, dz) || 1;
+      from = { x: a.x - dx / len, z: a.z - dz / len };
+    }
+    const prev = params.planeSample;
+    params.planeSample = { x: player.pos.x, z: player.pos.z };
+    const reach = Math.max(24, Number(params.gateRadiusWU) || RACE_GATE_RADIUS_WU);
+    if (!planeGateCross({
+      prev,
+      pos: player.pos,
+      vel: player.vel,
+      from,
+      gate,
+      radius: reach,
+    })) {
+      for (let ahead = next + 1; ahead < gateCount; ahead++) {
+        const later = globals[ahead];
+        if (!later) continue;
+        const lx = player.pos.x - later.x;
+        const lz = player.pos.z - later.z;
+        if (lx * lx + lz * lz <= reach * reach) {
+          if (params.orderWarnGate !== ahead) {
+            params.orderWarnGate = ahead;
+            this.bus.emit('toast', {
+              text: `${m.title}: gates run in order — gate ${next + 1}/${gateCount} first.`,
+              kind: 'warn',
+              ttl: 3,
+            });
+          }
+          break;
+        }
+      }
+      return;
+    }
+    params.nextGate = next + 1;
+    params.raceOpened = true;
+    params.orderWarnGate = null;
+    const laps = Math.max(1, Math.round(Number(params.laps) || 1));
+    m.objectiveProgress = Math.min(
+      laps > 1 ? raceObjectiveUnits(params) : gateCount,
+      (params.lap | 0) * gateCount + params.nextGate,
+    );
+    this._refreshTrackedMissionNav(m);
+    const elapsedS = Math.max(0, now - params.raceStartSimS);
+    this.bus.emit('mission:gateCleared', {
+      missionId: m.id,
+      gateIndex: next,
+      gateCount,
+      elapsedS,
+      lap: params.lap | 0,
+    });
+    this.bus.emit('mission:updated', { missionId: m.id });
+    if (params.nextGate < gateCount) {
+      this.bus.emit('toast', { text: `Gate ${params.nextGate}/${gateCount}`, kind: 'info', ttl: 2 });
+      return;
+    }
+    const decision = resolveLapAfterFinalGate(params);
+    if (decision.action === 'next-lap') {
+      params.lap = decision.lap;
+      params.nextGate = 0;
+      m.objectiveProgress = (params.lap | 0) * gateCount;
+      this.bus.emit('toast', {
+        text: `Lap ${decision.lap + 1}/${decision.laps}`,
+        kind: 'info',
+        ttl: 2,
+      });
+      this.bus.emit('mission:updated', { missionId: m.id });
+      return;
+    }
+    const band = raceBandForElapsed(elapsedS, params);
+    const mult = RACE_BAND_MULT[band] != null ? RACE_BAND_MULT[band] : 1;
+    params.raceBand = band;
+    params.raceElapsedS = Math.round(elapsedS * 100) / 100;
+    m.reward_cr = Math.max(0, Math.round((m.reward_cr || 0) * mult));
+    try { rememberRaceRecord(globalThis.localStorage, params.levelId, params.raceElapsedS); }
+    catch { /* storage is not the save */ }
+    this.bus.emit('toast', {
+      text: `Course clear — ${band.toUpperCase()} time ${Math.round(elapsedS)}s vs record ${params.recordS}s.`,
+      kind: 'success',
+      ttl: 4,
+    });
+    this._completeMission(m, index);
+  },
+
+  /**
    * Per-tick scoring while the mission is active. The clock starts on gate 1 and stops on the
    * last gate — the posted record prices the gate-to-gate leg, so every pilot runs the same
    * timed segment regardless of where they were standing when the contract posted. Gates score
@@ -7505,6 +7696,10 @@ export const missions = {
     const player = state.entities && state.playerId != null
       ? state.entities.get(state.playerId) : null;
     if (!player || !player.pos || player.alive === false) return;
+    if (params.racingContractId) {
+      this._driveAuthoredRace(m, index, state);
+      return;
+    }
     const gateCount = gates.length;
     const next = Math.max(0, Math.min(gateCount, params.nextGate | 0));
     if (next >= gateCount) return;
@@ -8183,6 +8378,12 @@ export const missions = {
     if (m.params && m.params.megaHeistId) completedPayload.megaHeistId = m.params.megaHeistId;
     if (m.params && m.params.capitalBossId) completedPayload.capitalBossId = m.params.capitalBossId;
     if (m.params && m.params.victimFactionId) completedPayload.victimFactionId = m.params.victimFactionId;
+    if (m.params && m.params.racingContractId) {
+      completedPayload.racingContractId = m.params.racingContractId;
+      if (m.params.levelId) completedPayload.levelId = m.params.levelId;
+      if (Number.isFinite(m.params.raceElapsedS)) completedPayload.raceElapsedS = m.params.raceElapsedS;
+      if (m.params.raceBand) completedPayload.raceBand = m.params.raceBand;
+    }
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
     // Combat fieldwork RP for bounty_hunt is intentionally NOT granted here: early auto-RP + a
