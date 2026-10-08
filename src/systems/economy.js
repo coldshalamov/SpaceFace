@@ -23,6 +23,7 @@
 //   stock target. We honor the schema field names (equilibrium = role-modified drift target,
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
+import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
@@ -1388,6 +1389,7 @@ export const economy = {
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
     bus.on('economy:chargeCredits', (p) => this._onChargeCreditsRequest(p));
+    bus.on('economy:releaseDebt', (p) => this._releaseDebt(p && p.amount));
     bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p));
     bus.on('economy:payBounty', (p) => {
       const payload = (p && typeof p === 'object') ? p : {};
@@ -2940,6 +2942,33 @@ export const economy = {
     return { ok: true, duplicate: false, receiptId, qty };
   },
 
+  quoteTallyThreeCrate(source) {
+    const qty=Math.floor(Number(source?.remainingPool?.cmdty_salvage_electronics)||0);
+    if(source?.sourceKey!==TALLY_THREE.sourceKey||source.extracted||qty<=0||qty>TALLY_THREE.pool.cmdty_salvage_electronics)return {ok:false,reason:'no-crate-contents'};
+    const info=stationInfo(this.state,TALLY_THREE.homeStationId);
+    const market=info&&(this.state.economy.markets[TALLY_THREE.homeStationId]||this.ensureMarket(TALLY_THREE.homeStationId,info.type,info.size));
+    const price=market?.cmdty_salvage_electronics?.lastSell;
+    if(!Number.isFinite(price)||price<0)return {ok:false,reason:'receiver-listing-unavailable'};
+    return {ok:true,qty,quoteCr:Math.max(0,Math.floor(price*qty))};
+  },
+
+  settleTallyThreeDelivery(receipt) {
+    const source=tallyThreeSource(this.state),canonical=source?.delivery;
+    if(!canonical||JSON.stringify(canonical)!==JSON.stringify(receipt)
+      ||receipt.receiptId!=='tally-three:'+TALLY_THREE.worldRecordId)return {ok:false,reason:'unaccepted-custody'};
+    const intents=ensureCommittedIntents(this.state),key=receipt.receiptId,prior=intents[key];
+    if(prior)return {ok:true,duplicate:true,...prior.result};
+    const before=normalizeCredits(this.state.player.credits);
+    const creditedCr=normalizeCredits(before+receipt.quoteCr)-before;
+    const result={receiptId:receipt.receiptId,qty:receipt.qty,creditedCr,stationId:receipt.stationId};
+    // Reserve before any credit/stock event can recursively replay this same accepted crate.
+    intents[key]={receipt:{...receipt},result};
+    this.grantCredits(receipt.quoteCr,'salvage:tally-three-return');
+    this.applyStockPressure(receipt.stationId,receipt.commodityId,'sell',receipt.qty);
+    this.bus.emit('cargo:tallyThreeDelivered',{...result,worldRecordId:receipt.worldRecordId});
+    return {ok:true,duplicate:false,...result};
+  },
+
   /**
    * Admit one conserved NPC salvage lot into an eligible industrial yard. This intentionally has
    * no player wallet/cargo path: player salvage continues through execute(..., 'sell', ...).
@@ -3175,6 +3204,26 @@ export const economy = {
     player.debt = Math.max(0, Math.round(Number(player.debt) || 0)) + amount;
     player.debtSinceDay = Number.isInteger(state.days) ? state.days : 0;
     delete player.debtStaleDay;
+    return amount;
+  },
+
+  /**
+   * Release part of the note — the inverse of _fileDebt for work the yard never delivered
+   * (stationServices aborts a paid job and returns the undelivered share). A note paid off to
+   * zero stops aging like any settled balance; a remaining balance keeps its original stale
+   * clock rather than getting a fresh grace window out of a partial refund.
+   */
+  _releaseDebt(amountCr) {
+    const state = this.state;
+    const player = state && state.player;
+    const amount = Math.max(0, Math.round(Number(amountCr) || 0));
+    if (!player || amount <= 0) return 0;
+    if (!(Number(player.debt) > 0)) return 0;
+    player.debt = Math.max(0, Math.round(Number(player.debt)) - amount);
+    if (player.debt <= 0) {
+      player.debtSinceDay = null;
+      delete player.debtStaleDay;
+    }
     return amount;
   },
 

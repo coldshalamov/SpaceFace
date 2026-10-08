@@ -5510,6 +5510,10 @@ export const audio = {
   _onDocked(p) {
     // Docking sequence: metallic clunk impact + confirmation chime + place mood
     this.play('sfx_dock_clunk', { gain: 0.9 });
+    // input.js emits audio:cue ui_dock on the same dispatch right after dock:docked, and that
+    // cue maps to this same clunk recipe — stamp the tick so _onCue drops the echo instead of
+    // stacking a second clunk on top of this one.
+    this.rt._dockClunkTick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1;
     // Slight delay on the confirmation chime so it feels like clunk-then-lock — deferred through
     // the tracked helper so a boundary between clunk and chime cancels the chime.
     this._defer(() => this.play('sfx_ui_confirm', { gain: 0.6, rate: 0.7 }), 180);
@@ -6153,6 +6157,11 @@ export const audio = {
     // Some presentation receipts must remain visible on the semantic bus even though an earlier
     // raw event owns their physical sound. Do not turn that observability contract into a double hit.
     if (opts.playbackOwnedByRaw) return;
+    // Dock ownership: _onDocked already played this tick's clunk (plus the deferred confirm
+    // chime). The ui_dock echo from the same dispatch (pinned by rep-gated-docking) is the same
+    // recipe, so drop it; a cue on any other tick is a real voice and still plays.
+    if (id === 'ui_dock' && this.rt && this.rt._dockClunkTick
+        === (this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1)) return;
     // PQ-158.02 owns attach/strain/release/break on the instrument. Juice still emits the
     // semantic cue; do not play the same latch/creak/snap/release a second time. The cue keeps
     // its priority duck — a near_break warning must still cut through the mix — so the early

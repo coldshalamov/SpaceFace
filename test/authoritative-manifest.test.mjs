@@ -95,8 +95,9 @@ test('production init + update order lengths match the live browser baseline', (
   // fields and before planetRuntime/physics) and gyreHud (DOM-guarded pill, after
   // fieldHud) — one system each in both orders.
   // Latch Nine's physical harbor service and Scissorwake's first-encounter requester.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 180);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 139);
+  // Two bounded Ceres concepts and the event-only evidence prompt.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 183);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 141);
   assert.ok(PRODUCTION_INIT_ORDER.includes('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('bracket') < PRODUCTION_UPDATE_ORDER.indexOf('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ravel') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
@@ -262,7 +263,7 @@ test('browser production system set is unchanged vs production manifest constant
   // 177 with the Gyre Snare pair — gyreSnare (the held-verb lash itself, between
   // fields and physics) and gyreHud (DOM-guarded lane pill beside fieldHud), one
   // system in both orders each.
-  assert.equal(registry.systems.length, 180);
+  assert.equal(registry.systems.length, 183);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

@@ -262,6 +262,19 @@ export function createScavengerOccupationSwitch(owner) {
         && entity?.data?.occupationSwitchPerson !== record.personKey) continue;
       record.phase = 'lost';
       record.lostAtS = now;
+      if (bus && typeof bus.emit === 'function') {
+        bus.emit('occupation:lost', {
+          personKey: record.personKey,
+          fieldId: record.fieldId,
+          sectorId: record.sectorId,
+          holdQty: record.holdQty,
+          simTime: now,
+        });
+        bus.emit('toast', {
+          kind: 'warn', ttl: 5,
+          text: `The wreck field's picker crew lost their hauler — ${Math.round(record.holdQty)}u gone with it.`,
+        });
+      }
     }
   }
 

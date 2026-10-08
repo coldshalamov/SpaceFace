@@ -3,6 +3,7 @@
 // This module is deliberately read-only. Scanner owns request validation and transient lifetime;
 // pirateParley remains the sole authority for toll choices/payment/escalation.
 import { hash32 } from '../core/rng.js';
+import { tallyThreeHail } from './tallyThree.js';
 import { COMMODITIES } from './commodities.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
@@ -557,6 +558,8 @@ export function contactHailAvailability(state) {
   if (!state || state.mode !== 'flight' || state.ui && state.ui.docked) return unavailable('not_in_flight');
   if (!target) return unavailable('unresolved_target');
   if (target.alive === false) return unavailable('dead_target');
+  const tally=tallyThreeHail(state,target,player);
+  if(tally)return tally;
   if (target.type !== 'ship' && target.type !== 'drone') return unavailable('unsupported_target');
   if (unresolvedContact(target)) return unavailable('unresolved_target');
   if (!player || player.alive === false) return unavailable('no_player');

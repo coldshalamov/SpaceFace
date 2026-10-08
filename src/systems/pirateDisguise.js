@@ -163,12 +163,14 @@ export const pirateDisguise = {
         channel: 'bark',
         text: reveal.text,
         kind: 'pirateDisguise',
-        ttl: 1,
+        // ttl is the queue stale-drop deadline as well as the floor hold — 1 s expired under
+        // the 1.5 s bark gap, so the reveal never spoke when it mattered (a fight just ended).
+        ttl: 3,
         id: `pirateDisguise:${entity.id}`,
         factionId: entity.factionId,
       });
     } else {
-      this._emit('toast', { text: reveal.text, kind: 'pirateDisguise', ttl: 1 });
+      this._emit('toast', { text: reveal.text, kind: 'pirateDisguise', ttl: 3 });
     }
     this._emit('pirateDisguise:voice', {
       entityId: entity.id,

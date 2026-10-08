@@ -26,6 +26,7 @@ import {
   DOSS_ARCHIVE_CONTACT_ID,
   DOSS_ARCHIVE_COUNTER_ID,
   DOSS_ARCHIVE_SOURCES,
+  DOSS_ARCHIVE_OPTIONAL_SOURCES,
   dossArchiveEvidence,
 } from '../data/dossArchive.js';
 
@@ -234,6 +235,7 @@ export const stationContacts = {
     on('discovery:plateUnlocked', (payload = {}) => {
       if (isDossDiscoveryPlate(payload)) this._reconcileDossArchive('discovery-plate');
     });
+    on('lastShift:archived', () => this._reconcileDossArchive('last-shift-filed'));
     on('save:loaded', () => {
       this._reconcileDossArchive('save-loaded');
       this._normalizeVonnFreightLoss('save-loaded');
@@ -552,7 +554,7 @@ export const stationContacts = {
     const hadRecord = !!bag[DOSS_ARCHIVE_CONTACT_ID];
     const previous = normalizeStationContactRecord(bag[DOSS_ARCHIVE_CONTACT_ID]);
     const flags = { ...previous.flags };
-    for (const source of DOSS_ARCHIVE_SOURCES) delete flags[source.flag];
+    for (const source of [...DOSS_ARCHIVE_SOURCES, ...DOSS_ARCHIVE_OPTIONAL_SOURCES]) delete flags[source.flag];
     for (const flag of evidenceFlags) flags[flag] = true;
     const next = normalizeStationContactRecord({ ...previous, flags });
     if (hadRecord || evidence.length) {

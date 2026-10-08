@@ -251,15 +251,52 @@ export const stationServices = {
   _abortJobs(player, reason) {
     if (!player || !Array.isArray(player.jobs)) return;
     const count = player.jobs.length;
+    // The price was charged in full at booking, so paid work the yard never delivers comes
+    // straight back — an abort that kept the credits would be a silent money leak. The same
+    // pro-rata share releases undelivered note debt (FB-101 hardship fuel filed on the note).
+    let refundCr = 0;
+    let releaseCr = 0;
     for (const job of player.jobs) {
-      if (this.bus) {
+      const total = Number(job.total) || 0;
+      const undelivered = total > 0 ? Math.max(0, total - Math.min(Number(job.applied) || 0, total)) : 0;
+      if (undelivered > 0) {
+        const paidCr = Number(job.meta && job.meta.cost) || 0;
+        const debtCr = Number(job.meta && job.meta.debtCr) || 0;
+        if (paidCr > 0 && this.bus) {
+          const refund = Math.round(paidCr * (undelivered / total));
+          if (refund > 0) {
+            refundCr += refund;
+            this.bus.emit('economy:grantCredits', {
+              amount: refund, reason: `service:refund:${job.type}:${job.stationId}`,
+            });
+          }
+        }
+        if (debtCr > 0 && this.bus) {
+          const release = Math.round(debtCr * (undelivered / total));
+          if (release > 0) {
+            releaseCr += release;
+            this.bus.emit('economy:releaseDebt', {
+              amount: release, reason: `service:undelivered:${job.type}:${job.stationId}`,
+            });
+          }
+        }
+      }
+    }
+    const money = refundCr > 0 && releaseCr > 0
+      ? ` ${refundCr} cr refunded; the ${releaseCr} cr note was released.`
+      : refundCr > 0
+        ? ` ${refundCr} cr refunded for the undelivered work.`
+        : releaseCr > 0
+          ? ` The ${releaseCr} cr note was released with it.`
+          : '';
+    if (this.bus) {
+      for (const job of player.jobs) {
         this.bus.emit('service:aborted', {
           jobId: job.id, type: job.type, stationId: job.stationId,
           applied: job.applied, total: job.total, reason,
         });
         // The completion toast's mirror: the service was paid up front, so an abort destroyed
-        // paid work. Without this line the credits were gone and the hull half-done with no
-        // word from the yard.
+        // paid work — the refund above hands the undelivered share back and the toast names it.
         if (job === player.jobs[0]) {
           const label = job.type === 'refuel' ? 'refuel' : 'repair';
           const pct = job.total > 0 && job.applied > 0
@@ -270,7 +307,7 @@ export const stationServices = {
             ? `${head} — ${label} stopped at ${pct}%. The rest of the paid job was cancelled.`
             : `${head} — the paid ${label} job was cancelled before the yard started it.`;
           const more = count > 1 ? ` ${count - 1} more queued job${count > 2 ? 's' : ''} cancelled with it.` : '';
-          this.bus.emit('toast', { text: text + (more ? ' ' + more : ''), kind: 'warn', ttl: 5 });
+          this.bus.emit('toast', { text: text + money + (more ? ' ' + more : ''), kind: 'warn', ttl: 5 });
         }
       }
     }

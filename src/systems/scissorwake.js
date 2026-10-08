@@ -47,7 +47,7 @@ export const scissorwake = {
       if (p?.doctrineId !== C.doctrineId) return;
       const e = this.state.entities.get(p.entityId);
       if (!e?.alive || e.data?.lootTableId !== C.enemyId) return;
-      ctx.bus.emit('ui:toast', { text: 'CUTTER OPENING — move the line or move the cutter.', kind: 'warn', duration: 2.1 });
+      ctx.bus.emit('toast', { text: 'CUTTER OPENING — move the line or move the cutter.', kind: 'warn', ttl: 2.1 });
     });
   },
   newGame() { this._row = { introduced: false, lineUse: 0 }; this._nextRequest = 0; },

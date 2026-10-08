@@ -29,6 +29,7 @@ import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './a
 import { addSalvage } from './cargo.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { combatVerbRecipe } from '../audio/combatVerbCues.js';
+import { TALLY_THREE, tallyThreeBody, tallyThreeFingerprint } from '../data/tallyThree.js';
 
 // Tuning (kept conservative so we never blow the ship/entity budget — brief: ≤2 salvage per zone).
 const MAX_SALVAGE_PER_ZONE = 2;     // hard cap on entities placed per derelict zone
@@ -114,6 +115,10 @@ export const salvage = {
         releaseSourceClaim: (request) => this._releaseSourceClaim(request),
         takeSource: (request) => this._takeSource(request),
         drainSource: (request) => this._drainSource(request),
+        settleTallyCrate: (request) => this._settleTallyCrate(request),
+        observeTallyManifest: (entity) => this._observeTallyManifest(entity),
+        contestTallyClaim: () => this._contestTallyClaim(),
+        noteTally: (field) => this._noteTally(field),
       };
     }
 
@@ -172,10 +177,13 @@ export const salvage = {
   },
 
   newGame() {
+    const body=tallyThreeBody(this.state,TALLY_THREE.worldRecordId);
+    if(body)this.helpers.removeEntity?.(body.id);
     this.state.salvage = freshSalvageState();
   },
 
   serialize() {
+    this._captureTallyMotion();
     const state = this._ensureState();
     const sources = {};
     for (const sourceKey of Object.keys(state.sources).sort((a, b) => a.localeCompare(b))) {
@@ -226,6 +234,52 @@ export const salvage = {
   _sourceSnapshot(sourceKey) {
     const record = this._sourceRecord(sourceKey, false);
     return record ? snapshotSourceRecord(record, sourceDescriptor(sourceKey)) : null;
+  },
+
+  _captureTallyMotion() {
+    const record=this.state.salvage?.sources?.[TALLY_THREE.sourceKey];
+    const body=tallyThreeBody(this.state,TALLY_THREE.worldRecordId);
+    if(record&&!record.extracted&&body&&[body.pos.x,body.pos.z,body.vel.x,body.vel.z,body.rot,body.angVel].every(Number.isFinite)){
+      record.motion={pos:{x:body.pos.x,z:body.pos.z},vel:{x:body.vel.x,z:body.vel.z},rot:body.rot,angVel:body.angVel};
+      record.remainingHull=Math.max(0,Math.min(80,Number(body.hull)||0));
+    }
+  },
+
+  _noteTally(field) {
+    if(!['met','assessorLost'].includes(field))return false;
+    const record=this._sourceRecord(TALLY_THREE.sourceKey,false);if(!record)return false;
+    record[field]=true;return true;
+  },
+
+  _observeTallyManifest(entity) {
+    if(entity!==tallyThreeBody(this.state,TALLY_THREE.worldRecordId))return false;
+    const record=this._sourceRecord(TALLY_THREE.sourceKey,false);
+    if(!record||record.extracted||record.evidenceObserved)return false;
+    record.evidenceObserved=true;record.evidenceRevision+=1;
+    return true;
+  },
+
+  _contestTallyClaim() {
+    const record=this._sourceRecord(TALLY_THREE.sourceKey,false);
+    const body=tallyThreeBody(this.state,TALLY_THREE.worldRecordId);
+    if(!record||record.extracted||!body||!record.evidenceObserved)return {ok:false,reason:'manifest-not-observed'};
+    const owner=body.data?.cargoIdentity?.ownerId;
+    if(owner!==TALLY_THREE.claimId||record.claimId===owner)return {ok:false,reason:'claim-agrees-with-manifest'};
+    record.claimId=owner;record.disputedBy=null;record.evidenceRevision+=1;
+    body.data.salvorClaimedBy=owner;
+    return {ok:true,source:this._sourceSnapshot(TALLY_THREE.sourceKey)};
+  },
+
+  _settleTallyCrate({fingerprint,receipt}={}) {
+    const record=this._sourceRecord(TALLY_THREE.sourceKey,false);
+    if(record?.delivery)return {ok:true,duplicate:true,receipt:{...record.delivery}};
+    if(!record||record.extracted||fingerprint!==tallyThreeFingerprint(record)
+      ||receipt?.sourceKey!==TALLY_THREE.sourceKey||receipt?.worldRecordId!==TALLY_THREE.worldRecordId
+      ||receipt?.stationId!==TALLY_THREE.homeStationId)return {ok:false,reason:'source-changed'};
+    record.delivery={...receipt};record.extracted=true;record.remainingPool={};record.claimId=null;
+    record.extractedBy='player';record.workId=receipt.receiptId;
+    this._retireSourceEntity(record,TALLY_THREE.sourceKey);
+    return {ok:true,duplicate:false,receipt:{...record.delivery}};
   },
 
   _entityForPoint(salvagePointId, sourceKey = null) {
@@ -424,6 +478,11 @@ export const salvage = {
     const mulberry32 = (this.helpers && this.helpers.mulberry32) || fallbackMulberry32;
     const seed = state.meta && state.meta.seed;
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
+
+    if(sectorId===TALLY_THREE.sectorId){
+      const rec=this._makeSourceSalvagePoint(sectorId,{id:TALLY_THREE.zoneId},TALLY_THREE,spawnEntity);
+      if(rec&&!byId.has(rec.id)){byId.add(rec.id);state.salvage.points.push(rec);}
+    }
 
     for (const zone of zones) {
       yield;
@@ -951,13 +1010,14 @@ export const salvage = {
     let entityId = existing ? existing.id : null;
     if (!existing && typeof spawnEntity === 'function') {
       const ent = spawnEntity({
-        type: 'wreck',
-        pos: { x: descriptor.pos.x, z: descriptor.pos.z },
-        radius: WRECK_RADIUS,
-        mass: WRECK_MASS,
-        hull: 1,
-        hullMax: 1,
-        physicsBody: { shape: 'capsule', mass: WRECK_MASS },
+        type: descriptor===TALLY_THREE?'payload':'wreck',
+        pos: { ...(record.motion?.pos || descriptor.pos) },
+        ...(descriptor===TALLY_THREE?{vel:{...record.motion.vel},rot:record.motion.rot,angVel:record.motion.angVel,flags:{persistent:true}}:{}),
+        radius: descriptor.radius || WRECK_RADIUS,
+        mass: descriptor.mass || WRECK_MASS,
+        hull: descriptor===TALLY_THREE?record.remainingHull:1,
+        hullMax: descriptor===TALLY_THREE?80:1,
+        physicsBody: { shape: 'capsule', mass: descriptor.mass || WRECK_MASS },
         data: {
           parentType: 'freighter',
           proportions: WRECK_COLLIDER_PROPORTIONS,
@@ -968,7 +1028,11 @@ export const salvage = {
           salvageSourceKey: sourceKey,
           isCommunicator: false,
           wreckMissionId: null,
-          scanLabel: 'Dead Freighter Drift',
+          scanLabel: descriptor===TALLY_THREE?'Claim Crate — Ceres Refinery':'Dead Freighter Drift',
+          ...(descriptor===TALLY_THREE?{worldRecordId:TALLY_THREE.worldRecordId,sectorId,homeSectorId:sectorId,
+            transientSector:false,role:'tally_claim_crate',kind:'cargo',commodityId:'cmdty_salvage_electronics',
+            salvorClaimedBy:record.claimId,cargoIdentity:{ownerId:TALLY_THREE.claimId,ownerName:TALLY_THREE.ownerName,
+              originId:TALLY_THREE.homeStationId,destinationId:TALLY_THREE.homeStationId},manifestId:TALLY_THREE.manifestId}:{}),
         },
       });
       entityId = ent ? ent.id : null;
@@ -1220,6 +1284,7 @@ function freshSalvageState() {
 }
 
 function sourceDescriptor(sourceKey) {
+  if(sourceKey===TALLY_THREE.sourceKey)return TALLY_THREE;
   if (sourceKey !== VESTA_DERELICT_SALVAGE_SOURCE.sourceKey) return null;
   return VESTA_DERELICT_SALVAGE_SOURCE;
 }
@@ -1231,11 +1296,12 @@ function freshSourceRecord(descriptor) {
     sectorId: descriptor.sectorId,
     zoneId: descriptor.zoneId,
     remainingPool: clonePool(descriptor.pool),
-    claimId: null,
+    claimId: descriptor.claimId || null,
     workId: null,
     extractedBy: null,
     disputedBy: null,
     extracted: false,
+    ...(descriptor===TALLY_THREE?tallySourceFields({}):{}),
   };
 }
 
@@ -1266,6 +1332,7 @@ function normalizeSourceRecord(raw, descriptor) {
     extractedBy: cleanIdentity(raw.extractedBy),
     disputedBy: cleanIdentity(raw.disputedBy),
     extracted,
+    ...(descriptor===TALLY_THREE?tallySourceFields(raw):{}),
   };
 }
 
@@ -1285,7 +1352,21 @@ function snapshotSourceRecord(record, descriptor) {
     extractedBy: cleanIdentity(record.extractedBy),
     disputedBy: cleanIdentity(record.disputedBy),
     extracted: record.extracted === true || poolTotal(remainingPool) <= 0,
+    ...(descriptor===TALLY_THREE?tallySourceFields(record):{}),
   };
+}
+
+function tallySourceFields(raw) {
+  const m=raw.motion;
+  const valid=[m?.pos?.x,m?.pos?.z,m?.vel?.x,m?.vel?.z,m?.rot,m?.angVel].every(Number.isFinite);
+  const delivery=raw.delivery?.sourceKey===TALLY_THREE.sourceKey&&raw.delivery?.worldRecordId===TALLY_THREE.worldRecordId
+    &&raw.delivery?.stationId===TALLY_THREE.homeStationId&&typeof raw.delivery?.receiptId==='string'
+    &&Number.isSafeInteger(raw.delivery?.qty)&&raw.delivery.qty>0&&Number.isSafeInteger(raw.delivery?.quoteCr)&&raw.delivery.quoteCr>=0
+    ?{...raw.delivery}:null;
+  return {motion:valid?{pos:{...m.pos},vel:{...m.vel},rot:m.rot,angVel:m.angVel}:{pos:{...TALLY_THREE.pos},vel:{x:0,z:0},rot:0,angVel:0},
+    remainingHull:Math.max(0,Math.min(80,Number.isFinite(raw.remainingHull)?raw.remainingHull:80)),
+    met:raw.met===true,assessorLost:raw.assessorLost===true,evidenceObserved:raw.evidenceObserved===true,
+    evidenceRevision:Math.max(0,Math.min(Number.MAX_SAFE_INTEGER,Math.trunc(Number(raw.evidenceRevision)||0))),delivery};
 }
 
 function normalizePool(raw) {

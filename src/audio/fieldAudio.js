@@ -64,14 +64,14 @@ export function isFieldLoopKey(key) {
 export function collectFieldLoopSpecs(state, out = []) {
   out.length = 0;
   const active = state && state.fields && state.fields.active;
+  const player = playerPos(state);
+  const px = player ? player.x : 0;
+  const pz = player ? player.z : 0;
   // The early-out covers the field-record scan only — the Gyre Snare spec below must
   // still evaluate on an empty belt, or the beam hum is silent until another field
   // loop happens to be running.
   if (Array.isArray(active) && active.length) {
   const entities = state.entities;
-  const player = playerPos(state);
-  const px = player ? player.x : 0;
-  const pz = player ? player.z : 0;
   for (const rec of active) {
     if (!rec || rec.id == null) continue;
     const spec = FIELD_LOOP_RECIPES[rec.kind];
@@ -133,26 +133,35 @@ export function collectFieldLoopSpecs(state, out = []) {
   // the flying entity, so the arc reads at range for its whole TTL and dies with the
   // body (the grave burst covers the death moment itself).
   if (gyre && gyre.launchedId != null && gyre.ballPos && Number.isFinite(gyre.ballPos.x)
-      && out.length < FIELD_LOOP_CAP) {
-    const mass = Number.isFinite(gyre.ballMass) ? gyre.ballMass : 0;
-    out.push({
-      key: FIELD_LOOP_PREFIX + 'gyreBall',
-      fieldId: -2,
-      kind: 'gyreBall',
-      recipeId: 'sfx_field_loop_gyre_ball',
-      gain: 0.24,
-      trackId: gyre.launchedId,
-      envelope: Math.min(1, 0.5 + mass / 2400),
-      phase: 'active',
-      position: gyre.ballPos,
-    });
+      && Number.isFinite(gyre.ballPos.z) && out.length < FIELD_LOOP_CAP) {
+    // Past-hearing balls attenuate to silence on every mix term — never want a floored
+    // rumble (same law as the field-record scan above and the bomb precedent): reconcile
+    // releases the drifted-out voice, and re-arms it if the ball crosses back in range.
+    const dx = gyre.ballPos.x - px, dz = gyre.ballPos.z - pz;
+    if (dx * dx + dz * dz <= HEARING_FAR2) {
+      const mass = Number.isFinite(gyre.ballMass) ? gyre.ballMass : 0;
+      out.push({
+        key: FIELD_LOOP_PREFIX + 'gyreBall',
+        fieldId: -2,
+        kind: 'gyreBall',
+        recipeId: 'sfx_field_loop_gyre_ball',
+        gain: 0.24,
+        trackId: gyre.launchedId,
+        envelope: Math.min(1, 0.5 + mass / 2400),
+        phase: 'active',
+        position: gyre.ballPos,
+      });
+    }
   }
   // Secondary bowls get the same flight voice, keyed by entity id so each rumble
   // dies with its own ball — a second launch was silent for its whole flight.
   if (gyre && Array.isArray(gyre.balls)) {
     for (let i = 0; i < gyre.balls.length && out.length < FIELD_LOOP_CAP; i++) {
       const b = gyre.balls[i];
-      if (!b || b.id == null || b.id === gyre.launchedId || !Number.isFinite(b.x)) continue;
+      if (!b || b.id == null || b.id === gyre.launchedId || !Number.isFinite(b.x) || !Number.isFinite(b.z)) continue;
+      // Same hearing law as the primary ball above: a secondary past the table holds no voice.
+      const dx = b.x - px, dz = b.z - pz;
+      if (dx * dx + dz * dz > HEARING_FAR2) continue;
       const mass = Number.isFinite(b.mass) ? b.mass : 0;
       out.push({
         key: FIELD_LOOP_PREFIX + 'gyreBall' + String(b.id),

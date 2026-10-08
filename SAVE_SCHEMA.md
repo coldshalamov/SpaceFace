@@ -49,6 +49,7 @@ Current save version: `14`
 - `enemyMind`
 - `latchNine`
 - `scissorwake`
+- `lastShift`
 - `lossLedger`
 - `provenance`
 - `factionPresence`
@@ -224,6 +225,7 @@ Current save version: `14`
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
+| `$.lastShift` | null | null |
 | `$.latchNine` | null | null |
 | `$.lawSecurity` | object | {} |
 | `$.livingPoiBehaviors` | object | {} |

@@ -5327,6 +5327,26 @@
       "sceneRoot": true,
       "releaseSha256": "e921462e5ba1554ee932524d60d97ee69dbff7534155223ff443a95eb2cc62d6",
       "releaseBytes": 421468
+    },
+    {
+      "key": "tally-three",
+      "assetId": "sf.render.tally-three",
+      "runtimeAssetId": "SF_PLACE_TALLY_3",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_tally_three",
+      "sourceUrl": "assets/ships/release/parts/places/place_tally_three.glb",
+      "dynamicNameIncludes": [
+        "MOTION_TALLY_ARM_LEFT",
+        "MOTION_TALLY_ARM_RIGHT",
+        "MOTION_TALLY_STAMP",
+        "MOTION_TALLY_SCAN"
+      ],
+      "outputDir": "assets/ships/release/render-packages/tally-three",
+      "metadataUrl": "assets/ships/release/render-packages/tally-three/render-package.json",
+      "sceneRoot": true,
+      "releaseSha256": "84572b9c39b347cc2c373837e881c3340a15219bc2972f7d368172e266c8e943",
+      "releaseBytes": 631644
     }
   ]
 }

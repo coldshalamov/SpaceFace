@@ -12,6 +12,41 @@ import {
 } from '../core/pickupAcceptance.js';
 import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.js';
 import { getDerivedStats, shipworksStationAccess } from './ships.js';
+import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint } from '../data/tallyThree.js';
+
+/** Explicit SF20-03 receiver intent. Source and payment owners commit before Massline retires. */
+export function deliverTallyThreeCrate(state,quote,registry) {
+  const source=tallyThreeSource(state),salvage=registry?.get('salvage'),economy=registry?.get('economy');
+  if(source?.delivery)return economy?.settleTallyThreeDelivery(source.delivery)||{ok:false,reason:'receiver-unavailable'};
+  const crate=tallyThreeBody(state,TALLY_THREE.worldRecordId),receiver=quote?.receiver;
+  const player=state?.entities?.get(state.playerId);
+  if(!crate||!player||player.alive===false||crate!==quote?.crate||crate.occupantGeneration!==quote.generation
+    ||state.entities.get(crate.id)!==crate||!receiver||receiver.alive===false||state.entities.get(receiver.id)!==receiver
+    ||receiver.type!=='station'||receiver.data?.stationId!==TALLY_THREE.homeStationId
+    ||state.world?.currentSectorId!==TALLY_THREE.sectorId)return {ok:false,reason:'body-or-receiver-changed'};
+  if(source?.extracted||tallyThreeFingerprint(source)!==quote.fingerprint)return {ok:false,reason:'claim-or-contents-changed'};
+  if(source.claimId&&source.claimId!==TALLY_THREE.claimId)return {ok:false,reason:'claim-disputed'};
+  const line=Object.values(state.combat?.attachments?.byId || {}).find(a=>a?.state==='active'
+    &&a.ownerId===state.playerId&&a.targetId===crate.id&&a.defId==='tether_standard'
+    &&a.ownerGeneration===player.occupantGeneration&&a.targetGeneration===crate.occupantGeneration);
+  const nativeLine=line&&registry.get('physics')?._sg02CombatPhysics?.getAttachmentTelemetry({attachmentId:line.id,physicsHandle:line.physicsHandle,tick:state.tick});
+  if(!line||!nativeLine)return {ok:false,reason:'player-custody-required'};
+  const ring=Math.max(0,Number(receiver.data?.dockRadius)||Number(receiver.radius)||0)+TALLY_THREE.receiverMargin;
+  if(Math.hypot(crate.pos.x-receiver.pos.x,crate.pos.z-receiver.pos.z)+crate.radius>ring)return {ok:false,reason:'crate-outside-receiver'};
+  if(Math.hypot(player.pos.x-receiver.pos.x,player.pos.z-receiver.pos.z)>ring+80)return {ok:false,reason:'pilot-outside-receiver'};
+  if(Math.hypot(crate.vel.x-receiver.vel.x,crate.vel.z-receiver.vel.z)>TALLY_THREE.maxDeliverySpeed)return {ok:false,reason:'relative-speed-too-high'};
+  const current=economy?.quoteTallyThreeCrate(source);
+  if(!current?.ok||current.quoteCr!==quote.quoteCr||current.qty!==quote.qty)return {ok:false,reason:'value-quote-changed'};
+  const receipt={receiptId:'tally-three:'+TALLY_THREE.worldRecordId,sourceKey:TALLY_THREE.sourceKey,
+    worldRecordId:TALLY_THREE.worldRecordId,stationId:TALLY_THREE.homeStationId,
+    commodityId:'cmdty_salvage_electronics',qty:quote.qty,quoteCr:quote.quoteCr,
+    claimId:source.claimId,manifestId:TALLY_THREE.manifestId,tick:state.tick};
+  const settled=salvage?._settleTallyCrate({fingerprint:quote.fingerprint,receipt});
+  if(!settled?.ok)return settled||{ok:false,reason:'source-unavailable'};
+  registry.get('combat')?.kernel?.attachments?.breakAttachment(line,'accepted_delivery',state.playerId);
+  const paid=economy.settleTallyThreeDelivery(settled.receipt);
+  return paid.ok?paid:{...paid,custodyAccepted:true,paymentPending:true,receiptId:receipt.receiptId,qty:receipt.qty};
+}
 
 // commodityId -> { volPerU, massPerU } lookup, built once from the static registry.
 const VOL = Object.create(null);

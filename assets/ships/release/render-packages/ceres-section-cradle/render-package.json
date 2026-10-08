@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9d4608ffa7abdaceb81e2a742fb921510914746b54ebb252f65627422b0ff064",
+  "contentHash": "f5af0b4e7e7a465a2ead0c19ec78ab05c54f4235db8209530a73c1f0e4cb196d",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-hook-ceres-depth-keeper-armor.dynamic",
@@ -7782,8 +7782,8 @@
       "uri": "place_ceres_section_cradle.glb"
     },
     "sourceManifest": {
-      "bytes": 227467,
-      "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c",
+      "bytes": 228237,
+      "sha256": "1b69c49c46221b1db63f9802a590b029dab2580b07d02e256102f6026b2a4503",
       "uri": "pilots.json"
     }
   },
@@ -11003,7 +11003,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_section_cradle.glb"
   },
-  "runtimeHash": "fe22e13233281cfd3ff63ee62fd082e29606f670701bc7fae667661567b525f4",
+  "runtimeHash": "e33c827a550844f61f46b60d83851ee77703e2643577978850f587aece821185",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

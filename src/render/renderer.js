@@ -25823,7 +25823,7 @@ export const render = {
         if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, simNow);
         if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
             && userData.updateAuthoredMotion) {
-          userData.updateAuthoredMotion(entity, authoredNow, _worldSiteA11y);
+          userData.updateAuthoredMotion(entity, authoredNow, _worldSiteA11y, this.state);
         } else if (entity && userData.updateCeresPhysicalState) {
           // Native shoe/pad poses and consumed-force radiance remain exact when decoration sleeps.
           userData.updateCeresPhysicalState(entity, _worldSiteA11y);
