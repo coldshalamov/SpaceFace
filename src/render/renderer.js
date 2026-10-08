@@ -29593,6 +29593,28 @@ export const render = {
             // restoring now would un-withhold casters whose depth variant
             // never linked.
             if (this._deferredDepthStageRoots && this._deferredDepthStageRoots.has(root)) continue;
+            // The carve-out above only covers the arm's own compile leg; a
+            // FOREIGN in-flight compile (enable-stage/opening/admission sites
+            // stamp no ownership set) can still be landing marks on this
+            // root's withheld set. Prove mark currency per withheld mesh
+            // against the live memo sig instead of tracking ownership —
+            // anything not current stays withheld for its compile's settle.
+            if (this._withheldDepthCasters) {
+              const rescueWithheld = this._withheldDepthCasters.get(root);
+              if (rescueWithheld && rescueWithheld.size > 0) {
+                const rescueSig = this._shadowCensusForFrame();
+                if (rescueSig == null) continue;
+                const rescueCamera = this.cam && this.cam.obj;
+                let rescueAllCurrent = true;
+                for (const rescueMesh of rescueWithheld) {
+                  if (!casterDepthMarkCurrent(rescueMesh, rescueSig, rescueCamera)) {
+                    rescueAllCurrent = false;
+                    break;
+                  }
+                }
+                if (!rescueAllCurrent) continue;
+              }
+            }
             if (entry && entry.authoredCastShadow === true) {
               if (root.castShadow !== true) {
                 root.castShadow = true;

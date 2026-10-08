@@ -23,7 +23,7 @@
 // test/deep-sky-plate-pipeline.test.mjs, so a re-bake that changes a plate cannot silently
 // disagree with the sizes the runtime budgets from.
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
-import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
+import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 
 /**
  * Root-relative URLs survive esbuild chunk relocation and use the same browser/Electron route,
@@ -250,6 +250,9 @@ export class DeepSkyPlateResidency {
     this.pendingId = null;
     this.pendingTexture = null;
     this.pendingDecoded = false;
+    // The consult that released this upload honored the forced wallet — debit
+    // the measured span so sibling forced lanes read this frame as spent.
+    noteForcedFrameSpend(Math.min(now() - started, FORCED_FRAME_BUDGET_MS));
     return true;
   }
 

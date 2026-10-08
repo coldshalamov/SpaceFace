@@ -35,7 +35,7 @@ import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { invalidateShadowCasterPolicy } from './shadowCasterPolicy.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
-import { notePacedFrameSpend, pacedFrameSpend, PACED_FRAME_BUDGET_MS, forcedFrameSpend, FORCED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
+import { notePacedFrameSpend, pacedFrameSpend, PACED_FRAME_BUDGET_MS, forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 import { createAsyncAdmission, AUTHORED_ASYNC_DEADLINE_MS } from './asyncAdmission.js';
 import {
   TABLE_BAND,
@@ -7437,6 +7437,9 @@ function admitNextUpgradeJob(state) {
       state.lateSkips = gate.skippedCount;
     }
   }
+  // The consult that released this pick honored the forced wallet — debit the
+  // measured sort span on it (the glass carve-out runs through the same debit).
+  const pickSortStarted = monotonicNow();
   state.jobs.sort((a, b) => {
     // The stall bypass exists to feed the on-glass body the lane granted; a queued needed
     // on-glass job must take the freed slot ahead of ordinary dressing or the hog's own kind
@@ -7469,6 +7472,7 @@ function admitNextUpgradeJob(state) {
     }
     return a.sequence - b.sequence;
   });
+  noteForcedFrameSpend(Math.min(monotonicNow() - pickSortStarted, FORCED_FRAME_BUDGET_MS));
   if (state.firstFlightHandoffHold === true
       && !(state.jobs[0] && pickVerdict(state.jobs[0], 'shipJob', firstFlightReadableShipJob))
       && !(state.jobs[0] && pickVerdict(state.jobs[0], 'glassJob', firstFlightReadableGlassJob))) {
@@ -13634,8 +13638,12 @@ function drivePoolAdmissionIfUnclaimed(admission, options) {
       return;
     }
     poolAdmissionLateSkips = gate.skippedCount;
+    // The consult released a whole compile+touch pass a yield ago — settle-time
+    // debit is the honest accounting for an async forced unit.
+    const poolStarted = monotonicNow();
     await prepareRenderPackagePoolAdmission(admission, options);
     activateRenderPackagePoolAdmission(admission);
+    noteForcedFrameSpend(Math.min(monotonicNow() - poolStarted, FORCED_FRAME_BUDGET_MS));
   }).catch((error) => {
     // A mid-preparation cancellation is the owner-gone race, not a defect — keep it off the
     // warning channel the same way the boundary path classifies 'owner became inactive'.

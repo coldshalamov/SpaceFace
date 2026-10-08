@@ -1,4 +1,5 @@
 import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
 import { reportBootWork } from '../core/bootWork.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
@@ -421,6 +422,14 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         : NaN;
       if (!shouldStartHeavyAdmission(lastPresentDtMs) && skippedResumeForLatePresent !== true) {
         skippedResumeForLatePresent = true;
+        scheduleResumedBatch();
+        return;
+      }
+      // The skip-then-force resume is a forced start — consult the shared
+      // forced wallet like the sibling skip-cap lanes. Forced-but-broke parks
+      // again with the streak flag uncommitted, so the next schedule still
+      // counts as the earned resume instead of re-skipping.
+      if (forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS) {
         scheduleResumedBatch();
         return;
       }

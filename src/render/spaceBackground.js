@@ -33,7 +33,7 @@ import {
 } from '../data/sectorVisualProfiles.js';
 import { DeepSkyPlateResidency, deepSkyPeakResidentBytes } from './deepSkyPlates.js';
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
-import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
+import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 import {
   resolveDeepFieldStructureRecipe,
   sampleAuthoredWidth,
@@ -1880,8 +1880,14 @@ export class SpaceBackground {
       return;
     }
     this._nebulaBakeSkips = gate.skippedCount;
+    // The consult that released this bake honored the forced wallet — debit
+    // the measured span so sibling forced lanes read this frame as spent.
+    const bakeStarted = (typeof performance !== 'undefined') ? performance.now() : 0;
     if (wantL1) this._ensureNebulaBake('L1');
     else if (wantL2) this._ensureNebulaBake('L2');
+    noteForcedFrameSpend(Math.min(
+      ((typeof performance !== 'undefined') ? performance.now() : 0) - bakeStarted,
+      FORCED_FRAME_BUDGET_MS));
   }
 
   _disposeBakeTargets() {
@@ -2803,6 +2809,7 @@ export class SpaceBackground {
     // spec and let update() retry on a frame the heavy-admission budget accepts — the wormhole
     // arrives a few frames late instead of stalling the one it rolled into. The budgeted pump in
     // update() normally promotes L1 before a spawn ever reaches this point.
+    let promoteStarted = -1;
     if (this._nebulaBakePending && this._nebulaBakePending.L1) {
       const lastPresentDtMs = this.state && this.state.render
         ? this.state.render.lastPresentDtMs : undefined;
@@ -2815,6 +2822,7 @@ export class SpaceBackground {
         this._deferredWormhole = spec;
         return;
       }
+      promoteStarted = (typeof performance !== 'undefined') ? performance.now() : 0;
     }
     this._wormholeBakeSkips = 0;
     this._deferredWormhole = null;
@@ -2830,6 +2838,13 @@ export class SpaceBackground {
       tierName: this.tierName,
     });
     this.wormhole = { mesh, material: mesh.material, spec, radius: size * 0.5 };
+    // The forced consult released the L1 promote + mesh mint — debit its
+    // measured span on the forced wallet it consulted.
+    if (promoteStarted >= 0) {
+      noteForcedFrameSpend(Math.min(
+        ((typeof performance !== 'undefined') ? performance.now() : 0) - promoteStarted,
+        FORCED_FRAME_BUDGET_MS));
+    }
     mesh.position.x = spec.bx - this.camX * WORM_PAR;
     mesh.position.z = spec.bz - this.camZ * WORM_PAR;
     this.group.add(mesh);
