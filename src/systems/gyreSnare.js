@@ -1556,6 +1556,10 @@ export const gyreSnare = {
           // still ACT — a deadline-passed body's kills are already settled.
           this._disarmBall(e);
           delete e.data.gyreLaunchMeta;
+          // The mark sheds too: the lifetime sweep should kill this body in the same
+          // step, but if the skip path ever lets it live (unready index, a future
+          // absorbable type) a marked unwatched body is pull/snag/suck-immune forever.
+          delete e.data.gyreLaunched;
           if (rt.launchedId === rt.ballIds[i]) rt.launchedId = null;
           rt.ballIds.splice(i, 1);
           continue;
@@ -1669,6 +1673,9 @@ export const gyreSnare = {
           // The credit shadow sheds with the corpse: it rides the mark only while the
           // ball can still act — a deadline-passed body's kills are already settled.
           delete ball.data.gyreLaunchMeta;
+          // The mark sheds too — the sweep should kill this body in-step, but a
+          // survivor must not stay marked: pull/snag/suck-immune debris forever.
+          delete ball.data.gyreLaunched;
           this._unwatchBall(rt.ballId);
           rt.ballId = null; rt.launchedId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
           this._promoteNextBall(rt, state, pub); // a younger flight inherits the primary lane
@@ -1944,6 +1951,11 @@ export const gyreSnare = {
     if (!state || state.mode !== 'flight') { if (rt.phase !== PHASE.OFF) this._drop('not_flight'); rt.wasHeld = false; if (state) { this._sweepBallWatch(state); this._publish(state, null); } return; }
     const player = this._playerCapable(state);
     const held = this._held(state) && !!player;
+    // One state read for the whole tick — the fuse freeze, the dry edge, and the
+    // release-edge deferral all read the same modal contract. (screenStack itself
+    // suspends every non-keepalive system's update, so its release edge arrives
+    // deferred on the first tick the sim runs again — the gate below keeps it armed.)
+    const modalHeld = this._modalHeld(state);
 
     // Verb edges — rising opens the beam; falling bowls the clump (or just closes an empty beam).
     if (held && !rt.wasHeld && rt.phase === PHASE.OFF) {
@@ -1968,7 +1980,7 @@ export const gyreSnare = {
       }
     }
     if (!held) rt.dryDenyDone = false; // a released key re-arms the deny voice
-    if (!held && rt.wasHeld) {
+    if (!held && rt.wasHeld && !modalHeld) {
       // Deliberate release bowls a held clump; every other close (beam with no core, mid-launch,
       // or the player gone/docked) is a drop — never a launch from a dock seat or a corpse.
       if (rt.phase === PHASE.HOLD && player) this._launch(state, player);
@@ -1978,7 +1990,11 @@ export const gyreSnare = {
       // LAUNCH is exempt: the release edge that starts the bowl must not truncate its burst.
       // (Any other close — player gone, docked, dead — lands via the !player drop below.)
     }
-    rt.wasHeld = held;
+    // Under a live modal (blocked/blackout — screenStack suspends the whole tick
+    // instead) the edge and its latch both freeze: the throw is the one close the
+    // player must see, so a release they can't watch stays armed and lands the
+    // first tick the screen lifts — never committed blind.
+    if (!modalHeld) rt.wasHeld = held;
 
     if (rt.phase === PHASE.OFF) { this._sweepBallWatch(state); this._publish(state, player); return; }
     if (!player) {
@@ -2003,7 +2019,6 @@ export const gyreSnare = {
     // The fuse freezes while flight input is neutralized (a screen open): the verb
     // stays held through the overlay (massline parity) but the countdown is behind
     // it — draining blind could force a _launch the player literally cannot see.
-    const modalHeld = this._modalHeld(state);
     const drain = modalHeld ? 0 : D.capDrainPerS * drainMult * dt;
     this._spendCap(player, drain);
     // Same blind-commit rule on the OTHER side of the drain: a foreign system that

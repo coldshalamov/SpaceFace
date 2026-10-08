@@ -508,6 +508,39 @@ test('save:loaded sweeps a serialized gyreCore flag off a rock the ledger never 
   t.cleanup();
 });
 
+test('sector:exit and game:newGame share the boundary drop with save:loaded', async () => {
+  const t = await bootPhysics();
+  for (const evt of ['sector:exit', 'game:newGame']) {
+    const body = rock(t.sim, T.mawDist, 0);
+    hold(t);
+    for (let i = 0; i < 6; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+    assert.equal(t.sys._rt.phase, 'holding', `${evt} test holds first`);
+    t.bus.emit(evt, {});
+    assert.equal(t.sys._rt.phase, 'off', `${evt} drops the beam cold`);
+    assert.equal(body.data.gyreCore, undefined, `${evt} unmarks the core`);
+    // The held-key latch survives a boundary drop (massline parity) — release
+    // and re-press to arm the next iteration's wake edge.
+    t.state.input.actions.gyreSnare = false; t.sim.step();
+  }
+  t.cleanup();
+});
+
+test('destroy() -> init() same-state reload clears the core mark and residue', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const orphan = rock(t.sim, 900, 900);
+  orphan.data.gyreCore = true; // residue the ledger never tracked
+  t.sys.destroy();
+  assert.equal(body.data.gyreCore, undefined, 'tracked core mark clears on destroy');
+  assert.equal(orphan.data.gyreCore, undefined, 'untracked residue swept on destroy');
+  t.sys.init({ state: t.state, bus: t.bus, helpers: t.helpers });
+  assert.equal(t.sys._rt.phase, 'off', 'the reloaded verb starts cold');
+  t.cleanup();
+});
+
 // ── launch edge cases ─────────────────────────────────────────────────────────────
 test('re-tapping during the launch burst does not truncate the bowl', async () => {
   const t = await bootPhysics();
@@ -610,6 +643,30 @@ test('a held clump never eats a meal behind a modal screen', async () => {
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
   assert.ok(t.sys._rt.clumpMass > massBefore, 'the merge resumes on the first visible tick');
+  t.cleanup();
+});
+
+test('a key release behind a live modal defers the bowl to the first visible tick', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0, 30, 6);
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  // input.blocked: the sim still ticks (screenStack suspends it wholesale — a
+  // screen release arrives deferred naturally), but the player can't see flight.
+  // The throw is the one close they must watch: the edge stays armed, no blind bowl.
+  t.state.input.blocked = true;
+  t.state.input.actions.gyreSnare = false;
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'holding', 'release behind the modal defers — no blind bowl');
+  assert.ok(!t.events.some((e) => e.name === 'gyre:launched'));
+  assert.equal(body.data.gyreLaunched, undefined, 'the clump is still held, not thrown');
+  // The screen lifts: the deferred edge fires NOW — the throw they asked for lands
+  // on the first tick they can see it.
+  t.state.input.blocked = false;
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'launching', 'the deferred release bowls on the first visible tick');
+  assert.ok(t.events.some((e) => e.name === 'gyre:launched'), 'launch fired on the visible frame');
   t.cleanup();
 });
 
@@ -2986,7 +3043,8 @@ test('an adopter that keeps despawnAt still retires the marked ball on its own T
   kept.data.despawnAt = t.state.simTime + 0.02;
   t.sim.step();
   t.sim.step();
-  assert.ok(kept.data.gyreLaunched, 'the mark rides to its own TTL (adopter contract)');
+  assert.equal(kept.data.gyreLaunched, undefined,
+    'the mark sheds with the watch — a deadline survivor can\'t stay pull/snag-immune');
   assert.equal(kept.data.gyreLaunchMeta, undefined, 'the credit shadow shed on retire');
   assert.equal(kept.physicsBody.impactDamageScale, 1.5, 'the authored scale restored');
   assert.equal(kept.data.gyrePrevImpactScale, undefined, 'the stash consumed');
