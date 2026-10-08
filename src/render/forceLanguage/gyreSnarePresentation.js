@@ -888,7 +888,9 @@ export class GyreSnarePresentation {
         this._discMat.uniforms.uAlpha.value = 0.55 * kk * flashCalm;
         this._closeK = kk; // the clump block below shrinks the freed ball on the same ramp
         this._spiral.visible = true; // static scatter under reduced-motion too
-        if (k <= 0) { this._closing = false; this._closeTear = false; this._beam.visible = false; this._spiral.visible = false; }
+        if (k <= 0) { this._closing = false; this._beam.visible = false; this._spiral.visible = false; }
+        // _closeTear survives the 120 ms glass ramp — the rubble follows the torn
+        // body for its published ~0.5 s track and clears on tornId, not on k.
       } else if (this._beam.visible) {
         this._beam.visible = false;
         this._spiral.visible = false; // spiral now stays visible through closing — hide it on the rare non-ramp off
@@ -991,12 +993,26 @@ export class GyreSnarePresentation {
         this._clump.scale.setScalar(Math.max(0.001, k * k));
         this._clump.visible = this._deathT > 0;
         if (this._deathT <= 0) this._clearLumps();
-      } else if (this._closing && this._closeTear) {
-        // Tear: the grown core whips off on its parting snap — shrinking its
-        // lumps away over the 120 ms ramp reads as partial evaporation. The
-        // glass still eases; the rubble just isn't the thing that got freed.
-        this._clump.visible = false;
-        this._clearLumps();
+      } else if (this._closeTear) {
+        if (mirror.tornId != null) {
+          // Tear follow: the freed core whips off on its parting snap and the rubble
+          // RIDES it — the sim publishes the body's live pos for ~0.5 s (tornPos).
+          // The lash visibly LOSES the ball instead of the rubble de-rezzing while
+          // the grown body plainly still flies. Shrinks gently as it leaves.
+          const p = this.toLocal(finite(mirror.tornPos.x), finite(mirror.tornPos.z), this._nose);
+          this._clump.position.set(p.x, 0.6, p.z);
+          this._clumpSpin += sdt * spinRate;
+          this._clump.rotation.y = -this._clumpSpin;
+          this._clump.scale.multiplyScalar(Math.exp(-sdt * 1.5));
+          this._veilMat.opacity *= Math.exp(-sdt * 4);
+          this._veil.visible = this._veilMat.opacity > 0.004;
+          this._clump.visible = true;
+        } else {
+          // Track ended (body gone or window elapsed): the lash is empty.
+          this._closeTear = false;
+          this._clump.visible = false;
+          this._clearLumps();
+        }
       } else if (this._closing && this._clump.visible && this._closeK > 0) {
         this._clump.scale.setScalar(Math.max(0.001, this._closeK));
       } else {
@@ -1016,6 +1032,7 @@ export class GyreSnarePresentation {
       if (phase === 'off' && this._ballId == null && !this._closing && this._deathT <= 0) this._clearLumps();
     } else {
       this._deathT = 0;
+      this._closeTear = false; // a re-beam mid-tear-follow hands the clump group to the new core
       const p = this.toLocal(cx, cz, this._nose);
       this._clump.visible = true;
       // Loose zero-G also drifts UP: a slow ±0.3 wu bob seeded on the clump's orbit
@@ -1049,6 +1066,9 @@ export class GyreSnarePresentation {
       const fullGlow = holding && finite(mirror.clumpMass) >= Math.max(1, finite(mirror.maxClumpMass, 1))
         ? 0.05 + 0.02 * Math.sin(this.time * 3.4) * calm : 0;
       this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow) * flashCalm;
+      // Warn reaches the veil too — the ball is the object the player is actually
+      // watching when strain climbs; cone/maw/disc already warm (strain * 0.6).
+      this._veilMat.color.copy(this._colGlass).lerp(this._colWarn, clamp01(finite(mirror.strain01)) * 0.4);
       this._veil.visible = this._veilMat.opacity > 0.004;
       // Strain tremble: under load the held rubble visibly quivers — the core mesh
       // stays physics-true while its swarm shakes, which is exactly "about to slip".

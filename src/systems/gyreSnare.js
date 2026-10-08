@@ -138,6 +138,7 @@ function freshRuntime() {
     orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
     orbitDir: 1,           // ±1 — revolution direction from the same hash, so successive clumps don't all circle one way
     swirlBlend: 1,         // eased stir sign — chases orbitDir over ~0.5 s (dt·4 across a range of 2) so a snag can't flip the funnel's spiral mid-feed
+    tornTrack: null,       // {id, ticks} — a strain-freed core's last ~0.5 s: the close lets the lash visibly LOSE the ball
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
@@ -268,6 +269,7 @@ export const gyreSnare = {
     // clump's first strain excursion should re-arm the latch instead of inheriting it hot.
     rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; rt.fullCueLatched = false;
     rt.fuseCueLatched = false;
+    rt.tornTrack = null; // any new drop ends a previous torn body's follow
     // dropped = a live beam/hold released without launch; coreId is null when the beam
     // closed empty (no clump ever snagged) — AND during LAUNCH: the ball is already
     // thrown (or winding), so a live id would read as a clump torn off the lash when
@@ -301,6 +303,9 @@ export const gyreSnare = {
         queuePhysicsImpulse(torn,
           { x: ix * m * snapV, y: 0, z: iz * m * snapV },
           this._evidence(st.tick | 0));
+        // The rubble rides the freed body for ~0.5 s (pub.tornPos) — the whip
+        // reads as the lash LOSING the ball, not rubble de-rezzing mid-flight.
+        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S) };
       }
     }
     if (this.bus && !wasOff) {
@@ -367,11 +372,19 @@ export const gyreSnare = {
         // Same current-owner guard as the despawnAt branch: a foreign owner that
         // assigns its own finite ttl keeps it — the snag only planted Infinity, so a
         // finite e.ttl here is owner-set and wins. Infinity still restores authored.
-        if (!Number.isFinite(e.ttl) && Number.isFinite(e.data.gyrePrevTtl) && e.data.gyrePrevTtl > 0) {
+        // An absent stash restores ABSENT (delete, not Infinity) — the field
+        // round-trips exactly as authored.
+        if (e.data.gyrePrevTtl === undefined) {
+          if (!Number.isFinite(e.ttl)) delete e.ttl;
+        } else if (!Number.isFinite(e.ttl) && Number.isFinite(e.data.gyrePrevTtl) && e.data.gyrePrevTtl > 0) {
           e.ttl = e.data.gyrePrevTtl;
         }
         delete e.data.gyrePrevTtl;
-      } else { e.ttl = e.data.gyrePrevTtl; delete e.data.gyrePrevTtl; }
+      } else {
+        if (e.data.gyrePrevTtl === undefined) delete e.ttl;
+        else e.ttl = e.data.gyrePrevTtl;
+        delete e.data.gyrePrevTtl;
+      }
     }
   },
 
@@ -1532,12 +1545,24 @@ export const gyreSnare = {
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, launchBurst01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
       liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
+      tornId: null, tornPos: { x: 0, z: 0 },
     });
     if (pub.basinSpots === null) pub.basinSpots = [];
     pub.basinSpots.length = 0;
     for (let i = 0; i < rt.basinSpots.length; i++) pub.basinSpots.push(rt.basinSpots[i]);
     pub.phase = rt.phase;
     pub.dropReason = rt.dropReason;
+    // Torn-core follow: ~0.5 s of the strain-freed body's live pos so the close
+    // ramp can fly the rubble off WITH it. Dead entity / elapsed window -> null.
+    if (rt.tornTrack) {
+      const torn = state.entities.get(rt.tornTrack.id);
+      if (torn && torn.alive !== false && torn.pos && rt.tornTrack.ticks > 0) {
+        pub.tornId = rt.tornTrack.id;
+        pub.tornPos.x = torn.pos.x; pub.tornPos.z = torn.pos.z;
+        rt.tornTrack.ticks -= 1;
+        if (rt.tornTrack.ticks <= 0) { rt.tornTrack = null; }
+      } else { rt.tornTrack = null; pub.tornId = null; }
+    } else pub.tornId = null;
     // The funnel's drawn spiral + the clump's float phase ride the same eased stir /
     // orbit seed the sim uses — a -1 snag re-stirs the GLASS too, not just the pull.
     // Safe unconditionally: _drop/_finishLaunch already reset both to 1/0.

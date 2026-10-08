@@ -2114,6 +2114,34 @@ test('the suck lane corkscrews — tangential share rides the eased stir', () =>
   }
 });
 
+test('a strain break publishes the torn core\'s last ~0.5 s — the close flies the rubble with it', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  t.sys._drop('strained');
+  t.state.input.actions.gyreSnare = false;
+  t.sim.step();
+  assert.equal(t.state.gyreSnare.tornId, body.id, 'the freed core publishes its track');
+  assert.equal(t.state.gyreSnare.dropReason, 'strained');
+  // tornPos is captured in the system's own update — one tick behind physics —
+  // so it lags the live body by up to a step of the snap's flight (~4 wu bound).
+  assert.ok(Math.hypot(t.state.gyreSnare.tornPos.x - body.pos.x, t.state.gyreSnare.tornPos.z - body.pos.z) < 4,
+    `tornPos tracks the freed body's live pos (lag=${Math.hypot(t.state.gyreSnare.tornPos.x - body.pos.x, t.state.gyreSnare.tornPos.z - body.pos.z).toFixed(2)} wu)`);
+  for (let i = 0; i < 40; i++) t.sim.step(); // ~0.67 s — past the ~0.5 s window
+  assert.equal(t.state.gyreSnare.tornId, null, 'the follow releases after ~0.5 s');
+  // A polite release never publishes a track.
+  const t2 = await bootPhysics();
+  const body2 = rock(t2.sim, T.mawDist, 0, 6, 4);
+  hold(t2);
+  for (let i = 0; i < 8; i++) { t2.state.input.actions.gyreSnare = true; t2.sim.step(); }
+  t2.sys._drop('released');
+  t2.state.input.actions.gyreSnare = false; t2.sim.step();
+  assert.equal(t2.state.gyreSnare.tornId, null, 'a polite release publishes no torn track');
+  t.cleanup(); t2.cleanup();
+});
+
 test('suck-band floor: a fresh snag\'s reach stays inside the basin, mass re-widens it', () => {
   const t = boot(9401);
   const rt = t.sys._rt;
