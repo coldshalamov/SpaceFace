@@ -56,6 +56,7 @@ Current save version: `14`
 - `kilnback`
 - `mothlight`
 - `palletJack`
+- `secondRinse`
 - `towlineTable`
 - `borrowedVoice`
 - `lossLedger`
@@ -372,6 +373,7 @@ Current save version: `14`
 | `$.scenario.schemaVersion` | number | 1 |
 | `$.scenario.unresolvedActorIds` | array | length 0 |
 | `$.scissorwake` | null | null |
+| `$.secondRinse` | null | null |
 | `$.sectorSim` | object | {} |
 | `$.settings` | object | {} |
 | `$.settings.accessibility` | object | {} |

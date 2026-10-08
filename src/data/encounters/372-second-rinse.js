@@ -1,6 +1,7 @@
 // 372 — SECOND RINSE. Hasp hangs Tuesday's wash in a pocket off the Helios freight
 // chord. Concord calls lint a contaminant inside the station, so the lines are outside.
-// The blue blanket with the boat is off its pin. It is not cargo.
+// The blue sheet hangs off its pin to port. The bare pin is to starboard. Whites stay clipped.
+// None of it is cargo.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { secondRinseEncounter } from '../../systems/secondRinse.js';
 

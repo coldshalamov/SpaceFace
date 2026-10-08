@@ -1,5 +1,10 @@
 // Hasp, aboard the Second Rinse. Pure numbers. The renderer is not imported here.
-// The blue sheet and the pin-cord are tests in the skiff frame. They are not entities.
+// Three contacts, and a fair hull can take only one at a time:
+//   the blue sheet (port, whipping) seats crooked,
+//   the bare pin-cord (starboard) cuts,
+//   the white sheets (on the line) only hail.
+// Shapes stay more than two fair-radii apart through the whole whip, so a Hitch
+// or a common hauler (radius <= fairRadius) cannot graze a second verb on the way in.
 
 import { buildLaneGeometry, LANE_HELIOS_CERES } from './travelLaneRoutes.js';
 import { sectorMembershipAtGlobal } from './sectorCoordinates.js';
@@ -14,31 +19,46 @@ export const SECOND_RINSE = Object.freeze({
   callsign: 'HASP',
   name: 'Hasp · Second Rinse',
   hullRadius: 11,
+  fairRadius: 18,
   pocketLateral: 620,
   minAlong: 1600,
-  sheetAlong: 32,
-  sheetAcross: 16,
-  whipAmp: 0.85,
+  hailRadius: 280,
+  warnBand: 12,
+  hoverSeconds: 1.25,
+  againCooldown: 8,
+  sheetAlong: 20,
+  sheetAcross: 10,
+  whiteSpan: 9,
+  whiteDrop: 10,
+  whipAmp: 0.7,
   whipPeriod: 2.8,
-  pinLength: 4,
-  mast: Object.freeze({ x: 0, z: 16 }),
-  buoy: Object.freeze({ x: 0, z: 52 }),
+  mast: Object.freeze({ x: 0, z: 32 }),
+  buoy: Object.freeze({ x: 0, z: 210 }),
+  blueHinge: Object.freeze({ x: -52, z: 96 }),
+  blueHang: Object.freeze({ x: -1, z: 0 }),
+  blueAcross: Object.freeze({ x: 0, z: 1 }),
   whiteCenters: Object.freeze([
-    Object.freeze({ x: -4, z: 28 }),
-    Object.freeze({ x: 0, z: 36 }),
-    Object.freeze({ x: 4, z: 44 }),
+    Object.freeze({ x: 0, z: 42 }),
+    Object.freeze({ x: 0, z: 150 }),
+    Object.freeze({ x: 0, z: 198 }),
   ]),
-  hailRadius: 80,
+  pinA: Object.freeze({ x: 62, z: 88 }),
+  pinB: Object.freeze({ x: 62, z: 104 }),
 });
 
 const TAU = Math.PI * 2;
+const HEARD_KEYS = ['tuesday', 'boat', 'hover', 'white', 'stay'];
 
 export function normalizeSecondRinse(raw) {
   const flag = raw && raw.flag;
+  const heardIn = raw && raw.heard;
+  const heard = {};
+  for (const key of HEARD_KEYS) heard[key] = !!(heardIn && heardIn[key]);
   return {
-    revision: 1,
+    revision: 2,
     flag: flag === 'crooked' || flag === 'cut' ? flag : 'open',
     introduced: !!(raw && raw.introduced),
+    heard,
   };
 }
 
@@ -54,14 +74,14 @@ function rot2(x, z, angle) {
   return { x: x * c - z * s, z: x * s + z * c };
 }
 
-/** Four corners of the blue sheet in skiff-local XZ. Hinge is the mast. Extends +Z, yawed by the whip. */
+/** Four corners of the loose blue sheet in skiff-local XZ. Hinge is port of the kettle; the sheet hangs further port and whips. */
 export function blueSheetLocal(simTime, flag) {
   const angle = whipAngle(simTime, flag);
-  const along = rot2(0, 1, angle);
-  const across = rot2(1, 0, angle);
+  const along = rot2(SECOND_RINSE.blueHang.x, SECOND_RINSE.blueHang.z, angle);
+  const across = rot2(SECOND_RINSE.blueAcross.x, SECOND_RINSE.blueAcross.z, angle);
   const L = SECOND_RINSE.sheetAlong;
   const W = SECOND_RINSE.sheetAcross;
-  const h = SECOND_RINSE.mast;
+  const h = SECOND_RINSE.blueHinge;
   const corner = (u, v) => ({
     x: h.x + along.x * u + across.x * v,
     z: h.z + along.z * u + across.z * v,
@@ -75,23 +95,19 @@ export function blueSheetLocal(simTime, flag) {
 }
 
 export function pinCordLocal() {
-  const h = SECOND_RINSE.mast;
-  return {
-    a: { x: h.x, z: h.z },
-    b: { x: h.x, z: h.z + SECOND_RINSE.pinLength },
-  };
+  return { a: SECOND_RINSE.pinA, b: SECOND_RINSE.pinB };
 }
 
 export function whiteSheetLocal(index) {
   const c = SECOND_RINSE.whiteCenters[index];
   if (!c) return null;
-  const L = SECOND_RINSE.sheetAlong;
-  const W = SECOND_RINSE.sheetAcross;
+  const hx = SECOND_RINSE.whiteSpan / 2;
+  const hz = SECOND_RINSE.whiteDrop / 2;
   return [
-    { x: c.x - W / 2, z: c.z },
-    { x: c.x + W / 2, z: c.z },
-    { x: c.x + W / 2, z: c.z + L * 0.45 },
-    { x: c.x - W / 2, z: c.z + L * 0.45 },
+    { x: c.x - hx, z: c.z - hz },
+    { x: c.x + hx, z: c.z - hz },
+    { x: c.x + hx, z: c.z + hz },
+    { x: c.x - hx, z: c.z + hz },
   ];
 }
 
@@ -130,16 +146,34 @@ function distToSeg(px, pz, a, b) {
   return Math.hypot(px - (a.x + abx * t), pz - (a.z + abz * t));
 }
 
-export function circleHitsPoly(x, z, radius, corners) {
-  if (!corners || corners.length < 3) return false;
-  if (pointInPoly(x, z, corners)) return true;
-  const r = Math.max(0, radius || 0);
+export function distToPoly(x, z, corners) {
+  if (!corners || corners.length < 3) return Infinity;
+  if (pointInPoly(x, z, corners)) return 0;
+  let best = Infinity;
   for (let i = 0; i < corners.length; i++) {
-    const a = corners[i];
-    const b = corners[(i + 1) % corners.length];
-    if (distToSeg(x, z, a, b) <= r) return true;
+    const d = distToSeg(x, z, corners[i], corners[(i + 1) % corners.length]);
+    if (d < best) best = d;
   }
-  return false;
+  return best;
+}
+
+export function circleHitsPoly(x, z, radius, corners) {
+  return distToPoly(x, z, corners) <= Math.max(0, radius || 0);
+}
+
+/** Minimum distance between two convex polygons. 0 when they touch or overlap. */
+export function polyGap(a, b) {
+  if (!a || !b || a.length < 2 || b.length < 2) return Infinity;
+  const gapFrom = (pts, poly) => {
+    let best = Infinity;
+    for (const p of pts) {
+      const d = distToPoly(p.x, p.z, poly);
+      if (d <= 0) return 0;
+      if (d < best) best = d;
+    }
+    return best;
+  };
+  return Math.min(gapFrom(a, b), gapFrom(b, a));
 }
 
 export function segmentsCross(a, b, c, d) {
@@ -149,6 +183,29 @@ export function segmentsCross(a, b, c, d) {
   const d3 = cross(a, b, c);
   const d4 = cross(a, b, d);
   return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/** Inclusive: a hull path that lands on the cord still cuts it. A proper cross does too. */
+export function segmentHitsSegment(p, q, a, b) {
+  if (!p || !q || !a || !b) return false;
+  const orient = (s, t, r) => {
+    const v = (t.x - s.x) * (r.z - s.z) - (t.z - s.z) * (r.x - s.x);
+    if (Math.abs(v) <= 1e-7) return 0;
+    return v > 0 ? 1 : -1;
+  };
+  const on = (s, t, r) => orient(s, t, r) === 0
+    && r.x >= Math.min(s.x, t.x) - 1e-7 && r.x <= Math.max(s.x, t.x) + 1e-7
+    && r.z >= Math.min(s.z, t.z) - 1e-7 && r.z <= Math.max(s.z, t.z) + 1e-7;
+  const o1 = orient(p, q, a);
+  const o2 = orient(p, q, b);
+  const o3 = orient(a, b, p);
+  const o4 = orient(a, b, q);
+  if (o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && on(p, q, a)) return true;
+  if (o2 === 0 && on(p, q, b)) return true;
+  if (o3 === 0 && on(a, b, p)) return true;
+  if (o4 === 0 && on(a, b, q)) return true;
+  return false;
 }
 
 /**
@@ -164,6 +221,91 @@ export function secondRinseResolve(flag, sample) {
   if (began) return 'crooked';
   if (sample.overlapsWhite === true && sample.wasOnWhite !== true) return 'white';
   return null;
+}
+
+/**
+ * World-space contact against the skiff's wash. `prev` is the previous hull center.
+ * `motionReduce` freezes the whip so the hit matches the still picture.
+ */
+export function secondRinseSample(origin, rot, pos, prev, radius, simTime, flag, motionReduce) {
+  const time = motionReduce ? 0 : (Number(simTime) || 0);
+  const open = flag === 'open';
+  const blue = localsToWorld(origin, rot, blueSheetLocal(time, flag));
+  const r = Math.max(0, radius || 0);
+  const overlapsBlue = open && circleHitsPoly(pos.x, pos.z, r, blue);
+  let overlapsWhite = false;
+  if (open) {
+    for (let i = 0; i < SECOND_RINSE.whiteCenters.length; i++) {
+      const sheet = localsToWorld(origin, rot, whiteSheetLocal(i));
+      if (circleHitsPoly(pos.x, pos.z, r, sheet)) { overlapsWhite = true; break; }
+    }
+  }
+  const pin = pinCordLocal();
+  const a = localToWorld(origin, rot, pin.a);
+  const b = localToWorld(origin, rot, pin.b);
+  const from = prev || pos;
+  const cordCut = open && segmentHitsSegment(from, pos, a, b);
+  const blueDist = distToPoly(pos.x, pos.z, blue);
+  const nearBlue = open && !overlapsBlue && blueDist <= r + SECOND_RINSE.warnBand;
+  const inHail = Math.hypot(pos.x - origin.x, pos.z - origin.z) <= SECOND_RINSE.hailRadius;
+  return { overlapsBlue, overlapsWhite, cordCut, nearBlue, inHail, simTime: time };
+}
+
+/**
+ * Speech and flag for one sample. Mutates `mem.heard` in place.
+ * A hit outranks a greeting. The boat warning is the loose sheet's near band,
+ * and hover only after lingering there. White never changes the flag.
+ */
+export function secondRinseBeat(mem, sample, dt) {
+  const heard = mem.heard;
+  let line = null;
+  let cue = null;
+  let flag = mem.flag;
+  let hoverDwell = mem.hoverDwell || 0;
+  let againAt = Number.isFinite(mem.againAt) ? mem.againAt : -1e9;
+  const simTime = Number(sample.simTime) || 0;
+  const hit = secondRinseResolve(flag, sample);
+  if (hit === 'cut') {
+    flag = 'cut';
+    line = 'cut';
+    cue = 'pin';
+  } else if (hit === 'crooked') {
+    flag = 'crooked';
+    line = 'shut';
+    cue = 'clap';
+  } else if (hit === 'white' && !heard.white) {
+    heard.white = true;
+    line = 'white';
+  }
+  if (!line && sample.inHail && !mem.inHail) {
+    if (flag === 'open' && !heard.tuesday) {
+      heard.tuesday = true;
+      line = 'tuesday';
+    } else if (flag !== 'open' && simTime - againAt >= SECOND_RINSE.againCooldown) {
+      line = flag === 'crooked' ? 'crookedAgain' : 'cutAgain';
+      againAt = simTime;
+    }
+  }
+  if (!line && flag === 'open' && sample.nearBlue) {
+    if (!heard.boat) {
+      heard.boat = true;
+      line = 'boat';
+      hoverDwell = 0;
+    } else {
+      hoverDwell += Math.max(0, Number(dt) || 0);
+      if (!heard.hover && hoverDwell >= SECOND_RINSE.hoverSeconds) {
+        heard.hover = true;
+        line = 'hover';
+      }
+    }
+  } else if (!sample.nearBlue) {
+    hoverDwell = 0;
+  }
+  if (!line && !sample.inHail && mem.inHail && flag !== 'open' && !heard.stay) {
+    heard.stay = true;
+    line = 'stay';
+  }
+  return { flag, heard, inHail: !!sample.inHail, hoverDwell, againAt, line, cue };
 }
 
 export function secondRinsePocket(geometry = buildLaneGeometry(LANE_HELIOS_CERES)) {

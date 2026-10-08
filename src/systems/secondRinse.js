@@ -1,20 +1,15 @@
 // Hasp keeps one skiff in a wash pocket off the Helios–Ceres chord.
 // Sim only. The sheet is a rectangle, not an entity, and it is never cargo.
+// The skiff is a place: no guns, no collision, pinned to the pocket.
 
 import { makeShipEntitySpec } from './ships.js';
 import {
   LINES,
   SECOND_RINSE as C,
-  blueSheetLocal,
-  circleHitsPoly,
-  localToWorld,
-  localsToWorld,
   normalizeSecondRinse,
-  pinCordLocal,
+  secondRinseBeat,
   secondRinsePocket,
-  secondRinseResolve,
-  segmentsCross,
-  whiteSheetLocal,
+  secondRinseSample,
 } from '../data/secondRinse.js';
 
 const owners = new WeakMap();
@@ -48,53 +43,69 @@ export const secondRinse = {
     this._unsubs = [];
     this._memory = normalizeSecondRinse(this.state.secondRinse);
     this.state.secondRinse = this._memory;
-    this._wasOnBlue = false;
-    this._wasOnWhite = false;
-    this._inPocket = false;
-    this._said = { tuesday: false, boat: false, hover: false, white: false, stay: false };
-    this._clapAt = null;
-    this._cutAt = null;
-    this._prev = null;
+    this._resetContact();
+    this._pocket = null;
     owners.set(this.state, this);
     const on = (event, fn) => this._unsubs.push(this.bus.on(event, fn));
     on('sector:exit', () => this._shelf());
-    on('sector:enter', () => { this._wasOnBlue = false; this._wasOnWhite = false; this._inPocket = false; });
+    on('sector:enter', () => this._resetContact());
     on('entity:killed', (p) => this._onLost(p));
     on('entity:destroyed', (p) => this._onLost(p));
     on('game:newGame', () => this.newGame());
   },
-  update(_dt, state) {
+  _resetContact() {
+    this._wasOnBlue = false;
+    this._wasOnWhite = false;
+    this._inHail = false;
+    this._hoverDwell = 0;
+    this._againAt = -1e9;
+    this._prev = null;
+    this._clapAt = null;
+    this._cutAt = null;
+  },
+  update(dt, state) {
     if (state.mode !== 'flight' || state.ui?.docked) return;
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     if (state.world?.currentSectorId !== C.sectorId) return;
     const skiff = this.place();
     if (!skiff) return;
-    this._tickContact(skiff);
+    this._tickContact(skiff, dt);
   },
   place() {
     const state = this.state;
     if (state.world?.currentSectorId !== C.sectorId) return null;
+    const pocket = this._pocket || (this._pocket = secondRinsePocket());
+    if (!pocket) return null;
     const existing = findSkiff(state);
-    if (existing) return existing;
-    const pocket = secondRinsePocket();
-    if (!pocket || !this.helpers?.spawnEntity) return null;
+    if (existing) {
+      this._hold(existing, pocket);
+      return existing;
+    }
+    if (!this.helpers?.spawnEntity) return null;
     const spec = makeShipEntitySpec(C.shipId, {
       team: 2,
       factionId: C.factionId,
       pos: { x: pocket.x, z: pocket.z },
       rot: pocket.rot,
-      ai: { passive: true, allowPassiveManeuver: false, archetype: 'fleeing_trader' },
+      ai: { passive: true, allowPassiveManeuver: false, identityStock: true, archetype: 'fleeing_trader' },
     });
     spec.radius = C.hullRadius;
     spec.vel = { x: 0, z: 0 };
     spec.angVel = 0;
-    spec.flags = { ...(spec.flags || {}), persistent: true };
+    spec.collides = false;
+    spec.physicsBody = false;
+    spec.weapons = [];
+    spec.shield = spec.shieldMax;
+    spec.cap = spec.capMax;
+    spec.flags = { ...(spec.flags || {}), persistent: true, invuln: true };
     spec.data = {
       ...spec.data,
       weapons: [],
       name: C.name,
       callsign: C.callsign,
       role: 'laundry',
+      bountyCr: 0,
+      lootTableId: null,
       worldRecordId: C.worldRecordId,
       persistenceOwner: C.persistenceOwner,
       secondRinseId: 'hasp',
@@ -104,8 +115,22 @@ export const secondRinse = {
       intent: { moveZ: 0, moveX: 0, turn: 0, brake: true },
     };
     const actor = this.helpers.spawnEntity(spec);
-    if (actor) this._memory.introduced = true;
-    return actor || null;
+    if (!actor) return null;
+    this._memory.introduced = true;
+    this._hold(actor, pocket);
+    return actor;
+  },
+  _hold(skiff, pocket) {
+    skiff.pos.x = pocket.x;
+    skiff.pos.z = pocket.z;
+    skiff.rot = pocket.rot;
+    skiff.angVel = 0;
+    if (skiff.vel) { skiff.vel.x = 0; skiff.vel.z = 0; }
+    skiff.collides = false;
+    skiff.physicsBody = false;
+    skiff.weapons = [];
+    if (skiff.data) skiff.data.weapons = [];
+    skiff.flags = { ...(skiff.flags || {}), persistent: true, invuln: true };
   },
   _onLost(payload) {
     const id = payload?.entityId ?? payload?.id ?? payload?.targetId;
@@ -116,9 +141,7 @@ export const secondRinse = {
   _shelf() {
     const e = findSkiff(this.state);
     if (e && this.helpers?.removeEntity) this.helpers.removeEntity(e.id);
-    this._wasOnBlue = false;
-    this._wasOnWhite = false;
-    this._inPocket = false;
+    this._resetContact();
   },
   _speak(key) {
     const text = LINES[key];
@@ -132,70 +155,47 @@ export const secondRinse = {
   _cue(id) {
     this.bus?.emit?.('audio:cue', { id });
   },
-  _tickContact(skiff) {
+  _tickContact(skiff, dt) {
     const player = playerOf(this.state);
     if (!player?.pos) return;
-    const origin = skiff.pos;
-    const rot = skiff.rot || 0;
-    const radius = player.radius || 8;
-    const flag = this._memory.flag;
+    const frozen = this.state.video?.motionReduce === true;
     const simTime = this.state.simTime || 0;
-    const blue = localsToWorld(origin, rot, blueSheetLocal(simTime, flag));
-    const onBlue = flag === 'open' && circleHitsPoly(player.pos.x, player.pos.z, radius, blue);
-    let onWhite = false;
-    if (flag === 'open') {
-      for (let i = 0; i < 3; i++) {
-        const sheet = localsToWorld(origin, rot, whiteSheetLocal(i));
-        if (circleHitsPoly(player.pos.x, player.pos.z, radius, sheet)) { onWhite = true; break; }
-      }
-    }
-    const pin = pinCordLocal();
-    const a = localToWorld(origin, rot, pin.a);
-    const b = localToWorld(origin, rot, pin.b);
-    const prev = this._prev || player.pos;
-    const cordCut = flag === 'open' && segmentsCross(prev, player.pos, a, b);
-    const hit = secondRinseResolve(flag, {
-      overlapsBlue: onBlue,
-      wasOnBlue: this._wasOnBlue,
-      overlapsWhite: onWhite,
-      wasOnWhite: this._wasOnWhite,
-      cordCut,
-    });
-    const here = Math.hypot(player.pos.x - origin.x, player.pos.z - origin.z) < C.hailRadius;
-    if (!hit && here && !this._inPocket) {
-      if (flag === 'open' && !this._said.tuesday) { this._speak('tuesday'); this._said.tuesday = true; }
-      else if (flag === 'crooked') this._speak('crookedAgain');
-      else if (flag === 'cut') this._speak('cutAgain');
-    }
-    if (!hit && here && flag === 'open' && this._said.tuesday && !this._said.boat && onBlue) {
-      this._speak('boat');
-      this._said.boat = true;
-    } else if (!hit && here && flag === 'open' && this._said.boat && !this._said.hover) {
-      this._speak('hover');
-      this._said.hover = true;
-    }
-    if (hit === 'cut') {
-      this._memory.flag = 'cut';
-      this._cutAt = simTime;
-      this._speak('cut');
-    } else if (hit === 'crooked') {
-      this._memory.flag = 'crooked';
+    const sample = secondRinseSample(
+      skiff.pos,
+      skiff.rot || 0,
+      player.pos,
+      this._prev,
+      player.radius || 8,
+      simTime,
+      this._memory.flag,
+      frozen,
+    );
+    sample.wasOnBlue = this._wasOnBlue;
+    sample.wasOnWhite = this._wasOnWhite;
+    sample.simTime = frozen ? 0 : simTime;
+    const next = secondRinseBeat({
+      flag: this._memory.flag,
+      heard: this._memory.heard,
+      inHail: this._inHail,
+      hoverDwell: this._hoverDwell,
+      againAt: this._againAt,
+    }, sample, dt);
+    this._memory.flag = next.flag;
+    this._memory.heard = next.heard;
+    this._inHail = next.inHail;
+    this._hoverDwell = next.hoverDwell;
+    this._againAt = next.againAt;
+    if (next.line) this._speak(next.line);
+    if (next.cue === 'clap') {
       this._clapAt = simTime;
-      this._speak('shut');
       this._cue('sfx.secondRinse.clap');
-      this._cue('sfx.secondRinse.pin');
       this._cue('sfx.secondRinse.steam');
-    } else if (hit === 'white' && !this._said.white) {
-      this._said.white = true;
-      this._speak('white');
+    } else if (next.cue === 'pin') {
+      this._cutAt = simTime;
+      this._cue('sfx.secondRinse.pin');
     }
-    if (!here && this._inPocket && (this._memory.flag === 'crooked' || this._memory.flag === 'cut') && !this._said.stay) {
-      this._speak('stay');
-      this._said.stay = true;
-    }
-    this._inPocket = here;
-    this._wasOnBlue = onBlue;
-    this._wasOnWhite = onWhite;
+    this._wasOnBlue = sample.overlapsBlue;
+    this._wasOnWhite = sample.overlapsWhite;
     this._prev = { x: player.pos.x, z: player.pos.z };
     this.state.secondRinse = this._memory;
   },
@@ -205,20 +205,13 @@ export const secondRinse = {
   deserialize(raw) {
     this._memory = normalizeSecondRinse(raw);
     this.state.secondRinse = this._memory;
-    this._wasOnBlue = false;
-    this._wasOnWhite = false;
-    this._inPocket = false;
-    this._clapAt = null;
-    this._cutAt = null;
+    this._resetContact();
   },
   afterContinue() {},
   newGame() {
     this._shelf();
     this._memory = normalizeSecondRinse(null);
     this.state.secondRinse = this._memory;
-    this._said = { tuesday: false, boat: false, hover: false, white: false, stay: false };
-    this._clapAt = null;
-    this._cutAt = null;
   },
   destroy() {
     for (const off of this._unsubs || []) off?.();
@@ -232,9 +225,11 @@ export function secondRinsePresentation(state, entity) {
   const mem = state?.secondRinse;
   if (!mem || state.mode !== 'flight') return null;
   const owner = owners.get(state);
+  const frozen = state.video?.motionReduce === true;
   return {
     flag: mem.flag === 'crooked' || mem.flag === 'cut' ? mem.flag : 'open',
     simTime: state.simTime || 0,
+    frozen,
     tick: state.tick,
     clapAt: owner?._clapAt ?? null,
     cutAt: owner?._cutAt ?? null,
