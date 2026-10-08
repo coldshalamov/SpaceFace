@@ -631,14 +631,22 @@ test('a held clump never eats a meal behind a modal screen', async () => {
   for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'holding');
   const massBefore = t.sys._rt.clumpMass;
-  t.state.ui = { screenStack: ['map'] };
-  // A meal parked inside the suck annulus — in reach, but the screen owns the sim.
-  const meal = rock(t.sim, core.pos.x + 4, core.pos.z, 6, 3);
+  // input.blocked is the live modal path: the sim still ticks (screenStack would
+  // suspend it wholesale), so this pins BOTH halves of the contract — the pull
+  // lanes keep the annulus' gravity honest while only the merge freezes.
+  t.state.input.blocked = true;
+  // A meal parked inside the suck annulus but OUTSIDE the merge band
+  // (~13 wu for this clump) — in reach, but the screen owns the sim.
+  const meal = rock(t.sim, core.pos.x + 20, core.pos.z, 6, 3);
+  const distBefore = Math.hypot(meal.pos.x - core.pos.x, meal.pos.z - core.pos.z);
   for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.clumpMass, massBefore,
     'no merge behind the modal — an eaten wreck can\'t be unseen');
   assert.notEqual(meal.alive, false, 'the meal survives the blind hold');
-  t.state.ui.screenStack.length = 0;
+  const distAfter = Math.hypot(meal.pos.x - core.pos.x, meal.pos.z - core.pos.z);
+  assert.ok(distAfter < distBefore,
+    'the annulus keeps its gravity under a live modal — only the merge freezes');
+  t.state.input.blocked = false;
   for (let i = 0; i < 30 && meal.alive !== false && t.sys._rt.clumpMass === massBefore; i++) {
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }

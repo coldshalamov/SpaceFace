@@ -473,6 +473,56 @@ test('a pad-held gyre chord survives a screen opening — acts.gyreSnare stays l
   }
 });
 
+test('a pad-held gyre chord survives input.blocked — preserved hold, real edge on release', () => {
+  const dom = installFakeInputDom();
+  const host = Object.create(input);
+  const state = makeDomInputState();
+  state.ui = { screenStack: [] };
+  state.input.mouseNdc = { x: 0, y: 0 };
+  state.input.aimWorld = { x: 0, z: 0 };
+  state.input.aimAngle = 0;
+  state.input.aimIntentActive = false;
+  state.input.autoTargetVector = { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
+  state.input.autoTargetPath = { points: [], active: false };
+  const ctx = { state, bus: { emit() {} }, helpers: {} };
+  try {
+    host.init(ctx);
+    host.gamepad = {
+      isConnected: () => true,
+      actions: { gyreSnare: { held: false, pressed: false, released: false, value: 0 } },
+      axes: { leftX: 0, leftY: 0, rightX: 0, rightY: 0 },
+      tick() {},
+      _resetState() {},
+    };
+    host.update(1 / 60, state); // connected neutral sample — clears the init quarantine
+    host.gamepad.actions.gyreSnare.held = true;
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true, 'pad-held chord runs the lash');
+
+    // input.blocked is the LIVE modal path — the sim keeps ticking behind it, so
+    // the preserve must hold here or the sim sees a phantom release it would
+    // defer-bowl the instant the block lifts.
+    state.input.blocked = true;
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, true,
+      'input.blocked preserves the pad-held chord — the lifecycle quarantine can\'t eat it');
+    // A genuine release under the block still reaches the sim as a falling edge —
+    // gyreSnare defers it to the first visible tick (pinned in gyreSnare.test.mjs).
+    host.gamepad.actions.gyreSnare.held = false;
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, false,
+      'a pad release under input.blocked produces the falling edge the sim defers');
+
+    state.input.blocked = false;
+    host.update(1 / 60, state);
+    assert.equal(state.input.actions.gyreSnare, false,
+      'no phantom re-arm on the way back — the released verb stays released');
+    host.destroy();
+  } finally {
+    dom.restore();
+  }
+});
+
 test('a keyboard-held gyre verb survives a screen opening — preserve is not toggle-only', () => {
   const dom = installFakeInputDom();
   const host = Object.create(input);

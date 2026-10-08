@@ -1052,11 +1052,12 @@ export const gyreSnare = {
     // the suck lane's annulus count from the same tick.
     rt.towCount = 0;
     rt.tooHeavyCount = 0;
-    // The clump's merge lane is an irreversible sim mutation — a wreck eaten
-    // behind a modal screen can't be unseen. It freezes with the fuse; the
-    // drag lanes keep running (movement is reversible — the funnel still reads
-    // held when the screen closes).
-    if (!this._modalHeld(state)) this._suckPass(dt, state, player, core, rt);
+    // The clump's merge is the one irreversible sim mutation — a wreck eaten
+    // behind a modal screen can't be unseen, so only _absorb freezes with the
+    // fuse. The tug/pull lanes keep running: movement is reversible, the annulus
+    // keeps its gravity (no dead zone under blocked/blackout — the sim still
+    // ticks there), and suckCount stays honest for the funnel read.
+    this._suckPass(dt, state, player, core, rt, this._modalHeld(state));
     // Keep the wedge pull alive so the cone keeps feeding material into the ball —
     // outside the suck's annulus, which the core's own lane already owns.
     this._pullPass(dt, state, player, maw, nose, {
@@ -1089,7 +1090,7 @@ export const gyreSnare = {
   },
 
   /** Drag absorbables onto the clump and merge the ones that touch. */
-  _suckPass(dt, state, player, core, rt) {
+  _suckPass(dt, state, player, core, rt, modal = false) {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
     // Reset above the guard — a helper-less host must not publish a frozen +N read forever.
@@ -1157,7 +1158,10 @@ export const gyreSnare = {
       // 60 wu clump would eat a 6 wu rock ~10 wu before resting contact (vacuum-at-
       // range). A flat +4 wu beats permanent sub-skin orbit without the overreach.
       if (dist <= rt.clumpRadius + er + D.absorbEpsilonWu) {
-        this._absorb(state, rt, core, e, dx, dz, dist);
+        // The merge is the one irreversible lane — it freezes under a live modal
+        // (a wreck eaten behind a screen can't be unseen); the meal rests at
+        // contact and lands on the first visible tick.
+        if (!modal) this._absorb(state, rt, core, e, dx, dz, dist);
         continue;
       }
       // Below the merge check: a body absorbed THIS tick is the clump's mass, not
