@@ -197,6 +197,10 @@ import {
   deserializeAlienEcologyState,
 } from './alienEcology.js'; // Alien Ecology program (doc 08): world-owned library, not a registered system
 import {
+  materializeBolus,
+  tickBolus,
+} from './theBolus.js';
+import {
   materializeMachineLayer,
   tickMachineLayer,
   machineRouteOpen,
@@ -2471,6 +2475,19 @@ export const world = {
    * inside a big field. The sync wrapper drains inline — identical rng draws and spawn order.
    */
   *_spawnFieldsChunks(sector, active, disc, rng) {
+    if (sector && sector.interiorHost) {
+      for (const fdef of sector.fields || []) {
+        const centerLocal = fdef.center || { x: 0, z: 0 };
+        const center = this._toGlobal(centerLocal, sector.id);
+        active.fields.push({
+          id: fdef.id,
+          type: fdef.type,
+          center: { x: center.x, z: center.z },
+          asteroidIds: [],
+        });
+      }
+      return;
+    }
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const baseParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1];
     // Shallow copy so we can attach homeSectorId without mutating the shared FIELDS catalog.
@@ -3021,6 +3038,11 @@ export const world = {
    * spawn order.
    */
   *_spawnDressingChunks(sector, active, rng) {
+    if (sector && sector.interiorHost) {
+      materializeBolus(this, sector, active);
+      yield 'materialize:bolus';
+      return;
+    }
     const arranger = this._arrangerForSector(sector, active);
     const paletteClass = paletteClassForSector(sector);
     if (paletteClass === 'core') {
@@ -4400,6 +4422,7 @@ export const world = {
       gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
     }
     tickAlienEcology(this, dt);
+    tickBolus(this, dt);
     tickMachineLayer(this, dt);
     tickFoldAberrant(this, dt);
     tickFarActors(state, this.helpers, this.bus);

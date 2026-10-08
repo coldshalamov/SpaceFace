@@ -4,6 +4,7 @@
 
 import { FRONTIER_ANCHORS, FRONTIER_CORE_GATE_PATCHES } from './frontierRegions/index.js';
 import { PQ019_FACILITY_ANCHORS } from './heistFacilities.js';
+import { BOLUS_ANCHORS } from './theBolus.js';
 
 const GATE_R = 0.82;
 
@@ -267,6 +268,7 @@ export const SECTOR_ANCHORS = {
       : anchor];
   })),
   ...FRONTIER_ANCHORS,
+  ...BOLUS_ANCHORS,
 };
 
 /** Merge anchor overlays into a sector definition (pure data). */

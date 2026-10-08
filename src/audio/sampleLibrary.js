@@ -167,6 +167,7 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['arrival_eunomia_gulf', { file: 'assets/audio/arrival/arrival_eunomia_gulf.wav', tier: 1, loop: false, seconds: 0.7 }],
   ['arrival_sedna_dark', { file: 'assets/audio/arrival/arrival_sedna_dark.wav', tier: 1, loop: false, seconds: 1.4 }],
   ['arrival_dione_lane', { file: 'assets/audio/arrival/arrival_dione_lane.wav', tier: 1, loop: false, seconds: 0.85 }],
+  ['arrival_the_bolus', { file: 'assets/audio/arrival/arrival_the_bolus.wav', tier: 1, loop: false, seconds: 1.4 }],
   ['ore_tick', { file: 'assets/audio/mining/ore_tick.wav', tier: 1, loop: false, seconds: 0.25 }],
   ['hopper_thock', { file: 'assets/audio/mining/hopper_thock.wav', tier: 1, loop: false, seconds: 0.3 }],
   ...THEME_ASSETS.map((asset) => [asset.id, {

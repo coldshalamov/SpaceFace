@@ -332,6 +332,17 @@ export const SECTOR_COMPOSITIONS = freeze({
       f_dione_1: { motif: 'braid', thickness: 0.12, aperture: [0.4, 0.15] },
     },
   },
+  sector_the_bolus: {
+    ...DEFAULTS,
+    name: 'The Swallowed Rib',
+    focus: 'station_bolus_rib',
+    intent: 'A throat, not a belt. The grit field is a chart fiction; the room is tissue.',
+    motif: 'crescent',
+    dressingAngleDeg: 90,
+    fields: {
+      f_bolus_grit: { motif: 'crescent', openingDeg: 40, thickness: 0.08, aperture: [0.2, 0.1] },
+    },
+  },
 });
 
 /** Unknown/untuned sectors are deliberately identity transforms, not copy-pasted art direction. */

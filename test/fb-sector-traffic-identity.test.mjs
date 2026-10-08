@@ -12,8 +12,8 @@ import assert from 'node:assert/strict';
 import { SECTORS } from '../src/data/sectors.js';
 import { trafficRoleMixForSector } from '../src/systems/traffic.js';
 
-test('FB-029: all 24 sectors produce distinct traffic role mixes', () => {
-  assert.equal(SECTORS.length, 24, '24 sectors in SECTORS catalog');
+test('FB-029: all 25 sectors produce distinct traffic role mixes', () => {
+  assert.equal(SECTORS.length, 25, '25 sectors in SECTORS catalog');
   const seenMixes = new Map();
 
   for (const sector of SECTORS) {
@@ -23,7 +23,7 @@ test('FB-029: all 24 sectors produce distinct traffic role mixes', () => {
     seenMixes.set(serialized, sector.id);
   }
 
-  assert.equal(seenMixes.size, 24, 'All 24 sectors produce distinct role mixes');
+  assert.equal(seenMixes.size, 25, 'All 25 sectors produce distinct role mixes');
 });
 
 test('FB-029: unlocked roles have non-zero weight in their designated sectors', () => {

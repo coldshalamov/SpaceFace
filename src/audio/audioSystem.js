@@ -1749,6 +1749,7 @@ export function getPaletteClassName(sector) {
     if (sector.palette === SECTOR_PALETTE_CLASSES.belt) return 'belt';
     if (sector.palette === SECTOR_PALETTE_CLASSES.fringe) return 'fringe';
     if (sector.palette === SECTOR_PALETTE_CLASSES.anomaly) return 'anomaly';
+    if (sector.palette === SECTOR_PALETTE_CLASSES.viscera) return 'anomaly';
   }
   const id = sector.id || '';
   if (id.includes('belt') || id.includes('forge') || id.includes('drift')) return 'belt';

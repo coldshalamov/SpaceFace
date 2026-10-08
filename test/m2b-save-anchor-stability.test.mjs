@@ -127,7 +127,7 @@ function makeWorldHost(state) {
 test('frozen original 10 global origins remain exact', () => {
   assert.equal(SECTOR_ORIGIN_LATTICE_WU, 4096);
   assert.equal(Object.keys(FROZEN_STORY_ORIGINS).length, EXPECTED_STORY_COUNT);
-  assert.equal(Object.keys(SECTOR_GLOBAL_ORIGINS).length, 24);
+  assert.equal(Object.keys(SECTOR_GLOBAL_ORIGINS).length, 25);
 
   // Pack freeze lists must agree with the canonical story set.
   assert.deepEqual([...FROZEN_ORIGINAL_SECTOR_IDS], [...FROZEN_STORY_IDS]);

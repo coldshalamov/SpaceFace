@@ -18,7 +18,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import { NAMED_LANE_CONTACTS, pickNamedLaneContact } from '../src/data/laneContacts.js';
 
 test('FB-128: all 24 sectors resolve at least one named contact', () => {
-  assert.equal(SECTORS.length, 24, '24 live sectors');
+  assert.equal(SECTORS.length, 25, '25 live sectors');
 
   for (const sector of SECTORS) {
     const contact = pickNamedLaneContact(sector.id, 4242);

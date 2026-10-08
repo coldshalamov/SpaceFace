@@ -233,8 +233,8 @@ export function validateRegionalSupplyCatalog(opts = {}) {
   const cmdtyIds = new Set((commodities || []).map((c) => c && c.id).filter(Boolean));
   const cmdtyMap = new Map((commodities || []).map((c) => [c.id, c]));
 
-  if (!profiles || profiles.length !== 24) {
-    errors.push(`expected 24 regional profiles, got ${profiles ? profiles.length : 0}`);
+  if (!profiles || profiles.length !== (sectors ? sectors.length : 0)) {
+    errors.push(`expected ${sectors ? sectors.length : 0} regional profiles, got ${profiles ? profiles.length : 0}`);
   }
 
   const seenSectors = new Set();

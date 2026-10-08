@@ -14,7 +14,7 @@ import {
 } from '../src/data/sectorCompositions.js';
 
 describe('FB-032 — Seventeen frontier sectors stop inheriting Helios physics & arrangement', () => {
-  const TOTAL_SECTORS = 24;
+  const TOTAL_SECTORS = 25;
 
   it('SECTOR_PHYSICAL contains 24 sectors with frozen immutable rows', () => {
     const keys = Object.keys(SECTOR_PHYSICAL);

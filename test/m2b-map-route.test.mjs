@@ -29,10 +29,10 @@ function reachableFrom(start) {
   return [...seen];
 }
 
-test('canonical SECTORS graph deterministically reaches all 24 regions from Helios', () => {
-  assert.equal(SECTORS.length, 24);
-  assert.equal(new Set(SECTORS.map((sector) => sector.id)).size, 24);
-  assert.equal(reachableFrom('sector_helios_prime').length, 24);
+test('canonical SECTORS graph deterministically reaches all 25 regions from Helios', () => {
+  assert.equal(SECTORS.length, 25);
+  assert.equal(new Set(SECTORS.map((sector) => sector.id)).size, 25);
+  assert.equal(reachableFrom('sector_helios_prime').length, 25);
   assert.deepEqual(CORRIDOR_SECTOR_IDS, SECTORS.map((sector) => sector.id));
 });
 
