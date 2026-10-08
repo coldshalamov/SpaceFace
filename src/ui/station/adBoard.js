@@ -84,7 +84,7 @@ export function renderAdBoardNotice(element, state) {
   element.hidden = false;
   if (element.dataset) element.dataset.adId = notice.id;
   element.innerHTML =
-    '<span class="sx-adboard__k">Dockside notice</span>'
+    '<span class="sx-adboard__k">Dockside notice</span> · '
     + `<span class="sx-adboard__sponsor">${escapeHtml(notice.sponsor)}</span>`
     + `<p class="sx-adboard__text">${escapeHtml(notice.text)}</p>`;
   return notice;

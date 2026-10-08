@@ -49,6 +49,8 @@ test('Market ad-board renderer is quiet when undocked and avoids unchanged DOM w
   assert.equal(element.dataset.adId, notice.id);
   assert.match(element.innerHTML, /Dockside notice/);
   assert.match(element.innerHTML, new RegExp(escapeRegExp(notice.sponsor)));
+  assert.ok(element.innerHTML.replace(/<[^>]+>/g, '').includes(`Dockside notice · ${notice.sponsor}`),
+    'the label and the sponsor read as two words, never run together');
   assert.match(element.innerHTML, new RegExp(escapeRegExp(notice.text)));
 
   const writesAfterFirstNotice = element.writes;
