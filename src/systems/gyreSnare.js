@@ -705,6 +705,15 @@ export const gyreSnare = {
       : (player.data && player.data.derived && player.data.derived.cap) || 0;
   },
 
+  // HOLD drain scales with clump mass — shared between the fuse countdown
+  // (_publish) and the actual cap drain (update) so a retune can't desync the
+  // displayed seconds-left from the real burn.
+  _holdDrainMult(rt) {
+    return rt && rt.phase === PHASE.HOLD
+      ? D.capHoldMult * (1 + Math.min(rt.clumpMass / D.capMassDrainRef, D.capMassDrainMax))
+      : 1;
+  },
+
   _spendCap(player, amount) {
     // Write ONLY e.cap — the weapons convention (weapons.js): data.derived is refreshed
     // wholesale by ships.js each tick, so spending there is both a single-writer
@@ -1701,6 +1710,31 @@ export const gyreSnare = {
         // strips gyreLaunched and restores the stashed authored impactDamageScale.
         if (ball && ball.alive !== false && ball.data && ball.data.gyreLaunched) {
           this._handBack(ball);
+        } else if (ball && ball.data) {
+          // Every other retirement still sheds the shadow ledger — the primary
+          // lane can't leak what the sibling splice lane strips above: a serialized
+          // corpse would re-watch + re-stamp credit post-load, and a live unmarked
+          // adoptee can't keep the armed scale, lifetime stash, meta or credit.
+          // stillOurs: while the id sat in ballIds the splice lane ran this shed
+          // FIRST — its work left nothing behind, and re-disarming would delete
+          // (not restore) the just-restored authored scale. An UNWATCHED body
+          // (evicted primary, boundary residue) still carries the keys.
+          const stillOurs = 'gyrePrevImpactScale' in ball.data
+            || 'gyreLaunchMeta' in ball.data
+            || 'gyrePrevDespawnAt' in ball.data
+            || 'gyrePrevTtl' in ball.data;
+          if (ball.alive !== false && stillOurs) {
+            this._disarmBall(ball);
+            delete ball.data.gyrePrevDespawnAt;
+            delete ball.data.gyrePrevTtl;
+            // Credit rides only while our stamped deadline still owns the body —
+            // an adopter that stripped despawnAt WITH the mark takes the kills.
+            if (ball.data.despawnAt == null) clearImpulseProvenance(ball);
+          }
+          // Corpse or live, the shadow ledger is dead — shed BOTH marks so a dead
+          // body can't re-stamp credit post-load or resurrect pull-immune.
+          delete ball.data.gyreLaunchMeta;
+          delete ball.data.gyreLaunched;
         }
         const retiredId = rt.ballId;
         this._unwatchBall(retiredId);
@@ -1812,9 +1846,7 @@ export const gyreSnare = {
     // Burn-only fuse read: seconds of cap left at the CURRENT drain rate — hold drain
     // scales with clump mass, so the bigger the katamari the shorter the fuse. Regen
     // isn't counted, making it the honest worst case; the HUD draws it as a countdown.
-    const drainMult = rt.phase === PHASE.HOLD
-      ? D.capHoldMult * (1 + Math.min(rt.clumpMass / D.capMassDrainRef, D.capMassDrainMax))
-      : 1;
+    const drainMult = this._holdDrainMult(rt);
     pub.fuseS = (player && rt.phase !== PHASE.OFF)
       ? this._cap(player) / Math.max(0.001, D.capDrainPerS * drainMult) : 0;
     // No-live-ball hygiene: heading zeroes with the rest of the ball channels —
@@ -2145,9 +2177,7 @@ export const gyreSnare = {
     // katamari, the shorter the fuse on your hold. LAUNCH keeps draining at 1× —
     // deliberate (pinned by test): the slingshot's energy is the capacitor's own act,
     // so the ~0.18 s coil+burst burns ~1.2 cap as the cost of the throw itself.
-    const drainMult = rt.phase === PHASE.HOLD
-      ? D.capHoldMult * (1 + Math.min(rt.clumpMass / D.capMassDrainRef, D.capMassDrainMax))
-      : 1;
+    const drainMult = this._holdDrainMult(rt);
     // The fuse freezes while flight input is neutralized (a screen open): the verb
     // stays held through the overlay (massline parity) but the countdown is behind
     // it — draining blind could force a _launch the player literally cannot see.

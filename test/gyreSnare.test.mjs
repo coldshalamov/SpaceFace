@@ -827,6 +827,39 @@ test('a despawned ball retires launchedId so the mirror stops tracking it', asyn
   t.sim.step();
   assert.equal(t.state.gyreSnare.launchedId, null, 'mirror retires a dead ball');
   assert.equal(t.state.gyreSnare.ballMass, 0);
+  // The shadow ledger dies with the corpse — a serialized corpse re-watching
+  // post-load would re-stamp credit and resurrect pull-immune otherwise.
+  assert.equal(body.data.gyreLaunched, undefined, 'the mark sheds with the retire');
+  assert.equal(body.data.gyreLaunchMeta, undefined, 'the serialized meta sheds too');
+  t.cleanup();
+});
+
+test('a live primary retired unmarked still disarms and sheds the ledger', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → bowl
+  assert.equal(t.sys._rt.ballId, body.id);
+  for (let i = 0; i < 10; i++) t.sim.step();
+  assert.equal(t.state.gyreSnare.launchedId, body.id, 'mirror tracks the live ball');
+  // A foreign adopter that strips ONLY the mark — it keeps the deadline, so the
+  // body isn't a hand-back, but the watch still ends: unwatched ⇒ disarmed, and
+  // the stash/meta/credit shadow can't ride an adopted body forever.
+  assert.ok('gyrePrevDespawnAt' in body.data || 'gyrePrevTtl' in body.data
+    || body.data.gyrePrevImpactScale !== undefined || body.data.gyreLaunchMeta,
+    'setup: the launch shadow ledger is on the body');
+  delete body.data.gyreLaunched;
+  t.sim.step();
+  assert.equal(t.state.gyreSnare.launchedId, null, 'mirror retires the unmarked body');
+  assert.equal(body.data.gyreLaunchMeta, undefined, 'the serialized meta sheds');
+  assert.equal(body.data.gyrePrevDespawnAt, undefined, 'the deadline stash sheds');
+  assert.equal(body.data.gyrePrevTtl, undefined, 'the ttl stash sheds');
+  assert.equal(body.data.gyrePrevImpactScale, undefined, 'the armed-scale stash sheds');
+  if (body.physicsBody) {
+    assert.equal(body.physicsBody.impactDamageScale, undefined,
+      'the 8x weapon scale restores to authored (a bare test body has none)');
+  }
   t.cleanup();
 });
 
