@@ -24,6 +24,7 @@
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
 import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
+import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
@@ -2978,6 +2979,26 @@ export const economy = {
     return {ok:true,qty,quoteCr:Math.max(0,Math.floor(price*qty))};
   },
 
+  // A finite first planting from physically accepted original vaults, after its growth delay.
+  // The existing market stock authority owns the product; seeds never become player cargo.
+  applyIlexSeedHarvest(receiptId) {
+    const receipt = this.registryGet('ilexArk')?.outcomeReceipt?.(receiptId);
+    if (!validIlexOutcome(receipt)) return { ok: false, reason: 'unaccepted_seed_custody' };
+    if (this.state.simTime < receipt.harvestAt) return { ok: false, reason: 'planting_pending' };
+    const intents = ensureCommittedIntents(this.state), key = `${receipt.id}:first-harvest`, prior = intents[key];
+    if (prior) return { ok: true, duplicate: true, ...prior.result };
+    const market = this.state.economy.markets[ILEX_ARK.stationId] || this.ensureMarket(ILEX_ARK.stationId);
+    if (!market?.cmdty_food) return { ok: false, reason: 'greenhouse_receiver_pending' };
+    const qty = receipt.deliveredVaultIds.length * ILEX_ARK.provisionsPerVault;
+    const result = { receiptId: key, stationId: ILEX_ARK.stationId, commodityId: 'cmdty_food', qty,
+      deliveredVaultIds: [...receipt.deliveredVaultIds], at: this.state.simTime };
+    intents[key] = { receipt: { ...receipt, deliveredVaultIds: [...receipt.deliveredVaultIds] }, result };
+    if (qty) this.applyStockPressure(ILEX_ARK.stationId, 'cmdty_food', 'sell', qty);
+    this.bus.emit('ilexArk:harvested', { ...result, deliveredVaultIds: [...result.deliveredVaultIds] });
+    this.bus.emit('toast', { text: qty ? `Ceres greenhouse — first planting yielded ${qty}u Provisions from ${receipt.deliveredVaultIds.length}/6 seed lines.`
+      : 'Ceres greenhouse — no seed lines arrived. No planting or Provisions were created.', kind: 'info', ttl: 6 });
+    return { ok: true, duplicate: false, ...result };
+  },
   settleTallyThreeDelivery(receipt) {
     const source=tallyThreeSource(this.state),canonical=source?.delivery;
     if(!canonical||JSON.stringify(canonical)!==JSON.stringify(receipt)
@@ -3527,7 +3548,11 @@ export const economy = {
         return;
       }
       const want = p.amount != null ? Math.min(held, Math.max(0, Math.floor(Number(p.amount)))) : held;
-      if (want <= 0) return;
+      if (want <= 0) {
+        // An explicit zero is an answer: the player asked to redeem nothing.
+        this.bus.emit('toast', { text: 'No rights asked for', kind: 'info', ttl: 2 });
+        return;
+      }
       player.salvageRights = held - want;
       const payout = round(want * SALVAGE_RIGHT_CR);
       this.grantCredits(payout, 'service:redeem_rights');
