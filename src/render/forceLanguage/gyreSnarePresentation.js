@@ -80,7 +80,10 @@ void main() {
   // Glass needs a hard specular cue, not just shimmer: a sharper grazing lobe plus
   // a thin glint streak traveling around the skin (vUv.x is the cone's angle).
   float lobe = pow(1.0 - ndv, 6.0);
-  float glint = pow(abs(sin(vUv.x * 6.2832 - uTime * 2.4 * uCalm)), 24.0);
+  // The streak's PHASE rides uCalm — but so must its amplitude: under reduced
+  // motion a frozen full-bright glint would sit as two permanent vertical seams
+  // the animated cone never shows. mix(0.3, 1.0) leaves a faint static sheen.
+  float glint = pow(abs(sin(vUv.x * 6.2832 - uTime * 2.4 * uCalm)), 24.0) * mix(0.3, 1.0, uCalm);
   float band = 0.5 + 0.5 * sin(vUv.y * 34.0 - uTime * 13.0 * uCalm);
   float band2 = 0.5 + 0.5 * sin(vUv.y * 71.0 - uTime * 23.0 * uCalm);
   float rim = smoothstep(0.80, 1.0, vUv.y);
@@ -1317,6 +1320,9 @@ export class GyreSnarePresentation {
       this._basinGlows[0].geometry.dispose();
       for (const g of this._basinGlows) this.scene.remove(g);
       for (const g of this._basinGlows) g.material.dispose();
+    }
+    if (this._glints) {
+      for (const g of this._glints) { g.mesh.geometry.dispose(); g.mesh.material.dispose(); }
     }
   }
 }

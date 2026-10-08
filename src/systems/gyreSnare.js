@@ -933,22 +933,22 @@ export const gyreSnare = {
     });
   },
 
-  /** The clump's own gravity well: it widens with the payload but stays bounded —
-   * a capped katamari out-reaches the beam's basin deliberately, never ~2× past it. */
   /** Ponderous heavy: revolve rate falls off past orbitRatePonderR — a capped
-   * 60 wu moon lumbers at ~0.26 rad/s instead of whipping tangentially faster
-   * than a pebble (mass-invariant rate made the biggest ball read lightest).
-   * The 0.3 floor keeps the capped moon visibly circling — ~0.2 rad/s was an
-   * ~31 s orbit, a ball that reads frozen at the fantasy's climax. */
+   * 60 wu moon lumbers at ~0.26 rad/s (the 0.3 floor × orbitRate ≈ 25 s/orbit)
+   * instead of whipping tangentially faster than a pebble. The floor exists
+   * because unfloored that falloff was ~0.2 rad/s — an ~31 s orbit that reads
+   * frozen at the fantasy's climax. */
   _orbitRate(rt) {
     return D.orbitRate
       * Math.max(0.3, Math.min(1, D.orbitRatePonderR / Math.max(1, rt.clumpRadius)));
   },
 
+  /** The clump's own gravity well: it widens with the payload but stays bounded —
+   * a capped katamari out-reaches the beam's basin deliberately, never ~2× past it.
+   * The floor band shrinks on a fresh snag: suckBandWidth 88 alone already
+   * out-reaches basinRadius 86, so the "appetite widens with mass" arc had no
+   * headroom at the small end — min(88, 40 + r) keeps a pebble's reach honest. */
   _suckRadius(rt) {
-    // The floor band shrinks on a fresh snag: suckBandWidth 88 alone already
-    // out-reaches basinRadius 86, so the "appetite widens with mass" arc had no
-    // headroom at the small end — min(88, 40 + r) keeps a pebble's reach honest.
     return Math.min(D.basinRadius * 1.5,
       rt.clumpRadius * (1 + D.suckBandMassGain) + Math.min(D.suckBandWidth, D.suckBandFloor + rt.clumpRadius));
   },
@@ -1046,7 +1046,10 @@ export const gyreSnare = {
         // into the pull lane's scratch (_suckPass runs before _pullPass in HOLD) so a
         // spiraling meal competes for the 8 glow slots by the same k ordering.
         if (couple > 0.05 && this._spotScratch.length < D.basinSpotMax * 4) {
-          this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: couple, abs: true });
+          // 1.25x boost: the meal CLOSEST to being eaten should outrank a distant
+          // basin absorber for the hot seat — raw couple (≤1) always lost to a
+          // basin-heart k=1, so the imminent feed never got the highlight.
+          this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: Math.min(1, couple * 1.25), abs: true });
         }
       }
     }
