@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Active continuation — 8 October 2026, 21:30 UTC
+## Active continuation — 8 October 2026, 21:38 UTC
 
 Branch: `dot/expansion-continuation-2026-10-08`, starting from current master
 `518c8d6fce7202f412d54995876c4ced0ddfd696`. Public clone, current source checkout,
@@ -15,15 +15,32 @@ The owner requested a durable correction to repeated status-only continuation. S
 does not infer remote access or connector authentication from local state. This is
 requested support tooling, not a completed gameplay unit.
 
-Active gameplay unit: Pallet Jack ordinary clamp and repeated cold Continue. Exact
-working paths are `test/pallet-jack-route.test.mjs`, `src/ai/palletJack.js`,
-`src/ai/stack.js`, and `src/systems/tacticalAI.js`, plus focused Pallet steering tests.
+Current draft PR: #246. The continuation diagnostic/runbook increment is published as
+`6c841c089c49b3a65cbf1528af333a1d0ee6e7be`; its eight tests pass. GitHub connector
+blob/tree/commit/ref publication and independent branch readback all succeeded.
+
+Pallet Jack repair: ordinary clamp and repeated cold Continue now pass on the starting
+composition. Exact changed paths are `test/pallet-jack-route.test.mjs`,
+`test/pallet-jack-maneuver.test.mjs`, `src/ai/palletJack.js`, `src/ai/stack.js`,
+`src/systems/aiPorts.js`, and `src/systems/tacticalAI.js`.
 The first native reproduction confirmed the old fixture dumps cargo while the real
 director is still quiet and lets the pod escape. A valid catchable-load case exposed
-Pallet waypoints being applied after motor planning. A pre-planner repair is under
-test; existing refusal, patrol, physics and save contracts must remain intact.
-Full clamp/Continue and independent review are not yet passed. Next command:
-`node --test test/pallet-jack-route.test.mjs` against the repaired source.
+Pallet waypoints being applied after motor planning and real cargo payloads missing from
+the sensor contact set. The repair shapes fresh/cached intent before motor planning,
+uses moving-load formation tracking, and classifies only valid cargo payloads as
+objectives. It preserves admission refusals, patrol disengagement and native physics.
+Root reran both changed test files: 5/5 passed in 51 seconds, including ordinary native
+clamp, two cold Continue cycles, same-original nonlethal release, unrelated attachment
+preservation and the original quiet/runaway refusal. The unchanged Pallet owner suite
+passes 9/9; independent focused review found no blocking source issue. These counts
+overlap review selections and are not a full-game total.
+
+Next: reconcile upstream `653ad4d142b98092383cfffc4273e986ce10df02`, which landed other
+PRs after this work started, and rerun the affected native tests on that composition.
+No direct six-path overlap was found in the upstream inventory, but world, encounter,
+save and engagement changes require composed verification. Browser playability remains
+unverified; its first attempt could not load Playwright, and dependency setup is active.
+No visual, target-device performance or whole-program completion is claimed.
 
 ## Source checkpoint for cloud work - 8 October 2026
 

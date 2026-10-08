@@ -1850,7 +1850,10 @@ function contactKindFor(entity) {
   if (entity.type === 'projectile') return ContactKind.PROJECTILE;
   if (entity.type === 'asteroid' || entity.type === 'station' || entity.type === 'wreck'
       || entity.type === 'masslineSnare' || entity.type === 'masslineSnareAnchor') return ContactKind.HAZARD;
-  if (entity.type === 'pickup') return ContactKind.OBJECTIVE;
+  // Deliberately jettisoned freight uses a payload body; it remains a sensed cargo objective.
+  if (entity.type === 'pickup' || (entity.type === 'payload'
+    && entity.data?.kind === 'cargo' && typeof entity.data?.commodityId === 'string'
+    && Number(entity.data?.amount) > 0)) return ContactKind.OBJECTIVE;
   return null;
 }
 
