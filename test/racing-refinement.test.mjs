@@ -152,6 +152,18 @@ test('failed relocation abandons through the mission owner; stale staged launche
   p=stageRacingLaunch('contract_textile_qual');noteRacingNewGame({seed:p.seed,racingSession:true});assert.equal(takeRacingLaunch().contractId,p.contractId);
   assert.equal(stageRacingLaunch('unknown'),null);
 });
+test('circuit launch leaves a tethered campaign hull and its mission book untouched',()=>{
+  const h=launchHarness();h.state.player={tether:{active:true,targetId:9}};
+  assert.equal(armRacingContract(h.ctx,'contract_textile_qual',{allowEnterSector:true}).reason,'tether_active');
+  assert.equal(h.calls.includes('accept'),false);assert.equal(h.calls.includes('relocate'),false);
+});
+test('recovery requires releasing the Massline instead of teleporting one end of its attachment',()=>{
+  const h=missionHarness();h.state.player={tether:{active:true,targetId:9}};
+  let moved=0;h.host.registry={get:()=>({relocatePlayerInSector:()=>{moved++;return true;}})};
+  missions._resetAuthoredRace.call(h.host);
+  assert.equal(moved,0);assert.equal(h.p.resetCount,undefined);
+  assert.ok(h.emitted.some(([name,p])=>name==='toast'&&/Massline/.test(p.text)));
+});
 const overhead={eyeX:0,eyeY:160,eyeZ:180,lookX:0,lookZ:0};
 const rig={distance:58,height:22,lookAhead:36};
 function pose(memory,dt,enabled,anchor={x:0,z:0},yaw=0,reduced=false,top=overhead){

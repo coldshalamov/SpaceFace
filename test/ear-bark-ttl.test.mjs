@@ -29,3 +29,34 @@ test('seed 4242: bark voice ttl outlives the queue gap', () => {
   assert.equal(surfaced.text, 'Second hull down.');
   assert.equal(surfaced.channel, 'bark');
 });
+
+test('simultaneous barks have separate queue patience and a full duration on the floor', () => {
+  const queue = new VoiceQueue();
+  for (let i = 0; i < 3; i++) queue.enqueue({ channel: 'bark', text: `Line ${i}`, ttl: 4, id: `b:${i}` }, 0);
+  assert.equal(queue.step(0).text, 'Line 0');
+  assert.equal(queue.step(3999), null);
+  assert.equal(queue.step(4000)?.text, 'Line 1');
+  queue.step(6000);
+  assert.equal(queue.active?.text, 'Line 1', 'a delayed bark receives its requested display duration');
+  assert.equal(queue.step(8000), null, 'stale backlog still expires rather than playing indefinitely');
+  assert.equal(queue.size, 0);
+});
+
+test('non-bark floor and queue expiry keep their existing semantics', () => {
+  const queue = new VoiceQueue();
+  queue.enqueue({ channel: 'info', text: 'First', ttl: 4 }, 0);
+  queue.enqueue({ channel: 'info', text: 'Stale', ttl: 4 }, 0);
+  assert.equal(queue.step(0).text, 'First');
+  assert.equal(queue.step(4000), null);
+  assert.equal(queue.size, 0);
+});
+
+test('an interrupted bark cannot replay after its display lifetime has elapsed', () => {
+  const queue = new VoiceQueue();
+  queue.enqueue({ channel: 'bark', text: 'Old line', ttl: 1.2 }, 0);
+  queue.step(0);
+  queue.enqueue({ channel: 'alert', text: 'Danger', ttl: 2 }, 500);
+  assert.equal(queue.step(500).text, 'Danger');
+  assert.equal(queue.step(2500), null);
+  assert.equal(queue.size, 0);
+});

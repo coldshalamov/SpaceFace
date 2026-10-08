@@ -22,11 +22,21 @@ export const MINING_NOISE_ADMIT_TICKS = 180;
 export function admitEarCue(book, key, nowTick, gapTicks) {
   if (!book || key == null) return false;
   const now = Number(nowTick);
-  if (!Number.isFinite(now)) return false;
+  if (!Number.isFinite(now) || !Number.isFinite(gapTicks) || gapTicks < 0) return false;
+  const entries = book.entries || (book.entries = new Map());
+  // Clock rollback can also occur in a test/replay host without the normal run-boundary event.
+  if (Number.isFinite(book.lastTick) && now < book.lastTick) entries.clear();
+  if (!Number.isFinite(book.pruneAt) || now < book.lastTick || now >= book.pruneAt) {
+    // Expire only spent cooldowns. A large burst never evicts a still-live cue and permits it
+    // to repeat. One scan per simulation second bounds retained mine/escort IDs by their TTL.
+    for (const [id, until] of entries) if (until <= now) entries.delete(id);
+    book.pruneAt = now + 60;
+  }
+  book.lastTick = now;
   const id = String(key);
-  const last = book[id];
-  if (last != null && now - last < gapTicks) return false;
-  book[id] = now;
+  const until = entries.get(id);
+  if (until != null && now < until) return false;
+  entries.set(id, now + gapTicks);
   return true;
 }
 
@@ -35,14 +45,15 @@ export function distressCallCue(payload) {
   if (!payload || payload.routedToPlayer !== true) return null;
   const caller = payload.callerId != null ? payload.callerId : null;
   if (caller == null) return null;
-  const pos = payload.pos;
   return {
     recipeId: DISTRESS_CALL_RECIPE,
     gain: 0.62,
     key: `distress:${caller}`,
     gapTicks: DISTRESS_ADMIT_TICKS,
     critical: true,
-    position: pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? { x: pos.x, z: pos.z } : null,
+    // The traffic owner already admitted this radio call to the receiver (1800 WU).
+    // Positional playback would silently cull it at the much shorter physical hearing edge.
+    position: null,
   };
 }
 
@@ -126,8 +137,11 @@ export const AFTERMATH_HUSH = Object.freeze({
 export function admitAftermathHush(book, until, nowSim) {
   const end = Number(until);
   const now = Number(nowSim);
-  if (!book || !Number.isFinite(end) || !Number.isFinite(now)) return false;
-  if (Number.isFinite(book.until) && now < book.until) return false;
+  if (!book || !Number.isFinite(end) || !Number.isFinite(now) || end <= now) return false;
+  if (Number.isFinite(book.until) && now < book.until) {
+    book.until = Math.max(book.until, end);
+    return false;
+  }
   book.until = end;
   return true;
 }

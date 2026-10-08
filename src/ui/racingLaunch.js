@@ -58,6 +58,10 @@ export function armRacingContract(ctx, contractId, options = {}) {
     toast('Finish or leave the current circuit before starting another.');
     return { ok: false, reason: 'race_active' };
   }
+  if (state.player?.tether?.active) {
+    toast('Release the Massline before joining the starting grid.');
+    return { ok: false, reason: 'tether_active' };
+  }
   if (!world || typeof world.relocatePlayerInSector !== 'function') {
     toast('The starting grid is not ready.');
     return { ok: false, reason: 'no_relocation' };

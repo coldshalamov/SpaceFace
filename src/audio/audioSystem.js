@@ -5566,6 +5566,10 @@ export const audio = {
   _sessionBoundaryReset({ forceUndock = false } = {}) {
     const rt = this.rt;
     if (!rt) return;
+    // These cooldowns use the outgoing simulation clock and entity IDs. Neither survives
+    // New Game or a save restore: the next run must be able to speak from tick zero.
+    rt._combatFeedbackAdmit = null;
+    rt._aftermathHush = null;
     this._clearDeferred();
     this._endDesiredLoops();
     this._releaseDockedFieldLoops();

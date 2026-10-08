@@ -7540,6 +7540,12 @@ export const missions = {
       }
     }
     if (!found) return;
+    // Same-sector relocation moves only the hull. Keep the attachment and its load intact
+    // until the pilot releases it through the Massline owner; never teleport one rope end.
+    if (this.state.player?.tether?.active) {
+      this.bus.emit('toast', { text: 'Release the Massline before recovering to a gate.', kind: 'info', ttl: 3 });
+      return;
+    }
     const params = found.params;
     const world = this.registry && this.registry.get && this.registry.get('world');
     if (!world || typeof world.relocatePlayerInSector !== 'function') return;

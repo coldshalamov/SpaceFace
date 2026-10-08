@@ -45,10 +45,9 @@ import { hintTextFor } from './survivalAnnounce.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 
 const BARK_SET = new Set([...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS]);
-// Floor hold AND queue stale-drop (VoiceQueue expireAt = enqueuedAt + ttl). Barks are
-// rate-limited by a 1.5 s gap and a live bark holds the floor for its own ttl, so a line
-// queued behind another bark needs more patience than that gap or it expires unread —
-// 1.2 s died at t=1.4 s while the gap was still closed. 4 s outlives both.
+// Reading duration. The arbiter gives queued barks one additional inter-bark gap of
+// patience, then starts this display lifetime on promotion; simultaneous lines can speak
+// in order without leaving expired chatter queued indefinitely.
 export const BARK_VOICE_TTL_S = 4;
 const VOICE_TTL_S = BARK_VOICE_TTL_S;
 // Ledger copy needs the player-facing cargo name (same union lookup fragileCargo uses —

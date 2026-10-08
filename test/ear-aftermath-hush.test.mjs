@@ -17,8 +17,8 @@ test('seed 4242: post-combat silence drops the room once per window', () => {
   assert.equal(admitAftermathHush(book, 18, 10), true);
   assert.equal(book.until, 18);
   assert.equal(admitAftermathHush(book, 20, 12), false, 'a kill inside the window stays quiet');
-  assert.equal(book.until, 18);
-  assert.equal(admitAftermathHush(book, 28, 18), true, 'the next fight may breathe again');
+  assert.equal(book.until, 20, 'the continuing silence window extends without another hush');
+  assert.equal(admitAftermathHush(book, 28, 20), true, 'the next fight may breathe again');
 
   const src = readFileSync(new URL('../src/audio/audioSystem.js', import.meta.url), 'utf8');
   assert.match(src, /bus\.on\('barkDirector:silence'/);

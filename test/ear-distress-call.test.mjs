@@ -28,7 +28,7 @@ test('seed 4242: a mayday routed to the player plays once', () => {
     simTime: 3,
   });
   assert.equal(cue.recipeId, DISTRESS_CALL_RECIPE);
-  assert.equal(cue.position.x, 40);
+  assert.equal(cue.position, null, 'a received radio call is not a distant world sound');
   assert.equal(cue.critical, true);
 
   const played = [];
