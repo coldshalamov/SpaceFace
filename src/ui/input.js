@@ -23,6 +23,7 @@ import { resolveGamepadBindings } from '../systems/gamepad.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveDockDeny } from './dockDenyBanner.js';
+import { createDockIntent } from '../core/dockIntent.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -184,7 +185,7 @@ export function createUiInput(ctx, screenManager) {
     if (isUiInteractionFenced(state) || !dockInRange || (state.ui && state.ui.docked)) return;
     const jumpState = state.jump && state.jump.state;
     if (jumpState === 'CHARGING' || jumpState === 'JUMPING') return;
-    const attempt = { stationId: dockStationId };
+    const attempt = createDockIntent(state, { stationId: dockStationId });
     // Publish the attempt before deciding so the existing faction-voiced denial surface can explain
     // a refusal. The same pure selector is the command gate; a banner can never be the authority.
     bus.emit('dock:attempt', attempt);
@@ -1022,10 +1023,12 @@ export function createUiInput(ctx, screenManager) {
       if (def && def.id === 'station') {
         if (gp.actions.tabPrev && gp.actions.tabPrev.pressed && cycleStationTab(-1)) {
           bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
           return;
         }
         if (gp.actions.tabNext && gp.actions.tabNext.pressed && cycleStationTab(1)) {
           bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
           return;
         }
       }

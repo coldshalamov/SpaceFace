@@ -201,6 +201,50 @@ test('PQ-164.00: dpad on a modal emits ui:navigate via the shared route', () => 
   assert.ok(seen.navigate >= 1, 'D-pad down must navigate inside a modal');
 });
 
+test('PQ-164.00: shoulder tab cycling on the station screen ticks hover like every other nav gesture', () => {
+  const tabA = stubEl({ tabindex: '0' });
+  const tabB = stubEl({ tabindex: '-1' });
+  tabA.getAttribute = (n) => (n === 'role' ? 'tab' : n === 'data-tab' ? 'bridge' : n === 'tabindex' ? '0' : null);
+  tabB.getAttribute = (n) => (n === 'role' ? 'tab' : n === 'data-tab' ? 'yard' : n === 'tabindex' ? '-1' : null);
+  tabA.classList.contains = (cls) => cls === 'active';
+  tabA.parentNode = screenRoot;
+  tabB.parentNode = screenRoot;
+  screenRoot.dataset.screen = 'station';
+  const prevQSA = screenRoot.querySelectorAll;
+  screenRoot.querySelectorAll = () => [tabA, tabB];
+  const prevFocus = document.activeElement;
+  try {
+    const bus = createBus();
+    const seen = { nav: 0, hover: 0 };
+    bus.on('ui:navigate', () => { seen.nav += 1; });
+    bus.on('audio:cue', (p) => { if (p && p.id === 'hover') seen.hover += 1; });
+    const state = {
+      mode: 'flight', timeScale: 0, tick: 1, ui: {},
+      settings: { controls: { gamepad: { enabled: true } } },
+      entities: new Map(), player: {},
+    };
+    const gp = createGamepad({ bus, state });
+    const screenManager = {
+      isOpen: () => true,
+      top: () => 'station',
+      getActiveScreenDef: () => ({ id: 'station' }),
+      locked: () => false,
+      popScreen() {}, pushScreen() {},
+    };
+    const input = createUiInput({ bus, state, gamepad: gp, registry: null }, screenManager);
+    installPad(5); // r1 → tabNext
+    input.tick(0.016);
+    input.dispose();
+    assert.ok(seen.nav >= 1, 'tab cycle still emits the navigate intent');
+    assert.ok(seen.hover >= 1, 'the hover tick rides the tab gesture');
+    assert.ok((tabB._clicks || 0) >= 1, 'the next tab activates');
+  } finally {
+    screenRoot.querySelectorAll = prevQSA;
+    screenRoot.dataset.screen = 'pause';
+    document.activeElement = prevFocus;
+  }
+});
+
 test('PQ-164.00 seed 16400: kit words with roving tabindex stay pad-focusable', () => {
   const wordA = stubEl({
     tabindex: '-1',

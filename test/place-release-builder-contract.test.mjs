@@ -183,13 +183,15 @@ test('selected build and manifest patch preserve membership, order, and untouche
   assert.match(patched.assets[1].textureProfiles.normalTexture, /^UASTC /);
   assert.doesNotThrow(() => validatePatchedPlaceManifest(manifest, patched, built));
 
-  assert.throws(
-    () => patchPlaceManifestRows(
-      { ...manifest, assets: originalRows.filter((row) => row.id !== 'place_dead_hulk') },
-      built,
-    ),
-    /exactly one row for place_dead_hulk; found 0/,
-  );
+  const missing = { ...manifest, assets: originalRows.filter((row) => row.id !== 'place_dead_hulk') };
+  const appended = patchPlaceManifestRows(missing, built);
+  assert.deepEqual(appended.assets.map(row => row.id), [...missing.assets.map(row => row.id), 'place_dead_hulk']);
+  assert.doesNotThrow(() => validatePatchedPlaceManifest(missing, appended, built));
+  const corrupted = structuredClone(appended);
+  corrupted.assets.at(-1).releaseSha256 = '0'.repeat(64);
+  assert.throws(() => validatePatchedPlaceManifest(missing, corrupted, built), /row mismatch/);
+  assert.throws(() => validatePatchedPlaceManifest(missing, { ...appended, assets: appended.assets.slice(0, -1) }, built), /membership/);
+  assert.throws(() => patchPlaceManifestRows(manifest, [built[0], built[0]]), /duplicate ids/);
   assert.throws(
     () => patchPlaceManifestRows(
       { ...manifest, assets: [...originalRows, { id: 'place_debris_chunk' }] },

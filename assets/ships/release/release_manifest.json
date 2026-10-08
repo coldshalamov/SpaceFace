@@ -4906,6 +4906,44 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 322,
       "contractNodeCount": 124
+    },
+    {
+      "id": "place_pip_spanner",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_pip_spanner.glb",
+      "release": "assets/ships/release/parts/places/place_pip_spanner.glb",
+      "sourceSha256": "97bed27a6f138a08a3f28a0bbf54752ce1a20f8a80afa4bd3be4352973ba4f66",
+      "releaseSha256": "e921462e5ba1554ee932524d60d97ee69dbff7534155223ff443a95eb2cc62d6",
+      "sourceBytes": 1141468,
+      "releaseBytes": 421468,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 101,
+      "contractNodeCount": 25,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_latch_nine",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_latch_nine.glb",
+      "release": "assets/ships/release/parts/places/place_latch_nine.glb",
+      "sourceSha256": "9f50438e1576c6a61375584f48ce941635c49cd4b67769cbb1b67fdd1029d4d5",
+      "releaseSha256": "c3550bccf5ff6c191008619616f68e2e22ff01f8be8bb19a9c4e1d3fd380b80c",
+      "sourceBytes": 2392052,
+      "releaseBytes": 879144,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 349,
+      "contractNodeCount": 101,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

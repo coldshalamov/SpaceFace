@@ -7,6 +7,7 @@ import {
   BARK_EVENT_SITUATIONS,
   BARK_SITUATIONS,
   barkFor,
+  freightRaiderEscapeBarkFor,
   historyBarkFor,
   hullRecognitionBarkFor,
   lawStepBarkFor,
@@ -26,6 +27,10 @@ import {
   reactionForSpill,
 } from '../data/cargoIdentity.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
+import { FACTION_META } from '../data/factions.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { ORES } from '../data/mining.js';
+import { playerBearingName } from '../core/playerCompass.js';
 import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
 import { getOccupationalSilhouetteRule } from '../data/occupationalSilhouettes.js';
@@ -41,6 +46,10 @@ import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 
 const BARK_SET = new Set([...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS]);
 const VOICE_TTL_S = 1.2;
+// Ledger copy needs the player-facing cargo name (same union lookup fragileCargo uses —
+// freight manifests can carry ore ids as well as market commodity ids).
+const CARGO_NAME_BY_ID = new Map([...COMMODITIES, ...ORES].map((entry) => [entry.id, entry.name]));
+const FACTION_SHORT_BY_ID = new Map(FACTION_META.map((entry) => [entry.id, entry.short || entry.name]));
 const PLAYER_TEAM = 0;
 export const POST_COMBAT_SILENCE_S = 8.0;
 export const AMBIENT_BASE_GAP_S = 12.0;
@@ -528,6 +537,7 @@ export const barkDirector = {
     this._onStuntLoad();
     this._onStuntDamage = payload => { if ((payload.targetId ?? payload.victimId) === this.state?.playerId) this._stuntDangerUntil = (this.state.tick || 0) + 72; };
     this._onCargoSpilled = (payload) => this._speakCargoSpill(payload || {}, 'freight:cargoSpilled');
+    this._onRaiderEscaped = (payload) => this._speakRaiderEscape(payload || {});
     this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
     this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
     this._onVictimKilled = (payload) => this._speakVictimDistress(payload || {});
@@ -595,6 +605,7 @@ export const barkDirector = {
       this.bus.on('story:stuntIncidentUpdated', this._onStuntTrick);
       this.bus.on('story:stuntIncidentRecorded', this._onStuntTrick);
       this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
+      this.bus.on('freight:raiderEscaped', this._onRaiderEscaped);
       this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
       this.bus.on('entity:killed', this._onCargoKilled, { presentation: true });
       this.bus.on('entity:killed', this._onVictimKilled, { presentation: true });
@@ -635,17 +646,17 @@ export const barkDirector = {
         }
       };
       this.bus.on('massline:npcCounterplay', this._onNpcCounterplay);
-      this._onHarasserDisengaged = (payload) => {
+      // Record-only, under its own handle: the spoken line belongs to the 'flee'-register
+      // subscriber above — voicing this flat line too double-barked every mercy-disengage
+      // (world-24 contract) — and sharing one field name left the first subscription
+      // impossible to off().
+      this._onHarasserDepartureRecord = (payload) => {
         const bark = harasserDepartingBark(payload);
         if (!bark) return;
-        const voice = this.helpers && this.helpers.voice;
-        if (voice && typeof voice.say === 'function') {
-          voice.say({ channel: 'bark', text: bark.text, kind: 'departing', ttl: 3, id: bark.attackerId });
-        }
         if (!Array.isArray(this._harasserDepartures)) this._harasserDepartures = [];
         this._harasserDepartures.push(bark);
       };
-      this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
+      this.bus.on('harasser:disengaged', this._onHarasserDepartureRecord);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       this.bus.on('physics:impact', this._onBodyImpact, { presentation: true });
     }
@@ -1840,6 +1851,68 @@ export const barkDirector = {
     return receipt;
   },
 
+  // SF-157 — the listener freight:raiderEscaped was authored for. The moment a raider clears
+  // its escape leash the theft is named on the comms ribbon: what was taken, who took it, and
+  // the last bearing the thief was seen on. Bounded by design — the payload hands over no live
+  // position and this line publishes none; the raider's own hull is the only trail. A live
+  // raider also names its own take in the getaway register first.
+  _speakRaiderEscape(payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    const custodyId = payload.custodyId != null ? String(payload.custodyId) : '';
+    const qty = Math.max(0, Math.round(Number(payload.qty) || 0));
+    if (!custodyId || qty <= 0) return false;
+    const own = ensureState(state);
+    if (!own.raiderEscapesSaid || typeof own.raiderEscapesSaid !== 'object' || Array.isArray(own.raiderEscapesSaid)) {
+      own.raiderEscapesSaid = {};
+    }
+    if (own.raiderEscapesSaid[custodyId]) return false;
+
+    const raider = entityFromState(state, payload.raiderId);
+    if (raider && raider.alive !== false) {
+      this._speakEventLine(raider, 'freight-escape', 'freight:raiderEscaped',
+        (_f, i) => freightRaiderEscapeBarkFor(i), payload);
+    }
+
+    const factionId = payload.raiderFactionId || (raider && factionFor(raider)) || null;
+    const factionShort = factionId && FACTION_SHORT_BY_ID.get(factionId);
+    const raiderName = raider && raider.data
+      && (raider.data.displayName || raider.data.name) || null;
+    const who = raiderName || (factionShort ? `a ${factionShort} raider` : 'a raider');
+    const what = CARGO_NAME_BY_ID.get(payload.commodityId) || String(payload.commodityId || 'cargo');
+    // "Last seen headed" names the last observed velocity; when the velocity receipt is
+    // missing, the bearing to its authored escape point is the same bounded clue.
+    const vel = payload.lastObservedVel;
+    let bearing = vel ? playerBearingName(vel.x, vel.z) : '';
+    if (!bearing && payload.escapeTarget && payload.lastObservedPos) {
+      bearing = playerBearingName(
+        payload.escapeTarget.x - payload.lastObservedPos.x,
+        payload.escapeTarget.z - payload.lastObservedPos.z,
+      );
+    }
+
+    own.raiderEscapesSaid[custodyId] = { t: Number(state.simTime) || 0 };
+    const saidKeys = Object.keys(own.raiderEscapesSaid);
+    if (saidKeys.length > 64) {
+      let oldest = null;
+      let oldestT = Infinity;
+      for (const key of saidKeys) {
+        const t = Number(own.raiderEscapesSaid[key] && own.raiderEscapesSaid[key].t);
+        if (Number.isFinite(t) && t < oldestT) { oldestT = t; oldest = key; }
+      }
+      if (oldest != null) delete own.raiderEscapesSaid[oldest];
+    }
+
+    this._emit('comms:log', {
+      from: 'Local traffic',
+      text: `${who} made off with ${qty} units of ${what}${bearing ? ` — last seen headed ${bearing}` : ''}.`,
+      kind: 'cargo',
+      custodyId,
+      raiderId: payload.raiderId != null ? payload.raiderId : null,
+    });
+    return true;
+  },
+
   destroy() {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onEntitySpawnedBark) this.bus.off('entity:spawned', this._onEntitySpawnedBark);
@@ -1853,6 +1926,7 @@ export const barkDirector = {
       if (this._onStuntTrick) this.bus.off('story:stuntIncidentUpdated', this._onStuntTrick);
       if (this._onStuntTrick) this.bus.off('story:stuntIncidentRecorded', this._onStuntTrick);
       if (this._onCargoSpilled) this.bus.off('freight:cargoSpilled', this._onCargoSpilled);
+      if (this._onRaiderEscaped) this.bus.off('freight:raiderEscaped', this._onRaiderEscaped);
       if (this._onCargoJettisoned) this.bus.off('cargo:jettisoned', this._onCargoJettisoned);
       if (this._onCargoKilled) this.bus.off('entity:killed', this._onCargoKilled);
       if (this._onVictimKilled) this.bus.off('entity:killed', this._onVictimKilled);
@@ -1876,7 +1950,7 @@ export const barkDirector = {
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
       if (this._onNpcCounterplay) this.bus.off('massline:npcCounterplay', this._onNpcCounterplay);
-      if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
+      if (this._onHarasserDepartureRecord) this.bus.off('harasser:disengaged', this._onHarasserDepartureRecord);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       if (this._onBodyImpact) this.bus.off('physics:impact', this._onBodyImpact);
       if (this._onSpillNoticed) this.bus.off('traffic:spillNoticed', this._onSpillNoticed);

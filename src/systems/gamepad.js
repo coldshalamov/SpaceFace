@@ -966,7 +966,16 @@ export function createGamepad(ctx) {
         this._idleClean = true;
         this.helmGestureEdge = false;
         this.deviceLostThisFrame = true;
-        if (bus && bus.emit) bus.emit('gamepad:disconnected', {});
+        if (bus && bus.emit) {
+          bus.emit('gamepad:disconnected', {});
+          // The connect path toasts its scheme offer; a dropped device owes the player the
+          // same honesty — the controls they were flying by are gone.
+          bus.emit('toast', {
+            text: 'Controller disconnected — keyboard and mouse are live.',
+            kind: 'info',
+            ttl: 5,
+          });
+        }
         return;
       }
       if (pad && !wasConnected) {

@@ -55,6 +55,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // Scanner pulse cooldown keys on absolute simTime and signal investigation state persists
   // on state.signalInvestigation — both must clear before the fresh run's clock restarts.
   'scanner',
+  'latchNine', 'scissorwake',
   // Bark receipts/suppression are keyed per entity id and per run; a fresh run must not
   // inherit the previous run's said-latches on recycled ids.
   'barkDirector',

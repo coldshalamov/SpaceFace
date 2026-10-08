@@ -15,6 +15,7 @@ export function authoredCompoundMeasurement(row) {
     ids.add(box.id);
   }
   return {
+    assetId: row.assetId || null,
     fit: { scale: row.placeScale, offset: [0, 0, 0] },
     collider: {
       kind: 'compound',
@@ -35,6 +36,9 @@ export function isAuthoredNonRenderHelper(node) {
 }
 
 export function authoredCompoundCoverage(points, measurement, certificate) {
+  if (certificate?.schema === 'spaceface.authoredCompound.v1' && certificate.assetId !== measurement.assetId) {
+    throw new Error('Authored compound certificate asset identity mismatch');
+  }
   const sourceBoxes = certificate?.collision?.boxes;
   if (!Array.isArray(sourceBoxes) || sourceBoxes.length !== measurement.compoundBoxesWU.length) {
     throw new Error('Native compound disagrees with the hash-bound authored source');

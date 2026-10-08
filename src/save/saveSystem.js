@@ -649,6 +649,8 @@ export const save = {
       ['charges', () => this._callSerialize('impulseCharges')],
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
+      ['latchNine', () => this._callSerialize('latchNine')],
+      ['scissorwake', () => this._callSerialize('scissorwake')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
@@ -794,6 +796,10 @@ export const save = {
     data.nemesisDeployment = this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null);
     yield 'serialize:nemesisDeployment';
     data.enemyMind = clonePlain(state.enemyMind || null);
+    data.latchNine = this._callSerialize('latchNine');
+    yield 'serialize:latchNine';
+    data.scissorwake = this._callSerialize('scissorwake');
+    yield 'serialize:scissorwake';
     yield 'serialize:enemyMind';
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     yield 'serialize:lossLedger';
@@ -4787,6 +4793,8 @@ export const save = {
       this._callDeserialize('scanner', data.signalInvestigation);
       yield 'deserialized-scanner';
       this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
+      this._callDeserialize('latchNine', data.latchNine);
+      this._callDeserialize('scissorwake', data.scissorwake);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
 

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "27fd2e0783d5f2f97ca68b79aac9c6ea770a58d2de475c3d165bad4bc34fed5e",
+  "contentHash": "4089f8d884ffdbbd6cba079b0b15fe19f009d03d4eb4193e252fc0734a33bb93",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -978,8 +978,8 @@
       "uri": "place_welding_drone.glb"
     },
     "sourceManifest": {
-      "bytes": 226002,
-      "sha256": "c80327aeed352bca12aa7c0f4f2672811f41d466c9073de1118eea5c639c5014",
+      "bytes": 227467,
+      "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c",
       "uri": "pilots.json"
     }
   },
@@ -1420,7 +1420,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_welding_drone.glb"
   },
-  "runtimeHash": "67c38399a03c1e761683b9c00f07d57a2a9e06fb5548da33f626d856cd555764",
+  "runtimeHash": "ffcbb0b5ab543beab956e831926826641a6bbdc5d9092a65290b40dca4c3b2c7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

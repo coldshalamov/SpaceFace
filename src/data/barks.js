@@ -2367,6 +2367,18 @@ export function rivalScavengerLineFor(kind, rng) {
   return table[pickIndex(rng, table.length)];
 }
 
+// A freight raider clearing its escape leash (encounterScripts freight-custody). The thief
+// names its own take as it goes — one line per hull, spoken over the getaway transponder burn.
+export const FREIGHT_RAIDER_ESCAPE_REGISTER = Object.freeze([
+  'Pods secured. The hauler\'s loss is my margin — chase the wake if you want it back.',
+  'Freight\'s ours. Transponder\'s going dark — spend the fuel if you\'re feeling rich.',
+  'Full hold, clean lane. That cargo was never yours, friend.',
+]);
+
+export function freightRaiderEscapeBarkFor(rng) {
+  return FREIGHT_RAIDER_ESCAPE_REGISTER[pickIndex(rng, FREIGHT_RAIDER_ESCAPE_REGISTER.length)];
+}
+
 export function touristHailFor(rng) {
   return TOURIST_HAIL_REGISTER[pickIndex(rng, TOURIST_HAIL_REGISTER.length)];
 }

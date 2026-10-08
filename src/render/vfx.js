@@ -1,3 +1,4 @@
+import { isLatchActor,latchNinePropulsionAwake,createLatchNinePlumeBatch } from './latchNineVisuals.js';
 // VFX system (ARCHITECTURE §2.4, §4.4; design/specs/10). A purely-cosmetic presentation layer.
 // It owns a pooled GPU shard cloud, folded impulse sheets, baked density-film transients and
 // a sorted normal-blended smoke bucket, and is
@@ -13350,7 +13351,7 @@ export const vfx = {
   // false-wake into the full relevant path (hide latch still early-returns); must
   // not miss a real thrust/coast wake. Soft-GPU fps not claimed.
   _energyQuietMaybeAwake() {
-    if (ceresWorkfleetPropulsionAwake(this.state)) return true;
+    if (ceresWorkfleetPropulsionAwake(this.state) || latchNinePropulsionAwake(this.state)) return true;
     const energy = this._energy;
     if (energy && (
       energy.plumeDrive > 0.02
@@ -13439,7 +13440,7 @@ export const vfx = {
 
   _energyPlumeRelevant() {
     if (!this._productionThrusterEnabled()) return false;
-    if (ceresWorkfleetPropulsionAwake(this.state)) return true;
+    if (ceresWorkfleetPropulsionAwake(this.state) || latchNinePropulsionAwake(this.state)) return true;
     const energy = this._energy;
     if (energy && (
       energy.plumeDrive > 0.02
@@ -13826,6 +13827,7 @@ export const vfx = {
     const livePlumes = [];
     if (energy.plumeSystem) livePlumes.push(energy.plumeSystem);
     if (energy.ceresWorkfleet?.plume) livePlumes.push(energy.ceresWorkfleet.plume);
+    if(energy.latchNine?.plume)livePlumes.push(energy.latchNine.plume);
     if (energy.fleet && Array.isArray(energy.fleet.families)) {
       for (const family of energy.fleet.families) {
         if (family && family.plume) livePlumes.push(family.plume);
@@ -13902,6 +13904,8 @@ export const vfx = {
     this._scene.add(ceresPlume.group);
     ceresPlume.bindDynamicBuffers(this._scene);
     const ceresWorkfleet = createCeresWorkfleetPlumeBatch(ceresPlume, THREE.Vector3);
+    const latchPlume=new ContinuousPlumeSystem(THREE,resolveThrusterRecipes('engine_industrial').main,{textures,maxSockets:8,distortionEnabled:false});this._scene.add(latchPlume.group);latchPlume.bindDynamicBuffers(this._scene);
+    const latchNine=createLatchNinePlumeBatch(latchPlume,THREE.Vector3);
 
     // Unified plasma stream: player hero thruster (soft particles for root + history wake).
     // Solid ribbon + continuous card plume remain for NPCs / fallback; player hero uses plasma.
@@ -13936,6 +13940,7 @@ export const vfx = {
     this._energy = {
       fleet,
       ceresWorkfleet,
+      latchNine,
       plumeSystem: playerPlume,
       rcsSystem: playerRcs,
       plasmaStream,
@@ -14061,6 +14066,7 @@ export const vfx = {
     }
 
     const ceresActive = energy.ceresWorkfleet?.update(this.state, dt, a11y) || 0;
+    const latchActive=energy.latchNine?.update(this.state,dt,a11y)||0;
     const fleet = energy.fleet;
     fleet.beginFrame(a11y);
 
@@ -14200,7 +14206,7 @@ export const vfx = {
     this._productionOwnedCount = owned;
     // Awake signal is thrust, not admission: a parked nearby ship must not pin the energy
     // subsystem awake (idle-sleep invariant).
-    energy.plumeDrive = ceresActive > 0 || diag && (diag.shipsActive - (diag.idleShips || 0)) > 0 ? 1 : 0;
+    energy.plumeDrive = latchActive > 0 || ceresActive > 0 || diag && (diag.shipsActive - (diag.idleShips || 0)) > 0 ? 1 : 0;
     // Player drive snapshot for sleep/relevance heuristics.
     if (player && player.alive) {
       const pd = this._engineDriveFor(player);
@@ -14597,6 +14603,7 @@ export const vfx = {
       return;
     }
     if (energy.ceresWorkfleet) energy.ceresWorkfleet.reset();
+    energy.latchNine?.reset();
     if (energy.plasmaStream) energy.plasmaStream.reset();
     if (energy.retroVolume) energy.retroVolume.reset();
     if (energy.fleet) energy.fleet.reset();
@@ -14680,6 +14687,7 @@ export const vfx = {
     this._releasePlayerPlumeEventLight();
     if (!this._energy) return;
     this._energy.ceresWorkfleet?.dispose();
+    this._energy.latchNine?.dispose();
     if (this._energy.plasmaStream) {
       this._energy.plasmaStream.dispose();
       this._energy.plasmaStream = null;

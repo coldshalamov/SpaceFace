@@ -1,3 +1,4 @@
+import { isLatchActor } from './latchNineVisuals.js';
 import { isCeresWorkfleetPlace } from './ceresWorkfleetVisuals.js';
 import { isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Bespoke visual overrides for hero assets plus the authored-asset boundary.
@@ -74,7 +75,7 @@ function requiresProductionWholeShip(entity) {
 
 function isWorldPlaceProp(entity) {
   if (!entity || !entity.data) return false;
-  if (hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
+  if (isLatchActor(entity) || hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
   if (entity.type !== 'fx') return false;
   return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
 }

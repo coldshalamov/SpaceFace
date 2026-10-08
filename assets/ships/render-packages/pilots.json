@@ -5287,6 +5287,46 @@
       ],
       "outputDir": "assets/ships/release/render-packages/ceres-breaker-cutter-head",
       "metadataUrl": "assets/ships/release/render-packages/ceres-breaker-cutter-head/render-package.json"
+    },
+    {
+      "key": "latch-nine",
+      "assetId": "sf.render.latch-nine",
+      "runtimeAssetId": "SF_PLACE_LATCH_NINE",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_latch_nine",
+      "sourceUrl": "assets/ships/release/parts/places/place_latch_nine.glb",
+      "releaseSha256": "c3550bccf5ff6c191008619616f68e2e22ff01f8be8bb19a9c4e1d3fd380b80c",
+      "releaseBytes": 879144,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [
+        "MOTION_",
+        "HOOK_LATCH_THRUSTER_"
+      ],
+      "outputDir": "assets/ships/release/render-packages/latch-nine",
+      "metadataUrl": "assets/ships/release/render-packages/latch-nine/render-package.json"
+    },
+    {
+      "key": "pip-spanner",
+      "assetId": "sf.render.pip-spanner",
+      "runtimeAssetId": "sf20_19_pip_spanner",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_pip_spanner",
+      "sourceUrl": "assets/ships/release/parts/places/place_pip_spanner.glb",
+      "dynamicNameIncludes": [
+        "SPANNER_ROOT",
+        "CLAW_L",
+        "CLAW_R",
+        "ITEM_CRADLE",
+        "PIP_ROOT",
+        "PIP_POINTER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/pip-spanner",
+      "metadataUrl": "assets/ships/release/render-packages/pip-spanner/render-package.json",
+      "sceneRoot": true,
+      "releaseSha256": "e921462e5ba1554ee932524d60d97ee69dbff7534155223ff443a95eb2cc62d6",
+      "releaseBytes": 421468
     }
   ]
 }

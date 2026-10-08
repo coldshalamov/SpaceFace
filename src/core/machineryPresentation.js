@@ -1,3 +1,4 @@
+import { isLatchActor } from '../data/latchNineIdentity.js';
 import { physicsBodyNativeReady } from './physicsAuthority.js';
 import { readCeresCradleLayout, canPublishCeresCradleLayout } from './ceresWorkfleetLayoutAdmission.js';
 import { refreshEntityPhysicsIndex } from './coreSystem.js';
@@ -8,6 +9,7 @@ import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 // share one presentation receipt. No other ships or wrecks opt in through a state string.
 // Receipts are process-local: a saved ready string is never visual authority.
 const FAMILIES = Object.freeze({
+  latch_nine: Object.freeze(['place_latch_nine']),
   anvil_storage_saddle: Object.freeze(['foundation','intact','damaged'].map(s=>`place_stormshift_storage_saddle_${s}`)),
   anvil_rack: Object.freeze(['intact','damaged','repaired'].map(s=>`place_stormshift_cooling_rack_${s}`)),
   anvil_cradle: Object.freeze(['intact','blocked','repaired'].map(s=>`place_stormshift_service_cradle_${s}`)),
@@ -17,6 +19,7 @@ const FAMILIES = Object.freeze({
 });
 const boundaryIdentities = new WeakMap();
 const ceresBoundarySources = new WeakMap();
+const latchBoundarySources = new WeakMap();
 const ceresBoundaryLayouts = new WeakMap();
 const browserStates = new WeakSet();
 const bindings = new WeakMap();
@@ -25,6 +28,7 @@ const effective = new WeakMap();
 const epochs = new WeakMap();
 const owners = new WeakMap();
 export function machineryPresentationFamily(entity) {
+  if (isLatchActor(entity)) return 'latch_nine';
   const role=ceresWorkfleetRoleForEntity(entity);
   if(role)return `ceres_${role}`;
   const kind=entity?.data?.itinerary?.kind;
@@ -55,6 +59,20 @@ export function recordCeresWorkfleetAuthoredSource(boundary, source) {
   });
   ceresBoundarySources.set(boundary,role?CERES.assets[role].id:null);
   return !!role;
+}
+// Latch admission binds the actual selected asset record, never saved ready strings.
+export function recordLatchAuthoredSource(boundary, source) {
+  if (!boundary || latchBoundarySources.has(boundary) || !source) return false;
+  let file = source.file;
+  if (typeof file === 'string' && /^https?:\/\//.test(file)) {
+    try { const url = new URL(file); file = url.search || url.hash ? null : url.pathname; }
+    catch { file = null; }
+  }
+  file = typeof file === 'string' ? file.replace(/^\/?assets\/ships\/(?:release\/)?parts\//, '') : null;
+  const place = source.assetId === 'SF_PLACE_LATCH_NINE' && file === 'places/place_latch_nine.glb'
+    ? 'place_latch_nine' : null;
+  latchBoundarySources.set(boundary, place);
+  return !!place;
 }
 // A selected native recipe is not a ready native body. This receipt only attests
 // that the publishing instance applied its keeper mask to that selected recipe.
@@ -104,7 +122,12 @@ export function machineryPresentationPlace(entity, state) {
   if (state.render?.scene) browserStates.add(state);
   if (!browserStates.has(state)) return machineryRequestedPresentation(entity); // explicit no-render/headless path
   const boundary = entity.mesh, binding = boundary && bindings.get(boundary);
-  const place = boundary && (ceresWorkfleetRoleForEntity(entity)
+  if (isLatchActor(entity)) {
+    let mounted = boundary;
+    while (mounted && mounted !== state.render?.scene) mounted = mounted.parent;
+    if (!boundary || !state.render?.scene || mounted !== state.render.scene) return null;
+  }
+  const place = boundary && (isLatchActor(entity) ? latchBoundarySources.get(boundary) : ceresWorkfleetRoleForEntity(entity)
     ?ceresBoundarySources.get(boundary):boundaryIdentities.get(boundary));
   if(boundary && (binding?.entity!==entity || !sameLife(binding,entity,state)))return null;
   // Initial binding precedes the synchronous renderer pending-latch setup. Never cache

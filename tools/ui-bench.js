@@ -9,6 +9,7 @@
 import { createGameState } from '../src/core/gameState.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
 import { createRunState } from '../src/core/runState.js';
+import { runSession } from '../src/systems/runSession.js';
 import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
@@ -245,7 +246,13 @@ function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fitt
   gameState.player.ownedShips = [{ defId: starter.hullId, fittings: fitted }];
   gameState.player.activeShipIndex = 0;
   gameState.player.moduleInventory = spares.map((defId, index) => ({ instanceId: 9100 + index, defId }));
-  const run = createRunState({ kind: 'survival', ruleset, seed: 4242 });
+  // Mint the same process-local lifetime the live run owner gives every armory action.
+  // A bare schema record intentionally cannot authorize a preparation receipt.
+  gameState.run = createRunState();
+  const runOwner = Object.create(runSession);
+  Object.assign(runOwner, { state: gameState, bus: { emit() {} } });
+  runOwner.begin({ kind: 'survival', ruleset, seed: 4242, arenaId: 'helios_core' });
+  const run = gameState.run;
   Object.assign(run, { arenaId: 'helios_core', phase, wave, credits, score, xp: wave * 110 });
   gameState.run = run;
   const ownerBus = benchOwnerBus(gameState);

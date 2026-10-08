@@ -1,4 +1,5 @@
-import { recordCeresWorkfleetAuthoredSource } from '../core/machineryPresentation.js';
+import { isLatchActor,LATCH_PLACE_FILE,latchPlaceTransform,latchNineCatalogRow } from './latchNineVisuals.js';
+import { recordCeresWorkfleetAuthoredSource, recordLatchAuthoredSource } from '../core/machineryPresentation.js';
 import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
 import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform, ceresShipbreakCatalogCollision } from './ceresShipbreakVisuals.js';
@@ -310,6 +311,7 @@ export function is19305PackagedWreckFile(file) {
   return PQ_193_05_WRECK_PACKAGED_FILES.includes(normalized);
 }
 const PLACE_FILES = Object.freeze([
+  LATCH_PLACE_FILE,
   ...Object.values(CERES_SHIPBREAK_FILES),
   'places/place_lane_beacon.glb',
   'places/place_nav_buoy.glb',
@@ -2341,7 +2343,7 @@ export function liveSolidGlbCatalog() {
   }
 
   for (const file of PLACE_FILES) {
-    if (STATION_ARCHETYPE_FILES.includes(file)) continue;
+    if (file===LATCH_PLACE_FILE || STATION_ARCHETYPE_FILES.includes(file)) continue;
     const placeId = file.replace(/^places\//, '').replace(/\.glb$/, '');
     const family = placeFamily(placeId);
     const physicalPlace = ceresShipbreakTransform({ placeId });
@@ -2435,6 +2437,7 @@ export function liveSolidGlbCatalog() {
     });
   }
 
+  add(latchNineCatalogRow(file => RENDER_PACKAGE_PILOTS.some(pilot => pilot.sourceUrl === `assets/ships/release/parts/${file}`)));
   for (const row of ceresWorkfleetCatalogRows(file => RENDER_PACKAGE_PILOTS.some(
     pilot => pilot.sourceUrl === `assets/ships/release/parts/${file}`))) add(row);
 
@@ -3799,7 +3802,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
 function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
   const geologySkin = hasExplicitAuthoredGeologyPresentation(entity);
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity
-      || (entity.type !== 'fx' && !geologySkin && !isCeresShipbreakSection(entity) && !isCeresWorkfleetPlace(entity)) || !placeFile) return fallbackRoot;
+      || (entity.type !== 'fx' && !geologySkin && !isCeresShipbreakSection(entity) && !isCeresWorkfleetPlace(entity) && !isLatchActor(entity)) || !placeFile) return fallbackRoot;
   const releaseMode = isReleaseAssetMode(options);
   setPresentationAdmission(entity, PRESENTATION_ADMISSION.pending);
 
@@ -4355,6 +4358,9 @@ async function commitAuthoredPlaceBoundary(
     if (authored.root.userData.ceresWorkfleetAuthoredSource) {
       recordCeresWorkfleetAuthoredSource(boundary, authored.root.userData.ceresWorkfleetAuthoredSource);
     }
+    if (authored.root.userData.latchNineAuthoredSource) {
+      recordLatchAuthoredSource(boundary, authored.root.userData.latchNineAuthoredSource);
+    }
     boundary.userData.authoredAssetState = 'authored';
     // Same commit-tail stamp as the ship/cargo publishes: keep the first
     // envelope measure out of the presented cull pass (bounds-carrying rows
@@ -4560,7 +4566,7 @@ function stampPendingCommittedVisualBounds(boundary, stampedBounds, authoredCent
 // visualRadius footprint — applying the census ratio there blew the Wreck Cathedral out to ~30x
 // authored (D54).
 export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, censusScale }) {
-  const physical = ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data);
+  const physical = latchPlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data);
   if (physical) return physical.scale;
   const radius = Number(targetRadius);
   const envelope = Math.max(1e-6, Number(authoredEnvelope) || 1e-6);
@@ -4700,7 +4706,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
   normalizePlacePropBindings(bindings);
-  centerAuthoredPlaceRoot(root, record, scale, ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data));
+  centerAuthoredPlaceRoot(root, record, scale, latchPlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data));
   // Stations key on the placeFile stem recorded on the boundary (e.g. place_station_trade_hub),
   // not the GLB's internal assetId.
   installAuthoredApproachYaw(root, entity, ownerBoundary?.userData?.placeId || placeId);
@@ -4710,6 +4716,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   specializeClaimRelayOpaqueMaterials(root, placeId);
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
+  if(isLatchActor(entity))root.userData.latchNineAuthoredSource={assetId:record.assetId,file:record.url};
   // Places carrying a sealed motion bank (e.g. the rigged cargo pod) animate off the same
   // entity-keyed driver surface as ships.
   attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
@@ -5639,6 +5646,7 @@ function warnUnresolvedStationPlaceId(entity, id, rescue) {
 }
 
 function placeFileForEntity(entity) {
+  if(isLatchActor(entity))return LATCH_PLACE_FILE;
   const data = entity && entity.data || {};
   if (isCeresWorkfleetPlace(entity)) return ceresWorkfleetPlaceFile(entity);
   if (isCeresShipbreakSection(entity)) return CERES_SHIPBREAK_FILES[data.placeId];
@@ -9595,6 +9603,9 @@ async function commitAuthoredBoundary(
     }
     if (authored.root.userData.ceresWorkfleetAuthoredSource) {
       recordCeresWorkfleetAuthoredSource(boundary, authored.root.userData.ceresWorkfleetAuthoredSource);
+    }
+    if (authored.root.userData.latchNineAuthoredSource) {
+      recordLatchAuthoredSource(boundary, authored.root.userData.latchNineAuthoredSource);
     }
     boundary.userData.authoredAssetState = 'authored';
     // The publish key is final for non-family rows; a whole-ship LOD family

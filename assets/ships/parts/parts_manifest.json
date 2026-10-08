@@ -9091,7 +9091,7 @@
       "bounds": {
         "min": [
           -90,
-          -11.791524887084961,
+          -12.199999809265137,
           -33.82500076293945
         ],
         "max": [
@@ -9101,7 +9101,7 @@
         ],
         "dimensionsM": [
           180,
-          25.79152488708496,
+          26.199999809265137,
           83.32500076293945
         ]
       }
@@ -9425,6 +9425,86 @@
           6
         ]
       }
+    },
+    {
+      "id": "place_latch_nine",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_latch_nine.glb",
+      "tris": 24040,
+      "bytes": 2392052,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_LATCH_MAIN_PORT",
+        "SOCKET_LATCH_MAIN_STBD",
+        "SOCKET_LATCH_PORT_AFT",
+        "SOCKET_LATCH_PORT_FORE",
+        "SOCKET_LATCH_REVERSE_PORT",
+        "SOCKET_LATCH_REVERSE_STBD",
+        "SOCKET_LATCH_STBD_AFT",
+        "SOCKET_LATCH_STBD_FORE"
+      ],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "note": "NEW editable Forge Latch Nine signal tender; source-origin1WU/metre,27 fixed structural slabs and3 native swept paddles; eight physically witnessed thruster channels; art admission tracked separately.",
+      "bounds": {
+        "min": [
+          -10.10045337677002,
+          -0.800000011920929,
+          -5.502060413360596
+        ],
+        "max": [
+          8.199999809265137,
+          2.119999885559082,
+          8.149999618530273
+        ],
+        "dimensionsM": [
+          18.300453186035156,
+          2.919999897480011,
+          13.65206003189087
+        ]
+      }
+    },
+    {
+      "id": "place_pip_spanner",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_pip_spanner.glb",
+      "tris": 16920,
+      "bytes": 1141468,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "note": "Forge Pip and Spanner: six independent rigid groups for receipt-driven armory presentation. UI only; no world body or collision.",
+      "bounds": {
+        "min": [
+          -10.885000228881836,
+          -0.699999988079071,
+          -5.695106506347656
+        ],
+        "max": [
+          7.0965094566345215,
+          3.2939066886901855,
+          4.510000228881836
+        ],
+        "dimensionsM": [
+          17.981509685516357,
+          3.9939066767692566,
+          10.205106735229492
+        ]
+      }
     }
   ],
   "runtimeSlots": {
@@ -9561,7 +9641,9 @@
       "places/place_ceres_second_measure_crossbeam.glb",
       "places/place_ceres_second_measure_keel.glb",
       "places/place_ceres_section_cradle.glb",
-      "places/place_ceres_breaker_cutter_head.glb"
+      "places/place_ceres_breaker_cutter_head.glb",
+      "places/place_latch_nine.glb",
+      "places/place_pip_spanner.glb"
     ]
   }
 }

@@ -268,7 +268,7 @@ async function measureGlb(absPath, { excludeHelpers = false } = {}) {
     generator,
     imageCount,
     legacyTextureRole,
-    ...(excludeHelpers ? { authoredCompoundCertificate: root.getAsset().extras?.ceresWorkfleet } : {}),
+    ...(excludeHelpers ? { authoredCompoundCertificate: root.getAsset().extras?.authoredCompound || root.getAsset().extras?.ceresWorkfleet } : {}),
   };
 }
 

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7907543593ab1338fe5569149a02c315af04d453e7b7d8bdf3f25872df8664f6",
+  "contentHash": "abc0a7755509b3530ac86decdf76b3e0195c08b7132bcc84ab4641320f544cca",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-scn-patrol.node.lod0-hook-armor-flap-armor.dynamic",
@@ -6405,8 +6405,8 @@
       "uri": "wasp_scn_patrol.glb"
     },
     "sourceManifest": {
-      "bytes": 226002,
-      "sha256": "c80327aeed352bca12aa7c0f4f2672811f41d466c9073de1118eea5c639c5014",
+      "bytes": 227467,
+      "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c",
       "uri": "pilots.json"
     }
   },
@@ -9405,7 +9405,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_scn_patrol.glb"
   },
-  "runtimeHash": "e5866ce40dcb8313fa2dba1e6282ff139a24847a74fcf965cde530e5d8dd42a3",
+  "runtimeHash": "873d871efe957daaf83e15cfc3e5bc2a2913769bf92e7b50cb780224e7bae73e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

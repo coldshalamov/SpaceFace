@@ -881,7 +881,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2ca0488df962535ac39beba19ba2313a2ec558e12241854912320b119a4e5552",
+  "contentHash": "d1f16391f16a819a5dcf5c7906caf8518c4b65812239bf2355b8c8febfa6ee3f",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-breaker.node.lod0-hook-ceres-thruster-main-port-inner-glow-drive.dynamic",
@@ -11604,8 +11604,8 @@
       "uri": "ceres_breaker.glb"
     },
     "sourceManifest": {
-      "bytes": 226002,
-      "sha256": "c80327aeed352bca12aa7c0f4f2672811f41d466c9073de1118eea5c639c5014",
+      "bytes": 227467,
+      "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c",
       "uri": "pilots.json"
     }
   },
@@ -16729,7 +16729,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ceres_breaker.glb"
   },
-  "runtimeHash": "950f6b4be136eee4c9aafcc26bea1def34d87b0a9bd90fbb81c951c06743a556",
+  "runtimeHash": "268d4174e34b3cebe7842b640ed91e39560c411eab24c19d99af117a1e8e3c0c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

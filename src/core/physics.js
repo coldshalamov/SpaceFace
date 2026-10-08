@@ -1,5 +1,7 @@
 import { sweepCollisionProxyInto } from './collisionProxySweep.js';
 import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
+import { reconcileLatchBeforePhysics } from './latchNineMaterialization.js';
+import { resolveDockRange } from './dockRange.js';
 // Physics system: integrate positions, rebuild the spatial hash, broad-phase + circle/circle
 // collision with response, swept projectile tests. Runs as steps 5-7 of the sim spine (§2.3).
 // Velocity is updated by flight (thrust/drag); physics integrates position from velocity.
@@ -29,7 +31,6 @@ import {
 import {
   proxyScaleFor,
   resolveCollisionProxyManifest,
-  resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec, physicsBodyNativeReady } from './physicsAuthority.js';
 import { rapierRuntimeBlocked, rapierRuntimeBlockedRemainingMs } from './rapierCompatRuntime.js';
@@ -201,6 +202,7 @@ export const physics = {
 
   update(dt, state) {
     reconcileMachineryBeforePhysics(state);
+    reconcileLatchBeforePhysics(state);
     const t0 = perfNow();
     this._diag.sweptShipContacts = 0;
     this._diag.sweptProjectileHits = 0;
@@ -393,6 +395,7 @@ export const physics = {
     const context = this._nativeRestoreContext || {};
     resetActivityRuntimeForRestore(state);
     reconcileMachineryBeforePhysics(state);
+    reconcileLatchBeforePhysics(state);
     const activity = ensureActivityClassified(state);
     const entities = activity ? [...activity.physicsStatics, ...activity.physicsDynamics] : state.entityList;
     let adopted = false;
@@ -784,6 +787,7 @@ export const physics = {
 
   _syncSg02DynamicAuthorityEntities(state) {
     reconcileMachineryBeforePhysics(state);
+    reconcileLatchBeforePhysics(state);
     const activity = ensureActivityClassified(state);
     if (activity && this._diag) {
       this._diag.activityS0 = activity.counts.s0;
@@ -1291,56 +1295,8 @@ export const physics = {
   },
 
   updateDockRange(state) {
-    const player = state.entities.get(state.playerId);
-    let nextStationId = null;
-    let nextDist = Infinity;
-    let nextGate = null;
-    let nextGateDist = Infinity;
-
-    if (player && player.alive) {
-      const stations = (state.entityIndex && state.entityIndex.stations) || state.entityList;
-      const playerSpeed = Math.hypot(
-        player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0,
-        player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0,
-      );
-      for (const st of stations) {
-        if (!st.alive || st.type !== 'station') continue;
-        const data = st.data || {};
-        if (data.isGate) {
-          const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
-          const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
-          if (d <= range + 28 && d < nextGateDist) {
-            nextGateDist = d;
-            nextGate = st;
-          }
-          continue;
-        }
-        if (!data.stationId) continue;
-        // PQ-008 truthful exterior docking: stations declaring a collisionProxyManifest dock at
-        // their berth, not at a forgiving center radius. The berth gate requires proximity AND a
-        // slow approach; everything else about the dock:range seam is unchanged.
-        // SF-130: the anchor is the berth for hulls whose planar envelope clears the pocket,
-        // or the corridor-axis mooring standoff for hulls too deep for it — the same prompt
-        // and gates, resolved from the station's real collision geometry each tick.
-        const manifest = resolveCollisionProxyManifest(st);
-        if (manifest && manifest.docking) {
-          const anchor = resolveDockAnchor(st, manifest, player);
-          if (!anchor) continue;
-          const dAnchor = Math.hypot(anchor.x - player.pos.x, anchor.z - player.pos.z);
-          if (dAnchor <= anchor.dockRadius && playerSpeed <= anchor.speedGate && dAnchor < nextDist) {
-            nextDist = dAnchor;
-            nextStationId = data.stationId;
-          }
-          continue;
-        }
-        const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
-        const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
-        if (d <= range && d < nextDist) {
-          nextDist = d;
-          nextStationId = data.stationId;
-        }
-      }
-    }
+    const { stationId: nextStationId, gate: nextGate } = resolveDockRange(state,
+      this._dockRangeScratch || (this._dockRangeScratch = {}));
 
     if (nextStationId !== this._dockStationId) {
       if (this._dockStationId) {

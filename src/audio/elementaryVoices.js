@@ -5,6 +5,7 @@
 // WebRenderer mounts on the AudioContext the game already owns (see audioSystem).
 
 import { el } from '@elemaudio/core';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { THROTTLE_WINDOWS } from '../presentation/throttleAnswer.js';
 import {
   MASSLINE_HUM_BASE_HZ,
@@ -52,10 +53,22 @@ function approach(current, target, dt, riseTau, fallTau) {
 
 export function readDriveSpeed01(player) {
   const vel = player && player.vel;
-  const speed = Math.hypot(Number(vel && vel.x) || 0, Number(vel && vel.z) || 0);
-  const derived = player && player.data && player.data.derived;
-  const cap = Number(derived && derived.maxSpeed);
-  if (!(cap > 0) || !Number.isFinite(speed)) return null;
+  if (!vel) return null;
+  const vx = Number(vel.x);
+  const vz = Number(vel.z);
+  if (!Number.isFinite(vx) || !Number.isFinite(vz)) return null;
+  const speed = Math.hypot(vx, vz);
+  // BM-01: the load fraction keys to the governed combat speed — the speed the assisted
+  // governor actually holds — not the legacy derived top speed, which sits ~30% lower
+  // on the starter and drifts with engine fittings the governor ignores. A missing
+  // velocity still reads null so the authored tier fundamental is left alone.
+  let cap = 0;
+  try { cap = Number(resolveGovernedCombatSpeed(player)); } catch (_) { cap = 0; }
+  if (!(cap > 0)) {
+    const derived = player && player.data && player.data.derived;
+    cap = Number(derived && derived.maxSpeed);
+  }
+  if (!(cap > 0)) return null;
   return clamp(speed / cap, 0, 1);
 }
 

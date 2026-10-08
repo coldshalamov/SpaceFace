@@ -1,5 +1,6 @@
 import {ceresWorkfleetReacquireReturnBudget,restoreCeresWorkfleetReacquireReturnBudget,ceresWorkfleetHeadClearPrefix,planCeresWorkfleetReacquire,restoreCeresWorkfleetReacquire,ceresWorkfleetReacquireStage,CERES_REACQUIRE_LIMITS} from './ceresWorkfleetRecovery.js';
-import {planCeresWorkfleetRecovery,restoreCeresWorkfleetRecovery,ceresWorkfleetRecoveryClear,CERES_RECOVERY_LIMITS} from './ceresWorkfleetRecovery.js';
+import {planCeresWorkfleetRecovery,restoreCeresWorkfleetRecovery,ceresWorkfleetRecoveryClear,CERES_RECOVERY_LIMITS,
+ ceresWorkfleetRendezvous,ceresWorkfleetBeginRecoverySeat} from './ceresWorkfleetRecovery.js';
 import {admitCeresCradleLayout} from '../core/ceresWorkfleetLayoutAdmission.js';
 // P03's one finite handling cycle. Imported by the existing traffic/jobs/site owners.
 // Pose and velocity belong exclusively to native physics; this adapter requests thrust.
@@ -80,10 +81,11 @@ export function publishCeresWorkfleetActuation(entity,control,tick,state=null) {
     linearFraction:Math.min(1,Math.hypot(ax,az)/(entity.data.ceresWorkfleetRole==='breaker'?.5:8)),
     yawFraction:Math.min(1,Math.abs(angular)/(entity.data.ceresWorkfleetRole==='breaker'?.025:.6))};
 }
-export function ceresWorkfleetAtPose(entity,target,{position=.2,angle=.006,speed=.12,spin=.003}={}) {
+export function ceresWorkfleetAtPose(entity,target,{position=.2,angle=.006,speed=.12,spin=.003,referenceVelocity=null,referenceAngularVelocity=0}={}) {
   return Math.hypot(entity.pos.x-target.x,entity.pos.z-target.z)<=position
     && Math.abs(wrap((entity.rot||0)-target.rot))<=angle
-    && Math.hypot(entity.vel?.x||0,entity.vel?.z||0)<=speed&&Math.abs(entity.angVel||0)<=spin;
+    && Math.hypot((entity.vel?.x||0)-(referenceVelocity?.x||0),(entity.vel?.z||0)-(referenceVelocity?.z||0))<=speed
+    &&Math.abs((entity.angVel||0)-referenceAngularVelocity)<=spin;
 }
 export function ceresWorkfleetSocket(entity,role,id) {
   const p=role==='section'?C.existing.section.sockets[id]:C.assets[role]?.sockets[id];
@@ -190,13 +192,13 @@ function recoveryMotionClear(native,state,b,target,options,phase,headTarget=null
   const a=wrap(target.rot-breaker.rot),angleReach=(breaker.angVel||0)**2/(2*(options.angularAccel||.025))+Math.abs(breaker.angVel||0)*SIM_DT+.006;
   const ahead={x:breaker.pos.x+dx*t,z:breaker.pos.z+dz*t,rot:breaker.rot+Math.sign(a)*Math.min(Math.abs(a),angleReach)};
   const loaded=phase.startsWith('recover_return');
-  if(phase==='reacquire'&&speed>.001){
+  if((phase==='reacquire'||options.rendezvous)&&speed>.001){
     const coast={x:breaker.pos.x+breaker.vel.x/speed*reach,z:breaker.pos.z+breaker.vel.z/speed*reach,
       rot:breaker.rot+Math.sign(breaker.angVel||0)*angleReach};
-    const stopping=ceresWorkfleetRecoveryClear(native,state,b,{...breaker.pos,rot:breaker.rot},coast);
+    const stopping=ceresWorkfleetRecoveryClear(native,state,b,{...breaker.pos,rot:breaker.rot},coast,{movingSeconds:options.rendezvous?1:0,ignoreSection:phase==='recover_seat'});
     if(!stopping.ok)return stopping;
   }
-  const clearance=ceresWorkfleetRecoveryClear(native,state,b,{...breaker.pos,rot:breaker.rot},ahead,{loaded,ignoreSection:phase==='recover_seat',headTarget});
+  const clearance=ceresWorkfleetRecoveryClear(native,state,b,{...breaker.pos,rot:breaker.rot},ahead,{loaded,ignoreSection:phase==='recover_seat',headTarget,movingSeconds:options.rendezvous?1:0});
   if(!clearance.ok)return clearance;
   return phase==='recover_seat'?ceresWorkfleetRecoveryClear(native,state,b,{...section.pos,rot:section.rot},sectionLoadPose(breaker),{sectionOnly:true}):clearance;
 }
@@ -221,6 +223,12 @@ function recoveryCommandClear(state,job,target,options,headReturnPoint=null){
     if(Math.hypot(b.section.pos.x-held.x,b.section.pos.z-held.z)>1||Math.abs(wrap(b.section.rot-held.rot))>.006)return false;
   }
   if(!finitePose(target)||!options||!(options.accel>0)||options.accel>.5)return false;
+  if(options.rendezvous){
+    const capture=ceresWorkfleetRendezvous(b,p,job.phase,state.tick);
+    if(p.schemaVersion!==2||job.phase.startsWith('recover_return')||capture.reason
+      ||Math.hypot(target.x-capture.target.x,target.z-capture.target.z)>(job.phase==='recover_seat'?4:.5)
+      ||Math.abs(wrap(target.rot-capture.target.rot))>(job.phase==='recover_seat'?.04:.006))return false;
+  }
   return recoveryMotionClear(native,state,b,target,options,job.phase).ok;
 }
 function hasForeignAttachment(service,e,job) {
@@ -274,6 +282,11 @@ export function ceresWorkfleetCanResume(job,b) {
     &&ceresWorkfleetAtPose(section,ceresWorkfleetWorldPose(C.existing.section.mountedPose),{position:1,angle:.006,speed:3,spin:.03});
   if(RECOVERY_PHASES.includes(job.phase)){
     const p=restoreCeresWorkfleetRecovery(job.recovery);if(!p)return false;
+    if(p.schemaVersion===2&&!job.phase.startsWith('recover_return')){
+      const capture=ceresWorkfleetRendezvous(b,p,job.phase,job.updatedTick);
+      return !capture.reason&&Math.hypot(breaker.pos.x-capture.target.x,breaker.pos.z-capture.target.z)<=CERES_RECOVERY_LIMITS.maxApproach
+        &&Math.hypot(breaker.vel.x,breaker.vel.z)<=1.5;
+    }
     const start=job.phase==='recover_turn'?p.start:job.phase==='recover_approach'?p.turn:job.phase==='recover_seat'?p.stage:p.returnStart;
     const end=job.phase==='recover_turn'?p.turn:job.phase==='recover_approach'||job.phase==='recover_seat'?p.stage:job.phase==='recover_return_turn'?{...p.returnStart,rot:p.returnStage.rot}:p.returnStage;
     return !!start&&onSegment(breaker,start,end,job.phase==='recover_seat'?8:1)&&Math.hypot(breaker.vel.x,breaker.vel.z)<=1.5
@@ -356,10 +369,12 @@ export function authorizeCeresBreakerControl(entity,state,job,target,options={})
   if(!healthy(state,head)||!exactSection(section)||controlled(state,section)||section.alive===false
     ||!Number.isSafeInteger(head.occupantGeneration)||!Number.isSafeInteger(section.occupantGeneration))return false;
   const input=entity.data.intent||(entity.data.intent={throttle:0,strafe:0,turn:0,boost:false,brake:false});
+  const rendezvous=options.rendezvous&&job.recovery?.schemaVersion===2&&['recover_turn','recover_approach','recover_seat'].includes(job.phase);
   CONTROL.set(entity,{state,scene:state.render?.scene,render:state.render,tick:state.tick,life:entity.occupantGeneration,
     job,phase:job.phase,input,head,headLife:head.occupantGeneration,section,sectionLife:section.occupantGeneration,
     target:{...target},options:{speed:bounded(options.speed,3,3),accel:bounded(options.accel,.5,.5),
-      angularSpeed:bounded(options.angularSpeed,.035,.035),angularAccel:bounded(options.angularAccel,.025,.025)}});
+      angularSpeed:bounded(options.angularSpeed,.035,.035),angularAccel:bounded(options.angularAccel,.025,.025),
+      ...(rendezvous?{rendezvous:true,totalSpeed:1,referenceVelocity:{x:options.referenceVelocity?.x||0,z:options.referenceVelocity?.z||0},referenceAngularVelocity:options.referenceAngularVelocity||0}:{})}});
   // The head's geometry guard certifies this exact jobs-issued carrier command,
   // not a target recomputed from a phase that may have advanced in the same call.
   const headRequest=HEAD_CONTROL.get(head),carrier=CONTROL.get(entity);
@@ -385,6 +400,11 @@ export function consumeCeresBreakerControl(entity,state) {
   }
   const capabilities=state.combat?.entities?.[String(entity.id)]?.capabilities;
   if(capabilities?.drive===false||capabilities?.power===false){publishCeresWorkfleetActuation(entity,null,state.tick);return null;}
+  if(r.options.rendezvous){
+    const capture=ceresWorkfleetRendezvous(liveBodies(state),r.job.recovery,r.phase,state.tick);
+    if(capture.reason){publishCeresWorkfleetActuation(entity,null,state.tick);return null;}
+    r.options={...r.options,...capture.options};
+  }
   const control=ceresWorkfleetThrust(entity,r.target,r.options);publishCeresWorkfleetActuation(entity,control,state.tick);return control;
 }
 export function clearCeresWorkfleetControls(state) {
@@ -588,8 +608,10 @@ function seatAlignmentAt(breaker,section,stage) {
     well.z[1]-well.z[0]-C.existing.section.dimensions.x);
   return Math.hypot(target.x-stage.x,target.z-stage.z)<=clearance&&Math.abs(wrap(rot-stage.rot))<=.04?target:null;
 }
-export function ceresWorkfleetExtractionReady(breaker,section) {
-  return extractionGeometryReady(breaker,section)&&Math.hypot(section.vel.x,section.vel.z)<=2&&Math.abs(section.angVel||0)<=.03;
+export function ceresWorkfleetExtractionReady(breaker,section,{relative=false}={}) {
+  const reference=relative?ceresWorkfleetCarrierPointVelocity(breaker,section.pos):{x:0,z:0};
+  return extractionGeometryReady(breaker,section)&&Math.hypot(section.vel.x-reference.x,section.vel.z-reference.z)<=2
+    &&Math.abs((section.angVel||0)-(relative?breaker.angVel||0:0))<=.03;
 }
 function extractionGeometryReady(breaker,section) {
   const c=Math.cos(breaker.rot),sn=Math.sin(breaker.rot);let near=Infinity,left=Infinity,right=-Infinity;
@@ -616,7 +638,9 @@ export function ceresWorkfleetReceiverTransferReady(breaker,section) {
 export function ceresWorkfleetContactRetained(holder,section,state,role) {
   if(!exactSection(section)||!healthy(state,holder)||!admitted(section,state))return false;
   const target=role==='breaker'?sectionLoadPose(holder):{...holder.pos,rot:holder.rot||0};
-  const pose=ceresWorkfleetAtPose(section,target,{position:role==='breaker'?1:2,angle:role==='breaker'?.006:.04,speed:.5,spin:.03});
+  const relative=role==='breaker'&&jobOf(state)?.recovery?.schemaVersion===2;
+  const pose=ceresWorkfleetAtPose(section,target,{position:role==='breaker'?1:2,angle:role==='breaker'?.006:.04,speed:.5,spin:.03,
+    ...(relative?{referenceVelocity:ceresWorkfleetCarrierPointVelocity(holder,section.pos),referenceAngularVelocity:holder.angVel||0}:{})});
   if(!pose)return false;
   if(holder.data.ceresWorkfleetSlide>=1)return true;
   if(holder.data.ceresWorkfleetSlideBlocked!==true
@@ -886,23 +910,35 @@ export function stepCeresWorkfleet(owner,dt) {
     options=job.phase.startsWith('recover_return')?{speed:CERES_RECOVERY_LIMITS.returnSpeed,accel:CERES_RECOVERY_LIMITS.returnAccel,angularSpeed:.015,angularAccel:.01}:{speed:job.phase==='recover_seat'?.5:1,accel:.3};
     target=job.phase==='recover_turn'?p.turn:job.phase==='recover_approach'||job.phase==='recover_seat'?p.stage:
       job.phase==='recover_return_turn'?{...p.returnStart,rot:p.returnStage.rot}:p.returnStage;
+    let captureStage=p.stage;
+    if(p.schemaVersion===2&&!job.phase.startsWith('recover_return')){
+      if(job.phase==='recover_seat'&&!p.seat){stop(owner,job,'recovery-interrupted','recovery-plan-invalid');return;}
+      const capture=ceresWorkfleetRendezvous(b,p,job.phase,state.tick);
+      if(capture.reason){stop(owner,job,'recovery-interrupted',capture.reason);return;}
+      target=capture.target;options=capture.options;captureStage=capture.stage;
+    }
     if(!finitePose(target)){stop(owner,job,'recovery-interrupted','recovery-plan-invalid');return;}
     if(job.phase==='recover_seat'&&currentLine(service,job.towId,breaker,section).restLength<=18){
-      const alignment=seatAlignmentAt(breaker,section,p.stage);if(alignment)target=alignment;
+      const alignment=seatAlignmentAt(breaker,section,captureStage);if(alignment)target=alignment;
     }
     const clearance=recoveryMotionClear(native,state,b,target,options,job.phase);
     if(!clearance.ok){stop(owner,job,'recovery-interrupted',`recovery-${clearance.reason}`);job.recoveryBlocker=clearance.blocker||null;return;}
     if(job.phase==='recover_seat'){
       const line=currentLine(service,job.towId,breaker,section);service.reel(line.id,-CERES_WORKFLEET_PACE.reelSpeed*dt,18);
-      if(line.restLength<=18){const alignment=seatAlignmentAt(breaker,section,p.stage);if(alignment)target=alignment;else job.blockedReason='recovery-seating-clearance';}
-      if(line.restLength<=18&&ceresWorkfleetAtPose(section,sectionLoadPose(breaker),{position:1,angle:.006,speed:.5,spin:.03}))breaker.data.ceresWorkfleetSlideTarget=1;
+      if(line.restLength<=18){const alignment=seatAlignmentAt(breaker,section,captureStage);if(alignment)target=alignment;else job.blockedReason='recovery-seating-clearance';}
+      if(line.restLength<=18&&ceresWorkfleetAtPose(section,sectionLoadPose(breaker),{position:1,angle:.006,speed:.5,spin:.03,
+        ...(p.schemaVersion===2?{referenceVelocity:ceresWorkfleetCarrierPointVelocity(breaker,section.pos),referenceAngularVelocity:breaker.angVel||0}:{})}))breaker.data.ceresWorkfleetSlideTarget=1;
       if(line.restLength<=18&&ceresWorkfleetContactRetained(breaker,section,state,'breaker')){
-        job.recovery.returnStart={...breaker.pos,rot:breaker.rot};change(job,'recover_return_turn',state);
+        job.recovery.returnStart={...breaker.pos,rot:breaker.rot};
+        if(p.schemaVersion===2)job.recovery.returnStartedTick=state.tick;
+        change(job,'recover_return_turn',state);
       }
-    }else if(ceresWorkfleetAtPose(breaker,target,{position:.5,angle:.003,speed:.12,spin:.003})){
+    }else if(ceresWorkfleetAtPose(breaker,target,{position:.5,angle:.003,speed:.12,spin:.003,
+      referenceVelocity:options.referenceVelocity,referenceAngularVelocity:options.referenceAngularVelocity||0})){
       if(job.phase==='recover_turn')change(job,'recover_approach',state);
       else if(job.phase==='recover_approach'){
-        if(!ceresWorkfleetExtractionReady(breaker,section)){stop(owner,job,'recovery-interrupted','recovery-mouth-misaligned');return;}
+        if(!ceresWorkfleetExtractionReady(breaker,section,{relative:p.schemaVersion===2})){stop(owner,job,'recovery-interrupted','recovery-mouth-misaligned');return;}
+        if(p.schemaVersion===2)job.recovery.seat=ceresWorkfleetBeginRecoverySeat(b,p,state.tick);
         change(job,'recover_seat',state);
       }else if(job.phase==='recover_return_turn')change(job,'recover_return',state);
       else if(job.phase==='recover_return'){

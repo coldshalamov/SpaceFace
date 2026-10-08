@@ -347,6 +347,30 @@ export const wingMorale = {
     });
   },
 
+  _sayEnraged(wardId) {
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    return voice.say({
+      channel: 'info',
+      kind: 'combat',
+      id: `wingMorale:${wardId}:enraged`,
+      text: 'ENEMY ENRAGED',
+      ttl: 2,
+    });
+  },
+
+  _sayReinforcementBlocked(squadId) {
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    return voice.say({
+      channel: 'info',
+      kind: 'combat',
+      id: `wingMorale:${squadId}:reinforcementBlocked`,
+      text: 'REINFORCEMENTS BLOCKED',
+      ttl: 2,
+    });
+  },
+
   _maybeEnrageWard(escort, payload) {
     const state = this.state;
     const ward = wardFor(state, escort, payload);
@@ -367,6 +391,7 @@ export const wingMorale = {
     };
     own.enraged[ward.id] = rec;
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('wingMorale:enraged', { ...rec });
+    this._sayEnraged(ward.id);
     return rec;
   },
 
@@ -394,6 +419,7 @@ export const wingMorale = {
       data.reinforcements = null;
     }
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('wingMorale:reinforcementBlocked', { ...rec });
+    this._sayReinforcementBlocked(squadId);
     return rec;
   },
 

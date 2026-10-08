@@ -28,6 +28,8 @@ import { scanner } from '../systems/scanner.js';
 import { mines } from '../systems/mines.js';
 import { bombs } from '../systems/bombs.js';
 import { dockingCorridor } from '../systems/dockingCorridor.js';
+import { latchNine } from '../systems/latchNine.js';
+import { scissorwake } from '../systems/scissorwake.js';
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
@@ -258,6 +260,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
     ['gyreSnare', gyreSnare],
+    ['latchNine', latchNine],
+    ['scissorwake', scissorwake],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],

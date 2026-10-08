@@ -67,7 +67,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'combat:fire': 'sfx_wpn_pulse_laser',
   'combat:shove': 'sfx_bomb_concussion_shove',
   'projectile:hit': 'sfx_hull_scrape',
-  shieldRestored: 'sfx_shield_blowout_pop',
+  shieldRestored: 'sfx_shield_restore',
 
   'mining:start': 'sfx_mining_beam',
   'mining:stop': SILENT('The beam stopping is the absence of the mining tone.'),

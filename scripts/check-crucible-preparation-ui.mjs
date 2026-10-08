@@ -35,7 +35,12 @@ try {
   await snap('encounter');
   await page.getByRole('tab',{name:'01 Encounter'}).press('ArrowRight');
   assert.equal(await page.locator('.orr-preparation').getAttribute('data-prep-step'),'1');
-  assert.ok(await page.locator('.orr-prep-thumb').count() > 0);
+  assert.ok(await page.locator('.sf-crd-hull .orr-sigil').count() > 0);
+  await page.locator('.orr-prep-shipart').waitFor({state:'visible'});
+  await page.waitForFunction(()=>{
+    const image=document.querySelector('.orr-prep-shipart');
+    return image?.complete && image.naturalWidth>0;
+  });
   await page.locator('.orr-prep-fitting').first().click();
   assert.equal(await page.locator('.orr-prep-fitting').first().getAttribute('aria-pressed'),'true');
   assert.ok(await page.locator('.orr-prep-fitnote').innerText());
