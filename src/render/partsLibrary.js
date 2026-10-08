@@ -3460,10 +3460,8 @@ async function commitAuthoredCargoCapsuleBoundary(
   boundary.userData.__socketCache = new Map();
   delete boundary.userData.requestAuthoredUpgrade;
   delete boundary.userData.__setActiveVisualRoot;
-  // Post-graft boundary, same as the ship/place commits: the publish leg lands
-  // in the next presented window. No stale bail — the graft is already live,
-  // so the bookkeeping must complete regardless of a racing re-admission.
-  await composeYield();
+  // Graft and publication share the same ownership verdict. A yield here would
+  // let a newer admission receive this old root's ready state and callbacks.
   // The resolving marker's envelope stamp only covers the marker's own drawn reach — copy the
   // authored capsule's measured bounds (place-commit precedent) or drop the stamp entirely so
   // cull grading no longer classifies the committed body at the marker envelope.
@@ -4495,11 +4493,6 @@ async function commitAuthoredPlaceBoundary(
   boundary.userData.renderContract = authored.root.userData.renderContract;
   boundary.userData.__socketCache = new Map();
 
-  // Post-graft boundary, same as the ship commit: the publish leg lands in the
-  // next presented window. No stale bail — the graft is already live, so the
-  // bookkeeping must complete regardless of a racing re-admission.
-  await composeYield();
-
   const publish = () => {
     const layoutGuard = authored.root.userData.ceresCradleLayoutGuard;
     if (layoutGuard && !layoutGuard.publish(admissionEntity, authoredRuntimeState() || undefined)) return false;
@@ -4742,8 +4735,6 @@ export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, ce
   return worldSiteScale ?? censusScale ?? targetScale ?? authoredScale ?? 1;
 }
 
-const _composedPlaceBoundsBox = new THREE.Box3();
-const _composedPlaceBoundsVec = new THREE.Vector3();
 const _composedPlaceBoundsExpand = new THREE.Box3();
 
 // Stepped twin of `box.setFromObject(root, precise=false)` — the union is
@@ -4828,7 +4819,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
 // flight. Yields between legs pace the build across frames like
 // composedShipSteps; `buildTrace.root` carries the partial out for disposal
 // when the driving run goes stale mid-build.
-function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options = {}, buildTrace = null) {
+export function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options = {}, buildTrace = null) {
   const palette = paletteFor(entity || {});
   const root = new THREE.Group();
   const data = entity && entity.data || {};
@@ -4957,13 +4948,16 @@ function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options 
   // entityVisualCullRadius prefers the stamp over its own lazy measurement, so an
   // under-covering stamp would classify the biggest on-glass bodies at a fraction of their
   // drawn reach for the root's whole life.
-  yield* expandComposedPlaceBoundsSteps(root, _composedPlaceBoundsBox);
-  if (!_composedPlaceBoundsBox.isEmpty()) {
-    const measuredCenter = _composedPlaceBoundsBox.getCenter(_composedPlaceBoundsVec);
+  // A compose can suspend while another place is measured. The aggregate belongs
+  // to this build; only the one-node transform scratch is safe to share.
+  const composedPlaceBoundsBox = new THREE.Box3();
+  yield* expandComposedPlaceBoundsSteps(root, composedPlaceBoundsBox);
+  if (!composedPlaceBoundsBox.isEmpty()) {
+    const measuredCenter = composedPlaceBoundsBox.getCenter(new THREE.Vector3());
     const measuredSize = [
-      _composedPlaceBoundsBox.max.x - _composedPlaceBoundsBox.min.x,
-      _composedPlaceBoundsBox.max.y - _composedPlaceBoundsBox.min.y,
-      _composedPlaceBoundsBox.max.z - _composedPlaceBoundsBox.min.z,
+      composedPlaceBoundsBox.max.x - composedPlaceBoundsBox.min.x,
+      composedPlaceBoundsBox.max.y - composedPlaceBoundsBox.min.y,
+      composedPlaceBoundsBox.max.z - composedPlaceBoundsBox.min.z,
     ];
     root.userData.visualBounds = {
       center: [measuredCenter.x, measuredCenter.y, measuredCenter.z],
@@ -9927,12 +9921,15 @@ async function commitAuthoredBoundary(
   if (oldHull && newHull) newHull.rotation.x = oldHull.rotation.x;
   primeAuthoredState(authored.root, fallbackRoot, entity);
 
-  // Pace the mount tail: pre-graft compute, the atomic graft itself, and the
-  // publish leg each get a presented-frame boundary. The graft (remove+add)
-  // must stay atomic — a boundary empty for a present is a pop-out — but the
+  // Pace pre-graft compute separately from the atomic graft + publication.
+  // The mounted root and its admission bookkeeping must share one ownership
+  // verdict; yielding between them lets a newer admission race this publish.
+  // The graft (remove+add) must stay atomic — a boundary empty for a present is a pop-out — but the
   // legs around it can yield; a stale verdict before the graft still bails
   // the same way the post-compose gate above does.
+  notePacedFrameSpend(monotonicNow() - commitLegStarted);
   await composeYield();
+  commitLegStarted = monotonicNow();
   if ((options.admissionEpoch != null && boundary.userData.admissionEpoch != null
         && boundary.userData.admissionEpoch !== options.admissionEpoch)
       || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
@@ -9974,12 +9971,6 @@ async function commitAuthoredBoundary(
   boundary.userData.assetId = authored.root.userData.assetId;
   boundary.userData.renderContract = authored.root.userData.renderContract;
   boundary.userData.__socketCache = new Map(); // invalidate renderer socket lookups across the swap
-
-  // Post-graft boundary: pool activation + admission bookkeeping run in the
-  // next presented window instead of the same span as the graft. No stale
-  // bail here — the graft is already live, so the publish leg must complete
-  // its bookkeeping regardless of what re-admission raced it.
-  await composeYield();
 
   const publish = () => {
     // The pre-commit prepare touched this root while it was detached; publish-time state can
@@ -11971,15 +11962,38 @@ function* instantiateFlightRootTemplateSteps(
   const releaseFlightTemplate = retainFlightRootTemplate(entry);
   if (!releaseFlightTemplate) return null;
   let adopted = false;
+  const partial = { root: null, bindings: null };
   try {
     const root = yield* instantiateFlightRootTemplateBodySteps(
       entry, entity, templateKey, loadoutFingerprint, assemblySeed,
-      library, scene, ownerBoundary, palette, releaseFlightTemplate,
+      library, scene, ownerBoundary, palette, releaseFlightTemplate, partial,
     );
     adopted = root != null;
     return root;
   } finally {
-    if (!adopted) releaseFlightTemplate('flight-template-instantiate-abandoned');
+    if (!adopted) {
+      for (const admission of partial.bindings?.packagePoolAdmissions || EMPTY_ARRAY) {
+        if (admission) admission.cancelled = true;
+      }
+      if (partial.root) {
+        // The cached path has not returned to composedShipSteps, so no outer
+        // compose trace owns this root yet. Retain its template until teardown
+        // finishes; borrowed geometry must stay alive during the paced walk.
+        const cleanup = (function* () {
+          try {
+            yield* disposeDetachedObjectSteps(partial.root);
+            yield* disposeAbortPartialPreScanSteps(partial.root);
+          } finally {
+            try { partial.root.clear(); }
+            finally { releaseFlightTemplate('flight-template-instantiate-abandoned'); }
+          }
+        })();
+        // Close a small partial immediately; queue only the remaining slices.
+        if (!cleanup.next().done) queuePacedDetachedTeardown(partial.root, cleanup);
+      } else {
+        releaseFlightTemplate('flight-template-instantiate-abandoned');
+      }
+    }
   }
 }
 
@@ -11994,11 +12008,14 @@ function* instantiateFlightRootTemplateBodySteps(
   ownerBoundary = null,
   palette = null,
   releaseFlightTemplate,
+  partial,
 ) {
   const root = yield* createFlightTemplateRootInstanceSteps(entry.root);
   if (!root) return null;
+  partial.root = root;
   clearFlightTemplateDynamicUserData(root);
   const packageBindings = (entry.packageRecipes || EMPTY_ARRAY).length ? createBindings() : null;
+  partial.bindings = packageBindings;
   const rootName = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
   const assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${assemblySeed.toString(16)}`;
   root.name = rootName;
@@ -12169,18 +12186,27 @@ function* createFlightTemplateRootInstanceSteps(templateRoot, sliceEvery = 128) 
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   const stack = [root];
   let visited = 0;
-  while (stack.length > 0) {
-    const object = stack.pop();
-    if (!object) continue;
-    if ((++visited % every) === 0) yield;
-    object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
-    object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
-    object.userData = sanitizeFlightTemplateUserData(object.userData);
-    if (object.material) object.material = cloneFlightInstanceMaterials(object.material, materials);
-    const children = object.children;
-    if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  let complete = false;
+  try {
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0) yield;
+      object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
+      object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
+      object.userData = sanitizeFlightTemplateUserData(object.userData);
+      if (object.material) object.material = cloneFlightInstanceMaterials(object.material, materials);
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+    complete = true;
+    return root;
+  } finally {
+    if (!complete) {
+      for (const material of materials.values()) material.dispose?.();
+      root.clear();
+    }
   }
-  return root;
 }
 
 function captureFlightTemplateBindings(root, bindings) {
@@ -12639,6 +12665,20 @@ export function runFlightKestrelTemplatePackageProbe() {
   const disposeRebuildValid = !!third && third.fromFlightTemplateCache === true
     && !!thirdMesh && thirdMesh.visible === secondMesh?.visible;
   const thirdRelease = third?.releaseFlightTemplate?.('kestrel-template-probe-release-c') || false;
+  // Abort a cache hit after a package instance has been recreated. Its root has
+  // not yet returned to the compose caller and must still own disposal and pin release.
+  const refsBeforeAbandon = templateEntry?.instanceRefs;
+  const createsBeforeAbandon = packageCreates;
+  const disposalsBeforeAbandon = packageDisposals;
+  const abandoned = composedShipSteps(entityFor(`kestrel-template-${token}-abandon`),
+    library, scenes[2], owners[2], { requiredWholeShip: true });
+  let abandonedStep = abandoned.next();
+  while (!abandonedStep.done && packageCreates === createsBeforeAbandon) abandonedStep = abandoned.next();
+  abandoned.return();
+  const abandonedCacheHitReleased = !abandonedStep.done
+    && packageCreates === createsBeforeAbandon + 1
+    && packageDisposals === disposalsBeforeAbandon + 1
+    && templateEntry?.instanceRefs === refsBeforeAbandon;
   if (templateKey) removeFlightRootTemplate(templateKey);
   const templateDisposed = templateEntry?.disposed === true;
 
@@ -12675,8 +12715,9 @@ export function runFlightKestrelTemplatePackageProbe() {
       && typeof second?.root?.userData?.updateDamageState === 'function'
       && typeof second?.root?.userData?.updateLod === 'function',
     visibleParity: !!first && !!second && firstVisible === secondVisible,
-    packageCreates: packageCreates === 3,
-    packageDisposals: packageDisposals === 3,
+    packageCreates: packageCreates === 4,
+    packageDisposals: packageDisposals === 4,
+    abandonedCacheHitReleased,
     releaseWasIdempotent: secondRelease === true && secondReleaseAgain === false && thirdRelease === true,
     mutableMaterialIsolation,
     closureIsolation,

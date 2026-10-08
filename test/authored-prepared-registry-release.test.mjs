@@ -67,7 +67,7 @@ function fixtureRecord() {
 // sceneState.preparedAuthoredRoots must still be released — a Map keyed by the boundary
 // that would otherwise pin the boundary, the prepared tree, and every retained closure
 // forever (the dock/save/load heap witness pinned survivors on exactly this entry).
-test('a throwing prepared-capsule disposer still releases the prepared-root registry', async () => {
+test('a throwing prepared-capsule disposer still releases the prepared-root registry', { timeout: 2000 }, async () => {
   const entity = capsuleEntity();
   initializePresentationAdmission(entity);
   const fallbackRoot = new THREE.Group();
@@ -85,9 +85,12 @@ test('a throwing prepared-capsule disposer still releases the prepared-root regi
   // there exercises the exact ordering bug — disposal failure must not skip the unregister.
   const originalClear = THREE.Object3D.prototype.clear;
   let clears = 0;
+  let resolveClear;
+  const clearAttempted = new Promise((resolve) => { resolveClear = resolve; });
   THREE.Object3D.prototype.clear = function clear() {
     if (typeof this.name === 'string' && this.name.startsWith('GLTFKit_')) {
       clears++;
+      resolveClear();
       throw new Error('witness-forced dispose failure');
     }
     return originalClear.call(this);
@@ -103,6 +106,10 @@ test('a throwing prepared-capsule disposer still releases the prepared-root regi
     });
     assert.ok(completion && typeof completion.then === 'function');
     await completion.catch(() => null);
+    // The admission releases registry ownership immediately; GPU cleanup now
+    // runs in the paced detached queue. Keep the injector until that work runs.
+    assert.equal(partsLibrary.inspectAuthoredBoundaryRegistrations(scene, boundary).preparedRoots, 0);
+    await clearAttempted;
   } finally {
     THREE.Object3D.prototype.clear = originalClear;
   }

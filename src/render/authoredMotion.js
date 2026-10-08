@@ -254,12 +254,10 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     }
     return true;
   };
-  yield;
-  if (entity?.deferAuthoredMotionRegistration !== true) activate();
-  yield;
-  root.userData.activateAuthoredMotionRegistration = activate;
-
+  // Establish rollback before the first registration/hook yield. A caller can
+  // abandon this generator at any suspension, including deferred activation.
   detach = function detachAuthoredMotionDriver(state = null) {
+    if (retired) return;
     retired = true;
     if (root.userData.updateCeresPhysicalState === updatePhysical) delete root.userData.updateCeresPhysicalState;
     // Per-driver fencing: one throwing driver must not skip the remaining
@@ -309,6 +307,10 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     }
   };
 
+  yield;
+  if (entity?.deferAuthoredMotionRegistration !== true) activate();
+  yield;
+  root.userData.activateAuthoredMotionRegistration = activate;
   root.userData.authoredMotionControllers = live;
   // Max authored travel each bound pivot can impart, per binding — the cull envelope folds
   // this in lazily (world-space subtree radius at first query, post-fit) so an animated arm
@@ -363,18 +365,16 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   return detach;
   } finally {
     if (!bankTransferred) {
-      // An abandon AFTER activate() owns more than the constructed drivers:
-      // registry.set(entityId)/alias sets, userData stamps, retired flag.
-      // detach's teardown grammar covers all of it plus per-driver disposal —
-      // run it first, then keep the raw bank loop as the fallback for any
-      // driver detach did not see (pre-activate abandons skip detach).
-      if (registered && typeof detach === 'function') {
+      // detach also rolls back pre-activation root hooks. Earlier construction
+      // yields have only the driver bank; never dispose the same bank twice.
+      if (typeof detach === 'function') {
         try { detach(); }
         catch (error) { dedupWarn('authoredMotion:abandonDetach', '[authoredMotion] abandon detach failed', error); }
-      }
-      for (const driver of driverBank) {
-        try { driver?.dispose?.(); }
-        catch (error) { dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error); }
+      } else {
+        for (const driver of driverBank) {
+          try { driver?.dispose?.(); }
+          catch (error) { dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error); }
+        }
       }
     }
   }
