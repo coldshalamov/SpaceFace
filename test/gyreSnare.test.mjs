@@ -2180,6 +2180,24 @@ test('a strain break whips the freed clump along its last orbit tangent', async 
   t2.sys._drop('released');
   assert.equal(consumePhysicsCommand(calm), null, 'a polite release never snaps its clump');
   t2.cleanup();
+  // The ponderous branch: a grown clump snaps at the FLOORED revolve rate —
+  // wave-52 caught the ledger reset zeroing clumpRadius before the snap read
+  // the rate, unflooring every heavy tear (~73 wu/s instead of the authored ~22).
+  const t3 = await bootPhysics();
+  const heavy = rock(t3.sim, T.mawDist, 0, 6, 4);
+  hold(t3);
+  for (let i = 0; i < 15; i++) { t3.state.input.actions.gyreSnare = true; t3.sim.step(); }
+  t3.sys._rt.clumpRadius = 60; // as grown — past the ponderous knee (14 wu)
+  t3.sys._drop('strained');
+  const hcmd = consumePhysicsCommand(heavy);
+  const himp = hcmd.impulses[hcmd.impulses.length - 1];
+  const hhyp = Math.hypot(himp.x, himp.z);
+  const heavyRate = T.orbitRate * Math.max(0.3, Math.min(1, T.orbitRatePonderR / 60));
+  const snapHeavy = Math.max(T.tearSnapWuS,
+    heavyRate * Math.max(T.orbitRadiusMin, 60 * T.orbitRadiusScale) * T.tearSnapOrbitFrac);
+  assert.ok(Math.abs(hhyp - 6 * snapHeavy) < 1e-6,
+    `ponderous snap = mass × floored rate × orbitR × frac (got ${hhyp.toFixed(3)} vs ${(6 * snapHeavy).toFixed(3)})`);
+  t3.cleanup();
 });
 
 test('the 9th live ball evicts the oldest watch — disarmed but still marked', async () => {

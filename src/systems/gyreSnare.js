@@ -220,6 +220,7 @@ export const gyreSnare = {
     const droppedMass = rt.clumpMass;
     const droppedDir = rt.orbitDir; // captured before the reset — the tear snap needs the last revolution
     const droppedOrbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale); // whip scale — dead at the next line
+    const droppedRate = this._orbitRate(rt); // ponderous-floored rate — the reset zeroes clumpRadius and would unfloor it
     rt.dropReason = reason || 'dropped'; // a strain break is a tear, not a polite release — the close reads the reason
     rt.phase = PHASE.OFF;
     rt.coreId = null;
@@ -295,7 +296,7 @@ export const gyreSnare = {
         // weaker than the motion it interrupts — a capped moon circles ~18 wu/s
         // (ponderous-floored 0.255 rad/s × ~72 wu), so the frac lands the flick
         // just past its own revolve while tearSnapWuS keeps a pebble snappy.
-        const snapV = Math.max(D.tearSnapWuS, this._orbitRate(rt) * droppedOrbitR * D.tearSnapOrbitFrac);
+        const snapV = Math.max(D.tearSnapWuS, droppedRate * droppedOrbitR * D.tearSnapOrbitFrac);
         queuePhysicsImpulse(torn,
           { x: ix * m * snapV, y: 0, z: iz * m * snapV },
           this._evidence(st.tick));
