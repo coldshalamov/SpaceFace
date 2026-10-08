@@ -726,9 +726,23 @@ export async function loadAuthoredPart(url, options = {}) {
   }
 
   const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
-    (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf, undefined, task))
-      : () => loadGltfDocument(url, runtime.gltf, undefined, task))()
+    (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf, undefined, task, () => {
+      // Parse-drain liveness — same consumer consult the compile tail runs one
+      // stage later; no registered consumers yet means the creator is the only
+      // consumer, and ownerless creators default live (aborts still read dead).
+      const consumers = taskConsumerPredicates.get(task);
+      return consumers && consumers.length > 0
+        ? consumers.some((isLive) => isLive())
+        : authoredConsumerIsActive(options);
+    }))
+      : () => loadGltfDocument(url, runtime.gltf, undefined, task, () => {
+      const consumers = taskConsumerPredicates.get(task);
+      return consumers && consumers.length > 0
+        ? consumers.some((isLive) => isLive())
+        : authoredConsumerIsActive(options);
+    }))()
       .then((gltf) => {
+        if (gltf == null) return null;
         if (admission.signal.aborted) disposeDecodedResources(gltf);
         admission.assertActive();
         // Tier-1 causal count: a full semantic compile of a source GLB into a runtime blueprint.
@@ -2275,13 +2289,16 @@ export function hasNonEmptyWholeShipHullBody(hullTriangles) {
   return Number.isFinite(hullTriangles) && hullTriangles > 0;
 }
 
-export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch, parseToken = null) {
+export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch, parseToken = null, parseIsLive = null) {
   if (!isWholeShipUrl(url) || typeof fetchImpl !== 'function' || typeof loader?.parseAsync !== 'function') {
-    const gltf = await scheduleGltfParse(() => loader.loadAsync(url), parseToken);
+    const gltf = await scheduleGltfParse(() => loader.loadAsync(url), parseToken, parseIsLive);
+    // Dead-owner parses settle null — the settled-null path cancels the request
+    // downstream exactly like a dead-consumer compile tail.
+    if (gltf == null) return null;
     // The dedupe's texture walk + source bookkeeping is synchronous — pace it through the
     // class lanes so a parse-cluster burst can't stack several walks in one microtask drain.
     // Its async digests already yield off-main.
-    await scheduleGltfCompile(() => dedupeGltfTextureSources(gltf), activeDecodeClass());
+    await scheduleGltfCompile(() => dedupeGltfTextureSources(gltf), activeDecodeClass(), parseToken);
     return gltf;
   }
   // Electron intentionally keeps a stable localhost origin so saves persist. Revalidate whole-ship
@@ -2294,8 +2311,9 @@ export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch
   const gltf = parseGlbJson(bytes);
   const errors = validateWholeShipJsonDocument(url, gltf);
   if (errors.length) throw new AssetContractError(url, errors);
-  const parsed = await scheduleGltfParse(() => loader.parseAsync(buffer, assetBasePath(url)), parseToken);
-  await scheduleGltfCompile(() => dedupeGltfTextureSources(parsed), activeDecodeClass());
+  const parsed = await scheduleGltfParse(() => loader.parseAsync(buffer, assetBasePath(url)), parseToken, parseIsLive);
+  if (parsed == null) return null;
+  await scheduleGltfCompile(() => dedupeGltfTextureSources(parsed), activeDecodeClass(), parseToken);
   return parsed;
 }
 

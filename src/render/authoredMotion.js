@@ -1,4 +1,4 @@
-import { dedupWarn } from '../core/warnDedup.js';
+import { dedupWarn, noteLaneFault } from '../core/warnDedup.js';
 import { isLatchActor, createLatchNineVisualDriver } from './latchNineVisuals.js';
 import { isTallyThreeAssessor, createTallyThreeVisualDriver } from './tallyThreeVisuals.js';
 import { isRedKiteCourier, createRedKiteVisualDriver } from './redKiteVisuals.js';
@@ -174,28 +174,43 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   const borrowedVoice=isBorrowedVoiceRing(entity)||isBorrowedVoiceRecorder(entity);
   const palletJack=isPalletJackEntity(entity),mothlight=isMothlightTender(entity)||isMothlightLamp(entity);
   if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight)) return null;
-  const tallyDriver=tally?createTallyThreeVisualDriver(root,entity):null;
+  // Abandon bank: a suspended attach (generator .return() mid-yield) used to
+  // leak every driver already constructed — the detach closure does not exist
+  // yet, so nothing owns their disposes. A normal completion transfers the
+  // bank to detach below; an abandoned run disposes it in the finally.
+  let tallyDriver=null,redKiteDriver=null,sableDriver=null,ilexDriver=null,kilnbackDriver=null,
+    scissorwakeDriver=null,towlineDriver=null,borrowedVoiceDriver=null,palletJackDriver=null,
+    mothlightDriver=null,propulsion=null;
+  const driverBank=[];
+  const bankDriver=(flag,create)=>{
+    const driver=flag?create(root,entity):null;
+    if(driver)driverBank.push(driver);
+    return driver;
+  };
+  let bankTransferred=false;
+  try {
+  tallyDriver=bankDriver(tally,createTallyThreeVisualDriver);
   yield;
-  const redKiteDriver=redKite?createRedKiteVisualDriver(root,entity):null;
+  redKiteDriver=bankDriver(redKite,createRedKiteVisualDriver);
   yield;
-  const sableDriver=sable?createSableVennVisualDriver(root,entity):null;
+  sableDriver=bankDriver(sable,createSableVennVisualDriver);
   yield;
-  const ilexDriver=ilex?createIlexArkVisualDriver(root,entity):null;
+  ilexDriver=bankDriver(ilex,createIlexArkVisualDriver);
   yield;
-  const kilnbackDriver=kilnback?createKilnbackVisualDriver(root,entity):null;
+  kilnbackDriver=bankDriver(kilnback,createKilnbackVisualDriver);
   yield;
-  const scissorwakeDriver=scissorwake?createScissorwakeVisualDriver(root,entity):null;
+  scissorwakeDriver=bankDriver(scissorwake,createScissorwakeVisualDriver);
   yield;
-  const towlineDriver=towline?createTowlineTableVisualDriver(root,entity):null;
+  towlineDriver=bankDriver(towline,createTowlineTableVisualDriver);
   yield;
-  const borrowedVoiceDriver=borrowedVoice?createBorrowedVoiceVisualDriver(root,entity):null;
+  borrowedVoiceDriver=bankDriver(borrowedVoice,createBorrowedVoiceVisualDriver);
   yield;
-  const palletJackDriver=palletJack?createPalletJackVisualDriver(root,entity):null;
+  palletJackDriver=bankDriver(palletJack,createPalletJackVisualDriver);
   yield;
-  const mothlightDriver=mothlight?createMothlightVisualDriver(root,entity):null;
+  mothlightDriver=bankDriver(mothlight,createMothlightVisualDriver);
   yield;
   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
-  const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):latch?createLatchNineVisualDriver(root,entity):null;
+  propulsion=bankDriver(workfleet||latch,workfleet?createCeresWorkfleetPropulsionDriver:createLatchNineVisualDriver);
   const priorDriveUpdate=root.userData.updateDriveState;
   const updatePropulsion=propulsion ? function updateCeresPropulsion(liveEntity,simNow) {
     priorDriveUpdate?.(liveEntity,simNow);
@@ -236,10 +251,12 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     }
     return true;
   };
+  yield;
   if (entity?.deferAuthoredMotionRegistration !== true) activate();
+  yield;
   root.userData.activateAuthoredMotionRegistration = activate;
 
-  const detach = function detachAuthoredMotionDriver() {
+  const detach = function detachAuthoredMotionDriver(state = null) {
     retired = true;
     if (root.userData.updateCeresPhysicalState === updatePhysical) delete root.userData.updateCeresPhysicalState;
     // Per-driver fencing: one throwing driver must not skip the remaining
@@ -247,7 +264,10 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     // registered for a dead entity forever.
     const detachDriver = (driver) => {
       try { driver?.dispose(); }
-      catch (error) { dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error); }
+      catch (error) {
+        noteLaneFault(state, 'teardown.authoredMotion.driverDispose');
+        dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error);
+      }
     };
     detachDriver(propulsion);
     detachDriver(tallyDriver);
@@ -300,8 +320,12 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   else delete root.userData.authoredMotionPadSpec;
   delete root.userData.__authoredMotionPad;
   // A graft landing on an already-mounted row would otherwise pay the pad's
-  // first-mint subtree walk inside the next cull consult.
-  if (motionPadSpec.length) primeMotionTravelPad(root);
+  // first-mint subtree walk inside the next cull consult. Its own yield keeps
+  // the O(subtree) mint off the attach leg's frame.
+  if (motionPadSpec.length) {
+    yield;
+    primeMotionTravelPad(root);
+  }
   // Ambient/attach clips arm on the first update so their anchor lands on the real clock.
   let attachFired = false;
   root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow, a11y, state = null) {
@@ -330,7 +354,18 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   // (disposeWorldSitePresentation, releaseAuthoredAssetResidency, ...).
   root.userData.detachAuthoredMotion = detach;
 
+  // detach owns driver disposal from here — any abandon before this line
+  // falls to the finally bank below; nothing yields after it.
+  bankTransferred = true;
   return detach;
+  } finally {
+    if (!bankTransferred) {
+      for (const driver of driverBank) {
+        try { driver?.dispose?.(); }
+        catch (error) { dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error); }
+      }
+    }
+  }
 }
 
 /**

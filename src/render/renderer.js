@@ -1,4 +1,5 @@
 import { isPhysicalMachinery, bindMachineryPresentation, machineryPresentationPlace, machineryRequestedPresentation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
+import { noteLaneFault, serviceFaultEpoch } from '../core/warnDedup.js';
 import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
 // Render system: owns the WebGLRenderer, scene, lights, camera, starfield, and the entity→mesh
@@ -2156,16 +2157,7 @@ function runCookSyncTwin(label, run, fallback = undefined) {
 // Per-lane fault rollup on state.render — O(1) at fault time only. A lane that
 // parks and degrades for N epochs is otherwise invisible to diagnostics (frame
 // counters only cover whole-frame kills); the rollup keeps it observable.
-function noteLaneFault(state, lane, parked = false) {
-  const render = state && state.render;
-  if (!render) return;
-  const rollup = render.laneFaults || (render.laneFaults = {});
-  const row = rollup[lane] || (rollup[lane] = { faults: 0, parkedEpoch: null, lastAt: 0 });
-  row.faults += 1;
-  if (parked === true) row.parkedEpoch = serviceFaultEpoch(state);
-  row.lastAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() : Date.now();
-}
+
 
 // Console warns are themselves presented-frame cost (allocation + devtools I/O
 // inside the pass they measure) — under a persistent fault storm the unlatched
@@ -2321,7 +2313,7 @@ function flushDisposeQueueLane(owner, queueField, headField) {
       // not strand the corpses behind it — flag partial teardown and settle
       // the tally via the dirty recount (null) like the paced lanes do.
       try {
-        disposeObject(queued, flushMeasure);
+        disposeObject(queued, flushMeasure, owner && owner.state);
       } catch (error) {
         stormWarn('dispose-queue-flush-step-failed', '[render] dispose queue flush step failed', error);
         if (queued.userData) queued.userData.sfDespawnPartialTeardown = true;
@@ -2424,7 +2416,7 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
         // tally mid-walk so the removal note lands exact instead of paying a
         // second standalone countShadowReceivers traverse per corpse.
         const corpseMeasure = { receivers: 0 };
-        iter = owner[iterField] = disposeObjectSteps(m, corpseMeasure);
+        iter = owner[iterField] = disposeObjectSteps(m, corpseMeasure, owner.state);
         iter._corpse = m;
         iter._measure = corpseMeasure;
       } catch (error) {
@@ -2496,11 +2488,7 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
 // a restore rebuilds every GPU object the parked lanes repair, so the parked
 // lane must re-arm there too — enterSerial alone would stay parked through the
 // post-restore rebuild window.
-function serviceFaultEpoch(state) {
-  const st = state || {};
-  const enter = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
-  return `${enter == null ? 'x' : enter}|${Number(st.contextRestoreSeq) || 0}`;
-}
+
 
 function driveProtectedFirstFlightDrain(owner) {
   if (!owner) return 0;
@@ -9461,10 +9449,10 @@ function invokeRendererDisposer(resource, label, allow = true) {
   return true;
 }
 
-function disposeRendererObject(object, label, allow = true) {
+function disposeRendererObject(object, label, allow = true, state = null) {
   if (!allow || !object) return false;
   try {
-    disposeObject(object);
+    disposeObject(object, null, state);
   } catch (error) {
     if (typeof console !== 'undefined') console.warn(`[render] ${label} teardown failed`, error);
     return false;
@@ -9578,7 +9566,7 @@ function disposeRendererMeshRoots(owner, scene, disposeGpu) {
       try { owner._unbindPresentationMesh?.(id, mesh, true); } catch (_) { /* best effort */ }
       try { releaseAsteroidInstancesForEntity(owner._asteroidInstancePool, id); } catch (_) { /* best effort */ }
       removeRendererRoot(scene, mesh);
-      if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`);
+      if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`, true, this.state);
       const entity = state?.entities?.get?.(id);
       clearEntityMeshReference(entity, mesh);
       meshes.delete?.(id);
@@ -9720,7 +9708,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   if (owner._hazardVisuals && Array.isArray(owner._hazardVisuals)) {
     for (const root of owner._hazardVisuals) {
       removeRendererRoot(scene, root);
-      if (disposeGpu) disposeRendererObject(root, 'hazard visual');
+      if (disposeGpu) disposeRendererObject(root, 'hazard visual', true, this.state);
     }
     owner._hazardVisuals.length = 0;
   }
@@ -11464,7 +11452,7 @@ export const render = {
             if (!rendererGenerationIsActive() || this._contextLost === true
                 || recordContextGeneration !== currentContextGeneration()) return false;
             if (typeof disposeObjectSteps !== 'function') {
-              const settled = disposeObject(boundary, boundaryDisposeMeasure);
+              const settled = disposeObject(boundary, boundaryDisposeMeasure, this.state);
               boundaryDisposeMeasure.settled = true;
               return settled;
             }
@@ -11474,7 +11462,7 @@ export const render = {
             // ledger and yields to the next present; non-flight slices on the wall
             // clock alone so a loading-shell teardown can't freeze the only
             // animation either.
-            const disposeIter = disposeObjectSteps(boundary, boundaryDisposeMeasure);
+            const disposeIter = disposeObjectSteps(boundary, boundaryDisposeMeasure, this.state);
             const disposeNow = () => (typeof performance !== 'undefined'
               && typeof performance.now === 'function' ? performance.now() : Date.now());
             const disposeInFlight = state.mode === 'flight';
@@ -11884,12 +11872,22 @@ export const render = {
         const liveSubjects = batch.filter(isRootActive);
         if (liveSubjects.length === 0) return;
         const census = this._shadowCensusForFrame();
+        // A pending re-mint serves the dead epoch's sig — marks minted under
+        // the live census read unmarked (false withhold → pop-out) and marks
+        // minted under the dead one read staged (false keep → cold link).
+        // Skip the consult while the serve is stale; the arm's re-derivation
+        // under the live sig owns the withhold set instead.
+        const censusMemo = this._shadowCensusMemo;
+        const serveLive = !!(censusMemo
+          && censusMemo.epoch === shadowCensusEpoch() && !censusMemo.pendingIter);
         const flagBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
         for (const root of liveSubjects) {
           try {
-            const collected = collectUnstagedShadowCastersFlag([root], census, flagBudget, this.cam && this.cam.obj);
+            const collected = serveLive
+              ? collectUnstagedShadowCastersFlag([root], census, flagBudget, this.cam && this.cam.obj)
+              : null;
             const lodLevel = (root.userData && root.userData.lod && root.userData.lod.level) || 'lod0';
-            if (isUnstagedCollectOverCover(collected)) {
+            if (collected !== null && isUnstagedCollectOverCover(collected)) {
               // The flag walk outran its shared node budget mid-root — a partial
               // set can't be trusted for per-mesh withhold. Withhold the whole
               // subtree instead of leaving castShadow live while the arm's
@@ -11899,7 +11897,7 @@ export const render = {
               const overOut = { receiverDelta: 0 };
               syncShadowCasterPolicy(root, lodLevel, { allowCast: false, out: overOut });
               noteShadowPolicyChanged(this._shadowReceiverTally, overOut);
-            } else {
+            } else if (collected !== null) {
               for (const mesh of collected) mesh.castShadow = false;
               if (collected.length > 0) {
                 const cache = this._withheldDepthCasters
@@ -14048,7 +14046,7 @@ export const render = {
           // loop already slices — drive its stepped twin under the same leg
           // clock and settle the tally from the teardown's own measurement.
           const leftoverMeasure = { receivers: 0 };
-          const leftoverDispose = disposeObjectSteps(mesh, leftoverMeasure);
+          const leftoverDispose = disposeObjectSteps(mesh, leftoverMeasure, this.state);
           let leftoverTorn = false;
           for (;;) {
             let leftoverDone = false;
@@ -17233,7 +17231,7 @@ export const render = {
             this._meshesVersion += 1;
             clearEntityMeshReference(entity, mesh);
             const departMeasure = { receivers: 0 };
-            const departDispose = disposeObjectSteps(mesh, departMeasure);
+            const departDispose = disposeObjectSteps(mesh, departMeasure, this.state);
             let departTorn = false;
             for (;;) {
               let departDone = false;
@@ -23899,9 +23897,9 @@ export const render = {
           // A fat owner's whole-subtree teardown paces per-128-node inside this
           // stepped walk — the generator twin holds the identical teardown
           // grammar as disposeObject, hooks included.
-          if (!disposePreparedAuthoredBoundary(owner)) yield* disposeObjectSteps(owner);
+          if (!disposePreparedAuthoredBoundary(owner)) yield* disposeObjectSteps(owner, null, owner.state);
         } catch (_) {
-          try { yield* disposeObjectSteps(owner); } catch (_) { /* best effort */ }
+          try { yield* disposeObjectSteps(owner, null, owner.state); } catch (_) { /* best effort */ }
         }
       }
     } finally {
@@ -24055,7 +24053,7 @@ export const render = {
         if (keepPlayer && id === this.state.playerId) continue;
         this._unbindPresentationMesh(id, m, true);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-        this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
+        this.scene.remove(m); disposeObject(m, null, this.state); this._meshes.delete(id);
       }
     } finally {
       this._meshReleaseBatchEnd?.();
@@ -24067,7 +24065,7 @@ export const render = {
     this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds.clear();
     // Also clear hazard zone visuals
-    for (const obj of this._hazardVisuals) { this.scene.remove(obj); disposeObject(obj); }
+    for (const obj of this._hazardVisuals) { this.scene.remove(obj); disposeObject(obj, null, this.state); }
     this._hazardVisuals = [];
     this._publishAssetResidencyDiagnostics();
   },
@@ -25597,8 +25595,8 @@ export const render = {
         // The retiring hull's whole-subtree teardown rides the paced queue —
         // a fat replacement's commit leg no longer pays traverse+dispose
         // atomically inside the presented beat that swapped it.
-        if (!queuePacedDetachedTeardown(old, disposeObjectSteps(old))) {
-          disposeRendererObject(old, `replaced appearance ${id}`);
+        if (!queuePacedDetachedTeardown(old, disposeObjectSteps(old, null, this.state))) {
+          disposeRendererObject(old, `replaced appearance ${id}`, true, this.state);
         }
         noteShadowMeshRemoved(this, old);
       }
@@ -25611,7 +25609,7 @@ export const render = {
       await Promise.allSettled(record.gpuWork);
       record.boundary.removeFromParent();
       await disposePreparedAuthoredBoundary(record.boundary);
-      disposeObject(record.boundary);
+      disposeObject(record.boundary, null, state);
     };
     record.completion = scope.wait(work).catch((error) => {
       record.cancel(error);
@@ -26644,7 +26642,7 @@ export const render = {
   _updateHazardVisuals() {
     for (const obj of this._hazardVisuals) {
       this.scene.remove(obj);
-      disposeObject(obj);
+      disposeObject(obj, null, this.state);
     }
     this._hazardVisuals = [];
   },
@@ -29128,15 +29126,26 @@ export const render = {
             ? SHADOW_DEPTH_PASS_NODE_CAP * parkedScale
             : (this._depthCollectNodesLeft | 0),
         };
-        const found = collectUnstagedShadowCastersFlag(
-          [syncScope], this._shadowCensusForFrame(), nodeBudget, this.cam && this.cam.obj);
-        if (parkedScale <= 0) this._depthCollectNodesLeft = nodeBudget.remaining;
-        if (isUnstagedCollectOverCover(found)) {
-          // The walk outran the shared node budget mid-traverse — a partial set
-          // can't be trusted, so over-cover exactly like the root-cap overflow.
-          overCovered = true;
+        const collectMemo = this._shadowCensusMemo;
+        const collectServeLive = !!(collectMemo
+          && collectMemo.epoch === shadowCensusEpoch() && !collectMemo.pendingIter);
+        // A stale serve classifies marks under the dead epoch — wrong in both
+        // directions (false keep → cold link, false withhold → pop-out). Skip
+        // the consult and leave `unstaged` unset: the dirty stamp below only
+        // lands on a real evaluation, so the root re-proves under the live sig.
+        const found = collectServeLive ? collectUnstagedShadowCastersFlag(
+          [syncScope], this._shadowCensusForFrame(), nodeBudget, this.cam && this.cam.obj) : null;
+        if (found === null) {
+          // Unprovable this pass — unstaged stays null, dirty state preserved.
         } else {
-          unstaged = found;
+          if (parkedScale <= 0) this._depthCollectNodesLeft = nodeBudget.remaining;
+          if (isUnstagedCollectOverCover(found)) {
+            // The walk outran the shared node budget mid-traverse — a partial set
+            // can't be trusted, so over-cover exactly like the root-cap overflow.
+            overCovered = true;
+          } else {
+            unstaged = found;
+          }
         }
       }
     }
@@ -29333,9 +29342,17 @@ export const render = {
         // isn't pending.
         const covCasting = Array.isArray(covStep.value) ? covStep.value : [];
         const covSig = this._shadowCensusForFrame();
+        const covMemo = this._shadowCensusMemo;
+        // Same stale-serve guard as the flag collects: classifying this walk's
+        // casters under the dead epoch's sig is wrong both directions — treat
+        // the completed walk as unprovable (walk re-mints next eval under the
+        // live sig) instead of withholding or releasing on dead marks.
+        const covServeLive = !!(covMemo
+          && covMemo.epoch === shadowCensusEpoch() && !covMemo.pendingIter);
         const covCam = this.cam && this.cam.obj;
         const covUnstaged = [];
         for (const caster of covCasting) {
+          if (!covServeLive) break;
           const covMaterials = Array.isArray(caster.material) ? caster.material : [caster.material];
           let covCapable = false;
           for (const material of covMaterials) {
@@ -29345,6 +29362,7 @@ export const render = {
           if (!casterDepthMarkCurrent(caster, covSig, covCam)) covUnstaged.push(caster);
         }
         if (covUnstaged.length > 0) withheldMeshes = covUnstaged;
+        else if (!covServeLive) coverageWalkInFlight = true;
       } else {
         coverageWalkInFlight = true;
       }
@@ -29899,6 +29917,21 @@ export const render = {
                 const pruneProbation = this._withheldDepthCasterProbation
                   || (this._withheldDepthCasterProbation = new WeakMap());
                 const undrawnSeen = this._withheldDepthUndrawn || null;
+                // Scalar generation ids for the probation/undrawn ledgers —
+                // WeakMap VALUES stay numbers so a struck entry never pins the
+                // withheld Set or its root past the generation's death (the
+                // WeakMap<Set,gen>/<root,gen> keys die with their objects).
+                const withheldGens = this._withheldDepthGens
+                  || (this._withheldDepthGens = {
+                    seq: 0,
+                    roots: new WeakMap(),
+                    sets: new WeakMap(),
+                  });
+                const genFor = (map, obj) => {
+                  let gen = map.get(obj);
+                  if (gen == null) { gen = ++withheldGens.seq; map.set(obj, gen); }
+                  return gen;
+                };
                 let rescueAllCurrent = true;
                 for (const rescueMesh of rescueWithheld) {
                   // A member that can never mint a current mark under this
@@ -29925,14 +29958,16 @@ export const render = {
                   // leg's settle eval) stops a never-drawable member from
                   // vetoing its drawable siblings' release forever.
                   const undrawn = !!(undrawnSeen
-                    && undrawnSeen.get(rescueMesh) === rescueWithheld);
+                    && undrawnSeen.get(rescueMesh) === withheldGens.sets.get(rescueWithheld));
                   if (undrawn || withheldDepthCasterProvablyDead(rescueMesh, root)) {
                     const strike = pruneProbation.get(rescueMesh);
                     // Probation keys (root, set-generation): a member struck
                     // under a withheld Set that was since re-minted carries
                     // no strike — it re-probates at strike-1 inside the new
                     // generation instead of inheriting the old boundary.
-                    if (strike && strike.root === root && strike.set === rescueWithheld) {
+                    if (strike
+                      && strike.rootGen === withheldGens.roots.get(root)
+                      && strike.setGen === withheldGens.sets.get(rescueWithheld)) {
                       rescueWithheld.delete(rescueMesh);
                       pruneProbation.delete(rescueMesh);
                       if (undrawnSeen) undrawnSeen.delete(rescueMesh);
@@ -29941,7 +29976,10 @@ export const render = {
                     // Strike every newly-dead member per eval, not one — a
                     // set decaying K members otherwise takes K+1 evals to
                     // release, each rescanning the whole set.
-                    pruneProbation.set(rescueMesh, { root, set: rescueWithheld });
+                    pruneProbation.set(rescueMesh, {
+                      rootGen: genFor(withheldGens.roots, root),
+                      setGen: genFor(withheldGens.sets, rescueWithheld),
+                    });
                     rescueAllCurrent = false;
                     continue;
                   }
@@ -30125,6 +30163,18 @@ export const render = {
             // census, not the sig the arm pinned when it started. The consult
             // is the epoch-gated collect's memo read (never an atomic mint).
             const collectSig = lightSig != null ? lightSig : this._depthCollectLightSig(scene);
+            // Dual-sig like the verdict/leftover evals: a mid-arm census flip
+            // mints marks under the live census while the pinned sig goes
+            // dead — comparing under only the pin reads live-marked casters
+            // unstaged (re-offer storm) and dead-marked casters staged
+            // (unlinked restore → cold link). Fresh-serve only: a pending
+            // re-mint serves the dead epoch and adds no witness.
+            const collectMemo = this._shadowCensusMemo;
+            const collectLiveSig = (collectMemo
+                && collectMemo.epoch === shadowCensusEpoch() && !collectMemo.pendingIter)
+              ? this._shadowCensusForFrame() : null;
+            const collectSigs = collectSig != null ? [collectSig] : [];
+            if (collectLiveSig != null && collectLiveSig !== collectSig) collectSigs.push(collectLiveSig);
             const cache = entry && entry.unstagedCache;
             if (cache && cache.seq === shadowCasterPolicyDirtySeq(sliceRoots[collected])) {
               const still = [];
@@ -30141,7 +30191,11 @@ export const render = {
                 }
                 if (!member) continue;
                 live.push(mesh);
-                if (!casterDepthMarkCurrent(mesh, collectSig, camera)) still.push(mesh);
+                let collectMarked = false;
+                for (const sig of collectSigs) {
+                  if (casterDepthMarkCurrent(mesh, sig, camera)) { collectMarked = true; break; }
+                }
+                if (!collectMarked) still.push(mesh);
               }
               // The tracked set stays the full collect: marks minted under a
               // census sig that flips go stale together, and a mesh dropped
@@ -30355,7 +30409,13 @@ export const render = {
                   if (!withheldSet) continue;
                   for (const mesh of deferMeshes) {
                     if (drawnSet.has(mesh)) undrawnLedger.delete(mesh);
-                    else if (legSet && legSet.has(mesh)) undrawnLedger.set(mesh, withheldSet);
+                    else if (legSet && legSet.has(mesh)) {
+                      const gens = this._withheldDepthGens
+                        || (this._withheldDepthGens = { seq: 0, roots: new WeakMap(), sets: new WeakMap() });
+                      let setGen = gens.sets.get(withheldSet);
+                      if (setGen == null) { setGen = ++gens.seq; gens.sets.set(withheldSet, setGen); }
+                      undrawnLedger.set(mesh, setGen);
+                    }
                   }
                 }
               }
@@ -30460,7 +30520,16 @@ export const render = {
         // both prove staged. Comparing under only one reads honestly-staged
         // meshes as leftovers and requeues roots whose marks are live.
         const leftoverSig = lightSig != null ? lightSig : this._shadowCensusForFrame();
-        const leftoverLiveSig = this._shadowCensusForFrame();
+        // The live serve only counts while it is fresh — a pending re-mint
+        // still serves the dead epoch, and a dead-sig match is not live-census
+        // staging evidence. AnyCurrent is deliberately NOT consulted here: it
+        // re-proves discriminants under the mark's own stored sig, so a
+        // consistent dead-sig mark would read "marked" and the restore would
+        // link a live-census depth variant that was never staged (cold link).
+        const leftoverMemo = this._shadowCensusMemo;
+        const leftoverLiveSig = (leftoverMemo
+            && leftoverMemo.epoch === shadowCensusEpoch() && !leftoverMemo.pendingIter)
+          ? this._shadowCensusForFrame() : null;
         const leftoverSigs = leftoverSig != null ? [leftoverSig] : [];
         if (leftoverLiveSig != null && leftoverLiveSig !== leftoverSig) {
           leftoverSigs.push(leftoverLiveSig);
@@ -30474,9 +30543,6 @@ export const render = {
                 leftoverMarked = true;
                 break;
               }
-            }
-            if (!leftoverMarked && casterDepthMarkAnyCurrent(mesh, camera)) {
-              leftoverMarked = true;
             }
             if (leftoverMarked) continue;
             (set || (set = [])).push(mesh);
@@ -30672,6 +30738,13 @@ export const render = {
       // the memo here minted an artificial unsigned window where every capable
       // caster read unstaged and withheld until the stepped re-mint landed.
       const census = this._shadowCensusForFrame();
+      const toggleMemo = this._shadowCensusMemo;
+      // A pending re-mint serves the dead epoch's sig — the per-mesh marks it
+      // classifies are wrong both ways (false keep → cold link, false withhold
+      // → pop-out). Queue every root whole-subtree and let the arm re-derive
+      // under the live sig, exactly like the over-cover abort path.
+      const serveLive = !!(toggleMemo
+        && toggleMemo.epoch === shadowCensusEpoch() && !toggleMemo.pendingIter);
       // Walk top-level roots one at a time so the node-budget abort only blurs
       // the root it died inside: a completed root whose unstaged set is empty is
       // provably mark-current — light shells, pools, and parallax roots never
@@ -30683,6 +30756,10 @@ export const render = {
       for (let i = 0; i < children.length; i += 1) {
         const child = children[i];
         if (!child || child.parent !== scene) continue;
+        if (!serveLive) {
+          queueOverCover.push(child);
+          continue;
+        }
         const collected = collectUnstagedShadowCastersFlag([child], census, toggleBudget, this.cam && this.cam.obj);
         if (isUnstagedCollectOverCover(collected)) {
           // The walk outran the click budget mid-root — a partial set can't be
@@ -32159,7 +32236,7 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
   }
 }
 
-function disposeObjectNode(c) {
+function disposeObjectNode(c, state = null) {
   if (!c) return false;
   const heldLight = c.isLight === true;
   // Release the vendored maintained shadow-caster registry entry: a flagged-but-torn-down
@@ -32178,17 +32255,26 @@ function disposeObjectNode(c) {
   const disposePrepared = c.userData && c.userData.__disposePreparedAuthoredBoundary;
   if (typeof disposePrepared === 'function') {
     try { disposePrepared(); }
-    catch (error) { stormWarn('teardown:preparedBoundary', '[render] prepared-boundary dispose failed', error); }
+    catch (error) {
+      noteLaneFault(state, 'teardown.preparedBoundary');
+      stormWarn('teardown:preparedBoundary', '[render] prepared-boundary dispose failed', error);
+    }
   }
   const disposePresentation = c.userData && c.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') {
     try { disposePresentation(); }
-    catch (error) { stormWarn('teardown:sitePresentation', '[render] site presentation dispose failed', error); }
+    catch (error) {
+      noteLaneFault(state, 'teardown.sitePresentation');
+      stormWarn('teardown:sitePresentation', '[render] site presentation dispose failed', error);
+    }
   }
   const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
   if (typeof releaseResidency === 'function') {
     try { releaseResidency('render-boundary-disposed'); }
-    catch (error) { stormWarn('teardown:residency', '[render] residency release failed', error); }
+    catch (error) {
+      noteLaneFault(state, 'teardown.residency', true);
+      stormWarn('teardown:residency', '[render] residency release failed', error);
+    }
   }
   // Whole-ship LOD boundaries retain demoted-level roots detached for instant swap-back, so
   // this traversal never reaches them. The boundary's hook re-attaches each stale retained
@@ -32196,20 +32282,29 @@ function disposeObjectNode(c) {
   const disposeLodRetained = c.userData && c.userData.disposeWholeShipLodRetained;
   if (typeof disposeLodRetained === 'function') {
     try { disposeLodRetained(); }
-    catch (error) { stormWarn('teardown:lodRetained', '[render] LOD retained dispose failed', error); }
+    catch (error) {
+      noteLaneFault(state, 'teardown.lodRetained');
+      stormWarn('teardown:lodRetained', '[render] LOD retained dispose failed', error);
+    }
   }
   // Authored-motion controllers register per entity id; releasing them here keeps a torn-down
   // boundary from holding pivots (and events) for a ship that no longer exists.
   const detachMotion = c.userData && c.userData.detachAuthoredMotion;
   if (typeof detachMotion === 'function') {
-    try { detachMotion(); }
-    catch (error) { stormWarn('teardown:authoredMotion', '[render] authored-motion detach failed', error); }
+    try { detachMotion(state); }
+    catch (error) {
+      noteLaneFault(state, 'teardown.authoredMotion');
+      stormWarn('teardown:authoredMotion', '[render] authored-motion detach failed', error);
+    }
   }
   // Instance-pool slots hold `slot.owner -> c`; THREE's `removed` event only reaches the
   // outermost detached root, so owner nodes nested under this tree never drain their pool
   // slots from the listener. Draining here releases the slot and lets the chunk retire.
   try { releaseOwnerInstances(c); }
-  catch (error) { stormWarn('teardown:ownerInstances', '[render] owner-instances release failed', error); }
+  catch (error) {
+    noteLaneFault(state, 'teardown.ownerInstances', true);
+    stormWarn('teardown:ownerInstances', '[render] owner-instances release failed', error);
+  }
   try {
     if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function'
         && !isBorrowedAsteroidInstanceResource(c)) c.dispose();
@@ -32234,7 +32329,7 @@ function disposeObjectNode(c) {
   return heldLight;
 }
 
-function disposeObject(obj, measure = null) {
+function disposeObject(obj, measure = null, state = null) {
   if (!obj || typeof obj.traverse !== 'function') return;
   // Strip the stashed lost-generation dispose listeners from the whole tree BEFORE any disposal
   // callback runs. A parked tree carried callbacks the loss-time detach pass never visited, and
@@ -32246,7 +32341,7 @@ function disposeObject(obj, measure = null) {
   let heldLight = false;
   obj.traverse((c) => {
     if (measure && c && c.receiveShadow === true) measure.receivers++;
-    if (disposeObjectNode(c)) heldLight = true;
+    if (disposeObjectNode(c, state)) heldLight = true;
   });
   // A torn-down subtree that carried a light changed the rendered light set —
   // same-seq census memos minted before this teardown would serve the stale sig.
@@ -32258,7 +32353,7 @@ function disposeObject(obj, measure = null) {
 // fat corpse's teardown paces across drains instead of landing atomically.
 // Re-attached LOD-retained roots still get visited: the hook mutates children
 // mid-callback and the stack reads them at push time, same as traverse.
-function* disposeObjectSteps(root, measure = null) {
+function* disposeObjectSteps(root, measure = null, state = null) {
   if (!root) return;
   detachStashedStaleWebGlDisposeListeners([root]);
   let heldLight = false;
@@ -32269,7 +32364,7 @@ function* disposeObjectSteps(root, measure = null) {
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
     if (measure && object.receiveShadow === true) measure.receivers++;
-    if (disposeObjectNode(object)) heldLight = true;
+    if (disposeObjectNode(object, state)) heldLight = true;
     const children = object.children || [];
     for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
   }

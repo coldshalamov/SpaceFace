@@ -405,8 +405,12 @@ export function createAssetResidencyRegistry(options = {}) {
       if (state.released || !owner || owner.isObject3D !== true) continue;
       if (!isDetached(owner)) continue;
       if (isClaimed && isClaimed(owner)) continue;
-      releaseOwner(owner, reason);
+      releaseOwner(owner, reason, true);
       released.push(owner);
+    }
+    if (released.length) {
+      softBudgetPending = false;
+      enforceSoftResidencyBudgets();
     }
     return Object.freeze(released);
   }
@@ -440,7 +444,10 @@ export function createAssetResidencyRegistry(options = {}) {
       releaseOwner(owner, reason, true);
       released.push(owner);
     }
-    if (released.length) yield* enforceSoftResidencyBudgetsSteps();
+    if (released.length || softBudgetPending) {
+      softBudgetPending = false;
+      yield* enforceSoftResidencyBudgetsSteps();
+    }
     return Object.freeze(released);
   }
 
@@ -468,7 +475,11 @@ export function createAssetResidencyRegistry(options = {}) {
     });
     evictIfUnowned(entry, reason);
     cleanupOwnerState(state);
-    enforceSoftResidencyBudgets();
+    // K releases in one drain used to pay K x O(assets) census+sort inline —
+    // mark demand and let the paced residency service run the stepped
+    // enforcement. Small worlds keep the inline path (the census is free).
+    if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
+    else softBudgetPending = true;
     return true;
   }
 
@@ -601,6 +612,11 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     return true;
   }
+
+  // Demand flag for the amortized release() path — set when the byte census is
+  // deferred to the paced service's stepped enforcement; cleared when it runs.
+  let softBudgetPending = false;
+  const SOFT_BUDGET_INLINE_MAX = 128;
 
   // Inline byte caps on soft residency, enforced at release and soft-retain time: the idle sweep
   // only reclaims entries older than its minAge gate, so a burst of departures or scopeless

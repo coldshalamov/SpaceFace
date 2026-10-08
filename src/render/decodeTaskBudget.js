@@ -359,6 +359,13 @@ function drainGltfParseQueue() {
     }
     if (!task) break;
     if (task.token) gltfParseEntries.delete(task.token);
+    // A departed owner's queued parse must not burn one of the frame's parse
+    // slots (or the whole GLTF_PARSE_FRAME_MS span) ahead of live entries —
+    // the compile tail's consumer-liveness consult, one stage earlier.
+    if (typeof task.isLive === 'function' && !task.isLive()) {
+      task.resolve(null);
+      continue;
+    }
     ran += 1;
     // Run inside the drain: a synchronous scene-graph build (parseAsync — the
     // roster-warm burst class the count cap was minted for) pays inside this
@@ -380,7 +387,20 @@ function drainGltfParseQueue() {
           notePacedFrameSpend(tail);
           if (forcedRun) noteForcedFrameSpend(tail);
         }
+        const continuationStart = tail > 24 ? now() : 0;
         task.resolve(value);
+        // A settle landing in a later presented frame skips the same-frame
+        // debit, but the consumer continuation it unblocks (package tail,
+        // retain, commit) still does sync work inside this microtask
+        // checkpoint — measure that window against the landing frame.
+        if (continuationStart) queueMicrotask(() => {
+          const spent = now() - continuationStart;
+          if (spent > 0) {
+            const forced = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+            notePacedFrameSpend(spent);
+            if (forced) noteForcedFrameSpend(Math.min(spent, FORCED_FRAME_BUDGET_MS));
+          }
+        });
       }, (error) => {
         const tail = now() - tailStart;
         if (tail > 0 && tail <= 24) {
@@ -406,11 +426,11 @@ function drainGltfParseQueue() {
   else gltfParseDrainScheduled = false;
 }
 
-export function scheduleGltfParse(fn, token = null) {
+export function scheduleGltfParse(fn, token = null, isLive = null) {
   if (typeof requestAnimationFrame !== 'function') return Promise.resolve().then(fn);
   return new Promise((resolve, reject) => {
     const lane = gltfParseLaneFor(activeDecodeClass());
-    const entry = { fn, resolve, reject, token };
+    const entry = { fn, resolve, reject, token, isLive };
     lane.push(entry);
     if (token) gltfParseEntries.set(token, { entry, lane });
     if (gltfParseDrainScheduled) return;
@@ -515,7 +535,20 @@ function drainGltfCompileQueue() {
         if (tail > 0 && tail <= 24) {
           notePacedFrameSpend(tail);
           if (forcedRun) noteForcedFrameSpend(tail);
+          return;
         }
+        // Late settle: the wait isn't spend, but the consumer continuation
+        // this settle unblocks still lands in this frame's microtask
+        // checkpoint — measure that window (same contract as the parse drain).
+        const continuationStart = now();
+        queueMicrotask(() => {
+          const spent = now() - continuationStart;
+          if (spent > 0) {
+            const forced = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+            notePacedFrameSpend(spent);
+            if (forced) noteForcedFrameSpend(Math.min(spent, FORCED_FRAME_BUDGET_MS));
+          }
+        });
       });
       task.resolve(out);
     } catch (error) { task.reject(error); }

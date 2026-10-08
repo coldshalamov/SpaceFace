@@ -56,6 +56,10 @@ const env = {
   // ownerActive, so a real staleness verdict must never trigger — null keeps the
   // production run on its live path exactly as pre-W116.
   staleAuthoredRunVerdict: () => null,
+  // Commit-tail pacing yields resolve on a microtask here: the fixture only
+  // asserts prefetch/decode interleave order, so a real present-boundary wait
+  // would only delay the same assertions.
+  composeYield: async () => {},
   registerPreparedAuthoredAdmission: noop,
   prepareAuthoredShipVisualPipelines: async () => ({}),
   commitAuthoredBoundary: async () => true,

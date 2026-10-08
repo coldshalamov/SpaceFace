@@ -46,3 +46,23 @@ export function dedupError(site, ...args) {
   if (typeof console === 'undefined' || !console.error) return;
   dedup(site, 'error', args);
 }
+
+// Lane-fault rollup — shared home so non-renderer modules (partsLibrary
+// teardown twins, systems) stamp the same `state.render.laneFaults` ledger the
+// hitches parking logic and audit probes read, without importing renderer.js.
+export function serviceFaultEpoch(state) {
+  const st = state || {};
+  const enter = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
+  return `${enter == null ? 'x' : enter}|${Number(st.contextRestoreSeq) || 0}`;
+}
+
+export function noteLaneFault(state, lane, parked = false) {
+  const render = state && state.render;
+  if (!render) return;
+  const rollup = render.laneFaults || (render.laneFaults = {});
+  const row = rollup[lane] || (rollup[lane] = { faults: 0, parkedEpoch: null, lastAt: 0 });
+  row.faults += 1;
+  if (parked === true) row.parkedEpoch = serviceFaultEpoch(state);
+  row.lastAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now();
+}
