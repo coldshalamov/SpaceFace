@@ -21,7 +21,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
-import { distressCallCue, mineDetonationCue, playAdmittedEarCue } from './combatFeedbackEar.js';
+import { distressCallCue, mineDetonationCue, playAdmittedEarCue, wardedShotCue } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -2419,6 +2419,13 @@ export const audio = {
     bus.on('mines:detonated', (p) => playAdmittedEarCue(
       this,
       mineDetonationCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // combat:warded had no listener. The hull hit on the same tick is the damage
+    // voice; this pop is the catch — one per escort, not a beam's machine-gun.
+    bus.on('combat:warded', (p) => playAdmittedEarCue(
+      this,
+      wardedShotCue(p),
       this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
     ));
     bus.on('massline:releaseCancelled', () => this.play(combatVerbRecipe('massline:releaseCancelled'), { gain: 0.28 }));
