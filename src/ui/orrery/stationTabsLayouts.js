@@ -1136,6 +1136,7 @@ ${T} .sx-bar__keys { padding-left:44px !important; }
 /* one target per lead: the title at full width with its price as a reading; the verb answers the current row */
 ${T} .sx-lead { grid-template-columns:minmax(0, 1fr) auto !important; column-gap:12px !important; position:relative !important; }
 ${T} .sx-lead__t { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+${T} .sx-lead__t .sf-entity-link { white-space:normal !important; }
 ${T} .sx-lead__go { position:absolute !important; right:0; top:50%; transform:translateY(-50%); opacity:0; pointer-events:none; }
 ${T} .sx-lead:is(:hover, :focus-within) .sx-lead__go { opacity:1; pointer-events:auto; }
 ${T} .sx-lead:is(:hover, :focus-within) .sx-lead__s { visibility:hidden; }
