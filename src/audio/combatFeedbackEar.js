@@ -104,3 +104,27 @@ export function playAdmittedEarCue(host, cue, nowTick) {
     rate: Number.isFinite(cue.rate) ? cue.rate : undefined,
   });
 }
+
+/**
+ * The breath after a fight. Shallower than a death or a capital kill so the
+ * roar still owns those moments; deep enough that the room drops.
+ */
+export const AFTERMATH_HUSH = Object.freeze({
+  depth: 0.42,
+  attackS: 0.2,
+  holdS: 0.85,
+  releaseS: 1.35,
+});
+
+/**
+ * One hush per silence window. A later kill inside the same window (now still
+ * before the recorded until) does not restart the breath.
+ */
+export function admitAftermathHush(book, until, nowSim) {
+  const end = Number(until);
+  const now = Number(nowSim);
+  if (!book || !Number.isFinite(end) || !Number.isFinite(now)) return false;
+  if (Number.isFinite(book.until) && now < book.until) return false;
+  book.until = end;
+  return true;
+}

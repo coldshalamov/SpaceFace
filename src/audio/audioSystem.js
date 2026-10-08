@@ -21,7 +21,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
-import { distressCallCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue } from './combatFeedbackEar.js';
+import { AFTERMATH_HUSH, distressCallCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, admitAftermathHush } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -1154,6 +1154,10 @@ export const HUSH = Object.freeze({
   death:     Object.freeze({ depth: 0.05, attackS: 0.55,  holdS: 1.40, releaseS: 2.40 }),
   // FB-082 — the best moment. Same floor as a capital kill, a slower open, a steep return.
   stunt:     Object.freeze({ depth: 0.07, attackS: 0.35,  holdS: 0.28, releaseS: 0.45 }),
+  // Post-combat breath. The bark director already stops flavor chatter; this is
+  // the room dropping so that silence is something you hear. Shallower than a
+  // capital kill, so a reactor hush is not replaced by it.
+  aftermath: AFTERMATH_HUSH,
   fullWu: 420,   // inside this the hush is full strength
   farWu: 0,      // 0 -> fall back to D_FAR (world-hearing edge)
 });
@@ -2436,6 +2440,16 @@ export const audio = {
       miningNoiseDangerCue(p),
       this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
     ));
+    // barkDirector:silence had zero listeners. One breath per silence window —
+    // a second kill inside it does not restart the drop.
+    bus.on('barkDirector:silence', (p) => {
+      const rt = this.rt;
+      if (!rt || !p) return;
+      const now = Number(this.state && this.state.simTime) || 0;
+      const book = rt._aftermathHush || (rt._aftermathHush = {});
+      if (!admitAftermathHush(book, p.until, now)) return;
+      this._triggerHush({ kind: 'aftermath' });
+    });
     bus.on('massline:releaseCancelled', () => this.play(combatVerbRecipe('massline:releaseCancelled'), { gain: 0.28 }));
     bus.on('weapons:momentumSinkPlanted', () => this.play(combatVerbRecipe('weapons:momentumSinkPlanted'), { gain: 0.4 }));
     bus.on('weapons:momentumSinkReleased', () => this.play(combatVerbRecipe('weapons:momentumSinkReleased'), { gain: 0.35 }));
