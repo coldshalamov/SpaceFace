@@ -14,7 +14,7 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { activeDecodeClass, deadlineDecodeActive, DECODE_CLASS_RANK, regradeGltfCompile, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
+import { activeDecodeClass, deadlineDecodeActive, DECODE_CLASS_RANK, regradeGltfCompile, regradeGltfParse, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
 import { createRenderPackageLoader, disposeDecodedResources, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import { loadMotionBank } from './authoredMotion.js';
 import {
@@ -726,8 +726,8 @@ export async function loadAuthoredPart(url, options = {}) {
   }
 
   const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
-    (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf))
-      : () => loadGltfDocument(url, runtime.gltf))()
+    (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf, undefined, task))
+      : () => loadGltfDocument(url, runtime.gltf, undefined, task))()
       .then((gltf) => {
         if (admission.signal.aborted) disposeDecodedResources(gltf);
         admission.assertActive();
@@ -805,6 +805,10 @@ export async function loadAuthoredPart(url, options = {}) {
       // pending (unsettled until the compile resolves), so re-grade the queued entry too. A tail
       // not yet enqueued reads this join's class when it schedules.
       regradeGltfCompile(task, joinClass);
+      // The parse start one stage earlier lanes by enqueue class too — a
+      // joiner's parse queued ambient would still sit behind every ambient
+      // warm even after its compile tail re-grades.
+      regradeGltfParse(task, joinClass);
     }
     (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
   }
@@ -2271,9 +2275,9 @@ export function hasNonEmptyWholeShipHullBody(hullTriangles) {
   return Number.isFinite(hullTriangles) && hullTriangles > 0;
 }
 
-export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch) {
+export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch, parseToken = null) {
   if (!isWholeShipUrl(url) || typeof fetchImpl !== 'function' || typeof loader?.parseAsync !== 'function') {
-    const gltf = await scheduleGltfParse(() => loader.loadAsync(url));
+    const gltf = await scheduleGltfParse(() => loader.loadAsync(url), parseToken);
     // The dedupe's texture walk + source bookkeeping is synchronous — pace it through the
     // class lanes so a parse-cluster burst can't stack several walks in one microtask drain.
     // Its async digests already yield off-main.
@@ -2290,7 +2294,7 @@ export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch
   const gltf = parseGlbJson(bytes);
   const errors = validateWholeShipJsonDocument(url, gltf);
   if (errors.length) throw new AssetContractError(url, errors);
-  const parsed = await scheduleGltfParse(() => loader.parseAsync(buffer, assetBasePath(url)));
+  const parsed = await scheduleGltfParse(() => loader.parseAsync(buffer, assetBasePath(url)), parseToken);
   await scheduleGltfCompile(() => dedupeGltfTextureSources(parsed), activeDecodeClass());
   return parsed;
 }

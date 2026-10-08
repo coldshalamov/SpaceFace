@@ -289,7 +289,16 @@ export function withVisibleDecodeClass(fn) {
 // are no frames to protect.
 const GLTF_PARSE_FRAME_LIMIT = 2;
 const GLTF_PARSE_FRAME_MS = 4;
-const gltfParsePending = [];
+// The parse start paces through the same three-class lanes the compile tail
+// one stage later uses — a flat FIFO let an ambient warm decode sit ahead of
+// a visible pop-in's parseAsync, inverting the order the downstream compile
+// lanes exist to enforce (a parse re-graded visible downstream could never
+// pass the ambient parses queued in front of it).
+const gltfParsePending = { visible: [], deadline: [], ambient: [] };
+// token -> { entry, lane } for entries still queued — a deadline/visible
+// joiner re-grades a parse whose start already enqueued at a lower class
+// (mirrors regradeGltfCompile's queued-waiter move one stage later).
+const gltfParseEntries = new WeakMap();
 let gltfParseDrainScheduled = false;
 // Frames skipped in a row because another paced slicer already spent the
 // frame's JS budget — the same aging contract the compile drain keeps: a
@@ -311,6 +320,12 @@ function armFrameDrain(callback) {
   };
   requestAnimationFrame(fire);
   setTimeout(fire, 48);
+}
+
+function gltfParseLaneFor(decodeClass) {
+  return decodeClass === 'visible' ? gltfParsePending.visible
+    : decodeClass === 'deadline' ? gltfParsePending.deadline
+      : gltfParsePending.ambient;
 }
 
 function drainGltfParseQueue() {
@@ -335,17 +350,45 @@ function drainGltfParseQueue() {
   const start = now();
   let ran = 0;
   // Count floor preserved (<=2 starts per arm); the ms box drops a second
-  // start when the first parse already spent the frame's budget.
+  // start when the first parse already spent the frame's budget. Lanes drain
+  // in strict visible > deadline > ambient order inside the same box.
   while (ran < GLTF_PARSE_FRAME_LIMIT && (ran === 0 || now() - start < GLTF_PARSE_FRAME_MS)) {
-    const task = gltfParsePending.shift();
+    let task = null;
+    for (const lane of [gltfParsePending.visible, gltfParsePending.deadline, gltfParsePending.ambient]) {
+      if (lane.length) { task = lane.shift(); break; }
+    }
     if (!task) break;
+    if (task.token) gltfParseEntries.delete(task.token);
     ran += 1;
     // Run inside the drain: a synchronous scene-graph build (parseAsync — the
     // roster-warm burst class the count cap was minted for) pays inside this
-    // measured span; genuinely-async tails (network loads) settle on their
-    // own fetch timing exactly as before.
+    // measured span. fn()'s returned promise can ALSO carry same-frame work —
+    // parseAsync's bufferView resolve + object-graph build settles in the
+    // microtask checkpoint right after this drain — so the settle debit below
+    // measures the tail that lands unmeasured otherwise (a resolved async
+    // task frees its lane but its tail still ran this frame).
     try {
-      Promise.resolve(task.fn()).then(task.resolve, task.reject);
+      const out = task.fn();
+      const tailStart = now();
+      // Same-frame gate: only a settle inside this frame's microtask
+      // checkpoint counts its tail — a genuinely-async settle (network
+      // fetch landing frames later) would otherwise debit its whole
+      // multi-frame span into whichever frame it lands in.
+      Promise.resolve(out).then((value) => {
+        const tail = now() - tailStart;
+        if (tail > 0 && tail <= 24) {
+          notePacedFrameSpend(tail);
+          if (forcedRun) noteForcedFrameSpend(tail);
+        }
+        task.resolve(value);
+      }, (error) => {
+        const tail = now() - tailStart;
+        if (tail > 0 && tail <= 24) {
+          notePacedFrameSpend(tail);
+          if (forcedRun) noteForcedFrameSpend(tail);
+        }
+        task.reject(error);
+      });
     } catch (error) {
       task.reject(error);
     }
@@ -357,18 +400,46 @@ function drainGltfParseQueue() {
   }
   // The tail must keep draining without a new push — re-arm while items remain
   // (the flag stays latched so pushes during the drain just enqueue).
-  if (gltfParsePending.length) armFrameDrain(drainGltfParseQueue);
+  if (gltfParsePending.visible.length
+      || gltfParsePending.deadline.length
+      || gltfParsePending.ambient.length) armFrameDrain(drainGltfParseQueue);
   else gltfParseDrainScheduled = false;
 }
 
-export function scheduleGltfParse(fn) {
+export function scheduleGltfParse(fn, token = null) {
   if (typeof requestAnimationFrame !== 'function') return Promise.resolve().then(fn);
   return new Promise((resolve, reject) => {
-    gltfParsePending.push({ fn, resolve, reject });
+    const lane = gltfParseLaneFor(activeDecodeClass());
+    const entry = { fn, resolve, reject, token };
+    lane.push(entry);
+    if (token) gltfParseEntries.set(token, { entry, lane });
     if (gltfParseDrainScheduled) return;
     gltfParseDrainScheduled = true;
     armFrameDrain(drainGltfParseQueue);
   });
+}
+
+/**
+ * Re-grade a queued parse start to `decodeClass` when a live joiner outranks the
+ * class it enqueued under. The entry moves to the HEAD of the target lane: its
+ * owner is already on the player's deadline, strictly ahead of earlier
+ * same-class speculative work. A started entry returns false — the caller's
+ * flag window already raises the class of anything still to enqueue.
+ */
+export function regradeGltfParse(token, decodeClass) {
+  const rec = gltfParseEntries.get(token);
+  if (!rec) return false;
+  const target = gltfParseLaneFor(decodeClass);
+  if (rec.lane === target) return true;
+  const idx = rec.lane.indexOf(rec.entry);
+  if (idx === -1) {
+    gltfParseEntries.delete(token);
+    return false;
+  }
+  rec.lane.splice(idx, 1);
+  target.unshift(rec.entry);
+  rec.lane = target;
+  return true;
 }
 
 // The symmetric hazard sits one stage later: worker/parse replies resolve in clusters, so a
@@ -432,7 +503,22 @@ function drainGltfCompileQueue() {
     }
     if (!task) break;
     ran += 1;
-    try { task.resolve(task.fn()); } catch (error) { task.reject(error); }
+    // Same settle-time accounting as the parse drain: a compile fn that
+    // returns a promise (preparePackageTail's awaited internals) still runs
+    // its tail in this frame's microtask checkpoint — the sync-prefix ms box
+    // can't see it, so the settle debit counts it where it lands.
+    try {
+      const out = task.fn();
+      const tailStart = now();
+      Promise.resolve(out).then(() => {
+        const tail = now() - tailStart;
+        if (tail > 0 && tail <= 24) {
+          notePacedFrameSpend(tail);
+          if (forcedRun) noteForcedFrameSpend(tail);
+        }
+      });
+      task.resolve(out);
+    } catch (error) { task.reject(error); }
   }
   const elapsed = now() - start;
   notePacedFrameSpend(elapsed);
