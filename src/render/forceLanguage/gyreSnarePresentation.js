@@ -546,8 +546,15 @@ export class GyreSnarePresentation {
     // at clumpRadius + memberRadius + absorbEpsilonWu, so the lump pops in where the
     // body actually vanished — a capped ball doesn't teleport the meal ~16 wu inward.
     const touch = finite(this._clumpRadius) + finite(member.radius, 0) + GYRE_SNARE.absorbEpsilonWu;
-    slot.fromX = finite(member.nx, 0) * touch;
-    slot.fromZ = finite(member.nz, 0) * touch;
+    if (instant) {
+      // A rebuild isn't a meal: seed the fly-in at the seat itself so the same
+      // ball doesn't visibly re-travel from its rim (a phantom meal).
+      slot.fromX = m.position.x;
+      slot.fromZ = m.position.z;
+    } else {
+      slot.fromX = finite(member.nx, 0) * touch;
+      slot.fromZ = finite(member.nz, 0) * touch;
+    }
     slot.bobPhase = i * 2.39;
     slot.bobRate = 1.15 + ((i * 0.61803398875) % 1) * 0.9;
     // Loose zero-G debris also TUMBLES — a slow per-lump spin rate staggered on the
@@ -721,6 +728,12 @@ export class GyreSnarePresentation {
       // the coil + burst instead of relaxing back to the weaker beaming floor.
       const tense = holding || phase === 'launching';
       const strain = clamp01(finite(mirror.strain01));
+      // strain01 hard-zeroes at the LAUNCH flip by sim contract (pinned). Rather
+      // than popping the amber off in one frame, the warn channels ride a ~100 ms
+      // decayed copy: follows raw strain while held, fades through the close.
+      if (holding) this._strainVis = strain;
+      else this._strainVis = (this._strainVis || 0) * Math.exp(-sdt * 10);
+      const strainW = Math.max(strain, this._strainVis || 0);
       // The capacitor dying thins the glass itself — a lash <8 s from dry fades up to
       // 30% in-world, not just in the pill (same telegraph language as the ball's ·Ns).
       const fuseS = finite(mirror.fuseS);
@@ -753,15 +766,15 @@ export class GyreSnarePresentation {
       // back, legible at combat range where a subtle maw choke alone was too quiet.
       this._coneMat.uniforms.uPulse.value = Math.max(
         this._coneMat.uniforms.uPulse.value * Math.exp(-sdt * 6.3),
-        strain * 0.7,
+        strainW * 0.7,
         windup * 0.55, // coil tension: the glass winds up with the spring
         massFrac * 0.1, // payload tension: a loaded lash thrums higher than an empty one
       );
       // uStrain (hue warn) keeps RAW strain — a color read is not motion, so
       // reduced-motion must not mute the 'about to tear' telegraph. uTremble
       // (vertex shiver) is the motion term — that one IS calm-gated.
-      this._coneMat.uniforms.uStrain.value = strain;
-      this._coneMat.uniforms.uTremble.value = strain * calm;
+      this._coneMat.uniforms.uStrain.value = strainW;
+      this._coneMat.uniforms.uTremble.value = strainW * calm;
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
@@ -810,12 +823,12 @@ export class GyreSnarePresentation {
       // contradicts the telegraph the cone is making.
       // `spent` joins the lash's LAUNCH dim so the mouth fades with the glass it sits on
       // through the post-thrownBeat burst instead of glowing on a dead funnel.
-      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + massFrac * 0.08 + strain * 0.3 + this._discKick * 0.35) * spent * flashCalm * fuseDim * wakeEase);
+      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + massFrac * 0.08 + strainW * 0.3 + this._discKick * 0.35) * spent * flashCalm * fuseDim * wakeEase);
       // The tear happens AT the mouth — the chromatic warn the cone washes
       // rim-ward lands on its brightest element too, not just the glass skin:
       // ring + disc warm toward amber as the clump nears slipping.
-      this._mawMat.color.copy(this._colHot).lerp(this._colWarn, strain * 0.6);
-      this._discMat.uniforms.uCol.value.copy(this._colMaw).lerp(this._colWarn, strain * 0.6);
+      this._mawMat.color.copy(this._colHot).lerp(this._colWarn, strainW * 0.6);
+      this._discMat.uniforms.uCol.value.copy(this._colMaw).lerp(this._colWarn, strainW * 0.6);
       // Net anticipation: absorbables already inside the cone make the mouth glow
       // brighter before the catch — "×N IN NET" through the glass itself.
       const net = Math.min(3, finite(mirror.basinCount, 0));
@@ -833,7 +846,7 @@ export class GyreSnarePresentation {
       // so the spiral's metronome pace would otherwise betray the about-to-tear read.
       // `spent` slows the funnel with the glass it feeds — a dead lane that still
       // inhales at full gulp speed through the ~0.2 s LAUNCH betrays the thrown read.
-      if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strain * 1.5) * spent;
+      if (calm !== 0) this._moteT += sdt * (1 + this._moteKick * 1.8 + net * 0.45 + strainW * 1.5) * spent;
       this._spiralMat.uniforms.uTime.value = this._moteT;
       this._spiralMat.uniforms.uLen.value = drawLen;
       this._spiralMat.uniforms.uRad.value = endR * spent; // the funnel narrows with the spent lash
@@ -862,7 +875,10 @@ export class GyreSnarePresentation {
         }
       } else {
         aimT.set(0, 0, 0);
-        this._leanZ = 0;
+        // Decay, not zero — uAim eases back over ~0.1 s and a hard-zeroed leanZ
+        // snapped the maw/disc to center in one frame while the funnel still
+        // visibly unbent.
+        this._leanZ = (this._leanZ || 0) * Math.exp(-sdt * 8);
       }
       this._spiralMat.uniforms.uAim.value.lerp(aimT, 1 - Math.exp(-sdt * 8));
       // The drawn vortex stirs the way the sim's basin actually does — swirlBlend is
@@ -1145,6 +1161,10 @@ export class GyreSnarePresentation {
           }
           _t1 = {
             x: mirror.ballPos.x, z: mirror.ballPos.z, dx, dz,
+            // vl rides the literal too — _drawTrail stall-hides and length-scales
+            // off it, and dropping it pinned the primary's ribbon at the 6 wu stub
+            // while a same-speed secondary drew the full streak.
+            vl,
             r: finite(mirror.ballClumpRadius, this._clumpRadius),
             ttl01: mirror.ballTtl01, mass: mirror.ballMass,
             // The coil retracts the ribbon (wind), but the burst RE-GROWS it:

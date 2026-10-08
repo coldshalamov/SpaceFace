@@ -1293,7 +1293,11 @@ export function createGamepad(ctx) {
         slam,
         gyreStrain: gyre && gyre.phase === 'holding'
           ? Math.max(clamp01(Number(gyre.strain01) || 0),
-            clamp01((Number(gyre.clumpMass) || 0) / Math.max(1, Number(gyre.maxClumpMass) || 1)) * 0.35)
+            // Mass floor scaled by strain: an uncapped calm capped-moon hold used to
+            // buzz 0.35 for minutes — now rests ~0.17 and swells back to 0.35 as the
+            // lash actually nears tearing.
+            clamp01((Number(gyre.clumpMass) || 0) / Math.max(1, Number(gyre.maxClumpMass) || 1))
+              * 0.35 * (0.5 + 0.5 * clamp01(Number(gyre.strain01) || 0)))
           : 0,
         pulse,
         haptics: level,
