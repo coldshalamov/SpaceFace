@@ -232,6 +232,7 @@ export class GyreSnarePresentation {
     this._clumpRadius = 0;
     this._discKick = 0;
     this._wakeRamp = 1;      // 0→1 over ~150 ms on the OFF→beam edge — the glass "opens" with the shimmer
+    this._wakeEase = 0;      // smoothstep'd ramp — read outside the beam block by the basin-glow pool
     this._beamWasOn = false;
     this._closing = false;   // close-ramp: non-launch ends ease the glass out over ~250 ms
     this._closeT = 0;
@@ -670,7 +671,9 @@ export class GyreSnarePresentation {
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.4);
       }
       this._wakeRamp = Math.min(1, this._wakeRamp + sdt / 0.15);
-      const wakeEase = this._wakeRamp * this._wakeRamp * (3 - 2 * this._wakeRamp); // smoothstep
+      // Member, not a block local: the basin-glow pool lives past this block's
+      // brace — a const here threw ReferenceError on every frame a spot existed.
+      const wakeEase = this._wakeEase = this._wakeRamp * this._wakeRamp * (3 - 2 * this._wakeRamp); // smoothstep
       // The beam projects: the glass GROWS nose→maw over the ignition ramp instead
       // of fading in already-extended — a lash that shoots out to its reach.
       const drawLen = len * Math.max(0.12, wakeEase);
@@ -965,7 +968,7 @@ export class GyreSnarePresentation {
       // and warms toward rim-hot in hue, so 'about to be grabbed' reads at a glance.
       // wakeEase gates them too: the sim's pull is live on frame one but the glass
       // takes ~150 ms to project — glows must not outrun the drawn rim.
-      g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * wakeEase * (this._fuseDim || 1);
+      g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * this._wakeEase * (this._fuseDim || 1);
       g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
       // The strongest ABSORBABLE puller burns hottest — the rock about to cross
       // snagRadius. A courtesy-tugged pickup/mine/projectile can top the k sort
