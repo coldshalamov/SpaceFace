@@ -135,6 +135,19 @@ export function handlineSenseLine(eventName, payload) {
     if (p.risk !== 'high') return null;
     return { key: 'pump-hot', name: 'PUMP HOT', detail: '' };
   }
+  // Three seams that were emitted and never reached a player sense.
+  if (eventName === 'massline:bridleCut') {
+    return { key: 'bridle-cut', name: 'BRIDLE CUT', detail: '' };
+  }
+  if (eventName === 'well:fling') {
+    if (p.primed !== true) return null;
+    return { key: 'well-fling', name: 'FLING', detail: '' };
+  }
+  if (eventName === 'weapons:inertialShunt') {
+    const dv = Number.isFinite(p.targetDeltaV) ? Math.round(p.targetDeltaV) : null;
+    const id = p.targetId != null ? String(p.targetId) : 'shunt';
+    return { key: `shunt:${id}`, name: 'SHUNT', detail: dv == null ? '' : String(dv) };
+  }
   return impactGradeLine(eventName, p);
 }
 
@@ -687,6 +700,13 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       if (!calloutScope(getState())) return;
       speak(handlineSenseLine(eventName, payload));
     };
+    const onOwnedSense = (eventName, owns) => (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st)) return;
+      if (typeof owns === 'function' && !owns(st, payload || {})) return;
+      speak(handlineSenseLine(eventName, payload));
+    };
     unsubs.push(bus.on('massline:releaseWindow', onHandlineSense('massline:releaseWindow')));
     unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
     unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
@@ -695,6 +715,11 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('tether:reelPump', onHandlineSense('tether:reelPump')));
     unsubs.push(bus.on('tether:whipImpact', onHandlineSense('tether:whipImpact')));
     unsubs.push(bus.on('massline:sweepImpact', onHandlineSense('massline:sweepImpact')));
+    unsubs.push(bus.on('massline:bridleCut', onHandlineSense('massline:bridleCut')));
+    unsubs.push(bus.on('well:fling', onOwnedSense('well:fling', (st, payload) =>
+      payload.targetId === st.playerId || payload.victimId === st.playerId)));
+    unsubs.push(bus.on('weapons:inertialShunt', onOwnedSense('weapons:inertialShunt', (st, payload) =>
+      payload.shunterId === st.playerId || payload.targetId === st.playerId)));
     // SFQ-B033 — the status the player is wearing, and a bomb they primed, say the payoff.
     unsubs.push(bus.on('combat:statusApplied', (payload) => {
       if (destroyed) return;
