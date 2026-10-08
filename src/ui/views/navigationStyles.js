@@ -100,7 +100,7 @@ export const CSS = `
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 3;
+  z-index: 5;
   max-height: 50vh;
   overflow: hidden auto;
   scrollbar-width: thin;
@@ -164,12 +164,14 @@ export const CSS = `
 #sf-galaxymap .gm-scale-btn.is-current { color: var(--k-text-live); }
 #sf-galaxymap .gm-level b { color: var(--k-bone-62); }
 
-/* The control key: fine-print rows that drop from the corner word. */
+/* The control key: fine-print rows that drop from the corner word. The chart hub overlay (.gmh)
+   sits at z-index 4 and its pointer-enabled parts (the wire, toolbar) would otherwise intercept
+   clicks on the open popover — chrome popovers layer above it. */
 #sf-galaxymap .gm-hints {
   position: absolute;
   right: 0;
   top: 100%;
-  z-index: 3;
+  z-index: 5;
   width: min(44ch, 90vw);
   padding-top: var(--k-pad);
 }
