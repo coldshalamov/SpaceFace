@@ -22,6 +22,7 @@ import { createSpring } from './motion.js';
 import { createCounter } from './text.js';
 import { createSpeedDial, SPEED_DIAL } from './speedDial.js';
 import { nextFlightDecision, NEXT_DECISION_CLASS } from './nextDecision.js';
+import { ringLegendText } from './ringLegend.js';
 
 // The colour phase is decided by the displayed reading (speedDial.js owns it; the contract is pinned here).
 export { speedPhase } from './speedDial.js';
@@ -167,7 +168,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     svg('path', { d: `M ${hx} ${hy - 4.5} L ${hx} ${hy - 9} M ${hx - 4.5} ${hy} L ${hx - 8} ${hy} M ${hx + 4.5} ${hy} L ${hx + 8} ${hy}`, class: 'orr-core orr-phos', 'stroke-width': 1.2 }),
   );
   s.appendChild(driftPip);
-  s.appendChild(circularText(P.x, P.y, R.orbit + 9, `${String(name).toUpperCase()} · ${String(classLine).toUpperCase()}`, { startDeg: 160, size: 6.5, className: 'orr-micro', upright: true }));
+  const ringLegend = circularText(P.x, P.y, R.orbit + 9, ringLegendText({ defName: name, classLine }), { startDeg: 160, size: 6.5, className: 'orr-micro', upright: true });
+  s.appendChild(ringLegend);
+  let ringLegendShown = ringLegendText({ defName: name, classLine });
 
   // ---- the ring stack ----------------------------------------------------------------------------
   const shield = arcGauge({ cx: P.x, cy: P.y, r: R.shield, from: GAUGE_FROM, to: GAUGE_TO, width: 3.2, tone: 'phos', segments: 18, segmentGap: 2.4 });
@@ -497,10 +500,24 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     setTimeout(() => root.classList.remove('is-arriving'), 1500);
   }
 
+  function setRingLegend(next = {}) {
+    const text = ringLegendText({
+      defName: next.defName != null ? next.defName : name,
+      classLine: next.classLine != null ? next.classLine : classLine,
+      customName: next.customName,
+    });
+    if (text === ringLegendShown) return text;
+    ringLegendShown = text;
+    const path = textPathOf(ringLegend);
+    if (path) path.textContent = text;
+    return text;
+  }
+
   return {
     el: root,
     update,
     arrive,
+    setRingLegend,
     dispose() {
       for (const g of [shield, armor, hull, energy, heat, strain, dial]) g.dispose();
       handSpring.stop();
@@ -510,3 +527,19 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
 }
 
 export const CLUSTER_GEOMETRY = Object.freeze({ W, H, P, R });
+
+function textPathOf(node) {
+  if (!node) return null;
+  if (typeof node.querySelector === 'function') {
+    const found = node.querySelector('textPath');
+    if (found) return found;
+  }
+  const kids = node.children || node.childNodes || [];
+  for (const child of kids) {
+    const tag = String(child.localName || child.tagName || '').toLowerCase();
+    if (tag === 'textpath') return child;
+    const nested = textPathOf(child);
+    if (nested) return nested;
+  }
+  return null;
+}

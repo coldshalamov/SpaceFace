@@ -183,7 +183,7 @@ const HOST_CSS = `
  * `slow` gates the ordnance read (it scans charges) to the HUD's slow clock; everything else is
  * guarded by the Cluster's own change detection, so a settled frame writes nothing.
  */
-export function mountOrreryCluster(root, state, { bindings = null } = {}) {
+export function mountOrreryCluster(root, state, { bindings = null, bus = null } = {}) {
   if (!root || typeof document === 'undefined') return null;
   injectOrrery();
   if (!document.getElementById('sf-orrery-hud-host')) {
@@ -195,12 +195,15 @@ export function mountOrreryCluster(root, state, { bindings = null } = {}) {
   const player = state && state.entities && typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null;
   const defId = (player && player.data && (player.data.defId || player.data.shipId)) || 'ship_kestrel';
   const def = SHIP_BY_ID.get(defId);
+  const defName = (def && def.name) || 'Hull';
+  const classLine = `${def && def.role ? def.role : 'hull'} · tier ${def && Number.isFinite(def.tier) ? def.tier : 0}`;
+  const customName = customNameForActiveHull(state);
   const host = document.createElement('div');
   host.className = 'orr-hud-cluster';
   const cluster = createFlightCluster({
     shipId: defId,
-    name: (def && def.name) || 'Hull',
-    classLine: `${def && def.role ? def.role : 'hull'} · tier ${def && Number.isFinite(def.tier) ? def.tier : 0}`,
+    name: customName || defName,
+    classLine,
     groups: buildOrdnanceGroups(bindings),
     // before anything is engaged the Hand rests on the Line: the game's signature verb
     restSlot: String(REST_SLOT_INDEX),
@@ -213,6 +216,14 @@ export function mountOrreryCluster(root, state, { bindings = null } = {}) {
   const tracker = createCooldownTracker();
   let ordnance = null;
   let ceiling = null;
+  let offName = null;
+  if (bus && typeof bus.on === 'function' && typeof cluster.setRingLegend === 'function') {
+    offName = bus.on('ship:nameChanged', (payload = {}) => {
+      const active = activeHullIndex(state);
+      if (payload.shipIndex != null && Number(payload.shipIndex) !== active) return;
+      cluster.setRingLegend({ defName, classLine, customName: payload.name || '' });
+    });
+  }
   return {
     host,
     update(liveState, p, slow) {
@@ -222,6 +233,24 @@ export function mountOrreryCluster(root, state, { bindings = null } = {}) {
       const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling });
       if (model) cluster.update(model);
     },
-    dispose() { cluster.dispose(); host.remove(); removeSkin(); if (root.dataset.hud === 'orrery') delete root.dataset.hud; },
+    dispose() {
+      if (typeof offName === 'function') { try { offName(); } catch (_) {} }
+      cluster.dispose();
+      host.remove();
+      removeSkin();
+      if (root.dataset.hud === 'orrery') delete root.dataset.hud;
+    },
   };
+}
+
+function activeHullIndex(state) {
+  const player = state && state.player;
+  const index = Number(player && player.activeShipIndex);
+  return Number.isFinite(index) ? index : 0;
+}
+
+function customNameForActiveHull(state) {
+  const player = state && state.player;
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips[activeHullIndex(state)] : null;
+  return owned && typeof owned.name === 'string' ? owned.name.trim() : '';
 }
