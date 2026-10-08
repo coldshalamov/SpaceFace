@@ -92,6 +92,9 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   const viewport = { width: 1, height: 1, left: 0, top: 0 };
   let viewportDirty = true;
   let viewportObserved = false;
+  // Consumed by the next repick: a layout invalidation (scroll/resize/observer) is a real
+  // layout change, not world sweep — the hover it produces is trusted immediately.
+  let viewportInvalidated = false;
   let viewportObserver = null;
 
   const picker = createWorldObjectPicker({
@@ -106,6 +109,11 @@ export function createWorldObjectInteraction(ctx, screenManager) {
 
   let hoverId = null;
   let hoverEntity = null;
+  // Hover latch state (see applyHoverPick): pick-rate subject swaps strobe the glow/nameplate
+  // while the world sweeps under a still cursor in fast flight.
+  let hoverCandidateId = null;
+  let hoverCandidateStreak = 0;
+  let hoverEmptySinceMs = 0;
   let gestureActive = false;
   let gestureTargetId = null;
   let hoverRootPublished = null;
@@ -208,6 +216,43 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   function setHover(entity) {
     hoverEntity = entity || null;
     hoverId = hoverEntity ? hoverEntity.id : null;
+    hoverCandidateId = null;
+    hoverCandidateStreak = 0;
+    hoverEmptySinceMs = 0;
+  }
+
+  // Hover latch: in fast flight the WORLD moves under a cursor that is still or drifting, so a
+  // raw per-repick swap strobes the hull glow and the nameplate between hulls (or in and out of
+  // hover) at pick rate. Micro-movement and idle-cadence picks go through the latch: a new
+  // subject must survive two consecutive picks before it is believed, an empty pick must persist
+  // 150 ms before the hover drops. A deliberate pointer jump (>6 px since the last pick) or the
+  // first pick of a session switches immediately — press-time picking is unaffected either way.
+  const HOVER_SWEEP_MOVE_PX = 6;
+  function applyHoverPick(entity, deliberateMove) {
+    if (deliberateMove) {
+      setHover(entity);
+      return;
+    }
+    const nextId = entity ? entity.id : null;
+    if (nextId === hoverId) {
+      hoverCandidateId = null;
+      hoverCandidateStreak = 0;
+      hoverEmptySinceMs = 0;
+      return;
+    }
+    if (nextId == null) {
+      if (!hoverEmptySinceMs) hoverEmptySinceMs = performance.now();
+      if (performance.now() - hoverEmptySinceMs >= 150) setHover(null);
+      return;
+    }
+    hoverEmptySinceMs = 0;
+    if (nextId === hoverCandidateId) {
+      hoverCandidateStreak += 1;
+      if (hoverCandidateStreak >= 2) setHover(entity);
+    } else {
+      hoverCandidateId = nextId;
+      hoverCandidateStreak = 1;
+    }
   }
 
   function hoverRoot() {
@@ -274,6 +319,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   function markViewportDirty() {
     if (destroyed) return;
     viewportDirty = true;
+    viewportInvalidated = true;
     // A layout change can move the body under a motionless cursor — bypass the idle
     // repick cadence so the next tick re-measures and raycasts fresh.
     repickIdleS = Infinity;
@@ -512,10 +558,14 @@ export function createWorldObjectInteraction(ctx, screenManager) {
         // observed path may sit out a repick.
         if (moved || !viewportObserved || repickIdleS >= 0.125) {
           repickIdleS = 0;
+          const deliberateMove = viewportInvalidated || lastRepickX == null
+            || Math.abs(pt.x - lastRepickX) > HOVER_SWEEP_MOVE_PX
+            || Math.abs(pt.y - lastRepickY) > HOVER_SWEEP_MOVE_PX;
+          viewportInvalidated = false;
           lastRepickX = pt.x;
           lastRepickY = pt.y;
           const hit = pickAt(pt);
-          setHover(hit && hit.entity ? hit.entity : null);
+          applyHoverPick(hit && hit.entity ? hit.entity : null, deliberateMove);
         }
       }
     }
