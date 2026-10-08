@@ -35,7 +35,7 @@ import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { invalidateShadowCasterPolicy } from './shadowCasterPolicy.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
-import { notePacedFrameSpend, pacedFrameSpend, PACED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
+import { notePacedFrameSpend, pacedFrameSpend, PACED_FRAME_BUDGET_MS, forcedFrameSpend, FORCED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
 import { createAsyncAdmission, AUTHORED_ASYNC_DEADLINE_MS } from './asyncAdmission.js';
 import {
   TABLE_BAND,
@@ -7410,8 +7410,12 @@ function admitNextUpgradeJob(state) {
       live.render && live.render.lastPresentDtMs,
       state.lateSkips,
     );
-    state.lateSkips = gate.skippedCount;
-    if (!gate.start) {
+    // A forced start still needs room on the forced wallet — the same consult
+    // the mesh-build gates carry. Forced-but-broke defers without resetting
+    // the streak, so the next consult re-earns the start at once.
+    const startAllowed = gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+    if (!startAllowed) {
+      if (!gate.start) state.lateSkips = gate.skippedCount;
       // A queued job whose owner sits on the readable glass is a hole in the
       // picture, not discretionary work: the late-present throttle exists to
       // keep background admissions off a struggling frame, and a body the
@@ -7421,6 +7425,8 @@ function admitNextUpgradeJob(state) {
         scheduleNextUpgradeFrame(state);
         return null;
       }
+    } else {
+      state.lateSkips = gate.skippedCount;
     }
   }
   state.jobs.sort((a, b) => {
@@ -13609,11 +13615,17 @@ function drivePoolAdmissionIfUnclaimed(admission, options) {
       live && live.render && live.render.lastPresentDtMs,
       poolAdmissionLateSkips,
     );
-    poolAdmissionLateSkips = gate.skippedCount;
-    if (!gate.start) {
+    // The consult and the spend are a yield apart, and the spend is a whole
+    // compile+touch pass — a forced start on an already-spent forced wallet
+    // re-arms the pump instead of paying it; the skip streak stays
+    // uncommitted so the next consult re-earns the start at once.
+    const startAllowed = gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+    if (!startAllowed) {
+      if (!gate.start) poolAdmissionLateSkips = gate.skippedCount;
       drivePoolAdmissionIfUnclaimed(admission, options);
       return;
     }
+    poolAdmissionLateSkips = gate.skippedCount;
     await prepareRenderPackagePoolAdmission(admission, options);
     activateRenderPackagePoolAdmission(admission);
   }).catch((error) => {

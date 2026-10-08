@@ -33,6 +33,7 @@ import {
 } from '../data/sectorVisualProfiles.js';
 import { DeepSkyPlateResidency, deepSkyPeakResidentBytes } from './deepSkyPlates.js';
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
+import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
 import {
   resolveDeepFieldStructureRecipe,
   sampleAuthoredWidth,
@@ -1870,8 +1871,15 @@ export class SpaceBackground {
     const lastPresentDtMs = this.state && this.state.render
       ? this.state.render.lastPresentDtMs : undefined;
     const gate = shouldStartHeavyAdmissionEventually(lastPresentDtMs, this._nebulaBakeSkips || 0);
+    // A forced start still needs room on the forced wallet: the whole-tile
+    // bake + program link must not land on a frame whose wallet is spent.
+    // Forced-but-broke keeps the pending flag and the streak uncommitted.
+    const startAllowed = gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+    if (!startAllowed) {
+      if (!gate.start) this._nebulaBakeSkips = gate.skippedCount;
+      return;
+    }
     this._nebulaBakeSkips = gate.skippedCount;
-    if (!gate.start) return;
     if (wantL1) this._ensureNebulaBake('L1');
     else if (wantL2) this._ensureNebulaBake('L2');
   }
@@ -2799,8 +2807,11 @@ export class SpaceBackground {
       const lastPresentDtMs = this.state && this.state.render
         ? this.state.render.lastPresentDtMs : undefined;
       const gate = shouldStartHeavyAdmissionEventually(lastPresentDtMs, this._wormholeBakeSkips || 0);
-      this._wormholeBakeSkips = gate.skippedCount;
-      if (!gate.start) {
+      // Forced-but-broke re-pends the spec exactly like !gate.start — the L1
+      // bake must not land inside a present whose forced wallet is spent.
+      const startAllowed = gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+      if (!startAllowed) {
+        if (!gate.start) this._wormholeBakeSkips = gate.skippedCount;
         this._deferredWormhole = spec;
         return;
       }

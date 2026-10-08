@@ -3684,6 +3684,7 @@ function driveHoldExemptDegrade(owner, state, sliceMs) {
         && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
       owner._holdExemptSyncTwinEpoch = degradeEpoch;
       noteLaneFault(state, 'holdExemptEnqueue', true);
+      const twinStart = clock();
       const frame = owner._activityFrame;
       const evaluator = makeHoldExemptMeshBuildEvaluator(
         state, frame && frame.renderGlassIds);
@@ -3693,7 +3694,6 @@ function driveHoldExemptDegrade(owner, state, sliceMs) {
       // drain repartition so the exempt front is hoisted on the next beat.
       const entities = Array.isArray(state.entityList) ? state.entityList.slice() : [];
       collectMeshPresentationEntities(state, entities);
-      const twinStart = clock();
       const twinOut = runCookSyncTwin('hold-exempt enqueue', () => {
         const built = enqueueMissingMeshBuilds(
           entities,
@@ -3856,198 +3856,214 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     }
   }
   let enqueued = 0;
-  for (;;) {
-    // The suspended spatial refill drives one segment per beat on the same
-    // slice clock; the collect mints the moment it completes inside a beat.
-    if (owner._holdExemptWarmIter) {
-      const warmIter = owner._holdExemptWarmIter;
-      let warmDone = false;
-      try {
-        warmDone = warmIter.next().done === true;
-      } catch (err) {
-        abandonHoldExemptCollect(owner);
-        owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
-        noteLaneFault(state, 'holdExemptStepped', true);
-        console.warn('[render] hold-exempt warm refill failed; parked until the next enter', err);
-        notePacedFrameSpend(now() - started);
-        return 0;
-      }
-      if (!warmDone) {
-        if (now() - started >= sliceMs
-            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
-        continue;
-      }
-      owner._holdExemptWarmIter = null;
-      const warmToleration = owner._holdExemptWarmToleration;
-      owner._holdExemptWarmToleration = null;
-      owner._holdExemptWarmEpoch = null;
-      owner._holdExemptCollectOut = [];
-      iterator = collectMeshPresentationEntitiesChunked(
-        state, owner._holdExemptCollectOut,
-        warmToleration === 'covered' ? { tolerateMiss: 'covered' } : { tolerateMiss: true });
-      owner._holdExemptCollectIter = iterator;
-      owner._holdExemptCollectEpoch = liveEpoch;
-    }
-    // The cycle's work counts come from each iterator's return value — the
-    // generators accumulate them across suspensions, so they describe the whole
-    // cycle no matter which invocation completes it.
-    let cycleEnqueued = 0;
-    let cycleKickStarted = 0;
-    if (iterator) {
-      let done = false;
-      for (;;) {
-        let step;
+  // One debit per invocation on every exit — the iterator catches below kept
+  // it honest, but a throw inside the abandon/ctx-mint spans escaped the
+  // ledger entirely (a faulted beat then recorded ~0 spend and the next beat
+  // started from a fuller wallet than it earned).
+  try {
+    for (;;) {
+      // The suspended spatial refill drives one segment per beat on the same
+      // slice clock; the collect mints the moment it completes inside a beat.
+      if (owner._holdExemptWarmIter) {
+        const warmIter = owner._holdExemptWarmIter;
+        let warmDone = false;
         try {
-          step = iterator.next();
+          warmDone = warmIter.next().done === true;
         } catch (err) {
-          // A throwing walk used to leave the closed iterator parked on the owner:
-          // the next beat read done and committed the partial out as if complete.
           abandonHoldExemptCollect(owner);
           owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
           noteLaneFault(state, 'holdExemptStepped', true);
-          console.warn('[render] hold-exempt collect drive failed; parked until the next enter', err);
+          console.warn('[render] hold-exempt warm refill failed; parked until the next enter', err);
           notePacedFrameSpend(now() - started);
           return 0;
         }
-        if (step.done) { done = true; break; }
-        if (now() - started >= sliceMs
-            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+        if (!warmDone) {
+          if (now() - started >= sliceMs
+              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+          continue;
+        }
+        owner._holdExemptWarmIter = null;
+        const warmToleration = owner._holdExemptWarmToleration;
+        owner._holdExemptWarmToleration = null;
+        owner._holdExemptWarmEpoch = null;
+        owner._holdExemptCollectOut = [];
+        iterator = collectMeshPresentationEntitiesChunked(
+          state, owner._holdExemptCollectOut,
+          warmToleration === 'covered' ? { tolerateMiss: 'covered' } : { tolerateMiss: true });
+        owner._holdExemptCollectIter = iterator;
+        owner._holdExemptCollectEpoch = liveEpoch;
       }
-      if (!done) break;
-    }
-    // The commit (enqueue + decode kick) used to run synchronously on the beat that
-    // completed the collect — two more whole-list walks paid inside one presented
-    // frame. Both phases now drive chunked iterators persisted on the owner. The
-    // commit keeps its own clock: sharing the collect's would starve it whenever the
-    // collect spends the whole slice (a heavy-sector hold would never land a single
-    // exempt build or decode kick). It is not a second full slice though — the budget
-    // is the beat's remainder plus a small guaranteed floor so a completing beat caps
-    // near sliceMs+floor instead of stacking collect+commit+remint into ~3 clocks.
-    // Small exempt sets still drain inline: their commit is a few ms of fixed pick/kick
-    // overhead, not the 10-30 ms list walks the slice exists for.
-    const commitStarted = now();
-    // The guaranteed floor only exists while the collect stayed inside its own
-    // slice — when it overspent, forcing ≥2 ms of commit would push the beat past
-    // the bound; the parked iterators resume next beat instead.
-    const commitFloorMs = (commitStarted - started < sliceMs) ? Math.min(2, sliceMs) : 0;
-    const commitSliceMs = Math.max(sliceMs - (commitStarted - started), commitFloorMs);
-    if (!owner._holdExemptCommitList) {
-      const out = owner._holdExemptCollectOut || [];
-      abandonHoldExemptCollect(owner);
-      // Own array, not the shared presentation scratch — the commit's iterators
-      // suspend across beats and must not observe another walk's scratch reuse.
-      owner._holdExemptCommitList = out.slice();
-      owner._holdExemptCommitEpoch = liveEpoch;
-      const frame = owner._activityFrame;
-      const glassIds = frame && frame.renderGlassIds;
-      owner._holdExemptCommitExempt = makeHoldExemptMeshBuildEvaluator(state, glassIds);
-      owner._holdExemptCommitBeatSeen = owner._holdExemptBeatStamp | 0;
-      owner._holdExemptEnqueueIter = enqueueMissingMeshBuildsSteps(
-        owner._holdExemptCommitList,
-        owner._meshes,
-        owner._meshBuildQueuedIds,
-        owner._meshBuildQueue,
-        // The evaluator is read live off the owner so the row-boundary
-        // refresh below can re-mint it mid-commit — a suspended commit
-        // otherwise grades late rows on a frozen glass snapshot.
-        (entity) => !owner._sectorBoundaryPreparations?.has(entity.id)
-          && owner._holdExemptCommitExempt(entity),
-        null,
-        null,
-        () => {
-          const stamp = owner._holdExemptBeatStamp | 0;
-          if (stamp === owner._holdExemptCommitBeatSeen) return;
-          owner._holdExemptCommitBeatSeen = stamp;
-          const liveFrame = owner._activityFrame;
-          owner._holdExemptCommitExempt = makeHoldExemptMeshBuildEvaluator(
-            state, liveFrame && liveFrame.renderGlassIds);
-        },
-      );
-    }
-    const commitBounded = owner._holdExemptCommitList.length > 16;
-    // Both commit pumps get ≥1 step per beat even when the whole slice+ledger is
-    // already spent — a pre-step check used to let a spent beat do zero enqueue
-    // and zero kick (a hold could queue exempt builds that never landed).
-    let commitSteps = 0;
-    while (owner._holdExemptEnqueueIter) {
-      if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
-          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
-      let step;
-      try {
-        step = owner._holdExemptEnqueueIter.next();
-      } catch (err) {
-        // Same abandon as the collect pump: a throwing step must not leave a dead
-        // generator parked on the owner to be misread as done next beat.
-        abandonHoldExemptCommit(owner);
-        owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
-        noteLaneFault(state, 'holdExemptStepped', true);
-        console.warn('[render] hold-exempt enqueue drive failed; parked until the next enter', err);
-        notePacedFrameSpend(now() - started);
-        return 0;
+      // The cycle's work counts come from each iterator's return value — the
+      // generators accumulate them across suspensions, so they describe the whole
+      // cycle no matter which invocation completes it.
+      let cycleEnqueued = 0;
+      let cycleKickStarted = 0;
+      if (iterator) {
+        let done = false;
+        for (;;) {
+          let step;
+          try {
+            step = iterator.next();
+          } catch (err) {
+            // A throwing walk used to leave the closed iterator parked on the owner:
+            // the next beat read done and committed the partial out as if complete.
+            abandonHoldExemptCollect(owner);
+            owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+            noteLaneFault(state, 'holdExemptStepped', true);
+            console.warn('[render] hold-exempt collect drive failed; parked until the next enter', err);
+            notePacedFrameSpend(now() - started);
+            return 0;
+          }
+          if (step.done) { done = true; break; }
+          if (now() - started >= sliceMs
+              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+        }
+        if (!done) break;
       }
-      commitSteps += 1;
-      if (step.done) { cycleEnqueued = step.value || 0; owner._holdExemptEnqueueIter = null; }
-    }
-    if (owner._holdExemptEnqueueIter) break;
-    if (!owner._holdExemptKickIter) {
-      owner._holdExemptKickIter = kickDecodeRunwayAssetsSteps(owner, owner._holdExemptCommitList);
-    }
-    while (owner._holdExemptKickIter) {
-      if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
-          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
-      let step;
-      try {
-        step = owner._holdExemptKickIter.next();
-      } catch (err) {
-        abandonHoldExemptCommit(owner);
-        owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
-        noteLaneFault(state, 'holdExemptStepped', true);
-        console.warn('[render] hold-exempt decode-kick drive failed; parked until the next enter', err);
-        notePacedFrameSpend(now() - started);
-        return 0;
+      // The commit (enqueue + decode kick) used to run synchronously on the beat that
+      // completed the collect — two more whole-list walks paid inside one presented
+      // frame. Both phases now drive chunked iterators persisted on the owner. The
+      // commit keeps its own clock: sharing the collect's would starve it whenever the
+      // collect spends the whole slice (a heavy-sector hold would never land a single
+      // exempt build or decode kick). It is not a second full slice though — the budget
+      // is the beat's remainder plus a small guaranteed floor so a completing beat caps
+      // near sliceMs+floor instead of stacking collect+commit+remint into ~3 clocks.
+      // Small exempt sets still drain inline: their commit is a few ms of fixed pick/kick
+      // overhead, not the 10-30 ms list walks the slice exists for.
+      const commitStarted = now();
+      // The guaranteed floor only exists while the collect stayed inside its own
+      // slice — when it overspent, forcing ≥2 ms of commit would push the beat past
+      // the bound; the parked iterators resume next beat instead.
+      const commitFloorMs = (commitStarted - started < sliceMs) ? Math.min(2, sliceMs) : 0;
+      const commitSliceMs = Math.max(sliceMs - (commitStarted - started), commitFloorMs);
+      if (!owner._holdExemptCommitList) {
+        const out = owner._holdExemptCollectOut || [];
+        abandonHoldExemptCollect(owner);
+        // Own array, not the shared presentation scratch — the commit's iterators
+        // suspend across beats and must not observe another walk's scratch reuse.
+        owner._holdExemptCommitList = out.slice();
+        owner._holdExemptCommitEpoch = liveEpoch;
+        const frame = owner._activityFrame;
+        const glassIds = frame && frame.renderGlassIds;
+        owner._holdExemptCommitExempt = makeHoldExemptMeshBuildEvaluator(state, glassIds);
+        owner._holdExemptCommitBeatSeen = owner._holdExemptBeatStamp | 0;
+        owner._holdExemptEnqueueIter = enqueueMissingMeshBuildsSteps(
+          owner._holdExemptCommitList,
+          owner._meshes,
+          owner._meshBuildQueuedIds,
+          owner._meshBuildQueue,
+          // The evaluator is read live off the owner so the row-boundary
+          // refresh below can re-mint it mid-commit — a suspended commit
+          // otherwise grades late rows on a frozen glass snapshot.
+          (entity) => !owner._sectorBoundaryPreparations?.has(entity.id)
+            && owner._holdExemptCommitExempt(entity),
+          null,
+          null,
+          () => {
+            const stamp = owner._holdExemptBeatStamp | 0;
+            if (stamp === owner._holdExemptCommitBeatSeen) return;
+            owner._holdExemptCommitBeatSeen = stamp;
+            const liveFrame = owner._activityFrame;
+            owner._holdExemptCommitExempt = makeHoldExemptMeshBuildEvaluator(
+              state, liveFrame && liveFrame.renderGlassIds);
+          },
+        );
       }
-      commitSteps += 1;
-      if (step.done) { cycleKickStarted = step.value || 0; owner._holdExemptKickIter = null; }
+      const commitBounded = owner._holdExemptCommitList.length > 16;
+      // Both commit pumps get ≥1 step per beat even when the whole slice+ledger is
+      // already spent — a pre-step check used to let a spent beat do zero enqueue
+      // and zero kick (a hold could queue exempt builds that never landed).
+      let commitSteps = 0;
+      while (owner._holdExemptEnqueueIter) {
+        if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
+            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
+        let step;
+        try {
+          step = owner._holdExemptEnqueueIter.next();
+        } catch (err) {
+          // Same abandon as the collect pump: a throwing step must not leave a dead
+          // generator parked on the owner to be misread as done next beat.
+          abandonHoldExemptCommit(owner);
+          owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+          noteLaneFault(state, 'holdExemptStepped', true);
+          console.warn('[render] hold-exempt enqueue drive failed; parked until the next enter', err);
+          notePacedFrameSpend(now() - started);
+          return 0;
+        }
+        commitSteps += 1;
+        if (step.done) { cycleEnqueued = step.value || 0; owner._holdExemptEnqueueIter = null; }
+      }
+      if (owner._holdExemptEnqueueIter) break;
+      if (!owner._holdExemptKickIter) {
+        owner._holdExemptKickIter = kickDecodeRunwayAssetsSteps(owner, owner._holdExemptCommitList);
+      }
+      while (owner._holdExemptKickIter) {
+        if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
+            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
+        let step;
+        try {
+          step = owner._holdExemptKickIter.next();
+        } catch (err) {
+          abandonHoldExemptCommit(owner);
+          owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+          noteLaneFault(state, 'holdExemptStepped', true);
+          console.warn('[render] hold-exempt decode-kick drive failed; parked until the next enter', err);
+          notePacedFrameSpend(now() - started);
+          return 0;
+        }
+        commitSteps += 1;
+        if (step.done) { cycleKickStarted = step.value || 0; owner._holdExemptKickIter = null; }
+      }
+      if (owner._holdExemptKickIter) break;
+      enqueued += cycleEnqueued;
+      owner._holdExemptCommitList = null;
+      owner._holdExemptCommitEpoch = null;
+      owner._holdExemptCommitExempt = null;
+      if (now() - started >= sliceMs
+          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+      // A completed cycle that queued nothing and started no decode is a converged
+      // world: reminting the ~5-12 ms collect inside this beat just re-pays the
+      // spatial refill and journal walk until the hold ends.
+      if (cycleEnqueued === 0 && cycleKickStarted === 0) break;
+      // Remint the next collect inside this beat's remaining slice: without it a row
+      // becoming exempt just after a commit waits a full beat plus a walk before its
+      // enqueue/kick lands — several times coarser than the pre-sliced cadence. The
+      // remint tolerates a memo-miss (rides the previous disc's scratch — a coverage
+      // subset the per-row live-origin filters still guard) so a quantized-cell flip
+      // can't land the unbounded grid query inside this beat; when the stepped refill
+      // suspends, the collect mints on a later beat once the memo commits. A streak of
+      // productive tolerant remints would ride the same stamped disc indefinitely while
+      // travel drifts the live union origin — every fourth remint mints 'covered' so
+      // genuine drift still pays the stepped refill.
+      const tolerantStreak = (owner._holdExemptTolerantStreak = (owner._holdExemptTolerantStreak | 0) + 1);
+      const remintToleration = tolerantStreak >= 4 ? 'covered' : true;
+      if (remintToleration === 'covered') owner._holdExemptTolerantStreak = 0;
+      if (typeof warmNearbyLedgerRowsSteps === 'function') {
+        owner._holdExemptWarmIter = warmNearbyLedgerRowsSteps(state, { tolerateMiss: remintToleration });
+        owner._holdExemptWarmToleration = remintToleration;
+        owner._holdExemptWarmEpoch = liveEpoch;
+      } else {
+        warmNearbyLedgerRows(state, { tolerateMiss: remintToleration });
+      }
+      if (now() - started >= sliceMs
+          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+      if (owner._holdExemptWarmIter) continue;
+      owner._holdExemptCollectOut = [];
+      iterator = collectMeshPresentationEntitiesChunked(
+        state, owner._holdExemptCollectOut, { tolerateMiss: remintToleration });
+      owner._holdExemptCollectIter = iterator;
+      owner._holdExemptCollectEpoch = liveEpoch;
     }
-    if (owner._holdExemptKickIter) break;
-    enqueued += cycleEnqueued;
-    owner._holdExemptCommitList = null;
-    owner._holdExemptCommitEpoch = null;
-    owner._holdExemptCommitExempt = null;
-    if (now() - started >= sliceMs
-        || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
-    // A completed cycle that queued nothing and started no decode is a converged
-    // world: reminting the ~5-12 ms collect inside this beat just re-pays the
-    // spatial refill and journal walk until the hold ends.
-    if (cycleEnqueued === 0 && cycleKickStarted === 0) break;
-    // Remint the next collect inside this beat's remaining slice: without it a row
-    // becoming exempt just after a commit waits a full beat plus a walk before its
-    // enqueue/kick lands — several times coarser than the pre-sliced cadence. The
-    // remint tolerates a memo-miss (rides the previous disc's scratch — a coverage
-    // subset the per-row live-origin filters still guard) so a quantized-cell flip
-    // can't land the unbounded grid query inside this beat; when the stepped refill
-    // suspends, the collect mints on a later beat once the memo commits. A streak of
-    // productive tolerant remints would ride the same stamped disc indefinitely while
-    // travel drifts the live union origin — every fourth remint mints 'covered' so
-    // genuine drift still pays the stepped refill.
-    const tolerantStreak = (owner._holdExemptTolerantStreak = (owner._holdExemptTolerantStreak | 0) + 1);
-    const remintToleration = tolerantStreak >= 4 ? 'covered' : true;
-    if (remintToleration === 'covered') owner._holdExemptTolerantStreak = 0;
-    if (typeof warmNearbyLedgerRowsSteps === 'function') {
-      owner._holdExemptWarmIter = warmNearbyLedgerRowsSteps(state, { tolerateMiss: remintToleration });
-      owner._holdExemptWarmToleration = remintToleration;
-      owner._holdExemptWarmEpoch = liveEpoch;
-    } else {
-      warmNearbyLedgerRows(state, { tolerateMiss: remintToleration });
-    }
-    if (now() - started >= sliceMs
-        || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
-    if (owner._holdExemptWarmIter) continue;
-    owner._holdExemptCollectOut = [];
-    iterator = collectMeshPresentationEntitiesChunked(
-      state, owner._holdExemptCollectOut, { tolerateMiss: remintToleration });
-    owner._holdExemptCollectIter = iterator;
-    owner._holdExemptCollectEpoch = liveEpoch;
+  } catch (err) {
+    // Non-iterator throws (abandon calls, iterator/evaluator mints, the sync
+    // warm fallback) join the four instrumented exits: park the lane for the
+    // epoch instead of rethrowing an undebted throw ~10x/sec — the degrade
+    // lane owns the rest of the epoch.
+    owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+    noteLaneFault(state, 'holdExemptStepped', true);
+    console.warn('[render] hold-exempt drive failed; parked until the next enter', err);
+    notePacedFrameSpend(now() - started);
+    return 0;
   }
   notePacedFrameSpend(now() - started);
   return enqueued;
@@ -28607,8 +28623,17 @@ export const render = {
     if (parkedEntry && parkedEntry.lightSig == null) {
       const liveParkedSig = this._shadowCensusForFrame();
       if (liveParkedSig != null) {
-        parkedEntry.lightSig = liveParkedSig;
-        parkedEntry.lightSigEpoch = shadowCensusEpoch();
+        if (parkedEntry.lightSigEpoch !== shadowCensusEpoch()) {
+          // The unsigned window spanned a real census flip: re-keying to the
+          // live epoch would stamp this park "evaluated under" a light set its
+          // withheld casters never saw, and the drift clause below could never
+          // fire (sig AND epoch would both already match). Release instead —
+          // the re-collect re-verifies under the live census.
+          parkedRelease = parkedReleaseOnDrift = parkedReleaseScaled = true;
+        } else {
+          parkedEntry.lightSig = liveParkedSig;
+          parkedEntry.lightSigEpoch = shadowCensusEpoch();
+        }
       }
     }
     if (scopedSync) {
