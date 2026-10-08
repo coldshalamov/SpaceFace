@@ -39,7 +39,13 @@ function noteAuthoredWarn(key, message, error) {
     ? performance.now() : Date.now();
   let entry = authoredWarnLog.get(key);
   if (!entry) {
-    if (authoredWarnLog.size >= AUTHORED_WARN_CAP) authoredWarnLog.clear();
+    if (authoredWarnLog.size >= AUTHORED_WARN_CAP) {
+      // Oldest-row evict, not clear(): a cap-hit wipe re-armed every storming
+      // key's verbatim budget at once (a burst landing mid-storm) and erased
+      // accrued suppressed counts before the heartbeat could report them.
+      const oldest = authoredWarnLog.keys().next();
+      if (!oldest.done) authoredWarnLog.delete(oldest.value);
+    }
     entry = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
     authoredWarnLog.set(key, entry);
   }

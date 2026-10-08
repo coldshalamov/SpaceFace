@@ -599,7 +599,7 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
         // (silent cold depth link) or reject the drain settle. Skip the
         // pre-collect so the compile below pays the sync collect instead.
         closeCookStepsIter(collectIter);
-        console.warn('[render] shadow-cast subject census drive failed; compiling without pre-collect', collectError);
+        stormWarn('shadow-cast-subject-census-drive-failed-compilin', '[render] shadow-cast subject census drive failed; compiling without pre-collect', collectError);
         break;
       }
       if (collectStep.done) { precollected = collectStep.value; break; }
@@ -616,7 +616,7 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
       } catch (driveError) {
         closeCookStepsIter(iterator);
         noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'depthPipelineDrive');
-        console.warn('[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
+        laneWarn(typeof state !== 'undefined' ? state : this?.state, 'depthPipelineDrive', '[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
         const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
           () => compileShadowDepthPipelines(depthOpts),
           { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
@@ -2179,7 +2179,14 @@ function stormWarn(site, ...args) {
     ? performance.now() : Date.now();
   let row = _stormWarnLog.get(site);
   if (!row) {
-    if (_stormWarnLog.size >= 256) _stormWarnLog.clear();
+    if (_stormWarnLog.size >= 256) {
+      // Evict the oldest row instead of clearing: a cap-hit clear() re-arms
+      // every storming site's verbatim budget simultaneously — the biggest
+      // burst lands exactly when the storm is worst — and erases each row's
+      // accrued suppressed count before its heartbeat can report it.
+      const oldest = _stormWarnLog.keys().next();
+      if (!oldest.done) _stormWarnLog.delete(oldest.value);
+    }
     row = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
     _stormWarnLog.set(site, row);
   }
@@ -2196,7 +2203,9 @@ function stormWarn(site, ...args) {
   }
 }
 function laneWarn(owner, lane, ...args) {
-  const state = owner && owner.state;
+  // Accepts an owner with .state (renderer/boundary) or a bare state object
+  // (has .render) — the cook drives only hold the latter.
+  const state = owner && (owner.state || (owner.render ? owner : null));
   const render = state && state.render;
   if (!render) { console.warn(...args); return; }
   const epoch = serviceFaultEpoch(state);
@@ -2307,7 +2316,7 @@ function flushDisposeQueueLane(owner, queueField, headField) {
       try {
         disposeObject(queued, flushMeasure);
       } catch (error) {
-        console.info('[render] dispose queue flush step failed', error);
+        stormWarn('dispose-queue-flush-step-failed', '[render] dispose queue flush step failed', error);
         if (queued.userData) queued.userData.sfDespawnPartialTeardown = true;
         flushMeasure.receivers = null;
       }
@@ -2415,7 +2424,7 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
         // A torn-dispose corpse is the accepted failure mode of every paced
         // lane — log bounded, advance, don't take the frame's whole residency
         // service (release flush, rebuild bridges, reconcile) down with it.
-        console.info('[render] despawn dispose iterator mint failed', error);
+        stormWarn('despawn-dispose-iterator-mint-failed', '[render] despawn dispose iterator mint failed', error);
         owner[iterField] = null;
         owner[headField] += 1;
         drained += 1;
@@ -2433,7 +2442,7 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
     try {
       iterDone = iter.next().done === true;
     } catch (error) {
-      console.info('[render] despawn dispose iterator step failed', error);
+      stormWarn('despawn-dispose-iterator-step-failed', '[render] despawn dispose iterator step failed', error);
       // A torn walk leaves a partial measurement — settle the tally with the
       // dirty recount path (null) instead of under-subtracting.
       if (iter) iter._measure = null;
@@ -2551,7 +2560,7 @@ function driveProtectedFirstFlightDrain(owner) {
       owner._protectedFirstFlightRetryAt = drainClockNow() + 1000;
       noteLaneFault(owner.state, 'protectedFirstFlightDrain',
         (owner._protectedFirstFlightFaultRetries | 0) >= 3);
-      console.warn('[render] protected first-flight drain faulted; parked until the next enter', err);
+      laneWarn(owner.state, 'protectedFirstFlightDrain', '[render] protected first-flight drain faulted; parked until the next enter', err);
       break;
     }
     if (step.done) {
@@ -2638,7 +2647,7 @@ function settleRebuildBridges(owner) {
       // than throwing into every presented frame.
       slot.faults = (slot.faults | 0) + 1;
       noteLaneFault(state, 'rebuildBridge');
-      console.warn('[render] rebuild bridge settle failed for one row', bridgeError);
+      laneWarn(state, 'rebuildBridge', '[render] rebuild bridge settle failed for one row', bridgeError);
       bridges.delete(id);
       if (slot.faults < 2) bridges.set(id, slot);
       // A dropped row still owns its bridge cover — a parked replacement would
@@ -2739,7 +2748,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           owner._residentReattachIter = null;
           owner._residentReattachFaultEpoch = serviceFaultEpoch(st);
           noteLaneFault(st, 'residentReattach', true);
-          console.warn('[render] resident reattach sweep faulted; parked until the next enter', err);
+          laneWarn(st, 'residentReattach', '[render] resident reattach sweep faulted; parked until the next enter', err);
           break;
         }
         if (step.done) {
@@ -2839,7 +2848,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           catch (err) {
             owner._meshReconcileDirty = true;
             noteLaneFault(st, 'residencyReconcile', true);
-            console.warn('[render] keep-gpu reconcile degrade failed', err);
+            laneWarn(st, 'residencyReconcile', '[render] keep-gpu reconcile degrade failed', err);
           }
           const twinElapsed = now() - twinStart;
           if (twinElapsed > 0) noteForcedFrameSpend(twinElapsed);
@@ -2873,7 +2882,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
             owner._reconcileRetryAt = now() + 1000;
             noteLaneFault(st, 'residencyReconcile',
               (owner._reconcileFaultRetries | 0) >= 3);
-            console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
+            laneWarn(st, 'residencyReconcile', '[render] mesh reconcile drive failed; parked until the next enter', err);
             break;
           }
           if (step.done) {
@@ -3184,7 +3193,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           // so one transient fault can't strand it for the whole sector.
           owner._arrivalReservePending = true;
           noteLaneFault(owner.state, 'arrivalRoster');
-          console.warn('[render] arrival roster drive failed; flagging the capacity reserve', err);
+          laneWarn(owner.state, 'arrivalRoster', '[render] arrival roster drive failed; flagging the capacity reserve', err);
           break;
         }
         if (step.done) {
@@ -3259,7 +3268,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         noteLaneFault(owner.state, 'arrivalReserve',
           (owner._arrivalReserveFaultRetries | 0) >= 3);
         owner._arrivalReservePending = true;
-        console.warn('[render] arrival capacity reserve failed; retrying under cooldown', err);
+        laneWarn(owner.state, 'arrivalReserve', '[render] arrival capacity reserve failed; retrying under cooldown', err);
         break;
       }
       if (step.done) {
@@ -3331,7 +3340,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           owner._reconcileRetryAt = now() + 1000;
           noteLaneFault(owner.state, 'residencyReconcile',
             (owner._reconcileFaultRetries | 0) >= 3);
-          console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
+          laneWarn(owner.state, 'residencyReconcile', '[render] mesh reconcile drive failed; parked until the next enter', err);
           break;
         }
         if (step.done) {
@@ -3399,7 +3408,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           owner._residencyPollRetryAt = now() + 1000;
           noteLaneFault(owner.state, 'residencyPoll',
             (owner._residencyPollFaultRetries | 0) >= 3);
-          console.warn('[render] residency poll drive failed; parked until the next enter', err);
+          laneWarn(owner.state, 'residencyPoll', '[render] residency poll drive failed; parked until the next enter', err);
           break;
         }
         if (step.done) {
@@ -3798,7 +3807,7 @@ function driveHoldExemptDegrade(owner, state, sliceMs) {
         owner._holdExemptDegradeFaults = (owner._holdExemptDegradeFaults | 0) + 1;
         noteLaneFault(state, 'holdExemptDegrade',
           (owner._holdExemptDegradeFaults | 0) >= 3);
-        console.warn('[render] hold-exempt degrade drive failed', err);
+        laneWarn(state, 'holdExemptDegrade', '[render] hold-exempt degrade drive failed', err);
         return 0;
       }
       if (step.done) {
@@ -3938,7 +3947,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
           abandonHoldExemptCollect(owner);
           owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
           noteLaneFault(state, 'holdExemptStepped', true);
-          console.warn('[render] hold-exempt warm refill failed; parked until the next enter', err);
+          laneWarn(state, 'holdExemptStepped', '[render] hold-exempt warm refill failed; parked until the next enter', err);
           notePacedFrameSpend(now() - started);
           return 0;
         }
@@ -3975,7 +3984,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
             abandonHoldExemptCollect(owner);
             owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
             noteLaneFault(state, 'holdExemptStepped', true);
-            console.warn('[render] hold-exempt collect drive failed; parked until the next enter', err);
+            laneWarn(state, 'holdExemptStepped', '[render] hold-exempt collect drive failed; parked until the next enter', err);
             notePacedFrameSpend(now() - started);
             return 0;
           }
@@ -4051,7 +4060,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
           abandonHoldExemptCommit(owner);
           owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
           noteLaneFault(state, 'holdExemptStepped', true);
-          console.warn('[render] hold-exempt enqueue drive failed; parked until the next enter', err);
+          laneWarn(state, 'holdExemptStepped', '[render] hold-exempt enqueue drive failed; parked until the next enter', err);
           notePacedFrameSpend(now() - started);
           return 0;
         }
@@ -4072,7 +4081,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
           abandonHoldExemptCommit(owner);
           owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
           noteLaneFault(state, 'holdExemptStepped', true);
-          console.warn('[render] hold-exempt decode-kick drive failed; parked until the next enter', err);
+          laneWarn(state, 'holdExemptStepped', '[render] hold-exempt decode-kick drive failed; parked until the next enter', err);
           notePacedFrameSpend(now() - started);
           return 0;
         }
@@ -4126,7 +4135,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     // lane owns the rest of the epoch.
     owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
     noteLaneFault(state, 'holdExemptStepped', true);
-    console.warn('[render] hold-exempt drive failed; parked until the next enter', err);
+    laneWarn(state, 'holdExemptStepped', '[render] hold-exempt drive failed; parked until the next enter', err);
     notePacedFrameSpend(now() - started);
     return 0;
   }
@@ -7087,6 +7096,12 @@ function queueContactShadowGrowth(pool, demand) {
   if (pool.shouldDeferGrowth() !== true) return null;
   pool.requestedCapacity = Math.max(pool.requestedCapacity || 0, demand || 0);
   if (pool.pendingGrowth) return pool.pendingGrowth;
+  // A persistently-failing admission used to re-queue from .finally at promise
+  // cadence — warn+requeue forever inside the failure window it reports on.
+  // Park the next mint for 1s after a fault; the per-frame demand consult in
+  // syncContactShadowPool retries naturally once the park expires.
+  const faultRetryAt = pool._growthFaultRetryAt || 0;
+  if (faultRetryAt > Date.now()) return null;
   const yieldToPostPaint = pool.yieldToPostPaint;
   const prepareGpuResidency = pool.prepareGpuResidency;
   if (typeof yieldToPostPaint !== 'function' || typeof prepareGpuResidency !== 'function') return null;
@@ -7133,7 +7148,9 @@ function queueContactShadowGrowth(pool, demand) {
       if (owner) unregisterDynamicBufferOwner(owner);
       mesh.dispose();
       pool.requestedCapacity = pool.capacity;
-      console.warn('[render] deferred contact shadow pool admission failed', error);
+      pool._growthFaultRetryAt = Date.now() + 1000;
+      stormWarn('pool-contact-shadow-growth',
+        '[render] deferred contact shadow pool admission failed', error);
       return false;
     }
   }).finally(() => {
@@ -7561,6 +7578,11 @@ function queueShipAuxPoolGrowth(pool, shieldCapacity, navCapacity) {
   pool.requestedShieldCapacity = Math.max(pool.requestedShieldCapacity || 0, shieldCapacity || 0);
   pool.requestedNavCapacity = Math.max(pool.requestedNavCapacity || 0, navCapacity || 0);
   if (pool.pendingGrowth) return pool.pendingGrowth;
+  // Same fault-park as the contact-shadow sibling: a persistently-failing
+  // admission re-queued at promise cadence before this gate — one mint/sec
+  // while the demand consult keeps re-offering growth each frame.
+  const growthFaultRetryAt = pool._growthFaultRetryAt || 0;
+  if (growthFaultRetryAt > Date.now()) return null;
   const yieldToPostPaint = pool.yieldToPostPaint;
   const prepareGpuResidency = pool.prepareGpuResidency;
   if (typeof yieldToPostPaint !== 'function' || typeof prepareGpuResidency !== 'function') return null;
@@ -7618,7 +7640,9 @@ function queueShipAuxPoolGrowth(pool, shieldCapacity, navCapacity) {
       disposeDetachedShipAuxReplacements(replacements);
       pool.requestedShieldCapacity = pool.shield.capacity;
       pool.requestedNavCapacity = pool.nav.capacity;
-      console.warn('[render] deferred ship auxiliary pool admission failed', error);
+      pool._growthFaultRetryAt = Date.now() + 1000;
+      stormWarn('pool-ship-aux-growth',
+        '[render] deferred ship auxiliary pool admission failed', error);
       return false;
     }
   }).finally(() => {
@@ -10753,7 +10777,7 @@ export const render = {
                 } catch (driveError) {
                   closeCookStepsIter(censusIter);
                   noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'poolCompileCensus');
-                  console.warn('[render] pool compile census drive failed; running the sync twin', driveError);
+                  laneWarn(typeof state !== 'undefined' ? state : this?.state, 'poolCompileCensus', '[render] pool compile census drive failed; running the sync twin', driveError);
                   poolCompileRoots = runCookSyncTwin('pool compile census',
                     () => collectInstancePoolCompileRoots(liveScene), []);
                   break;
@@ -11012,7 +11036,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(lightBudgetIter);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps');
-              console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps', '[render] light-budget steps drive failed; running the sync twin', driveError);
               runCookSyncTwin('light-budget', () =>
                 syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
               break;
@@ -11049,7 +11073,7 @@ export const render = {
           } catch (driveError) {
             closeCookStepsIter(leavesIter);
             noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'openingLeafCensus');
-            console.warn('[render] opening leaf census drive failed; running the sync twin', driveError);
+            laneWarn(typeof state !== 'undefined' ? state : this?.state, 'openingLeafCensus', '[render] opening leaf census drive failed; running the sync twin', driveError);
             leaves = runCookSyncTwin('opening leaf census',
               () => collectOpeningSubmissionLeaves(scene, { includeOffscreen: true }), []);
             break;
@@ -11072,7 +11096,7 @@ export const render = {
           } catch (driveError) {
             closeCookStepsIter(firstFlightRootsIter);
             noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'firstFlightRootCensus');
-            console.warn('[render] first-flight root census drive failed; running the sync twin', driveError);
+            laneWarn(typeof state !== 'undefined' ? state : this?.state, 'firstFlightRootCensus', '[render] first-flight root census drive failed; running the sync twin', driveError);
             for (const root of runCookSyncTwin('first-flight root census',
                 () => collectFirstFlightEffectRoots(scene), [])) addExtraVfx(root);
             break;
@@ -11454,7 +11478,7 @@ export const render = {
                 // subtree — flag it so a later remount re-arms policy sync, leave
                 // measure.settled false so the receiver tally recounts dirty, and
                 // consume the corpse instead of killing the whole dispose drive.
-                console.info('[render] boundary dispose iterator step failed', error);
+                stormWarn('boundary-dispose-iterator-step-failed', '[render] boundary dispose iterator step failed', error);
                 if (boundary && boundary.userData) boundary.userData.sfDespawnPartialTeardown = true;
                 return true;
               }
@@ -11706,7 +11730,7 @@ export const render = {
           } catch (driveError) {
             closeCookStepsIter(envBindIter);
             noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'envBindSteps');
-            console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+            laneWarn(typeof state !== 'undefined' ? state : this?.state, 'envBindSteps', '[render] env-bind steps drive failed; running the sync twin', driveError);
             runCookSyncTwin('env-bind', () => bindEnvironmentToStandardMaterials(subject, envMap));
             break;
           }
@@ -11765,7 +11789,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(it);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'drawableCensus');
-              console.warn('[render] drawable census drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'drawableCensus', '[render] drawable census drive failed; running the sync twin', driveError);
               drawables = runCookSyncTwin('drawable census',
                 () => drawableHideSession(targetScene).drawables, []);
               break;
@@ -11806,7 +11830,7 @@ export const render = {
         } catch (driveError) {
           closeCookStepsIter(it);
           noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'startupTextureCollect');
-          console.warn('[render] startup-texture collect drive failed; running the sync twin', driveError);
+          laneWarn(typeof state !== 'undefined' ? state : this?.state, 'startupTextureCollect', '[render] startup-texture collect drive failed; running the sync twin', driveError);
           return runCookSyncTwin('startup-texture collect',
             () => detachedSubjectUploadsPending(subjects), []);
         }
@@ -12883,7 +12907,7 @@ export const render = {
           } catch (driveError) {
             closeCookStepsIter(lightBudgetIter);
             noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps');
-            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            laneWarn(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps', '[render] light-budget steps drive failed; running the sync twin', driveError);
             runCookSyncTwin('light-budget', () =>
               syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
             break;
@@ -13321,7 +13345,7 @@ export const render = {
               // degrades to the per-call drain it wraps instead of taking
               // the whole cook tail down with it.
               closeCookStepsIter(drainIter);
-              console.warn('[render] mesh-build drain drive failed; degrading to the per-call drain', driveError);
+              stormWarn('mesh-build-drain-drive-failed-degrading-to-the-p', '[render] mesh-build drain drive failed; degrading to the per-call drain', driveError);
               drainIter = null;
             }
             if (drainStep && drainStep.done) {
@@ -13454,7 +13478,7 @@ export const render = {
         } catch (driveError) {
           closeCookStepsIter(openingEnqueueIter);
           noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue');
-          console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+          laneWarn(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue', '[render] mesh-build enqueue drive failed; running the sync twin', driveError);
           runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
             openingEntities,
             this._meshes,
@@ -13579,7 +13603,7 @@ export const render = {
             // A throwing emit abandons its tail — the collected prefix is a
             // legal partial promotion set (unpromoted rocks stay instanced).
             closeCookStepsIter(rockEmit);
-            console.warn('[render] rock emit drive failed; promoting the collected prefix', driveError);
+            stormWarn('rock-emit-drive-failed-promoting-the-collected-p', '[render] rock emit drive failed; promoting the collected prefix', driveError);
             rockDone = true;
           }
           for (; rockCursor < rockHits.length
@@ -13700,7 +13724,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(censusIter);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'firstFlightCensus');
-              console.warn('[render] first-flight census drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'firstFlightCensus', '[render] first-flight census drive failed; running the sync twin', driveError);
               firstFlightEntities = runCookSyncTwin('first-flight census',
                 () => collectFirstFlightCookEntities(state), firstFlightEntities);
               break;
@@ -13778,7 +13802,7 @@ export const render = {
                 // A throwing emit abandons its tail — the collected prefix is a
                 // legal partial coverage set (unreached records stay instanced).
                 closeCookStepsIter(reachIter);
-                console.warn('[render] survival field emit drive failed; covering the collected prefix', driveError);
+                stormWarn('survival-field-emit-drive-failed-covering-the-co', '[render] survival field emit drive failed; covering the collected prefix', driveError);
                 break;
               }
               if (reachStep.done) break;
@@ -13841,7 +13865,7 @@ export const render = {
               } catch (driveError) {
                 closeCookStepsIter(promotedEnqueueIter);
                 noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue');
-                console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+                laneWarn(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue', '[render] mesh-build enqueue drive failed; running the sync twin', driveError);
                 runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
                   promotedRocks,
                   this._meshes,
@@ -13909,7 +13933,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(warmIterator);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'warmLedgerRefill');
-              console.warn('[render] warm ledger refill drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'warmLedgerRefill', '[render] warm ledger refill drive failed; running the sync twin', driveError);
               runCookSyncTwin('warm ledger refill', () => warmNearbyLedgerRows(state));
               break;
             }
@@ -13937,7 +13961,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(collectIterator);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'presentationCollect');
-              console.warn('[render] presentation collect drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'presentationCollect', '[render] presentation collect drive failed; running the sync twin', driveError);
               runCookSyncTwin('presentation collect',
                 () => collectMeshPresentationEntities(state, presentation));
               break;
@@ -14024,7 +14048,7 @@ export const render = {
               // Per-corpse catch (despawn-lane contract): a hook throw tears the
               // subtree — flag for remount re-arm, settle via dirty recount (null),
               // and keep the sweep alive instead of abandoning every corpse behind.
-              console.info('[render] leftover dispose iterator step failed', error);
+              stormWarn('leftover-dispose-iterator-step-failed', '[render] leftover dispose iterator step failed', error);
               if (mesh && mesh.userData) mesh.userData.sfDespawnPartialTeardown = true;
               leftoverTorn = true;
               leftoverDone = true;
@@ -14073,7 +14097,7 @@ export const render = {
         } catch (driveError) {
           closeCookStepsIter(leftoverEnqueueIter);
           noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue');
-          console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+          laneWarn(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue', '[render] mesh-build enqueue drive failed; running the sync twin', driveError);
           runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
             firstFlightEntities,
             this._meshes,
@@ -14428,7 +14452,7 @@ export const render = {
             }
           } catch (error) {
               if (cookStale()) return cookSuperseded;
-            console.warn('[render] crucible pre-drain boundary kick failed', error);
+            stormWarn('crucible-pre-drain-boundary-kick-failed', '[render] crucible pre-drain boundary kick failed', error);
           }
           const drainStarted = prepareNow();
           // The serial lane runs ~1.5 s per boundary under load and the kicked cohort numbers
@@ -14531,7 +14555,7 @@ export const render = {
                 } catch (driveError) {
                   closeCookStepsIter(sealCensusIter);
                   noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'poolSealCensus');
-                  console.warn('[render] pool seal census drive failed; running the sync twin', driveError);
+                  laneWarn(typeof state !== 'undefined' ? state : this?.state, 'poolSealCensus', '[render] pool seal census drive failed; running the sync twin', driveError);
                   sealCensus = runCookSyncTwin('pool seal census',
                     () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: null });
                   break;
@@ -14552,7 +14576,7 @@ export const render = {
                 } catch (driveError) {
                   closeCookStepsIter(poolRootsIt);
                   noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'poolRootsCensus');
-                  console.warn('[render] pool roots census drive failed; running the sync twin', driveError);
+                  laneWarn(typeof state !== 'undefined' ? state : this?.state, 'poolRootsCensus', '[render] pool roots census drive failed; running the sync twin', driveError);
                   sealCensus = runCookSyncTwin('pool roots census',
                     () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: null });
                   break;
@@ -14773,7 +14797,7 @@ export const render = {
               if (cookStale()) return cookSuperseded;
             } catch (error) {
                 if (cookStale()) return cookSuperseded;
-              console.warn('[render] bounded warm root residency stamp failed', error);
+              stormWarn('bounded-warm-root-residency-stamp-failed', '[render] bounded warm root residency stamp failed', error);
             }
           }
           // A superseded cook must not park the bounded warm roots: detached roots
@@ -15014,7 +15038,7 @@ export const render = {
                   // unadmitted roots draw through the bloom lane later exactly
                   // as they did before this sweep existed.
                   closeCookStepsIter(stragglersIter);
-                  console.warn('[render] never-linked census drive failed; skipping the straggler admit', driveError);
+                  stormWarn('never-linked-census-drive-failed-skipping-the-st', '[render] never-linked census drive failed; skipping the straggler admit', driveError);
                   stragglersDone = true;
                   continue;
                 }
@@ -15166,7 +15190,7 @@ export const render = {
             // its pre-settle stamp (the same state the gate ran on before this
             // recapture existed) instead of taking the whole cook down.
             closeCookStepsIter(settledPlanIter);
-            console.warn('[render] settled plan rebuild drive failed; keeping the pre-settle receipt', driveError);
+            stormWarn('settled-plan-rebuild-drive-failed-keeping-the-pr', '[render] settled plan rebuild drive failed; keeping the pre-settle receipt', driveError);
             break;
           }
           if (settledPlanStep.done) {
@@ -15204,7 +15228,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(settledReceiptIter);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'settledReceiptDrive');
-              console.warn('[render] settled receipt drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'settledReceiptDrive', '[render] settled receipt drive failed; running the sync twin', driveError);
               state.render.openingSubmissionReceipt = runCookSyncTwin('settled receipt',
                 () => createOpeningSubmissionReceipt(renderer, settledPlan, {
                   scene,
@@ -15347,7 +15371,7 @@ export const render = {
         } catch (driveError) {
           closeCookStepsIter(firstFlightRootsIter);
           noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'firstFlightRoots');
-          console.warn('[render] first-flight roots drive failed; running the sync twin', driveError);
+          laneWarn(typeof state !== 'undefined' ? state : this?.state, 'firstFlightRoots', '[render] first-flight roots drive failed; running the sync twin', driveError);
           firstFlightRoots = runCookSyncTwin('first-flight roots',
             () => collectFirstFlightEffectRoots(scene), []);
           break;
@@ -15377,7 +15401,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(envBindIter);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'envBindSteps');
-              console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'envBindSteps', '[render] env-bind steps drive failed; running the sync twin', driveError);
               runCookSyncTwin('env-bind', () => envBindSync(root));
               return 'drive-settled';
             }
@@ -15403,7 +15427,7 @@ export const render = {
           } catch (driveError) {
             closeCookStepsIter(lightBudgetIter);
             noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps');
-            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            laneWarn(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps', '[render] light-budget steps drive failed; running the sync twin', driveError);
             runCookSyncTwin('light-budget', () =>
               syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
             break;
@@ -15435,7 +15459,7 @@ export const render = {
               // the compile tail still sees every drawable.
               closeCookStepsIter(revealMint);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'steppedRevealMint');
-              console.warn('[render] stepped reveal mint failed; running the sync twin', err);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'steppedRevealMint', '[render] stepped reveal mint failed; running the sync twin', err);
               restoreReveal = runCookSyncTwin('reveal mint',
                 () => revealSubjectForCompile(scene), () => {});
               restoreRevealSteps = null;
@@ -15557,7 +15581,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(poolRootsIter);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookPoolRoots');
-              console.warn('[render] cook pool roots census drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'cookPoolRoots', '[render] cook pool roots census drive failed; running the sync twin', driveError);
               cookPoolRootsMemo = runCookSyncTwin('cook pool roots census',
                 () => collectInstancePoolCompileRoots(scene), []);
               break;
@@ -15600,7 +15624,7 @@ export const render = {
             // tail still warms every rostered root directly (subjects list
             // degrades to the opening-roots-only cohort).
             closeCookStepsIter(cookPicturePlanIter);
-            console.warn('[render] cook picture plan drive failed; warming rostered roots only', driveError);
+            stormWarn('cook-picture-plan-drive-failed-warming-rostered', '[render] cook picture plan drive failed; warming rostered roots only', driveError);
             break;
           }
           if (cookPictureStep.done) {
@@ -15643,7 +15667,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(cookCensusIter);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookCensus');
-              console.warn('[render] cook census drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'cookCensus', '[render] cook census drive failed; running the sync twin', driveError);
               const censusValue = runCookSyncTwin('cook census',
                 () => collectInstancePoolCompileRootsAndSubjects(scene), null);
               if (censusValue && Array.isArray(censusValue.roots)) cookPoolRootsMemo = censusValue.roots;
@@ -15731,7 +15755,7 @@ export const render = {
               } catch (driveError) {
                 closeCookStepsIter(lateIt);
                 noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lateAdmittedCensus');
-                console.warn('[render] late-admitted census drive failed; running the sync twin', driveError);
+                laneWarn(typeof state !== 'undefined' ? state : this?.state, 'lateAdmittedCensus', '[render] late-admitted census drive failed; running the sync twin', driveError);
                 lateAdmittedCohort = runCookSyncTwin('late-admitted census',
                   () => collectLateAdmittedCompileRoots(this._meshes, openingSubjects), []);
                 break;
@@ -16085,7 +16109,7 @@ export const render = {
           // compiles a program family live rocks never draw.
           this._rosterPrewarmRoots.push(asteroidLeafWarmRoot);
         } catch (error) {
-          console.warn('[render] asteroid leaf warm group failed', error);
+          stormWarn('asteroid-leaf-warm-group-failed', '[render] asteroid leaf warm group failed', error);
           asteroidLeafWarmRoot = null;
         }
       }
@@ -16121,7 +16145,7 @@ export const render = {
             profile: survivalCook ? 'crucible' : 'opening',
           });
         } catch (error) {
-          console.warn('[render] crucible bounded roster warm begin failed', error);
+          stormWarn('crucible-bounded-roster-warm-begin-failed', '[render] crucible bounded roster warm begin failed', error);
           crucibleWarm = null;
         }
       }
@@ -16156,7 +16180,7 @@ export const render = {
               } catch (err) {
                 closeCookStepsIter(mint);
                 noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookRevealMint');
-                console.warn('[render] paced cook reveal mint failed; running the sync twin', err);
+                laneWarn(typeof state !== 'undefined' ? state : this?.state, 'cookRevealMint', '[render] paced cook reveal mint failed; running the sync twin', err);
                 entry = {
                   restore: runCookSyncTwin('cook reveal mint',
                     () => revealSubjectForCompile(root), () => {}),
@@ -16195,7 +16219,7 @@ export const render = {
             } catch (err) {
               closeCookStepsIter(entry.restoreSteps);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookRevealRestore');
-              console.warn('[render] paced cook reveal restore failed; running the sync twin', err);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'cookRevealRestore', '[render] paced cook reveal restore failed; running the sync twin', err);
               runCookSyncTwin('cook reveal restore', () => entry.restore(), undefined);
             }
           } else {
@@ -16259,7 +16283,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(layerIter);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookLayerDrawables');
-              console.warn('[render] cook layer drawable collect failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'cookLayerDrawables', '[render] cook layer drawable collect failed; running the sync twin', driveError);
               layerRoots = runCookSyncTwin('cook layer drawables',
                 () => collectFirstFlightLayerDrawables(layerRootsArg), []);
               break;
@@ -16373,7 +16397,7 @@ export const render = {
           warmAsteroidInstanceKeys(this._asteroidInstancePool,
             asteroidPoolWarmResources(), requiredByKey);
         } catch (error) {
-          console.warn('[render] asteroid instance pool warm failed', error);
+          stormWarn('asteroid-instance-pool-warm-failed', '[render] asteroid instance pool warm failed', error);
         }
         // Finish the bounded warm LAST before the compile-root snapshot: the census of decoded
         // authored records is a snapshot, and upgrade-queue jobs still decoding during the cook
@@ -16388,7 +16412,7 @@ export const render = {
               budgetRemainingMs: () => cookDeadlineMs - (cookNow() - cookStarted),
             });
           } catch (error) {
-            console.warn('[render] crucible bounded roster warm finish failed', error);
+            stormWarn('crucible-bounded-roster-warm-finish-failed', '[render] crucible bounded roster warm finish failed', error);
           }
         } else if (crucibleWarm) {
           // Over-budget skips finish wholesale — but the flags finish() drains
@@ -16425,7 +16449,7 @@ export const render = {
           } catch (driveError) {
             closeCookStepsIter(poolCensusIter);
             noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'poolCensus');
-            console.warn('[render] pool census drive failed; running the sync twin', driveError);
+            laneWarn(typeof state !== 'undefined' ? state : this?.state, 'poolCensus', '[render] pool census drive failed; running the sync twin', driveError);
             poolCensus = runCookSyncTwin('pool census',
               () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: [] });
             break;
@@ -16788,7 +16812,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(jumpEnvBindIter);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'envBindSteps');
-              console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'envBindSteps', '[render] env-bind steps drive failed; running the sync twin', driveError);
               runCookSyncTwin('env-bind', () =>
                 bindEnvironmentToStandardMaterials(scene, scene.environment));
               break;
@@ -16822,7 +16846,7 @@ export const render = {
               // A throwing emit abandons its tail — the collected prefix is a
               // legal partial promotion set (unpromoted rocks stay instanced).
               closeCookStepsIter(rockEmit);
-              console.warn('[render] rock emit drive failed; promoting the collected prefix', driveError);
+              stormWarn('rock-emit-drive-failed-promoting-the-collected-p', '[render] rock emit drive failed; promoting the collected prefix', driveError);
               rockDone = true;
             }
             for (; rockCursor < rockHits.length
@@ -17056,7 +17080,7 @@ export const render = {
             } catch (driveError) {
               closeCookStepsIter(firstFlightEntitiesIter);
               noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'firstFlightCensus');
-              console.warn('[render] first-flight census drive failed; running the sync twin', driveError);
+              laneWarn(typeof state !== 'undefined' ? state : this?.state, 'firstFlightCensus', '[render] first-flight census drive failed; running the sync twin', driveError);
               firstFlightEntities = runCookSyncTwin('first-flight census',
                 () => collectFirstFlightCookEntities(state), []);
               break;
@@ -17104,7 +17128,7 @@ export const render = {
               } catch (driveError) {
                 closeCookStepsIter(warmIterator);
                 noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'warmLedgerRefill');
-                console.warn('[render] warm ledger refill drive failed; running the sync twin', driveError);
+                laneWarn(typeof state !== 'undefined' ? state : this?.state, 'warmLedgerRefill', '[render] warm ledger refill drive failed; running the sync twin', driveError);
                 runCookSyncTwin('warm ledger refill', () => warmNearbyLedgerRows(state));
                 break;
               }
@@ -17137,7 +17161,7 @@ export const render = {
               } catch (driveError) {
                 collectDone = true;
                 noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'presentationCollect');
-                console.warn('[render] presentation collect drive failed; running the sync twin', driveError);
+                laneWarn(typeof state !== 'undefined' ? state : this?.state, 'presentationCollect', '[render] presentation collect drive failed; running the sync twin', driveError);
                 runCookSyncTwin('presentation collect',
                   () => collectMeshPresentationEntities(state, presentation));
                 break;
@@ -17209,7 +17233,7 @@ export const render = {
                 // Per-corpse catch (despawn-lane contract): flag the torn subtree
                 // for remount re-arm, settle the tally via dirty recount (null),
                 // and keep the depart sweep alive for the corpses behind it.
-                console.info('[render] depart dispose iterator step failed', error);
+                stormWarn('depart-dispose-iterator-step-failed', '[render] depart dispose iterator step failed', error);
                 if (mesh && mesh.userData) mesh.userData.sfDespawnPartialTeardown = true;
                 departTorn = true;
                 departDone = true;
@@ -17242,7 +17266,7 @@ export const render = {
           } catch (driveError) {
             closeCookStepsIter(providerEnqueueIter);
             noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue');
-            console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
+            laneWarn(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue', '[render] mesh-build enqueue drive failed; running the sync twin', driveError);
             runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
               firstFlightEntities,
               this._meshes,
@@ -17436,7 +17460,7 @@ export const render = {
           } catch (driveError) {
             closeCookStepsIter(lightBudgetIter);
             noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps');
-            console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
+            laneWarn(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps', '[render] light-budget steps drive failed; running the sync twin', driveError);
             runCookSyncTwin('light-budget', () =>
               syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
             break;
@@ -17520,7 +17544,7 @@ export const render = {
             censusStep = censusIter.next();
           } catch (driveError) {
             closeCookStepsIter(censusIter);
-            console.warn('[render] late-admission census drive failed; running the sync twin', driveError);
+            stormWarn('late-admission-census-drive-failed-running-the-s', '[render] late-admission census drive failed; running the sync twin', driveError);
             return deriveCensus(runCookSyncTwin('late-admission census',
               () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: [] }));
           }
@@ -17622,7 +17646,7 @@ export const render = {
         // bare-epoch keyed bucket would otherwise rebind on its first live registration.
         warmAsteroidInstanceKeys(this._asteroidInstancePool, asteroidPoolWarmResources());
       } catch (error) {
-        console.warn('[render] post-opening asteroid pool warm failed', error);
+        stormWarn('post-opening-asteroid-pool-warm-failed', '[render] post-opening asteroid pool warm failed', error);
       }
       const postCensus = await collectLateAdmissionCensus();
       if (postCensus.superseded === true) return postSupersededResult();
@@ -17787,7 +17811,7 @@ export const render = {
               // A throwing caster pre-collect just skips the optimization —
               // the ceremony's own census collects the same list internally.
               closeCookStepsIter(collectIter);
-              console.warn('[render] caster pre-collect drive failed; letting the ceremony collect', driveError);
+              stormWarn('caster-pre-collect-drive-failed-letting-the-cere', '[render] caster pre-collect drive failed; letting the ceremony collect', driveError);
               break;
             }
             if (collectStep.done) { precollected = collectStep.value; break; }
@@ -17808,7 +17832,7 @@ export const render = {
               // skip the pass (the next admission re-arm retries it wholesale)
               // instead of burning the four drift attempts on the dead drive.
               closeCookStepsIter(depthIter);
-              console.warn('[render] depth compile drive failed; skipping the depth pass', driveError);
+              stormWarn('depth-compile-drive-failed-skipping-the-depth-pa', '[render] depth compile drive failed; skipping the depth pass', driveError);
               return { skipped: true, reason: 'depth-compile-drive-failed', subjects: 0 };
             }
             if (depthStep.done) {
@@ -18051,7 +18075,7 @@ export const render = {
               // documented refuse path below already enters flight and keeps
               // admitting behind the first picture.
               closeCookStepsIter(planIter);
-              console.warn('[render] opening plan drive failed; degrading to plan-incomplete', driveError);
+              stormWarn('opening-plan-drive-failed-degrading-to-plan-inco', '[render] opening plan drive failed; degrading to plan-incomplete', driveError);
               break;
             }
             if (planStep.done) {
@@ -18222,7 +18246,7 @@ export const render = {
             receiptStep = receiptIter.next();
           } catch (driveError) {
             closeCookStepsIter(receiptIter);
-            console.warn('[render] opening receipt drive failed; running the sync twin', driveError);
+            stormWarn('opening-receipt-drive-failed-running-the-sync-tw', '[render] opening receipt drive failed; running the sync twin', driveError);
             if (!openingStale()) {
               state.render.openingSubmissionReceipt = runCookSyncTwin('opening receipt',
                 () => receiptFallback(renderer, plan, {
@@ -18496,7 +18520,7 @@ export const render = {
       // through the ordinary loading window instead of starting inside the prepare cook.
       queueMicrotask(() => {
         try { this._beginEarlyCrucibleRosterWarm(); }
-        catch (error) { console.warn('[render] early crucible roster warm failed', error); }
+        catch (error) { stormWarn('early-crucible-roster-warm-failed', '[render] early crucible roster warm failed', error); }
       });
     });
     // The Crucible door is where the roster becomes knowable: opening any crucible screen
@@ -18509,7 +18533,7 @@ export const render = {
         if (typeof id === 'string' && id.indexOf('crucible') === 0) {
           queueMicrotask(() => {
             try { this._beginMenuCrucibleRosterWarm(); }
-            catch (error) { console.warn('[render] menu crucible roster warm failed', error); }
+            catch (error) { stormWarn('menu-crucible-roster-warm-failed', '[render] menu crucible roster warm failed', error); }
           });
           return;
         }
@@ -19201,13 +19225,13 @@ export const render = {
       const run = this.state && this.state.run;
       if (!run || run.kind !== 'survival' || run.ruleset !== SWARM_RULESET) return;
       try { this._warmSwarmDeferredRoster(run.wave + 1); }
-      catch (error) { console.warn('[render] deferred swarm warm trigger failed', error); }
+      catch (error) { stormWarn('deferred-swarm-warm-trigger-failed', '[render] deferred swarm warm trigger failed', error); }
     });
     onBus('run:wavePlanned', (p) => {
       const wave = p && Number.isInteger(p.wave) ? p.wave : null;
       if (wave == null || wave < 2) return;
       try { this._warmSwarmDeferredRoster(wave, p && p.plan); }
-      catch (error) { console.warn('[render] deferred swarm warm fallback failed', error); }
+      catch (error) { stormWarn('deferred-swarm-warm-fallback-failed', '[render] deferred swarm warm fallback failed', error); }
     });
     onBus('run:ended', () => {
       globalLawArenaDressing.handleReleased();
@@ -19561,7 +19585,7 @@ export const render = {
         if (error?.preventSectorFallbackRotation !== true) prewarm.boundaryRecords?.clear();
         if (error?.preventSectorFallbackRotation === true) {
           releaseSectorPrewarm(prewarm, 'sector-prewarm-invariant-failed');
-          console.error('[render] sector authored prewarm invariant failed; residency was not rotated', error);
+          stormWarn('sector-authored-prewarm-invariant-failed-residen', '[render] sector authored prewarm invariant failed; residency was not rotated', error);
           throw error;
         }
         // Asset failures keep the established procedural boundary visible. The helper itself never
@@ -19576,7 +19600,7 @@ export const render = {
           this._currentSectorPrewarm = prewarm;
           if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
         }
-        console.warn('[render] sector authored prewarm failed; retaining procedural boundaries', error);
+        stormWarn('sector-authored-prewarm-failed-retaining-procedu', '[render] sector authored prewarm failed; retaining procedural boundaries', error);
         return null;
       }).finally(() => {
         if (!rendererGenerationIsActive()) return;
@@ -20030,7 +20054,7 @@ export const render = {
         try {
           await this._drainRosterPrewarmCohort(list, emit.specs, emit.compilePipelines, runSeq);
         } catch (error) {
-          console.warn('[render] survival roster prewarm drain failed', error);
+          stormWarn('survival-roster-prewarm-drain-failed', '[render] survival roster prewarm drain failed', error);
         }
         if ((this._rosterPrewarmRunSeq | 0) !== runSeq) break;
         // Consume the coalesced spec map as ONE merged emit: payload specs
@@ -20081,7 +20105,7 @@ export const render = {
     })();
     this._rosterPrewarmCohortDrain = drive;
     const drain = drive.catch((error) => {
-      console.warn('[render] survival roster prewarm drive failed', error);
+      stormWarn('survival-roster-prewarm-drive-failed', '[render] survival roster prewarm drive failed', error);
     });
     if (this._rosterPrewarmPending) {
       this._rosterPrewarmPending.add(drain);
@@ -20140,7 +20164,7 @@ export const render = {
         try {
           boundary = this.vf.build(spec);
         } catch (error) {
-          console.warn('[render] survival roster prewarm build failed', spec.id, error);
+          stormWarn('survival-roster-prewarm-build-failed', '[render] survival roster prewarm build failed', spec.id, error);
           break;
         }
         if (!boundary) break;
@@ -20190,7 +20214,7 @@ export const render = {
             }
             return null;
           }, (error) => {
-            console.warn('[render] survival roster prewarm admission failed', spec.id, error);
+            stormWarn('survival-roster-prewarm-admission-failed', '[render] survival roster prewarm admission failed', spec.id, error);
             return null;
           });
           if (this._rosterPrewarmPending) {
@@ -20200,7 +20224,7 @@ export const render = {
             }));
           }
         } catch (error) {
-          console.warn('[render] survival roster prewarm admission failed', spec.id, error);
+          stormWarn('survival-roster-prewarm-admission-failed', '[render] survival roster prewarm admission failed', spec.id, error);
         }
         if (cohortOwed()) await yieldToBrowser();
       }
@@ -20271,7 +20295,7 @@ export const render = {
         this._markShadowReceiversDirty?.();
         this._rosterPrewarmRoots.push(mesh);
         const settled = compilePipelines(mesh).catch((error) => {
-          console.warn('[render] survival roster projectile warm failed', weaponId, error);
+          stormWarn('survival-roster-projectile-warm-failed', '[render] survival roster projectile warm failed', weaponId, error);
         });
         if (this._rosterPrewarmPending) {
           this._rosterPrewarmPending.add(settled);
@@ -20280,7 +20304,7 @@ export const render = {
           }));
         }
       } catch (error) {
-        console.warn('[render] survival roster projectile warm failed', weaponId, error);
+        stormWarn('survival-roster-projectile-warm-failed', '[render] survival roster projectile warm failed', weaponId, error);
       }
       if (cohortOwed()) await yieldToBrowser();
     }
@@ -20298,7 +20322,7 @@ export const render = {
         this._markShadowReceiversDirty?.();
         this._rosterPrewarmRoots.push(leafWarm);
         const leafSettled = compilePipelines(leafWarm).catch((error) => {
-          console.warn('[render] asteroid leaf-variant warm failed', error);
+          stormWarn('asteroid-leaf-variant-warm-failed', '[render] asteroid leaf-variant warm failed', error);
         });
         if (this._rosterPrewarmPending) {
           this._rosterPrewarmPending.add(leafSettled);
@@ -20307,7 +20331,7 @@ export const render = {
           }));
         }
       } catch (error) {
-        console.warn('[render] asteroid leaf-variant warm failed', error);
+        stormWarn('asteroid-leaf-variant-warm-failed', '[render] asteroid leaf-variant warm failed', error);
       }
     }
     // Roots mounted after the reskin continuation's bare→PBR sweep ran never
@@ -20484,7 +20508,7 @@ export const render = {
             holder.add(inst);
           }
         } catch (error) {
-          console.warn('[render] roster part catalog instantiate failed', entry.file, error);
+          stormWarn('roster-part-catalog-instantiate-failed', '[render] roster part catalog instantiate failed', entry.file, error);
           continue;
         }
         // Live attach canonicalizes the shared materials' program-family keys (attachPackagedBody
@@ -20813,7 +20837,7 @@ export const render = {
               }), `attach:${spec && spec.id}`));
             }
           } catch (error) {
-            console.warn('[render] crucible warm spawnable build failed', spec && spec.id, error);
+            stormWarn('crucible-warm-spawnable-build-failed', '[render] crucible warm spawnable build failed', spec && spec.id, error);
           }
         }
         for (const spec of shipSpecs) {
@@ -20872,7 +20896,7 @@ export const render = {
               unmarkWarmCoverage(spec && spec.data && spec.data.lootTableId);
             }
           } catch (error) {
-            console.warn('[render] crucible warm ship build failed', spec && spec.id, error);
+            stormWarn('crucible-warm-ship-build-failed', '[render] crucible warm ship build failed', spec && spec.id, error);
             // A failed exemplar must not stay coverage-claimed: decrement the row its spec
             // stamped (once — a shared hulk file's failure doesn't double-decrement the
             // same warm's claim) so a later deferred warm retries the archetype instead of
@@ -20928,7 +20952,7 @@ export const render = {
                 && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
             }
           } catch (error) {
-            console.warn('[render] crucible warm hulk build failed', spec && spec.id, error);
+            stormWarn('crucible-warm-hulk-build-failed', '[render] crucible warm hulk build failed', spec && spec.id, error);
             // Same per-spec unmark as the ship exemplars — a roster hulk's authored attach
             // would otherwise stay claimed-and-unwarmed until the first in-round kill.
             unmarkWarmCoverage(spec && spec.data
@@ -20954,11 +20978,11 @@ export const render = {
             });
             if (mesh) { mesh.visible = false; root.add(mesh); }
           } catch (error) {
-            console.warn('[render] crucible warm projectile build failed', weapon.id, error);
+            stormWarn('crucible-warm-projectile-build-failed', '[render] crucible warm projectile build failed', weapon.id, error);
           }
         }
       } catch (error) {
-        console.warn('[render] crucible roster warm builds failed', error);
+        stormWarn('crucible-roster-warm-builds-failed', '[render] crucible roster warm builds failed', error);
         teardownWarm();
         return false;
       } finally {
@@ -20970,7 +20994,7 @@ export const render = {
     // synchronously, matching the pre-sliced shape; the tail paces over yields
     // and finish() joins it inside the bounded decode wait.
     warm.buildsReady = buildExemplars().catch((error) => {
-      console.warn('[render] crucible roster warm builds failed', error);
+      stormWarn('crucible-roster-warm-builds-failed', '[render] crucible roster warm builds failed', error);
       teardownWarm();
       return false;
     });
@@ -20998,7 +21022,7 @@ export const render = {
         } catch (_) { /* a refused request leaves the live trigger armed */ }
       }
     } catch (error) {
-      console.warn('[render] crucible warm boundary kick failed', error);
+      stormWarn('crucible-warm-boundary-kick-failed', '[render] crucible warm boundary kick failed', error);
     }
     // World-site fixtures mint a fresh MeshBasicMaterial per socket on first approach — the
     // additive/transparent/no-tonemap program family is identical across them, so one exemplar
@@ -21019,7 +21043,7 @@ export const render = {
       fixture.visible = false;
       root.add(fixture);
     } catch (error) {
-      console.warn('[render] crucible warm site fixture build failed', error);
+      stormWarn('crucible-warm-site-fixture-build-failed', '[render] crucible warm site fixture build failed', error);
     }
     // Explicit decodes: the bodies that materialize mid-round without an entity plan entry.
     // Slot choice matters — the authored cache keys on url::slot and a mismatched slot decodes
@@ -21085,7 +21109,7 @@ export const render = {
       }), `decode:${file}`));
     }
     } catch (error) {
-      console.warn('[render] crucible roster warm begin failed', error);
+      stormWarn('crucible-roster-warm-begin-failed', '[render] crucible roster warm begin failed', error);
       teardownWarm();
       return null;
     }
@@ -21189,7 +21213,7 @@ export const render = {
       this._rosterPrewarmRoots.push(warm.root);
       this._earlyCrucibleWarm = warm;
     } catch (error) {
-      console.warn('[render] early crucible roster warm begin failed', error);
+      stormWarn('early-crucible-roster-warm-begin-failed', '[render] early crucible roster warm begin failed', error);
       this._earlyCrucibleWarm = null;
     }
   },
@@ -21222,7 +21246,7 @@ export const render = {
       this._earlyCrucibleWarm = warm;
       this._earlyCrucibleWarmMenu = true;
     } catch (error) {
-      console.warn('[render] menu crucible roster warm begin failed', error);
+      stormWarn('menu-crucible-roster-warm-begin-failed', '[render] menu crucible roster warm begin failed', error);
       this._earlyCrucibleWarm = null;
       this._earlyCrucibleWarmMenu = false;
     }
@@ -21271,7 +21295,7 @@ export const render = {
           .push({ entry, enemyId: null, kick: kickSpec });
       }
     } catch (error) {
-      console.warn('[render] early crucible warm player top-up failed', error);
+      stormWarn('early-crucible-warm-player-top-up-failed', '[render] early crucible warm player top-up failed', error);
     }
   },
 
@@ -21677,7 +21701,7 @@ export const render = {
             { loadPart: reloadAuthoredPart, sectorId, role: warm.decodeRole || 'crucible-roster-warm' },
           );
         } catch (error) {
-          console.warn('[render] crucible warm package reacquire failed', record.assetId || url, error);
+          stormWarn('crucible-warm-package-reacquire-failed', '[render] crucible warm package reacquire failed', record.assetId || url, error);
         }
       }
       const holder = new THREE.Group();
@@ -21720,7 +21744,7 @@ export const render = {
               packageInstances.push(instance);
             }
           } catch (error) {
-            console.warn('[render] crucible warm package instance failed', record.assetId || url, error);
+            stormWarn('crucible-warm-package-instance-failed', '[render] crucible warm package instance failed', record.assetId || url, error);
           }
           // Palette-material coverage WITHOUT chunk promotion: a live ship boundary draws its
           // poolable surfaces through sharedMaterialFor(material, tags, palette) — a family the
@@ -21733,7 +21757,7 @@ export const render = {
               let subjects = [];
               try { subjects = paletteWarmSubjectsForRecord(record, palette); }
               catch (error) {
-                console.warn('[render] crucible warm palette subjects failed', record.assetId || url, error);
+                stormWarn('crucible-warm-palette-subjects-failed', '[render] crucible warm palette subjects failed', record.assetId || url, error);
               }
               for (const subject of subjects) {
                 if (!subject || !subject.geometry || !subject.material) continue;
@@ -21796,7 +21820,7 @@ export const render = {
                 const promoted = await warmRenderPackageShipPool(scene, record, witnessPalettes);
                 chunkPromotions += promoted;
               } catch (error) {
-                console.warn('[render] crucible warm pool witness promotion failed', record.assetId || url, error);
+                stormWarn('crucible-warm-pool-witness-promotion-failed', '[render] crucible warm pool witness promotion failed', record.assetId || url, error);
               }
             }
           }
@@ -21807,7 +21831,7 @@ export const render = {
           instantiated += 1;
         }
       } catch (error) {
-        console.warn('[render] crucible warm instantiate failed', cacheKey, error);
+        stormWarn('crucible-warm-instantiate-failed', '[render] crucible warm instantiate failed', cacheKey, error);
       }
       await paceCensusSlice();
       // Over budget, stop instantiating — the holders already mounted still compile, and
@@ -22157,7 +22181,7 @@ export const render = {
           for (let witness = 0; witness < 2; witness += 1) {
             let ship = null;
             try { ship = this.vf.build(spec); } catch (error) {
-              console.warn('[render] deferred swarm warm ship build failed', spec && spec.id, error);
+              stormWarn('deferred-swarm-warm-ship-build-failed', '[render] deferred swarm warm ship build failed', spec && spec.id, error);
               unmarkEnemy(spec && spec.data && spec.data.lootTableId);
               break;
             }
@@ -22188,7 +22212,7 @@ export const render = {
               try {
                 kickedShip = kickShip(0);
               } catch (error) {
-                console.warn('[render] deferred swarm warm ship kick failed', spec && spec.id, error);
+                stormWarn('deferred-swarm-warm-ship-kick-failed', '[render] deferred swarm warm ship kick failed', spec && spec.id, error);
                 unmarkEnemy(shipEnemyId);
               }
               if (kickedShip) {
@@ -22244,12 +22268,12 @@ export const render = {
                 && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
             }
           } catch (error) {
-            console.warn('[render] deferred swarm warm hulk build failed', spec && spec.id, error);
+            stormWarn('deferred-swarm-warm-hulk-build-failed', '[render] deferred swarm warm hulk build failed', spec && spec.id, error);
             unmarkEnemy(spec && spec.data && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
           }
         }
       } catch (error) {
-        console.warn('[render] deferred swarm warm build failed', error);
+        stormWarn('deferred-swarm-warm-build-failed', '[render] deferred swarm warm build failed', error);
         unmark();
         // A thrown build skips the settle chain below: detach the half-built root so it
         // doesn't sit mounted+invisible+unparkable until run end (and leave the prewarm
@@ -22357,7 +22381,7 @@ export const render = {
           : null
       )))
       .catch((error) => {
-        console.warn('[render] deferred swarm warm compile failed', error);
+        stormWarn('deferred-swarm-warm-compile-failed', '[render] deferred swarm warm compile failed', error);
         // Coverage only counts what actually compiled: unmark so the next dwell (or the
         // wavePlanned fallback) retries the batch instead of leaving its links in-round.
         // The half-built root detaches too — otherwise the next dwell rebuilds the same
@@ -22420,7 +22444,7 @@ export const render = {
       // without a Promise.race pair per registry entry inside this task.
       records = peekSettledAuthoredEntries(renderer);
     } catch (error) {
-      console.warn('[render] deferred swarm warm census failed', error);
+      stormWarn('deferred-swarm-warm-census-failed', '[render] deferred swarm warm census failed', error);
       return;
     }
     const rosterFilePalettes = rosterPoolWitnessFilePalettes([], { rosterEnemyIds: freshSet });
@@ -22456,7 +22480,7 @@ export const render = {
         let subjects = [];
         try { subjects = paletteWarmSubjectsForRecord(record, palette); }
         catch (error) {
-          console.warn('[render] deferred swarm warm palette subjects failed', record.assetId || parts[0], error);
+          stormWarn('deferred-swarm-warm-palette-subjects-failed', '[render] deferred swarm warm palette subjects failed', record.assetId || parts[0], error);
         }
         for (const subject of subjects) {
           if (!subject || !subject.geometry || !subject.material) continue;
@@ -22600,7 +22624,7 @@ export const render = {
           this._noteShadowMeshRemoved?.(catalog);
         }
       } catch (error) {
-        console.warn('[render] roster part catalog release failed', reason, error);
+        stormWarn('roster-part-catalog-release-failed', '[render] roster part catalog release failed', reason, error);
       }
     }
     for (const root of roots) {
@@ -22633,7 +22657,7 @@ export const render = {
           this._noteShadowMeshRemoved?.(root);
         }
       } catch (error) {
-        console.warn('[render] survival roster prewarm release failed', reason, error);
+        stormWarn('survival-roster-prewarm-release-failed', '[render] survival roster prewarm release failed', reason, error);
       }
     }
   },
@@ -23196,7 +23220,7 @@ export const render = {
       }
       pending.length = w;
       if (tornFreezeMints.length > 0) {
-        console.info('[render] hidden-freeze mints torn mid-walk; rows dropped:', tornFreezeMints.join(', '));
+        stormWarn('hidden-freeze-mints-torn-mid-walk-rows-dropped', '[render] hidden-freeze mints torn mid-walk; rows dropped:', tornFreezeMints.join(', '));
       }
     } finally {
       if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
@@ -23339,7 +23363,7 @@ export const render = {
     }
     pending.length = w;
     if (tornUnfreezeMints.length > 0) {
-      console.info('[render] hidden-unfreeze mints torn mid-walk; rows dropped:', tornUnfreezeMints.join(', '));
+      stormWarn('hidden-unfreeze-mints-torn-mid-walk-rows-dropped', '[render] hidden-unfreeze mints torn mid-walk; rows dropped:', tornUnfreezeMints.join(', '));
     }
     } finally {
       if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
@@ -25110,7 +25134,7 @@ export const render = {
           e._noMesh = true;
           e._noMeshByRenderer = true;
           if (e._meshBuildLastError) {
-            console.warn('[render] mesh build failed permanently', {
+            stormWarn('mesh-build-failed-permanently', '[render] mesh build failed permanently', {
               id: e.id,
               type: e.type || null,
               error: e._meshBuildLastError,
@@ -25876,7 +25900,7 @@ export const render = {
       if (!this._entityViewSyncFaultWarned) {
         this._entityViewSyncFaultWarned = true;
         noteLaneFault(this.state, 'entityViewSync', true);
-        console.warn('[render] syncEntityViews drive faulted; serving last-painted picture', syncError);
+        laneWarn(this.state, 'entityViewSync', '[render] syncEntityViews drive faulted; serving last-painted picture', syncError);
       }
       return undefined;
     }
@@ -27490,7 +27514,7 @@ export const render = {
           this._rebindRetryAt = Date.now() + 1000;
           noteLaneFault(this.state, 'presentationRebind',
             (this._rebindFaultRetries | 0) >= 3);
-          console.warn('[render] presentation rebind drive failed; retrying under cooldown', err);
+          laneWarn(this.state, 'presentationRebind', '[render] presentation rebind drive failed; retrying under cooldown', err);
           break;
         }
         if (step.done) {
@@ -27586,7 +27610,7 @@ export const render = {
               }
               noteLaneFault(this.state, 'fencePack',
                 (this._fencePackFaults | 0) >= 3);
-              console.warn('[render] presentation fence pack drive failed; re-minting next frame', packError);
+              laneWarn(this.state, 'fencePack', '[render] presentation fence pack drive failed; re-minting next frame', packError);
               break;
             }
             if (step.done) {
@@ -31931,8 +31955,12 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
     } catch (driveError) {
       // Drop the parked slot so the next eval re-mints fresh — a dead iter
       // would read done and stamp a verdict + LOD level over a half-applied
-      // walk while clearing the root's dirty latch.
+      // walk while clearing the root's dirty latch. The walk's applied prefix
+      // (nodes already flipped, their receiver delta folded into slot.out)
+      // never reaches a finish, so arm the dirty flag: the receiver tally's
+      // conservative recount re-measures instead of trusting the dropped delta.
       parkedMap.delete(root);
+      if (owner) owner._shadowReceiversDirty = true;
       notePolicyRootFault(owner, root, driveError);
       laneWarn(owner, 'shadowPolicyRoot',
         '[render] shadow policy steps drive failed; root stays dirty for the next eval', driveError);
