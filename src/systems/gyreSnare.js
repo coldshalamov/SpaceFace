@@ -135,6 +135,7 @@ function freshRuntime() {
     lastAbsorbCueS: -1e9,  // simTime of the last absorb tick — gates the glass-tick cue rate
     strainCueLatched: false, // gyre_snare_strain fires once per strain excursion
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
+    basinCatchLatched: false, // the first basin catch ticks once per empty->net edge
     orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
     orbitDir: 1,           // ±1 — revolution direction from the same hash, so successive clumps don't all circle one way
     swirlBlend: 1,         // eased stir sign — chases orbitDir over ~0.5 s (dt·4 across a range of 2) so a snag can't flip the funnel's spiral mid-feed
@@ -269,6 +270,7 @@ export const gyreSnare = {
     // clump's first strain excursion should re-arm the latch instead of inheriting it hot.
     rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; rt.fullCueLatched = false;
     rt.fuseCueLatched = false;
+    rt.basinCatchLatched = false;
     rt.tornTrack = null; // any new drop ends a previous torn body's follow
     // dropped = a live beam/hold released without launch; coreId is null when the beam
     // closed empty (no clump ever snagged) — AND during LAUNCH: the ball is already
@@ -1588,6 +1590,15 @@ export const gyreSnare = {
     if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlS = 0; pub.ballClumpRadius = 0; pub.ballVx = 0; pub.ballVz = 0; }
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
+    // First-catch edge: the net going empty -> occupied gets a soft tick so the
+    // "xN IN NET" read has ears too. HOLD's absorbs have their own voice.
+    if (this.bus) {
+      const caught = rt.phase === PHASE.BEAM && rt.basinCount > 0;
+      if (caught && !rt.basinCatchLatched) {
+        rt.basinCatchLatched = true;
+        this.bus.emit('audio:cue', { id: 'gyre_snare_catch', gain: 0.3, rate: 1.35 });
+      } else if (!caught) rt.basinCatchLatched = false;
+    }
     pub.towCount = rt.towCount || 0;
     pub.tooHeavyCount = rt.tooHeavyCount || 0;
     // Live-ball count publishes on EVERY phase incl. OFF — the HUD's '+N' counts balls

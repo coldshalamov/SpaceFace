@@ -238,7 +238,8 @@ export class GyreSnarePresentation {
     this._closeT = 0;
     this._closeSpan = 0.25;  // ramp seconds — a strain break snaps down in ~120 ms instead
     this._closeK = 0;        // last k*k of the ramp — the clump group shrinks on it
-    this._closeTear = false; // 'strained' close: the freed clump whips away — lumps clear instantly, no k² evaporation
+    this._closeTear = false; // 'strained' close: the freed clump whips away — rubble rides its track
+    this._tearFade = null;   // seconds left on the k² rubble fade once the torn track ends (no one-frame de-rez)
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
     this._moteKick = 0;      // absorb gulp: the mote spiral's own clock surges for a beat
     this._gulpDirX = 0;      // newest member's approach dir (world frame) — the funnel
@@ -721,7 +722,12 @@ export class GyreSnarePresentation {
       this._coneMat.uniforms.uAlpha.value = (tense ? 0.62 : 0.42) * spent * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
       // for the cone to occlude background glow and read as a surface, not a hologram.
-      this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * fuseDim * spent * (tense ? 1.2 : 0.8);
+      // A whisper floor keeps the silhouette readable when additive blowout washes
+      // the glass out against a bright nebula/planet backdrop (fades with the wake ramp).
+      this._bodyMat.opacity = Math.max(
+        0.1 * flashCalm * wakeEase * fuseDim * spent * (tense ? 1.2 : 0.8),
+        0.035 * flashCalm * wakeEase,
+      );
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
       // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
       // Single canonical writer: the decayed carry maxes against the strain
@@ -1007,11 +1013,21 @@ export class GyreSnarePresentation {
           this._veilMat.opacity *= Math.exp(-sdt * 4);
           this._veil.visible = this._veilMat.opacity > 0.004;
           this._clump.visible = true;
+        } else if (this._tearFade == null) {
+          // Track just ended: ease the rubble out on the k² language of every
+          // other close (~0.2 s) instead of de-rezzing in one frame mid-flight.
+          this._tearFade = 0.2;
         } else {
-          // Track ended (body gone or window elapsed): the lash is empty.
-          this._closeTear = false;
-          this._clump.visible = false;
-          this._clearLumps();
+          this._tearFade -= sdt;
+          const k = Math.max(0, this._tearFade / 0.2);
+          this._clump.scale.setScalar(Math.max(0.001, k * k));
+          this._veilMat.opacity *= Math.exp(-sdt * 6);
+          this._veil.visible = this._veilMat.opacity > 0.004;
+          this._clump.visible = this._tearFade > 0;
+          if (this._tearFade <= 0) {
+            this._closeTear = false; this._tearFade = null;
+            this._clump.visible = false; this._clearLumps();
+          }
         }
       } else if (this._closing && this._clump.visible && this._closeK > 0) {
         this._clump.scale.setScalar(Math.max(0.001, this._closeK));
@@ -1033,6 +1049,7 @@ export class GyreSnarePresentation {
     } else {
       this._deathT = 0;
       this._closeTear = false; // a re-beam mid-tear-follow hands the clump group to the new core
+      this._tearFade = null;
       const p = this.toLocal(cx, cz, this._nose);
       this._clump.visible = true;
       // Loose zero-G also drifts UP: a slow ±0.3 wu bob seeded on the clump's orbit
@@ -1134,7 +1151,13 @@ export class GyreSnarePresentation {
         const mL2 = this.toLocal(finite(mirror.maw && mirror.maw.x), finite(mirror.maw && mirror.maw.z), this._mawPt);
         const gx = gL.x - mL2.x, gz = gL.z - mL2.z;
         const gd = Math.max(1, Math.hypot(gx, gz));
-        this._grip.position.set(mL2.x + gx * 0.5, 0.55, mL2.z + gz * 0.5);
+        // Ride the same vertical bob as the clump's heart — a flat spoke at y=0.55
+        // visibly separated from the ball's drift by up to 0.3 wu.
+        this._grip.position.set(
+          mL2.x + gx * 0.5,
+          0.6 + Math.sin(this.time * 0.7 + finite(mirror.orbitSeed)) * 0.3 * calm,
+          mL2.z + gz * 0.5,
+        );
         this._grip.rotation.y = Math.atan2(-gz, gx);
         const strain = clamp01(finite(mirror.strain01));
         // Grip width flickers under strain — the spoke trembles with the held rubble.

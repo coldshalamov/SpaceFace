@@ -3043,6 +3043,18 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 1700, filterQ: 2.2,
     pitchRange: [0.9, 1.25],
   },
+  // First catch: the net's empty -> occupied edge — a soft low tick sibling of the
+  // absorb gulp, quiet enough to sit under the beam shimmer without promising a meal.
+  {
+    id: 'sfx_gyre_catch',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 320, freqSweep: [320, 480], sweepTimeS: 0.04,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.06 },
+    filterType: 'bandpass', filterFreq: 1100, filterQ: 2.4,
+    pitchRange: [0.95, 1.15],
+  },
   // Launch: the bowling-ball release — a whip-crack transient over a big falling
   // sub whoosh. The single loudest voice in the weapon's vocabulary.
   {

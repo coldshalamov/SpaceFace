@@ -98,7 +98,7 @@ export const GYRE_SNARE = Object.freeze({
                            // interrupts; the floor keeps a pebble's snap snappy
   // ── Katamari growth ───────────────────────────────────────────────────────────────
   suckBandWidth: 88,         // wu — core sucks absorbables within core.radius + this
-  suckBandFloor: 40,         // wu — floor band on a fresh snag: min(88, 40 + clumpRadius)
+  suckBandFloor: 50,         // wu — floor band on a fresh snag: min(88, 50 + clumpRadius)
                            // keeps a pebble's reach under basinRadius so the appetite
                            // escalation is visible from the very first meal
   suckBandMassGain: 0.5,     // extra band wu per wu of clump radius — the annulus widens
