@@ -339,11 +339,11 @@ export const wingMorale = {
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
     return voice.say({
-      channel: 'info',
+      channel: 'bark',
       kind: 'combat',
       id: `wingMorale:${squadId}:broken`,
       text: 'SQUAD BROKEN',
-      ttl: 2,
+      ttl: 4,
     });
   },
 
@@ -351,11 +351,11 @@ export const wingMorale = {
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
     return voice.say({
-      channel: 'info',
+      channel: 'bark',
       kind: 'combat',
       id: `wingMorale:${wardId}:enraged`,
       text: 'ENEMY ENRAGED',
-      ttl: 2,
+      ttl: 4,
     });
   },
 
@@ -363,11 +363,11 @@ export const wingMorale = {
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
     return voice.say({
-      channel: 'info',
+      channel: 'bark',
       kind: 'combat',
       id: `wingMorale:${squadId}:reinforcementBlocked`,
       text: 'REINFORCEMENTS BLOCKED',
-      ttl: 2,
+      ttl: 4,
     });
   },
 

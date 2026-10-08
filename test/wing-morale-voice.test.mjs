@@ -8,7 +8,9 @@ import { wingMorale } from '../src/systems/wingMorale.js';
 
 // Wing morale owns two silent tactical beats beside the authored SQUAD BROKEN call: the ward
 // that goes berserk when its escort dies, and the squad whose reinforcement call dies with
-// its comms subsystem. Both now voice on the same info/combat channel.
+// its comms subsystem. All three speak once, on the bark channel, with enough ttl to outlive
+// the 1.5 s bark gap — info priority never interrupted a live firefight bark, so the line
+// expired unheard.
 
 function boot(seed = 4242, withVoice = true) {
   const state = createGameState(seed);
@@ -60,9 +62,22 @@ test('wing morale: killing an escort voices the ward going enraged', () => {
   const enraged = h.said.filter((line) => line.id === `wingMorale:${ward.id}:enraged`);
   assert.equal(enraged.length, 1, 'the enrage names itself once');
   assert.equal(enraged[0].text, 'ENEMY ENRAGED');
-  assert.equal(enraged[0].channel, 'info');
+  assert.equal(enraged[0].channel, 'bark');
   assert.equal(enraged[0].kind, 'combat');
+  assert.ok(enraged[0].ttl > 1.5);
   assert.equal(h.events.filter((e) => e.kind === 'enraged').length, 1);
+});
+
+test('wing morale: killing the squad leader voices SQUAD BROKEN once', () => {
+  const h = boot(4242);
+  const leader = spawnShip(h, { ai: { squadId: 'sq_br', preferredRole: 'leader' } });
+  spawnShip(h, { ai: { squadId: 'sq_br', preferredRole: 'wing' } });
+  h.bus.emit('entity:killed', { id: leader.id, entityId: leader.id, killerId: h.player.id });
+  const broken = h.said.filter((line) => line.text === 'SQUAD BROKEN');
+  assert.equal(broken.length, 1, 'the break speaks once');
+  assert.equal(broken[0].channel, 'bark');
+  assert.equal(broken[0].id, 'wingMorale:sq_br:broken');
+  assert.ok(broken[0].ttl > 1.5);
 });
 
 test('wing morale: a dead comms subsystem voices the blocked reinforcement call', () => {

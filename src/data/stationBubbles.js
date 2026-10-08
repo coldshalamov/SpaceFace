@@ -106,7 +106,7 @@ function insideNoFire(playerPos, station) {
  *
  * Contract (CI-pinned by scripts/check-station-bubbles.mjs):
  *   * weaponDrawn(playerPos, stations): if the player is inside some station's no-fire ring and
- *     has NOT yet barked since entering it → exactly one say({channel:'warn', ...}) and returns
+ *     has NOT yet barked since entering it → exactly one say({channel:'alert', ...}) and returns
  *     the station key; otherwise no call, returns null. Staying inside → later draws are silent.
  *   * update(playerPos, stations): tracks ring entry/exit; LEAVING a ring re-arms its bark, so
  *     enter → bark → leave → re-enter → bark again.
@@ -145,7 +145,7 @@ export function createNoFireWatch(opts = {}) {
         s.barked = true;
         if (say) {
           say({
-            channel: 'warn',
+            channel: 'alert',
             text: NO_FIRE_BARK,
             kind: 'noFireZone',
             factionId: (st.factionId || (st.data && st.data.factionId)) || null,
@@ -161,7 +161,8 @@ export function createNoFireWatch(opts = {}) {
 // ── noFireAdvisory — the runtime owner of ONE createNoFireWatch (registered system) ────────────
 // The render half of this packet (src/render/stationBubbleRings.js) is still a graphics-lane
 // handoff, but the bark half is legible without rings: the watch below is headless and the
-// voice:surface floor already renders 'warn'. Registered beside hazardHints in the BP-11 cluster
+// voice:surface floor already renders the alert channel. 'warn' is not a voice channel —
+// the arbiter demotes it to info, so the no-fire line lost to every real bark. Registered beside hazardHints in the BP-11 cluster
 // (see src/core/registry.js). Pure call-sequence state — nothing is saved; newGame rebuilds.
 
 export const noFireAdvisory = {
