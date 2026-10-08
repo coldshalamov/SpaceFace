@@ -175,6 +175,7 @@ import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
 import {
   clearWaveHullRunwayKeys,
+  appendNearbyLedgerRowsChunked,
   collectMeshPresentationEntities,
   collectMeshPresentationEntitiesChunked,
   warmNearbyLedgerRows,
@@ -2388,13 +2389,23 @@ function driveProtectedFirstFlightDrain(owner) {
     // Post-retry degrade: the hoisted exempt cohort sits unbuilt for the whole
     // hold otherwise — one bounded atomic sync-twin rescue per epoch, matching
     // the sibling lanes' contract.
+    // Epoch-gated rescue twins are atomic whole-work runs landing on the
+    // exact storm frames they exist for — wire them into the shared forced
+    // wallet so N twins can't stack past FORCED_FRAME_BUDGET_MS on one
+    // presented frame. Consult defers the fire (the epoch latch makes the
+    // deferral free); a fired twin debits its real spend.
     if ((owner._protectedFirstFlightFaultRetries | 0) >= 3
       && owner._protectedFirstFlightDegradedEpoch !== drainEpoch
+      && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS
       && typeof owner._drainProtectedFirstFlightBuilds === 'function') {
       owner._protectedFirstFlightDegradedEpoch = drainEpoch;
       noteLaneFault(owner.state, 'protectedFirstFlightDrain', true);
-      return runCookSyncTwin('protected first-flight drain',
+      const twinStart = drainClockNow();
+      const twinOut = runCookSyncTwin('protected first-flight drain',
         () => owner._drainProtectedFirstFlightBuilds(), 0);
+      const twinElapsed = drainClockNow() - twinStart;
+      if (twinElapsed > 0) noteForcedFrameSpend(twinElapsed);
+      return twinOut;
     }
     return 0;
   }
@@ -2411,7 +2422,10 @@ function driveProtectedFirstFlightDrain(owner) {
     } catch (err) {
       // A re-minting rethrow turns one skeleton fault into a presented-frame
       // exception for the rest of the hold — park the lane for this enter
-      // instead; a fresh enter serial re-arms the mint.
+      // instead; a fresh enter serial re-arms the mint. Close the suspended
+      // generator like the sibling lanes so its mid-walk scratch is released
+      // and any in-flight try/finally unwinds now, not on GC.
+      closeCookStepsIter(owner._protectedFirstFlightDrainIter);
       owner._protectedFirstFlightDrainIter = null;
       if (owner._protectedFirstFlightFaultEpoch !== drainEpoch) {
         owner._protectedFirstFlightFaultRetries = 0;
@@ -2601,6 +2615,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         } catch (err) {
           // Park the lane for this enter rather than rethrowing through the
           // service tail — the mint gate above re-arms on the next serial.
+          // Close the suspended generator like the sibling lanes.
+          closeCookStepsIter(owner._residentReattachIter);
           owner._residentReattachIter = null;
           owner._residentReattachFaultEpoch = serviceFaultEpoch(st);
           noteLaneFault(st, 'residentReattach', true);
@@ -2623,14 +2639,18 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // gate's !iter precondition means what it says again.
     if (!owner._residentReattachIter
         && owner._residentReattachFaultEpoch === serviceFaultEpoch(st)
-        && owner._keepGpuReattachEpoch !== owner._residentReattachFaultEpoch) {
+        && owner._keepGpuReattachEpoch !== owner._residentReattachFaultEpoch
+        && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
       owner._keepGpuReattachEpoch = owner._residentReattachFaultEpoch;
+      const twinStart = now();
       runCookSyncTwin('resident reattach', () => {
         const it = reattachResidentGpuMeshesSteps(owner);
         it._remap = st.mode === 'loading' && st.sessionEntityIdRemap instanceof Map
           ? st.sessionEntityIdRemap : null;
         for (;;) { if (it.next().done) break; }
       });
+      const twinElapsed = now() - twinStart;
+      if (twinElapsed > 0) noteForcedFrameSpend(twinElapsed);
     }
     // Restore reissues entity ids (spawnEntity ignores saved ids) and a mesh can also be missing
     // because its build was still queued at save time, so the kept set can leave live entities
@@ -2667,7 +2687,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         owner._keepGpuReconcileDirtySince = now();
       }
       if (!owner._keepGpuReconcileDegraded
-          && now() - owner._keepGpuReconcileDirtySince >= 1000) {
+          && now() - owner._keepGpuReconcileDirtySince >= 1000
+          && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
         owner._keepGpuReconcileDegraded = true;
         if (typeof owner._reconcileMeshesSteps === 'function') {
           // Escalated-paced re-mint, not the atomic drain: the kept resident
@@ -2683,12 +2704,16 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         } else {
           // Fixture/custom owners without the staged twin keep the atomic
           // call — re-dirty on a throw so the reconcile isn't lost for the
-          // epoch (the iterator clears the flag at its head).
+          // epoch (the iterator clears the flag at its head). Forced-wallet
+          // member like the sibling rescue twins.
+          const twinStart = now();
           try { owner.reconcileMeshes({ keepResidentSet: true }); }
           catch (err) {
             owner._meshReconcileDirty = true;
             console.warn('[render] keep-gpu reconcile degrade failed', err);
           }
+          const twinElapsed = now() - twinStart;
+          if (twinElapsed > 0) noteForcedFrameSpend(twinElapsed);
         }
       }
     }
@@ -3061,15 +3086,21 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       && ((owner._arrivalReserveFaultRetries | 0) >= 3
         || now() < (owner._arrivalReserveRetryAt || 0));
     if (!reserveParked) {
-      owner._arrivalReservePending = false;
       const reserveEntities = Array.isArray(owner.state && owner.state.entityList)
         ? owner.state.entityList : [];
       if (typeof owner._reserveArrivalAsteroidCapacitySteps === 'function') {
+        owner._arrivalReservePending = false;
         owner._arrivalReserveIter = owner._reserveArrivalAsteroidCapacitySteps(reserveEntities);
         owner._arrivalReserveEpoch = arrivalLiveEpoch;
-      } else {
+      } else if (forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
+        // Fixture fallback rides the forced wallet too — a spent frame keeps
+        // pending armed so the reserve fires on a later pass, not dropped.
+        owner._arrivalReservePending = false;
+        const twinStart = now();
         runCookSyncTwin('arrival-asteroid-reserve',
           () => owner._reserveArrivalAsteroidCapacity(reserveEntities));
+        const twinElapsed = now() - twinStart;
+        if (twinElapsed > 0) noteForcedFrameSpend(twinElapsed);
       }
     }
   }
@@ -3082,6 +3113,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       try {
         step = iterator.next();
       } catch (err) {
+        closeCookStepsIter(owner._arrivalReserveIter);
         owner._arrivalReserveIter = null;
         if (owner._arrivalReserveFaultEpoch !== arrivalLiveEpoch) {
           owner._arrivalReserveFaultRetries = 0;
@@ -3540,6 +3572,28 @@ function abandonResidencyPoll(owner) {
 // entityList enqueue under the beat's slice clock instead: simpler than the
 // full collect (no warm refill / commit list / decode kick) but covers the
 // same enqueue role. Persistent degrade faults cap at 3 per epoch.
+// The degrade walk itself: coverage parity with the collect→commit tail it
+// substitutes for — append the nearby ledger rows (field rocks, far actors
+// never in entityList) the memoized ctx already served, kick decodes for the
+// enqueued cohort, and stamp the drain repartition the complete path's tail
+// sets. Returns the enqueue count like the tail's commit does.
+function* holdExemptDegradeWalk(owner, state, evaluator) {
+  const entities = Array.isArray(state.entityList) ? state.entityList : [];
+  const ledgerRows = [];
+  yield* appendNearbyLedgerRowsChunked(state, ledgerRows);
+  const merged = ledgerRows.length ? entities.concat(ledgerRows) : entities;
+  const enqueued = yield* enqueueMissingMeshBuildsSteps(
+    merged,
+    owner._meshes,
+    owner._meshBuildQueuedIds,
+    owner._meshBuildQueue,
+    (entity) => !owner._sectorBoundaryPreparations?.has(entity.id) && evaluator(entity),
+    null, null, null);
+  yield* kickDecodeRunwayAssetsSteps(owner, merged);
+  owner._holdExemptRepartition = true;
+  return enqueued || 0;
+}
+
 function driveHoldExemptDegrade(owner, state, sliceMs) {
   const clock = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
@@ -3556,20 +3610,35 @@ function driveHoldExemptDegrade(owner, state, sliceMs) {
     // parked epoch otherwise leaves mid-hold arrivals meshless until release.
     // One bounded atomic sync-twin enqueue per epoch — the rescue the sibling
     // lanes already use.
-    if (owner._holdExemptSyncTwinEpoch !== degradeEpoch) {
+    if (owner._holdExemptSyncTwinEpoch !== degradeEpoch
+        && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
       owner._holdExemptSyncTwinEpoch = degradeEpoch;
       noteLaneFault(state, 'holdExemptEnqueue', true);
       const frame = owner._activityFrame;
       const evaluator = makeHoldExemptMeshBuildEvaluator(
         state, frame && frame.renderGlassIds);
-      const entities = Array.isArray(state.entityList) ? state.entityList : [];
-      return runCookSyncTwin('hold-exempt enqueue', () => enqueueMissingMeshBuilds(
-        entities,
-        owner._meshes,
-        owner._meshBuildQueuedIds,
-        owner._meshBuildQueue,
-        (entity) => !owner._sectorBoundaryPreparations?.has(entity.id) && evaluator(entity),
-        null, null), 0);
+      // Parity with the complete collect→commit tail it substitutes for:
+      // union the nearby ledger rows (field rocks, far actors) the real
+      // collect covers, kick decodes for the enqueued rows, and stamp the
+      // drain repartition so the exempt front is hoisted on the next beat.
+      const entities = Array.isArray(state.entityList) ? state.entityList.slice() : [];
+      collectMeshPresentationEntities(state, entities);
+      const twinStart = clock();
+      const twinOut = runCookSyncTwin('hold-exempt enqueue', () => {
+        const built = enqueueMissingMeshBuilds(
+          entities,
+          owner._meshes,
+          owner._meshBuildQueuedIds,
+          owner._meshBuildQueue,
+          (entity) => !owner._sectorBoundaryPreparations?.has(entity.id) && evaluator(entity),
+          null, null);
+        for (;;) { if (kickDecodeRunwayAssetsSteps(owner, entities).next().done) break; }
+        owner._holdExemptRepartition = true;
+        return built;
+      }, 0);
+      const twinElapsed = clock() - twinStart;
+      if (twinElapsed > 0) noteForcedFrameSpend(twinElapsed);
+      return twinOut;
     }
     return 0;
   }
@@ -3577,14 +3646,7 @@ function driveHoldExemptDegrade(owner, state, sliceMs) {
     const frame = owner._activityFrame;
     const evaluator = makeHoldExemptMeshBuildEvaluator(
       state, frame && frame.renderGlassIds);
-    const entities = Array.isArray(state.entityList) ? state.entityList : [];
-    owner._holdExemptDegradeIter = enqueueMissingMeshBuildsSteps(
-      entities,
-      owner._meshes,
-      owner._meshBuildQueuedIds,
-      owner._meshBuildQueue,
-      (entity) => !owner._sectorBoundaryPreparations?.has(entity.id) && evaluator(entity),
-      null, null, null);
+    owner._holdExemptDegradeIter = holdExemptDegradeWalk(owner, state, evaluator);
   }
   let enqueued = 0;
   for (;;) {
@@ -26358,7 +26420,13 @@ export const render = {
     // torn mid-walk would otherwise never re-mint (the next consume reports
     // nothing), leaving world.meshRefs null and doomed bits set on the first
     // presented frame. Latches clear only on leg completion.
-    if (publication && publication.rebuilt === true) this._openingRebindOwed = true;
+    // Mirror the drive-site predicate: a remap-only consume mints no
+    // spawnedSlots, so without `remapped` here the whole-set rebind never
+    // armed for publishes arriving through this site.
+    if (publication && (publication.remapped === true
+        || (publication.rebuilt === true && publication.appliedDelta !== 0))) {
+      this._openingRebindOwed = true;
+    }
     if (publication && publication.spawnedSlots && publication.spawnedCount > 0) {
       const announced = publication.spawnedSlots.slice(0, publication.spawnedCount);
       this._openingSpawnedBindPending = this._openingSpawnedBindPending
@@ -26796,23 +26864,38 @@ export const render = {
     }
     // Mint on the durable latch — the consume flags that armed it are gone by
     // the next pass, and a rebuilt+0-delta feed (which never armed it) keeps
-    // skipping the re-mint like before.
+    // skipping the re-mint like before. The mint itself fires only on an arm
+    // edge or an empty slot: re-firing every pass while owed killed the parked
+    // walk mid-resume and re-minted the same ~4 ms prefix each frame — a fat
+    // _meshes census could never complete (restart-livelock) and announced
+    // spawned rows starved behind it. A resuming walk iterates the live Map,
+    // so late rows still bind without a fresh mint.
+    const rebindArmEdge = publication.remapped === true
+      || (publication.rebuilt === true && publication.appliedDelta !== 0);
     if (rebindFaulted && this._openingRebindOwed === true
-        && this._rebindSyncTwinEpoch !== serviceFaultEpoch(this.state)) {
+        && this._rebindSyncTwinEpoch !== serviceFaultEpoch(this.state)
+        && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
       // Once-per-epoch sync twin — same trade the sibling faulted lanes
       // already take: a parked stepped drive leaves every fallback-published
       // row unbound for the whole epoch (a fallback consume mints no
       // spawnedSlots, so the spawned leg covers nothing). One bounded atomic
-      // whole-_meshes walk heals the binds inside the epoch.
+      // whole-_meshes walk heals the binds inside the epoch. Forced-wallet
+      // member: consult defers the fire, a fired twin debits its spend.
       this._rebindSyncTwinEpoch = serviceFaultEpoch(this.state);
+      const twinNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() : Date.now());
+      const twinStart = twinNow();
       runCookSyncTwin('presentation rebind', () => {
         const it = this._rebindPresentationMeshesSteps();
         for (;;) { if (it.next().done) break; }
         this._openingRebindOwed = false;
         this._openingSpawnedBindPending = null;
       });
+      const twinElapsed = twinNow() - twinStart;
+      if (twinElapsed > 0) noteForcedFrameSpend(twinElapsed);
     }
-    if (!rebindFaulted && this._openingRebindOwed === true) {
+    if (!rebindFaulted && this._openingRebindOwed === true
+        && (rebindArmEdge || !this._presentationRebindIter)) {
       // A REMAP (world.clear() or rebuildFromEntities) drops every mesh
       // binding by construction — the whole-_meshes rebind must mint — and a
       // fallback diff-apply with real alloc/retire churn needs it too (those
@@ -27004,7 +27087,8 @@ export const render = {
         // the keepGpu degrade.
         const degradeNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now();
-        if (degradeNow - (this._fencePackFaultSince || 0) >= 1000) {
+        if (degradeNow - (this._fencePackFaultSince || 0) >= 1000
+            && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
           this._fencePackDegradedEpoch = packEpoch;
           runCookSyncTwin('presentation fence pack', () => {
             const packed = packPresentationWorldToFence(
@@ -27015,6 +27099,9 @@ export const render = {
             this._snapshotSourceTick = completedTick;
             this._publishSnapshotFenceStats(packed);
           });
+          const twinElapsed = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now() : Date.now()) - degradeNow;
+          if (twinElapsed > 0) noteForcedFrameSpend(twinElapsed);
         }
       }
     }
@@ -28908,11 +28995,18 @@ export const render = {
       const sigParked = memo.sigFaultEpoch === sigEpochNow && (memo.sigFaults | 0) >= 3;
       // At most one whole-scene sync traverse per presented pass — under a
       // persistent census fault ~15 consult sites would each retry it.
-      if (!sigParked && memo.sigFallbackSeq !== this._viewSyncSeq) {
+      if (!sigParked && memo.sigFallbackSeq !== this._viewSyncSeq
+          && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
         memo.sigFallbackSeq = this._viewSyncSeq;
+        const sigStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now();
         try {
           memo.sig = lightCensusSignature(scene);
           memo.sigFaults = 0;
+          // Pair the signature with the epoch it was actually minted under:
+          // callers read (sig, epoch), and serving a stale sig stamped with
+          // the live epoch lies in the optimist direction.
+          memo.epoch = sigEpochNow;
         } catch (sigError) {
           if (memo.sigFaultEpoch !== sigEpochNow) memo.sigFaults = 0;
           memo.sigFaultEpoch = sigEpochNow;
@@ -28921,8 +29015,10 @@ export const render = {
           // conservatively) rather than aborting the presented call.
           console.warn('[render] shadow light-census signature walk faulted', sigError);
         }
+        const sigElapsed = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()) - sigStart;
+        if (sigElapsed > 0) noteForcedFrameSpend(sigElapsed);
       }
-      memo.epoch = sigEpochNow;
     }
     return memo.sig;
   },
@@ -29737,10 +29833,22 @@ export const render = {
         this._shadowReceiverCount = this._shadowReceiverTally.count;
       }
     } else if (this._shadowReceiversDirty) {
-      let receivers = 0;
-      this.scene.traverse((o) => { if (o && o.receiveShadow) receivers++; });
-      this._shadowReceiverCount = receivers;
-      this._shadowReceiversDirty = false;
+      // Fixture/custom envs without the tally pay the atomic traverse — wire
+      // it into the forced wallet like every other epoch-gated rescue walk so
+      // a dirty-flag storm can't stack unbounded O(scene) traverses inside one
+      // presented frame. A spent wallet keeps the flag armed and serves the
+      // last count (conservative: stale-high only over-works the map).
+      if (forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
+        const tallyStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now();
+        let receivers = 0;
+        this.scene.traverse((o) => { if (o && o.receiveShadow) receivers++; });
+        this._shadowReceiverCount = receivers;
+        this._shadowReceiversDirty = false;
+        const tallyElapsed = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()) - tallyStart;
+        if (tallyElapsed > 0) noteForcedFrameSpend(tallyElapsed);
+      }
     }
     // shadowMap.enabled and castShadow are baked into every lit material's program key
     // (shadowMapEnabled and numDirLightShadows). Flapping them with the receiver tally rekeyed
