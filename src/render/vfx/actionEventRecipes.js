@@ -139,6 +139,16 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   // (a catch on the taken body) and the frame coupler's rigid lock (a latch along the pair).
   'tether:tractorCapture': {verb:'catch',primitive:'capture',color:0x87caff,life:.6,surfaceCapture:true,continuous:false},
   'tether:couplerLock': {verb:'latch',primitive:'connection',color:0x9bdfff,life:.55,continuous:false},
+  // Worldfeel — a developed rock refuses the beam, a hull skims a face, cargo heat changes stage.
+  // continuous:false so reduced-motion's one-shot path is the picture, not a held loop.
+  'mining:beamLocked': {verb:'catch',primitive:'capture',color:0xffb35c,life:.35,continuous:false,surfaceWork:true},
+  'flight:sweptHull': {verb:'grind',primitive:'deposition',color:0xd7e6ff,life:.28,continuous:false},
+  'cargo:volatileExposed': {verb:'disrupt',primitive:'induction',color:0xffb35c,life:.7,continuous:false,
+    variants:{
+      warming:{verb:'catch',primitive:'capture',color:0xe2b15a,life:.55,continuous:false},
+      critical:{verb:'disrupt',primitive:'induction',color:0xff6a3a,life:.8,continuous:false},
+      venting:{verb:'fling',primitive:'pressure',color:0xff5030,life:.45,continuous:false},
+    }},
 });
 
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
@@ -406,6 +416,55 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     const a = body(state, p.sourceId ?? state.playerId), b = body(state, p.targetId);
     if (!point(a?.pos) || !point(b?.pos)) return null;
     return { ...p, sourceId: a.id, targetId: b.id, attachToTarget: true };
+  }
+  // Worldfeel receipts copy points off the payload. A missing body fabricates nothing.
+  if (name === 'mining:beamLocked') {
+    const rock = body(state, p && p.asteroidId);
+    if (!point(rock?.pos) || rock.alive === false) return null;
+    return {
+      targetId: rock.id,
+      sourceId: state && state.playerId,
+      pos: copyPoint(rock.pos),
+      attachToTarget: true,
+    };
+  }
+  if (name === 'flight:sweptHull') {
+    const near = p && (p.sliding === true
+      || (Number.isFinite(p.timeToContactS) && p.timeToContactS >= 0 && p.timeToContactS < 1.25));
+    if (!near || p.active === false) return null;
+    const ship = body(state, p.shipId ?? (state && state.playerId));
+    if (point(p.contactPoint)) {
+      return {
+        targetId: ship && ship.id,
+        shipId: p.shipId,
+        contactId: p.contactId,
+        sliding: p.sliding === true,
+        pos: copyPoint(p.contactPoint),
+        attachToTarget: false,
+      };
+    }
+    if (!point(ship?.pos) || ship.alive === false) return null;
+    return {
+      targetId: ship.id,
+      shipId: p.shipId,
+      contactId: p.contactId,
+      sliding: p.sliding === true,
+      pos: copyPoint(ship.pos),
+      attachToTarget: true,
+    };
+  }
+  if (name === 'cargo:volatileExposed') {
+    const stage = p && p.stage;
+    if (stage !== 'warming' && stage !== 'critical' && stage !== 'venting') return null;
+    const pod = body(state, p.podId);
+    if (!point(pod?.pos) || pod.alive === false) return null;
+    return {
+      kind: stage,
+      targetId: pod.id,
+      sourceId: pod.id,
+      pos: copyPoint(pod.pos),
+      attachToTarget: true,
+    };
   }
   return p;
 }

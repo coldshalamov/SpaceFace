@@ -21,6 +21,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
+import { installWorldFeelSeams } from './worldFeelSeams.js';
 import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
@@ -2866,6 +2867,7 @@ export const audio = {
     bindBombAudio(this, bus);
     bindFieldAudio(this, bus);
     installCombatVerbCueDispatch(this, bus);
+    installWorldFeelSeams(this, bus);
 
     // If a context already exists (hot reload), wire immediately.
     if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
