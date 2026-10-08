@@ -26,7 +26,9 @@ export function syncMarrowCone(renderer) {
   }
   if (!inside && !renderer._marrowSpot) return;
   const spot = ensureSpot(renderer);
-  spot.visible = inside;
+  // The spot stays mounted and visible; gating on intensity keeps the rendered-light census
+  // constant across the sector boundary — a .visible flip relinks every material program.
+  spot.intensity = inside ? 14 : 0;
   if (!inside) return;
   const player = renderer.state.playerId != null && renderer.state.entities
     ? renderer.state.entities.get(renderer.state.playerId)

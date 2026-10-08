@@ -26,8 +26,14 @@ export function syncBolusView(renderer) {
   if (!inside && !renderer._bolusView) return;
   const view = ensureView(renderer);
   view.group.visible = inside;
-  for (let i = 0; i < view.lights.length; i++) view.lights[i].visible = inside;
-  if (!inside) return;
+  // The shaft lights live on their own always-visible group and gate on intensity — a
+  // .visible flip would drop them from the rendered-light census and churn every material's
+  // program key (numPointLights) at the sector boundary, the recompile storm the pool
+  // discipline exists to kill. Intensity 0 is output-identical to a hidden light.
+  if (!inside) {
+    for (let i = 0; i < view.lights.length; i++) view.lights[i].intensity = 0;
+    return;
+  }
 
   const origin = SECTOR_GLOBAL_ORIGINS[BOLUS_SECTOR_ID];
   if (renderer._frameMembrane && typeof renderer._frameMembrane.toLocal === 'function') {
@@ -36,6 +42,7 @@ export function syncBolusView(renderer) {
   } else {
     view.group.position.set(origin.x, 0, origin.z);
   }
+  view.lightGroup.position.copy(view.group.position);
 
   const sim = Number(renderer.state.simTime) || 0;
   const ecology = renderer.state.world && renderer.state.world.alienEcology;
@@ -125,6 +132,8 @@ function ensureView(renderer) {
     iris.push(mesh);
     group.add(mesh);
   }
+  const lightGroup = new THREE.Group();
+  lightGroup.name = 'SF_BolusLanternShafts';
   const lights = [];
   for (let i = 0; i < BOLUS_LANTERN_SHAFTS.length; i++) {
     const shaft = BOLUS_LANTERN_SHAFTS[i];
@@ -132,14 +141,15 @@ function ensureView(renderer) {
     light.position.set(shaft.x, shaft.y, shaft.z);
     light.castShadow = false;
     light.name = `bolus_shaft_${i}`;
-    group.add(light);
+    lightGroup.add(light);
     lights.push(light);
   }
   const cards = new THREE.Group();
   cards.name = 'SF_BolusFreeze';
   group.add(cards);
   renderer.scene.add(group);
-  renderer._bolusView = { group, ribs, cilia, baleen, iris, acid, lights, cards, cough, seed };
+  renderer.scene.add(lightGroup);
+  renderer._bolusView = { group, lightGroup, ribs, cilia, baleen, iris, acid, lights, cards, cough, seed };
   return renderer._bolusView;
 }
 
@@ -147,6 +157,7 @@ export function disposeBolusView(renderer, { disposeGpu = true } = {}) {
   const view = renderer?._bolusView;
   if (!view) return;
   view.group.removeFromParent();
+  view.lightGroup?.removeFromParent();
   if (disposeGpu) {
     view.group.traverse((node) => {
       node.geometry?.dispose();

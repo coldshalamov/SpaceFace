@@ -616,6 +616,93 @@ export function collectUnstagedShadowCasters(renderer, subjects, lightingScene, 
   return unstaged;
 }
 
+/**
+ * Flip-triggered bulk twin of collectUnstagedShadowCasters: ONE stepped DFS over
+ * `roots` (the arm passes the live scene) that attributes each casting mesh to every
+ * pending ancestor in `pendingSet` — a census flip re-queues the whole cohort, and N
+ * per-root subtree walks + N bookkeeping passes become one census-shaped pass.
+ * Subject verdicts and the staged-signature compare mirror the per-root variant
+ * exactly: a caster incapable of minting signatures is skipped (identical to the
+ * signatures.length===0 path), and an empty staged set unstages every castable
+ * (the early-return shape). `pendingSet` membership rides an ancestor climb per
+ * caster — a mesh nested inside two pending roots attributes to both, matching the
+ * union of two per-root collects.
+ *
+ * Budget exhaustion is a partial result, not an abort: `completedRoots` only names
+ * roots whose 'exit' marker popped (their whole subtree walked), so the caller
+ * trusts a completed root's set wholesale and runs the ordinary collect for any
+ * root the walk never finished — no torn-subtree reads.
+ */
+export function* collectUnstagedShadowCastersBulkSteps(roots, pendingSet, renderer, lightSig, nodeBudget = null, yieldEvery = 512) {
+  const list = Array.isArray(roots) ? roots : [roots];
+  const seen = new Set();
+  const unstagedByRoot = new Map();
+  const completedRoots = new Set();
+  const staged = _stagedDepthSignatures.get(renderer);
+  const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+  let visited = 0;
+  const stack = [];
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    if (list[i]) stack.push([list[i], 'enter']);
+  }
+  while (stack.length > 0) {
+    const entry = stack.pop();
+    const object = entry[0];
+    if (entry[1] === 'exit') {
+      if (pendingSet.has(object)) completedRoots.add(object);
+      continue;
+    }
+    if (object) {
+      if (pendingSet.has(object)) stack.push([object, 'exit']);
+      const drawable = object.isMesh === true
+        || object.isSkinnedMesh === true
+        || object.isInstancedMesh === true;
+      if (drawable && !seen.has(object)) {
+        seen.add(object);
+        // Identical verdict chain to collectPotentialShadowCastSubjectsSteps.
+        if (!('geometry' in object && object.geometry == null)) {
+          const ud = object.userData || {};
+          if (!(ud.spacefaceNoShadow === true
+            || ud.sharedContactShadow === true
+            || ud.authoredReadableFallbackLayer === true)) {
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            if (materials.some(materialCanCastShadow)) {
+              let unstagedMesh = false;
+              if (!staged || staged.size === 0) {
+                unstagedMesh = true;
+              } else {
+                const signatures = casterDepthSignatures(object, lightSig);
+                unstagedMesh = signatures.length > 0
+                  && signatures.some((signature) => !staged.has(signature));
+              }
+              if (unstagedMesh) {
+                // The climb visits every pending ancestor — a mesh inside nested pending
+                // roots joins each root's set, the same union two per-root collects mint.
+                for (let p = object; p; p = p.parent) {
+                  if (pendingSet.has(p)) {
+                    let set = unstagedByRoot.get(p);
+                    if (!set) unstagedByRoot.set(p, (set = []));
+                    set.push(object);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      const children = object.children;
+      if (children) {
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push([children[i], 'enter']);
+      }
+    }
+    if (nodeBudget && (nodeBudget.remaining -= 1) < 0) {
+      return { unstagedByRoot, completedRoots, partial: true };
+    }
+    if (++visited % every === 0) yield;
+  }
+  return { unstagedByRoot, completedRoots, partial: false };
+}
+
 function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects = null, camera = null, lightSigOverride = undefined) {
   if (!renderer || !casting || casting.length === 0) return;
   let staged = _stagedDepthSignatures.get(renderer);
