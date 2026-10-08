@@ -243,6 +243,10 @@ export function createScavengerOccupationSwitch(owner) {
           holdQty: record.holdQty,
           simTime: record.deliveredAtS,
         });
+        bus.emit('toast', {
+          kind: 'good', ttl: 5,
+          text: `The wreck field's picker crew hauled ${Math.round(record.holdQty)}u to the depot.`,
+        });
       }
     }
   }
