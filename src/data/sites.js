@@ -28,12 +28,12 @@ export const SITE_MACHINES = [
     name: 'Massline Core',
     short: 'Core',
     verb: 'anchor',
-    desc: 'Anchors the site as a permanent claim, feeds 12 MW down the massline umbilical, and exposes the exterior attachment point.',
+    desc: 'Feeds 12 MW down the massline umbilical and exposes the exterior attachment point. Your first installation already makes this asteroid a permanent claim.',
     power: 12,
     usesGeology: false,
     cost: { cmdty_regocrete: 4, cmdty_control_unit: 1, cmdty_refined_metals: 2 },
     installS: 8,
-    unique: true, // one per asteroid — it IS the site identity
+    unique: true, // one command/power core per asteroid; the first install owns persistence
   },
   {
     id: 'sm_extractor',
@@ -68,7 +68,7 @@ export const SITE_MACHINES = [
     desc: 'A pure process machine — geology gives it nothing. Feed it through the lane network and give it power; it gives you intermediates.',
     power: -8,
     usesGeology: false,
-    modes: ['sr_smelt_iron', 'sr_fuse_silica'],
+    modes: ['sr_smelt_iron', 'sr_fuse_silica', 'sr_blend_alloys'],
     defaultMode: 'sr_smelt_iron',
     cost: { cmdty_regocrete: 4, cmdty_control_unit: 1, cmdty_refined_metals: 2 },
     installS: 7,
@@ -81,7 +81,8 @@ export const SITE_MACHINES = [
     desc: 'Discrete assembly line. In courier mode it holds a fleet policy and quietly replaces every pod the void eats.',
     power: -10,
     usesGeology: false,
-    modes: ['sr_fab_courier', 'sr_cast_regocrete', 'sr_fab_electronics'],
+    modes: ['sr_fab_courier', 'sr_cast_regocrete', 'sr_fab_electronics',
+      'sr_fab_hullplate', 'sr_fab_circuitry', 'sr_fab_control_unit'],
     defaultMode: 'sr_fab_courier',
     cost: { cmdty_regocrete: 3, cmdty_control_unit: 1, cmdty_electronics: 2 },
     installS: 7,
@@ -129,6 +130,29 @@ export const SITE_RECIPES = [
     output: { pod: 1 },
     buildS: 90,
   },
+  // Industry expansion: existing commodities, machines and production owner. No market-price
+  // overrides, no bonus-income tick. Rare feedstocks gate local controller manufacturing;
+  // importing your first controllers remains the bootstrap, not a circular recipe demand.
+  {
+    id: 'sr_blend_alloys', machine: 'sm_refinery', name: 'Blend Structural Alloys',
+    inputs: { cmdty_ore_iron: 2, cmdty_ore_titanium: 1 },
+    output: { cmdty_alloys: 1 }, inputRatePerMin: 3,
+  },
+  {
+    id: 'sr_fab_hullplate', machine: 'sm_fabricator', name: 'Press Hull Plate',
+    inputs: { cmdty_refined_metals: 1, cmdty_silicate: 2 }, output: { cmdty_comp_hullplate: 1 },
+    buildS: 55,
+  },
+  {
+    id: 'sr_fab_circuitry', machine: 'sm_fabricator', name: 'Etch Circuitry',
+    inputs: { cmdty_purified_silica: 1, cmdty_ore_copper: 2 },
+    output: { cmdty_comp_circuitry: 1 }, buildS: 75,
+  },
+  {
+    id: 'sr_fab_control_unit', machine: 'sm_fabricator', name: 'Assemble Machine Controller',
+    inputs: { cmdty_comp_circuitry: 1, cmdty_alloys: 1, cmdty_silicate: 2 },
+    output: { cmdty_control_unit: 2 }, buildS: 180,
+  },
 ];
 
 export const SITE_BALANCE = {
@@ -153,6 +177,7 @@ export const SITE_BALANCE = {
   exportDefaultOff: [
     'cmdty_regocrete', 'cmdty_electronics', 'cmdty_control_unit',
     'cmdty_refined_metals', 'cmdty_purified_silica',
+    'cmdty_alloys', 'cmdty_comp_circuitry',
   ],
   ledgerMax: 40,             // receipts kept per site
 };
