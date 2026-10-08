@@ -1,4 +1,5 @@
-// SFQ-B033 — primed, pinned, gooed, tumbling, and burning say their payoff.
+// SFQ-B033 — primed, pinned, gooed, and burning say their payoff.
+// The player hull never keeps a tumble, so that status stays quiet.
 // The combinations already resolve in the status service; this is the glass.
 // Seed 4242.
 import test from 'node:test';
@@ -66,9 +67,9 @@ test('the catalog sentences name the payoff and stay quiet for an unknown status
   assert.equal(statusPayoffLine('status_pinned').name, 'PINNED');
   assert.equal(statusPayoffLine('status_pinned').detail, 'HEAVIER');
   assert.equal(statusPayoffLine('status_goo').name, 'GOOED');
-  assert.equal(statusPayoffLine('status_tumbling').detail, 'NO HELM');
+  assert.equal(statusPayoffLine('status_tumbling'), null);
   assert.equal(statusPayoffLine('status_burning').name, 'BURNING');
-  assert.equal(statusPayoffLine('status_scrambled').detail, 'ION + HEAT');
+  assert.equal(statusPayoffLine('status_scrambled').detail, 'NO LOCK');
   assert.equal(statusPayoffLine('status_unmoored').name, 'UNMOORED');
   assert.equal(statusPayoffLine('status_gravity_marked'), null);
   assert.equal(statusPayoffLine('nope'), null);
@@ -88,11 +89,28 @@ test('seed 4242: the player hull hears the status; an NPC hull stays quiet', () 
     callout.update(0);
     const text = calloutTextFor(callout.root);
     assert.match(text, /SCRAMBLED/);
-    assert.match(text, /ION \+ HEAT/);
+    assert.match(text, /NO LOCK/);
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_unmoored', stacks: 1 });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /UNMOORED/);
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_pinned', stacks: 1 });
+    callout.update(0);
+    const pinned = calloutTextFor(callout.root);
+    assert.match(pinned, /PINNED/);
+    assert.match(pinned, /HEAVIER/);
+    assert.doesNotMatch(pinned, /UNMOORED/, 'pinned cancels the unmoored line the way the status does');
     bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_burning', stacks: 2 });
     callout.update(0);
     assert.match(calloutTextFor(callout.root), /BURNING/);
     assert.match(calloutTextFor(callout.root), /HEAT TICKS/);
+    assert.match(calloutTextFor(callout.root), /×2/);
+    bus.emit('combat:statusExpired', { targetId: 2, statusId: 'status_burning' });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /BURNING/, 'another hull expiring does not clear the player');
+    bus.emit('combat:statusExpired', { targetId: 1, statusId: 'status_burning' });
+    callout.update(0);
+    assert.doesNotMatch(calloutTextFor(callout.root), /BURNING/);
+    assert.match(calloutTextFor(callout.root), /SCRAMBLED/);
   } finally { callout.destroy(); }
 });
 

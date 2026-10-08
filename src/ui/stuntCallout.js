@@ -479,6 +479,27 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     pruneLines(now);
   }
 
+  function dismissLine(key) {
+    const entry = key != null ? lineNodes.get(key) : null;
+    if (!entry) return;
+    const name = entry.name && entry.name.textContent || '';
+    if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
+    lineNodes.delete(key);
+    // The live region still has the sentence speak() wrote. Dropping the line
+    // without rewriting it leaves a screen reader on a status the hull no longer wears.
+    if (!name || !spoken || spoken.indexOf(name.toLowerCase()) < 0) return;
+    const bits = [];
+    for (const left of lineNodes.values()) {
+      const n = left.name && left.name.textContent || '';
+      const p = left.pts && left.pts.textContent || '';
+      const bit = `${n} ${p}`.trim();
+      if (bit) bits.push(bit);
+    }
+    const next = bits.join(' ');
+    spoken = next.toLowerCase();
+    sr.textContent = next;
+  }
+
   function onTrick(trick) {
     if (destroyed) return;
     const st = getState();
@@ -725,7 +746,23 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       if (destroyed) return;
       const st = getState();
       if (!calloutScope(st) || !payload || payload.targetId !== st.playerId) return;
-      speak(statusPayoffLine(payload.statusId));
+      const line = statusPayoffLine(payload.statusId);
+      if (!line) return;
+      const stacks = Number(payload.stacks);
+      const detail = Number.isFinite(stacks) && stacks > 1
+        ? `${line.detail} ×${Math.floor(stacks)}`
+        : line.detail;
+      speak(detail === line.detail ? line : { key: line.key, name: line.name, detail });
+      if (line.clears) {
+        for (let i = 0; i < line.clears.length; i++) dismissLine(line.clears[i]);
+      }
+    }));
+    unsubs.push(bus.on('combat:statusExpired', (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || !payload || payload.targetId !== st.playerId) return;
+      const line = statusPayoffLine(payload.statusId);
+      if (line) dismissLine(line.key);
     }));
     unsubs.push(bus.on('bombs:primed', (payload) => {
       if (destroyed) return;

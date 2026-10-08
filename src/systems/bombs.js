@@ -1562,7 +1562,12 @@ export const bombs = {
       }
       if (covered) continue;
       const runtime = combatEntities[String(ent.id)];
-      if (runtime) kernel.statuses.clear(ent, runtime, 'status_goo');
+      if (runtime && kernel.statuses.clear(ent, runtime, 'status_goo')) {
+        // clear() does not emit. The callout and the tar loop both listen for expiry.
+        this.bus?.emit('combat:statusExpired', {
+          targetId: ent.id, statusId: 'status_goo', data: null, reason: 'field_shed',
+        });
+      }
     }
   },
   // SFQ-B035: the blast hands the physics authority its surface contact point and the def's

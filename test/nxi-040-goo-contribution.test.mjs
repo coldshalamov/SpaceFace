@@ -54,9 +54,11 @@ function boot() {
   else { rt.rack.cells.push({ id: 'bomb_goo', count: GOO.magazine }); rt.rack.sockets = rt.rack.cells.length; }
   rt.selectedId = 'bomb_goo';
   const fieldEnded = [];
+  const statusExpired = [];
   bus.on('bombs:fieldEnded', (p) => fieldEnded.push(p));
+  bus.on('combat:statusExpired', (p) => statusExpired.push(p));
   return {
-    state, bus, helpers, player, system, kernel, fieldEnded,
+    state, bus, helpers, player, system, kernel, fieldEnded, statusExpired,
     spawnShip(x, z, opts = {}) {
       return helpers.spawnEntity({
         type: 'ship', team: 1, mass: 32, radius: 1, rot: 0,
@@ -135,6 +137,11 @@ test('one of two overlapping tar fields ending sheds only that field’s contrib
     // EXIT ONE OF TWO: shoot cloud A down while cloud B still covers the overlap victim.
     assert.equal(t.system.retire(bombA, 'shot_down', t.state), true);
     assert.equal(t.fieldEnded.length, 1);
+    assert.equal(
+      t.statusExpired.some((e) => e && e.statusId === 'status_goo' && e.targetId === insideBoth.id),
+      false,
+      'the overlap victim is still in cloud B, so goo does not expire',
+    );
     assert.ok(t.gooOf(insideBoth)?.stacks > 0,
       'surviving cloud B still feeds the overlap victim — A’s exit did not erase it');
     assert.ok(t.gooOf(onlyB)?.stacks > 0, 'B-only victim untouched by A’s exit');
@@ -156,6 +163,10 @@ test('one of two overlapping tar fields ending sheds only that field’s contrib
     assert.equal(t.gooOf(insideBoth), null,
       'the last field gone, the overlap victim stops being tarred NOW — not 240 ticks later');
     assert.equal(t.gooOf(onlyB), null, 'B-only victim sheds too');
+    assert.ok(t.statusExpired.some((e) => e && e.statusId === 'status_goo' && e.targetId === insideBoth.id),
+      'shedding goo tells the callout the wallow ended');
+    assert.ok(t.statusExpired.some((e) => e && e.statusId === 'status_goo' && e.targetId === onlyB.id));
+    assert.equal(t.statusExpired.some((e) => e && e.statusId === 'status_goo' && e.targetId === outsider.id), false);
     assert.ok(t.state.combat.entities[String(insideBoth.id)].statuses.status_ionized,
       'the shed removed only status_goo, never the whole status bag');
     assert.ok(t.gooOf(outsider)?.stacks > 0,
