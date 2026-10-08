@@ -21,7 +21,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
-import { distressCallCue, playAdmittedEarCue } from './combatFeedbackEar.js';
+import { distressCallCue, mineDetonationCue, playAdmittedEarCue } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -2412,6 +2412,13 @@ export const audio = {
     bus.on('distress:call', (p) => playAdmittedEarCue(
       this,
       distressCallCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // mines:detonated had no listener. The blast is the ear; hull damage stays
+    // the hit the damage packet already plays.
+    bus.on('mines:detonated', (p) => playAdmittedEarCue(
+      this,
+      mineDetonationCue(p),
       this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
     ));
     bus.on('massline:releaseCancelled', () => this.play(combatVerbRecipe('massline:releaseCancelled'), { gain: 0.28 }));
