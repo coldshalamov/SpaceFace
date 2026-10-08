@@ -124,7 +124,7 @@ ${A} .orr-crew-stage { position:relative; width:100%; max-width:360px; aspect-ra
 ${A} .orr-crew-stage > canvas { display:block; width:100%; height:100%; pointer-events:none; }
 ${A} .orr-crew-item { position:absolute; width:44px; height:44px; transform:translate(-50%,-50%); pointer-events:none; }
 ${A} .orr-crew-item > .orr-equipment-glyph { width:100%; height:100%; }
-${A} .orr-crew-item-label { position:absolute; transform:translateX(-50%); width:150px; text-align:center; font:500 10px/1.4 var(--dp-face-label); color:var(--dp-ink-dim); pointer-events:none; }
+${A} .orr-crew-item-label { position:absolute; transform:translateX(-50%); width:150px; text-align:center; font:500 12px/1.4 var(--dp-face-label); color:var(--dp-ink-dim); pointer-events:none; }
 ${A} .orr-crew-pointer { color:var(--dp-hand); stroke:currentColor; }
 ${A} .orr-crew-names { display:flex; justify-content:space-between; white-space:pre; font:500 12px/1.5 var(--dp-face-label); color:var(--dp-ink-dim); margin:0; }
 ${A} .orr-crew-status { font:400 12px/1.5 var(--dp-face-label); color:var(--dp-ink-dim); margin:4px 0 0; }

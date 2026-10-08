@@ -24810,8 +24810,8 @@ export const render = {
         this.scene.remove(old);
         // Same traverse+dispose class as a despawn corpse — ride the bounded per-frame
         // drain instead of paying the GL tail inside the appearanceChanged emit.
-        this._despawnDisposeQueue.push(old);
-        this._queueAssetResidencyDiagnosticsPublish();
+        (this._despawnDisposeQueue || (this._despawnDisposeQueue = [])).push(old);
+        this._queueAssetResidencyDiagnosticsPublish?.();
       }
     }
     if (!m) return;
