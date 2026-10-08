@@ -527,7 +527,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 60, 63, 64, 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | 30 |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | 223 |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 289, 291 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -1023,10 +1023,17 @@ on this board — closed with evidence, routed to a lane, or minted as a numbere
 | 286 | ADMIT-SFQ-I | 96 SFQ-I inference candidates → `INFERENCE_IDEAS.md`, one at a time once the named dependency actually lands and the gap is real | ADMIT | OPEN — gated per candidate |
 | 287 | ADMIT-SFQ-M | 36 mission briefs → mission rows | ADMIT | OPEN |
 | 288 | ADMIT-SFQ-ART | 36 model-family briefs → rows; routes to L-PICTURE write sets | ADMIT | OPEN |
-| 289 | ADMIT-SFQ-FX | 32 VFX/audio briefs → rows; routes to L-PICTURE / L-EAR | ADMIT | OPEN |
 | 291 | ADMIT-DEPTH | `02_REMAINING_WORK.md` Depth roll-up + Alpha M-rows: admitted scope never decomposed → dispatchable leaves | ADMIT | OPEN |
 
 ADMIT-FABLE closed 2026-10-08. Row 290 is deleted; this note is not an open row.
+
+ADMIT-SFQ-FX closed 2026-10-08 on `feat/world-feel`. Row 289 is deleted; this note is not an open row. Scope was the 32 effect/audio briefs (F01–F32) plus the three programs that feed them: SFQ-P10 mining work, SFQ-P19 force VFX, SFQ-P20 mechanical sound. Seed 4242.
+
+Heard or seen, and pinned: F01 nozzle versus flight history (`test/plasma-stream-thruster.test.mjs`); F03 Massline load (`test/sfq-b192-massline-four-voices.test.mjs`); F04/F06/F07 starter gun, beam, and disruptor already use different family recipes (`test/sfq-b193-sonic-verbs.test.mjs`, `test/cv-ear-weapon-voices.test.mjs`); F05 concussion shove is not the gun, and a signed impulse already draws one way (`test/sfq-b183-impulse-throw-read.test.mjs`); F15 material destruction (`test/explosion-rupture.test.mjs`); F16 volatile warming, critical, and venting (`test/worldfeel-unfelt-seams.test.mjs`); F17 fracture sheets were already drawn and survey, cut, and collect now are too (`test/sfq-b091-extraction-phases.test.mjs`); F20 a relay pulse is not a motor (`test/sfq-b197-relay-pulse.test.mjs`); F11 a running yard machine sits on its rock (`test/sfq-b196-yard-position.test.mjs`); contact weight envelopes (`test/sfq-b191-contact-envelopes.test.mjs`, `test/audio-collision-weight.test.mjs`). A developed rock's refused beam, a hull skim, and those volatile stages are the three seams that had emitters and no ear.
+
+Parked, not built: F09 and F28 — there is no elastic-bridge weapon and no pressure-sac weapon (`test/sfq-b193-sonic-verbs.test.mjs`). SFQ-B194: a fast coast stays silent on purpose; a hum tied to world speed would violate that (`test/sfq-b194-coast-silence.test.mjs`). Boost and the brake bite already have their own voices. `mining:podSplit` stays silent bookkeeping.
+
+Routed, not taken on this branch: F05's shove-versus-autocannon picture and F13's Tarburst basin live outside `src/render/vfx*.js` (discharge pool, bomb presentation) — L-PICTURE. F08 caustic coating, F12 repair-as-operation, F18 the full failure chain, F19 biospectral read, F21 fauna bodies, F22 purge, F23 assembly, F24 inspection, F25 suppression corridor, F26 velocity plane, F27 enforcement, F29 work-completion stem, F30 contact recognition, and F32 deep-domain events are campaigns on picture, ear, industry, or law, not a cue swap. F31 crucible rhythm stays with the first-hour lane. SFQ-B092 through B100 (rock geometry, freight doctrine, salvage structure, repair economy, construction kit, manipulable hazards, NPC crews, upgrade technique, a whole district) stay on the industry, hand, and AI seams — this lane does not edit those systems. SFQ-B182, B184's remaining basin, B185 shield-conforming break, B187 transfer processes, and B188–B190 lifecycle budgets stay L-PICTURE. SFQ-B195 ducking through a live explosion, B198 recovery music, B199 output-device changes, and B200 mix-by-weakest-route stay L-EAR.
 
 Closed with evidence on the instrument lane: FB-028 the named results sheet (`test/fb-results-sheet-rows.test.mjs`); FB-055 one industry readout (`test/fb-industry-one-readout.test.mjs`); FB-110 a restored save says so (`test/fb-repaired-save-notice.test.mjs`); FB-130 a slot name and a bounded still (`test/fb-save-slot-label-still.test.mjs`); FB-112 settings announce values, conflicts, and a separate text scale (`test/fb-settings-a11y.test.mjs`); FB-102 career counters already lived in `careerStats` and FB-103 the Pause Statistics screen reads them (`test/fb-statistics-screen.test.mjs`); FB-106 the shell's window mode is the Settings toggle (`test/fb-electron-window-state.test.mjs`); FB-107 machine locales already wear "(machine preview)" until the 0.95 reviewed-coverage gate (`test/fb-locale-readiness-gate.test.mjs`).
 

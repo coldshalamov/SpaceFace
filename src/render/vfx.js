@@ -34,6 +34,7 @@ import { bolusCableStyle, applyBolusCableProfile } from './bolusCable.js';
 import { modelTruthPlumeSocketName, modelTruthTrailSocketName } from '../data/modelTruth.js';
 import { isCeresWorkfleetPropulsion, ceresWorkfleetPropulsionAwake, createCeresWorkfleetPlumeBatch } from './ceresWorkfleetVisuals.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
+import { miningPhaseSheet, paintMiningPhaseSheet } from './vfxMiningPhases.js';
 import { StationOperationVfx } from './vfx/stationOperationVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
 import { StatusMatterVfx } from './vfx/statusMatterVfx.js';
@@ -4764,6 +4765,17 @@ export const vfx = {
       const seam = Math.random() * Math.PI * 2;
       this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.82, radius * 0.9, radius * 1.35, 0.58, 0, '#ffb35c', 0, 0, 0.4, seam);
     }
+    const phase = miningPhaseSheet(id);
+    if (!phase) return;
+    paintMiningPhaseSheet({
+      sprite: (s) => {
+        const kind = s.kind === 'puff' ? SPR_PUFF : SPR_COMBUSTION;
+        this._spawnSprite(
+          kind, s.x, 0, s.z, s.life, s.size0, s.size1, s.op, 0, s.color,
+          s.vx || 0, s.vz || 0, s.aspect || 1, s.roll ?? null,
+        );
+      },
+    }, phase, pos, radius, this._isReduced(), () => Math.random());
   },
 
   _onDirectTravelPresentationCue(p) {

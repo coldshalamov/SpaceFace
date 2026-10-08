@@ -17,6 +17,13 @@
 import { BINDINGS, promptLabel } from './bindings.js';
 import { stationName } from './sectorLawPresenter.js';
 import { hazardLanguageFor } from '../data/hazardLanguage.js';
+import {
+  WORLD_FEEL_SEAM_IDS,
+  admitWorldFeelSeam,
+  copySweptHullFeel,
+  worldFeelTick,
+  worldFeelVoice,
+} from '../audio/worldFeelSeams.js';
 
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
 // binding-sourced dock alert (no ttl). The dock key handling lives in input.js.
@@ -550,6 +557,18 @@ export function createAlerts(ctx) {
   // are untouched. Tutorial longform ("Cargo hold full! Dock…") stays on the tutorial channel.
   bus.on('cargo:full', () => announce({ key: 'cargo-full', sev: 'warn', text: 'CARGO HOLD FULL', ttl: 2.5 }));
   bus.on('fuel:empty', () => announce({ key: 'fuel', sev: 'danger', text: 'OUT OF FUEL', ttl: 4 }));
+
+  // Worldfeel — developed rock, a hull skim, and a volatile stage. Each admits on sim tick
+  // so a held beam does not refresh the floor every frame. Stable cargo is not a voice.
+  const worldFeelVoiceBook = Object.create(null);
+  for (const eventName of WORLD_FEEL_SEAM_IDS) {
+    bus.on(eventName, (payload) => {
+      const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;
+      if (!admitWorldFeelSeam(worldFeelVoiceBook, eventName, snap, worldFeelTick(ctx.state))) return;
+      const voice = worldFeelVoice(eventName, snap);
+      if (voice) announce(voice);
+    });
+  }
 
   // Hazard entry is a condition light, like missile lock: it stays while you are inside
   // and clears when you leave. Not a new bar, and not a one-shot voice.
