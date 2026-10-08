@@ -2,10 +2,11 @@
 // Pure resolvers plus one admission book so a beam or a repeating mayday cannot
 // machine-gun the cue. Recipes are existing ids — no new samples.
 
-export const DISTRESS_CALL_RECIPE = 'sfx_ui_alert';
+export const DISTRESS_CALL_RECIPE = 'sfx_wanted_alert';
 export const MINE_DETONATION_RECIPE = 'sfx_explosion_small';
-export const WARDED_SHOT_RECIPE = 'sfx_shield_blowout_pop';
+export const WARDED_SHOT_RECIPE = 'sfx.shieldHit';
 export const MINING_NOISE_RECIPE = 'sfx_ui_alert';
+export const MINE_ARMED_RECIPE = 'sfx_vector_mine';
 
 export const DISTRESS_ADMIT_TICKS = 90;
 export const MINE_ADMIT_TICKS = 8;
@@ -56,7 +57,7 @@ export function mineDetonationCue(payload) {
   };
 }
 
-/** A shot caught by an escort's ward. Distinct from the hull hit on the same tick. */
+/** A shot caught by an escort's ward. A hit, not the shield-collapse pop. */
 export function wardedShotCue(payload) {
   if (!payload || payload.escortId == null) return null;
   const pos = payload.pos;

@@ -2408,7 +2408,7 @@ export const audio = {
     bus.on('cloak:faded', () => this.play(combatVerbRecipe('cloak:faded'), { gain: 0.32 }));
     bus.on('cloak:dropped', () => this.play(combatVerbRecipe('cloak:dropped'), { gain: 0.45 }));
     // distress:call had emitters and zero listeners. The comms log only opens when the
-    // player is inside the radius; this is the sting that goes with that mayday, once.
+    // player is inside the radius; the sting is the wanted-alert, not a menu click, once.
     bus.on('distress:call', (p) => playAdmittedEarCue(
       this,
       distressCallCue(p),
@@ -2422,7 +2422,8 @@ export const audio = {
       this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
     ));
     // combat:warded had no listener. The hull hit on the same tick is the damage
-    // voice; this pop is the catch — one per escort, not a beam's machine-gun.
+    // voice; this is the catch — a shield hit, not the collapse pop, and one
+    // per escort so a beam cannot machine-gun it.
     bus.on('combat:warded', (p) => playAdmittedEarCue(
       this,
       wardedShotCue(p),
