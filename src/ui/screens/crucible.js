@@ -3553,8 +3553,8 @@ export function resultCelebration(result) {
       const gate = SWARM_ARENA_STAR_GATES[arenaId];
       if (!Number.isInteger(gate) || stars >= gate) continue;
       const arena = survivalArenaById(arenaId);
-      const name = arena && typeof arena.name === 'string' ? arena.name : arenaId;
-      lines.push(`${name} opens at ${gate} stars — ${gate - stars} to go.`);
+      const name = arena && (arena.label || arena.name);
+      if (typeof name === 'string' && name) lines.push(`${name} opens at ${gate} stars — ${gate - stars} to go.`);
       break;
     }
   } catch { /* the profile read is optional */ }

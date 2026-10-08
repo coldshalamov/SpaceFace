@@ -391,7 +391,8 @@ test('SWARM-05: the celebration band reads the settled run, stars and all', () =
     assert.match(lines, /515 cr/);
     assert.match(lines, /Ricochet Runner/, 'the unlock id resolves to its label');
     assert.match(lines, /Round 10/);
-    assert.match(lines, /opens at 2 stars/, 'the next arena\'s gate is named');
+    assert.match(lines, /Lagrange Crucible opens at 2 stars/, 'the next arena\'s gate is named');
+    assert.doesNotMatch(lines, /lagrange_crucible/, 'the player reads the arena name, never its id');
   } finally {
     globalThis.document = previousDocument;
   }
