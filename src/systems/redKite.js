@@ -120,7 +120,7 @@ export const redKite = {
     if (this._restoring || this.state.mode !== 'flight' || !player || p?.source !== 'player-scanner'
       || p.scannerId !== player.id || !p.pos || distance(p.pos, player.pos) > 2) return;
     const target = this.state.entities.get(this.state.player.targetId);
-    if ((target !== this._currentCourier() && target !== this._marks.get('poi_red_kite_start'))
+    if (!target?.alive || (target !== this._currentCourier() && target !== this._marks.get('poi_red_kite_start'))
       || distance(player.pos, target.pos) > C.hailRange) return;
     this.offer();
   },

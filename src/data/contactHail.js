@@ -5,6 +5,7 @@
 import { hash32 } from '../core/rng.js';
 import { tallyThreeHail } from './tallyThree.js';
 import { RED_KITE } from './redKite.js';
+import { PALLET_JACK } from './palletJack.js';
 import { COMMODITIES } from './commodities.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
@@ -564,6 +565,13 @@ export function contactHailAvailability(state) {
     if (state.world?.currentSectorId !== RED_KITE.sectorId || distanceBetween(player, target) > RED_KITE.hailRange) return unavailable('out_of_reveal_range');
     return { enabled: true, reason: null, targetId: target.id, kind: 'red_kite',
       label: 'HAIL RED KITE', distance: distanceBetween(player, target), entity: target };
+  }
+  if (target.data?.persistenceOwner === PALLET_JACK.owner
+    && (target.data?.palletJackActorId === PALLET_JACK.actorId || target.data?.palletJackCargoId)) {
+    if (!player?.alive) return unavailable('no_player');
+    if (distanceBetween(player, target) > PALLET_JACK.hailRange) return unavailable('out_of_reveal_range');
+    return { enabled: true, reason: null, targetId: target.id, kind: 'pallet_jack',
+      label: 'HAIL PALLET JACK', distance: distanceBetween(player, target), entity: target };
   }
   const tally=tallyThreeHail(state,target,player);
   if(tally)return tally;

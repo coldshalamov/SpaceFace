@@ -1,0 +1,64 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "pallet_jack_controls",
+  "sourceAssetId": "SF_SHIP_PALLET_JACK",
+  "sourceGlbSha256": "6c8306b9494145ce9a6688cc52dbd4871b9daeaf7b007b7ecb574d0ff84645eb",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "pallet_jack_clamp",
+      "node": "MOTION_PALLET_JACK_CLAMP",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          2,
+          3.0999999046325684,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "pallet_jack_clamp",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

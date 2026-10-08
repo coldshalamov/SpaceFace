@@ -22,11 +22,32 @@
 //     settles as `raider_secured`. A lawful hull with no claim and no title bounces off or passes
 //     through; it never consumes.
 //
-// Pure data helpers: deterministic, no state writes, no imports from systems.
+// Deterministic custody helpers, with one narrow runtime receipt for the physical Pallet Jack.
 
 const OUTLAW_ROLE_MARKS = Object.freeze([
   'pirate', 'raider', 'scavenger', 'smuggler', 'outlaw', 'bandit', 'marauder',
 ]);
+
+// SF20-09 carries a body rather than consuming it. These runtime receipts cannot be forged by
+// serialized flags; the source supplies a current native-attachment check for the exact lives.
+const palletCarriers = new WeakMap(), palletClamps = new WeakMap();
+export function registerPalletJackCarrier(carrier) {
+  const life = carrier.occupantGeneration; palletCarriers.set(carrier, life);
+  return () => { if (palletCarriers.get(carrier) === life) palletCarriers.delete(carrier); };
+}
+export function registerPalletJackClamp(pickup, carrier, isLive, isReserved = null) {
+  const receipt = { pickupLife: pickup.occupantGeneration, carrier, carrierLife: carrier.occupantGeneration, isLive, isReserved };
+  palletClamps.set(pickup, receipt);
+  return () => { if (palletClamps.get(pickup) === receipt) palletClamps.delete(pickup); };
+}
+function palletReceipt(pickup) {
+  const r = palletClamps.get(pickup);
+  return r && pickup.alive && r.carrier.alive && pickup.occupantGeneration === r.pickupLife
+    && r.carrier.occupantGeneration === r.carrierLife ? r : null;
+}
+export function isPalletJackClampedPickup(pickup) {
+  return palletReceipt(pickup)?.isLive() === true;
+}
 
 function cleanId(value) {
   if (value == null) return null;
@@ -115,6 +136,10 @@ export function isOutlawPickupCollector(collector) {
  * @param {*} playerId - `state.playerId`
  */
 export function pickupCustodyAllowsCollector(pickup, collector, playerId) {
+  const pallet = palletReceipt(pickup);
+  if (pallet && (pallet.isLive() === true || pallet.isReserved?.() === true)) return false;
+  if (collector && palletCarriers.has(collector)
+    && palletCarriers.get(collector) === collector.occupantGeneration) return false;
   const custody = pickupCustodyIdentity(pickup && pickup.data);
   if (!custody) return true;
   if (!collector) return false;

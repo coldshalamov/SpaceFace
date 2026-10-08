@@ -11,6 +11,10 @@ import { isTowlineCrewEntity } from '../data/towlineTableBodies.js';
 import { createTowlineTableVisualDriver } from './towlineTableVisuals.js';
 import { isBorrowedVoiceRing, isBorrowedVoiceRecorder } from '../data/borrowedVoiceBody.js';
 import { createBorrowedVoiceVisualDriver } from './borrowedVoiceVisuals.js';
+import { isPalletJackEntity } from '../data/palletJackBody.js';
+import { isMothlightTender, isMothlightLamp } from '../data/mothlightBody.js';
+import { createPalletJackVisualDriver } from './palletJackVisuals.js';
+import { createMothlightVisualDriver } from './mothlightVisuals.js';
 import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
 // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
 //
@@ -121,7 +125,8 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   const scissorwake=isScissorwakeEntity(entity);
   const towline=isTowlineCrewEntity(entity);
   const borrowedVoice=isBorrowedVoiceRing(entity)||isBorrowedVoiceRecorder(entity);
-  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice)) return null;
+  const palletJack=isPalletJackEntity(entity),mothlight=isMothlightTender(entity)||isMothlightLamp(entity);
+  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight)) return null;
   const tallyDriver=tally?createTallyThreeVisualDriver(root,entity):null;
   const redKiteDriver=redKite?createRedKiteVisualDriver(root,entity):null;
   const sableDriver=sable?createSableVennVisualDriver(root,entity):null;
@@ -130,6 +135,8 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   const scissorwakeDriver=scissorwake?createScissorwakeVisualDriver(root,entity):null;
   const towlineDriver=towline?createTowlineTableVisualDriver(root,entity):null;
   const borrowedVoiceDriver=borrowedVoice?createBorrowedVoiceVisualDriver(root,entity):null;
+  const palletJackDriver=palletJack?createPalletJackVisualDriver(root,entity):null;
+  const mothlightDriver=mothlight?createMothlightVisualDriver(root,entity):null;
   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
   const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):latch?createLatchNineVisualDriver(root,entity):null;
   const priorDriveUpdate=root.userData.updateDriveState;
@@ -178,6 +185,8 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     scissorwakeDriver?.dispose();
     towlineDriver?.dispose();
     borrowedVoiceDriver?.dispose();
+    palletJackDriver?.dispose();
+    mothlightDriver?.dispose();
     sableDriver?.dispose();
     if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
       if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
@@ -235,6 +244,8 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     ilexDriver?.update(liveEntity, simNow, a11y, state);
     kilnbackDriver?.update(liveEntity, simNow, a11y, state);
     borrowedVoiceDriver?.update(liveEntity, simNow, a11y, state);
+    palletJackDriver?.update(liveEntity, simNow, a11y, state);
+    mothlightDriver?.update(liveEntity, simNow, a11y, state);
     scissorwakeDriver?.update(liveEntity, simNow, a11y, state);
     towlineDriver?.update(liveEntity, simNow, a11y, state);
     sableDriver?.update(liveEntity, simNow, a11y, state);
