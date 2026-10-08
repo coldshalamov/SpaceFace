@@ -591,6 +591,28 @@ test('the fuse freezes while a screen holds the flight input neutral', async () 
   t.cleanup();
 });
 
+test('a held clump never eats a meal behind a modal screen', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 30, 6);
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const massBefore = t.sys._rt.clumpMass;
+  t.state.ui = { screenStack: ['map'] };
+  // A meal parked inside the suck annulus — in reach, but the screen owns the sim.
+  const meal = rock(t.sim, core.pos.x + 4, core.pos.z, 6, 3);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.clumpMass, massBefore,
+    'no merge behind the modal — an eaten wreck can\'t be unseen');
+  assert.notEqual(meal.alive, false, 'the meal survives the blind hold');
+  t.state.ui.screenStack.length = 0;
+  for (let i = 0; i < 30 && meal.alive !== false && t.sys._rt.clumpMass === massBefore; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.ok(t.sys._rt.clumpMass > massBefore, 'the merge resumes on the first visible tick');
+  t.cleanup();
+});
+
 // ── snag eligibility ──────────────────────────────────────────────────────────────
 test('a pickup or persistent body never becomes the core', async () => {
   const t = await bootPhysics();

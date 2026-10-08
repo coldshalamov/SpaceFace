@@ -229,9 +229,14 @@ export const gyreSnare = {
     }
     const droppedPhase = rt.phase;
     const droppedMass = rt.clumpMass;
-    const droppedDir = rt.orbitDir; // captured before the reset — the tear snap needs the last revolution
-    const droppedOrbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale); // whip scale — dead at the next line
-    const droppedRate = this._orbitRate(rt); // ponderous-floored rate — the reset zeroes clumpRadius and would unfloor it
+    // The tear snap's whip scale — captured before the reset zeroes clumpRadius
+    // (which would unfloor the ponderous rate). Strain drops only.
+    let droppedDir = 1, droppedOrbitR = 0, droppedRate = 0;
+    if (!wasOff && reason === 'strained') {
+      droppedDir = rt.orbitDir;
+      droppedOrbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale);
+      droppedRate = this._orbitRate(rt);
+    }
     rt.dropReason = reason || 'dropped'; // a strain break is a tear, not a polite release — the close reads the reason
     rt.phase = PHASE.OFF;
     rt.coreId = null;
@@ -653,8 +658,20 @@ export const gyreSnare = {
     return out;
   },
 
+  /** A modal screen neutralizes flight input while the verb stays held —
+   *  screenStack (any open UI), fulfillmentBlackoutActive (delivery overlay),
+   *  input.blocked (foreign neutralize). Shared by the fuse freeze, the dry
+   *  edge, and the suck-merge gate. */
+  _modalHeld(state) {
+    return !!(state.ui && state.ui.screenStack && state.ui.screenStack.length)
+      || !!(state.ui && state.ui.fulfillmentBlackoutActive)
+      || !!(state.input && state.input.blocked);
+  },
+
   _cap(player) {
-    return typeof player.cap === 'number' ? player.cap
+    // Same Number.isFinite guard as _spendCap — a NaN cap would silently deaden
+    // the activate check (never >= min, never <= 0 dry).
+    return (typeof player.cap === 'number' && Number.isFinite(player.cap)) ? player.cap
       : (player.data && player.data.derived && player.data.derived.cap) || 0;
   },
 
@@ -1035,7 +1052,11 @@ export const gyreSnare = {
     // the suck lane's annulus count from the same tick.
     rt.towCount = 0;
     rt.tooHeavyCount = 0;
-    this._suckPass(dt, state, player, core, rt);
+    // The clump's merge lane is an irreversible sim mutation — a wreck eaten
+    // behind a modal screen can't be unseen. It freezes with the fuse; the
+    // drag lanes keep running (movement is reversible — the funnel still reads
+    // held when the screen closes).
+    if (!this._modalHeld(state)) this._suckPass(dt, state, player, core, rt);
     // Keep the wedge pull alive so the cone keeps feeding material into the ball —
     // outside the suck's annulus, which the core's own lane already owns.
     this._pullPass(dt, state, player, maw, nose, {
@@ -1975,9 +1996,7 @@ export const gyreSnare = {
     // The fuse freezes while flight input is neutralized (a screen open): the verb
     // stays held through the overlay (massline parity) but the countdown is behind
     // it — draining blind could force a _launch the player literally cannot see.
-    const modalHeld = !!(state.ui && state.ui.screenStack && state.ui.screenStack.length)
-      || !!(state.ui && state.ui.fulfillmentBlackoutActive)
-      || !!(state.input && state.input.blocked);
+    const modalHeld = this._modalHeld(state);
     const drain = modalHeld ? 0 : D.capDrainPerS * drainMult * dt;
     this._spendCap(player, drain);
     // Same blind-commit rule on the OTHER side of the drain: a foreign system that
