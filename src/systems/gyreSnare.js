@@ -1513,6 +1513,9 @@ export const gyreSnare = {
     rt.dropReason = 'launched';
     rt.fuseCueLatched = false;
     rt.strainCueNextTick = 0; // ledger symmetry with _drop — dead data, nothing stale survives
+    rt.tornTrack = null;      // a completed bowl ends the previous torn body's follow,
+                            // same as _drop — its rubble chase must not ride into the
+                            // next hold
     rt.beamWake = 0;
     // Same live-side ledger reset _drop does: after the ball dies a core-less re-beam
     // must not publish the dead clump's count/cue state as if it were live. The frozen
@@ -1595,7 +1598,9 @@ export const gyreSnare = {
           const meta = e.data.gyreLaunchMeta;
           pub.graves.push({
             x: e.pos.x, z: e.pos.z,
-            r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : 6,
+            // Symmetry with the balls[] lane (:1843): a pre-meta serialized ball
+            // rings at its real collider size, not the 6 wu floor.
+            r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : entityRadius(e),
           });
           // unwatched ⇒ disarmed — same invariant the overflow/adoption paths keep:
           // the payload never outlives the watch, even when the body dies this step.

@@ -2938,6 +2938,23 @@ test('suck-band floor: a fresh snag\'s reach stays inside the basin, mass re-wid
   assert.equal(t.sys._suckRadius(rt), T.basinRadius * 1.5, 'the top-end reach cap is unchanged');
 });
 
+test('suckRadius publishes live during HOLD and drains on OFF — no stale annulus', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  assert.equal(t.state.gyreSnare.phase, 'holding');
+  assert.ok(t.state.gyreSnare.suckRadius > 0,
+    'the annulus publishes its live radius while the hold runs');
+  release(t); // a hold release is the throw — ride the launch lane to OFF
+  for (let i = 0; i < 20 && t.state.gyreSnare.phase !== 'off'; i++) {
+    t.state.input.actions.gyreSnare = false; t.sim.step();
+  }
+  assert.equal(t.state.gyreSnare.phase, 'off', 'the launch resolves to OFF');
+  assert.equal(t.state.gyreSnare.suckRadius, 0,
+    'the OFF branch zeroes the mirror — no reader sees the last annulus radius');
+  t.cleanup();
+});
+
 test('orbit rate floors at 0.3 — a capped moon still circles', () => {
   const t = boot(9407);
   const rt = t.sys._rt;
