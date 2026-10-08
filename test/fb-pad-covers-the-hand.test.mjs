@@ -179,6 +179,32 @@ test('a chord fires only its own verb; the key solo is suppressed for the hold',
   press(BTN.dUp, false);
 });
 
+test('the RB+Y chord holds the lash: gyreSnare.held rides r1+alt, alt solo suppressed', () => {
+  const gp = createGamepad({ bus: createBus() });
+  const state = makeState();
+  gp.tick(1 / 60, state);
+  // RB down, Y down — the chorded verb reports held, the key's solo stays silent.
+  press(BTN.r1, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  press(BTN.alt, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, true, 'RB+Y reports the lash held');
+  assert.equal(gp.actions.gyreSnare.pressed, true);
+  assert.equal(gp.actions.deployRepulsor.pressed, false, 'the chorded Y solo is suppressed');
+  assert.equal(gp.actions.boost.held, true, 'the modifier keeps its own verb (boost)');
+  // The hold persists across ticks — input.js reads gp.actions.gyreSnare.held
+  // every frame for its held-through-modal preserve.
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, true, 'the chorded hold rides on');
+  // Key up ends the hold without leaking a repulsor press; modifier solo re-arms.
+  press(BTN.alt, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, false, 'Y up drops the lash');
+  assert.equal(gp.actions.deployRepulsor.pressed, false, 'no leaked solo on release');
+  press(BTN.r1, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+});
+
 test('the RB combat-state layer chords independently of the LB layer', () => {
   const gp = createGamepad({ bus: createBus() });
   const state = makeState();

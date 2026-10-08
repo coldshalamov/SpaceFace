@@ -37,7 +37,11 @@ import { queryAsteroidField, promoteAsteroidFieldRock } from '../world/asteroidF
 import { GYRE_SNARE, GYRE_EVENTS, GYRE_ABSORBABLE_TYPES } from '../data/gyreSnare.js';
 
 const D = GYRE_SNARE;
-const TICKS_PER_S = 60; // sim tick -> simTime ratio shared by the provenance hold windows
+const TICKS_PER_S = 60; // sim tick -> simTime ratio shared by the provenance hold
+                        // windows. This is the codebase-wide 60 Hz step convention
+                        // (coreSystem advances simTime by dt=1/60; fieldKernel defaults
+                        // the same), not a local magic number — the seconds→ticks
+                        // conversions below assume it as a system contract.
 const PHASE = Object.freeze({ OFF: 'off', BEAM: 'beaming', HOLD: 'holding', LAUNCH: 'launching' });
 const ABSORBABLE = new Set(GYRE_ABSORBABLE_TYPES);
 // Types the beam's gravity never touches at all (the pull pass is for loose world mass).
@@ -694,9 +698,12 @@ export const gyreSnare = {
     // violation and a silent refund. When the direct field is absent, seed it from the
     // derived read once and spend from the seed.
     const derived = player.data && player.data.derived;
+    // isFinite on BOTH channels: `typeof === 'number'` passes NaN through, and a
+    // NaN seed would write NaN onto e.cap — every later _cap read would fall
+    // through to the derived channel forever.
     const cur = (typeof player.cap === 'number' && Number.isFinite(player.cap))
       ? player.cap
-      : (derived && typeof derived.cap === 'number' ? derived.cap : 0);
+      : (derived && Number.isFinite(derived.cap) ? derived.cap : 0);
     player.cap = Math.max(0, cur - amount);
   },
 
@@ -1606,6 +1613,11 @@ export const gyreSnare = {
               // Credit rides only while our stamped deadline still owns the body —
               // an adopter that stripped despawnAt WITH the mark takes the kills.
               if (e.data.despawnAt == null) clearImpulseProvenance(e);
+              // DELIBERATE asymmetry with the quiet-TTL grave lane: narration
+              // follows the WATCH ledger (this splice ends it) while credit
+              // follows the stamp. An unmarked body that later dies on our
+              // deadline gets no shatter/grave ring — its remaining flight
+              // belonged to whoever stripped the mark.
             }
             // Corpse or live, the shadow ledger is dead — shed BOTH marks so a dead
             // corpse can't re-stamp credit post-load or resurrect as a pull-immune ball.

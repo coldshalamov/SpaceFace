@@ -624,6 +624,24 @@ test('the fuse freezes while a screen holds the flight input neutral', async () 
   t.cleanup();
 });
 
+test('_spendCap seeds from data.derived.cap once, then single-writes e.cap', () => {
+  const t = boot(6464);
+  delete t.player.cap; // a ship without the direct field: derived is the read
+  t.player.data.derived = { cap: 50 };
+  t.sys._spendCap(t.player, 12);
+  assert.equal(t.player.cap, 38, 'seeded from derived, spent down — single-write convention');
+  // Once seeded, e.cap is the channel — a derived refresh must not refund.
+  t.player.data.derived.cap = 90;
+  t.sys._spendCap(t.player, 8);
+  assert.equal(t.player.cap, 30, 'e.cap wins after seeding — no silent derived refund');
+  // A NaN derived can't poison the entity: typeof === 'number' passes NaN, so
+  // the guard keys on isFinite — Math.max(0, NaN) would pin cap at NaN forever.
+  delete t.player.cap;
+  t.player.data.derived.cap = NaN;
+  t.sys._spendCap(t.player, 5);
+  assert.equal(t.player.cap, 0, 'NaN derived seeds as absent, not as a poisoned cap');
+});
+
 test('a held clump never eats a meal behind a modal screen', async () => {
   const t = await bootPhysics();
   const core = rock(t.sim, T.mawDist, 0, 30, 6);
