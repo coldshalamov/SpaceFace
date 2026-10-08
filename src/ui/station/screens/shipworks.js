@@ -1420,7 +1420,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const nameInput = model.hullIndex != null
       ? `<input class="k-input sx-sw__nameEdit" type="text" data-ship-name maxlength="${SHIP_NAME_MAX}" ` +
           `value="${escapeHtml(model.ownedShip && typeof model.ownedShip.name === 'string' ? model.ownedShip.name : '')}" ` +
-          `placeholder="${escapeHtml(model.hullName)}" aria-label="Name this hull" spellcheck="false" autocomplete="off"/>`
+          `placeholder="Name this hull" aria-label="Name this hull" spellcheck="false" autocomplete="off"/>`
       : '';
     nameplateEl.innerHTML =
       `<div class="sx-sw__crestLine">` +
