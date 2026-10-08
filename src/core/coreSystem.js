@@ -249,8 +249,13 @@ export const core = {
       // each veto. Mission-owned set pieces stay authored by their own directors this interim.
       const run = s.run;
       if (run && run.kind && run.phase !== 'inactive') return false;
+      // A live rival beat vetoes a second one. The pending request under approval IS this beat:
+      // vetoing every pending request refused each deployment, so Orra never arrived and the
+      // announcement retried every 15 s forever.
       const rivalMemory = s.nemesis;
-      if (rivalMemory && (rivalMemory.active || rivalMemory.pending)) return false;
+      const pending = rivalMemory && rivalMemory.pending;
+      if (rivalMemory && (rivalMemory.active
+        || (pending && pending.id !== request.requestId))) return false;
       return true;
     };
 

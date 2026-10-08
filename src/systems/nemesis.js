@@ -81,6 +81,15 @@ export function createNemesisSystem() {
         situation, text, evidence, t: nowOf(this.state) });
     },
     _flight() { return this.state.mode === 'flight' && alive(entity(this.state, this.state.playerId)); },
+    _pacingAllows() {
+      const approve = this.helpers && this.helpers.canStartNemesisEncounter;
+      // Missing pacing stays the host's fail-closed refusal, which carries its own receipt.
+      if (typeof approve !== 'function') return true;
+      try {
+        return approve({ requestId: null, sectorId: sector(this.state), aceId: RIVAL.id, preflight: true },
+          this.state) === true;
+      } catch (_) { return false; }
+    },
     _sensorFrame() {
       const a = this.state.nemesis.active;
       const sensors = this.helpers.aiSensors;
@@ -234,6 +243,10 @@ export function createNemesisSystem() {
         return;
       }
       if (now < m.nextContactAt) return;
+      // Warn only for an arrival the host's pacing would admit now. A refused deployment retries in
+      // 15 s, so announcing first turned every refusal (onboarding, a run, docking, low hull) into a
+      // COUNTEREXAMPLE INBOUND warning every ~21 s with nobody arriving.
+      if (!this._pacingAllows()) { m.nextContactAt = now + LIMITS.retryS; return; }
       // No RNG consumed. Alternating handedness is deliberate choreography, not random sampling.
       const plan = prepareNemesisPlan(m, m.completed % 2 ? -1 : 1);
       m.requestSerial += 1;
