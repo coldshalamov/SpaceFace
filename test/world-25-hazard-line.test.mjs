@@ -49,7 +49,8 @@ function pillTexts(root) {
 test('WORLD-25: entering radiation raises one persistent line; leaving clears it', () => {
   const h = harness();
   h.bus.emit('hazard:enter', { entityId: 'player_1', zoneType: 'radiation', intensity: 0.8 });
-  assert.deepEqual(pillTexts(h.alertsEl), ['RADIATION FIELD']);
+  // The pill carries the authored damage tag — what the field burns is the load-bearing read.
+  assert.deepEqual(pillTexts(h.alertsEl), ['RADIATION FIELD · SHIELDS+CARGO+HULL OVER TIME']);
   // Re-emitting entry refreshes the same keyed pill — still one line.
   h.bus.emit('hazard:enter', { entityId: 'player_1', zoneType: 'radiation', intensity: 0.8 });
   assert.equal(h.alertsEl.children.length, 1);
@@ -60,7 +61,7 @@ test('WORLD-25: entering radiation raises one persistent line; leaving clears it
 test('WORLD-25: nebula raises an info line and clears on exit', () => {
   const h = harness();
   h.bus.emit('hazard:enter', { entityId: 'player_1', zoneType: 'nebula', intensity: 0.4 });
-  assert.deepEqual(pillTexts(h.alertsEl), ['NEBULA FIELD']);
+  assert.deepEqual(pillTexts(h.alertsEl), ['NEBULA FIELD · SENSOR VISIBILITY']);
   h.bus.emit('hazard:exit', { entityId: 'player_1', zoneType: 'nebula' });
   assert.equal(h.alertsEl.children.length, 0);
 });
@@ -78,5 +79,5 @@ test('WORLD-25: overlapping hazards keep independent lines', () => {
   h.bus.emit('hazard:enter', { entityId: 'player_1', zoneType: 'nebula' });
   assert.equal(h.alertsEl.children.length, 2);
   h.bus.emit('hazard:exit', { entityId: 'player_1', zoneType: 'radiation' });
-  assert.deepEqual(pillTexts(h.alertsEl), ['NEBULA FIELD'], 'only the exited hazard clears');
+  assert.deepEqual(pillTexts(h.alertsEl), ['NEBULA FIELD · SENSOR VISIBILITY'], 'only the exited hazard clears');
 });
