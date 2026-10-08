@@ -819,6 +819,52 @@ test('cached bounds never freeze the raycast — a moved world target still upda
   });
 });
 
+test('world sweep under a still cursor is latched — hover never strobes at pick rate', () => {
+  withWorldObjectHarness(({ state, canvas, woi, tick, pointOn, rock, hostile }) => {
+    const realPerf = globalThis.performance;
+    let now = realPerf.now();
+    globalThis.performance = { now: () => now };
+    try {
+      const pt = pointOn(rock);
+      state.input.pointerScreen = { x: pt.x, y: pt.y, active: true };
+      canvas.dispatch('mousemove', { target: canvas, clientX: pt.x, clientY: pt.y });
+      woi.tick(1 / 60);
+      assert.equal(woi.diagnostics().hoverId, rock.id, 'precondition: the rock is hovered');
+
+      // The world sweeps: the rock leaves and the hostile slides under the MOTIONLESS cursor.
+      rock.pos.x = 200; rock.pos.z = 200;
+      state.render.meshes.get(rock.id).position.set(200, 0, 200);
+      hostile.pos.x = 0; hostile.pos.z = 0;
+      state.render.meshes.get(hostile.id).position.set(0, 0, 0);
+      state.render.scene.updateMatrixWorld(true);
+
+      // Idle-cadence repick 1 sees the hostile once — a single sighting must not switch.
+      woi.tick(0.13);
+      assert.equal(woi.diagnostics().hoverId, rock.id,
+        'one pick under a still cursor does not retarget the hover');
+
+      // Repick 2 agrees — the sweep is real, not jitter, so the hover follows.
+      woi.tick(0.13);
+      assert.equal(woi.diagnostics().hoverId, hostile.id,
+        'a sustained sweep retargets after two agreeing picks');
+
+      // Everything sweeps away: the empty pick holds through the grace window, then drops.
+      hostile.pos.x = 250; hostile.pos.z = 250;
+      state.render.meshes.get(hostile.id).position.set(250, 0, 250);
+      state.render.scene.updateMatrixWorld(true);
+      woi.tick(0.13);
+      assert.equal(woi.diagnostics().hoverId, hostile.id,
+        'a first empty pick does not blink the hover off');
+      now += 200;
+      woi.tick(0.13);
+      assert.equal(woi.diagnostics().hoverId, null,
+        'a sustained empty pick retires the hover');
+    } finally {
+      globalThis.performance = realPerf;
+    }
+  });
+});
+
 test('a resize observer delivery re-measures new canvas bounds', () => {
   withWorldObjectHarness(({ state, canvas, woi, pointOn, rock, ro }) => {
     state.input.pointerScreen = { x: 500, y: 400, active: true };

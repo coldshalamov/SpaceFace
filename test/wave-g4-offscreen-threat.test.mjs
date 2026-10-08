@@ -99,6 +99,8 @@ test('G4 places one marker on the shooter quadrant and none for an in-frame or d
       out.onScreen = false;
       return out;
     };
+    const realPerf = globalThis.performance;
+    const t0 = realPerf.now();
     halo.update(player, state, offRight);
     const marks = visibleArcs(mock);
     assert.equal(marks.length, 1, 'one marker for the shooter, not one per bolt');
@@ -113,11 +115,20 @@ test('G4 places one marker on the shooter quadrant and none for an in-frame or d
       return out;
     };
     halo.update(player, state, inFrame);
-    assert.equal(visibleArcs(mock).length, 0, 'an in-frame attacker gets no edge mark');
+    // A contact crossing INTO the frame holds its edge mark through the retire grace — a
+    // hostile oscillating on the frustum edge must not blink its arc at tick rate. Sustained
+    // in-frame retires it. Jump the clock past the grace window to observe the retired state.
+    globalThis.performance = { now: () => t0 + 400 };
+    try {
+      halo.update(player, state, inFrame);
+      assert.equal(visibleArcs(mock).length, 0, 'a sustained in-frame attacker retires its edge mark');
 
-    shooter.alive = false;
-    halo.update(player, state, offRight);
-    assert.equal(visibleArcs(mock).length, 0, 'the mark dies with the hostile');
+      shooter.alive = false;
+      halo.update(player, state, offRight);
+      assert.equal(visibleArcs(mock).length, 0, 'the mark dies with the hostile');
+    } finally {
+      globalThis.performance = realPerf;
+    }
   } finally {
     globalThis.document = oldDoc;
   }

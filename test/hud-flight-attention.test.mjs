@@ -45,17 +45,20 @@ const ARBITER_SRC = readFileSync(new URL('../src/ui/voiceArbiter.js', import.met
 function installToastDom() {
   const byId = new Map();
   class FakeClassList {
-    constructor() { this.values = new Set(); }
-    add(...vs) { vs.forEach((v) => this.values.add(v)); }
-    remove(...vs) { vs.forEach((v) => this.values.delete(v)); }
+    constructor(owner) { this.owner = owner; this.values = new Set(); }
+    add(...vs) { vs.forEach((v) => this.values.add(v)); this._sync(); }
+    remove(...vs) { vs.forEach((v) => this.values.delete(v)); this._sync(); }
     contains(v) { return this.values.has(v); }
+    // Mirror the real DOM: className and classList are two views of one attribute. Without the
+    // sync a className-based filter can never see state classes added after creation.
+    _sync() { this.owner.className = Array.from(this.values).join(' '); }
   }
   class FakeElement {
     constructor(tagName = 'div') {
       this.tagName = String(tagName).toUpperCase();
       this.children = [];
       this.parentNode = null;
-      this.classList = new FakeClassList();
+      this.classList = new FakeClassList(this);
       this.attributes = new Map();
       this.style = {};
       this.textContent = '';
@@ -258,7 +261,10 @@ test('createToasts uses admitReceipt and keeps at most two receipts', () => {
     bus.emit('toast', { text: 'Sold 12 Iron Ore · +840 cr', kind: 'good', ttl: 3 });
     bus.emit('toast', { text: '+12 REP · DMC', kind: 'rep', ttl: 3 });
     bus.emit('toast', { text: 'Saved slot 1', kind: 'info', ttl: 3 });
-    const cards = dom.toasts.children.filter((el) => el.className && String(el.className).includes('sf-toast'));
+    // A receipt in its exit beat stays mounted ~170 ms (d9619d568); the live count is the
+    // admission contract, so cards already leaving don't count against RECEIPT_MAX.
+    const cards = dom.toasts.children.filter((el) => el.className && String(el.className).includes('sf-toast')
+      && !el.classList.contains('sf-toast--out'));
     assert.equal(cards.length, 2);
     assert.ok(cards.every((el) => !/Target:/.test(el.textContent)));
     assert.match(TOASTS_SRC, /admitReceipt/);
