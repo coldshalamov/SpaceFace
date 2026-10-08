@@ -21,7 +21,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
-import { AFTERMATH_HUSH, admitAftermathHush, distressCallCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
+import { AFTERMATH_HUSH, admitAftermathHush, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -2423,6 +2423,13 @@ export const audio = {
     bus.on('mines:detonated', (p) => playAdmittedEarCue(
       this,
       mineDetonationCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // weapons:mineArmed had a picture and no sound. The arming click is the
+    // mine's own recipe, quieter than the blast that comes later.
+    bus.on('weapons:mineArmed', (p) => playAdmittedEarCue(
+      this,
+      mineArmedCue(p),
       this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
     ));
     // combat:warded had no listener. The hull hit on the same tick is the damage

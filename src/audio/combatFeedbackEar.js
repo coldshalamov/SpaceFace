@@ -7,6 +7,7 @@ export const MINE_DETONATION_RECIPE = 'sfx_explosion_small';
 export const WARDED_SHOT_RECIPE = 'sfx.shieldHit';
 export const MINING_NOISE_RECIPE = 'sfx_ui_alert';
 export const MINE_ARMED_RECIPE = 'sfx_vector_mine';
+export const MINE_ARMED_ADMIT_TICKS = 30;
 
 export const DISTRESS_ADMIT_TICKS = 90;
 export const MINE_ADMIT_TICKS = 8;
@@ -141,5 +142,19 @@ export function wreckMemorialLine(payload) {
     text,
     kind: 'memorial',
     ttl: 5,
+  };
+}
+
+/** The click of a mine going live. The blast is a different event. */
+export function mineArmedCue(payload) {
+  if (!payload || payload.mineId == null) return null;
+  const pos = payload.pos;
+  return {
+    recipeId: MINE_ARMED_RECIPE,
+    gain: 0.38,
+    key: `arm:${payload.mineId}`,
+    gapTicks: MINE_ARMED_ADMIT_TICKS,
+    critical: false,
+    position: pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? { x: pos.x, z: pos.z } : null,
   };
 }
