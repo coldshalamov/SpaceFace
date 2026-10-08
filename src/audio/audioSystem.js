@@ -686,6 +686,23 @@ export function machineWorkPosition(state, payload) {
   return { x: pos.x, z: pos.z };
 }
 
+/** A living relay is not a motor. Machinery keeps sfx_work_motor. */
+export function relayPulseCue(payload) {
+  const ids = payload && Array.isArray(payload.siteIds) ? payload.siteIds : null;
+  if (!ids || ids.length === 0) return null;
+  return { recipeId: 'sfx_anomaly_swell', caption: 'Relay pulse.', gain: 0.36 };
+}
+
+export function playRelayPulse(host, payload) {
+  const cue = relayPulseCue(payload);
+  if (!cue || !host || typeof host.play !== 'function') return null;
+  const played = host.play(cue.recipeId, { id: cue.recipeId, gain: cue.gain });
+  if (played && typeof host._emitPresentationCaption === 'function') {
+    host._emitPresentationCaption(cue.caption, { channel: 'cue' });
+  }
+  return played;
+}
+
 /** SF-233 — a swell is evidence, not a timer on the anomaly palette. */
 export function resolveAnomalyEvidenceCue(input = {}) {
   const type = String(input.type || input.poiType || input.kind || '').toLowerCase();
@@ -2855,6 +2872,7 @@ export const audio = {
       if (starved && prev !== true) this._onMineCue('machineStarved', p); // once per transition
       this._syncMachineWork(p);
     });
+    bus.on('ecology:relayPulse', (p) => playRelayPulse(this, p));
 
     // UI namespaced cue events (DOM UI may emit these directly).
     // ui:confirm is the only ui:* semantic event with a producer (src/ui/input.js);
