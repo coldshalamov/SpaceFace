@@ -26,11 +26,11 @@ function kitWord(kit) {
     .join(' ');
 }
 
-/** Compact kit-balance lines from a kitBalanceBoard() result. Empty is honest. */
+/** Compact kit-balance lines from a kitBalanceBoard() result. Empty stays quiet. */
 export function kitBalanceLines(board) {
   const order = board && Array.isArray(board.order) ? board.order : [];
   const summary = board && board.summary && typeof board.summary === 'object' ? board.summary : {};
-  if (!order.length) return ['No kit balance on this record.'];
+  if (!order.length) return [];
   return order.map((kit) => {
     const row = summary[kit] || {};
     const median = Number.isFinite(row.median) ? String(Math.round(row.median)) : '—';
@@ -40,10 +40,10 @@ export function kitBalanceLines(board) {
   });
 }
 
-/** The overconfidence reading. The count is the sim's; this only says it. */
+/** The overconfidence reading. Zero is silence — the sheet does not apologize. */
 export function overconfidenceReading(streak) {
   const n = Number.isInteger(streak) && streak > 0 ? streak : 0;
-  if (n <= 0) return 'No overconfidence streak on this record.';
+  if (n <= 0) return '';
   if (n === 1) return 'Overconfidence: the last run ended while confidence was still high.';
   return `Overconfidence: ${n} runs in a row ended while confidence was still high.`;
 }
@@ -79,9 +79,7 @@ export function renderResultsSheet(model) {
 
   const stunts = el('ul', 'k-rows sf-crres__stunt-rows');
   stunts.setAttribute('aria-label', 'Stunt rows');
-  if (!sheet.stuntRows.length) {
-    root.appendChild(el('p', 'k-sentence sf-crres__stunt-rows', 'This run scored no named stunts.'));
-  } else {
+  if (sheet.stuntRows.length) {
     for (const [name, detail] of sheet.stuntRows) {
       const li = el('li', 'k-row k-row--static sf-crres__stunt-row');
       const left = el('div');
@@ -93,10 +91,14 @@ export function renderResultsSheet(model) {
     root.appendChild(stunts);
   }
 
-  const kit = el('div', 'sf-crres__kit-balance');
-  kit.setAttribute('aria-label', 'Kit balance');
-  for (const line of sheet.kitLines) kit.appendChild(el('p', 'k-sentence', line));
-  root.appendChild(kit);
-  root.appendChild(el('p', 'k-sentence sf-crres__overconfidence', sheet.overconfidence));
+  if (sheet.kitLines.length) {
+    const kit = el('div', 'sf-crres__kit-balance');
+    kit.setAttribute('aria-label', 'Kit balance');
+    for (const line of sheet.kitLines) kit.appendChild(el('p', 'k-sentence', line));
+    root.appendChild(kit);
+  }
+  if (sheet.overconfidence) {
+    root.appendChild(el('p', 'k-sentence sf-crres__overconfidence', sheet.overconfidence));
+  }
   return root;
 }

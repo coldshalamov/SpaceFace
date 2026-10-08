@@ -84,7 +84,13 @@ export function profileImportedLine(payload) {
   };
 }
 
-/** The slot the player has selected. Import uses this instead of a hardcoded quick slot. */
+/** One result line. A profile merge already said what arrived; do not speak a second time. */
+export function importResultLine(ok, slotWord, profileLine) {
+  if (!ok) return 'Import failed';
+  if (typeof profileLine === 'string' && profileLine.trim()) return profileLine.trim();
+  const dest = slotWord && String(slotWord).trim() ? String(slotWord).trim() : 'the selected slot';
+  return 'Imported into ' + dest + '.';
+}
 export function importDestination(selected, ids) {
   const list = Array.isArray(ids) && ids.length ? ids.map(String) : ['quick', '1', '2', '3', '4'];
   const want = selected != null ? String(selected) : '';

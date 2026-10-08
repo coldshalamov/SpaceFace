@@ -49,6 +49,7 @@ test('FB-055 one readout names output per day and the limit, seed 4242', () => {
     }) });
     const text = textLines(node).join('\n');
     assert.match(text, /Hauler — 1440 cr\/day/);
+    assert.equal(text.split('1440').length - 1, 1, 'each asset is one line, not a sentence and a list');
     assert.match(text, /Trader run paid 40 cr/);
     const buttons = [];
     const walk = (n) => {

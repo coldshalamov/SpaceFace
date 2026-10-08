@@ -9,6 +9,7 @@ import {
   profileImportedLine,
   recoveryFailedLine,
   recoveryNotice,
+  importResultLine,
 } from '../src/ui/screens/saveNotices.js';
 import { armImportDestination, importConfirmBody } from '../src/ui/screens/saveLoad.js';
 
@@ -47,4 +48,10 @@ test('FB-110 import destination is the slot the player picked', () => {
   assert.match(body, /into Slot 2/);
   assert.match(body, /validate and load that save immediately/);
   assert.match(body, /Unsaved progress is lost/);
+  assert.equal(importResultLine(false, 'Slot 2', ''), 'Import failed');
+  assert.equal(importResultLine(true, 'Slot 2', ''), 'Imported into Slot 2.');
+  assert.equal(
+    importResultLine(true, 'Slot 2', 'Imported 4 medals and crucible records into Slot 2.'),
+    'Imported 4 medals and crucible records into Slot 2.',
+  );
 });

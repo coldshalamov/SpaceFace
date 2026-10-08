@@ -157,16 +157,18 @@ export function renderIndustryStrip(model, { cycle = '' } = {}) {
   const readout = model && Array.isArray(model.lines) ? model : industryReadout();
   const root = document.createElement('div');
   root.className = 'au-industry';
-  root.setAttribute('aria-label', 'Industrial output');
   root.dataset.industry = 'readout';
-  const sentence = document.createElement('p');
-  sentence.className = 'au-note';
-  sentence.dataset.industrySentence = '1';
-  sentence.textContent = readout.sentence;
-  root.appendChild(sentence);
-  if (readout.lines.length) {
+  root.setAttribute('aria-label', readout.sentence || 'Industrial output');
+  if (!readout.lines.length) {
+    const sentence = document.createElement('p');
+    sentence.className = 'au-note';
+    sentence.dataset.industrySentence = '1';
+    sentence.textContent = readout.sentence;
+    root.appendChild(sentence);
+  } else {
     const list = document.createElement('ul');
     list.className = 'au-industry-rows';
+    list.dataset.industrySentence = '1';
     for (const line of readout.lines) {
       const item = document.createElement('li');
       item.textContent = line.text;

@@ -11,8 +11,8 @@ export function renderStatistics(model) {
   const sheet = model && Array.isArray(model.groups) ? model : statisticsModel();
   const root = el('div', 'sf-statistics');
   const title = el('header', 'k-title');
-  title.appendChild(el('h1', 'k-display k-t-title', STATISTICS_LABEL));
-  title.appendChild(el('p', 'k-sentence', 'Career figures. This screen only reads them.'));
+  title.appendChild(el('h1', 'k-display k-t-title fh-title', STATISTICS_LABEL));
+  title.appendChild(el('p', 'k-sentence', 'Distance, the line, fights, and what the holds earned.'));
   root.appendChild(title);
   for (const group of sheet.groups) {
     const band = el('section', 'sf-statistics__group');
@@ -21,6 +21,11 @@ export function renderStatistics(model) {
     heading.setAttribute('role', 'heading');
     heading.setAttribute('aria-level', '2');
     band.appendChild(heading);
+    if (group.note && !(group.rows && group.rows.length)) {
+      band.appendChild(el('p', 'k-sentence', group.note));
+      root.appendChild(band);
+      continue;
+    }
     const list = el('ul', 'k-rows');
     for (const [name, value] of group.rows) {
       const li = el('li', 'k-row k-row--static');

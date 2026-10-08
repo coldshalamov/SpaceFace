@@ -36,6 +36,7 @@ import {
   profileImportedLine,
   recoveryFailedLine,
   recoveryNotice,
+  importResultLine,
 } from './saveNotices.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
@@ -941,11 +942,10 @@ export const saveLoadScreen = {
     });
     const unsubProfile = ctx.bus.on('save:profile-imported', (payload) => {
       const note = profileImportedLine(payload);
-      ctx.bus.emit('toast', { text: note.text, kind: 'good', ttl: 3200 });
-      if (!note.focus || !refs) return;
-      refs.selected = note.focus;
-      this._render(ctx);
-      const row = refs.list && refs.list.querySelector('[data-id="' + note.focus + '"]');
+      this._importLine = note.text;
+      if (note.focus && refs) refs.selected = note.focus;
+      noteAndRender(note);
+      const row = refs && refs.list && refs.list.querySelector('[data-id="' + note.focus + '"]');
       if (row && typeof row.focus === 'function') row.focus();
     });
 
@@ -1259,17 +1259,16 @@ export const saveLoadScreen = {
     refs.actions.innerHTML = '';
     if (!refs.labelField) {
       const field = el('label', 'sf-slot-label');
+      field.style.display = 'grid';
+      field.style.gap = '4px';
+      field.style.width = 'min(28ch, 100%)';
       field.appendChild(el('span', 'k-caps', 'Name'));
-      const input = el('input');
+      const input = el('input', 'k-input');
       input.type = 'text';
       input.maxLength = 48;
-      input.className = 'sf-slot-label-input';
       input.setAttribute('aria-label', 'Save name');
-      input.style.background = 'transparent';
-      input.style.color = 'rgb(236 230 216)';
-      input.style.border = '1px solid rgb(236 230 216 / .42)';
-      input.style.padding = '4px 8px';
-      input.style.font = 'inherit';
+      input.autocomplete = 'off';
+      input.spellcheck = false;
       field.appendChild(input);
       refs.labelField = field;
       refs.labelInput = input;
@@ -1461,6 +1460,7 @@ export const saveLoadScreen = {
   },
 
   async _import(ctx, fileIn) {
+    this._importLine = '';
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
     const rejectOversize = (actual) => {
@@ -1487,7 +1487,13 @@ export const saveLoadScreen = {
     });
     if (!confirmed) { fileIn.value = ''; return; }
     const finish = (ok) => {
-      ctx.bus.emit('toast', { text: ok ? 'Save imported' : 'Import failed', kind: ok ? 'good' : 'warn', ttl: 2800 });
+      const spoken = this._importLine;
+      this._importLine = '';
+      ctx.bus.emit('toast', {
+        text: importResultLine(ok, importSlotWord, spoken),
+        kind: ok ? 'good' : 'warn',
+        ttl: 2800,
+      });
       fileIn.value = '';
       this._render(ctx);
     };

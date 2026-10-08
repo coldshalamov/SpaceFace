@@ -50,6 +50,9 @@ test('FB-028 seed 4242: three stunt rows and two readings, the run named', () =>
   assert.equal(model.runName, 'Helios Core');
   assert.equal(model.runName.includes('helios_core'), false);
   assert.equal(namedRunLabel('not_a_real_arena'), 'This run');
+  assert.equal(resultsSheetModel({ result: { arenaId: 'helios_core' } }).stuntRows.length, 0);
+  assert.equal(resultsSheetModel({ result: { arenaId: 'helios_core' } }).kitLines.length, 0);
+  assert.equal(resultsSheetModel({ result: { arenaId: 'helios_core' } }).overconfidence, '');
   assert.deepEqual(model.stuntRows, rows);
   assert.deepEqual(
     model.stuntRows.map((row) => row[0]).filter((name) => ['Sling', 'Wrecking Ball', 'Ricochet'].includes(name)),

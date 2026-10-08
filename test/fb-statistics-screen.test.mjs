@@ -28,15 +28,18 @@ test('FB-103 the statistics model prints every supplied counter and does not inv
       totalPassiveEarnedLifetime: 70,
     },
   });
-  const text = model.groups.flatMap((group) => group.rows.map((row) => row.join(' '))).join('\n');
+  const text = model.groups.flatMap((group) => [
+    ...(group.rows || []).map((row) => row.join(' ')),
+    group.note || '',
+  ]).join('\n');
   assert.match(text, /Distance flown 1,200 wu/);
-  assert.match(text, /Helios Prime time 30/);
-  assert.match(text, /Biggest throw 88/);
+  assert.match(text, /Helios Prime time 30 s/);
+  assert.match(text, /Biggest throw 88 wu\/s/);
   assert.match(text, /Railgun kills 4/);
   assert.match(text, /Ships lost 2/);
   assert.match(text, /Smuggled 4,242 cr/);
   assert.match(text, /Passive earned 70 cr/);
-  assert.match(text, /No law record/);
+  assert.match(text, /No heat, no fines, not wanted/);
   assert.equal(text.includes('helios_prime'), false);
 
   const previous = globalThis.document;
