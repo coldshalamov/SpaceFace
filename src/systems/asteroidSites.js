@@ -115,6 +115,7 @@ export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) 
     overlays: { power: [], lane: [] },
     laneStores: [],           // [{ cells:[idx], store:{goodId:qty} }] — persisted per lane network
     exportOff: Object.fromEntries(SITE_BALANCE.exportDefaultOff.map((id) => [id, true])),
+    podDestinationId: null,   // null = the auto lane (the sector's first station)
     exportBuffer: {},
     fleet: {
       podsReady: 0,
@@ -295,6 +296,11 @@ function normalizeSiteCustody(site) {
     if (off) exportOff[goodId] = true;
   }
   site.exportOff = exportOff;
+  // A pod destination must name a station that exists in the site's CURRENT sector — a stale id
+  // (rerolled chart, moved claim) degrades to the auto lane instead of selling into a ghost.
+  const destSector = SECTOR_BY_ID.get(site.sectorId);
+  const destStations = destSector && Array.isArray(destSector.stations) ? destSector.stations : [];
+  if (!destStations.some((st) => st && st.id === site.podDestinationId)) site.podDestinationId = null;
 
   const laneStores = [];
   for (const entry of Array.isArray(site.laneStores) ? site.laneStores : []) {
@@ -1891,6 +1897,21 @@ export const asteroidSites = {
     return { ok: true, reason: null };
   },
 
+  setPodDestination(siteId, stationId) {
+    const site = this.getSite(siteId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    if (stationId == null) {
+      site.podDestinationId = null; // the auto lane: the sector's first station
+      return { ok: true, reason: null };
+    }
+    const sector = SECTOR_BY_ID.get(site.sectorId);
+    const stations = sector && Array.isArray(sector.stations) ? sector.stations : [];
+    if (!stations.some((st) => st && st.id === stationId)) return { ok: false, reason: 'bad-station' };
+    if (site.podDestinationId === stationId) return { ok: true, reason: 'no-change' };
+    site.podDestinationId = stationId;
+    return { ok: true, reason: null };
+  },
+
   /**
    * Move goods between ship hold and a machine's lane-network store while tethered (the rover
    * carries it). dir: 'deposit' (ship → site) | 'withdraw' (site → ship).
@@ -2313,7 +2334,10 @@ export const asteroidSites = {
 
     const sector = SECTOR_BY_ID.get(site.sectorId);
     const danger = sector ? dangerIndex(sector) : 0.2;
-    const station = sector && Array.isArray(sector.stations) && sector.stations.length ? sector.stations[0] : null;
+    // The player's addressed customer wins; null (or a stale id — normalized away) keeps the
+    // auto lane, the sector's first station.
+    const stations = sector && Array.isArray(sector.stations) ? sector.stations : [];
+    const station = stations.find((st) => st && st.id === site.podDestinationId) || stations[0] || null;
     // Loss decided at launch (seeded), revealed at arrival — long-run converges on the odds,
     // individual runs stay dramatic (brief §6).
     const roll = drawSeeded(state.sites.meta, 'rngSeed', hash32(state.meta && state.meta.seed || 1, site.id, fleet.launches));
@@ -2339,6 +2363,7 @@ export const asteroidSites = {
       asteroidId: site.asteroidId,
       sectorId: site.sectorId,
       cargoUnits: loaded,
+      destinationStationId: station ? station.id : null,
       arriveT: state.simTime + travel,
       intentId,
       worldRecordId,
@@ -2679,6 +2704,8 @@ export const asteroidSites = {
     }
 
     const podRecipe = SITE_RECIPE_BY_ID.get('sr_fab_courier');
+    // Pod destination + options resolved HERE so the screen never imports sector data itself.
+    const destSector = SECTOR_BY_ID.get(site.sectorId);
     return {
       site,
       hasCore: this.hasCore(site),
@@ -2687,6 +2714,11 @@ export const asteroidSites = {
       lanes,
       machines,
       exportRatePerMin: round3(exportRatePerMin),
+      courier: {
+        destinationId: site.podDestinationId || null,
+        stations: (destSector && Array.isArray(destSector.stations) ? destSector.stations : [])
+          .map((st) => ({ id: st.id, name: st.name })),
+      },
       fleet: {
         ...site.fleet,
         inFlightCount: site.fleet.inFlight.length,
