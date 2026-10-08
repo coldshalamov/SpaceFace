@@ -3094,6 +3094,8 @@ test('mid-hold protected adoption: a mission-pinned core is handed back, not hel
   assert.equal(core.data.gyrePrevTtl, undefined, 'ttl stash consumed');
   assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_adopted'),
     'drop reason is core_adopted');
+  assert.ok(t.events.some((e) => e.name === 'toast' && /clump reclaimed/.test(e.p.text)),
+    'the involuntary loss narrates itself');
 });
 
 test('protected adoption at the release edge bowls nothing', () => {
@@ -3111,6 +3113,8 @@ test('protected adoption at the release edge bowls nothing', () => {
   assert.ok(!t.events.some((e) => e.name === 'gyre:launched'), 'no launch fired');
   assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_adopted'),
     'drop reason is core_adopted, not released');
+  assert.ok(t.events.some((e) => e.name === 'toast' && /clump reclaimed/.test(e.p.text)),
+    'the involuntary loss narrates itself');
 });
 
 test('mid-launch protected adoption hands the half-thrown ball back', () => {
@@ -3143,6 +3147,8 @@ test('mid-launch protected adoption hands the half-thrown ball back', () => {
   assert.ok(!t.events.some((e) => e.name === 'gyre:thrown'), 'the throw never completed');
   assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_adopted'),
     'drop reason is core_adopted');
+  assert.ok(t.events.some((e) => e.name === 'toast' && /clump reclaimed/.test(e.p.text)),
+    'the mid-coil adoption narrates itself too — the throw silently eaten is the one the player least expects');
 });
 
 test('an adopter that keeps despawnAt still retires the marked ball on its own TTL', () => {

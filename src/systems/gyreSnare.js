@@ -2079,6 +2079,10 @@ export const gyreSnare = {
       if (core && core.alive !== false && hasProtectedContent(core)) {
         this._handBack(core);
         this._unwatchBall(core.id);
+        // Involuntary losses narrate themselves — a pin landing inside the
+        // ~11-tick coil/burst is the ONE adoption the player least expects;
+        // it shouldn't also be the one that silently eats their throw.
+        if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare — clump reclaimed', ttl: 1.6 });
         this._drop('core_adopted');
       } else if (core && core.alive !== false && rt.launchWindup > 0) {
         // Wind-up beat: a ~100 ms coil that drags the clump slightly aft of the maw
