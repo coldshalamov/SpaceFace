@@ -29,6 +29,23 @@ export function takeRacingLaunch() {
   return row;
 }
 
+/** Consume the fresh-run launch at game:started, after the normal run owners have reset. */
+export function completeRacingLaunch(ctx) {
+  const row = takeRacingLaunch();
+  if (!row?.contractId) return null;
+  let result;
+  try { result = armRacingContract(ctx, row.contractId, { allowEnterSector: true }); }
+  catch (error) { result = { ok: false, reason: 'arm_exception', error: String(error?.message || error) }; }
+  if (result?.ok === true && !result.reused) return result;
+  // Exit while the save owner still quarantines this temporary state. Exit autosave must
+  // never write a failed circuit's starter hull over a campaign. The following receipt
+  // invalidates pending capture work, but only New Game/Continue may release quarantine.
+  ctx?.bus?.emit?.('game:exitToMenu', { source: 'racing-launch-failed' });
+  ctx?.bus?.emit?.('race:launchFailed', { contractId: row.contractId, reason: result?.reason || 'accept_failed' });
+  ctx?.bus?.emit?.('toast', { text: 'Circuit launch failed. Returned to the menu; campaign saves are unchanged.', kind: 'warn', ttl: 5 });
+  return result || { ok: false, reason: 'accept_failed' };
+}
+
 export function armRacingContract(ctx, contractId, options = {}) {
   const allowEnterSector = options.allowEnterSector === true;
   const offer = racingOfferFor(contractId);
@@ -67,7 +84,7 @@ export function armRacingContract(ctx, contractId, options = {}) {
     return { ok: false, reason: 'no_relocation' };
   }
   const jump = state.jump?.state;
-  if (jump && jump !== 'idle') {
+  if (jump && jump !== 'IDLE') {
     toast('Finish the jump before joining a circuit.');
     return { ok: false, reason: 'jump_active' };
   }

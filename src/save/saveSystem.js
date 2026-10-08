@@ -405,6 +405,13 @@ export const save = {
     });
     bus.on('game:started', () => { this._epochOpenedByNew = false; });
     bus.on('save:loaded', () => { this._epochOpenedByNew = false; this._ephemeralRacing = false; });
+    bus.on('race:launchFailed', () => {
+      if (!this._ephemeralRacing || this.state?.mode !== 'menu') return;
+      this._epochOpenedByNew = false;
+      this._beginRunEpoch('race:launchFailed');
+      // The menu still holds the discarded temporary entities. Keep F5/direct writes
+      // suppressed until a real New Game or loaded campaign replaces those entities.
+    });
 
     // Autosave triggers (§4.5): major progression milestones. Debounced ≤1/10s unless forced.
     bus.on('dock:docked', () => this.requestAutosave('dock'));

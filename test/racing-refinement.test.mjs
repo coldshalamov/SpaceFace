@@ -129,11 +129,21 @@ test('the shared setting writer creates missing settings bags and emits the chan
 
 function launchHarness(){
   const calls=[];const p={id:1,alive:true,pos:{x:0,z:0}};
-  const state={mode:'flight',playerId:1,entities:new Map([[1,p]]),world:{currentSectorId:'other'},missions:{active:[]},jump:{state:'idle'}};
+  const state=createGameState(239);
+  Object.assign(state,{mode:'flight',playerId:1,entities:new Map([[1,p]]),world:{currentSectorId:'other'},missions:{active:[]}});
   const world={enterSector:id=>{calls.push('enter');state.world.currentSectorId=id;},relocatePlayerInSector:()=>{calls.push('relocate');return true;}};
   const missions={postAndAcceptAuthoredOffer:()=>{calls.push('accept');return {ok:true,missionId:'new'};}};
   return {calls,state,world,missions,ctx:{state,bus:{emit:(name)=>calls.push(name)},registry:{get:name=>name==='world'?world:missions}}};
 }
+test('canonical IDLE permits circuit arming while real jump states still refuse before acceptance',()=>{
+  const idle=launchHarness();assert.equal(idle.state.jump.state,'IDLE');
+  assert.equal(armRacingContract(idle.ctx,'contract_textile_qual',{allowEnterSector:true}).ok,true);
+  for(const status of ['CHARGING','JUMPING','COOLDOWN']){
+    const h=launchHarness();h.state.jump.state=status;
+    assert.equal(armRacingContract(h.ctx,'contract_textile_qual',{allowEnterSector:true}).reason,'jump_active');
+    assert.equal(h.calls.includes('accept'),false);assert.equal(h.calls.includes('relocate'),false);
+  }
+});
 test('launch refuses missing player, relocation, capacity and active races before moving any world',()=>{
   const cases=[h=>h.state.entities.clear(),h=>delete h.world.relocatePlayerInSector,h=>h.state.missions.active=[{type:'race',status:'active'}],h=>h.state.missions.active=Array(8).fill({})];
   for(const change of cases){const h=launchHarness();change(h);assert.equal(armRacingContract(h.ctx,'contract_textile_qual',{allowEnterSector:true}).ok,false);assert.equal(h.calls.includes('enter'),false);assert.equal(h.calls.includes('accept'),false);}

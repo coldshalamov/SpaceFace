@@ -31,7 +31,7 @@ import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 import { IS_DEV } from '../core/devMode.js';
 import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
-import { takeRacingLaunch, armRacingContract, noteRacingNewGame } from './racingLaunch.js';
+import { completeRacingLaunch, noteRacingNewGame } from './racingLaunch.js';
 import { mountRacingHud } from './racingHud.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
@@ -580,10 +580,14 @@ export const ui = {
     }
     const offRacingNew = this.bus.on('game:new', (opts) => noteRacingNewGame(opts));
     const offRacingArm = this.bus.on('game:started', () => {
-      const pending = takeRacingLaunch();
-      if (!pending || !pending.contractId) return;
-      try { armRacingContract(this.ctx, pending.contractId, { allowEnterSector: true }); }
-      catch (err) { console.warn('[ui] racing arm failed', err); }
+      const result = completeRacingLaunch(this.ctx);
+      if (result && result.ok !== true) {
+        // Later game:started listeners close the launch screens. Reopen the menu after
+        // that synchronous fan-out, unless another public transition already took over.
+        queueMicrotask(() => {
+          if (this.state.mode === 'menu') this._showMainMenuWhenReady?.();
+        });
+      }
     });
     this._racingArmOff = () => {
       if (typeof offRacingNew === 'function') offRacingNew();
