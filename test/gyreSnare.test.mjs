@@ -834,6 +834,32 @@ test('a despawned ball retires launchedId so the mirror stops tracking it', asyn
   t.cleanup();
 });
 
+test('a pre-disarmed ball retires without losing the restored authored scale', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0);
+  body.physicsBody = body.physicsBody || {};
+  body.physicsBody.impactDamageScale = 0.2; // authored damping the launch overwrites
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → bowl
+  assert.equal(t.sys._rt.ballId, body.id);
+  assert.ok(body.physicsBody.impactDamageScale > 1, 'launch wrote the weapon scale');
+  // The evict lane's disarm: consume the stash, restore the authored scale,
+  // keep the mark + serialized meta — same state an evicted-but-still-marked
+  // ball carries back through a boundary re-watch.
+  t.sys._disarmBall(body);
+  assert.equal(body.physicsBody.impactDamageScale, 0.2, 'disarm restored the authored scale');
+  assert.equal('gyrePrevImpactScale' in body.data, false, 'the stash was consumed');
+  // Now a mark-stripping adopter retires it: the splice lane AND the primary
+  // retire must not run a second disarm — that would DELETE the restored 0.2.
+  delete body.data.gyreLaunched;
+  t.sim.step();
+  assert.equal(t.state.gyreSnare.launchedId, null, 'mirror retires the unmarked body');
+  assert.equal(body.physicsBody.impactDamageScale, 0.2,
+    'the authored scale survives — disarm is single-shot via the stash key');
+  t.cleanup();
+});
+
 test('a live primary retired unmarked still disarms and sheds the ledger', async () => {
   const t = await bootPhysics();
   const body = rock(t.sim, T.mawDist, 0);

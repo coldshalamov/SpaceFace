@@ -503,6 +503,11 @@ export const gyreSnare = {
   // stash shed: if a foreign owner strips the deadline while it's unwatched, the
   // orphan is a benign immune body, not a permanently-armed collider.
   _disarmBall(ball) {
+    // 'gyrePrevImpactScale' is the disarm ledger: _launch always writes the key
+    // (undefined when the authored scale was absent) and this consumes it. An
+    // already-disarmed body — evicted-but-still-marked is the live case — has
+    // its authored scale back in place; a second disarm would DELETE it.
+    if (!ball.data || !('gyrePrevImpactScale' in ball.data)) return;
     if (ball.physicsBody && ball.physicsBody !== false) {
       if (ball.data.gyrePrevImpactScale !== undefined) ball.physicsBody.impactDamageScale = ball.data.gyrePrevImpactScale;
       else delete ball.physicsBody.impactDamageScale;
