@@ -188,6 +188,10 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     return driver;
   };
   let bankTransferred=false;
+  // Hoisted so the finally can see a post-activation abandon: detach's
+  // teardown grammar owns the registry/userData rollback the raw bank
+  // dispose below cannot reach. Both bindings live in the try below.
+  let registered=false,detach=null;
   try {
   tallyDriver=bankDriver(tally,createTallyThreeVisualDriver);
   yield;
@@ -226,7 +230,6 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   // A hidden appearance candidate owns controllers, but cannot steal the retained body's
   // event registration before its GPU/publication gate succeeds. Ordinary builds bind now.
   const aliasKeys = [];
-  let registered = false;
   let retired = false;
   const activate = (liveEntity = entity) => {
     if (registered || retired) {
@@ -256,7 +259,7 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   yield;
   root.userData.activateAuthoredMotionRegistration = activate;
 
-  const detach = function detachAuthoredMotionDriver(state = null) {
+  detach = function detachAuthoredMotionDriver(state = null) {
     retired = true;
     if (root.userData.updateCeresPhysicalState === updatePhysical) delete root.userData.updateCeresPhysicalState;
     // Per-driver fencing: one throwing driver must not skip the remaining
@@ -360,6 +363,15 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   return detach;
   } finally {
     if (!bankTransferred) {
+      // An abandon AFTER activate() owns more than the constructed drivers:
+      // registry.set(entityId)/alias sets, userData stamps, retired flag.
+      // detach's teardown grammar covers all of it plus per-driver disposal —
+      // run it first, then keep the raw bank loop as the fallback for any
+      // driver detach did not see (pre-activate abandons skip detach).
+      if (registered && typeof detach === 'function') {
+        try { detach(); }
+        catch (error) { dedupWarn('authoredMotion:abandonDetach', '[authoredMotion] abandon detach failed', error); }
+      }
       for (const driver of driverBank) {
         try { driver?.dispose?.(); }
         catch (error) { dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error); }

@@ -9084,6 +9084,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       try {
         swapped = await commitAuthoredBoundary(
           boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
+          installedPreparedDisposer,
         );
         if (swapped) {
           // The LOD-family install is its own O(family) leg — let it land in the
@@ -9286,8 +9287,21 @@ async function disposePreparedShipBoundaryResources(boundary, authored, admissio
 function installPreparedBoundaryDisposer(boundary, dispose) {
   if (!boundary?.userData || typeof dispose !== 'function') return false;
   let completion = null;
+  // Epoch guard mirroring installPreparedBoundaryPublisher: the armed slot
+  // exists to clean up THIS run's prepared content while the run is still
+  // prepared-not-committed — once the boundary re-admits under a newer epoch,
+  // a stale-era invocation through the public slot would run a superseded
+  // run's closure against the live boundary. Refusing (and clearing only when
+  // the slot is still this install) lets the live run's own installer re-arm.
+  const installedEpoch = boundary.userData.admissionEpoch;
   const installed = () => {
     if (completion) return completion;
+    if (boundary.userData.admissionEpoch !== installedEpoch) {
+      if (boundary.userData.__disposePreparedAuthoredBoundary === installed) {
+        delete boundary.userData.__disposePreparedAuthoredBoundary;
+      }
+      return false;
+    }
     completion = Promise.resolve().then(dispose).then(
       (result) => {
         // A newer run may have re-armed the slot while this wrapper's completion settled —
@@ -9805,7 +9819,19 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
 
 async function commitAuthoredBoundary(
   boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
+  installedPreparedDisposer = null,
 ) {
+  // Owned-disposer contract (the place path's grammar): every pre-graft bail
+  // must fire THIS run's armed slot — which also clears it — or dispose the
+  // prepared tree directly when unarmed. A bail that disposes the tree but
+  // leaves its armed slot behind lets a stale closure occupy the boundary: the
+  // next run's install gate then skips, and the replacement's prepared root
+  // leaks on its own bail.
+  let ownedDisposer = installedPreparedDisposer;
+  const disposePreparedShip = (target) => (
+    (ownedDisposer ? ownedDisposer() : disposePreparedShipBoundaryResources(boundary, target, options.admissionEpoch))
+      || disposeOwnedPreparedBoundary(boundary, ownedDisposer)
+  );
   assertQueuedAuthoredAdmissionActive(options, 'before-ship-publication');
   // A readable ship admitted after first paint has already passed the exact compile/upload gate.
   // The global publication freeze only fences leftover opening work; making this ship wait on it
@@ -9823,7 +9849,7 @@ async function commitAuthoredBoundary(
   assertQueuedAuthoredAdmissionActive(options, 'after-ship-publication-wait');
   if (!boundary.parent) {
     if (preparedAuthored) {
-      await disposePreparedShipBoundaryResources(boundary, preparedAuthored, options.admissionEpoch);
+      await disposePreparedShip(preparedAuthored);
     }
     return false; // destroyed while assets or GPU programs were in flight
   }
@@ -9835,7 +9861,7 @@ async function commitAuthoredBoundary(
       || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
       || (entity && entity.alive === false)) {
     if (preparedAuthored) {
-      await disposePreparedShipBoundaryResources(boundary, preparedAuthored, options.admissionEpoch);
+      await disposePreparedShip(preparedAuthored);
     }
     return false;
   }
@@ -9878,18 +9904,17 @@ async function commitAuthoredBoundary(
         && boundary.userData.admissionEpoch !== options.admissionEpoch)
       || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
       || (entity && entity.alive === false)) {
-    await disposePreparedShipBoundaryResources(boundary, authored, options.admissionEpoch);
+    await disposePreparedShip(authored);
     return false;
   }
   if (options.deferBoundaryPublication === true
       && typeof boundary.userData.__disposePreparedAuthoredBoundary !== 'function') {
-    installPreparedBoundaryDisposer(boundary, () => (
+    ownedDisposer = installPreparedBoundaryDisposer(boundary, () => (
       disposePreparedShipBoundaryResources(boundary, authored, options.admissionEpoch)
-    ));
+    )) || ownedDisposer;
   }
   if (!boundary.parent) {
-    if (options.deferBoundaryPublication === true) await disposePreparedAuthoredBoundary(boundary);
-    else await disposePreparedShipBoundaryResources(boundary, authored, options.admissionEpoch);
+    await disposePreparedShip(authored);
     return false;
   }
 
@@ -9913,7 +9938,7 @@ async function commitAuthoredBoundary(
       || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
       || (entity && entity.alive === false)
       || !boundary.parent) {
-    await disposePreparedShipBoundaryResources(boundary, authored, options.admissionEpoch);
+    await disposePreparedShip(authored);
     return false;
   }
 
@@ -9932,9 +9957,15 @@ async function commitAuthoredBoundary(
   boundary.userData.authoredReadableFallbackRetained = false;
   boundary.userData.authoredVisualRoot = 'authored-root';
   // The visualBounds copied off the resolving-marker substrate was the marker's own drawn
-  // envelope (~1.9x hull radius); a committed boundary classifies from the measured authored
-  // hull via drawnCullRadiusForMesh.
-  delete boundary.userData.visualBounds;
+  // envelope (~1.9x hull radius); replace it with the composed root's measured envelope
+  // (place/cargo precedent) or drop the stamp so an un-minted root still classifies from
+  // the measured authored hull via drawnCullRadiusForMesh.
+  if (authored.root.userData && authored.root.userData.visualBounds) {
+    const measured = authored.root.userData.visualBounds;
+    boundary.userData.visualBounds = { center: measured.center.slice(), size: measured.size.slice() };
+  } else {
+    delete boundary.userData.visualBounds;
+  }
   boundary.userData.authoredParts = authored.authoredParts;
   boundary.userData.authoredSlots = authored.authoredSlots;
   boundary.userData.proceduralFallbackParts = authored.fallbackParts;
@@ -11043,6 +11074,26 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   // Runtime composition is not the offline cooker: preserve the authored root and carry the
   // supported-camera omission metadata until a flat cooked artifact is selected.
   yield* cookFlightProductSteps(root, 'chase', { runtime: true });
+  // Mint the committed envelope inside the paced compose — the publish leg's
+  // primeDrawnCullStamps otherwise pays the same whole-subtree Box3 walk inside
+  // a presented frame. Same visualBounds vocabulary place/cargo roots carry, so
+  // the commit's stamp copy and every cull consult take the bounds path; local
+  // scratch (not the shared place box) keeps concurrent composes untorn.
+  {
+    const composedShipBoundsBox = new THREE.Box3();
+    yield* expandComposedPlaceBoundsSteps(root, composedShipBoundsBox);
+    if (!composedShipBoundsBox.isEmpty()) {
+      const composedShipBoundsCenter = composedShipBoundsBox.getCenter(new THREE.Vector3());
+      root.userData.visualBounds = {
+        center: [composedShipBoundsCenter.x, composedShipBoundsCenter.y, composedShipBoundsCenter.z],
+        size: [
+          composedShipBoundsBox.max.x - composedShipBoundsBox.min.x,
+          composedShipBoundsBox.max.y - composedShipBoundsBox.min.y,
+          composedShipBoundsBox.max.z - composedShipBoundsBox.min.z,
+        ],
+      };
+    }
+  }
   const result = {
     root,
     authoredParts: authoredPartList,
@@ -17132,7 +17183,7 @@ function disposeDetachedPlaceFallback(root, state = null) {
       dedupWarn('teardown:sitePresentation', '[partsLibrary] site presentation dispose failed', error);
     }
   }
-  try { root?.userData?.detachAuthoredMotion?.(); }
+  try { root?.userData?.detachAuthoredMotion?.(state); }
   catch (error) {
     noteLaneFault(state, 'teardown.authoredMotion');
     dedupWarn('teardown:authoredMotion', '[partsLibrary] authored-motion detach failed', error);
@@ -17182,7 +17233,7 @@ function* disposeDetachedPlaceFallbackSteps(root, state = null) {
       dedupWarn('teardown:sitePresentation', '[partsLibrary] site presentation dispose failed', error);
     }
   }
-  try { root?.userData?.detachAuthoredMotion?.(); }
+  try { root?.userData?.detachAuthoredMotion?.(state); }
   catch (error) {
     noteLaneFault(state, 'teardown.authoredMotion');
     dedupWarn('teardown:authoredMotion', '[partsLibrary] authored-motion detach failed', error);

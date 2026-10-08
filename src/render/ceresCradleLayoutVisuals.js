@@ -147,7 +147,9 @@ export function* installCeresCradleLayoutGuardSteps(root, entity, boundary) {
   const dispose = () => {
     if (disposed) return;
     disposed = true; published = false; mask.dispose(); root.visible = false;
-    priorDetach?.();
+    // The closure state holds the last bound liveState — forward it so a
+    // throwing prior detach stamps the lane fault instead of dropping it.
+    priorDetach?.(state);
   };
   root.userData.updateLod = level => { priorLod?.(level); refresh(); };
   root.userData.detachAuthoredMotion = dispose;

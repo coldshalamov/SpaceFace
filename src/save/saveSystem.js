@@ -4793,14 +4793,20 @@ export const save = {
       yield 'player-restored';
       this._restoreCargo(data.cargo);
       yield 'cargo-restored';
-      this._callDeserialize('morrow', data.morrow);
-      this._callDeserialize('vesper', data.vesper);
-      this._callDeserialize('bracket', data.bracket);
-      this._callDeserialize('ravel', data.ravel);
-      this._callDeserialize('solstice', data.solstice);
-      this._callDeserialize('rubric', data.rubric);
-    this._callDeserialize('ruckus', data.ruckus);
-      this._callDeserialize('salvage', data.salvage);
+      // A run of back-to-back subsystem restores is still one async-lane slice point per
+      // call — the driver skips the real frame yield inside RESTORE_YIELD_SLICE_MS, so
+      // cheap sections stay in-frame while a heavy one (solstice/factions) can't freeze
+      // the loading paint in a single ~8-call brick.
+      yield* this._callDeserializeEach([
+        ['morrow', data.morrow],
+        ['vesper', data.vesper],
+        ['bracket', data.bracket],
+        ['ravel', data.ravel],
+        ['solstice', data.solstice],
+        ['rubric', data.rubric],
+        ['ruckus', data.ruckus],
+        ['salvage', data.salvage],
+      ]);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
       // listener must already see durable pod records (stripped stays stripped, oxygen keeps
@@ -4824,18 +4830,22 @@ export const save = {
       yield 'deserialized-living-poi';
       this._callDeserialize('scanner', data.signalInvestigation);
       yield 'deserialized-scanner';
-      this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
-      this._callDeserialize('latchNine', data.latchNine);
-      this._callDeserialize('scissorwake', data.scissorwake);
-      this._callDeserialize('lastShift', data.lastShift);
-      this._callDeserialize('redKite', data.redKite);
-      this._callDeserialize('sableVenn', data.sableVenn);
-      this._callDeserialize('ilexArk', data.ilexArk);
-      this._callDeserialize('kilnback', data.kilnback);
-      this._callDeserialize('mothlight', data.mothlight);
-      this._callDeserialize('palletJack', data.palletJack);
-      this._callDeserialize('towlineTable', data.towlineTable);
-      this._callDeserialize('borrowedVoice', data.borrowedVoice);
+      // The long incident/encounter tail is the restore's biggest contiguous un-sliced
+      // block — each entry is its own slice point under the same driver cadence.
+      yield* this._callDeserializeEach([
+        ['recoveryEncounter', data.recoveryEncounters],
+        ['latchNine', data.latchNine],
+        ['scissorwake', data.scissorwake],
+        ['lastShift', data.lastShift],
+        ['redKite', data.redKite],
+        ['sableVenn', data.sableVenn],
+        ['ilexArk', data.ilexArk],
+        ['kilnback', data.kilnback],
+        ['mothlight', data.mothlight],
+        ['palletJack', data.palletJack],
+        ['towlineTable', data.towlineTable],
+        ['borrowedVoice', data.borrowedVoice],
+      ]);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
 
@@ -5778,6 +5788,16 @@ export const save = {
       return;
     }
     this._callDeserialize(name, data);
+  },
+
+  // List form of _callDeserialize: every entry is an async-lane slice point (the driver
+  // only real-yields past RESTORE_YIELD_SLICE_MS, so cheap sections stay contiguous
+  // in-frame). Call order and error.region tagging are identical to back-to-back calls.
+  *_callDeserializeEach(entries) {
+    for (const [name, data] of entries) {
+      this._callDeserialize(name, data);
+      yield name;
+    }
   },
 
   // Despawn every live entity, disposing meshes (synchronous, outside the sim sweep), and reset the
