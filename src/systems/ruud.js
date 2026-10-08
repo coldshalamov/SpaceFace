@@ -71,7 +71,7 @@ export function ruudEntitySpec(memory = freshRuudMemory(), part = 'fin') {
       ai: { passive: true }, masslineTetherable: tether, scannerSignalKind: 'anomaly',
       scanLabel: LABELS[part][disposition] || LABELS[part].unchosen,
       visualRadius: part === 'fin' ? 34 : part === 'buoy' ? 22 : part === 'suit' ? 16 : 9,
-      ruudPose: poseOf(m, 0),
+      ruudPose: initialPose(m, part),
     },
   };
 }
@@ -84,8 +84,58 @@ function poseOf(memory, now) {
     chain: d === 'unchosen' ? 1 : 0,
     clipped: d === 'unchosen' ? 1 : 0,
     plateOpen: d === 'spared' ? 1 : 0,
+    sheared: d === 'cut' ? 1 : 0,
+    moored: d === 'spared' ? 1 : 0,
+    seated: d === 'cut' ? 1 : 0,
     hours: C.hours,
+    linkX: 0,
+    linkZ: 0,
+    linkLen: 0,
   };
+}
+
+/** Center-to-center lead. `span` hides once the cooled tether has paid out; `lead` keeps a short clip. */
+export function ruudLink(from, to, inset = 0, limit = Infinity, mode = 'span') {
+  if (!finiteXZ(from) || !finiteXZ(to) || !Number.isFinite(inset) || inset < 0) return { linkX: 0, linkZ: 0, linkLen: 0 };
+  const x = to.x - from.x;
+  const z = to.z - from.z;
+  const len = Math.hypot(x, z);
+  let reach = len - inset;
+  if (reach <= 0.15) return { linkX: 0, linkZ: 0, linkLen: 0 };
+  if (mode === 'span' && reach > limit) return { linkX: 0, linkZ: 0, linkLen: 0 };
+  if (mode === 'lead') reach = Math.min(reach, limit);
+  return { linkX: x / len, linkZ: z / len, linkLen: reach };
+}
+
+function initialPose(memory, part) {
+  const pose = poseOf(memory, 0);
+  if (part !== 'suit') return pose;
+  const entity = record => ({ pos: ruudGlobal(record), rot: record.rot });
+  return { ...pose, ...suitLink(memory.disposition, entity(memory.bodies.suit),
+    entity(memory.bodies.fin), entity(memory.bodies.buoy), entity(memory.bladder)) };
+}
+
+// The renderer rotates the complete suit by -rot. Pose directions must therefore
+// be suit-local, including on the first frame after restoring a rotated body.
+function suitLink(disposition, suit, fin, buoy, bladder) {
+  let link = { linkX: 0, linkZ: 0, linkLen: 0 };
+  if (!finiteXZ(suit?.pos)) return link;
+  if (disposition === 'unchosen' && finiteXZ(fin?.pos)) {
+    const r = Number.isFinite(fin.rot) ? fin.rot : 0;
+    const tip = C.coldInset - C.hoseStart;
+    const anchor = { x: fin.pos.x + Math.cos(r) * tip, z: fin.pos.z + Math.sin(r) * tip };
+    link = ruudLink(suit.pos, anchor, C.hoseStart, C.towSlack, 'span');
+  } else if (disposition === 'spared' && finiteXZ(buoy?.pos)) {
+    const inset = C.hoseStart + C.buoySkin;
+    link = ruudLink(suit.pos, buoy.pos, inset, C.spareBuoy - inset, 'span');
+  } else if (disposition === 'cut' && finiteXZ(bladder?.pos)) {
+    // Reach the backup skin throughout settling, not only after the suit arrives.
+    link = ruudLink(suit.pos, bladder.pos, C.hoseStart + 1.1, C.spareBuoy, 'span');
+  }
+  const r = Number.isFinite(suit.rot) ? suit.rot : 0;
+  const c = Math.cos(r), s = Math.sin(r);
+  return { linkX: link.linkX * c + link.linkZ * s,
+    linkZ: -link.linkX * s + link.linkZ * c, linkLen: link.linkLen };
 }
 
 /** Bounded acceleration toward a point. The solver is the only writer of motion. */
@@ -300,22 +350,18 @@ export function createRuud() {
       return dist(suit.pos, buoy.pos) <= C.spareBuoy + 1e-6
         && dist(suit.pos, RUUD_GLOBAL_ANCHOR) >= C.spareFin - 1e-6;
     },
-    _paint(m = this.state.ruud, now = this.state?.simTime || 0) {
-      const pose = poseOf(m, now);
-      for (const part of PARTS) {
-        const e = this._get(this._id[part]);
-        if (e) {
-          e.data.ruudPose = { ...pose };
-          if (part === 'suit') {
-            const fin = this._get(this._id.fin);
-            if (fin) {
-              const dx = fin.pos.x - e.pos.x, dz = fin.pos.z - e.pos.z;
-              const c = Math.cos(e.rot || 0), s = Math.sin(e.rot || 0);
-              e.data.ruudPose.umbilical = { x: dx * c + dz * s, z: -dx * s + dz * c };
-            }
-          }
-        }
-      }
+    _applyPose() {
+      const m = this.state.ruud;
+      const now = this.state?.simTime || 0;
+      const base = poseOf(m, now);
+      const suit = this._get(this._id.suit);
+      const fin = this._get(this._id.fin);
+      const buoy = this._get(this._id.buoy);
+      const bladder = this._get(this._id.bladder);
+      if (suit) suit.data.ruudPose = { ...base, ...suitLink(m.disposition, suit, fin, buoy, bladder) };
+      if (fin) fin.data.ruudPose = { ...base };
+      if (buoy) buoy.data.ruudPose = { ...base };
+      if (bladder) bladder.data.ruudPose = { ...base };
     },
     _plate() {
       const player = this._player();
@@ -333,7 +379,7 @@ export function createRuud() {
       const suit = this._get(this._id.suit);
       if (suit) this._dress(suit, m);
       for (const part of HUNG) { const e = this._get(this._id[part]); if (e) this._dress(e, m); }
-      this._paint(m);
+      this._applyPose();
       this._say('spared', true);
       this.bus?.emit('ruud:spared', { plateId: m.plateId });
     },
@@ -360,7 +406,7 @@ export function createRuud() {
       }
       this._sync();
       for (const part of PARTS) { const e = this._get(this._id[part]); if (e) this._dress(e, m); }
-      this._paint(m);
+      this._applyPose();
       this._say('cut', true);
       this.bus?.emit('ruud:cut', { serial: '14-K' });
     },
@@ -477,7 +523,7 @@ export function createRuud() {
         if (buoy) this._steer(buoy, this._rest('buoy'), dt, 1.2);
         if (suit && bladder) this._steer(suit, { x: bladder.pos.x - C.suitRadius - C.bladderRadius - 1, z: bladder.pos.z }, dt, 5);
       }
-      this._paint(m, now);
+      this._applyPose();
       this._capture();
     },
   };

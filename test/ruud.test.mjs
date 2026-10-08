@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createRuud, ruudEntitySpec, ruudSteering, RUUD_GLOBAL_ANCHOR } from '../src/systems/ruud.js';
+import { Vector3 } from 'three';
+import { createRuud, ruudEntitySpec, ruudSteering, ruudLink, RUUD_GLOBAL_ANCHOR } from '../src/systems/ruud.js';
 import { RUUD as C, RUUD_LINES, freshRuudMemory, normalizeRuudMemory, RUUD_AUDIO_RECIPES, ruudGlobal } from '../src/data/ruud.js';
 import { RECIPES } from '../src/data/audioRecipes.js';
 import { SECTORS } from '../src/data/sectors.js';
@@ -105,7 +106,16 @@ test('home sector mints three passive anomaly drones; the bladder waits for the 
   assert.equal(spec.dynamic, true);
   assert.equal(f.part('suit').data.scanLabel, 'HOOK-LEFT · plate Ruud · plumbed to Fin-3');
   assert.equal(f.part('fin').data.scanLabel, 'Fin-3 · cold face · ROTATION COMPLETE 04:10');
+  const hung = f.part('suit').data.ruudPose;
+  assert.equal(hung.chain, 1);
+  assert.ok(hung.linkLen > 5 && hung.linkLen < 7, hung.linkLen);
+  assert.ok(hung.linkX < -0.95);
+  f.part('suit').pos.x += 40;
+  f.step();
+  assert.equal(f.part('suit').data.ruudPose.linkLen, 0);
   assert.throws(() => ruudEntitySpec(undefined, 'gantry'), RangeError);
+  assert.equal(ruudLink({ x: 0, z: 0 }, { x: 16, z: 0 }, 10.4, 14, 'span').linkLen > 5, true);
+  assert.equal(ruudLink({ x: 0, z: 0 }, { x: 40, z: 0 }, 10.4, 14, 'span').linkLen, 0);
 });
 
 test('other runs and sectors stay empty', () => {
@@ -136,6 +146,11 @@ test('a decent release only counts on the buoy and never boards or flies the pla
   assert.equal(suit.data.ruudPose.clipped, 0);
   assert.equal(buoy.data.ruudPose.plateOpen, 1);
   assert.equal(f.part('fin').data.ruudPose.hatch, 1);
+  assert.equal(f.part('fin').data.ruudPose.sheared, 0);
+  assert.equal(f.part('suit').data.ruudPose.moored, 1);
+  const moorGap = Math.hypot(suit.pos.x - buoy.pos.x, suit.pos.z - buoy.pos.z);
+  const hoseEnd = C.hoseStart + suit.data.ruudPose.linkLen;
+  assert.ok(Math.abs(hoseEnd - (moorGap - C.buoySkin)) < 1e-6, hoseEnd);
   f.player.pos.x += 800;
   impulse(suit);
   f.step();
@@ -179,6 +194,9 @@ test('a player hit or a hard ram parts Fin-3 into serial 14-K without a kill, bo
   assert.equal(f.part('fin').data.masslineTetherable, true);
   assert.equal(f.part('fin').data.scanLabel, '14-K · Fin-3 · scrap serial');
   assert.equal(suit.data.scanLabel, 'HOOK-LEFT · backup bladder · no charge filed');
+  assert.equal(suit.data.ruudPose.sheared, 1);
+  assert.equal(suit.data.ruudPose.seated, 1);
+  assert.equal(suit.data.ruudPose.chain, 0);
   assert.equal(isAttachable(f.part('fin'), f.player.id, f.state), true);
   const bladder = f.part('bladder');
   assert.ok(bladder);
@@ -305,13 +323,34 @@ test('the suit, fin, buoy, and bladder are authored and the cold face has no fea
   });
   assert.equal(heat, 1);
   assert.equal(otherHeat, 0);
+  const sign = fin.getObjectByName('bolted_sign');
+  const signRot = sign.rotation.z;
+  const latch = fin.getObjectByName('ANIM_latch');
+  const shear = fin.getObjectByName('ANIM_shear');
+  assert.equal(shear.visible, false);
+  fin.userData.updateAuthoredMotion({ data: { ruudPose: { hatch: 1, chain: 1, sheared: 0, simTime: 1 } } }, 1, {});
+  assert.equal(sign.rotation.z, signRot);
+  assert.notEqual(latch.rotation.z, 0);
+  assert.equal(shear.visible, false);
+  fin.userData.updateAuthoredMotion({ data: { ruudPose: { hatch: 0, sheared: 1, chain: 0, simTime: 2 } } }, 2, { reducedMotion: true });
+  assert.equal(sign.rotation.z, signRot);
+  assert.equal(shear.visible, true);
+  const cold = fin.getObjectByName('cold_face_out');
+  assert.ok(Math.abs(cold.rotation.y - Math.PI) < 1e-6);
   const suitMem = freshRuudMemory();
   const suit = buildRuudVisual(ruudEntitySpec(suitMem, 'suit'));
   const chain = suit.getObjectByName('ANIM_chain');
   suit.userData.updateAuthoredMotion({ data: { ruudPose: { chain: 0, clipped: 0, simTime: 1 } } }, 1, {});
   assert.equal(chain.visible, false);
-  suit.userData.updateAuthoredMotion({ data: { ruudPose: { chain: 1, clipped: 1, simTime: 2 } } }, 2, { reducedMotion: true });
+  suit.userData.updateAuthoredMotion({ data: { ruudPose: { chain: 1, clipped: 1, linkX: -1, linkZ: 0, linkLen: 5.6, simTime: 2 } } }, 2, { reducedMotion: true });
   assert.equal(chain.visible, true);
+  const hose = suit.getObjectByName('cooled_hose');
+  assert.ok(Math.abs(hose.scale.y - 5.6) < 1e-6);
+  assert.ok(hose.position.x < -2);
+  suit.userData.updateAuthoredMotion({ data: { ruudPose: { chain: 1, clipped: 1, linkX: -1, linkZ: 0, linkLen: 0, simTime: 3 } } }, 3, {});
+  assert.equal(chain.visible, false);
+  const breath = suit.getObjectByName('ANIM_breath');
+  assert.equal(breath.visible, true);
   const buoy = buildRuudVisual(ruudEntitySpec(freshRuudMemory(), 'buoy'));
   const barL = buoy.getObjectByName('bar_left');
   buoy.userData.updateAuthoredMotion({ data: { ruudPose: { plateOpen: 0, simTime: 0 } } }, 0, { reducedMotion: true });
@@ -376,20 +415,43 @@ test('a delivery requires the player line, survives deliberate-cut ordering, and
   }
 });
 
-test('the live umbilical follows a towed suit and a cut settles beside the bladder', () => {
+test('the hose follows rotated physical anchors, pays out, and reconnects beside the bladder', () => {
   const f = fixture();
   const suit = f.part('suit'), fin = f.part('fin');
-  suit.pos.x += 70; suit.pos.z += 22; suit.rot = Math.PI / 2;
+  suit.pos.x += 4; suit.pos.z += 2; suit.rot = Math.PI / 2; fin.rot = 0.2;
   f.step();
-  const end = suit.data.ruudPose.umbilical;
-  assert.ok(Math.abs(end.x - (fin.pos.z - suit.pos.z)) < 1e-6);
-  assert.ok(Math.abs(end.z + (fin.pos.x - suit.pos.x)) < 1e-6);
-  const visual = buildRuudVisual(suit);
-  const chain = visual.getObjectByName('ANIM_chain');
-  assert.ok(chain.children.at(-1).position.distanceTo(chain.children[0].position) > 60);
+  const endOf = entity => {
+    const visual = buildRuudVisual(entity);
+    visual.rotation.y = -entity.rot;
+    visual.position.set(entity.pos.x, 0, entity.pos.z);
+    visual.updateMatrixWorld(true);
+    const point = new Vector3(0, 0.5, 0);
+    visual.getObjectByName('cooled_hose').localToWorld(point);
+    visual.userData.disposeRuud();
+    return point;
+  };
+  const end = endOf(suit);
+  const tip = C.coldInset - C.hoseStart;
+  assert.ok(Math.abs(end.x - (fin.pos.x + Math.cos(fin.rot) * tip)) < 1e-6);
+  assert.ok(Math.abs(end.z - (fin.pos.z + Math.sin(fin.rot) * tip)) < 1e-6);
+  suit.pos.x += 70;
+  f.step();
+  assert.equal(suit.data.ruudPose.linkLen, 0, 'a paid-out line never stretches across the scene');
   f.bus.emit('combat:damage', { targetId: suit.id, attackerId: f.player.id, applied: 1, origin: { kind: 'weapon' } });
   const bladder = f.part('bladder');
+  assert.ok(Math.abs(endOf(suit).distanceTo(new Vector3(bladder.pos.x, 1.15, bladder.pos.z)) - 1.1) < 1e-6);
   suit.pos.x = bladder.pos.x - C.suitRadius - C.bladderRadius - 1; suit.pos.z = bladder.pos.z;
   suit.vel.x = 0; suit.vel.z = 0; impulse(suit); f.step();
   assert.deepEqual(impulse(suit), { x: 0, z: 0 });
+  assert.ok(Math.hypot(suit.pos.x - bladder.pos.x, suit.pos.z - bladder.pos.z) > C.suitRadius + C.bladderRadius);
+  const saved = f.system.serialize();
+  const restored = ruudEntitySpec(saved, 'suit');
+  assert.ok(endOf(restored).distanceTo(endOf(suit)) < 1e-6, 'restoration reaches the same backup skin before the first update');
+  const g = fixture();
+  const berthed = g.part('suit'), buoy = g.part('buoy');
+  berthed.pos.x = buoy.pos.x + 10; berthed.pos.z = buoy.pos.z + 3; berthed.rot = -0.8;
+  g.bus.emit('tether:latched', { targetId: berthed.id });
+  g.bus.emit('tether:released', { targetId: berthed.id });
+  assert.ok(Math.abs(endOf(berthed).distanceTo(new Vector3(buoy.pos.x, 1.15, buoy.pos.z)) - C.buoySkin) < 1e-6);
+  assert.ok(endOf(ruudEntitySpec(g.system.serialize(), 'suit')).distanceTo(endOf(berthed)) < 1e-6);
 });
