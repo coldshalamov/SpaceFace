@@ -1,8 +1,8 @@
 {
   "counts": {
-    "green": 13,
-    "red": 197,
-    "rows": 210
+    "green": 14,
+    "red": 198,
+    "rows": 212
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -14047,6 +14047,585 @@
     {
       "bounds": {
         "center": [
+          0.939494,
+          0.514771,
+          0.000007
+        ],
+        "max": [
+          10.599641,
+          1.70453,
+          3.275156
+        ],
+        "min": [
+          -8.720654,
+          -0.674988,
+          -3.275141
+        ],
+        "size": [
+          19.320294,
+          2.379519,
+          6.550297
+        ]
+      },
+      "bytes": 935596,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:scissorwake",
+        "kind": "proxy",
+        "outline": [
+          13.377399,
+          12.016719,
+          9.153168,
+          4.445684,
+          3.713976,
+          3.007344,
+          3.791541,
+          3.207501,
+          4.083204,
+          5.389508,
+          11.087545,
+          16.041862,
+          16.039726,
+          11.087545,
+          5.386648,
+          4.082011,
+          3.206761,
+          3.791541,
+          3.007441,
+          3.714029,
+          4.445713,
+          9.152937,
+          12.016719,
+          13.37683
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 2,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1.513434,
+      "family": "enemy-hull",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:scissorwake",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 17,
+        "proportions": {
+          "halfWidth": 0.29,
+          "height": 0.24,
+          "length": 1.72
+        },
+        "sizes": null
+      },
+      "id": "scissorwake",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_sodium",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": {
+        "halfWidth": 0.291572,
+        "height": 0.211838,
+        "length": 1.72
+      },
+      "meshHash": null,
+      "meshes": 43,
+      "nodes": 57,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.939494,
+        0.514771,
+        0.000007
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 2,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.76851,
+            "bz": -0.101176,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.64219,
+            "bz": -0.266004,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.417825,
+            "bz": -0.320608,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.152036,
+            "bz": -0.198137,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.079102,
+            "bz": -0.19097,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.021555,
+            "bz": -0.163725,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.027576,
+            "bz": -0.20946,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.067701,
+            "bz": -0.163445,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.139056,
+            "bz": -0.181221,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.242183,
+            "bz": -0.185834,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.591693,
+            "bz": -0.245087,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.923902,
+            "bz": -0.121634,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.923777,
+            "bz": 0.121618,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.591693,
+            "bz": 0.245087,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.24205,
+            "bz": 0.185731,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.139013,
+            "bz": 0.181165,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.067685,
+            "bz": 0.163405,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.027576,
+            "bz": 0.20946,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.021556,
+            "bz": 0.163731,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.079104,
+            "bz": 0.190973,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.152037,
+            "bz": 0.198138,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.417814,
+            "bz": 0.3206,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.64219,
+            "bz": 0.266004,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.026471
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.768476,
+            "bz": 0.101172,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.026471
+          }
+        ],
+        "silhouetteRadius": 16.041862,
+        "toleranceWu": 2
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 4233,
+        "inwardFaceFraction": 0.1935,
+        "silhouetteRadius": 16.041862,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            2.48401,
+            0.51475,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0.93863,
+            -0.625,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -8.4,
+            0.1,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            10.09726,
+            0.36475,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0.93863,
+            0.51475,
+            -1.964468
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0.93863,
+            0.51475,
+            1.964468
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -3.311167,
+            0.85225,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -8.820001,
+            0.1,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -8.820001,
+            0.1,
+            -0.818528
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -8.820001,
+            0.1,
+            0.818528
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0.93863,
+            1.6545,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            10.19726,
+            0.51475,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 37810,
+      "unmeasuredHitVolumes": [
+        "subsystem_transport_clamp"
+      ],
+      "url": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb",
+      "worldSize": [
+        29.24,
+        3.601245,
+        9.913446
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
           0.460347,
           0.625496,
           -0.030061
@@ -20702,6 +21281,704 @@
     {
       "bounds": {
         "center": [
+          -0.950227,
+          0.659953,
+          1.323971
+        ],
+        "max": [
+          8.2,
+          2.119898,
+          8.15
+        ],
+        "min": [
+          -10.100453,
+          -0.799992,
+          -5.502058
+        ],
+        "size": [
+          18.300453,
+          2.91989,
+          13.652058
+        ]
+      },
+      "bytes": 879144,
+      "collider": {
+        "authoredClearVolumesPreserved": true,
+        "compoundBoxesWU": [
+          {
+            "center": {
+              "x": -0.5,
+              "y": -0.25,
+              "z": 0
+            },
+            "id": "Keel",
+            "size": {
+              "x": 12,
+              "y": 1.1,
+              "z": 4.3
+            }
+          },
+          {
+            "center": {
+              "x": -0.7,
+              "y": 0.42,
+              "z": -0.5
+            },
+            "id": "BayFloor",
+            "size": {
+              "x": 8.4,
+              "y": 0.38,
+              "z": 7.5
+            }
+          },
+          {
+            "center": {
+              "x": -0.7,
+              "y": 1.18,
+              "z": -4.4
+            },
+            "id": "PortRim",
+            "size": {
+              "x": 9.4,
+              "y": 1.6,
+              "z": 1.15
+            }
+          },
+          {
+            "center": {
+              "x": -0.7,
+              "y": 1.18,
+              "z": 3.6
+            },
+            "id": "StarboardRim",
+            "size": {
+              "x": 9.4,
+              "y": 1.6,
+              "z": 1.25
+            }
+          },
+          {
+            "center": {
+              "x": -5.05,
+              "y": 1.18,
+              "z": -0.4
+            },
+            "id": "AftRim",
+            "size": {
+              "x": 1.1,
+              "y": 1.6,
+              "z": 7.15
+            }
+          },
+          {
+            "center": {
+              "x": 3.65,
+              "y": 1.18,
+              "z": -0.4
+            },
+            "id": "ForeRim",
+            "size": {
+              "x": 1,
+              "y": 1.6,
+              "z": 7.15
+            }
+          },
+          {
+            "center": {
+              "x": -6.9,
+              "y": -0.05,
+              "z": 0
+            },
+            "id": "AftDriveBridge",
+            "size": {
+              "x": 3.5,
+              "y": 1.2,
+              "z": 4.9
+            }
+          },
+          {
+            "center": {
+              "x": -7.5,
+              "y": 0.1,
+              "z": -2.35
+            },
+            "id": "PortDrive",
+            "size": {
+              "x": 3.9,
+              "y": 1.55,
+              "z": 1.35
+            }
+          },
+          {
+            "center": {
+              "x": -7.5,
+              "y": 0.1,
+              "z": 2.35
+            },
+            "id": "StarboardDrive",
+            "size": {
+              "x": 3.9,
+              "y": 1.55,
+              "z": 1.35
+            }
+          },
+          {
+            "center": {
+              "x": 5.2,
+              "y": -0.02,
+              "z": 0
+            },
+            "id": "ForeShoulder",
+            "size": {
+              "x": 2.1,
+              "y": 1.35,
+              "z": 3.8
+            }
+          },
+          {
+            "center": {
+              "x": 6.65,
+              "y": -0.08,
+              "z": 0
+            },
+            "id": "OpticalBow",
+            "size": {
+              "x": 1.7,
+              "y": 1.1,
+              "z": 3
+            }
+          },
+          {
+            "center": {
+              "x": 7.8,
+              "y": -0.16,
+              "z": 0
+            },
+            "id": "Nose",
+            "size": {
+              "x": 0.8,
+              "y": 0.78,
+              "z": 1.65
+            }
+          },
+          {
+            "center": {
+              "x": -3.4,
+              "y": 1.12,
+              "z": 4.18
+            },
+            "id": "HingeA",
+            "size": {
+              "x": 1.55,
+              "y": 0.6,
+              "z": 1.65
+            }
+          },
+          {
+            "center": {
+              "x": -0.5,
+              "y": 1.12,
+              "z": 4.18
+            },
+            "id": "HingeB",
+            "size": {
+              "x": 1.55,
+              "y": 0.6,
+              "z": 1.65
+            }
+          },
+          {
+            "center": {
+              "x": 2.4,
+              "y": 1.12,
+              "z": 4.18
+            },
+            "id": "HingeC",
+            "size": {
+              "x": 1.55,
+              "y": 0.6,
+              "z": 1.65
+            }
+          },
+          {
+            "center": {
+              "x": -0.6,
+              "y": 0.55,
+              "z": -5.1
+            },
+            "id": "PortStrake",
+            "size": {
+              "x": 8.1,
+              "y": 0.7,
+              "z": 0.48
+            }
+          },
+          {
+            "center": {
+              "x": -0.6,
+              "y": 0.4,
+              "z": 4.3
+            },
+            "id": "StarboardStrake",
+            "size": {
+              "x": 8.1,
+              "y": 0.55,
+              "z": 0.45
+            }
+          },
+          {
+            "center": {
+              "x": -6.1,
+              "y": 0.18,
+              "z": -3
+            },
+            "id": "DriveBracePort",
+            "size": {
+              "x": 1.2,
+              "y": 1.2,
+              "z": 1.2
+            }
+          },
+          {
+            "center": {
+              "x": -6.1,
+              "y": 0.18,
+              "z": 3
+            },
+            "id": "DriveBraceStbd",
+            "size": {
+              "x": 1.2,
+              "y": 1.2,
+              "z": 1.2
+            }
+          },
+          {
+            "center": {
+              "x": -9.7,
+              "y": 0.81,
+              "z": -2.35
+            },
+            "id": "DriveCage_port_top",
+            "size": {
+              "x": 0.8,
+              "y": 0.18,
+              "z": 1.6
+            }
+          },
+          {
+            "center": {
+              "x": -9.7,
+              "y": -0.61,
+              "z": -2.35
+            },
+            "id": "DriveCage_port_bottom",
+            "size": {
+              "x": 0.8,
+              "y": 0.18,
+              "z": 1.6
+            }
+          },
+          {
+            "center": {
+              "x": -9.7,
+              "y": 0.1,
+              "z": -1.64
+            },
+            "id": "DriveCage_port_left",
+            "size": {
+              "x": 0.8,
+              "y": 1.25,
+              "z": 0.18
+            }
+          },
+          {
+            "center": {
+              "x": -9.7,
+              "y": 0.1,
+              "z": -3.06
+            },
+            "id": "DriveCage_port_right",
+            "size": {
+              "x": 0.8,
+              "y": 1.25,
+              "z": 0.18
+            }
+          },
+          {
+            "center": {
+              "x": -9.7,
+              "y": 0.81,
+              "z": 2.35
+            },
+            "id": "DriveCage_stbd_top",
+            "size": {
+              "x": 0.8,
+              "y": 0.18,
+              "z": 1.6
+            }
+          },
+          {
+            "center": {
+              "x": -9.7,
+              "y": -0.61,
+              "z": 2.35
+            },
+            "id": "DriveCage_stbd_bottom",
+            "size": {
+              "x": 0.8,
+              "y": 0.18,
+              "z": 1.6
+            }
+          },
+          {
+            "center": {
+              "x": -9.7,
+              "y": 0.1,
+              "z": 3.06
+            },
+            "id": "DriveCage_stbd_left",
+            "size": {
+              "x": 0.8,
+              "y": 1.25,
+              "z": 0.18
+            }
+          },
+          {
+            "center": {
+              "x": -9.7,
+              "y": 0.1,
+              "z": 1.64
+            },
+            "id": "DriveCage_stbd_right",
+            "size": {
+              "x": 0.8,
+              "y": 1.25,
+              "z": 0.18
+            }
+          },
+          {
+            "center": {
+              "x": -3.5,
+              "y": 0.7,
+              "z": -5.33
+            },
+            "id": "PortControlSeat_aft",
+            "size": {
+              "x": 0.55,
+              "y": 0.55,
+              "z": 0.26
+            }
+          },
+          {
+            "center": {
+              "x": 2.6,
+              "y": 0.7,
+              "z": -5.33
+            },
+            "id": "PortControlSeat_fore",
+            "size": {
+              "x": 0.55,
+              "y": 0.55,
+              "z": 0.26
+            }
+          },
+          {
+            "center": {
+              "x": -3.4,
+              "y": 1.65,
+              "z": 6.15
+            },
+            "id": "paddle-a",
+            "size": {
+              "x": 1.05,
+              "y": 0.32,
+              "z": 4
+            }
+          },
+          {
+            "center": {
+              "x": -0.5,
+              "y": 1.65,
+              "z": 6.15
+            },
+            "id": "paddle-b",
+            "size": {
+              "x": 1.05,
+              "y": 0.32,
+              "z": 4
+            }
+          },
+          {
+            "center": {
+              "x": 2.4,
+              "y": 1.65,
+              "z": 6.15
+            },
+            "id": "paddle-c",
+            "size": {
+              "x": 1.05,
+              "y": 0.32,
+              "z": 4
+            }
+          }
+        ],
+        "coverageMetric": "all-visible-vertices-to-native-XZ-compound",
+        "coverageWu": 0.047062,
+        "gapWu": 0.047062,
+        "id": "latch-nine:reconstructed-v1",
+        "kind": "compound",
+        "outline": [
+          10.417783,
+          10.565907,
+          7.303036,
+          7.058616,
+          5.435891,
+          5.303301,
+          4.976247,
+          6.150268,
+          6.345838,
+          5.70664,
+          6.516437,
+          8.235622,
+          8.23557,
+          6.518812,
+          5.188487,
+          5.90462,
+          8.588116,
+          8.417532,
+          8.188652,
+          8.954583,
+          6.495932,
+          6.819248,
+          10.565514,
+          10.419397
+        ],
+        "overTolerance": false,
+        "referenceState": "rest",
+        "sourceCompoundParity": true,
+        "stickWu": null,
+        "throatSealed": false,
+        "toleranceWu": 2,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "latch-nine",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "latch-nine:reconstructed-v1",
+        "colliderKind": "compound",
+        "dockRadius": null,
+        "entityRadius": 13,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_latch_nine",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 93,
+      "nodes": 106,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 1374,
+        "inwardFaceFraction": 0.411,
+        "silhouetteRadius": 10.565907,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_LATCH_MAIN_PORT",
+          "position": [
+            -10.07,
+            0.1,
+            -2.35
+          ]
+        },
+        {
+          "name": "SOCKET_LATCH_MAIN_STBD",
+          "position": [
+            -10.07,
+            0.1,
+            2.35
+          ]
+        },
+        {
+          "name": "SOCKET_LATCH_PORT_AFT",
+          "position": [
+            -3.5,
+            0.7,
+            -5.46
+          ]
+        },
+        {
+          "name": "SOCKET_LATCH_PORT_FORE",
+          "position": [
+            2.6,
+            0.7,
+            -5.46
+          ]
+        },
+        {
+          "name": "SOCKET_LATCH_REVERSE_PORT",
+          "position": [
+            7.5,
+            0.12,
+            -1.23
+          ]
+        },
+        {
+          "name": "SOCKET_LATCH_REVERSE_STBD",
+          "position": [
+            7.5,
+            0.12,
+            1.23
+          ]
+        },
+        {
+          "name": "SOCKET_LATCH_STBD_AFT",
+          "position": [
+            -4.25,
+            0.55,
+            4.53
+          ]
+        },
+        {
+          "name": "SOCKET_LATCH_STBD_FORE",
+          "position": [
+            3.2,
+            0.55,
+            4.53
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
+      "tasteBudget": null,
+      "triangles": 37060,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_latch_nine.glb",
+      "worldSize": [
+        18.300453,
+        2.91989,
+        13.652058
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
           0.406536,
           0.173006,
           0.00229
@@ -22771,7 +24048,7 @@
             },
             {
               "path": "scripts/model-truth-census.mjs",
-              "sha256": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa"
+              "sha256": "17a49c94886f886526b19e4a9bff8aa0b11fafe21b9eac67494714fd6b7fdd9d"
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
@@ -22779,7 +24056,7 @@
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
-              "sha256": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd"
+              "sha256": "c8ba619375fca5451f1a597cbb02423de5c7e448db83ce8aad02be2156e32840"
             },
             {
               "path": "src/render/ceresShipbreakVisuals.js",
@@ -22787,23 +24064,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "985f92c0529923c753ebee4263d1582283d1f9e3eb2fc8d183a7c1c633deaaef"
+              "sha256": "bd1d10a29b77a70fbfd157c312a66ad750930fa79d0d93bb07e7b070e4f2694a"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "37b588895f8af2b517945b70a98dedde6afcaabd86cb074a63c32f56d4b7d962"
+              "sha256": "af219c874732991d5428674b5d2cdeb1feff3b048d8944ff9fff38d17494eaa0"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "85a431dfa4c40462383144607ddf86c9109dfff9bfe267cd186240ca2e1d9ef6"
+              "sha256": "ef65ec40febbf68c67da0d99b200003e788e35609b6d7d1d048a92c06ac5396e"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "c80327aeed352bca12aa7c0f4f2672811f41d466c9073de1118eea5c639c5014"
+              "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
-              "sha256": "9f7cf5dc2a6dfa1b4c5e0569bd53743c5b1b031494e12c410bae30a04d9465e0"
+              "sha256": "58489573ab226ee4c5ff9b481dfe96bf26ff33f71c72d62d1ffaaaa20a7ff435"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -23323,7 +24600,7 @@
             },
             {
               "path": "scripts/model-truth-census.mjs",
-              "sha256": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa"
+              "sha256": "17a49c94886f886526b19e4a9bff8aa0b11fafe21b9eac67494714fd6b7fdd9d"
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
@@ -23331,7 +24608,7 @@
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
-              "sha256": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd"
+              "sha256": "c8ba619375fca5451f1a597cbb02423de5c7e448db83ce8aad02be2156e32840"
             },
             {
               "path": "src/render/ceresShipbreakVisuals.js",
@@ -23339,23 +24616,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "985f92c0529923c753ebee4263d1582283d1f9e3eb2fc8d183a7c1c633deaaef"
+              "sha256": "bd1d10a29b77a70fbfd157c312a66ad750930fa79d0d93bb07e7b070e4f2694a"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "37b588895f8af2b517945b70a98dedde6afcaabd86cb074a63c32f56d4b7d962"
+              "sha256": "af219c874732991d5428674b5d2cdeb1feff3b048d8944ff9fff38d17494eaa0"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "85a431dfa4c40462383144607ddf86c9109dfff9bfe267cd186240ca2e1d9ef6"
+              "sha256": "ef65ec40febbf68c67da0d99b200003e788e35609b6d7d1d048a92c06ac5396e"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "c80327aeed352bca12aa7c0f4f2672811f41d466c9073de1118eea5c639c5014"
+              "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
-              "sha256": "f0ea2dd69af236a82422fee5ef74d24d8df49fe0d3606be4e54f7d93c266c4cc"
+              "sha256": "bdb3617660b11ed7a9465ba6a8bcfec9945ee86537ad25f4cf668b68f9d62e46"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -23791,7 +25068,7 @@
             },
             {
               "path": "scripts/model-truth-census.mjs",
-              "sha256": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa"
+              "sha256": "17a49c94886f886526b19e4a9bff8aa0b11fafe21b9eac67494714fd6b7fdd9d"
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
@@ -23799,7 +25076,7 @@
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
-              "sha256": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd"
+              "sha256": "c8ba619375fca5451f1a597cbb02423de5c7e448db83ce8aad02be2156e32840"
             },
             {
               "path": "src/render/ceresShipbreakVisuals.js",
@@ -23807,23 +25084,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "985f92c0529923c753ebee4263d1582283d1f9e3eb2fc8d183a7c1c633deaaef"
+              "sha256": "bd1d10a29b77a70fbfd157c312a66ad750930fa79d0d93bb07e7b070e4f2694a"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "37b588895f8af2b517945b70a98dedde6afcaabd86cb074a63c32f56d4b7d962"
+              "sha256": "af219c874732991d5428674b5d2cdeb1feff3b048d8944ff9fff38d17494eaa0"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "85a431dfa4c40462383144607ddf86c9109dfff9bfe267cd186240ca2e1d9ef6"
+              "sha256": "ef65ec40febbf68c67da0d99b200003e788e35609b6d7d1d048a92c06ac5396e"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "c80327aeed352bca12aa7c0f4f2672811f41d466c9073de1118eea5c639c5014"
+              "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
-              "sha256": "df2268325c719ac0fabb0b14555b4040998138eb357cd57b0bec9e8e449dee19"
+              "sha256": "b721739e90c1f2a58baaff764659b4efab372ba7ec19cb73def191fa45a4e4cb"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -24295,7 +25572,7 @@
             },
             {
               "path": "scripts/model-truth-census.mjs",
-              "sha256": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa"
+              "sha256": "17a49c94886f886526b19e4a9bff8aa0b11fafe21b9eac67494714fd6b7fdd9d"
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
@@ -24303,7 +25580,7 @@
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
-              "sha256": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd"
+              "sha256": "c8ba619375fca5451f1a597cbb02423de5c7e448db83ce8aad02be2156e32840"
             },
             {
               "path": "src/render/ceresShipbreakVisuals.js",
@@ -24311,23 +25588,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "985f92c0529923c753ebee4263d1582283d1f9e3eb2fc8d183a7c1c633deaaef"
+              "sha256": "bd1d10a29b77a70fbfd157c312a66ad750930fa79d0d93bb07e7b070e4f2694a"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "37b588895f8af2b517945b70a98dedde6afcaabd86cb074a63c32f56d4b7d962"
+              "sha256": "af219c874732991d5428674b5d2cdeb1feff3b048d8944ff9fff38d17494eaa0"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "85a431dfa4c40462383144607ddf86c9109dfff9bfe267cd186240ca2e1d9ef6"
+              "sha256": "ef65ec40febbf68c67da0d99b200003e788e35609b6d7d1d048a92c06ac5396e"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "c80327aeed352bca12aa7c0f4f2672811f41d466c9073de1118eea5c639c5014"
+              "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
-              "sha256": "d5e38c51a11752bb952a6f76b913d5d4e7a920f72728b0e05c24a1620cdace07"
+              "sha256": "09bb968c606c266d3a39cb36f99b86476d3141ce8afe73857d9fc080c2a9ad88"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",

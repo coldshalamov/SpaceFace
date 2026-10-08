@@ -193,6 +193,12 @@ export const stationBroadcast = {
     const station = nearestVisibleStation(state, NEAR_RANGE);
     if (!station) return;                                        // no visible station → no-op
     const data = station.data || {};
+    const latchLine = latchNineGuidanceLine(state, station);
+    if (latchLine) {
+      const said = this._ctx.helpers?.voice?.say({ id: 'latch-nine:guidance', channel: 'ambient', priority: AMBIENT_PRIORITY, text: latchLine, ttl: LINE_TTL_S });
+      if (said !== false) this._lastSayAt = now;
+      return;
+    }
     const def = STATION_BROADCASTS[data.stationTypeId];
     if (!def || !def.lines.length) return;
 
@@ -241,3 +247,4 @@ export const stationBroadcast = {
 };
 
 export default stationBroadcast;
+import { latchNineGuidanceLine } from '../data/latchNineGuidance.js';

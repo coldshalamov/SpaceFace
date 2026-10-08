@@ -117,8 +117,14 @@ ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; lett
 ${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:grid !important; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr) !important; grid-template-rows:minmax(0,1fr) !important; gap:24px !important; overflow:auto !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }
 ${A} .orr-armory-reading[hidden] { display:none !important; }
 ${A} .orr-armory-visual { display:flex; flex-direction:column; width:100%; min-width:0; gap:16px; }
-${A} .orr-pip-spanner { width:100%; flex:none; color:var(--dp-ink); }
+${A} .orr-pip-spanner { width:100%; flex:none; order:-1; color:var(--dp-ink); }
 ${A} .orr-pip-spanner > svg { display:block; width:100%; max-width:320px; height:70px; margin:auto; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:square; stroke-linejoin:bevel; }
+${A} .orr-pip-spanner > svg[hidden], ${A} .orr-crew-stage[hidden] { display:none !important; }
+${A} .orr-crew-stage { position:relative; width:100%; max-width:360px; aspect-ratio:5 / 3; margin:auto; }
+${A} .orr-crew-stage > canvas { display:block; width:100%; height:100%; pointer-events:none; }
+${A} .orr-crew-item { position:absolute; width:44px; height:44px; transform:translate(-50%,-50%); pointer-events:none; }
+${A} .orr-crew-item > .orr-equipment-glyph { width:100%; height:100%; }
+${A} .orr-crew-item-label { position:absolute; transform:translateX(-50%); width:150px; text-align:center; font:500 10px/1.4 var(--dp-face-label); color:var(--dp-ink-dim); pointer-events:none; }
 ${A} .orr-crew-pointer { color:var(--dp-hand); stroke:currentColor; }
 ${A} .orr-crew-names { display:flex; justify-content:space-between; white-space:pre; font:500 12px/1.5 var(--dp-face-label); color:var(--dp-ink-dim); margin:0; }
 ${A} .orr-crew-status { font:400 12px/1.5 var(--dp-face-label); color:var(--dp-ink-dim); margin:4px 0 0; }
@@ -149,7 +155,7 @@ ${A} .orr-armory-reading__buy { margin:18px 0 12px !important; }
 ${A} .orr-armory-purchase { display:block; width:100%; min-height:50px; padding:12px 16px; background:var(--dp-hand); color:var(--dp-void); border:0; border-radius:0; font:650 16px/1.25 var(--dp-face-label); cursor:pointer; clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%); }
 ${A} .orr-armory-purchase:disabled { background:var(--dp-line); color:var(--dp-ink-dim); cursor:default; }
 ${A} .orr-armory-refusal { margin:8px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }
-${A} .orr-armory-reading__demo-word { font:500 13px var(--dp-face-label) !important; min-height:40px; padding:8px 0; color:var(--dp-ink-dim) !important; border:0; border-bottom:1px solid var(--dp-line); background:none; cursor:pointer; }
+${A} .orr-armory-reading__demo-word, ${A} .orr-armory-reading__hold-word { font:500 13px var(--dp-face-label) !important; min-height:40px; padding:8px 0; color:var(--dp-ink-dim) !important; border:0; border-bottom:1px solid var(--dp-line); background:none; cursor:pointer; }
 ${A} .sf-cru-note { min-height:24px; margin:8px 0 0 !important; font:400 13px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif !important; color:var(--dp-ink) !important; }
 ${A} .orr-armory-empty { padding:36px 12px; color:var(--dp-ink-dim); font-size:15px; line-height:1.5; }
 ${A} .orr-armory-clear { display:block; margin-top:16px; background:none; color:var(--dp-ink); border:0; border-bottom:1px solid var(--dp-line); padding:10px 0; min-height:44px; cursor:pointer; }

@@ -15,6 +15,7 @@
 // armorFlat must stay well below starter shot damage — flat DR ≥ dmg zeroes residual damage
 // after the shield layer and made bruisers literally unkillable with the Hitch gun.
 export const ENEMY_TYPES = [
+
   {
     id: 'wasp_swarmer', name: 'Wasp Swarmer', shipId: 'ship_wasp',
     silhouette: 'drone_swarm', factionId: 'faction_reach',
@@ -654,5 +655,19 @@ export const ENEMY_TYPES = [
     behavior: 'segmented worm: committed weave passes with a trailing chain that splits when a mid segment dies and collapses when the head does',
     bountyCr: 0, shipClass: 'gunship',
     loot: null,
+  },
+  {
+    id: 'scissorwake', name: 'Scissorwake', shipId: 'ship_hornet',
+    silhouette: 'corsair_blade', factionId: 'faction_reach', aiArchetype: 'pirate',
+    combatDoctrineId: 'scissorwake', levelRange: [2, 6],
+    hull: 105, armor: 14, armorFlat: 1, shield: 25, shieldRegen: 0,
+    cap: 160, capRegen: 20, maxSpeed: 220, accel: 240, turnRate: 3.8,
+    collisionRadius: 17, mass: 28, weapons: [],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 120, leashRadius: 1800 },
+    rareSpecialist: true, physicalClass: 'specialist', shipClass: 'fighter', bountyCr: 320,
+    telegraph: { bark: 'warn', line: 'Cutter opening. Move the line or move the cutter.', cue: 'attach_spool' },
+    counterHint: 'move_line_or_throw_cutter',
+    behavior: 'light engineered cutter; locks one crossing, misses when displaced, exposes its side in recovery',
+    loot: { creditsRange: [80, 180], drops: [{ id: 'cmdty_electronics', chance: 0.45, qtyRange: [1, 2] }] },
   },
 ];

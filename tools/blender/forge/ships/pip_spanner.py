@@ -15,7 +15,7 @@ sys.path.insert(0, str(FORGE))
 import forge as F
 import forge_export as E
 
-COLORS = {'paint':'#b2ab97', 'paint2':'#536065', 'stripe':'#1b837f',
+COLORS = {'paint':'#a69d8a', 'paint2':'#536065', 'stripe':'#1b837f',
           'dark':'#202830', 'gunmetal':'#606e73', 'glow_cyan':'#50c7bc',
           'glow_warm':'#edc38c'}
 GROUPS = {}
@@ -150,7 +150,7 @@ def save_exports(s,out):
         meshes=[]
         for name,parts in GROUPS.items():
             # Local joining is exactly the shipping Forge exporter operation, per rigid group.
-            joined=E._join_named(parts,level,f'LOD0_{name}_',True)
+            joined=E._join_named(parts,level,f'LOD0_{name}_')
             for ob in joined:
                 world=ob.matrix_world.copy(); ob.parent=PIVOTS[name]; ob.matrix_world=world
             meshes+=joined

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "60895cb2c4fba970d0e9b6f7fb5b46aeea2461fe3f99da5695526c31eba76b27",
+  "contentHash": "4532c699bed324b21d8cd60754ffb5a91114f4f18f81d44b5af646035c2b76b7",
   "dynamicGroups": [
     {
       "id": "sf.render.rescue-lifter.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -4971,8 +4971,8 @@
       "uri": "rescue_lifter.glb"
     },
     "sourceManifest": {
-      "bytes": 219794,
-      "sha256": "80f3f090c9d9dd27f218d7fa14f6703b7efc4b3398f6376312758f99914bbe73",
+      "bytes": 227467,
+      "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c",
       "uri": "pilots.json"
     }
   },
@@ -7242,7 +7242,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/rescue_lifter.glb"
   },
-  "runtimeHash": "aedf79d9fb7ecd9e1189b8c4e344f8ed490f49df48abd8aad4b1a8d1aa71325b",
+  "runtimeHash": "eba9ebe746e708e018a2a104cfceb132e5657052cba33efc81a18e1fe4337c5d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

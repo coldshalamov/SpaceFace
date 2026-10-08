@@ -29,6 +29,8 @@ import { mines } from '../systems/mines.js';
 import { bombs } from '../systems/bombs.js';
 import { dockingCorridor } from '../systems/dockingCorridor.js'; // PQ-008: truthful exterior corridor/capture docking (assist via physics membrane)
 import { scanReveal } from '../systems/scanReveal.js';
+import { latchNine } from '../systems/latchNine.js';
+import { scissorwake } from '../systems/scissorwake.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
@@ -456,6 +458,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['gyreSnare', gyreSnare],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
+    ['latchNine', latchNine],
+    ['scissorwake', scissorwake],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],
@@ -856,6 +860,8 @@ export function createRegistry(ctx) {
       // state.simTime stays frozen, so the seeded client schedule holds still with it.
       const yard = byName.get('stationServices');
       if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
+      const latch = byName.get('latchNine');
+      if (latch && typeof latch.keepalive === 'function') latch.keepalive(wallDt);
     },
     step(dt, tickBoundary = null) {
       const state = ctx.state;

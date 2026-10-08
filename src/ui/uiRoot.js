@@ -11,6 +11,7 @@
 // is missing or throws on import/register does NOT break the HUD or the other screens.
 
 import { createScreenManager } from './screenManager.js';
+import { commitDockedUiState } from './dockStateCommit.js';
 import { createEntityLinks } from './entityLinks.js';
 import { mountWhyReveal } from './whyReveal.js';
 import { createUiInput } from './input.js';
@@ -1244,9 +1245,9 @@ export const ui = {
     // the semantic incident so no render/input frame exposes controls during transit or wake-up.
     boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
 
-    this.bus.on('dock:docked', ({ stationId }) => {
-      this.state.ui.docked = true;
-      this.state.ui.dockedStationId = stationId || null;
+    this.bus.on('dock:docked', (payload = {}) => {
+      if (!commitDockedUiState(this.state, payload, this.bus)) return;
+      const { stationId } = payload;
       this.screenManager.syncVisibility();
 
       // Phase 1: fade to dark

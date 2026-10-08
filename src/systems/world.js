@@ -23,6 +23,7 @@
 //   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
 //   vitals order and may kill.
 import { playerBearingLetter } from '../core/playerCompass.js';
+import { createDockIntent } from '../core/dockIntent.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
 import { stationMinRepFor } from '../data/dockDeny.js';
@@ -6088,7 +6089,7 @@ export const world = {
       kind: charge.debtCr > 0 ? 'warn' : 'success',
       ttl: 4,
     });
-    this.bus.emit('dock:docked', { stationId: station.id, via: 'tow' });
+    this.bus.emit('dock:docked', createDockIntent(state, { stationId: station.id, via: 'tow' }, player));
   },
 
   // --- jump-drive / scanner / fuel-tank module resolution -----------------------------------

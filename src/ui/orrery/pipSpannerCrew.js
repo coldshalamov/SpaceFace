@@ -1,5 +1,7 @@
-// Armory crew schematic. Every consequence comes from survivalDraft's scoped receipt;
+// Authored armory crew. Every consequence comes from survivalDraft's scoped receipt;
 // this presenter owns neither run money nor equipment and never delays a launch.
+import { createPipSpannerPreview } from './pipSpannerPreview.js';
+import { equipmentSvg } from './equipmentGlyphs.js';
 export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
   if (!host || !doc?.createElementNS) return null;
   const make = (tag, cls, text) => {
@@ -12,6 +14,10 @@ export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
   const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 280 76'); svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
+  const showSchematic = shown => {
+    if (shown) svg.removeAttribute('hidden');
+    else svg.setAttribute('hidden', '');
+  };
   const shape = (tag, attrs, parent = svg) => {
     const node = doc.createElementNS('http://www.w3.org/2000/svg', tag);
     for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
@@ -35,14 +41,46 @@ export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
   status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   root.append(svg, names, status); host.appendChild(root);
   let selection = null, receiptKey = null, generation = null, active = true;
+  let preview = null, stage = null, item = null, itemLabel = null, selectedOffer = null;
+  const ensurePreview = () => {
+    if (preview || !active || !doc.defaultView) return;
+    const canvas = doc.createElement('canvas');
+    if (!canvas.getContext) return;
+    if (!stage) {
+      stage = make('div', 'orr-crew-stage');
+      stage.setAttribute('aria-hidden', 'true'); stage.hidden = true;
+      item = make('div', 'orr-crew-item'); itemLabel = make('span', 'orr-crew-item-label');
+      stage.append(item, itemLabel); root.prepend(stage);
+    }
+    canvas.setAttribute('aria-hidden', 'true'); canvas.setAttribute('focusable', 'false');
+    stage.prepend(canvas);
+    preview = createPipSpannerPreview({ canvas, doc,
+      onReady() { if (active) { stage.hidden = false; showSchematic(false); root.dataset.visual = 'authored'; } },
+      onError() { stage.hidden = true; showSchematic(true); root.dataset.visual = 'schematic'; },
+      onProject({ x, y }) {
+        item.style.left = `${x}px`; item.style.top = `${y}px`;
+        itemLabel.style.left = `${x}px`; itemLabel.style.top = `${y + 27}px`;
+      },
+    });
+    if (selectedOffer) preview?.inspect(selectedOffer);
+  };
+  const retirePreview = () => {
+    preview?.dispose(); preview = null;
+    stage?.querySelector('canvas')?.remove();
+    if (stage) stage.hidden = true;
+    showSchematic(true);
+  };
   return {
     scope(value) {
       if (value === generation) return;
       generation = value; selection = null; receiptKey = null;
+      selectedOffer = null; preview?.reset();
       root.dataset.state = 'inspect'; root.dataset.animate = 'false';
     },
     inspect(offer) {
       if (!offer || selection === offer.id) return;
+      selectedOffer = offer; ensurePreview(); preview?.inspect(offer);
+      if (item) { item.replaceChildren(equipmentSvg(offer, doc)); itemLabel.textContent = `${offer.name || offer.defId} · schematic`; }
       selection = offer.id; root.dataset.state = offer.purchased ? 'installed' : 'inspect';
       status.textContent = offer.purchased ? `${offer.name || offer.defId} is already fitted.`
         : `Pip: ${offer.name || offer.defId}. ${offer.kind === 'service' ? 'Service for the current run'
@@ -53,6 +91,7 @@ export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
       status.textContent = `Spanner: preparing ${offer?.name || offer?.defId || 'equipment'}…`;
     },
     receipt(value) {
+      if (value && generation != null && value.generation !== generation) return;
       if (!value) {
         if (root.dataset.state === 'pending') {
           root.dataset.state = 'inspect';
@@ -67,6 +106,7 @@ export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
       root.dataset.state = selectedResult ? value.outcome : 'inspect';
       // Closed/retired screens can reread the result without replaying the old action.
       root.dataset.animate = active && selectedResult && value.outcome === 'accepted' ? 'true' : 'false';
+      if (active && selectedResult) preview?.receipt(value, selection);
       status.textContent = value.outcome === 'accepted'
         ? `Spanner: ${value.name} ready. ${value.text}${value.charged ? ` ${value.price} run credits spent.` : ' No run credits spent.'}`
         : value.outcome === 'pending' ? `Spanner: preparing ${value.name}…`
@@ -75,8 +115,9 @@ export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
     setActive(value) {
       active = !!value; root.dataset.animate = 'false';
       root.hidden = !active;
+      if (active) ensurePreview(); else retirePreview();
     },
-    dispose() { active = false; root.remove?.(); },
+    dispose() { active = false; retirePreview(); root.remove?.(); },
     root, status,
   };
 }

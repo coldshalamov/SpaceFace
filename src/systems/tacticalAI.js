@@ -528,6 +528,7 @@ export function createTacticalAISystem({
             specialist: entity,
             enemyId,
             doctrinePhase: doctrine && doctrine.phase,
+            doctrine,
             tick,
             attachments: kernel && kernel.attachments,
             fields: fieldsSys,

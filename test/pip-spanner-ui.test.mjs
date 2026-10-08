@@ -6,6 +6,7 @@ import { crucibleDraftScreen } from '../src/ui/screens/crucibleDraft.js';
 class Node {
   constructor(doc) { this.ownerDocument = doc; this.children = []; this.dataset = {}; this.attrs = {}; }
   setAttribute(key, value) { this.attrs[key] = value; }
+  removeAttribute(key) { delete this.attrs[key]; }
   append(...nodes) { this.children.push(...nodes); }
   appendChild(node) { this.append(node); }
   remove() { this.removed = true; }

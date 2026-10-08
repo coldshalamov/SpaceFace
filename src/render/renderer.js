@@ -1,4 +1,4 @@
-import { bindMachineryPresentation, machineryPresentationPlace, machineryRequestedPresentation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
+import { isPhysicalMachinery, bindMachineryPresentation, machineryPresentationPlace, machineryRequestedPresentation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
 import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
 // Render system: owns the WebGLRenderer, scene, lights, camera, starfield, and the entity→mesh
@@ -6554,7 +6554,7 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   const machineryBindings=[];
   for(const [id,mesh] of owner._meshes || []) {
     const entity=machineryState?.entities?.get(id);
-    if(ceresWorkfleetRole(entity) && entity.mesh===mesh)
+    if(isPhysicalMachinery(entity) && entity.mesh===mesh)
       machineryBindings.push({entity,mesh,life:entity.occupantGeneration});
   }
   invalidateMachineryPresentation(machineryState);
@@ -22856,8 +22856,8 @@ export const render = {
     entity.mesh = mesh;
     if (entity.view) entity.view.root = mesh;
     else entity.view = { root: mesh };
+    if (isPhysicalMachinery(entity)) bindMachineryPresentation(entity, mesh, this.state);
     if (ceresWorkfleetRole(entity)) {
-      bindMachineryPresentation(entity, mesh, this.state);
       mesh.userData.rebindCeresCradleLayout?.(entity, this.state);
     }
     return true;

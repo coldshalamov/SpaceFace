@@ -47,6 +47,8 @@ Current save version: `14`
 - `nemesis`
 - `nemesisDeployment`
 - `enemyMind`
+- `latchNine`
+- `scissorwake`
 - `lossLedger`
 - `provenance`
 - `factionPresence`
@@ -222,6 +224,7 @@ Current save version: `14`
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
+| `$.latchNine` | null | null |
 | `$.lawSecurity` | object | {} |
 | `$.livingPoiBehaviors` | object | {} |
 | `$.lossLedger` | object | {} |
@@ -351,6 +354,7 @@ Current save version: `14`
 | `$.scenario.facts` | object | {} |
 | `$.scenario.schemaVersion` | number | 1 |
 | `$.scenario.unresolvedActorIds` | array | length 0 |
+| `$.scissorwake` | null | null |
 | `$.sectorSim` | object | {} |
 | `$.settings` | object | {} |
 | `$.settings.accessibility` | object | {} |

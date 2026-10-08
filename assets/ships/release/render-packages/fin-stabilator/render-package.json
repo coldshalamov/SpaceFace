@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9b88b0a72886c2ada9871557c490300e96dc5a74cbe0c5b8752b321ebea0de25",
+  "contentHash": "c93b1d9e2d706055fc5cee1289f30fdcdb9d3b5e28637a15ad07488e8c878961",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -343,8 +343,8 @@
       "uri": "fin_stabilator.glb"
     },
     "sourceManifest": {
-      "bytes": 219794,
-      "sha256": "80f3f090c9d9dd27f218d7fa14f6703b7efc4b3398f6376312758f99914bbe73",
+      "bytes": 227467,
+      "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c",
       "uri": "pilots.json"
     }
   },
@@ -514,7 +514,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_stabilator.glb"
   },
-  "runtimeHash": "a7625c5630908cc6406fa51e6bc8261210402227bb3b4b82a6c68606afdd0774",
+  "runtimeHash": "35a4d9cad99ad000ae66072ad2128d265ed39729a31edde64f51aeb22ec54a62",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
