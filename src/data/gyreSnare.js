@@ -96,8 +96,9 @@ export const GYRE_SNARE = Object.freeze({
                            // instead of winding up open-loop over a long hold
   tearSnapWuS: 24,           // wu/s — parting whip FLOOR on a strain break: an
                            // ejection read (~2x cruise), not a drift-off — the
-                           // frac term already covers big balls at ~1.2x orbit
-  tearSnapOrbitFrac: 1.2,    // the whip scales to this fraction of orbit tangential speed —
+                           // frac term carries big balls past it (~2x orbit)
+  tearSnapOrbitFrac: 2.0,    // the whip scales to this fraction of orbit tangential speed — pebbles
+                             // sit just under the floor while a capped moon whips ~37 wu/s
                            // it must OUTRUN the revolve (~18 wu/s on a ponderous-floored
                            // capped moon) or the snap reads weaker than the motion it
                            // interrupts; the floor keeps a pebble's snap snappy

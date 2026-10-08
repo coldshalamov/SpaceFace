@@ -754,9 +754,12 @@ export class GyreSnarePresentation {
       // The mouth gulps geometrically: each absorb kick dilates ring + disc, not just
       // their opacity — the verb's face visibly swallows. During the coil the maw
       // engorges off launchWindup01 — the mouth swells full before it blows.
-      this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick + 0.16 * windup)); // uniform — the torus circle spans local X and Y
+      // Iris-in: the mouth opens with the glass's 150 ms wake projection instead
+      // of a pre-formed ring sliding down the cone — scale eases 0.5→1 with it.
+      const iris = 0.5 + 0.5 * wakeEase;
+      this._maw.scale.setScalar(endR * iris * (1 + 0.12 * this._discKick + 0.16 * windup)); // uniform — the torus circle spans local X and Y
       this._disc.position.set(drawLen + 1.5 - coilBack, 0, 0);
-      this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick + 0.10 * windup));
+      this._disc.scale.setScalar(endR * 0.96 * iris * (1 + 0.12 * this._discKick + 0.10 * windup));
       // holdLag stretch: while the ship drags the clump off its orbit slot the mouth
       // leans a few wu toward the displaced hold point — the stretch reads in the
       // glass, not only in the thin grip-spoke. Same beam-local offset the funnel
@@ -859,8 +862,9 @@ export class GyreSnarePresentation {
       this._discKick *= Math.exp(-sdt * 4.2);
       this._clumpKick *= Math.exp(-sdt * 6);
       this._moteKick *= Math.exp(-sdt * 5);
-      // Contact glints burn ~100 ms then die — fast enough that a sustained feed
-      // strobes along the rim instead of smearing into one glow.
+      // Contact glints burn ~100 ms to half-brightness and die out over ~400 ms
+      // (exp(-10·dt) from 1 to the 0.02 cutoff) — fast enough that a sustained
+      // feed strobes along the rim instead of smearing into one glow.
       for (const g2 of this._glints) {
         if (g2.t <= 0) continue;
         g2.t *= Math.exp(-sdt * 10);

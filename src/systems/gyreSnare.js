@@ -317,6 +317,9 @@ export const gyreSnare = {
         // (ponderous-floored 0.255 rad/s × ~72 wu), so the frac lands the flick
         // just past its own revolve while tearSnapWuS keeps a pebble snappy.
         const snapV = Math.max(D.tearSnapWuS, droppedRate * droppedOrbitR * D.tearSnapOrbitFrac);
+        // frac 2.0 keeps the term live: pebble revolve (~12 wu/s) sits just under
+        // the 24 wu/s floor while a capped moon's ~18.4 wu/s whips ~37 — the tear
+        // grades by how fast the payload was actually circling when it slipped.
         queuePhysicsImpulse(torn,
           { x: ix * m * snapV, y: 0, z: iz * m * snapV },
           this._evidence(st.tick | 0));
@@ -1773,9 +1776,11 @@ export const gyreSnare = {
         ttl01: D.ballTtlS > 0 ? Math.max(0, Math.min(1, ttlS / D.ballTtlS)) : 1,
         mass: entityMass(e),
         r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : entityRadius(e),
-        // Bounded member slice (≤6) so a second thrown katamari isn't a bare
-        // collider — the presentation seeds its cheap secondary overlay from it.
-        members: meta && Array.isArray(meta.members) ? meta.members.slice(0, 6) : null,
+        // Bounded member slice (≤12, the overlay's own lump ceiling) so a second
+        // thrown katamari isn't a bare collider — and the radius-graded lump
+        // count the presentation computes (4 + r/8) can actually reach ~11 on a
+        // capped ball instead of clipping at the old 6-wide slice.
+        members: meta && Array.isArray(meta.members) ? meta.members.slice(0, 12) : null,
       });
     }
     bTmp.sort((a, b) => a.ttlS - b.ttlS);
