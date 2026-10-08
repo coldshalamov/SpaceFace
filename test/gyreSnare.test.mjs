@@ -1216,6 +1216,36 @@ test('a mid-hold core serializes its flag and the loaded sweep clears it', async
   t2.cleanup();
 });
 
+// -- coverage: a TIMED held body keeps its authored lifetime across save:loaded --
+test('a mid-hold save on a timed body restores its authored deadlines, not immortal debris', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  core.data.despawnAt = 500;    // authored data deadline — the snag stashes it
+  core.ttl = 300;               // authored countdown — stashed beside it
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'core held before the save boundary');
+  const savedData = JSON.parse(JSON.stringify(core.data));
+  assert.equal(savedData.gyrePrevDespawnAt, 500, 'the stash serialized with the body');
+
+  const t2 = await bootPhysics();
+  const loaded = rock(t2.sim, T.mawDist + 30, 0, 6, 4);
+  loaded.data = savedData;
+  // A serialized mid-hold body carries the entity ttl on a sibling channel in the
+  // real save path; model it the same way the sweep sees it post-load.
+  loaded.ttl = Infinity;
+  t2.bus.emit('save:loaded', {});
+  t2.sim.step();
+  assert.equal(loaded.alive, true, 'the restore does not kill the body');
+  assert.equal(loaded.data.despawnAt, 500, 'the authored data deadline round-trips');
+  assert.ok(loaded.ttl > 0 && loaded.ttl <= 300,
+    `the authored countdown resumes and ticks down (got ${loaded.ttl})`);
+  assert.equal(loaded.data.gyrePrevDespawnAt, undefined, 'the stash is consumed');
+  assert.equal(loaded.data.gyrePrevTtl, undefined, 'the ttl stash is consumed');
+  t.cleanup();
+  t2.cleanup();
+});
+
 // -- coverage: fast-translation chase — the frame-damped spring tracks a boosting ship --
 test('a held core tracks a fast-translating ship without slipping the beam', async () => {
   const t = await bootPhysics();
@@ -1504,6 +1534,31 @@ test('an orphaned second-launched ball hands back its marks when adopted', async
   assert.equal(a.data.gyreLaunched, undefined, 'the orphan is unmarked');
   assert.equal(a.physicsBody.impactDamageScale, 0.2, 'the authored scale is restored');
   assert.equal(b.data.gyreLaunched, true, 'B keeps flying as the ball');
+  t.cleanup();
+});
+
+test('a live ball that loses its mark while its deadline survives still disarms', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  a.physicsBody = a.physicsBody || {};
+  a.physicsBody.impactDamageScale = 0.2; // authored damping the launch overwrites
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the flying ball');
+  assert.ok(a.data.despawnAt != null, 'our stamped deadline still owns the body');
+  assert.ok(a.physicsBody.impactDamageScale > 1, 'launch wrote the weapon scale');
+  assert.ok(t.sys._rt.ballIds.includes(a.id), 'A is watched');
+  // A foreign owner deletes the mark but keeps the deadline — the splice lane
+  // must still shed the armed scale + the gyrePrev* stash, not just data keys.
+  delete a.data.gyreLaunched;
+  t.sim.step();
+  assert.equal(a.physicsBody.impactDamageScale, 0.2, 'the authored scale is restored');
+  assert.equal(a.data.gyreLaunchMeta, undefined, 'the launch ledger is gone');
+  assert.equal(a.data.gyrePrevImpactScale, undefined, 'the scale stash is gone');
+  assert.equal(a.data.gyrePrevDespawnAt, undefined, 'the deadline stash is gone');
+  assert.ok(!t.sys._rt.ballIds.includes(a.id), 'A is spliced from the watch');
   t.cleanup();
 });
 
@@ -2397,6 +2452,29 @@ test('a dying capacitor warns once per hold — fuseLow latches under 3 s of bur
   }
   assert.equal(t.events.filter((e) => e.name === 'gyre:fuseLow').length, before,
     'latched — no thrum-per-tick buzz while the tank dies');
+  t.cleanup();
+});
+
+test('a fuse-low warn spent in BEAM re-arms for the hold it was meant for', async () => {
+  const t = await bootPhysics();
+  // 60 wu shy of the maw: inside the basin pull but outside snagRadius — the beam
+  // spends real search ticks dragging it in instead of snagging on the same tick.
+  rock(t.sim, T.mawDist - 45, 0, 30, 6);
+  // Opens the beam (>= capActivateMin 10) with ~2.7 s of burn — already under the
+  // warn floor, so the warn fires during the SEARCH, not the hold it's for.
+  t.player.cap = 18;
+  hold(t);
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'beaming');
+  const warnInBeam = t.events.filter((e) => e.name === 'gyre:fuseLow').length;
+  assert.ok(warnInBeam > 0, 'the warn covers both phases — it fired while searching');
+  for (let i = 0; i < 120 && t.sys._rt.phase !== 'holding'; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(t.sys._rt.phase, 'holding');
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.ok(t.events.filter((e) => e.name === 'gyre:fuseLow').length > warnInBeam,
+    'the warn re-fires for the hold — the latch is per hold, not per beam');
   t.cleanup();
 });
 

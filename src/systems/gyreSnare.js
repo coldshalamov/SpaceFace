@@ -379,7 +379,9 @@ export const gyreSnare = {
     // must restore ABSENT (and still consume the stash key) — otherwise every freed
     // core that had no authored deadline carries a dead residue key forever.
     if ('gyrePrevDespawnAt' in e.data) {
-      if (e.data.gyrePrevDespawnAt === undefined) {
+      // '== null' not '=== undefined': a stash that round-tripped a real save
+      // serializes Infinity/NaN/undefined as null — still "no authored deadline".
+      if (e.data.gyrePrevDespawnAt == null) {
         if (!futureOnly) delete e.data.despawnAt; // absent authored → restore absent
         // futureOnly: a foreign owner's own deadline (if any) wins — leave it.
         delete e.data.gyrePrevDespawnAt;
@@ -420,7 +422,10 @@ export const gyreSnare = {
         }
         delete e.data.gyrePrevTtl;
       } else {
-        if (e.data.gyrePrevTtl === undefined) delete e.ttl;
+        // '== null' too: a serialized null stash (authored ttl was Infinity)
+        // must restore ABSENT — writing e.ttl = null would decrement a corpse
+        // deadline into the body and kill it on the next lifetime tick.
+        if (e.data.gyrePrevTtl == null) delete e.ttl;
         else e.ttl = e.data.gyrePrevTtl;
         delete e.data.gyrePrevTtl;
       }
@@ -502,10 +507,11 @@ export const gyreSnare = {
     ents.forEach((e) => {
       if (e && e.data && e.data.gyreCore) {
         delete e.data.gyreCore;
-        // The stash only restores within a live drop — a serialized body's deadlines
-        // are relative to the old timeline, so loaded residue just drops them.
-        delete e.data.gyrePrevDespawnAt;
-        delete e.data.gyrePrevTtl;
+        // simTime survives save:load — the stashed authored deadlines are still on
+        // the SAME timeline, so a mid-hold-saved timed body resumes its authored
+        // life on continue instead of becoming immortal debris. (Both channels
+        // round-trip: an absent authored deadline restores absent.)
+        this._restoreLifetime(e);
         if (mark) mark(e);
       }
       // A serialized mid-flight ball keeps gyreLaunched + its own deadline — still a
@@ -1597,6 +1603,9 @@ export const gyreSnare = {
               this._disarmBall(e);
               delete e.data.gyrePrevDespawnAt;
               delete e.data.gyrePrevTtl;
+              // Credit rides only while our stamped deadline still owns the body —
+              // an adopter that stripped despawnAt WITH the mark takes the kills.
+              if (e.data.despawnAt == null) clearImpulseProvenance(e);
             }
             // Corpse or live, the shadow ledger is dead — shed BOTH marks so a dead
             // corpse can't re-stamp credit post-load or resurrect as a pull-immune ball.
