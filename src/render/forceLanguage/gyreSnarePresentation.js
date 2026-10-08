@@ -844,7 +844,13 @@ export class GyreSnarePresentation {
       // Signed: an external torque that flips the core's tumble should flip the
       // rubble overlay's orbit too, not leave it revolving against its own spin.
       spinRate = Math.min(3, 0.35 + Math.abs(w) * 0.85) * (w < 0 ? -1 : 1);
-    } else if (mirror.launchedId != null && mirror.ballPos) { cx = mirror.ballPos.x; cz = mirror.ballPos.z; spinRate = 2.6; }
+    } else if (mirror.launchedId != null && mirror.ballPos) {
+      cx = mirror.ballPos.x; cz = mirror.ballPos.z;
+      // The tumble tracks the flight — a ricochet-stalled ball barely spins; a
+      // clean bowl tumbles at full rate (2.6 at authored launch speed).
+      const bs = Math.hypot(finite(mirror.ballVx), finite(mirror.ballVz));
+      spinRate = 2.6 * Math.max(0.15, Math.min(1, bs / (GYRE_SNARE.launchSpeed || 520)));
+    }
 
     // The flying ball's grave is tracked off ballPos only — a newly held core must
     // never poison where the OLD ball died (previously cx could be the held core).
@@ -972,11 +978,21 @@ export class GyreSnarePresentation {
         const _balls = Array.isArray(mirror.balls) ? mirror.balls : [];
         let _t1 = null; let _t1id = null;
         if (mirror.launchedId != null && mirror.ballPos) {
-          const dir = mirror.launchDir;
-          const dl = Math.hypot(finite(dir && dir.x, 1), finite(dir && dir.z, 0)) || 1;
+          // Steer by the ball's LIVE velocity like the secondary ribbons do — a
+          // ricocheted primary must streak along its new heading, not the frozen
+          // launchDir it left on. At rest (or a pre-publish tick) fall back to
+          // launchDir rather than the +X degenerate arrow.
+          const vx = finite(mirror.ballVx), vz = finite(mirror.ballVz);
+          const vl = Math.hypot(vx, vz);
+          let dx, dz;
+          if (vl > 1e-3) { dx = vx / vl; dz = vz / vl; }
+          else {
+            const dir = mirror.launchDir;
+            const dl = Math.hypot(finite(dir && dir.x, 1), finite(dir && dir.z, 0)) || 1;
+            dx = finite(dir && dir.x, 1) / dl; dz = finite(dir && dir.z, 0) / dl;
+          }
           _t1 = {
-            x: mirror.ballPos.x, z: mirror.ballPos.z,
-            dx: finite(dir && dir.x, 1) / dl, dz: finite(dir && dir.z, 0) / dl,
+            x: mirror.ballPos.x, z: mirror.ballPos.z, dx, dz,
             r: finite(mirror.ballClumpRadius, this._clumpRadius),
             ttl01: mirror.ballTtl01, mass: mirror.ballMass,
             alpha: 0.3, wind: finite(mirror.launchWindup01),
@@ -1047,7 +1063,7 @@ export class GyreSnarePresentation {
       for (let i = have; i < want; i++) this._addLump(members[i], i);
       // If the sim restarted the ledger (new core), rebuild.
       if (want < have) { this._clearLumps(); for (let i = 0; i < want; i++) this._addLump(members[i], i); }
-      // Grow-in: a fresh lump swells 0.2→1× over ~150 ms — katamari stick lands visibly.
+      // Grow-in: a fresh lump swells 0.45→1× over ~150 ms — katamari stick lands visibly.
       for (const l of this._lumps) {
         if (!l.used) continue;
         const g = Math.min(1, Math.max(0, (this.time - l.spawnT) / 0.15));

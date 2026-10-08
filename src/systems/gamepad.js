@@ -841,8 +841,22 @@ export function createGamepad(ctx) {
     bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
     bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
     bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
-    bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
-    bus.on('gyre:windup', () => startPulse(HAPTIC_VERB_PULSES['gyre:windup'], 'gyre:windup'));
+    bus.on('gyre:snagged', (payload) => {
+      // The grip beat grades by cored mass like the shake and voice do — a 6 t
+      // pebble snaps light, a 200 t wreck lands heavy. /200 matches the snag
+      // shake's realistic-mass band (2400 is for katamaris, not cores).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
+      const base = HAPTIC_VERB_PULSES['gyre:snagged'];
+      startPulse({ strong: base.strong + 0.2 * t, weak: base.weak + 0.15 * t, ms: base.ms + 60 * t }, 'gyre:snagged');
+    });
+    bus.on('gyre:windup', (payload) => {
+      // The coil draw grades by payload like the launch it precedes (ballMass /
+      // maxClumpMass is the launch cue's own frac) — a capped moon's draw rumbles
+      // heavier, matching the bigger pull-back the sim applies.
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
+      const base = HAPTIC_VERB_PULSES['gyre:windup'];
+      startPulse({ strong: base.strong + 0.3 * t, weak: base.weak + 0.15 * t, ms: base.ms + 50 * t }, 'gyre:windup');
+    });
     bus.on('gyre:thrown', () => startPulse(HAPTIC_VERB_PULSES['gyre:thrown'], 'gyre:thrown'));
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
     bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));

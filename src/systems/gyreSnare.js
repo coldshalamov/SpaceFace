@@ -1401,6 +1401,10 @@ export const gyreSnare = {
         rt.ballAbsorbs = 0;
       } else {
         pub.ballPos.x = ball.pos.x; pub.ballPos.z = ball.pos.z;
+        // Live velocity too — the primary ribbon steers by it like the secondaries
+        // do: after a ricochet the streak must point where the ball NOW flies, not
+        // along the frozen launchDir it left on.
+        pub.ballVx = finite(ball.vel && ball.vel.x); pub.ballVz = finite(ball.vel && ball.vel.z);
         pub.ballClumpRadius = rt.ballClumpRadius;
         pub.ballTtl01 = ball.data.despawnAt != null && Number.isFinite(state.simTime)
           ? Math.max(0, Math.min(1, (ball.data.despawnAt - state.simTime) / D.ballTtlS)) : 1;
@@ -1444,7 +1448,7 @@ export const gyreSnare = {
       coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
-      members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballMass: 0, ballTtl01: 1,
+      members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballVx: 0, ballVz: 0, ballMass: 0, ballTtl01: 1,
       ballTtlS: 0,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
@@ -1700,17 +1704,21 @@ export const gyreSnare = {
         if (this.bus && rt.launchWindup === D.launchWindupTicks - 1) {
           // First coil tick: the pad rides a low rumble through the draw — the
           // slingshot pull-back is the feel-rich part, and silence undersold it.
-          this.bus.emit(GYRE_EVENTS.windup, { id: core.id, tick: state.tick });
+          this.bus.emit(GYRE_EVENTS.windup, { id: core.id, mass: rt.ballMass, tick: state.tick });
           // A whisper of camera anticipation on the draw — the pull-back is felt,
           // not only seen/heard. amount 0.01 is deliberately sub-perceptual: it
           // leans the frame into the coil without moving the reticle.
           this.bus.emit('camera:shake', { amount: 0.01 });
           // The draw gets a thin rising shimmer too — felt on the pad and seen in
           // the maw, it was the one beat of the throw with no voice at all.
+          // The draw grades by payload like the launch it precedes — a capped
+          // moon's coil reads heavier in the ear, not just in the pull-back.
+          const windupFrac = Math.min(1, rt.ballMass / D.maxClumpMass);
           this.bus.emit('audio:cue', {
             id: 'gyre_snare_windup',
             position: { x: core.pos.x, z: core.pos.z },
-            gain: 0.5,
+            gain: 0.4 + 0.3 * windupFrac,
+            rate: 1.05 - 0.3 * windupFrac,
           });
         }
         // The coil draw-back is absolute 13 wu — ~20% of a capped 60 wu katamari's
