@@ -12,6 +12,7 @@ import {
   PRODUCTION_UPDATE_ORDER,
   getAuthoritativeInitOrder,
   getAuthoritativeUpdateOrder,
+  getSystemClock,
   isNodeSafeSystemId,
   validateSystemClockDeclarations,
 } from '../src/runtime/authoritativeSystemManifest.js';
@@ -96,8 +97,12 @@ test('production init + update order lengths match the live browser baseline', (
   // fieldHud) — one system each in both orders.
   // Latch Nine's physical harbor service and Scissorwake's first-encounter requester.
   // Two bounded Ceres concepts and the event-only evidence prompt.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 183);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 141);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 198);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 149);
+  assert.equal(PRODUCTION_INIT_ORDER.includes('stuckTowPrompt'), true);
+  assert.equal(PRODUCTION_UPDATE_ORDER.includes('stuckTowPrompt'), false);
+  assert.equal(getSystemClock('moralTrap'), 'calendar');
+  assert.equal(getSystemClock('moralTrapSystem'), 'calendar');
   assert.ok(PRODUCTION_INIT_ORDER.includes('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('bracket') < PRODUCTION_UPDATE_ORDER.indexOf('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ravel') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));

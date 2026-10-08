@@ -7,8 +7,9 @@
 // The contract intentionally exposes no renderer, Three.js object, DOM, wall clock, or animation
 // frame. A caller supplies an ordered list of gameplay systems; the host forks each module singleton
 // into an isolated runtime instance, initializes core first, and advances exactly one authoritative
-// step per call. The existing fixed-timestep accumulator remains in loop.js; this module is the pure
-// step target used by browsers, tests, audits, replays, workers, and offscreen sector simulation.
+// step per call. The fixed-timestep accumulator lives in simulationRunner.js (loop.js is the
+// facade). This module is the pure step target used by browsers, tests, audits, replays, workers,
+// and offscreen sector simulation.
 
 import { createBus } from './eventBus.js';
 import { createGameState } from './gameState.js';
