@@ -347,19 +347,28 @@ export const gyreSnare = {
     // Stashed at snag: a freed (non-launched) core resumes its authored deadlines
     // instead of living forever as stasis residue.
     if (!e || !e.data) return;
-    if (e.data.gyrePrevDespawnAt !== undefined) {
-      // futureOnly (hand-back): the body's CURRENT owner keeps its deadline. Restore
-      // the authored stash only when nothing else set one AND it's still in the
-      // future — resurrecting a stale stash assassinates an adopted body on the next
-      // lifetime sweep, and clobbering a live launch deadline would cut a still-
-      // flying overflow ball's flight short.
-      const now = this.state && this.state.simTime;
-      if (futureOnly && (e.data.despawnAt != null
-        || (Number.isFinite(now) && e.data.gyrePrevDespawnAt <= now))) {
+    // 'in' not '!== undefined': an absent authored despawnAt stashes undefined and
+    // must restore ABSENT (and still consume the stash key) — otherwise every freed
+    // core that had no authored deadline carries a dead residue key forever.
+    if ('gyrePrevDespawnAt' in e.data) {
+      if (e.data.gyrePrevDespawnAt === undefined) {
+        if (!futureOnly) delete e.data.despawnAt; // absent authored → restore absent
+        // futureOnly: a foreign owner's own deadline (if any) wins — leave it.
         delete e.data.gyrePrevDespawnAt;
       } else {
-        e.data.despawnAt = e.data.gyrePrevDespawnAt;
-        delete e.data.gyrePrevDespawnAt;
+        // futureOnly (hand-back): the body's CURRENT owner keeps its deadline. Restore
+        // the authored stash only when nothing else set one AND it's still in the
+        // future — resurrecting a stale stash assassinates an adopted body on the next
+        // lifetime sweep, and clobbering a live launch deadline would cut a still-
+        // flying overflow ball's flight short.
+        const now = this.state && this.state.simTime;
+        if (futureOnly && (e.data.despawnAt != null
+          || (Number.isFinite(now) && e.data.gyrePrevDespawnAt <= now))) {
+          delete e.data.gyrePrevDespawnAt;
+        } else {
+          e.data.despawnAt = e.data.gyrePrevDespawnAt;
+          delete e.data.gyrePrevDespawnAt;
+        }
       }
     }
     // 'in' not '!== undefined': an absent authored ttl stashes undefined and must
@@ -1445,8 +1454,10 @@ export const gyreSnare = {
             this._disarmBall(e);
           } else if (e && e.data) {
             // Corpse walking the splice lane: the shadow can't ride a body that
-            // can't act — shed it so a dead mark can't re-stamp credit post-load.
+            // can't act — shed BOTH marks so a dead corpse can't re-stamp credit
+            // post-load or resurrect as a pull-immune ball.
             delete e.data.gyreLaunchMeta;
+            delete e.data.gyreLaunched;
           }
           if (rt.launchedId === rt.ballIds[i]) rt.launchedId = null;
           rt.ballIds.splice(i, 1);
@@ -1851,7 +1862,12 @@ export const gyreSnare = {
     const drainMult = rt.phase === PHASE.HOLD
       ? D.capHoldMult * (1 + Math.min(rt.clumpMass / D.capMassDrainRef, D.capMassDrainMax))
       : 1;
-    const drain = D.capDrainPerS * drainMult * dt;
+    // The fuse freezes while flight input is neutralized (a screen open): the verb
+    // stays held through the overlay (massline parity) but the countdown is behind
+    // it — draining blind could force a _launch the player literally cannot see.
+    const modalHeld = !!(state.ui && state.ui.screenStack && state.ui.screenStack.length)
+      || !!(state.input && state.input.blocked);
+    const drain = modalHeld ? 0 : D.capDrainPerS * drainMult * dt;
     this._spendCap(player, drain);
     const dry = this._cap(player) <= 0;
 

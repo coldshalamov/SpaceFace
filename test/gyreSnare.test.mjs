@@ -487,6 +487,25 @@ test('capacitor drains at the authored rate — hold scales with clump mass', as
   t.cleanup();
 });
 
+test('the fuse freezes while a screen holds the flight input neutral', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  // Modal-open parity with input.js shouldNeutralizeFlightInput: the verb stays
+  // held through the overlay but the fuse can't burn blind toward an invisible
+  // forced bowl — cap untouched while a screen is up, draining resumes on close.
+  t.state.ui = { screenStack: ['map'] };
+  const held = t.player.cap;
+  for (let i = 0; i < 60; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.player.cap, held, 'capacitor frozen while the modal holds the screen');
+  t.state.ui.screenStack.length = 0;
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.ok(t.player.cap < held, 'fuse resumes the moment the screen closes');
+  t.cleanup();
+});
+
 // ── snag eligibility ──────────────────────────────────────────────────────────────
 test('a pickup or persistent body never becomes the core', async () => {
   const t = await bootPhysics();
