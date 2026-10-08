@@ -36,6 +36,8 @@ import { redKite } from '../systems/redKite.js';
 import { sableVenn } from '../systems/sableVenn.js';
 import { ilexArk } from '../systems/ilexArk.js';
 import { kilnback } from '../systems/kilnback.js';
+import { mothlight } from '../systems/mothlight.js';
+import { palletJack } from '../systems/palletJack.js';
 import { towlineTable } from '../systems/towlineTable.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { scanReveal } from '../systems/scanReveal.js';
@@ -276,6 +278,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['sableVenn', sableVenn],
     ['ilexArk', ilexArk],
     ['kilnback', kilnback],
+    ['mothlight', mothlight],
+    ['palletJack', palletJack],
     ['towlineTable', towlineTable],
     ['borrowedVoice', borrowedVoice],
     ['emergentPrimitives', emergentPrimitives],

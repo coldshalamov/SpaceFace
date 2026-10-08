@@ -9,6 +9,8 @@ import { KILNBACK_RADIUS } from '../data/kilnbackBody.js';
 import { isScissorwakeEntity, SCISSORWAKE_RADIUS } from '../data/scissorwakeBody.js';
 import { isTowlineCrewEntity, isTowlineCleanupEntity, towlineCrewRadius } from '../data/towlineTableBodies.js';
 import { isBorrowedVoiceRing, isBorrowedVoiceRecorder } from '../data/borrowedVoiceBody.js';
+import { isPalletJackEntity, PALLET_JACK_RADIUS } from '../data/palletJackBody.js';
+import { isMothlightTender, isMothlightLamp, MOTHLIGHT_RADIUS } from '../data/mothlightBody.js';
 import { recordCeresWorkfleetAuthoredSource, recordLatchAuthoredSource } from '../core/machineryPresentation.js';
 import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
 import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
@@ -197,6 +199,7 @@ function authoredPayloadIsRiggedPod(entity) {
   return entity?.data?.payloadType === 'jettisoned_cargo';
 }
 export function authoredPayloadFileForEntity(entity) {
+  if (isMothlightLamp(entity)) return 'wholeships/mothlight_lamp.glb';
   if (isBorrowedVoiceRing(entity)) return 'wholeships/borrowed_voice_ring.glb';
   if (isBorrowedVoiceRecorder(entity)) return `wholeships/borrowed_voice_${entity.data.borrowedVoiceRecorderId}.glb`;
   if (isKilnbackCask(entity)) return 'wholeships/kilnback_cask.glb';
@@ -213,6 +216,7 @@ export function authoredPayloadSlotForEntity(entity) {
 // Draw-time fit: the spindle is authored 1:1 in WU (scale 1 always); the capsule keeps
 // the longest-axis fit. Exported for the PQ-195.00 render-selector contract test.
 export function authoredPayloadDrawScale(entity, targetRadius, authoredEnvelope) {
+  if (isMothlightLamp(entity)) return 1;
   if (isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity)) return 1;
   if (isKilnbackCask(entity) || isTowlineCleanupEntity(entity)) return 1;
   if (isIlexVaultEntity(entity)) return 1;
@@ -1691,7 +1695,7 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
   }),
 });
 const WHOLE_SHIP_LOD_FAMILY_BY_FILE = Object.freeze(Object.fromEntries([
-  ...['kilnback', 'scissorwake', 'towline_mara', 'towline_odo', 'towline_kit'].map((family) => [
+  ...['kilnback', 'scissorwake', 'towline_mara', 'towline_odo', 'towline_kit', 'pallet_jack', 'mothlight'].map((family) => [
     `wholeships/${family}.glb`, Object.freeze({lod0:`wholeships/${family}.glb`,lod1:`wholeships/${family}_lod1.glb`,lod2:`wholeships/${family}_lod2.glb`}),
   ]),
   ['wholeships/ilex_ark.glb', Object.freeze({lod0:'wholeships/ilex_ark.glb',lod1:'wholeships/ilex_ark_lod1.glb',lod2:'wholeships/ilex_ark_lod2.glb'})],
@@ -2096,6 +2100,8 @@ function placeStampEnvelopeBounds(entity, bounds, boundary) {
 export function wholeShipHullPlacement(record) {
   const towlineId = /^SF_SHIP_TOWLINE_(MARA|ODO|KIT)/.exec(String(record.assetId))?.[1]?.toLowerCase();
   const scale = towlineId ? 1 / towlineCrewRadius(towlineId)
+    : String(record.assetId).startsWith('SF_SHIP_PALLET_JACK') ? 1 / PALLET_JACK_RADIUS
+    : String(record.assetId).startsWith('SF_SHIP_MOTHLIGHT_TENDER') ? 1 / MOTHLIGHT_RADIUS
     : String(record.assetId).startsWith('SF_SHIP_KILNBACK') ? 1 / KILNBACK_RADIUS
     : String(record.assetId).startsWith('SF_SHIP_SCISSORWAKE') ? 1 / SCISSORWAKE_RADIUS
     : String(record.assetId).startsWith('SF_SHIP_ILEX_ARK') ? 1 / ILEX_ARK_RADIUS
@@ -2107,6 +2113,8 @@ export function wholeShipHullPlacement(record) {
 
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
+  if (isPalletJackEntity(entity)) return liveWholeShipSelection('wholeships/pallet_jack.glb','SF_SHIP_PALLET_JACK','pallet_jack');
+  if (isMothlightTender(entity)) return liveWholeShipSelection('wholeships/mothlight.glb','SF_SHIP_MOTHLIGHT_TENDER','mothlight');
   if (isKilnbackEntity(entity)) return liveWholeShipSelection('wholeships/kilnback.glb','SF_SHIP_KILNBACK','kilnback');
   if (isScissorwakeEntity(entity)) return liveWholeShipSelection('wholeships/scissorwake.glb','SF_SHIP_SCISSORWAKE','scissorwake');
   if (isTowlineCrewEntity(entity)) {
@@ -3574,11 +3582,12 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
   // same per-frame/per-event driver as ships, so mining events reach their bound pivots.
   if (isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity))
     root.userData.borrowedVoiceAuthoredSource = { assetId: record.assetId, file: record.url };
+  if (isMothlightLamp(entity)) root.userData.mothlightAuthoredSource = {assetId:record.assetId,file:record.url};
   attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
 
   const center = Array.isArray(record.bounds?.center) ? record.bounds.center : [0, 0, 0];
   const sourceOrigin = isIlexVaultEntity(entity) || isKilnbackCask(entity) || isTowlineCleanupEntity(entity)
-    || isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity);
+    || isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity) || isMothlightLamp(entity);
   root.position.set(
     sourceOrigin ? 0 : -(Number(center[0]) || 0) * scale,
     sourceOrigin ? 0 : -(Number(center[1]) || 0) * scale,
@@ -10520,6 +10529,8 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   if (hullRecord && isKilnbackEntity(entity)) root.userData.kilnbackAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   if (hullRecord && isScissorwakeEntity(entity)) root.userData.scissorwakeAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   if (hullRecord && isTowlineCrewEntity(entity)) root.userData.towlineAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
+  if (hullRecord && isPalletJackEntity(entity)) root.userData.palletJackAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
+  if (hullRecord && isMothlightTender(entity)) root.userData.mothlightAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   yield;
   let hullPartRoot = null;
   if (hullRecord) {

@@ -6,6 +6,10 @@ import { KillCause, KillSurface } from '../combat/killCausality.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { kilnbackPhysicalBody } from '../data/kilnbackBody.js';
 import { kilnbackFlightModel } from '../data/kilnback.js';
+import { mothlightPhysicalBody } from '../data/mothlightBody.js';
+import { mothlightFlightModel } from '../data/mothlight.js';
+import { palletJackPhysicalBody } from '../data/palletJackBody.js';
+import { palletJackFlightModel } from '../data/palletJack.js';
 import { scissorwakePhysicalBody } from '../data/scissorwakeBody.js';
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
@@ -414,11 +418,16 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     }
   }
   spec.factionId = factionId;
-  if (def.id === 'kilnback' || def.id === 'scissorwake') {
-    const body = def.id === 'kilnback' ? kilnbackPhysicalBody() : scissorwakePhysicalBody();
+  if (def.id === 'kilnback' || def.id === 'scissorwake' || def.id === 'mothlight') {
+    const body = def.id === 'kilnback' ? kilnbackPhysicalBody() : def.id === 'mothlight' ? mothlightPhysicalBody() : scissorwakePhysicalBody();
     spec.physicsBody = body; spec.mass = body.mass; spec.radius = body.radius;
     spec.visualRadius = body.radius;
-    spec.data.authoredAssetId = def.id === 'kilnback' ? 'SF_SHIP_KILNBACK' : 'SF_SHIP_SCISSORWAKE';
+    spec.data.authoredAssetId = def.id === 'kilnback' ? 'SF_SHIP_KILNBACK' : def.id === 'mothlight' ? 'SF_SHIP_MOTHLIGHT_TENDER' : 'SF_SHIP_SCISSORWAKE';
+    if (def.id === 'mothlight') {
+      spec.data.persistenceOwner = 'mothlight';
+      spec.flightModel = mothlightFlightModel(body, spec.flightModel);
+      if (spec.data.derived) spec.data.derived.flightModel = mothlightFlightModel(body, spec.data.derived.flightModel);
+    }
     if (def.id === 'kilnback') spec.data.persistenceOwner = 'kilnback';
     if (def.id === 'kilnback') {
       spec.flightModel = kilnbackFlightModel(body, spec.flightModel);
@@ -427,6 +436,16 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     for (const model of [spec.flightModel, spec.data.derived?.flightModel]) {
       if (model) { model.mass = body.mass; model.inertia = body.inertiaY; }
     }
+  }
+  if (def.id === 'pallet_jack') {
+    const body = palletJackPhysicalBody();
+    spec.physicsBody = body; spec.mass = body.mass; spec.radius = body.radius;
+    spec.visualRadius = body.radius;
+    spec.data.authoredAssetId = 'SF_SHIP_PALLET_JACK';
+    spec.data.persistenceOwner = 'palletJack';
+    spec.data.combatProfileId = 'combat_profile_pallet_jack';
+    spec.flightModel = palletJackFlightModel(body, spec.flightModel);
+    if (spec.data.derived) spec.data.derived.flightModel = palletJackFlightModel(body, spec.data.derived.flightModel);
   }
   return spec;
 }

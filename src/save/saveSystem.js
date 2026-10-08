@@ -656,6 +656,8 @@ export const save = {
       ['sableVenn', () => this._callSerialize('sableVenn')],
       ['ilexArk', () => this._callSerialize('ilexArk')],
       ['kilnback', () => this._callSerialize('kilnback')],
+      ['mothlight', () => this._callSerialize('mothlight')],
+      ['palletJack', () => this._callSerialize('palletJack')],
       ['towlineTable', () => this._callSerialize('towlineTable')],
       ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
@@ -817,6 +819,10 @@ export const save = {
     yield 'serialize:ilexArk';
     data.kilnback = this._callSerialize('kilnback');
     yield 'serialize:kilnback';
+    data.mothlight = this._callSerialize('mothlight');
+    yield 'serialize:mothlight';
+    data.palletJack = this._callSerialize('palletJack');
+    yield 'serialize:palletJack';
     data.towlineTable = this._callSerialize('towlineTable');
     yield 'serialize:towlineTable';
     data.borrowedVoice = this._callSerialize('borrowedVoice');
@@ -1061,7 +1067,12 @@ export const save = {
   /** Restore the bags. Must run AFTER the transient state.ui reset (docked / dockedStationId /
    *  trackedMissionId are nulled on load), or that pass would run against a half-built ui object. */
   _restoreScreenMemory(raw) {
-    createScreenMemory(this.state).deserialize(raw);
+    // SFQ-B228: not a registry system, so the wrapper cannot fetch it — annotate inline.
+    try {
+      createScreenMemory(this.state).deserialize(raw);
+    } catch (err) {
+      throw this._annotateRegion(err, 'screenMemory');
+    }
   },
 
   /** PQ-183.01 watch list. normalizeWatchlist re-screens every field, so a hand-edited save
@@ -4821,6 +4832,8 @@ export const save = {
       this._callDeserialize('sableVenn', data.sableVenn);
       this._callDeserialize('ilexArk', data.ilexArk);
       this._callDeserialize('kilnback', data.kilnback);
+      this._callDeserialize('mothlight', data.mothlight);
+      this._callDeserialize('palletJack', data.palletJack);
       this._callDeserialize('towlineTable', data.towlineTable);
       this._callDeserialize('borrowedVoice', data.borrowedVoice);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
@@ -4954,6 +4967,8 @@ export const save = {
       this.registry.get('redKite')?.afterContinue?.();
       this.registry.get('ilexArk')?.afterContinue?.();
       this.registry.get('kilnback')?.afterContinue?.();
+      this.registry.get('mothlight')?.afterContinue?.();
+      this.registry.get('palletJack')?.afterContinue?.();
       this.registry.get('towlineTable')?.afterContinue?.();
       this.registry.get('borrowedVoice')?.afterContinue?.();
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
@@ -5113,18 +5128,26 @@ export const save = {
       yield 'entropy-restored';
       {
         const fieldsSys = this.registry?.get?.('fields');
-        if (fieldsSys && typeof fieldsSys.deserializeChunked === 'function') {
-          yield* fieldsSys.deserializeChunked(data.fields, entityIdRemap);
-        } else {
-          fieldsSys?.deserialize?.(data.fields, entityIdRemap);
+        try {
+          if (fieldsSys && typeof fieldsSys.deserializeChunked === 'function') {
+            yield* fieldsSys.deserializeChunked(data.fields, entityIdRemap);
+          } else {
+            fieldsSys?.deserialize?.(data.fields, entityIdRemap);
+          }
+        } catch (err) {
+          throw this._annotateRegion(err, 'fields');
         }
       }
       yield 'fields-restored';
       const stuntOwner = this.registry?.get?.('stuntGrammar');
       const restoreStunts = () => {
-        stuntOwner?.deserialize?.(data.stunts, entityIdRemap, {
-          pendingBodyRefs: [...(this._ceresEntityReferenceRestore?.pending?.values() || [])].map(entry => entry.alias),
-        });
+        try {
+          stuntOwner?.deserialize?.(data.stunts, entityIdRemap, {
+            pendingBodyRefs: [...(this._ceresEntityReferenceRestore?.pending?.values() || [])].map(entry => entry.alias),
+          });
+        } catch (err) {
+          throw this._annotateRegion(err, 'stuntGrammar');
+        }
         if (this._ceresEntityReferenceRestore) this._ceresEntityReferenceRestore.observersReady = true;
       };
       // The site's normal save:loaded handler creates its semantic bodies. Wait for that
@@ -5376,7 +5399,8 @@ export const save = {
     const payload = normalizeMissionSavePayload(d);
     const sys = this.registry && this.registry.get && this.registry.get('missions');
     if (sys && typeof sys.deserialize === 'function') {
-      sys.deserialize(payload);
+      // SFQ-B228: through the wrapper so a throw names the region on the receipt.
+      this._callDeserialize('missions', payload);
       return;
     }
     if (payload.boards || payload.active || payload.completedLog || payload.receipts) {
@@ -5397,7 +5421,8 @@ export const save = {
     const payload = normalizeMissionSavePayload(d);
     const sys = this.registry && this.registry.get && this.registry.get('missions');
     if (sys && typeof sys.deserializeChunked === 'function') {
-      yield* sys.deserializeChunked(payload);
+      // SFQ-B228: through the wrapper so a throw names the region on the receipt.
+      yield* this._callDeserializeChunked('missions', payload);
       return;
     }
     this._restoreMissions(d);
@@ -5406,7 +5431,8 @@ export const save = {
   _restoreScenario(d) {
     const sys = this.registry && this.registry.get && this.registry.get('scenarioRuntime');
     if (sys && typeof sys.deserialize === 'function') {
-      sys.deserialize(d);
+      // SFQ-B228: through the wrapper so a throw names the region on the receipt.
+      this._callDeserialize('scenarioRuntime', d);
       return;
     }
     if (d && typeof d === 'object') this.state.scenario = clonePlain(d);
@@ -5416,7 +5442,8 @@ export const save = {
     if (!d) return;
     const sys = this.registry && this.registry.get && this.registry.get('automation');
     if (sys && typeof sys.deserialize === 'function') {
-      sys.deserialize(d);
+      // SFQ-B228: through the wrapper so a throw names the region on the receipt.
+      this._callDeserialize('automation', d);
       return;
     }
     this.state.automation = d;
@@ -5426,7 +5453,8 @@ export const save = {
     const payload = d || { queues: {} };
     const sys = this.registry && this.registry.get && this.registry.get('crafting');
     if (sys && typeof sys.deserialize === 'function') {
-      sys.deserialize(payload);
+      // SFQ-B228: through the wrapper so a throw names the region on the receipt.
+      this._callDeserialize('crafting', payload);
       return;
     }
     this.state.crafting = clonePlain(payload);
@@ -5700,7 +5728,7 @@ export const save = {
   },
 
   _restoreNav(d) {
-    const restored = sanitizeNavState(d);
+    const restored = sanitizeNavState(d, { forRestore: true });
     this.state.nav = restored;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('nav:waypoint', restored.waypoint || null);
@@ -5712,6 +5740,16 @@ export const save = {
   // The load still fails closed exactly as before — the annotation only upgrades the
   // recovery receipt's cause from a raw internal string to 'damaged <region> data'
   // (uiRoot saveErrorText). Never swallowed here.
+  //
+  // Review follow-up: regions whose deserialize takes extra arguments (fields/stuntGrammar
+  // ride entityIdRemap) or that are not registry systems (screenMemory) cannot ride the
+  // wrappers below; they annotate through this helper instead.
+  _annotateRegion(err, name) {
+    const error = (err instanceof Error) ? err : new Error(String(err));
+    error.region = name;
+    return error;
+  },
+
   _callDeserialize(name, data) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserialize === 'function') {
@@ -6826,14 +6864,14 @@ function mergePlain(base, patch) {
   return out;
 }
 
-function sanitizeNavState(nav) {
+function sanitizeNavState(nav, opts) {
   const source = nav && typeof nav === 'object' && !Array.isArray(nav) ? nav : {};
   const route = sanitizeNavRoute(source.route);
   const out = {
     route,
     autoTravel: !!route && source.autoTravel === true,
-    waypoint: sanitizeNavWaypoint(source.waypoint),
-    autopilot: sanitizeNavAutopilot(source.autopilot),
+    waypoint: sanitizeNavWaypoint(source.waypoint, opts),
+    autopilot: sanitizeNavAutopilot(source.autopilot, opts),
   };
   // The route follower's executor (src/systems/routeFollower.js) rides along with the route it is
   // following, so a cross-sector trip resumes at the leg it reached instead of orphaning. The key is
@@ -6919,7 +6957,7 @@ function sanitizeNavLeg(leg) {
   return out;
 }
 
-function sanitizeNavWaypoint(waypoint) {
+function sanitizeNavWaypoint(waypoint, opts) {
   if (!waypoint || typeof waypoint !== 'object' || Array.isArray(waypoint)) return null;
   const out = {};
   for (const field of [
@@ -6934,6 +6972,15 @@ function sanitizeNavWaypoint(waypoint) {
   if (targetEntityId) out.targetEntityId = targetEntityId;
   const targetWorldRecordId = navString(waypoint.targetWorldRecordId);
   if (targetWorldRecordId) out.targetWorldRecordId = targetWorldRecordId;
+  // SF-244: the save carried the bound body's durable identity — re-materialize the runtime
+  // stable stamp so the restored course's readers resolve the same identity the armed course
+  // meant instead of failing closed to the recorded fix for the whole trip. Restore-only: the
+  // stamp is re-derived, never itself persisted into save data.
+  if (targetWorldRecordId && opts && opts.forRestore === true) {
+    out.stable = Object.freeze({
+      key: `record:${targetWorldRecordId}`, durable: true, entityId: null, stamp: null,
+    });
+  }
   if (Number.isFinite(waypoint.storyBeat)) out.storyBeat = waypoint.storyBeat;
   if (waypoint.onboarding === true) out.onboarding = true;
   const pos = sanitizeNavPos(waypoint.pos);
@@ -6941,7 +6988,7 @@ function sanitizeNavWaypoint(waypoint) {
   return Object.keys(out).length ? out : null;
 }
 
-function sanitizeNavAutopilot(autopilot) {
+function sanitizeNavAutopilot(autopilot, opts) {
   const source = autopilot && typeof autopilot === 'object' && !Array.isArray(autopilot) ? autopilot : {};
   const target = sanitizeNavPos(source.target);
   const out = {
@@ -6953,7 +7000,17 @@ function sanitizeNavAutopilot(autopilot) {
     arrivalRadius: Number.isFinite(source.arrivalRadius) ? Math.max(12, Math.min(500, source.arrivalRadius)) : 36,
   };
   const targetWorldRecordId = navString(source.targetWorldRecordId);
-  if (targetWorldRecordId) out.targetWorldRecordId = targetWorldRecordId;
+  if (targetWorldRecordId) {
+    out.targetWorldRecordId = targetWorldRecordId;
+    // Same durable-bind rehydration as the waypoint, restore-only: the burn re-proves its
+    // target through the stable model every tick, and the record key is the identity the save
+    // preserved — the stamp itself is re-derived, never persisted into save data.
+    if (opts && opts.forRestore === true) {
+      out.stable = Object.freeze({
+        key: `record:${targetWorldRecordId}`, durable: true, entityId: null, stamp: null,
+      });
+    }
+  }
   return out;
 }
 

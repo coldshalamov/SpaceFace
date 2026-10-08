@@ -15,6 +15,8 @@
 // armorFlat must stay well below starter shot damage — flat DR ≥ dmg zeroes residual damage
 // after the shield layer and made bruisers literally unkillable with the Hitch gun.
 import { KILNBACK_ENEMY } from './kilnback.js';
+import { MOTH_ENEMY } from './mothlight.js';
+import { PALLET_JACK_ENEMY } from './palletJack.js';
 
 export const ENEMY_TYPES = [
 
@@ -673,4 +675,6 @@ export const ENEMY_TYPES = [
     loot: { creditsRange: [80, 180], drops: [{ id: 'cmdty_electronics', chance: 0.45, qtyRange: [1, 2] }] },
   },
   KILNBACK_ENEMY,
+  MOTH_ENEMY,
+  PALLET_JACK_ENEMY,
 ];

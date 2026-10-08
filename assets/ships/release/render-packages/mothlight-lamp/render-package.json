@@ -1,0 +1,909 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.mothlight-lamp.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentNodeId": "sf.render.mothlight-lamp.node.sf-prop-mothlight-lamp-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.mothlight-lamp",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "4a23a2fde14f4ab7cd3512961576016de784926f6f7adab8ef26646101811695",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.4499289989471436,
+          0.8496696949005127,
+          0.8498364090919495
+        ],
+        "min": [
+          -1.4000176191329956,
+          -0.8496696949005127,
+          -0.8498509526252747
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "23f63c6de73990209269ee2c1e68d7963a344bd7a4a6a3b167ff04ea17067af1",
+      "id": "sf.render.mothlight-lamp.node.collision-mothlight-lamp-lamp.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_MOTHLIGHT_LAMP_LAMP",
+      "nodeId": "sf.render.mothlight-lamp.node.collision-mothlight-lamp-lamp",
+      "primitiveIndex": 0,
+      "vertexCount": 791
+    },
+    {
+      "bounds": {
+        "max": [
+          1.399999976158142,
+          0.3399273455142975,
+          0.3399273455142975
+        ],
+        "min": [
+          -1.399999976158142,
+          -0.3399273455142975,
+          -0.3399273455142975
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5754c965f609ed9992b9f46d7381efeeca4ea74bb8f497ab90dfc2ced8760410",
+      "id": "sf.render.mothlight-lamp.node.lod0-armor.primitive.0",
+      "indexCount": 1908,
+      "indexed": true,
+      "materialHash": "ca3a41149890ab634d0162cd2a37d780ab8f035add39f0f7a3e0b3544ca4d2cd",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.mothlight-lamp.node.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 576
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4500097036361694,
+          0.22932180762290955,
+          0.22932180762290955
+        ],
+        "min": [
+          1.4474903345108032,
+          -0.22932180762290955,
+          -0.22932180762290955
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e6ebe94263ba1b0a653f152e4d284ddf48eb9ef7fe37b9588cad701d90321d2b",
+      "id": "sf.render.mothlight-lamp.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 294,
+      "indexed": true,
+      "materialHash": "ef38f867df4e34b3df21d2277c85824f249888c20b893cc6078113c1685a428d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.mothlight-lamp.node.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6471701860427856,
+          0.8500000238418579,
+          0.8500000238418579
+        ],
+        "min": [
+          -0.6475318074226379,
+          -0.8500000238418579,
+          -0.8500000238418579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e4d172c000c9628d997588d97b07041e1b2686270951988b1739de66229131f5",
+      "id": "sf.render.mothlight-lamp.node.lod0-ceramic.primitive.0",
+      "indexCount": 3024,
+      "indexed": true,
+      "materialHash": "9a4a64f7374fccd62cf4f9d68951f3666b3ac8db485b7986cc5eb734158ee768",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Ceramic",
+      "nodeId": "sf.render.mothlight-lamp.node.lod0-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 862
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4474999904632568,
+          0.22999678552150726,
+          0.22999678552150726
+        ],
+        "min": [
+          -1.4049999713897705,
+          -0.22999678552150726,
+          -0.22999678552150726
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c631e953a2d886c748f210a52c435e047fdc704f156c228852ae2cd54832f801",
+      "id": "sf.render.mothlight-lamp.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 1410,
+      "indexed": true,
+      "materialHash": "42caff71f4b88e009dddfb97b1bcbe62225ef90062acc8c6857d7bebaf584177",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.mothlight-lamp.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 472
+    }
+  ],
+  "hlods": [],
+  "kind": "prop",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "42caff71f4b88e009dddfb97b1bcbe62225ef90062acc8c6857d7bebaf584177",
+      "id": "material:42caff71f4b88e009dddfb97",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9a4a64f7374fccd62cf4f9d68951f3666b3ac8db485b7986cc5eb734158ee768",
+      "id": "material:9a4a64f7374fccd62cf4f9d6",
+      "name": "Material_Ceramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ca3a41149890ab634d0162cd2a37d780ab8f035add39f0f7a3e0b3544ca4d2cd",
+      "id": "material:ca3a41149890ab634d0162cd",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ef38f867df4e34b3df21d2277c85824f249888c20b893cc6078113c1685a428d",
+      "id": "material:ef38f867df4e34b3df21d227",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.mothlight-lamp.node.collision-mothlight-lamp-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_MOTHLIGHT_LAMP_LAMP",
+      "nodeName": "COLLISION_MOTHLIGHT_LAMP_LAMP",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.mothlight-lamp.node.sf-prop-mothlight-lamp-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mothlight-lamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mothlight-lamp.node.lod0-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.mothlight-lamp.node.sf-prop-mothlight-lamp-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mothlight-lamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mothlight-lamp.node.lod0-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.mothlight-lamp.node.sf-prop-mothlight-lamp-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mothlight-lamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mothlight-lamp.node.lod0-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Ceramic",
+      "nodeName": "LOD0_Ceramic",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.mothlight-lamp.node.sf-prop-mothlight-lamp-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mothlight-lamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mothlight-lamp.node.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.mothlight-lamp.node.sf-prop-mothlight-lamp-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mothlight-lamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mothlight-lamp.node.sf-prop-mothlight-lamp-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PROP_MOTHLIGHT_LAMP_ROOT",
+      "nodeName": "SF_PROP_MOTHLIGHT_LAMP_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mothlight-lamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mothlight-lamp.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.mothlight-lamp.node.sf-prop-mothlight-lamp-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mothlight-lamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "85df54fbac3b0b1f1c6d10b75937b8472991f700ce9d9bbc1d5a273530f5fb2e"
+    },
+    "sourceGlb": {
+      "bytes": 340400,
+      "sha256": "f855feea7c39d688c2dd65cb8b6508e9f74ff07fde15786344b31457e33f1dae",
+      "uri": "mothlight_lamp.glb"
+    },
+    "sourceManifest": {
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 386160,
+    "sha256": "9c2f7c7ec879ec868c5562235d6a129a7bab4a93f922c5bb1ed4e7dd05874322",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.022504866123199463,
+        0,
+        0
+      ],
+      "max": [
+        1.4500097036361694,
+        0.8500000238418579,
+        0.8500000238418579
+      ],
+      "min": [
+        -1.4049999713897705,
+        -0.8500000238418579,
+        -0.8500000238418579
+      ],
+      "size": [
+        2.85500967502594,
+        1.7000000476837158,
+        1.7000000476837158
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 7,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.mothlight-lamp.anchor.socket-camera-focus",
+              "sf.render.mothlight-lamp.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "ceramic": 1,
+      "hull": 1,
+      "mechanical": 1,
+      "signal": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 8,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Ceramic",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "pod",
+    "url": "assets/ships/release/parts/wholeships/mothlight_lamp.glb"
+  },
+  "runtimeHash": "2a8d778b9390bad2c7ad2de0cc21e062a1d172f86a93c8522eba26de7cc4daa2",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.4500097036361694,
+          0.8500000238418579,
+          0.8500000238418579
+        ],
+        "min": [
+          -1.4049999713897705,
+          -0.8500000238418579,
+          -0.8500000238418579
+        ]
+      },
+      "id": "sf.render.mothlight-lamp.body",
+      "nodeIds": [
+        "sf.render.mothlight-lamp.node.collision-mothlight-lamp-lamp",
+        "sf.render.mothlight-lamp.node.lod0-armor",
+        "sf.render.mothlight-lamp.node.lod0-beacon-amber",
+        "sf.render.mothlight-lamp.node.lod0-ceramic",
+        "sf.render.mothlight-lamp.node.lod0-mechanicaldark",
+        "sf.render.mothlight-lamp.node.sf-prop-mothlight-lamp-root",
+        "sf.render.mothlight-lamp.node.socket-camera-focus"
+      ]
+    }
+  ]
+}

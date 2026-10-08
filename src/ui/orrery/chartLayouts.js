@@ -271,7 +271,7 @@ html.sf-reduce-motion ${C} .gm-navfoot.is-locking::after { animation:none; displ
   ${C} { --k-margin: clamp(28px, 2.4vw, 48px); row-gap:10px !important; }
   ${C} .gm-head { grid-template-columns:minmax(0, 1fr) auto auto auto !important; grid-template-rows:auto auto !important; row-gap:6px !important; }
   ${C} .gm-title-lockup { grid-column:1 !important; grid-row:1 !important; flex-direction:row !important; align-items:baseline !important; gap:0 26px !important; flex-wrap:wrap; }
-  ${C} .gm-title { font-size:clamp(36px, 2.9vw, 58px) !important; }
+  ${C} .gm-title { font-size:clamp(22px, 1.6vw, 30px) !important; }
   ${C} .gm-rail { grid-column:1 !important; grid-row:2 !important; align-self:end; }
   ${C} .gm-search-container { grid-column:2 !important; grid-row:1 !important; width:clamp(220px, 19vw, 360px) !important; }
   ${C} .gm-hint-btn { grid-column:3 !important; grid-row:1 !important; }
@@ -325,7 +325,7 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} { padding-top:20px !important; padding-bottom:14px !important; row-gap:10px !important; }
   ${C} .gm-head { row-gap:4px !important; }
   ${C} .gm-title-lockup { grid-row:1 !important; flex-direction:row !important; align-items:baseline !important; gap:0 22px !important; flex-wrap:wrap; }
-  ${C} .gm-title { font-size:clamp(30px, 5.6vh, 44px) !important; }
+  ${C} .gm-title { font-size:clamp(20px, 3.4vh, 28px) !important; }
   ${C} .gm-stamp { white-space:nowrap; }
   ${C} .gm-rail { grid-row:2 / span 2 !important; align-self:end; }
   ${C} .gm-hint-btn, ${C} .gm-close { min-height:28px !important; }

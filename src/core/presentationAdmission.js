@@ -54,6 +54,8 @@ export function hasExplicitAuthoredPayloadPresentation(entity) {
   return assetId === 'pod_cargo_container' || assetId === 'place_breakaway_sp07'
     || (assetId === 'SF_PROP_KILNBACK_CASK' && entity.data?.persistenceOwner === 'kilnback')
     || (assetId === 'SF_PROP_TOWLINE_DEBRIS' && entity.data?.persistenceOwner === 'towlineTable')
+    || (assetId === 'SF_PROP_MOTHLIGHT_LAMP' && entity.data?.persistenceOwner === 'mothlight'
+      && /^lamp_[1-4]$/.test(entity.data.mothlightLampId || ''))
     || (assetId === 'SF_PROP_ILEX_VAULT' && entity.data?.persistenceOwner === 'ilexArk')
     || (entity.data?.persistenceOwner === 'borrowedVoice' && entity.data.borrowedVoiceKind === 'recorder'
       && ['a','b','c'].includes(entity.data.borrowedVoiceRecorderId)

@@ -96,6 +96,10 @@ export const PLAYER_FEEL_ENVELOPES = Object.freeze({
     neutralBrake: 0.94,
   }),
   // Immediate acknowledgement; trajectory still takes time. Do not buy crispness by deleting inertia.
+  // brakeHorizon sits clearly above Drifter's 1.12: with reaction_l's low reverse authority the two
+  // hulls' stop times otherwise land on the same tick and the heavy hull loses its stopping-mass
+  // signature (M1 pins hitch < drifter < atlas on stopTimeS). 1.20 keeps the Atlas full stop
+  // inside the M1 brake tape (~3.9 s of a 4.0 s phase) while ordering it after Drifter's 3.65.
   ship_atlas: freezeEnv({
     id: 'atlas',
     translation: 1.22,
@@ -106,7 +110,7 @@ export const PLAYER_FEEL_ENVELOPES = Object.freeze({
     lateralKill: 0.78,
     stopHorizon: 1.16,
     governor: 1.18,
-    brakeHorizon: 1.10,
+    brakeHorizon: 1.20,
     neutralBrake: 0.90,
   }),
   // Working tug: the torch answers straight ahead and nowhere else. Axial commitment,

@@ -1,6 +1,49 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Source checkpoint for cloud work - 8 October 2026
+
+The owner requested publication of all current work, including unfinished sources, before
+starting cloud build-map lanes. Use current `origin/master`; the dated sections below are
+historical. PR #221 has merged. Its P00-P21 implementation obligations remain open wherever
+the actual current owners and ordinary route have not satisfied them.
+
+- Kilnback, Scissorwake and Towline Table landed in `7cf451ca7`; Borrowed Voice landed
+  in `ab7fbdf4c`. Their authored assets, runtime joins and focused/native continuity checks
+  are preserved. This does not certify target-device performance or every P00-P21 packet.
+- Pallet Jack and Mothlight source, original art, save joins, scanner/AI/render consumers
+  and 350 rebuilt production packages are in the publication batch. Focused source/native
+  checks pass. **Ordinary route acceptance is unfinished:**
+  `test/pallet-jack-route.test.mjs` still ends at a legitimate `tension_recovery` refusal
+  within its 120-second admission window; no full ordinary clamp/Continue result was reached.
+  `test/mothlight.test.mjs` reaches normal admission, native lamp release and actual DECOY
+  scanning, but ordinary tactical AI vetoed all eight sampled true-gun windows with
+  `enemy_mind_hold`; the full Continue leg remains unreached. The failing tests are preserved.
+  Fix the actual condition or fixture without forcing admission or bypassing ordinary AI.
+- `11f12f596` preserves **inactive, unfinished** Borrowed Sun, Tethys Switchyard and
+  Thimble Door sources. Sun has three import-safe owners but needs measured geometry,
+  helper injection, safe berth reservation, native dock/economy/registry/save joins and tests.
+  Switchyard has only an unimported data file: native gantry, source/system/UI, cargo jobs,
+  receiver authority, original art and continuity are absent. Thimble has editable source,
+  six raw GLBs, motion, source-derived body and an import-safe quiet driver; its 12 native
+  solids and genuinely open passage pass two geometry checks. Gameplay, real convoy-clearance
+  feedback, recorder recovery/payment, persistence and release/default-route activation remain
+  to implement. The driver must receive the real `thimbleDoorPresentation` owner on activation.
+- Anvil Storm Orchard, Open Hand Lock and Hundred Hand Mile have not been implemented in
+  this checkpoint. Continue the original concept amendment and remaining P00-P21 obligations;
+  these source commits do not close their review-ledger rows.
+- Prior dirty AI/motion work is preserved as **unfinished tuning**. The committed
+  `test/fixtures/m3-career-cohorts/cohort-report.v2.json` has `ok:false`; its failed cells
+  are not accepted tuning. The browser-only `process` crash found during review was fixed
+  and directly checked with real cohort steering while `process` was absent. Physics-mask,
+  save-error region reporting, durable nav restoration and existing scratch probes are retained.
+- Frontend changes landed in `622da5da7`; radar/HUD/alert checks passed 23/23, save-error
+  and dock-reset checks passed 6/6. The complete publication candidate passed
+  `node scripts/check-baseline.mjs` 16/16 in 68 seconds. Broader composed concept pacing,
+  rewards, recovery and continuity acceptance remains open; passing baseline does not close it.
+  The actual Electron boot, launch, controls, quick save and Continue check also passed 16/16,
+  with no uncaught errors, shader failures, missing assets or invisible authored hulls.
+
 ## Local maturation system — 4 October 2026
 
 The owner authorized continued cloud groundwork plus local expansion/improvement and adversarial

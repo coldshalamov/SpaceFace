@@ -876,6 +876,8 @@ export const physics = {
     const bus = this.bus;
     const out = this._scratch;
     const stamp = this._nextPairStamp();
+    // Legacy pair path only: preserve authored masks for unlisted custom solids.
+    const honorAuthored = !usesSg02DynamicAuthority(state);
     const source = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
     for (const a of source) {
       if (!a.alive || !a.collides) continue;
@@ -885,7 +887,7 @@ export const physics = {
       for (const bEnt of out) {
         if (!a.alive) break;
         if (bEnt === a || !bEnt.alive || !bEnt.collides) continue;
-        if (!(a.collisionMask & maskOf(bEnt)) && !(bEnt.collisionMask & maskOf(a))) continue;
+        if (!(a.collisionMask & maskOf(bEnt, honorAuthored)) && !(bEnt.collisionMask & maskOf(a, honorAuthored))) continue;
         if (this._pairSeen(a.id, bEnt.id, stamp)) continue;
         if (!a.alive || !bEnt.alive) continue;
         let dx = bEnt.pos.x - a.pos.x, dz = bEnt.pos.z - a.pos.z;
@@ -907,6 +909,7 @@ export const physics = {
   sweepShipStatics(dt, state) {
     const out = this._scratch;
     const useHash = hasActiveSpatialHash(state.spatialHash);
+    const honorAuthored = !usesSg02DynamicAuthority(state);
     const statics = this._statics;
     if (!useHash) {
       statics.length = 0;
@@ -939,7 +942,7 @@ export const physics = {
       const bestHit = this._bestSegmentHitScratch;
       for (const target of candidates) {
         if (!target.alive || !target.collides || (target.type !== 'asteroid' && target.type !== 'station')) continue;
-        if (target === ship || (!canCollide(ship, target) && !canCollide(target, ship))) continue;
+        if (target === ship || (!canCollide(ship, target, honorAuthored) && !canCollide(target, ship, honorAuthored))) continue;
         if (!segmentCircleHitInto(hit, start, end, target.pos, (ship.radius || 0) + (target.radius || 0))) continue;
         if (!bestTarget || hit.t < bestHit.t) {
           bestTarget = target;
@@ -1016,6 +1019,8 @@ export const physics = {
     if (sweepCandidate) this._syncProjectileBroadphase(state);
     const useBroadphase = !!(this._projectileBroadphaseReady && this._projectileBroadphase);
     const useHash = !useBroadphase && hasActiveSpatialHash(state.spatialHash);
+    // Native authority retains the shipped sweep masks; the legacy route honors authored ones.
+    const honorAuthored = !usesSg02DynamicAuthority(state);
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);
@@ -1046,8 +1051,8 @@ export const physics = {
       }
       extra.length = 0;
       this._admitProjectileSweepBodies(state, proj, start, end, extra);
-      let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null);
-      bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget);
+      let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null, honorAuthored);
+      bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget, honorAuthored);
       if (!bestTarget) {
         this._considerProjectileNearMiss(proj, start, end, state);
         if (limit.expired) {
@@ -1098,7 +1103,7 @@ export const physics = {
     );
   },
 
-  _bestProjectileTarget(proj, start, end, list, bestTarget) {
+  _bestProjectileTarget(proj, start, end, list, bestTarget, honorAuthored) {
     if (!list || list.length === 0) return bestTarget;
     const hit = this._segmentHitScratch;
     const bestHit = this._bestSegmentHitScratch;
@@ -1109,7 +1114,7 @@ export const physics = {
       // A kinematic bomb proxy stands in for its owner's own ordnance: the owner's fire
       // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
       if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
-      if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
+      if (!canCollide(proj, tgt, honorAuthored) && !canCollide(tgt, proj, honorAuthored)) continue;
       const manifest = tgt.shield > 0 ? null : resolveCollisionProxyManifest(tgt);
       if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + projectileProxyRadius(tgt, manifest))) continue;
       // The broad circle is not a solid hull: authored/measured compounds can have
@@ -1676,7 +1681,9 @@ function createDeferredSg02CombatPhysicsPort(host) {
 
 const MINE_COLLISION_CATEGORY = 1 << 8;
 
-function maskOf(e) {
+// Authored masks on unlisted types belong to the legacy pair/sweep route only.
+// Rapier owns native solidity and retains the shipped mask conventions.
+function maskOf(e, honorAuthoredMask) {
   switch (e.type) {
     case 'ship': return Masks.SHIP;
     case 'asteroid': return Masks.ASTEROID;
@@ -1694,7 +1701,8 @@ function maskOf(e) {
     default: {
       // Solid dressing rows and measured-skin presentation bodies are not combat types; they
       // author Masks.STATION so projectile sweeps and pair gates see them as structure.
-      // Every other unlisted type keeps the legacy 0 — authored masks elsewhere stay inert.
+      // A custom legacy solid retains its authored gate; unlisted native bodies keep 0.
+      if (honorAuthoredMask && e && e.collisionMask) return e.collisionMask;
       const solidPresentation = e && e.data && typeof e.data.collisionProxy === 'string'
         && e.data.collisionProxy.startsWith('skin:');
       return (e && (e.dressingResident || solidPresentation) && e.collisionMask) || 0;
@@ -1702,8 +1710,8 @@ function maskOf(e) {
   }
 }
 
-function canCollide(a, b) {
-  return !!(a.collisionMask & maskOf(b));
+function canCollide(a, b, honorAuthoredMask) {
+  return !!(a.collisionMask & maskOf(b, honorAuthoredMask));
 }
 
 function shouldStartBroadphasePairSearch(e) {
