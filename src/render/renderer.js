@@ -26430,7 +26430,7 @@ export const render = {
     if (publication && publication.spawnedSlots && publication.spawnedCount > 0) {
       const announced = publication.spawnedSlots.slice(0, publication.spawnedCount);
       this._openingSpawnedBindPending = this._openingSpawnedBindPending
-        ? this._openingSpawnedBindPending.concat(announced) : announced;
+        ? [...new Set(this._openingSpawnedBindPending.concat(announced))] : announced;
     }
     if (this._openingRebindOwed === true) {
       yield* this._rebindPresentationMeshesSteps();
@@ -26466,7 +26466,9 @@ export const render = {
     }
 
     const activityTick = state && Number.isInteger(state.tick) ? state.tick : -1;
-    publishActivityFrame(this, getActivityFrame(state));
+    tryPresentedCall(this, 'activity-frame', () => {
+      publishActivityFrame(this, getActivityFrame(state));
+    });
     this._activityFrameTick = activityTick;
     if (state && state.render) state.render.activityFrame = this._activityFrame;
     if (this._contextLost) return false;
@@ -26475,34 +26477,61 @@ export const render = {
     // follows the camera after entity sync because both are already settled in flight; this one
     // loading-to-flight boundary cannot use the stale loading camera to cull and then freeze a
     // different final camera picture.
-    if (this.cam && typeof this.cam.follow === 'function') this.cam.follow(0, undefined, undefined, this._cameraClearanceAt);
+    tryPresentedCall(this, 'camera-follow', () => {
+      if (this.cam && typeof this.cam.follow === 'function') {
+        this.cam.follow(0, undefined, undefined, this._cameraClearanceAt);
+      }
+    });
     // This is the same pose/visibility seam as prepareFrame(), intentionally without residency
     // service, background clocks, or any simulation advance. The loading DOM remains the only
     // visible surface; drawPreparedFrame() still refuses to submit while mode=loading.
     yield* this.syncEntityViewsSteps(1);
     if (state && state.render) state.render.interpolationAlpha = 1;
     if (state && state.render && typeof state.render.prepareOpeningVfxFrame === 'function') {
-      state.render.prepareOpeningVfxFrame();
+      tryPresentedCall(this, 'opening-vfx-frame', () => {
+        state.render.prepareOpeningVfxFrame();
+      });
     }
     yield;
     if (this.scene && typeof this.scene.updateMatrixWorld === 'function') {
       yield* updateMatrixWorldSteps(this.scene, true);
     }
     yield;
-    syncContactShadowPool(this._contactShadowPool, this._entityFrame);
-    ensureShipAuxPoolCapacityForFrame(this._shipAuxPool, this._entityFrame, this._meshes);
-    tickShieldShellClock(this._shipAuxPool, this.state);
-    syncShipAuxPools(this._shipAuxPool, this._entityFrame);
+    tryPresentedCall(this, 'contact-shadow-pool', () => {
+      syncContactShadowPool(this._contactShadowPool, this._entityFrame);
+    });
+    yield;
+    tryPresentedCall(this, 'ship-aux-capacity', () => {
+      ensureShipAuxPoolCapacityForFrame(this._shipAuxPool, this._entityFrame, this._meshes);
+    });
+    yield;
+    tryPresentedCall(this, 'shield-shell-clock', () => {
+      tickShieldShellClock(this._shipAuxPool, this.state);
+    });
+    yield;
+    tryPresentedCall(this, 'ship-aux-pools', () => {
+      syncShipAuxPools(this._shipAuxPool, this._entityFrame);
+    });
     // The pool/shadow band's calls write disjoint pools — suspending between
     // their groups keeps one dense band from being a single frozen-bar leg.
     yield;
-    const openingShadowRadius = liveShadowCastRadius(state);
+    const openingShadowRadius = tryPresentedCall(this, 'shadow-cast-radius',
+      () => liveShadowCastRadius(state),
+      Number.isFinite(this._frameShadowCastRadius) ? this._frameShadowCastRadius : SHADOW_ORTHO_EXTENT);
     this._frameShadowCastRadius = openingShadowRadius;
-    this._syncAuthoredInstanceSubmission(openingShadowRadius);
+    tryPresentedCall(this, 'authored-instances', () => {
+      this._syncAuthoredInstanceSubmission(openingShadowRadius);
+    });
     yield;
-    this._syncShadowMapEnabled();
-    if (this._syncKeyLightShadowFrustum(openingShadowRadius)) this._shadowMapDirty = true;
-    if (this._updateShadowFollow(true)) this._shadowMapDirty = true;
+    tryPresentedCall(this, 'shadow-map-enabled', () => this._syncShadowMapEnabled());
+    yield;
+    if (tryPresentedCall(this, 'keylight-frustum',
+      () => this._syncKeyLightShadowFrustum(openingShadowRadius), false)) this._shadowMapDirty = true;
+    yield;
+    if (tryPresentedCall(this, 'shadow-follow', () => this._updateShadowFollow(true), false)) {
+      this._shadowMapDirty = true;
+    }
+    yield;
     if (this._keyLight && this._keyLight.shadow && this.renderer && this.renderer.shadowMap) {
       // enabled/castShadow are pinned while the setting is on (stable program keys); the
       // resolved receiver tally is the remaining depth-pass/culling-camera work gate.
@@ -26510,18 +26539,22 @@ export const render = {
         && (this._shadowReceiverCount > 0
           || this._shadowReceiverTally?.dirty === true
           || this._shadowReceiversDirty === true);
-      this._shadowRefreshScheduled = scheduleRealtimeShadowRefresh(
-        this.renderer, this._keyLight, shadowMapActive);
+      this._shadowRefreshScheduled = tryPresentedCall(this, 'shadow-refresh-schedule',
+        () => scheduleRealtimeShadowRefresh(this.renderer, this._keyLight, shadowMapActive), false);
       // The dirty-window count can read a stale 0 — feed the gate's own
       // conservative-on verdict so asteroid submissions don't skip while a
       // paced recount is in flight (a skipped submission sets no map-dirty,
       // so a rock-less map could persist frames).
       this._activeShadowCamera = shadowMapActive
-        ? prepareActiveShadowCamera(this.renderer, this._keyLight,
-            Math.max(1, this._shadowReceiverCount))
+        ? tryPresentedCall(this, 'active-shadow-camera', () => prepareActiveShadowCamera(
+          this.renderer, this._keyLight,
+          Math.max(1, this._shadowReceiverCount)), this._activeShadowCamera)
         : null;
     }
-    this._syncAsteroidInstanceSubmission(this._activeShadowCamera);
+    yield;
+    tryPresentedCall(this, 'asteroid-instances', () => {
+      this._syncAsteroidInstanceSubmission(this._activeShadowCamera);
+    });
     yield;
     // The second compose only needs to settle what the middle band dirtied —
     // pool/table poses, the key light + its shadow camera — all of which carry
@@ -26859,8 +26892,10 @@ export const render = {
     }
     if (publication && publication.spawnedSlots && publication.spawnedCount > 0) {
       const announced = publication.spawnedSlots.slice(0, publication.spawnedCount);
+      // Dedupe: a parked leg can see the same slots re-announced across
+      // consumes — appending duplicates re-walks them per pass.
       this._openingSpawnedBindPending = this._openingSpawnedBindPending
-        ? this._openingSpawnedBindPending.concat(announced) : announced;
+        ? [...new Set(this._openingSpawnedBindPending.concat(announced))] : announced;
     }
     // Mint on the durable latch — the consume flags that armed it are gone by
     // the next pass, and a rebuilt+0-delta feed (which never armed it) keeps
@@ -26918,19 +26953,28 @@ export const render = {
         owner._openingRebindOwed = false;
         owner._openingSpawnedBindPending = null;
       })();
-    } else if (this._openingSpawnedBindPending && this._openingSpawnedBindPending.length) {
+    } else if (this._openingSpawnedBindPending && this._openingSpawnedBindPending.length
+        && !this._openingSpawnedBindActive) {
       // A parked walk still owns unbound tail rows the new publication does not
       // cover — chain it behind the spawned range instead of dropping them.
       // Spawned rows bind FIRST: during a suspended rebuild the parked tail
       // can stretch across presents, and fresh spawns near the player would
       // pop in late waiting behind it. Per-row lazy checks make the tail
       // order non-load-bearing and re-binding is idempotent.
+      // The active gate stops chain growth: while a spawned leg is already
+      // chained or mid-walk, re-minting each pass would prepend another link
+      // whose copy re-walks the same list — O(k·list) dead steps.
       const owner = this;
       const pendingList = this._openingSpawnedBindPending;
+      this._openingSpawnedBindActive = true;
       const spawnedIter = (function* () {
-        yield* owner._bindPublishedPresentationMeshesSteps(pendingList);
-        if (owner._openingSpawnedBindPending === pendingList) {
-          owner._openingSpawnedBindPending = null;
+        try {
+          yield* owner._bindPublishedPresentationMeshesSteps(pendingList);
+          if (owner._openingSpawnedBindPending === pendingList) {
+            owner._openingSpawnedBindPending = null;
+          }
+        } finally {
+          owner._openingSpawnedBindActive = false;
         }
       })();
       this._presentationRebindIter = this._presentationRebindIter
@@ -26945,9 +26989,6 @@ export const render = {
         ? performance.now()
         : Date.now();
       for (;;) {
-        // Ledger consult at loop top: a spent pass parks the walk instead of
-        // stepping it (worst frame cost, so first to yield).
-        if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
         const iter = this._presentationRebindIter;
         let step;
         try {
@@ -26972,7 +27013,11 @@ export const render = {
         const rebindNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now()
           : Date.now();
-        if (rebindNow - rebindStart >= 4) break;
+        // The shared ledger consult sits post-step: every presented pass still
+        // advances >=1 leg step, so an armed latch can never wedge on a wallet
+        // an earlier debiter spent (restart-livelock class, zero-step floor).
+        if (rebindNow - rebindStart >= 4
+            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
       }
       notePacedFrameSpend(
         (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -27010,8 +27055,12 @@ export const render = {
       // epoch — a persistent fault must not re-mint+throw every frame.
       const packFaulted = this._fencePackFaultEpoch === packEpoch
         && (this._fencePackFaults | 0) >= 3;
+      // A spent pass must not mint a fresh pack it cannot step: consult the
+      // wallet BEFORE minting so dead passes don't churn mint/supersede.
+      const packWalletSpent = !pendingPack
+        && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
       if ((snapshotNeedsPack || pendingPack) && this._snapshotFence && this._presentationWorld
-          && !packFaulted) {
+          && !packFaulted && !packWalletSpent) {
         if (!pendingPack) {
           pendingPack = this._fencePackPending = {
             iter: typeof packPresentationWorldToFenceSteps === 'function'
@@ -27029,10 +27078,6 @@ export const render = {
           const packStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
             ? performance.now() : Date.now();
           for (;;) {
-            // Shared ledger consult at loop top + measured debit at exit:
-            // a whole-world copy on a spent pass parks instead of stacking
-            // un-metered work on the magic frame.
-            if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
             let step;
             try {
               step = pendingPack.iter.next();
@@ -27063,7 +27108,10 @@ export const render = {
             }
             const packNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
               ? performance.now() : Date.now();
-            if (packNow - packStart >= 4) break;
+            // Ledger consult post-step (>=1 step per pass floor): a parked
+            // pack can never starve indefinitely behind the rebind drain.
+            if (packNow - packStart >= 4
+                || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
           }
           notePacedFrameSpend(
             (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -27140,7 +27188,9 @@ export const render = {
       this._activityFrameTick = activityTick;
       if (this.state && this.state.render) this.state.render.activityFrame = this._activityFrame;
     }
-    serviceRenderMeshResidency(this, frameDt);
+    tryPresentedCall(this, 'residency-service', () => {
+      serviceRenderMeshResidency(this, frameDt);
+    });
     const holdLoadingGpu = this.state && this.state.mode === 'loading';
     const holdOpeningPicture = this._openingFirstPicturePrepared === true
       && this.state && this.state.mode === 'flight'
@@ -27209,7 +27259,8 @@ export const render = {
     }
     const shadowRadius = Number.isFinite(this._frameShadowCastRadius)
       ? this._frameShadowCastRadius
-      : liveShadowCastRadius(this.state);
+      : tryPresentedCall(this, 'shadow-cast-radius',
+        () => liveShadowCastRadius(this.state), SHADOW_ORTHO_EXTENT);
     this._frameShadowCastRadius = shadowRadius;
     if (!holdOpeningPicture && !holdLoadingGpu) {
       tryPresentedCall(this, 'authored-instances', () => {
@@ -27219,8 +27270,12 @@ export const render = {
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
-    this._updateSectorPostTransition(frameDt);
-    this._updateSectorPaletteTransition(frameDt);
+    tryPresentedCall(this, 'sector-post-transition', () => {
+      this._updateSectorPostTransition(frameDt);
+    });
+    tryPresentedCall(this, 'sector-palette-transition', () => {
+      this._updateSectorPaletteTransition(frameDt);
+    });
     this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {
       tryPresentedCall(this, 'backdrop', () => {
