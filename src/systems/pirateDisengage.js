@@ -334,12 +334,13 @@ export const pirateDisengage = {
         channel: 'bark',
         text: 'Yield\'s in the drift. Count it fair. We\'re gone.',
         kind: 'pirateDisengage',
-        ttl: 1,
+        // ttl doubles as the queue stale-drop deadline: 1 s expired inside the 1.5 s bark gap.
+        ttl: 3,
         id: `pirateDisengage:yield:${rec.squadId}`,
         factionId: (leader && leader.factionId) || 'faction_reach',
       });
     } else {
-      this._emit('toast', { text: 'Yield\'s in the drift. We\'re gone.', kind: 'pirateDisengage', ttl: 1 });
+      this._emit('toast', { text: 'Yield\'s in the drift. We\'re gone.', kind: 'pirateDisengage', ttl: 3 });
     }
     this._emit('pirateDisengage:yieldResolved', {
       squadId: rec.squadId, accepted: true, pods, t: now,
@@ -359,12 +360,12 @@ export const pirateDisengage = {
         channel: 'bark',
         text,
         kind: 'pirateDisengage',
-        ttl: 1,
+        ttl: 3,
         id: `pirateDisengage:${rec.squadId}`,
         factionId,
       });
     } else {
-      this._emit('toast', { text, kind: 'pirateDisengage', ttl: 1 });
+      this._emit('toast', { text, kind: 'pirateDisengage', ttl: 3 });
     }
     this._emit('pirateDisengage:voice', {
       squadId: rec.squadId,

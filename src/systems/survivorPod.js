@@ -893,12 +893,14 @@ export const survivorPod = {
         channel: 'bark',
         text,
         kind: 'survivorMayday',
-        ttl: 1,
+        // Bark ttl doubles as the queue stale-drop deadline — under the 1.5 s bark gap a 1 s
+        // hail expired unread, so a mayday fired mid-firefight never reached the player.
+        ttl: 4,
         id: `survivorMayday:${entity && entity.id != null ? entity.id : (rec && rec.entityId)}`,
         factionId: (rec && rec.factionId) || 'neutral',
       });
     } else if (this._bus && typeof this._bus.emit === 'function') {
-      this._bus.emit('toast', { text, kind: 'survivorMayday', ttl: 1 });
+      this._bus.emit('toast', { text, kind: 'survivorMayday', ttl: 4 });
     }
   },
 
@@ -912,12 +914,12 @@ export const survivorPod = {
         channel: 'bark',
         text,
         kind: 'survivorMaydayPaid',
-        ttl: 1,
+        ttl: 4,
         id: `survivorMaydayPaid:${entityId}`,
         factionId: factionId || CONCORD_FACTION_ID,
       });
     } else if (this._bus && typeof this._bus.emit === 'function') {
-      this._bus.emit('toast', { text, kind: 'survivorMaydayPaid', ttl: 1 });
+      this._bus.emit('toast', { text, kind: 'survivorMaydayPaid', ttl: 4 });
     }
   },
 
