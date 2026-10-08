@@ -104,7 +104,10 @@ export function tickLivedVignettes(runtime) {
   const seed = (state.meta && state.meta.seed) || 1;
   const day = Math.floor(now / 600);
   candidates.sort((a, b) => a.id.localeCompare(b.id));
-  const pick = candidates[hash32(seed, sectorId, zone.id || zone.type, day, 'lived-vignette') % candidates.length];
+  const authored = candidates.filter((enc) => !String(enc.id).startsWith('lived_'));
+  const bucket = hash32(seed, sectorId, zone.id || zone.type, day, 'lived-vignette');
+  const pool = authored.length && (bucket % 5) !== 0 ? authored : candidates;
+  const pick = pool[bucket % pool.length];
   const ang = (hash32(seed, pick.id, day, 'lived-angle') % 628) / 100;
   const result = director.requestAuthoredEncounter({
     shapeId: pick.id,

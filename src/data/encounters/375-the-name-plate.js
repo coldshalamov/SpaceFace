@@ -61,6 +61,13 @@ const spec = {
       "verb": "say",
       "line": "The plate is bolted where a beacon used to be.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "a1"
     },
     {
@@ -68,6 +75,13 @@ const spec = {
       "verb": "say",
       "line": "Archive does not invent the missing crew.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "work"
     },
     {
@@ -80,7 +94,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "ARCHIVIST: Still on the derelict field. The name plate does not hurry.",
+      "line": "ARCHIVIST: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -193,6 +207,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_archive"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "NAME PLATE",
   "primaryLine": "ARCHIVIST: The plate reads. The rock does not. Read, or leave the letters.",
   "factionId": "faction_archive",

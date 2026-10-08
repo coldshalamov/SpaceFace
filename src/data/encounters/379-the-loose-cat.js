@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "Suit-orange, last seen on the greenhouse spar.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "weave",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "Do not call a tender. She bites tethers.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "weave",
       "next": "work"
     },
     {
@@ -88,7 +102,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "NELL: Still on the colony. The loose cat does not hurry.",
+      "line": "NELL: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -201,6 +215,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_free"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "LOOSE CAT",
   "primaryLine": "NELL: Answers to none of us. We are temporary. She is not.",
   "factionId": "faction_free",

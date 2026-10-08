@@ -61,6 +61,13 @@ const spec = {
       "verb": "say",
       "line": "Red-white is a boot on a drum, not a hull breach.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "a1"
     },
     {
@@ -68,6 +75,13 @@ const spec = {
       "verb": "say",
       "line": "Reach will not thank you for either choice.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "work"
     },
     {
@@ -80,7 +94,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SLIP: Still on the ambush lane. The boot whistle does not hurry.",
+      "line": "SLIP: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -193,6 +207,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_reach"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "BOOT WHISTLE",
   "primaryLine": "SLIP: Weigh-slip says distress. Boot says joke. Pick the real number.",
   "factionId": "faction_reach",

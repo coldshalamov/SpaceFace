@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "CANTOR: This is not a fight. If it becomes one, you started it.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "CANTOR: SLED ON THE COLONY has a receipt. Make yours short.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "a2"
     },
     {
@@ -83,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The sled has a serial someone still loves.",
       "channel": "info",
+      "next": "p2"
+    },
+    {
+      "id": "p2",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "a3"
     },
     {
@@ -90,6 +111,13 @@ const spec = {
       "verb": "say",
       "line": "colony does not get quieter if you boost.",
       "channel": "info",
+      "next": "p3"
+    },
+    {
+      "id": "p3",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "work"
     },
     {
@@ -102,7 +130,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Still on the colony. The sled on the colony does not hurry.",
+      "line": "CANTOR: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -215,6 +243,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_choir"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "SLED ON THE COLONY",
   "primaryLine": "CANTOR: The sled is the whole reason we are stopped. Do not improve it.",
   "factionId": "faction_choir",

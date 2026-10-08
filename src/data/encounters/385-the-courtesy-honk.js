@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "Two pins, one near-miss, no mines.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "Courtesy is a flash, not a fine.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "work"
     },
     {
@@ -88,7 +102,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "WARD: Still on the trade lane. The courtesy honk does not hurry.",
+      "line": "WARD: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -201,6 +215,8 @@ export default defineEncounter(trigger, {
     "actor": "patrol_lawman"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "COURTESY HONK",
   "primaryLine": "WARD: You were inside my number. I flashed. You did not. File, or don't.",
   "factionId": "faction_scn",

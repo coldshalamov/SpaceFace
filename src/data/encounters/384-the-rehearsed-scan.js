@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "They already graded the boarding before you arrived.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "Theater with a real reference number.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "work"
     },
     {
@@ -88,7 +102,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CLERK: Still on the border checkpoint. The rehearsed scan does not hurry.",
+      "line": "CLERK: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -201,6 +215,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_scn"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "REHEARSED SCAN",
   "primaryLine": "CLERK: Stand by. This verification is a drill. Ref 44-C still applies.",
   "factionId": "faction_scn",

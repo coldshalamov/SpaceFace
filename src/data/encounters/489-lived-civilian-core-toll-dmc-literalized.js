@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "FOREMAN: This is not a fight. If it becomes one, you started it.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "FOREMAN: RIBBON ON THE CIVILIAN CORE has a receipt. Make yours short.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "a2"
     },
     {
@@ -83,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The ribbon has a serial someone still loves.",
       "channel": "info",
+      "next": "p2"
+    },
+    {
+      "id": "p2",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "a3"
     },
     {
@@ -90,6 +111,13 @@ const spec = {
       "verb": "say",
       "line": "civilian core does not get quieter if you boost.",
       "channel": "info",
+      "next": "p3"
+    },
+    {
+      "id": "p3",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "work"
     },
     {
@@ -102,7 +130,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Still on the civilian core. The ribbon on the civilian core does not hurry.",
+      "line": "FOREMAN: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -215,6 +243,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_dmc"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "RIBBON ON THE CIVILIAN CORE",
   "primaryLine": "FOREMAN: The ribbon is the whole reason we are stopped. Do not improve it.",
   "factionId": "faction_dmc",

@@ -244,10 +244,6 @@ export function compileVignette(spec) {
       if (!phase || phase.verb !== 'offer') return;
       const dest = phase.onChoice && phase.onChoice[choiceId];
       if (!dest) return;
-      const choice = (spec.choices || []).find((row) => row.id === choiceId);
-      if (choice && choice.playerLine) {
-        d.say(live, 'info', choice.playerLine, null, { literal: true });
-      }
       live.vars.vPhase = dest;
       hop(d, live, state, spec, byId);
     },

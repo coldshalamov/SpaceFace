@@ -87,6 +87,13 @@ const spec = {
       "verb": "say",
       "line": "The casket has no transponder, only a name tape.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "a1"
     },
     {
@@ -94,6 +101,13 @@ const spec = {
       "verb": "say",
       "line": "Half burn is the whole courtesy.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "work"
     },
     {
@@ -106,7 +120,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Still on the civilian core. The ash casket does not hurry.",
+      "line": "CANTOR: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -219,6 +233,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_choir"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "ASH CASKET",
   "primaryLine": "CANTOR: No drive. Match burn. Do not pass inside the ash.",
   "factionId": "faction_choir",

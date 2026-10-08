@@ -77,6 +77,13 @@ const spec = {
       "verb": "say",
       "line": "The crop is thin. The turn is not optional.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "a1"
     },
     {
@@ -84,6 +91,13 @@ const spec = {
       "verb": "say",
       "line": "Cutting the circle is how feuds start here.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "work"
     },
     {
@@ -96,7 +110,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Still on the colony. The harvest orbit does not hurry.",
+      "line": "CANTOR: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -209,6 +223,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_choir"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "HARVEST ORBIT",
   "primaryLine": "CANTOR: One turn for the crop. Join the circle. Do not cut it.",
   "factionId": "faction_choir",

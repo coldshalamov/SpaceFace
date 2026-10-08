@@ -79,6 +79,13 @@ const spec = {
       "verb": "say",
       "line": "HX-12: This is not a fight. If it becomes one, you started it.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "a1"
     },
     {
@@ -86,6 +93,13 @@ const spec = {
       "verb": "say",
       "line": "HX-12: PLAQUE ON THE MINING BELT has a receipt. Make yours short.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "a2"
     },
     {
@@ -93,6 +107,13 @@ const spec = {
       "verb": "say",
       "line": "The plaque has a serial someone still loves.",
       "channel": "info",
+      "next": "p2"
+    },
+    {
+      "id": "p2",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "a3"
     },
     {
@@ -100,6 +121,13 @@ const spec = {
       "verb": "say",
       "line": "mining belt does not get quieter if you boost.",
       "channel": "info",
+      "next": "p3"
+    },
+    {
+      "id": "p3",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "work"
     },
     {
@@ -112,7 +140,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HX-12: Still on the mining belt. The plaque on the mining belt does not hurry.",
+      "line": "HX-12: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -225,6 +253,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_helix"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "PLAQUE ON THE MINING BELT",
   "primaryLine": "HX-12 — VARIANCE FILE OPEN. PLAQUE IS IN THE LANE. NO ACTION REQUIRED.",
   "factionId": "faction_helix",

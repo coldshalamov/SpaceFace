@@ -61,6 +61,13 @@ const spec = {
       "verb": "say",
       "line": "Helix does not raise its voice. The file does not blink.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "a1"
     },
     {
@@ -68,6 +75,13 @@ const spec = {
       "verb": "say",
       "line": "No action required is not the same as nothing happened.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "work"
     },
     {
@@ -80,7 +94,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HX-04: Still on the border checkpoint. The variance on the apron does not hurry.",
+      "line": "HX-04: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -193,6 +207,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_helix"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "VARIANCE ON THE APRON",
   "primaryLine": "HX-04 — VARIANCE FILE OPEN. CREW IS DRINKING. BERTH IS NOT. NO ACTION REQUIRED.",
   "factionId": "faction_helix",

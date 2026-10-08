@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "HX-12: This is not a fight. If it becomes one, you started it.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "HX-12: MANIFEST ON THE BORDER CHECKPOINT has a receipt. Make yours short.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "a2"
     },
     {
@@ -83,6 +97,13 @@ const spec = {
       "verb": "say",
       "line": "The manifest has a serial someone still loves.",
       "channel": "info",
+      "next": "p2"
+    },
+    {
+      "id": "p2",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "a3"
     },
     {
@@ -90,6 +111,13 @@ const spec = {
       "verb": "say",
       "line": "border checkpoint does not get quieter if you boost.",
       "channel": "info",
+      "next": "p3"
+    },
+    {
+      "id": "p3",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "work"
     },
     {
@@ -102,7 +130,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HX-12: Still on the border checkpoint. The manifest on the border checkpoint does not hurry.",
+      "line": "HX-12: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -215,6 +243,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_helix"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "MANIFEST ON THE BORDER CHECKPOINT",
   "primaryLine": "HX-12 — VARIANCE FILE OPEN. MANIFEST IS IN THE LANE. NO ACTION REQUIRED.",
   "factionId": "faction_helix",

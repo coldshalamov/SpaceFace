@@ -77,6 +77,13 @@ const spec = {
       "verb": "say",
       "line": "Three kid skiffs. One water-can buoy. No guns.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "a1"
     },
     {
@@ -84,6 +91,13 @@ const spec = {
       "verb": "say",
       "line": "Adults in the loop become the hazard.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "work"
     },
     {
@@ -96,7 +110,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HOLLIS: Still on the colony. The skiff saturday does not hurry.",
+      "line": "HOLLIS: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -209,6 +223,8 @@ export default defineEncounter(trigger, {
     "actor": "mule_trader"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "SKIFF SATURDAY",
   "primaryLine": "HOLLIS: No adults in the loop. Hold the outside.",
   "factionId": "faction_free",

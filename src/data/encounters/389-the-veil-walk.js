@@ -77,6 +77,13 @@ const spec = {
       "verb": "say",
       "line": "Pilgrims at half burn. The hymn is the formation.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "a1"
     },
     {
@@ -84,6 +91,13 @@ const spec = {
       "verb": "say",
       "line": "Jumping a hymn is a kind of cut.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "work"
     },
     {
@@ -96,7 +110,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CANTOR: Still on the nebula fog. The veil walk does not hurry.",
+      "line": "CANTOR: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -209,6 +223,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_choir"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "VEIL WALK",
   "primaryLine": "CANTOR: The fog takes order. Half burn. Pass outside the voices.",
   "factionId": "faction_choir",

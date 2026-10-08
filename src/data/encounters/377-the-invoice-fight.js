@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "Nothing personal is how MTS starts a fight.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "The shadow is a real occlusion, not a metaphor.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "face",
       "next": "work"
     },
     {
@@ -88,7 +102,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DESK: Still on the trade lane. The invoice fight does not hurry.",
+      "line": "DESK: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -201,6 +215,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_mts"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "INVOICE FIGHT",
   "primaryLine": "DESK: Your account is standing. His is not. He is in your shadow. Nothing personal.",
   "factionId": "faction_mts",

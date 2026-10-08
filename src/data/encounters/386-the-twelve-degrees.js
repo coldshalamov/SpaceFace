@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "Colony ring at twelve. The canisters are already gone.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "Tea is not air. They know. They offer it anyway.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "work"
     },
     {
@@ -88,7 +102,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "NELL: Still on the colony. The twelve degrees does not hurry.",
+      "line": "NELL: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -201,6 +215,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_free"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "TWELVE DEGREES",
   "primaryLine": "NELL: They took the cans and the grade. Tea is hot. Air is not.",
   "factionId": "faction_free",

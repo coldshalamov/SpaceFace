@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "The offgoing hull is already unlatched.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "depart",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "Pretty is not a shift change.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "depart",
       "next": "work"
     },
     {
@@ -88,7 +102,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Still on the refinery approach. The relief lamp does not hurry.",
+      "line": "FOREMAN: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -201,6 +215,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_dmc"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "RELIEF LAMP",
   "primaryLine": "FOREMAN: Lamp's yours. Cone stays red till you say. I ain't staying for pretty.",
   "factionId": "faction_dmc",

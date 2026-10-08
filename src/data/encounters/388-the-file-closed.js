@@ -69,6 +69,13 @@ const spec = {
       "verb": "say",
       "line": "A closure parade whose headcount disagrees with the door.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "a1"
     },
     {
@@ -76,6 +83,13 @@ const spec = {
       "verb": "say",
       "line": "Do not resolve is an order, not a mood.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "creep",
       "next": "work"
     },
     {
@@ -88,7 +102,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "HX-19: Still on the patrol corridor. The file closed, crew not does not hurry.",
+      "line": "HX-19: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -201,6 +215,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_helix"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "FILE CLOSED, CREW NOT",
   "primaryLine": "HX-19 — VARIANCE FILE CLOSED. CREW COUNT DOES NOT MATCH. DO NOT RESOLVE.",
   "factionId": "faction_helix",

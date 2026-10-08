@@ -77,6 +77,13 @@ const spec = {
       "verb": "say",
       "line": "Work lamps are off. That is the picket.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "ring",
       "next": "a1"
     },
     {
@@ -84,6 +91,13 @@ const spec = {
       "verb": "say",
       "line": "Ore in the face is not abandoned. It is refused.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "ring",
       "next": "work"
     },
     {
@@ -96,7 +110,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Still on the mining belt. The dark cones does not hurry.",
+      "line": "FOREMAN: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -209,6 +223,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_dmc"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "DARK CONES",
   "primaryLine": "FOREMAN: Cones dark on purpose. Ore stays. You cut it, you cut us.",
   "factionId": "faction_dmc",

@@ -61,6 +61,13 @@ const spec = {
       "verb": "say",
       "line": "The hail wants a ship that docked yesterday.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "a1"
     },
     {
@@ -68,6 +75,13 @@ const spec = {
       "verb": "say",
       "line": "Accepting their hull is how manifests rot.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "hold",
       "next": "work"
     },
     {
@@ -80,7 +94,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CLERK: Still on the patrol corridor. The wrong berth does not hurry.",
+      "line": "CLERK: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -193,6 +207,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_scn"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "WRONG BERTH",
   "primaryLine": "CLERK: You are not the hull on this hail. Ref 44-C. State the hull you are.",
   "factionId": "faction_scn",

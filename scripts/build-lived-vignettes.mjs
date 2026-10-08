@@ -328,9 +328,11 @@ function phasesFor(row) {
   phases.push({ id: 'hail', verb: 'say', line: row.hail, channel: 'info', primary: true, next: 'move' });
   phases.push({ id: 'move', verb: 'motion', seconds: 7, motion, next: 'a0' });
   row.color.forEach((line, index) => {
-    const id = `a${index}`;
+    const sayId = `a${index}`;
+    const pauseId = `p${index}`;
     const next = index === row.color.length - 1 ? 'work' : `a${index + 1}`;
-    phases.push({ id, verb: 'say', line, channel: 'info', next });
+    phases.push({ id: sayId, verb: 'say', line, channel: 'info', next: pauseId });
+    phases.push({ id: pauseId, verb: 'motion', seconds: 5, motion, next });
   });
   phases.push({
     id: 'work',
@@ -342,7 +344,7 @@ function phasesFor(row) {
   phases.push({
     id: 'work_line',
     verb: 'say',
-    line: `${row.voice}: Still on the ${row.place.replace(/_/g, ' ')}. The ${row.title.toLowerCase()} does not hurry.`,
+    line: `${row.voice}: Holding. This does not hurry.`,
     channel: 'info',
     next: 'offer',
   });
@@ -406,6 +408,8 @@ function emit(row) {
       actor: row.actor,
     },
     livedVignette: true,
+    motive: 'lane_courtesy',
+    engagementTrigger: 'hailed',
     title: row.title,
     primaryLine: row.hail,
     factionId: row.factionId,

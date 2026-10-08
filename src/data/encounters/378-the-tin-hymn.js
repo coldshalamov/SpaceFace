@@ -61,6 +61,13 @@ const spec = {
       "verb": "say",
       "line": "Free captains do not invoice a hymn.",
       "channel": "info",
+      "next": "p0"
+    },
+    {
+      "id": "p0",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "a1"
     },
     {
@@ -68,6 +75,13 @@ const spec = {
       "verb": "say",
       "line": "The pin is a navigation mark, not a stage.",
       "channel": "info",
+      "next": "p1"
+    },
+    {
+      "id": "p1",
+      "verb": "motion",
+      "seconds": 5,
+      "motion": "orbit",
       "next": "work"
     },
     {
@@ -80,7 +94,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "PIP: Still on the civilian core. The tin hymn does not hurry.",
+      "line": "PIP: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -193,6 +207,8 @@ export default defineEncounter(trigger, {
     "actor": "faction_free"
   },
   "livedVignette": true,
+  "motive": "lane_courtesy",
+  "engagementTrigger": "hailed",
   "title": "TIN HYMN",
   "primaryLine": "PIP: No flag. I play the pin till somebody pays in filters or leaves.",
   "factionId": "faction_free",
