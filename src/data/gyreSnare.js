@@ -92,9 +92,10 @@ export const GYRE_SNARE = Object.freeze({
   tumbleTargetRadS: 0.55,    // rad/s — lazy rubble drift; a servo target so the spin settles
                            // instead of winding up open-loop over a long hold
   tearSnapWuS: 9,            // wu/s — parting whip FLOOR on a strain break (small clumps)
-  tearSnapOrbitFrac: 0.25,   // the whip scales to this fraction of orbit tangential speed —
-                           // a capped moon revolving ~61 wu/s needs a real flick to read,
-                           // while the floor keeps a pebble's snap snappy
+  tearSnapOrbitFrac: 1.2,    // the whip scales to this fraction of orbit tangential speed —
+                           // it must OUTRUN the revolve (~18 wu/s on a ponderous-floored
+                           // capped moon) or the snap reads weaker than the motion it
+                           // interrupts; the floor keeps a pebble's snap snappy
   // ── Katamari growth ───────────────────────────────────────────────────────────────
   suckBandWidth: 88,         // wu — core sucks absorbables within core.radius + this
   suckBandFloor: 40,         // wu — floor band on a fresh snag: min(88, 40 + clumpRadius)
@@ -108,6 +109,9 @@ export const GYRE_SNARE = Object.freeze({
   absorbEpsilonWu: 4,        // contact = clumpRadius + memberRadius + this — just past skin
                            // touch at a FIXED margin: a 1.15x factor scaled with the ball
                            // and a capped clump ate things ~10 wu before resting contact
+  absorbKnockPerMass: 3,     // wu/s per t of meal — the katamari flinch: impulse on the core
+                           // along the meal's approach at merge, so a wreck rocks the tether
+                           // (Δv = em·3/coreMass — a heavier ball shrugs more)
   absorbCueMinGapS: 0.08,    // s — min gap between absorb glass ticks so a dense belt feed
                            // doesn't stack identical cues into noise (events stay per-body)
   maxClumpRadius: 60,        // wu — volumetric union clamps here; mass keeps growing regardless

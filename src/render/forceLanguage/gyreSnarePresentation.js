@@ -247,6 +247,8 @@ export class GyreSnarePresentation {
     // toward rim-hot while a courtesy-tug loiterer stays flat glass.
     this._colGlass = new THREE.Color(glass);
     this._colHot = new THREE.Color(hot);
+    this._colWarn = new THREE.Color(P.warn);
+    this._colMaw = new THREE.Color(P.maw);
 
     // ── beam group: origin at the nose, +X along the beam ───────────────────
     this._beam = new THREE.Group();
@@ -777,6 +779,11 @@ export class GyreSnarePresentation {
       // `spent` joins the lash's LAUNCH dim so the mouth fades with the glass it sits on
       // through the post-thrownBeat burst instead of glowing on a dead funnel.
       this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + massFrac * 0.08 + strain * 0.3 + this._discKick * 0.35) * spent * flashCalm * fuseDim * wakeEase);
+      // The tear happens AT the mouth — the chromatic warn the cone washes
+      // rim-ward lands on its brightest element too, not just the glass skin:
+      // ring + disc warm toward amber as the clump nears slipping.
+      this._mawMat.color.copy(this._colHot).lerp(this._colWarn, strain * 0.6);
+      this._discMat.uniforms.uCol.value.copy(this._colMaw).lerp(this._colWarn, strain * 0.6);
       // Net anticipation: absorbables already inside the cone make the mouth glow
       // brighter before the catch — "×N IN NET" through the glass itself.
       const net = Math.min(3, finite(mirror.basinCount, 0));

@@ -291,10 +291,11 @@ export const gyreSnare = {
         let iz = rx * droppedDir + rz * 0.4;
         const il = Math.hypot(ix, iz) || 1; ix /= il; iz /= il;
         const m = entityMass(torn);
-        // The whip scales with the orbit's tangential speed: a capped moon
-        // already carries ~61 wu/s of revolve, so a flat snap vanishes on big
-        // clumps — 25% of tangential (floored at tearSnapWuS) reads at both ends.
-        const snapV = Math.max(D.tearSnapWuS, D.orbitRate * droppedOrbitR * D.tearSnapOrbitFrac);
+        // The whip must OUTRUN the revolve's tangential speed or the snap reads
+        // weaker than the motion it interrupts — a capped moon circles ~18 wu/s
+        // (ponderous-floored 0.255 rad/s × ~72 wu), so the frac lands the flick
+        // just past its own revolve while tearSnapWuS keeps a pebble snappy.
+        const snapV = Math.max(D.tearSnapWuS, this._orbitRate(rt) * droppedOrbitR * D.tearSnapOrbitFrac);
         queuePhysicsImpulse(torn,
           { x: ix * m * snapV, y: 0, z: iz * m * snapV },
           this._evidence(st.tick));
@@ -1076,6 +1077,17 @@ export const gyreSnare = {
     // out and would freeze the dip on the 28th meal while absorbs keep landing.
     rt.absorbDir.x = nx; rt.absorbDir.z = nz;
     rt.absorbRadius = er; // meal size — the gulp kicks scale with what was swallowed
+    // Katamari knock: the ball physically flinches off the meal's approach — a
+    // mass-scaled shove so a wreck visibly rocks the tether (a pebble is a tap,
+    // and a heavier ball shrugs more since Δv = impulse/mass). The hold spring
+    // recovers it in ~half a second — a rock, never a displacement.
+    if (dist > 1e-4) {
+      queuePhysicsImpulse(core,
+        { x: (dx / dist) * em * D.absorbKnockPerMass,
+          y: 0,
+          z: (dz / dist) * em * D.absorbKnockPerMass },
+        this._evidence(state.tick));
+    }
     if (rt.members.length < D.maxAbsorbRecords) {
       rt.members.push({ type: e.type, mass: em, radius: er, nx, nz });
     }

@@ -99,10 +99,11 @@ export const gyreHud = {
     // but a second bowl mid-flight shouldn't make the first one's grave invisible.
     const bttl = g.ballTtlS || 0;
     const extraBalls = Math.max(0, (g.liveBalls || 0) - 1);
-    // ceil would flash the gate value itself (3.05 → "4s") — clamp to warnS-1 so the
-    // countdown never claims more than the window it warns inside.
+    // floor keeps the countdown honest: ceil overstates the remaining flight by up
+    // to ~0.9 s (3.05 → "4s" flashes the gate value itself), and the max() floor of
+    // 1 keeps the last tick reading "ball 1s" not "ball 0s".
     let ballTxt = bttl > 0 && bttl < GYRE_SNARE.ballTtlWarnS
-      ? ` · ball ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(bttl)))}s` : '';
+      ? ` · ball ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.floor(bttl)))}s` : '';
     // Other live balls still flying read even when the primary's countdown isn't
     // running — a second bowl mid-flight shouldn't make the first one's grave silent.
     // When the soonest secondary is inside its warn window its countdown rides too:
