@@ -1410,6 +1410,10 @@ export const gyreSnare = {
         rt.ballMembers = null;
         rt.ballClumpRadius = 0;
         rt.ballAbsorbs = 0;
+        // Mirror hygiene parity: ballPos stays last-seen deliberately (the grave
+        // ring blooms where it died) but velocity zeroes like ttl/radius — a dead
+        // ball has no heading to keep.
+        pub.ballVx = 0; pub.ballVz = 0;
       } else {
         pub.ballPos.x = ball.pos.x; pub.ballPos.z = ball.pos.z;
         // Live velocity too — the primary ribbon steers by it like the secondaries
@@ -1449,6 +1453,7 @@ export const gyreSnare = {
           delete ball.data.gyreLaunchMeta;
           this._unwatchBall(rt.ballId);
           rt.ballId = null; rt.launchedId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
+          pub.ballVx = 0; pub.ballVz = 0; // dead balls keep no heading (see the dead-ball lane above)
         }
       }
     }

@@ -51,7 +51,7 @@ function boot(seed = 4242, { withPhysics = false, playerRadius = 12 } = {}) {
   state.playerId = player.id;
   player.cap = 100; // full capacitor — the verb drains it
   const events = [];
-  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:absorbTick', 'gyre:launched', 'gyre:thrown', 'gyre:dropped', 'gyre:fuseLow', 'gyre:ballGrave', 'audio:cue', 'toast']) {
+  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:absorbTick', 'gyre:windup', 'gyre:launched', 'gyre:thrown', 'gyre:dropped', 'gyre:fuseLow', 'gyre:ballGrave', 'audio:cue', 'toast']) {
     sim.bus.on(name, (p) => events.push({ name, p, tick: state.tick }));
   }
   return { sim, state, bus: sim.bus, helpers, player, events, sys: sim.registry.get('gyreSnare'), physicsSys: sim.registry.get('physics') };
@@ -2375,4 +2375,60 @@ test('soak: two live balls + a dry capacitor mid-second-launch retires cleanly',
   assert.ok(t.sys._rt.ballIds.includes(a.id) && t.sys._rt.ballIds.includes(b.id),
     'watch list holds both ids through the dry launch');
   t.cleanup();
+});
+
+// ── wave-47 coverage ────────────────────────────────────────────────────────────
+test('bus-less host: the tear snap and quiet-TTL retire are sim mutations, not cues', () => {
+  // The sim factory defaults a bus for its own lifecycle, so the "bus-less host"
+  // is the SYSTEM running with this.bus = null — exactly what the wave-46
+  // `if (this.bus)` guards read.
+  const sim = createSimulation({ seed: 5151, systems: [gyreSnare] });
+  const { state } = sim;
+  state.mode = 'flight';
+  state.input.actions = {};
+  const player = sim.spawn({
+    type: 'ship', team: 0, pos: { x: 0, z: 0 }, radius: 12, collides: true,
+    vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
+    hull: 200, hullMax: 200,
+    flightModel: { inertia: 88 }, flags: {},
+    physicsBody: { schemaVersion: 1, radius: 12, mass: 28, inertiaY: 88, dynamic: true, ccd: true, material: 'ship', revision: 0 },
+    data: { combatProfileId: 'combat_profile_standard_ship' },
+  });
+  state.playerId = player.id;
+  player.cap = 100;
+  const sys = sim.registry.get('gyreSnare');
+  sys.bus = null;
+  assert.equal(sys.bus, null, 'the system runs with no bus at all');
+
+  // Tear snap: the freed core eats its parting whip — wave-46 hoisted the
+  // impulse out of the bus guard; this proves it actually runs bus-less.
+  const body = rock(sim, T.mawDist, 0, 6, 4);
+  state.input.actions.gyreSnare = true;
+  for (let i = 0; i < 15; i++) sim.step();
+  assert.equal(sys._rt.phase, 'holding');
+  sys._drop('strained');
+  const cmd = consumePhysicsCommand(body);
+  assert.ok(cmd && cmd.impulses && cmd.impulses.length >= 1,
+    'the tear snap crosses the membrane with no bus to sing through');
+
+  // Quiet-TTL retire: a deadline-passed primary ball disarms + sheds its credit
+  // shadow the same tick — on the bus-gated path it deferred a tick to the
+  // !ball lane instead.
+  const t2sim = sim;
+  const ball = rock(t2sim, T.mawDist + 6, 0, 6, 4);
+  ball.data.gyreLaunched = true;
+  ball.data.gyreLaunchMeta = { mass: 6, members: [{ type: 'asteroid', radius: 4 }], clumpRadius: 6 };
+  ball.physicsBody.impactDamageScale = 8;  // the launch payload rides physicsBody
+  ball.data.gyrePrevImpactScale = 1.5;     // the authored value it stashed
+  ball.data.despawnAt = state.simTime - 0.001; // already past — the quiet-TTL lane fires this step
+  sys._rt.ballId = ball.id;
+  sys._rt.launchedId = ball.id;
+  sys._rt.ballIds.push(ball.id);
+  sys._rt.ballMass = 6; sys._rt.ballClumpRadius = 6;
+  sim.step(); // simTime advances past the deadline — the quiet-TTL lane fires
+  assert.equal(sys._rt.ballId, null, 'the deadline-passed primary retired this tick');
+  assert.equal(ball.data.gyreLaunchMeta, undefined, 'the credit shadow shed with the corpse');
+  assert.equal(ball.physicsBody.impactDamageScale, 1.5, 'the authored scale restored on the way out');
+  assert.equal(ball.data.gyrePrevImpactScale, undefined, 'the stash consumed');
+  assert.equal(sys._rt.ballIds.length, 0, 'watch list emptied');
 });

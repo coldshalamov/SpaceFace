@@ -845,6 +845,8 @@ export function createGamepad(ctx) {
       // The grip beat grades by cored mass like the shake and voice do — a 6 t
       // pebble snaps light, a 200 t wreck lands heavy. /200 matches the snag
       // shake's realistic-mass band (2400 is for katamaris, not cores).
+      // Pinned constant: /200 mirrors the gyreSnare.js snag-shake denominator —
+      // retune both together (this layer intentionally carries no data imports).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
       const base = HAPTIC_VERB_PULSES['gyre:snagged'];
       startPulse({ strong: base.strong + 0.2 * t, weak: base.weak + 0.15 * t, ms: base.ms + 60 * t }, 'gyre:snagged');
@@ -853,6 +855,8 @@ export function createGamepad(ctx) {
       // The coil draw grades by payload like the launch it precedes (ballMass /
       // maxClumpMass is the launch cue's own frac) — a capped moon's draw rumbles
       // heavier, matching the bigger pull-back the sim applies.
+      // Pinned constant: /2400 IS GYRE_SNARE.maxClumpMass — retune with the data
+      // file (this layer intentionally carries no data imports).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
       const base = HAPTIC_VERB_PULSES['gyre:windup'];
       startPulse({ strong: base.strong + 0.3 * t, weak: base.weak + 0.15 * t, ms: base.ms + 50 * t }, 'gyre:windup');
@@ -861,6 +865,8 @@ export function createGamepad(ctx) {
       // The throw crack grades by payload like snagged/windup — but on MASS, not
       // speed (a capped moon throws slower; speed-lerping would invert intent).
       // Pebble -> 0.55 crack, capped moon -> the full 0.90 + a longer tail.
+      // Pinned constant: /2400 IS GYRE_SNARE.maxClumpMass — retune with the data
+      // file (this layer intentionally carries no data imports).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
       const base = HAPTIC_VERB_PULSES['gyre:thrown'];
       startPulse({ strong: base.strong - 0.35 + 0.35 * t, weak: base.weak - 0.2 + 0.2 * t, ms: base.ms + 60 * t }, 'gyre:thrown');

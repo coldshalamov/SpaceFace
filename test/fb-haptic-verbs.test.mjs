@@ -288,6 +288,21 @@ test('gyre vocabulary routes through the pulse table — torn/dropped/droppedEmp
   assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, base.strong + 0.25, 'wreck lerp tops out');
   assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, base.weak + 0.1, 'wreck lerp weak channel');
 
+  // snagged/windup top ends too: at their lerp ceilings the payloads push past
+  // the authored base — the graded paths aren't dead-tested at t=0.
+  const sg = HAPTIC_VERB_PULSES['gyre:snagged'];
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:snagged', { mass: 200 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, sg.strong + 0.2, 'a wreck snag lands heavier');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, sg.weak + 0.15, 'wreck snag weak channel');
+  const wu = HAPTIC_VERB_PULSES['gyre:windup'];
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:windup', { mass: 2400 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, wu.strong + 0.3, 'a capped coil rumbles heavier');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, wu.weak + 0.15, 'capped coil weak channel');
+
   // gyre:thrown pebble end: mass 0 throws lighter than the authored crack —
   // a capped moon (asserted in the loop above) lands the full table value.
   const tb = HAPTIC_VERB_PULSES['gyre:thrown'];
