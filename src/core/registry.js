@@ -40,6 +40,10 @@ import { sableVenn } from '../systems/sableVenn.js';
 import { ilexArk } from '../systems/ilexArk.js';
 import { ilexArkPrompt } from '../ui/ilexArkPrompt.js';
 import { kilnback } from '../systems/kilnback.js';
+import { mothlight } from '../systems/mothlight.js';
+import { mothlightPrompt } from '../ui/mothlightPrompt.js';
+import { palletJack } from '../systems/palletJack.js';
+import { palletJackPrompt } from '../ui/palletJackPrompt.js';
 import { towlineTable } from '../systems/towlineTable.js';
 import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
@@ -482,6 +486,10 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['ilexArk', ilexArk],
     ['ilexArkPrompt', ilexArkPrompt],
     ['kilnback', kilnback],
+    ['mothlight', mothlight],
+    ['mothlightPrompt', mothlightPrompt],
+    ['palletJack', palletJack],
+    ['palletJackPrompt', palletJackPrompt],
     ['towlineTable', towlineTable],
     ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],

@@ -769,6 +769,11 @@ function injectCommsCss() {
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sf-comm__body { line-height:1.38; color:var(--hud-paper,#e7edf5); }
   .sf-comm--personal .sf-comm__body, .sf-comm--late .sf-comm__body, .sf-comm--story .sf-comm__body { color:#eaf4ff; }
+  /* Player-addressed traffic stands forward of the ambient channel noise: personal lines set one
+     step larger and brighter, ambient lines recede. Tag-only difference was unreadable at speed. */
+  .sf-comm--personal { font-size:13px; }
+  .sf-comm--personal .sf-comm__body { color:#f2f7ff; }
+  .sf-comm--ambient { opacity:.85; }
 
   /* Joined top-left utility rail: explicit words beat another ambiguous glyph. */
   .sf-comm-backlog-btn { position:absolute; left:20px; top:20px; width:66px; height:32px; z-index:1060;

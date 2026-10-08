@@ -54,6 +54,8 @@ Current save version: `14`
 - `sableVenn`
 - `ilexArk`
 - `kilnback`
+- `mothlight`
+- `palletJack`
 - `towlineTable`
 - `borrowedVoice`
 - `lossLedger`
@@ -268,6 +270,7 @@ Current save version: `14`
 | `$.missions.story.phase` | number | 1 |
 | `$.missions.story.seenComms` | object | {} |
 | `$.morrow` | object | {} |
+| `$.mothlight` | null | null |
 | `$.nav` | object | {} |
 | `$.nav.autopilot` | object | {} |
 | `$.nav.autopilot.active` | boolean | false |
@@ -283,6 +286,7 @@ Current save version: `14`
 | `$.nemesisDeployment` | null | null |
 | `$.npcJobs` | object | {} |
 | `$.onboarding` | null | null |
+| `$.palletJack` | null | null |
 | `$.physics` | null | null |
 | `$.player` | object | {} |
 | `$.player.activeShipIndex` | number | 0 |

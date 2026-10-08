@@ -340,8 +340,8 @@ export const voiceArbiter = {
       const policy = this._policy();
       const active = this.queue.active;
       // A player dismissal clears the pill once — but never a critical squelch (danger class),
-      // and not the tutorial floor while onboarding still owns it.
-      if (isDangerVoice(active)) return;
+      // and not the tutorial floor while onboarding still owns it. Channel alone is not
+      // critical squelch (isCriticalSquelchLine), so ordinary alert-channel warnings clear.
       if (active && policy.tutorialProtect && active.channel === 'tutorial') return;
       const surfaced = this.queue.dismiss(this._now(), policy);
       this._flushPresentation(surfaced);

@@ -17,6 +17,7 @@ mentally stimulating in adventure mode because of its advanced customization and
 version and optimized.* Product intent: [`design/VISION.md`](./design/VISION.md).
 Expansion alignment is retained in the non-dispatching [`EXPANSION_MASTER_BLUEPRINT.md`](./design/program/roadmap/active/EXPANSION_MASTER_BLUEPRINT.md)
 and the story/place concept companion [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md).
+Current original-concept source handoff: [8 October checkpoint](./design/program/world-depth-2026-10-02/EXECUTION_STATUS.md#source-checkpoint-for-cloud-work---8-october-2026). Inactive sources and failed route checks remain explicitly unfinished.
 Those syntheses do not add queue IDs or replace packet ownership. Existing owners stay compactly mapped here:
 kinetic combat and the Massline → `PQ-137`, `PQ-026`–`PQ-031`, `PQ-140`, `PQ-146`; readable swarms and
 world reactions → `PQ-140`, `PQ-174`, `PQ-175`, `PQ-138`, `PQ-143`, `PQ-151`, `PQ-144`; readable trade

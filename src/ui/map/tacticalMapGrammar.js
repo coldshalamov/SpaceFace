@@ -29,6 +29,12 @@ export const TACTICAL_MAP_PALETTE = Object.freeze({
   friendly: '#4fbf8f',
   /* Unaligned small traffic: blue-grey, the semantic neutral — deliberately the quietest live mark. */
   neutral: '#9aa8bc',
+  /* Unaligned traffic by trade (shape still carries the class; these hues are the fast tell apart):
+     industrial hulls read sage, lawful hulls steel-blue. Both stay desaturated so the red lamp
+     (threat) and the amber lamp (objective/Hand) keep their channels; stance still wins — a
+     hostile freighter is red, an allied patrol is green. */
+  worker: '#a8b09a',
+  lawful: '#7fa8c4',
   /* Dead hulks: muted rust, salvage reading distinct from amber pickups and the red lamp. */
   wreck: '#c08a58',
   asteroid: '#4a5162',
@@ -67,7 +73,7 @@ export const TACTICAL_SYMBOLS = Object.freeze({
 
 export const MAP_LEGEND_ORDER = Object.freeze(['player', 'objective', 'hostile', 'station', 'gate']);
 
-const COMPACT_METRICS = Object.freeze({ size: 188, center: 94, radius: 90 });
+const COMPACT_METRICS = Object.freeze({ size: 208, center: 104, radius: 100 });
 const EXPANDED_METRICS = Object.freeze({ size: 290, center: 145, radius: 141 });
 const OBJECTIVE_EDGE_INSET = 15;
 

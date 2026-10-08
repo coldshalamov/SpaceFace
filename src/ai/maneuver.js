@@ -31,6 +31,9 @@ function bodyRadius(body) {
 }
 
 const GAP_QUEUE_PAD = 4;
+// Braking deceleration assumed by the choreography slot chase's arrival damping. Deliberately
+// conservative (real hulls brake harder), so the cap opens early and never strafes a chase.
+const COMMIT_ARRIVAL_BRAKE = 60;
 
 /**
  * Waiting points behind a narrow gap. Centers are separated by each hull's own
@@ -1012,15 +1015,24 @@ function commitPoint(self, point, commitSpeed, feedVel = ZERO_VEL) {
   const distance = Math.hypot(dx, dz);
   const inv = distance > 1e-9 ? 1 / distance : 0;
   const speed = Math.max(8, commitSpeed || 0);
+  // Arrival damping: a formation slot is a place, not a direction. The raised pursuit caps
+  // made full-speed slot chases overshoot and oscillate around the slot — formation mates
+  // crossed centers and ground hull-to-hull during settle and reform (M6 left↔right at
+  // spawn, lead↔left in the reform turn). Cap the SELF-driven approach by the braking
+  // distance to the slot, on top of the slot's own recede rate along the bearing — a
+  // receding slot is pursued at full cap, a settled slot glides in.
   const feed = feedVel || ZERO_VEL;
+  const recede = distance > 1e-9 ? ((feed.x || 0) * dx + (feed.z || 0) * dz) * inv : 0;
+  const arriveSpeed = recede + Math.sqrt(2 * COMMIT_ARRIVAL_BRAKE * Math.max(0, distance - 6));
+  const chase = Math.min(speed, Math.max(speed * 0.35, arriveSpeed));
   return {
     x: dx,
     z: dz,
     arrivalDistance: distance,
     desiredPos: target,
     desiredVel: {
-      x: (feed.x || 0) * 0.35 + dx * inv * speed,
-      z: (feed.z || 0) * 0.35 + dz * inv * speed,
+      x: (feed.x || 0) * 0.35 + dx * inv * chase,
+      z: (feed.z || 0) * 0.35 + dz * inv * chase,
     },
     control: 'track',
   };

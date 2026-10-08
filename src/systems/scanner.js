@@ -4,6 +4,7 @@
 // plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
 // Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
 import { asteroidScanGlyph } from '../data/mining.js';
+import { mothlightScannerReading } from '../data/mothlight.js';
 import { borrowedVoiceScannerReading } from './borrowedVoice.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
@@ -682,7 +683,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     // authored sourceId rather than a transient numeric entity id.
     if (entity.data && entity.data.poi) continue;
     if (entity.data && entity.data.requiresTriangulation) continue;
-    const sourceReading = borrowedVoiceScannerReading(state, entity);
+    const sourceReading = mothlightScannerReading(state, entity) || borrowedVoiceScannerReading(state, entity);
     const kind = sourceReading?.kind || signalKindForEntity(entity);
     if (!kind) continue;
     const revealed = entity.data && entity.data.scanRevealed;
@@ -1592,6 +1593,10 @@ export const scanner = {
     if (availability.kind === 'red_kite') {
       this._clearContactHail('relay_handoff');
       return this.registry.get('redKite')?.offer() === true;
+    }
+    if (availability.kind === 'pallet_jack') {
+      this._clearContactHail('freight_handoff');
+      return this.registry.get('palletJack')?.offer() === true;
     }
     if (availability.kind === 'toll') {
       const demand = pirateParleyDemandForHandoff(availability.parley);

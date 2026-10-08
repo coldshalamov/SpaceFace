@@ -50,6 +50,18 @@ function fixture({ native = false, payment = false } = {}) {
   return { sim, s, system, player, tick, unlock, start, cross };
 }
 
+test('an off-sector scanner pulse without a materialized courier or selected body stays inert', () => {
+  const sim = createSimulation({ seed: 5, systems: [spawnBudget, redKite] });
+  try {
+    const s = sim.state; s.mode = 'flight'; s.world.currentSectorId = 'sector_io_reach';
+    const player = sim.spawn(makeShipEntitySpec('ship_hornet', { isPlayer: true, player: s.player, pos: { x: 0, z: 0 }, fittings: [] }));
+    s.playerId = player.id; s.player.targetId = null;
+    const offers = []; sim.bus.on('redKite:offer', p => offers.push(p));
+    assert.doesNotThrow(() => sim.bus.emit('scan:pulse', { source: 'player-scanner', scannerId: player.id, pos: { ...player.pos } }));
+    assert.equal(offers.length, 0);
+  } finally { sim.dispose(); }
+});
+
 test('ordered swept gate planes reject reverse, repeated and out-of-aperture crossings', () => {
   const g = redKiteGateFrame(0), before = { x: g.pos.x - g.nx * 20, z: g.pos.z - g.nz * 20 };
   const after = { x: g.pos.x + g.nx * 20, z: g.pos.z + g.nz * 20 };

@@ -173,7 +173,7 @@ export function injectHudCss() {
   .sf-rightdock { position:absolute; right:calc(22px + var(--sf-safe-inset-x, 0px)); bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;
     contain:layout paint style; }
   .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; contain:layout paint style; }
-  .sf-radar { position:relative; width:var(--sf-radar-size, 188px); height:var(--sf-radar-size, 188px); border-radius:50%; overflow:hidden; cursor:pointer;
+  .sf-radar { position:relative; width:var(--sf-radar-size, 208px); height:var(--sf-radar-size, 208px); border-radius:50%; overflow:hidden; cursor:pointer;
     contain:layout paint style; }
   .sf-radar--expanded { width:290px !important; height:290px !important; }
   /* Canvas is centered so compact/expanded size changes stay anchored on the player marker. */
@@ -1124,8 +1124,8 @@ export function injectHudCss() {
      decides the column, and --sf-radar-size is pinned to radar.js COMPACT_SIZE by
      test/j07-hud-contract.test.mjs so the canvas can never drift from its dial again. */
   #hud {
-    --sf-dock-w:188px;
-    --sf-radar-size:188px;
+    --sf-dock-w:208px;
+    --sf-radar-size:208px;
     --sf-brk-col:var(--hud-cyan);
   }
   .sf-rightdock { right:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:12px; width:var(--sf-dock-w); align-items:stretch; gap:9px; }
@@ -1830,21 +1830,21 @@ export function injectHudCss() {
   .sf-radar-wrap.sf-kit-radar {
     --sf-kit-radar-rim:24px;
     position:relative;
-    width:calc(var(--sf-radar-size, 188px) + var(--sf-kit-radar-rim) * 2);
-    min-height:calc(var(--sf-radar-size, 188px) + var(--sf-kit-radar-rim) * 2);
+    width:calc(var(--sf-radar-size, 208px) + var(--sf-kit-radar-rim) * 2);
+    min-height:calc(var(--sf-radar-size, 208px) + var(--sf-kit-radar-rim) * 2);
     padding:0; contain:layout style; background:none;
   }
   .sf-kit-radar__bezel,
   .sf-kit-radar__face,
   .sf-kit-radar__n { position:absolute; pointer-events:none; }
   .sf-kit-radar__bezel {
-    left:50%; top:0; width:100%; height:calc(var(--sf-radar-size, 188px) + var(--sf-kit-radar-rim) * 2);
+    left:50%; top:0; width:100%; height:calc(var(--sf-radar-size, 208px) + var(--sf-kit-radar-rim) * 2);
     transform:translateX(-50%);
     background:none center / contain no-repeat;
     z-index:0;
   }
   .sf-kit-radar__face {
-    left:50%; top:var(--sf-kit-radar-rim); width:var(--sf-radar-size, 188px); height:var(--sf-radar-size, 188px);
+    left:50%; top:var(--sf-kit-radar-rim); width:var(--sf-radar-size, 208px); height:var(--sf-radar-size, 208px);
     transform:translateX(-50%); border-radius:50%;
     background:none center / contain no-repeat;
     z-index:1;
@@ -1988,12 +1988,12 @@ export function injectHudCss() {
   .sf-bars .sf-bar.sf-kit-bar, .sf-kit-bar { min-width:0; }
   .sf-kit-seg { flex:1 1 0; min-width:0; max-width:12px; background-size:contain; }
 
-  /* The kit radar is a 188 px face inside a 24 px machined rim, so its box is 236 px — but the dock
+  /* The kit radar is a 208 px face inside a 24 px machined rim, so its box is 256 px — but the dock
      column it lives in was still the pre-kit 188 px, and the wrap is left-aligned in it. Measured on
      the default route: the bezel's right edge landed at 1964 in a 1920 viewport, so the dial was cut
      off by the screen edge at every default size. The column owns the width (J07), so the column is
      what moves; --sf-radar-size stays pinned to radar.js COMPACT_SIZE. */
-  #hud { --sf-dock-w:236px; }
+  #hud { --sf-dock-w:256px; }
   /* Small viewports. The instrument keeps its whole box — bezel, window, needle pivot — and only
      the factor moves, so nothing can come apart. The reserve the left column has to clear comes
      down with it. These replace the retired 1180/760 breakpoints that resized the bezel alone. */

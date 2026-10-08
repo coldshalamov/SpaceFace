@@ -1709,6 +1709,8 @@ function classifyWorld(state, runtime) {
       // One budgeted named courier must physically finish/return across the whole
       // surveyed course, including corners beyond the player's local physics reach.
       || (isRedKiteEntity(entity) && data.homeSectorId === state.world?.currentSectorId)
+      || (data.persistenceOwner === 'palletJack' && data.homeSectorId === state.world?.currentSectorId)
+      || (data.persistenceOwner === 'mothlight' && data.homeSectorId === state.world?.currentSectorId)
       || data.activityActorSlotId
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
       || namedAceActor
