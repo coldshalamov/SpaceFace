@@ -882,7 +882,9 @@ export const gyreSnare = {
       // building thumps — same convention as the launch cue below. The grip
       // shake grades by mass too — coring a wreck lands heavier than a pebble.
       this.bus.emit('audio:cue', {
-        id: 'gyre_snare_snag', rate: 1.08 - Math.min(0.3, rt.clumpMass / 500),
+        // /2000 keeps the pitch drop grading past mid-tier snags — /500 saturated
+        // at 150t so coring a big wreck sang identically to a mid rock.
+        id: 'gyre_snare_snag', rate: 1.08 - Math.min(0.45, rt.clumpMass / 2000),
         position: { x: best.pos.x, z: best.pos.z },
       });
       // /200 grades against a realistic snag mass, not the 2400t cap — a ~40t

@@ -30,6 +30,7 @@ export const GYRE_HUD_CSS = `
   pointer-events: none; white-space: nowrap;
 }
 .sf-gyre-pill.gyre-holding { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
+.sf-gyre-pill.gyre-search { color: var(--dp-lamp-dim, #8a6b3a); } /* beam live, nothing gripped yet */
 .sf-gyre-pill.gyre-strain { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
 .sf-gyre-pill.gyre-launched { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-ball { border-left-color: var(--dp-lamp-dim, #8a6b3a); }
@@ -202,15 +203,15 @@ export const gyreHud = {
     // the "why won't it snag?" read instead of silence.
     const net = g.basinCount || 0;
     if (net > 0) {
-      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
     }
     if (tow > 0) {
-      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
     }
     if (heavy > 0) {
-      return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+      return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
     }
-    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
   },
 
   _apply(dom, text, cls, strain, fuse) {

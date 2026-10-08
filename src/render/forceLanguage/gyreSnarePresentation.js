@@ -569,6 +569,23 @@ export class GyreSnarePresentation {
     for (const l of this._lumps) { l.used = false; l.mesh.visible = false; }
   }
 
+  // Grave scatter: instead of the k² deflate, each lump flings out along its own
+  // seat direction on a per-lump stagger — katamari payoff reads as rubble.
+  _scatterLumps(e) {
+    for (const l of this._lumps) {
+      if (!l.used || !l.basePos) continue;
+      const stag = ((l.bobPhase || 0) % 1.5) / 1.5 * 0.4;
+      const tt = Math.min(1, Math.max(0, e * 1.4 - stag));
+      const bl = Math.hypot(l.basePos.x, l.basePos.z) || 1;
+      const out = tt * (finite(this._clumpRadius, 8) + 6);
+      l.mesh.position.set(
+        l.basePos.x + (l.basePos.x / bl) * out,
+        l.basePos.y + tt * 2.5,
+        l.basePos.z + (l.basePos.z / bl) * out);
+      l.mesh.scale.setScalar(Math.max(0.001, (l.baseScale || 1) * (1 - tt * 0.7)));
+    }
+  }
+
   _fireBurst(x, z, r, calm = 1, dir = null) {
     // Steal the MOST-decayed slot, not slot 0 — a full pool mid-expansion would
     // otherwise always cut the same ring.
@@ -664,8 +681,11 @@ export class GyreSnarePresentation {
     // the rock becomes the core — bloom one ring where it was grabbed so 'the
     // rock got grabbed' lands AT the rock, not only as a lump flying inward.
     if (this._lastPhase === 'beaming' && phase === 'holding' && mirror.corePos) {
+      // mirror.clumpRadius, not the cached field — it refreshes later in update(),
+      // so on a fresh snag the field is still stale and every catch would bloom
+      // the 4 wu floor regardless of what was grabbed.
       this._fireBurst(finite(mirror.corePos.x), finite(mirror.corePos.z),
-        Math.max(4, finite(this._clumpRadius, 8) * 0.7), flashCalm);
+        Math.max(4, finite(mirror.clumpRadius, 8) * 0.7), flashCalm);
     }
     this._lastPhase = phase;
 
@@ -913,6 +933,18 @@ export class GyreSnarePresentation {
       // with the same decayed strain (lighter weight than the rim — moving motes
       // don't need to scream it).
       this._spiralMat.uniforms.uCol.value.copy(this._colGlass).lerp(this._colWarn, strainW * 0.4);
+      // The gravity zone is legible space before the first body enters it: park
+      // the hold-phase halo at the maw during BEAM — a faint flat ring at the
+      // basin's pull edge (the suck lane's own ring takes over on snag).
+      if (phase === 'beaming') {
+        this._halo.position.set(mL.x, 0.42, mL.z);
+        this._halo.scale.setScalar(finite(GYRE_SNARE.basinRadius, 86)
+          * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
+        this._haloMat.opacity = 0.06 * flashCalm * wakeEase;
+        this._halo.visible = true;
+      } else if (phase === 'launching' && this._halo.visible) {
+        this._halo.visible = false;
+      }
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
       // down over ~0.25 s instead of popping — the collapse is part of the payoff.
@@ -1062,7 +1094,9 @@ export class GyreSnarePresentation {
       if (this._deathT > 0) {
         this._deathT -= sdt;
         const k = Math.max(0, this._deathT / 0.25);
-        this._clump.scale.setScalar(Math.max(0.001, k * k));
+        // Rubble scatters on the grave, not a shrinking ball — the lumps fling
+        // along their seat dirs while the group fades via the lumps' own shrink.
+        this._scatterLumps(1 - k);
         this._clump.visible = this._deathT > 0;
         if (this._deathT <= 0) this._clearLumps();
       } else if (this._closeTear) {
@@ -1086,7 +1120,7 @@ export class GyreSnarePresentation {
         } else {
           this._tearFade -= sdt;
           const k = Math.max(0, this._tearFade / 0.2);
-          this._clump.scale.setScalar(Math.max(0.001, k * k));
+          this._scatterLumps(1 - k); // same scatter language as the grave deflate
           this._veilMat.opacity *= Math.exp(-sdt * 6);
           this._veil.visible = this._veilMat.opacity > 0.004;
           this._clump.visible = this._tearFade > 0;
@@ -1275,7 +1309,15 @@ export class GyreSnarePresentation {
       for (const l of this._lumps) {
         if (!l.used) continue;
         const g = Math.min(1, Math.max(0, (this.time - l.spawnT) / 0.15));
-        l.mesh.scale.setScalar(l.baseScale * ((l.spawnScale || 0.45) + (1 - (l.spawnScale || 0.45)) * g));
+        // Hit-side squash: the gulp kick compresses lumps near the impact azimuth
+        // (~20%) while the far side holds — the ball dents where it was struck
+        // instead of shrinking uniformly.
+        let sq = 1;
+        if (this._moteKick > 0.01 && l.basePos) {
+          const laS = Math.atan2(l.basePos.z, l.basePos.x);
+          sq = 1 - 0.2 * this._moteKick * Math.max(0, Math.cos(laS - (this._gulpLocalA || 0)));
+        }
+        l.mesh.scale.setScalar(l.baseScale * ((l.spawnScale || 0.45) + (1 - (l.spawnScale || 0.45)) * g) * sq);
         // Zero-G rubble: a quiet per-lump bob (±15% of its own size, plus a hair of
         // lateral sway) keeps each chunk reading as debris in loose formation rather
         // than part of a rigid wheel. Frozen under reduced-motion like the spiral.
