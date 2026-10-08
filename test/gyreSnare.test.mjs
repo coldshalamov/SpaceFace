@@ -2142,6 +2142,49 @@ test('a strain break publishes the torn core\'s last ~0.5 s — the close flies 
   t.cleanup(); t2.cleanup();
 });
 
+test('a fieldResponseMult-0 body shrugs the basin coupling off entirely', () => {
+  const t = boot();
+  // A dedicated core first — the mult-0 twin spawns after the hold so it can't
+  // be the snag itself (a held core's orbit-spring impulses are the lash's own).
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  // Same rock, two response profiles — parked just inside the basin wedge.
+  const ghost = rock(t.sim, T.mawDist + 30, 0, 6, 4);
+  ghost.physicsBody.fieldResponseMult = 0;
+  const live = rock(t.sim, T.mawDist + 30, 40, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // spatial index registers the spawns
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const gcmd = consumePhysicsCommand(ghost);
+  assert.ok(!gcmd || !gcmd.impulses || gcmd.impulses.length === 0,
+    'a zero-response body gets no basin pull');
+  const lcmd = consumePhysicsCommand(live);
+  assert.ok(lcmd && lcmd.impulses && lcmd.impulses.length >= 1, 'its twin still eats the pull');
+});
+
+test('the strain edge is strict: exactly holdBreakDist holds, a hair past it tears', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const maw = { x: 0, z: 0 };
+  t.sys._maw(t.player, maw);
+  // Park the core exactly ON the break line: the spring drags it back — no tear.
+  core.pos.x = maw.x + T.holdBreakDist; core.pos.z = maw.z;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'holding', 'dist == holdBreakDist is not a tear (strict >)');
+  // A hair past it slips.
+  t.sys._maw(t.player, maw);
+  core.pos.x = maw.x + T.holdBreakDist + 1.5; core.pos.z = maw.z;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'dist > holdBreakDist tears');
+  assert.equal(t.state.gyreSnare.dropReason, 'strained');
+  assert.equal(t.state.gyreSnare.tornId, core.id, 'the freed core publishes its track');
+  t.cleanup();
+});
+
 test('suck-band floor: a fresh snag\'s reach stays inside the basin, mass re-widens it', () => {
   const t = boot(9401);
   const rt = t.sys._rt;

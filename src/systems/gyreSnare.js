@@ -372,11 +372,11 @@ export const gyreSnare = {
         // Same current-owner guard as the despawnAt branch: a foreign owner that
         // assigns its own finite ttl keeps it — the snag only planted Infinity, so a
         // finite e.ttl here is owner-set and wins. Infinity still restores authored.
-        // An absent stash restores ABSENT (delete, not Infinity) — the field
-        // round-trips exactly as authored.
-        if (e.data.gyrePrevTtl === undefined) {
+        // An absent OR non-positive stash restores nothing — and must not leave the
+        // snag's planted Infinity behind either (immortal debris): delete instead.
+        if (!(e.data.gyrePrevTtl > 0)) {
           if (!Number.isFinite(e.ttl)) delete e.ttl;
-        } else if (!Number.isFinite(e.ttl) && Number.isFinite(e.data.gyrePrevTtl) && e.data.gyrePrevTtl > 0) {
+        } else if (!Number.isFinite(e.ttl)) {
           e.ttl = e.data.gyrePrevTtl;
         }
         delete e.data.gyrePrevTtl;
@@ -1371,8 +1371,11 @@ export const gyreSnare = {
   // Runs in update() immediately before the mirror write.
   _sweepBallWatch(state) {
     const rt = this._rt;
-    const pub = state && state.gyreSnare;
-    if (!rt || !pub) return;
+    if (!rt || !state) return;
+    // Lazily create the mirror like _publish — the retire pass below is SIM-SIDE
+    // (unwatch + disarm + meta shed) and must not depend on a presentation mirror
+    // existing first. "unwatched ⇒ disarmed" runs on the very first tick.
+    const pub = this._ensurePub(state);
     // Default each tick: the grave ring only blooms when the ball actually DIES — an
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
     // launchedId without a grave, and must not shatter under a still-live body.
@@ -1533,9 +1536,8 @@ export const gyreSnare = {
   // ── presentation mirror (read-only on entity state for render/HUD; runtime-only,
   // never saved — edge-latched emits like audio:cue/gyre:strained/gyre:fuseLow ARE
   // allowed here: they ride published values and mutate nothing a reader can see) ──
-  _publish(state, player) {
-    const rt = this._rt;
-    const pub = state.gyreSnare || (state.gyreSnare = {
+  _ensurePub(state) {
+    return state.gyreSnare || (state.gyreSnare = {
       phase: PHASE.OFF, nose: { x: 0, z: 0 }, maw: { x: 0, z: 0 },
       coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
@@ -1547,6 +1549,11 @@ export const gyreSnare = {
       liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
       tornId: null, tornPos: { x: 0, z: 0 },
     });
+  },
+
+  _publish(state, player) {
+    const rt = this._rt;
+    const pub = this._ensurePub(state);
     if (pub.basinSpots === null) pub.basinSpots = [];
     pub.basinSpots.length = 0;
     for (let i = 0; i < rt.basinSpots.length; i++) pub.basinSpots.push(rt.basinSpots[i]);
