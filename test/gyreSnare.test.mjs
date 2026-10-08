@@ -780,11 +780,16 @@ test('a held core removed externally drops the beam and clears residue', async (
   const body = rock(t.sim, T.mawDist, 0);
   hold(t);
   assert.equal(t.sys._rt.phase, 'holding');
+  const heard = t.events.length;
   body.alive = false; // something else ate the core mid-hold
   t.sim.step();
   assert.equal(t.sys._rt.phase, 'off');
   assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_lost'));
   assert.equal(body.data.gyreCore, undefined, 'core_lost still sweeps the mark');
+  assert.ok(t.events.slice(heard).some((e) => e.name === 'toast' && /clump destroyed/.test(e.p.text)),
+    'destroyed-in-grip narrates like every other involuntary end');
+  assert.ok(!t.events.slice(heard).some((e) => e.name === 'camera:shake'),
+    'no second shake — the killing impact already thumped the camera');
   t.cleanup();
 });
 

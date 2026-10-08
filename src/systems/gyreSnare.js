@@ -378,6 +378,12 @@ export const gyreSnare = {
           // LOUDEST involuntary loss and shouldn't be the one with no words.
           this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare — clump torn free', ttl: 1.6 });
         }
+        // A clump destroyed in the grip gets words too — every other involuntary
+        // end narrates. No extra shake: whatever killed the core already landed
+        // its own impact thump, and doubling it would read as two hits.
+        else if (reason === 'core_lost') {
+          this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare — clump destroyed', ttl: 1.6 });
+        }
       }
     }
   },

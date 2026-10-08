@@ -279,6 +279,9 @@ test('gyre vocabulary routes through the pulse table — torn/dropped/droppedEmp
     ['gyre:ballGrave', {}, 'gyre:ballGrave'],
     ['gyre:strained', {}, 'gyre:strained'],
     ['gyre:dropped', { reason: 'strained', coreId: null }, 'gyre:torn'],
+    // A clump destroyed in the grip is a shatter — the same 'gyre:torn' pulse a
+    // strain break lands, not the polite-release thud.
+    ['gyre:dropped', { reason: 'core_lost', coreId: 9 }, 'gyre:torn'],
     ['gyre:dropped', { reason: 'launched', coreId: null }, 'gyre:droppedEmpty'],
     ['gyre:dropped', { coreId: 7 }, 'gyre:dropped'],
   ];

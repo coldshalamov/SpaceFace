@@ -897,7 +897,9 @@ export function createGamepad(ctx) {
       // short of the throw crack: the tear lands in the hands like it does on screen.
       // The reason wins over the id key — a launch-phase 'strained' emit carries
       // coreId: null (the ball already flew), but a tear is never an empty drop.
-      if (payload && payload.reason === 'strained') spec = 'gyre:torn';
+      // core_lost inherits the tear: a clump destroyed in the grip is a shatter —
+      // same glassier voice + snap close it already wears, same pulse in the hands.
+      if (payload && (payload.reason === 'strained' || payload.reason === 'core_lost')) spec = 'gyre:torn';
       startPulse(HAPTIC_VERB_PULSES[spec], spec);
     });
     bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));

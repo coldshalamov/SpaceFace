@@ -843,7 +843,11 @@ export class GyreSnarePresentation {
       this._fuseDim = fuseDim; // basin glows run outside this branch — they read the cached dim
       // The verb's face reads the payload too: a 2000 t moon loads the mouth + glass
       // brighter than a 6 t pebble — escalation lands before FULL ever fires.
-      const massFrac = Math.min(1, finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1)));
+      // HOLD-gated: pub.clumpMass also carries a still-FLYING ball's frozen mass
+      // (the ridingBall publish feeds HUD/lumps through a fresh BEAM), so without
+      // the gate a searching funnel would thrum as if loaded. The LAUNCH dim already
+      // spends the glass — only a held payload earns the loaded read.
+      const massFrac = holding ? Math.min(1, finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1))) : 0;
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
       // A thrown lash is SPENT glass: during the burst no pull lane runs, so the
@@ -957,8 +961,10 @@ export class GyreSnarePresentation {
       this._discMat.uniforms.uCalm.value = calm;
       // Searching-breathe: an idle lash still reads "active gravity well" — a slow
       // ~0.8 Hz shimmer on the empty disc (silenced once mass is in the net: the +N
-      // anticipation owns that brighter read).
-      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12 + (net === 0 ? 0.05 * Math.sin(this.time * 5.03) : 0)) + this._discKick * 0.5) * flashCalm * fuseDim * wakeEase;
+      // anticipation owns that brighter read). BEAM-only: the coil borrows this
+      // formula through 'launching', and a breathing idle shimmer through the
+      // draw would fight the windup swell + spent dim.
+      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12 + (net === 0 && phase === 'beaming' ? 0.05 * Math.sin(this.time * 5.03) : 0)) + this._discKick * 0.5) * flashCalm * fuseDim * wakeEase;
       // Reduced-motion keeps a STATIC mote scatter instead of hiding the funnel
       // outright — the frozen motes still read "matter is being pulled" where
       // visible=false left the cone with no suction signifier at all.
@@ -1543,8 +1549,11 @@ export class GyreSnarePresentation {
         this._secR = ballR; // grave scatter flings off this radius
         this._secVeil.scale.setScalar(ballR * 1.22);
         // Mass-graded like its siblings — a capped secondary katamari flies with
-        // more than a pebble's whisper veil.
-        this._secVeilMat.opacity = (0.05 + 0.04 * Math.min(1, finite(sb.mass) / GYRE_SNARE.maxClumpMass)) * flashCalm;
+        // more than a pebble's whisper veil. And it telegraphs its quiet grave:
+        // the same 0.55→1 sag the rumble envelope + HUD ·Ns keep inside
+        // ballTtlWarnS — the drawn veil was the one lane that stayed flat.
+        const secTtlWarn = clamp01(finite(sb.ttlS, 99) / Math.max(0.5, GYRE_SNARE.ballTtlWarnS));
+        this._secVeilMat.opacity = (0.05 + 0.04 * Math.min(1, finite(sb.mass) / GYRE_SNARE.maxClumpMass)) * (0.55 + 0.45 * secTtlWarn) * flashCalm;
         // Rebuild key is (id, member-count): launch-meta members are FROZEN at
         // throw, so sbm.length only moves on a re-adopt — a live-members refactor
         // would silently never re-lay-out the lumps if this stayed id-only.
