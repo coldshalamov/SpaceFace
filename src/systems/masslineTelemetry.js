@@ -69,6 +69,12 @@ const FALLBACK = Object.freeze({
   maxStrainSinceLatch: 0,
   maxTangentialSpeedSinceLatch: 0,
   maxAngularSpeedSinceLatch: 0,
+  // FB-011 — ratio of this tick's omega to the crest observed since latch. 0 until
+  // the swing has an angular crest. The readout only reads it.
+  apexProximity: 0,
+  // Relay of tether.storedEnergy (the spring the line is already holding). Not a
+  // second energy law.
+  storedSwingEnergy: 0,
   latchTick: null,
   latchTime: null,
   snapCatch: null,
@@ -179,6 +185,11 @@ export const masslineTelemetry = {
     if (Math.abs(kinematics.angularSpeed) > telemetry.maxAngularSpeedSinceLatch) {
       telemetry.maxAngularSpeedSinceLatch = Math.abs(kinematics.angularSpeed);
     }
+    const apexOmega = telemetry.maxAngularSpeedSinceLatch;
+    telemetry.apexProximity = apexOmega > 0
+      ? Math.abs(kinematics.angularSpeed) / apexOmega
+      : 0;
+    telemetry.storedSwingEnergy = finite(tether.storedEnergy, 0);
 
     // Rung 11: arc-preview — the predicted sling if the player cut right now. Pure data recomputed
     // from this tick's kinematics; the render (rung 12) reads it. Observer-only, no events.
@@ -399,6 +410,8 @@ function freshRuntime() {
     maxStrainSinceLatch: 0,
     maxTangentialSpeedSinceLatch: 0,
     maxAngularSpeedSinceLatch: 0,
+    apexProximity: 0,
+    storedSwingEnergy: 0,
     latchTick: null,
     latchTime: null,
     snapCatch: null,
@@ -428,6 +441,8 @@ function writeInactive(telemetry) {
   telemetry.maxStrainSinceLatch = 0;
   telemetry.maxTangentialSpeedSinceLatch = 0;
   telemetry.maxAngularSpeedSinceLatch = 0;
+  telemetry.apexProximity = 0;
+  telemetry.storedSwingEnergy = 0;
   telemetry.latchTick = null;
   telemetry.latchTime = null;
   telemetry.reelPump = null;

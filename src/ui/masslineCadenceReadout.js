@@ -2,6 +2,41 @@
  * No simulation mutation, subscription, timer, rAF, sound, aim assistance or renderer dependency.
  * update() reads the current packet synchronously; diagnostic strings use textContent, not HTML.
  */
+
+const finiteOr = (value) => (Number.isFinite(value) ? value : undefined);
+
+/**
+ * FB-011 — the five instrument columns, read from the telemetry the sim already
+ * publishes. No line → every column is undefined. Nothing here is computed:
+ * load, stored swing energy, apex proximity, exit speed and time-to-whip are
+ * fields masslineTelemetry already wrote this tick.
+ */
+export function resolveMasslineInstrumentColumns(state) {
+  const tether = state && state.player && state.player.tether;
+  if (!tether || tether.active !== true) {
+    return { load: undefined, energy: undefined, apex: undefined, exit: undefined, whip: undefined };
+  }
+  const tel = state.player.masslineTelemetry || null;
+  const preview = tel && tel.arcPreview;
+  const whip = preview && Object.prototype.hasOwnProperty.call(preview, 'timeToWhip')
+    ? preview.timeToWhip
+    : undefined;
+  return {
+    load: finiteOr(tel ? tel.load : tether.load),
+    energy: finiteOr(tel && tel.storedSwingEnergy),
+    apex: finiteOr(tel && tel.apexProximity),
+    exit: finiteOr(preview && preview.exitSpeed),
+    whip: whip == null ? whip : finiteOr(whip),
+  };
+}
+
+function columnText(key, value) {
+  if (value == null || !Number.isFinite(value)) return '—';
+  if (key === 'load' || key === 'apex') return value.toFixed(2);
+  if (key === 'whip') return value.toFixed(1);
+  return String(Math.round(value));
+}
+
 export function createMasslineCadenceReadout(parent) {
   if (!parent?.ownerDocument) throw new TypeError('Cadence readout requires a DOM parent');
   const doc = parent.ownerDocument, root = doc.createElement('section');
@@ -34,11 +69,19 @@ export function createMasslineCadenceReadout(parent) {
     <span><span class="ml-cadence__value" data-ml="speed"></span><span class="ml-cadence__label">EXIT / WU·S⁻¹</span></span>
     <span><span class="ml-cadence__value" data-ml="clearance"></span><span class="ml-cadence__label">CLEARANCE / WU</span></span>
     <span><span class="ml-cadence__value" data-ml="length"></span><span class="ml-cadence__label">LINE / WU</span></span>
+  </div>
+  <div class="ml-cadence__stats">
+    <span><span class="ml-cadence__value" data-ml="load"></span><span class="ml-cadence__label">LOAD</span></span>
+    <span><span class="ml-cadence__value" data-ml="energy"></span><span class="ml-cadence__label">ENERGY</span></span>
+    <span><span class="ml-cadence__value" data-ml="apex"></span><span class="ml-cadence__label">APEX</span></span>
+    <span><span class="ml-cadence__value" data-ml="exit"></span><span class="ml-cadence__label">EXIT</span></span>
+    <span><span class="ml-cadence__value" data-ml="whip"></span><span class="ml-cadence__label">WHIP</span></span>
   </div>`;
   parent.append(root);
   const get = selector => root.querySelector(selector);
   const el={phase:get('.ml-cadence__phase'),status:get('.ml-cadence__status'),hint:get('.ml-cadence__hint'),
-    bar:get('.ml-cadence__window'),speed:get('[data-ml="speed"]'),clearance:get('[data-ml="clearance"]'),length:get('[data-ml="length"]')};
+    bar:get('.ml-cadence__window'),speed:get('[data-ml="speed"]'),clearance:get('[data-ml="clearance"]'),length:get('[data-ml="length"]'),
+    load:get('[data-ml="load"]'),energy:get('[data-ml="energy"]'),apex:get('[data-ml="apex"]'),exit:get('[data-ml="exit"]'),whip:get('[data-ml="whip"]')};
   // JS-side last-value caches: textContent/hidden/dataset/getAttribute are real DOM reads —
   // keep them off the hot path like the rest of the HUD's write-on-change grammar.
   const text=(node,value)=>{if(node._mlText!==value){node._mlText=value;node.textContent=value;}};
@@ -69,6 +112,12 @@ export function createMasslineCadenceReadout(parent) {
       const clearance=solution?.clearance;
       text(el.clearance,Number.isFinite(clearance)?`${clearance>=0?'+':''}${clearance.toFixed(1)}`:'—');
       text(el.length,Number.isFinite(tether.restLength)?tether.restLength.toFixed(0):'—');
+      const columns = resolveMasslineInstrumentColumns(state);
+      text(el.load, columnText('load', columns.load));
+      text(el.energy, columnText('energy', columns.energy));
+      text(el.apex, columnText('apex', columns.apex));
+      text(el.exit, columnText('exit', columns.exit));
+      text(el.whip, columnText('whip', columns.whip));
       const openText=String(open),fieldText=String(field),degradedText=String(degraded);
       if(prev.open!==openText){prev.open=openText;root.dataset.open=openText;}
       if(prev.field!==fieldText){prev.field=fieldText;root.dataset.field=fieldText;}
