@@ -273,6 +273,22 @@ export function resolveMassInterpretation(playerMass, targetMass) {
   return { key: 'comparable', short: 'EVEN', title: 'Comparable mass — both bodies move' };
 }
 
+/** Mass the live solver couples: physics-body mass, else the authored entity mass. */
+export function couplingBodyMass(entity) {
+  const body = Number(entity && entity.physicsBody && entity.physicsBody.mass);
+  if (Number.isFinite(body) && body > 0) return body;
+  const mass = Number(entity && entity.mass);
+  return Number.isFinite(mass) && mass > 0 ? mass : NaN;
+}
+
+/**
+ * SFQ-B022 — throw, mutual swing, or self-sling, named from the two masses the
+ * constraint actually couples. Null when either mass is missing. Not a hull-class label.
+ */
+export function latchCouplingRead(player, target) {
+  return resolveMassInterpretation(couplingBodyMass(player), couplingBodyMass(target));
+}
+
 // INF-014 — line-load warning with hysteresis. Strain is the solver-owned break ratio the
 // telemetry already mirrors (tether.strain); trend is strain per second. The warning turns on
 // at high load (or moderate load climbing fast) and stays until the line relaxes well below
@@ -1902,7 +1918,15 @@ export const masslineHud = {
     // alarm), so an endpoint that can never auto-break gets the load-only wording.
     const breakAlarm = !!(tether && tether.automaticBreakAllowed === true);
     const share = resolveTetherShareHud(state && state.player && state.player.remoteMassline);
-    const showStrain = (active && shown > 0.02) || !!share;
+    let coupling = null;
+    if (active && !share && tether && tether.targetId != null
+      && state.entities && typeof state.entities.get === 'function') {
+      coupling = latchCouplingRead(
+        state.entities.get(state.playerId),
+        state.entities.get(tether.targetId),
+      );
+    }
+    const showStrain = (active && (shown > 0.02 || !!coupling)) || !!share;
     setStyle(dom.strainPill, 'display', showStrain ? 'flex' : 'none');
     if (showStrain) {
       const bar = share && !(shown > 0.02)
@@ -1910,7 +1934,7 @@ export const masslineHud = {
         : shown;
       setStyle(dom.strainFill, 'transform', `scaleX(${clamp01(bar)})`);
       setClass(dom.strainPill, 'ml2-warn', warned && !share);
-      const label = share ? share.text : 'LINE';
+      const label = share ? share.text : (coupling ? coupling.short : 'LINE');
       if (dom.strainText && dom.strainText.textContent !== label) dom.strainText.textContent = label;
       setAttr(dom.strainPill, 'aria-label', share
         ? `Load split ${share.text}`
@@ -1918,7 +1942,9 @@ export const masslineHud = {
           ? (breakAlarm
             ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
             : `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn`)
-          : `Massline line load ${Math.round(clamp01(shown) * 100)} percent`);
+          : coupling
+            ? `${coupling.title}. Line load ${Math.round(clamp01(shown) * 100)} percent`
+            : `Massline line load ${Math.round(clamp01(shown) * 100)} percent`);
     } else if (prev && prev.warned) {
       setClass(dom.strainPill, 'ml2-warn', false);
       if (dom.strainText && dom.strainText.textContent !== 'LINE') dom.strainText.textContent = 'LINE';
