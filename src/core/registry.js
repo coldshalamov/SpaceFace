@@ -37,6 +37,8 @@ import { lastShiftPrompt } from '../ui/lastShiftPrompt.js';
 import { redKite } from '../systems/redKite.js';
 import { redKitePrompt } from '../ui/redKitePrompt.js';
 import { sableVenn } from '../systems/sableVenn.js';
+import { ilexArk } from '../systems/ilexArk.js';
+import { ilexArkPrompt } from '../ui/ilexArkPrompt.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
@@ -472,6 +474,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['redKite', redKite],
     ['redKitePrompt', redKitePrompt],
     ['sableVenn', sableVenn],
+    ['ilexArk', ilexArk],
+    ['ilexArkPrompt', ilexArkPrompt],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],
