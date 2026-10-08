@@ -2193,7 +2193,7 @@ function tryPresentedCall(owner, label, run, fallback = undefined) {
     if (latched.epoch !== epoch) { latched.epoch = epoch; latched.warned = false; }
     if (!latched.warned) {
       latched.warned = true;
-      noteLaneFault(owner.state, `presentedTail.${label}`, true);
+      noteLaneFault(owner.state, `presentedTail.${label}`);
       console.warn(`[render] presented tail '${label}' faulted; serving last state`, tailError);
     }
     return fallback;
@@ -7594,6 +7594,11 @@ const SHADOW_DEPTH_PASS_COLLECT_CAP = 8;
 // subtree, so all collects in a pass share this node budget; a subtree that
 // outruns it aborts and over-covers the same way.
 const SHADOW_DEPTH_PASS_NODE_CAP = 4096;
+// Per-arm scratch: reused across arm fires so ~20 fires/s under pending churn
+// doesn't drip fresh arrays through the GC. Fully consumed inside the
+// synchronous arm body (the async leg settle reads `slice`/`unstagedByRoot`,
+// never `entries`), so sharing is safe.
+const _depthStageEntriesScratch = [];
 // Whole-root flag traverses stack per dirty root in the view pass: a
 // packaged-swap burst (split debris, mount chains, rebuild bridges) leaves K
 // roots dirty after their scoped graft syncs, and every one re-paid the whole
@@ -29433,17 +29438,22 @@ export const render = {
       // station arriving behind off-ortho stragglers does not wait frames for its shadow.
       const px = this._framePlayerLocalX || 0;
       const pz = this._framePlayerLocalZ || 0;
-      const entries = [];
+      const entries = _depthStageEntriesScratch;
+      entries.length = 0;
       for (const [root, entry] of pending) {
         entries.push([root, entry]);
       }
-      entries.sort((a, b) => (
-        shadowCastAxisDistance(a[0].position, px, pz)
-        - shadowCastAxisDistance(b[0].position, px, pz)
-      ));
       // The per-arm cost is the near-fixed ceremony — drain the remainder in one arm and
       // halve big bursts instead of paying ceil(N/8) ceremonies over that many frames.
       const cap = Math.min(32, Math.max(8, Math.ceil(entries.length / 2)));
+      // The ordering only matters when a cap trims the slice — the common
+      // small-pending case skips the O(pending·log pending) sort.
+      if (entries.length > cap) {
+        entries.sort((a, b) => (
+          shadowCastAxisDistance(a[0].position, px, pz)
+          - shadowCastAxisDistance(b[0].position, px, pz)
+        ));
+      }
       slice = [];
       for (const [root, entry] of entries) {
         if (slice.length >= cap) break;
@@ -29637,7 +29647,9 @@ export const render = {
               legResult = value;
             }).catch((error) => {
               legDriveFailed = true;
-              console.warn('[render] shadow-promote depth stage fallback failed', error);
+              laneWarn(this, 'depthStageArm',
+                '[render] shadow-promote depth stage fallback failed', error);
+              this._noteDepthStageArmFault();
             }).finally(() => {
               if (this._deferredDepthStageRoots) {
                 for (const [deferRoot] of unstagedByRoot) {
@@ -29712,7 +29724,9 @@ export const render = {
             });
           }
         } catch (error) {
-          console.warn('[render] shadow-promote depth stage failed', error);
+          laneWarn(this, 'depthStageArm',
+            '[render] shadow-promote depth stage failed', error);
+          this._noteDepthStageArmFault();
         }
       }
       // A leg leaves un-marked casters under the slice: the per-root collect
@@ -29833,13 +29847,7 @@ export const render = {
         // (every sibling lane got FaultRetries+park in W109; the arm's outer
         // try had none). Bound it the same way — ≥3 faults in one service
         // epoch parks the arm until the epoch flips.
-        const armFaultEpoch = serviceFaultEpoch(this.state);
-        if (this._depthStageArmFaultEpoch !== armFaultEpoch) {
-          this._depthStageArmFaultEpoch = armFaultEpoch;
-          this._depthStageArmFaults = 0;
-        }
-        this._depthStageArmFaults = (this._depthStageArmFaults | 0) + 1;
-        noteLaneFault(this.state, 'depthStageArm', (this._depthStageArmFaults | 0) >= 3);
+        this._noteDepthStageArmFault();
         laneWarn(this, 'depthStageArm',
           '[render] depth-stage arm faulted; queued roots re-arm', armErr);
       } finally {
@@ -29883,6 +29891,21 @@ export const render = {
   // once the drain empties; the next arm remints under the live census.
   _killDepthStageSession() {
     closeShadowDepthStagingSession(this.renderer);
+  },
+
+  // Shared fault ledger for the depth-stage lane: the outer arm catch, the
+  // leg-drive `.catch`, the synchronous leg-setup catch and the enable-stage
+  // tail all count into the same ≥3/epoch park the arm head consults — a
+  // persistently-faulting leg parks the lane for the epoch instead of
+  // re-arming the ceremony every ~48 ms under it.
+  _noteDepthStageArmFault() {
+    const armFaultEpoch = serviceFaultEpoch(this.state);
+    if (this._depthStageArmFaultEpoch !== armFaultEpoch) {
+      this._depthStageArmFaultEpoch = armFaultEpoch;
+      this._depthStageArmFaults = 0;
+    }
+    this._depthStageArmFaults = (this._depthStageArmFaults | 0) + 1;
+    noteLaneFault(this.state, 'depthStageArm', (this._depthStageArmFaults | 0) >= 3);
   },
 
   _stageShadowDepthOnSettingEnable() {
@@ -30022,7 +30045,9 @@ export const render = {
         this._armDepthStage();
       }
     } catch (error) {
-      console.warn('[render] shadow-enable depth stage failed', error);
+      laneWarn(this, 'depthStageArm',
+        '[render] shadow-enable depth stage failed', error);
+      noteLaneFault(this.state, 'depthStageArm');
     }
   },
 
@@ -31307,7 +31332,8 @@ function notePolicyRootFault(owner, root, err) {
   if (rec.faults >= 3 && rec.deferUntil <= (owner._viewSyncSeq || 0)) {
     rec.deferUntil = (owner._viewSyncSeq || 0) + 30 + ((rec.faults * 7) % 60);
     noteLaneFault(owner.state, 'shadowPolicyRoot');
-    console.warn(`[render] shadow policy root faulted x${rec.faults}; serving no-change while deferred`, err);
+    laneWarn(owner, 'shadowPolicyRoot',
+      `[render] shadow policy root faulted x${rec.faults}; serving no-change while deferred`, err);
   }
 }
 
