@@ -426,10 +426,11 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial::b
    top-aligned and scrolls to its first band instead of clipping it above the visible edge */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { display:flex; flex-direction:column; justify-content:flex-start; justify-content:safe space-evenly;
   -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
-@media (max-height:800px) {
-  html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__ledger { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
-}
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__ledger { padding-bottom:22px !important;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story > .sf-crres__band + .sf-crres__band { margin-top:0; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results:has(> .sf-crres-celebrate) { grid-template-areas:"title" "take" "stage" "foot" !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results > .sf-crres-celebrate { grid-area:take; max-width:min(600px, 46vw); margin:0 !important; }
 /* the build: the draft it converged on stands solid */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step:last-child::before { background:rgb(246 241 230);
   box-shadow:0 0 0 2px rgb(246 241 230 / .3), 0 0 12px rgb(236 230 216 / .35); }
