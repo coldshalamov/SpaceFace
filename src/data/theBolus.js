@@ -4,6 +4,7 @@
 import { hash32, mulberry32 } from '../core/rng.js';
 
 export const BOLUS_SECTOR_ID = 'sector_the_bolus';
+export const BOLUS_STATION_ID = 'station_bolus_rib';
 export const BOLUS_MAP = Object.freeze({ x: 2, y: 10 });
 export const BOLUS_WORLD_RADIUS = 3200;
 
@@ -261,11 +262,12 @@ export function bolusSectorCard() {
     neighbors: ['sector_charon_expanse', 'sector_ashfall_reach'],
     stations: [
       {
-        id: 'station_bolus_rib',
+        id: BOLUS_STATION_ID,
         name: 'The Swallowed Rib',
         type: 'research',
         factionId: 'faction_free',
         size: 'S',
+        archetypeGlb: 'place_station_research',
         services: ['repair', 'refuel'],
         chartNote: 'Concord files this volume as Lane Contamination. Pilots who come back say Gullet. The machine still sells a patch.',
       },
@@ -289,7 +291,7 @@ export function bolusSectorCard() {
 export const BOLUS_ANCHORS = Object.freeze({
   [BOLUS_SECTOR_ID]: Object.freeze({
     stations: Object.freeze([
-      Object.freeze({ id: 'station_bolus_rib', pos: Object.freeze({ x: -980, z: -900 }) }),
+      Object.freeze({ id: BOLUS_STATION_ID, pos: Object.freeze({ x: -980, z: -900 }), archetypeGlb: 'place_station_research' }),
     ]),
     gates: Object.freeze([
       Object.freeze({ to: 'sector_charon_expanse', pos: Object.freeze({ x: BOLUS_MOUTH_POS.x, z: BOLUS_MOUTH_POS.z }) }),

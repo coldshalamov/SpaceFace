@@ -77,6 +77,7 @@ test('physical row, zones, and station are the throat and not a pirate belt', ()
   assert.equal(zones.length, 3);
   assert.ok(zones.every((zone) => zone.presence == null));
   assert.equal(bolus.stations[0].id, 'station_bolus_rib');
+  assert.equal(bolus.stations[0].archetypeGlb, 'place_station_research');
   assert.ok(bolus.stations[0].services.includes('repair'));
   assert.equal(bolus.palette.fogDensity, 0.0022);
 });
