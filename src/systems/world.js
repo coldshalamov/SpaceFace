@@ -202,6 +202,11 @@ import {
   machineRouteOpen,
   handleMachinePickupCollected,
 } from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
+import {
+  materializeFoldAberrant,
+  tickFoldAberrant,
+  noteFoldAberrantKilled,
+} from './foldAberrant.js'; // The Unclosed (doc 16): damaged containment instrument, not a machine kind
 import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
 import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { removeCargo } from './cargo.js';
@@ -635,6 +640,7 @@ export const world = {
       this._onBossKilled(p || {});
       this._onDurableEntityKilled(p || {});
       handleAlienEcologyEvent(this, 'entity:killed', p || {});
+      noteFoldAberrantKilled(this, p || {});
     });
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
     // sectorSim's intel/reconcile channels were emitted and dropped before this binding — the
@@ -3041,6 +3047,9 @@ export const world = {
     // Verge-Layer machine layer (AE-100..108): machine structures + kinematic machine
     // entities, same deterministic seam, same dressing substrate.
     materializeMachineLayer(this, sector, active);
+    // The Unclosed sits in the ossuary's empty slot. Same dressing pass, after the
+    // sane machines, so a second _spawnDressing drain cannot double-spawn it.
+    materializeFoldAberrant(this, sector, active);
   },
 
   // PQ-143.02 "six texture one-offs": memorable, non-systemic set pieces from
@@ -4392,6 +4401,7 @@ export const world = {
     }
     tickAlienEcology(this, dt);
     tickMachineLayer(this, dt);
+    tickFoldAberrant(this, dt);
     tickFarActors(state, this.helpers, this.bus);
     // Optic lattices: field-resident until decode-disc approach, then shelve past exit.
     tickOpticFieldRocks(state, this.helpers);

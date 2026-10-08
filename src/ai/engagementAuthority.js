@@ -460,6 +460,9 @@ export function isHostileForAI(state, self, other) {
   // exposed to team-mismatch hostility while the clean player was ignored.
   if (selfIsPlayer) return lawfulAwareHostileToPlayer(other, self.team, state);
   if (otherIsPlayer) return lawfulAwareHostileToPlayer(self, other.team, state);
+  // The fold is the player's category error, not the sector's. Wingmen and civilians
+  // do not inherit it; the player already answered above.
+  if ((selfData && selfData.foldAberrant) || (otherData && otherData.foldAberrant)) return false;
   const selfIsPlayerSide = self.team === 0;
   const otherIsPlayerSide = other.team === 0;
 

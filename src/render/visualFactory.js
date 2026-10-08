@@ -49,6 +49,7 @@ import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossa
 import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
 import { buildNurseryMineralRib } from './veilRayNurseryVisuals.js';
 import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
+import { buildFoldAberrantVisual, buildFoldPayloadVisual } from './foldAberrantVisual.js';
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
@@ -5999,8 +6000,8 @@ export function createVisualFactory() {
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
-          case 'drone': return stampBuiltVisual(e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
-          case 'payload': return stampBuiltVisual(buildPayload(e));
+          case 'drone': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldAberrantVisual(e) : e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
+          case 'payload': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldPayloadVisual(e) : buildPayload(e));
           case 'mine': return stampBuiltVisual(buildMine(e));
           case 'vectormine': return stampBuiltVisual(buildVectorMine(e));
           case 'charge': return stampBuiltVisual(buildImpulseCharge(e));
