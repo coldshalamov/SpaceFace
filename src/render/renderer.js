@@ -1029,8 +1029,18 @@ export function* collectOpeningEntityRootCandidatesSteps(meshes, entities, optio
   const camera = options.camera || null;
   if (!meshes || typeof meshes[Symbol.iterator] !== 'function') return candidates;
   let censusVisited = 0;
+  // Row-granular yields alone under-pace: each visited row pays a
+  // whole-subtree collectOpeningSubmissionLeaves traverse, so one 32-row
+  // stride can still blow the frame wallet — a fat stride yields early on
+  // wall clock too. Visit order and output stay identical.
+  const censusNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  let censusStrideAt = censusNow();
   for (const [id, mesh] of meshes) {
-    if ((++censusVisited % 32) === 0) yield;
+    if ((++censusVisited % 32) === 0 || censusNow() - censusStrideAt >= 2) {
+      censusStrideAt = censusNow();
+      yield;
+    }
     if (!mesh || (playerId != null && id === playerId) || mesh.visible === false) continue;
     // _meshes is the entity ownership map, but a prepared/deferred boundary may still be mounted in
     // the scene without becoming an entity root. Only direct live roots belong to this census.
@@ -25720,10 +25730,21 @@ export const render = {
 
     beginRenderEntityFrame(this._entityFrame);
 
+    // Each swept row pays a cull-radius bounds walk plus pose/visibility and
+    // freeze-queue work — a 128-row stride can still blow the slice wallet, so
+    // the sweeps yield on wall clock as well as row count. Identical visit
+    // order either way.
+    const viewSweepNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now());
+    let viewSweepStrideAt = viewSweepNow();
+
     // A root crossing out of the retained visible set receives one final authoritative current pose.
     // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
     for (let index = 0; index < query.hiddenCount; index++) {
-      if ((index & 127) === 127) yield;
+      if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
+        viewSweepStrideAt = viewSweepNow();
+        yield;
+      }
       const slot = query.hiddenSlots[index];
       const generation = query.hiddenGenerations[index];
       if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
@@ -25834,7 +25855,10 @@ export const render = {
     }
 
     for (let index = 0; index < query.visibleCount; index++) {
-      if ((index & 127) === 127) yield;
+      if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
+        viewSweepStrideAt = viewSweepNow();
+        yield;
+      }
       const slot = query.visibleSlots[index];
       const generation = query.visibleGenerations[index];
       if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
@@ -26957,7 +26981,11 @@ export const render = {
         if (pending === null) throw new Error('opening first-picture camera unavailable');
         if (pending.length === 0) {
           // Re-publish once after the final boundary settles so the exact census sees the committed
-          // authored leaves rather than the pre-swap fallback children.
+          // authored leaves rather than the pre-swap fallback children. This is a post-settle
+          // capture, not a settle retry: a degrade verdict memoized on an earlier transient fault
+          // must not answer for it — the presented frame would freeze on the pre-swap children for
+          // the epoch's lifetime.
+          this._openingPublishDegradeVerdict = undefined;
           if (!(await drivePublishFirstPicture())) {
             throw new Error('opening first-picture final publication unavailable');
           }
@@ -30134,7 +30162,7 @@ export const render = {
     } catch (error) {
       laneWarn(this, 'depthStageArm',
         '[render] shadow-enable depth stage failed', error);
-      noteLaneFault(this.state, 'depthStageArm');
+      this._noteDepthStageArmFault();
     }
   },
 
