@@ -16,7 +16,7 @@ This is the navigation front door for engineering and world-content documentatio
 | Live leases and blockers | [`../design/program/NOW.md`](../design/program/NOW.md) |
 | Executable admitted packet | [`../design/program/roadmap/active/README.md`](../design/program/roadmap/active/README.md) |
 | Finite review/verification workflow | [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md) |
-| Find the module that owns behavior | [`MODULE_MAP.md`](./MODULE_MAP.md) |
+| Find the module that owns behavior | [`MODULE_MAP.md`](./MODULE_MAP.md), then the nearest `src/**/AGENTS.md` |
 | Diagnose a recurring failure | [`COMMON_BUGS.md`](./COMMON_BUGS.md) |
 | Choose focused, lab, broker, and player-route validation | [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) |
 | Trace an event end to end | [`EVENT_ROUTING.md`](./EVENT_ROUTING.md) (generated) |

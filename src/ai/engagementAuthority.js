@@ -37,6 +37,9 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   // key fail-closed every live brawler shot even while the snapshot said the guns were hot.
   brawler_commit: new Set(['commit']),
   ranged_disengager: new Set(['fire_window']),
+  // Quiet Ghost uses the same gun window as the disengager. enter() sets fireWindow on
+  // fire_window for both; a missing key fail-closes the stalker after it telegraphs.
+  ranged_stalker: new Set(['fire_window']),
   tether_control_raider: new Set(),
   // The anchor's guns are live only while it is committed to its drag-field hold. Its authored
   // hull carries a non-defensive autocannon and roe weapons_free; without this entry the label

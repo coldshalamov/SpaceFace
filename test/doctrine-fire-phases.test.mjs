@@ -77,6 +77,8 @@ const CASES = [
   [CombatDoctrineId.CAPITAL_BROADSIDE, 'broadside_fire', true],
   [CombatDoctrineId.CAPITAL_BROADSIDE, 'broadside_charge', false],
   [CombatDoctrineId.RANGED_DISENGAGER, 'fire_window', true],
+  [CombatDoctrineId.RANGED_STALKER, 'fire_window', true],
+  [CombatDoctrineId.RANGED_STALKER, 'relocate', false],
   [CombatDoctrineId.FIELD_ANCHOR_CONTROLLER, 'anchor_hold', true],
   [CombatDoctrineId.TETHER_CONTROL_RAIDER, 'control', false],
   [CombatDoctrineId.ESCORT_SCREEN, 'screen_hold', true],
