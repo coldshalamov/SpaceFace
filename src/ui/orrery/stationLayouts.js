@@ -102,7 +102,7 @@ ${S} .sxb-purse__value { color:rgb(248 244 234) !important; text-shadow:0 0 22px
 ${S} .sxb-purse__label { color:rgb(${BONE} / .6) !important; }
 ${S} .sxb-vitals { display:flex !important; flex-wrap:nowrap !important; justify-content:flex-end; align-items:flex-start; gap:6px 6px !important;
   list-style:none; margin:10px 0 0 !important; padding:0 !important; background:none !important; border:0 !important; }
-${S} .sxb-vital { display:flex !important; flex-direction:column; align-items:center; position:relative; min-width:0 !important; width:132px !important; flex:none !important;
+${S} .sxb-vital { display:flex !important; flex-direction:column; align-items:center; position:relative; min-width:132px !important; width:auto !important; flex:none !important;
   margin:0 !important; padding:0 !important; gap:0 !important; background:none !important; border:0 !important; box-shadow:none !important; }
 ${S} .sxb-vital::before, ${S} .sxb-vital::after { display:none !important; }
 ${S} .sxb-vital__head { display:flex !important; flex-direction:column; align-items:center; gap:1px; background:none !important; border:0 !important;
