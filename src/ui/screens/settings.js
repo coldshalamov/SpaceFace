@@ -400,6 +400,7 @@ export function settingsInUseLabel(action) {
   return localizeText('In use: {action}', { action: action == null ? '' : action });
 }
 
+let bindingConflictSequence = 0;
 /** The conflict is a description, not only the button's new name. */
 export function announceBindingConflict(button, label) {
   if (!button || typeof button.setAttribute !== 'function') return label;
@@ -414,9 +415,10 @@ export function announceBindingConflict(button, label) {
     host.appendChild(note);
   }
   if (note) {
-    if (!button.id) button.id = 'sf-bind-live';
+    if (!button.id) button.id = 'sf-bind-live-' + (++bindingConflictSequence);
     note.id = button.id + '-conflict';
     note.textContent = sentence;
+    note.setAttribute('role', 'status');
     button.setAttribute('aria-describedby', note.id);
     if (host && host !== button && host.setAttribute) host.setAttribute('aria-describedby', note.id);
   } else {
@@ -621,19 +623,36 @@ export const settingsScreen = {
         if (!refs.windowMode) refs.windowMode = 'windowed';
         rowSelect('Window', () => refs.windowMode, [
           ['windowed', 'Windowed'],
-          ['maximized', 'Borderless'],
+          ['maximized', 'Maximized'],
           ['fullscreen', 'Fullscreen'],
         ], (value) => {
+          const mounted = refs;
+          const previous = refs.windowMode;
+          const request = (refs.windowModeRequest || 0) + 1;
+          refs.windowModeRequest = request;
           refs.windowMode = value;
           Promise.resolve(shell.setWindowMode(value)).then((res) => {
-            if (res && res.mode) refs.windowMode = res.mode;
-          }).catch(() => {});
+            if (refs !== mounted || refs.windowModeRequest !== request) return;
+            if (!res || !res.ok) throw new Error('Window mode could not be changed');
+            if (res.mode) refs.windowMode = res.mode;
+            this._render(ctx);
+          }).catch(() => {
+            if (refs !== mounted || refs.windowModeRequest !== request) return;
+            refs.windowMode = previous;
+            ctx.bus.emit('toast', { text: 'Window mode could not be changed.', kind: 'warn', ttl: 3 });
+            this._render(ctx);
+          });
         });
-        Promise.resolve(shell.getWindowMode()).then((res) => {
-          if (!refs || !res || !res.mode || refs.windowMode === res.mode) return;
-          refs.windowMode = res.mode;
-          this._render(ctx);
-        }).catch(() => {});
+        if (!refs.windowModeRead) {
+          const mounted = refs;
+          const request = refs.windowModeRequest || 0;
+          refs.windowModeRead = true;
+          Promise.resolve(shell.getWindowMode()).then((res) => {
+            if (refs !== mounted || (refs.windowModeRequest || 0) !== request || !res || !res.ok || !res.mode || refs.windowMode === res.mode) return;
+            refs.windowMode = res.mode;
+            this._render(ctx);
+          }).catch(() => {});
+        }
       }
       // One-click preset: writes the adaptive-quality tier (render scale, particle density, render
       // graph) and keeps the individual rows below as the source of truth for advanced edits.
@@ -1296,6 +1315,7 @@ export const settingsScreen = {
 
   onShow(ctx) {
     if (!refs) return;
+    refs.windowModeRead = false;
     cue('open');
     refs.arrive = true;
     this._render(ctx);

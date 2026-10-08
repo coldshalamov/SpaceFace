@@ -412,6 +412,15 @@ export function armImportDestination(slot) {
   return importSlotWord;
 }
 
+/** Import success belongs to the save authority, including asynchronous compressed saves. */
+export async function importValidatedSave(sys, text, slot) {
+  try {
+    if (sys && typeof sys.importString === 'function') return !!(await sys.importString(text, slot));
+    if (sys && typeof sys.importSave === 'function') return !!(await sys.importSave(text, slot));
+  } catch { /* the importer refused; never overwrite its destination with raw JSON */ }
+  return false;
+}
+
 export function slotObjectiveSummary(meta) {
   if (!meta) return '';
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
@@ -1275,6 +1284,9 @@ export const saveLoadScreen = {
       refs.labelInput = input;
     }
     if (refs.labelField.parentNode !== refs.caption) refs.caption.insertBefore(refs.labelField, refs.actions);
+    refs.labelField.hidden = !saveAllowed;
+    refs.labelField.style.display = saveAllowed ? 'grid' : 'none';
+    refs.labelInput.disabled = !saveAllowed;
     if (refs.labelInput && document.activeElement !== refs.labelInput) {
       const next = (occupied && meta && meta.label) || '';
       if (refs.labelInput.value !== next) refs.labelInput.value = next;
@@ -1480,7 +1492,7 @@ export const saveLoadScreen = {
       return;
     }
     const slot = importDestination(refs && refs.selected, refs && refs.ids);
-    armImportDestination(slot);
+    const destinationWord = armImportDestination(slot);
     const confirmed = await confirm({
       title: 'Import save file?',
       body: importConfirmBody(f),
@@ -1491,7 +1503,7 @@ export const saveLoadScreen = {
       const spoken = this._importLine;
       this._importLine = '';
       ctx.bus.emit('toast', {
-        text: importResultLine(ok, importSlotWord, spoken),
+        text: importResultLine(ok, destinationWord, spoken),
         kind: ok ? 'good' : 'warn',
         ttl: 2800,
       });
@@ -1500,10 +1512,11 @@ export const saveLoadScreen = {
     };
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     if (sys && typeof sys.importFile === 'function') {
-      try { sys.importFile(f, finish, slot); return; } catch (e) {}
+      try { sys.importFile(f, finish, slot); } catch (e) { finish(false); }
+      return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const text = String(reader.result || '');
       // A synthetic/legacy File may not expose a trustworthy size. Keep the raw-text check before
       // any fallback JSON.parse or save-system import call in that case.
@@ -1512,19 +1525,7 @@ export const saveLoadScreen = {
         rejectOversize(textBytes);
         return;
       }
-      let ok = false;
-      if (sys && typeof sys.importString === 'function') { try { ok = !!sys.importString(text, slot); } catch (e) {} }
-      else if (sys && typeof sys.importSave === 'function') { try { ok = !!sys.importSave(text); } catch (e) {} }
-      if (!ok) {
-        try {
-          JSON.parse(text);
-          if (typeof localStorage !== 'undefined') { localStorage.setItem(LS_PREFIX + slot, text); ok = true; }
-        } catch (e) {
-          ctx.bus.emit('toast', { text: 'Import failed: file is not valid JSON', kind: 'warn', ttl: 3000 });
-          ok = false;
-        }
-      }
-      finish(ok);
+      finish(await importValidatedSave(sys, text, slot));
     };
     reader.onerror = () => finish(false);
     reader.readAsText(f);
@@ -1532,6 +1533,16 @@ export const saveLoadScreen = {
 
   onShow(ctx) {
     if (!refs) return;
+    // Screen instances outlive runs. Only the save authority's current receipt
+    // can describe this run's recovery; discard cached receipts before hydration.
+    for (const [slot, note] of Object.entries(this._notices || {})) {
+      if (note.kind === 'recovered') delete this._notices[slot];
+    }
+    const retained = ctx && ctx.state && ctx.state.save && ctx.state.save.lastRecovery;
+    if (retained) {
+      const note = recoveryNotice(retained);
+      if (note) this._notices[note.slot] = note;
+    }
     cue('open');
     refs.cancelHullRelease();
     refs.clearLoadRequest();
@@ -1583,9 +1594,13 @@ export const saveLoadScreen = {
       try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
       try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
+      for (const key of ['unsubRecovered', 'unsubBackup', 'unsubRecoveryFailed', 'unsubProfile']) {
+        if (typeof refs[key] === 'function') refs[key]();
+      }
     }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (this._film) { this._film.dispose(); this._film = null; }
     refs = null;
+    this._notices = null;
   },
 };

@@ -103,10 +103,10 @@ test('FB-106: malformed or empty state returns null', () => {
   assert.equal(sanitizeWindowState({}, []), null, 'No displays returns null');
 });
 
-test('FB-106: Settings names maximized as Borderless and the shell can apply it', () => {
+test('FB-106: Settings names the actual maximized mode and the shell can apply it', () => {
   assert.deepEqual(WINDOW_MODE_LABELS, [
     ['windowed', 'Windowed'],
-    ['maximized', 'Borderless'],
+    ['maximized', 'Maximized'],
     ['fullscreen', 'Fullscreen'],
   ]);
   const calls = [];
@@ -128,6 +128,6 @@ test('FB-106: Settings names maximized as Borderless and the shell can apply it'
   assert.match(main, /isolatedEvidence\s*\?\s*null/);
   assert.match(main, /spaceface:window-mode-set/);
   const settings = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
-  assert.match(settings, /Borderless/);
+  assert.match(settings, /Maximized/);
   assert.match(settings, /getWindowMode/);
 });

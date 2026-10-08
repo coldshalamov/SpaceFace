@@ -31,7 +31,8 @@ test('FB-112 a slider speaks its value and text scale ignores UI scale', () => {
     const root = doc.createElement('div');
     const scale = applyTextScaleFromSettings({ accessibility: { textScale: 1.25 }, uiScale: 2 }, root);
     assert.equal(scale, 1.25);
-    assert.match(root.style['--k-fs-body'], /1\.25/);
+    assert.equal(root.style['--sf-text-scale'], '1.25');
+    assert.equal(root.style['--k-fs-body'], undefined, 'type tokens retain their authored responsive base');
     assert.equal(root.style['--ui-scale'], undefined);
     const flags = flagsFromSettings({ uiScale: 0.5, accessibility: {} });
     assert.equal(flags.textScale, true, 'a missing text scale is the default size, not a failure');

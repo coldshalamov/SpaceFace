@@ -19,10 +19,10 @@
   --k-good: var(--of-good); --k-bad: var(--of-danger);
   --k-margin: var(--of-margin); --k-gap: var(--of-gap); --k-row: 48px; --k-pad: 12px;
   --k-hang: clamp(250px, 26vw, 440px);
-  --k-fs-fine: 12px; --k-fs-data: 14px; --k-fs-body: 15px; --k-fs-emph: 18px;
-  --k-fs-sub: 25px; --k-fs-menu: clamp(19px, 1.65vw, 28px);
-  --k-fs-num: clamp(32px, 3.4vw, 54px); --k-fs-title: clamp(35px, 3.6vw, 60px);
-  --k-fs-hero: clamp(42px, 4.2vw, 76px); --k-fs-name: clamp(74px, 9.6vw, 160px);
+  --k-fs-fine: max(12px, calc((12px) * var(--sf-text-scale, 1))); --k-fs-data: max(12px, calc((14px) * var(--sf-text-scale, 1))); --k-fs-body: max(12px, calc((15px) * var(--sf-text-scale, 1))); --k-fs-emph: max(12px, calc((18px) * var(--sf-text-scale, 1)));
+  --k-fs-sub: max(12px, calc((25px) * var(--sf-text-scale, 1))); --k-fs-menu: max(12px, calc((clamp(19px, 1.65vw, 28px)) * var(--sf-text-scale, 1)));
+  --k-fs-num: max(12px, calc((clamp(32px, 3.4vw, 54px)) * var(--sf-text-scale, 1))); --k-fs-title: max(12px, calc((clamp(35px, 3.6vw, 60px)) * var(--sf-text-scale, 1)));
+  --k-fs-hero: max(12px, calc((clamp(42px, 4.2vw, 76px)) * var(--sf-text-scale, 1))); --k-fs-name: max(12px, calc((clamp(74px, 9.6vw, 160px)) * var(--sf-text-scale, 1)));
   --ink: var(--of-ink); --ink-dim: var(--of-muted); --ink-mute: var(--of-dim); --accent: var(--of-accent);
   --sf-you: var(--of-good); --sf-foe: var(--of-danger); --sf-goal: var(--of-accent);
   --sf-paper: var(--of-ink); --sf-calm: var(--of-muted); --sf-surface: var(--of-ground); --sf-edge: var(--of-line);
@@ -442,7 +442,7 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
   #screens .sx-sw__side { border: 0; border-top: 1px solid var(--of-line); }
 }
 @media (max-width: 899px) {
-  :root { --of-margin: 12px; --of-gap: 18px; --k-hang: 210px; --k-fs-title: 36px; }
+  :root { --of-margin: 12px; --of-gap: 18px; --k-hang: 210px; --k-fs-title: max(12px, calc((36px) * var(--sf-text-scale, 1))); }
   #screens .k-screen { padding: 20px; grid-template-columns: 190px minmax(0,1fr); }
   #screens .of-pause.k-screen { width: min(540px,90vw); grid-template-columns: 1fr; }
   #screens [data-screen='station']:not(.sx-observatory).k-screen { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0,1fr) 65px; grid-template-areas:'title' 'hang' 'stage' 'foot'; }

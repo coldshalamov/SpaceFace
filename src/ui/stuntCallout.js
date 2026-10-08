@@ -448,6 +448,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function addLine(key, nameText, ptsText, now, ttl, isBank) {
     const existing = key != null ? lineNodes.get(key) : null;
     if (existing) {
+      existing.name.textContent = nameText;
       existing.pts.textContent = ptsText;
       existing.until = now + ttl;
       return;
@@ -460,7 +461,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     node.appendChild(pts);
     lines.appendChild(node);
     const storedKey = key ?? `anon-${lineOrder + 1}`;
-    lineNodes.set(storedKey, { key: storedKey, node, pts, until: now + ttl, order: ++lineOrder });
+    lineNodes.set(storedKey, { key: storedKey, node, name, pts, until: now + ttl, order: ++lineOrder });
     pruneLines(now);
   }
 

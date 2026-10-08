@@ -434,15 +434,13 @@ export function applyTextScaleFromSettings(settings, fallbackRoot) {
   const scale = Number.isFinite(raw) ? Math.min(1.5, Math.max(0.85, raw)) : 1;
   let el = null;
   if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
-    el = document.getElementById('ui-root') || document.documentElement;
+    // Type tokens are declared at :root; their dependencies must resolve there
+    // so inherited, responsive and screen-specific sizes keep their own base.
+    el = document.documentElement || document.getElementById('ui-root');
   }
   if (!el) el = fallbackRoot;
   if (!el || !el.style || typeof el.style.setProperty !== 'function') return scale;
   el.style.setProperty('--sf-text-scale', String(scale));
-  el.style.setProperty('--k-fs-fine', `max(12px, calc(12px * ${scale}))`);
-  el.style.setProperty('--k-fs-data', `max(12px, calc(14px * ${scale}))`);
-  el.style.setProperty('--k-fs-body', `max(12px, calc(16px * ${scale}))`);
-  el.style.setProperty('--k-fs-emph', `calc(20px * ${scale})`);
   return scale;
 }
 

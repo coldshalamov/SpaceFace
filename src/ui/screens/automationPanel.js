@@ -853,6 +853,7 @@ export const automationScreen = {
     });
 
     // A finished trader cycle had no reader. The strip says what the receipt paid.
+    if (this._offCycle) this._offCycle();
     this._cycleNote = '';
     if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
       const off = ctx.bus.on('automation:traderCycleCompleted', (payload) => {
@@ -868,6 +869,15 @@ export const automationScreen = {
 
   onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
   onHide() { /* cached DOM retained */ },
+  dispose() {
+    if (this._offCycle) this._offCycle();
+    this._offCycle = null;
+    this._root = null;
+    this._ctx = null;
+    this._els = null;
+    this._bodySig = '';
+    this._cycleNote = '';
+  },
 
   // Pop back to whatever pushed us (pause menu in normal play). Mirrors codex.js's Close; ESC also
   // pops (input.js), but a visible exit keeps the screen self-explanatory (taste bar §7).

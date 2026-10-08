@@ -28,7 +28,7 @@ import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships
 import { createTimeEffects } from '../core/timeEffects.js';
 import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
 import { stampIronmanLatch } from './ironmanChoice.js';
-import { stampSlotCard } from './slotStill.js';
+import { stampSlotCard, boundSlotThumbnail } from './slotStill.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import {
@@ -2887,6 +2887,7 @@ export const save = {
   },
 
   _beginRunEpoch(_reason = 'run') {
+    if (this.state && this.state.save) this.state.save.lastRecovery = null;
     this._cancelCeresEntityReferenceRestore();
     this._cancelCeresAttachmentRestore();
     this._cancelActiveAutosave('superseded');
@@ -3777,6 +3778,13 @@ export const save = {
 
   // ── load (read a slot) ──────────────────────────────────────────────────────────────────────
 
+  _publishRecovery(receipt) {
+    // The save screen is mounted lazily. Keep the last accepted load's receipt
+    // on transient save state so title Continue can explain its repair later.
+    if (this.state && this.state.save) this.state.save.lastRecovery = { ...receipt };
+    this.bus.emit('save:recovered', receipt);
+  },
+
   /** Load a slot (or 'latest'). Validates fully before any destructive restore; a live run is
    *  snapshotted for one rollback attempt if restore fails. Returns true only for an accepted load. */
   load(slot, options = null) {
@@ -3846,7 +3854,7 @@ export const save = {
           if (promoted) this._updateIndex(slot, backup.env, backupRaw);
           if (promoted) this._queueSharedStoreMirror();
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
-        this.bus.emit('save:recovered', {
+        this._publishRecovery({
           slot,
           source: 'previous_generation',
           failedReason: primary.reason,
@@ -3956,7 +3964,7 @@ export const save = {
           if (promoted) this._updateIndex(slot, backup.env, backupRaw);
           if (promoted) this._queueSharedStoreMirror();
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
-        this.bus.emit('save:recovered', {
+        this._publishRecovery({
           slot,
           source: 'previous_generation',
           failedReason: primary.reason,
@@ -5195,6 +5203,7 @@ export const save = {
       // 15. finalize.
       state.meta.version = CURRENT_VERSION;
       state.save.currentSlot = slot;
+      state.save.lastRecovery = null;
       const previousMode = state.mode;
       state.mode = finalizeLoadedGame ? 'loading' : 'flight';
       if (previousMode !== state.mode) {
@@ -7317,8 +7326,8 @@ export function slotCardFromEnvelopeData(slot, env, sectorNameOf = null) {
     endingChoice: completedEndingChoiceFromSaveData(data) || undefined,
     version: env.version,
     ...(typeof env.label === 'string' && env.label.trim() ? { label: env.label.trim().slice(0, 48) } : {}),
-    ...(typeof env.thumbnail === 'string' && env.thumbnail.indexOf('data:image/') === 0 && env.thumbnail.length <= 24 * 1024 * 2
-      ? { thumbnail: env.thumbnail }
+    ...(boundSlotThumbnail(env.thumbnail)
+      ? { thumbnail: boundSlotThumbnail(env.thumbnail) }
       : {}),
   };
 }

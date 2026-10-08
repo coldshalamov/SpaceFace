@@ -18,8 +18,8 @@
   --k-bone: var(--so-ink); --k-bone-62: var(--so-muted); --k-bone-38: var(--so-dim);
   --k-text-live: var(--so-ink); --k-hair: var(--so-line-soft); --k-signal: var(--so-accent);
   --k-good: var(--so-good); --k-bad: var(--so-bad); --k-gold: var(--so-warn); --k-red: var(--so-bad);
-  --k-fs-fine: 12px; --k-fs-data: 13px; --k-fs-body: 14px; --k-fs-emph: 16px;
-  --k-fs-sub: 22px; --k-fs-menu: 17px; --k-fs-num: 42px; --k-fs-title: 40px; --k-fs-hero: 56px;
+  --k-fs-fine: max(12px, calc((12px) * var(--sf-text-scale, 1))); --k-fs-data: max(12px, calc((13px) * var(--sf-text-scale, 1))); --k-fs-body: max(12px, calc((14px) * var(--sf-text-scale, 1))); --k-fs-emph: max(12px, calc((16px) * var(--sf-text-scale, 1)));
+  --k-fs-sub: max(12px, calc((22px) * var(--sf-text-scale, 1))); --k-fs-menu: max(12px, calc((17px) * var(--sf-text-scale, 1))); --k-fs-num: max(12px, calc((42px) * var(--sf-text-scale, 1))); --k-fs-title: max(12px, calc((40px) * var(--sf-text-scale, 1))); --k-fs-hero: max(12px, calc((56px) * var(--sf-text-scale, 1)));
   --k-gap: 18px; --k-row: 40px; --k-pad: 12px; --k-measure: 70ch;
   /* Keep the kit grid (title / stage / foot). Flattening this root into a website column
      used to park the 3D bay behind words. */

@@ -3,17 +3,25 @@
 
 import { careerStats } from '../../systems/achievements.js';
 import { statisticsModel } from '../../core/statistics.js';
+import { wantedTierInfo } from '../../systems/heat.js';
 import { el, words, cue } from '../kit/index.js';
 
 export const STATISTICS_LABEL = 'Statistics';
 
-export function renderStatistics(model) {
-  const sheet = model && Array.isArray(model.groups) ? model : statisticsModel();
-  const root = el('div', 'sf-statistics');
+function statisticsTitle() {
   const title = el('header', 'k-title');
   title.appendChild(el('h1', 'k-display k-t-title fh-title', STATISTICS_LABEL));
   title.appendChild(el('p', 'k-sentence', 'Distance, the line, fights, and what the holds earned.'));
-  root.appendChild(title);
+  return title;
+}
+
+export function renderStatistics(model, { withTitle = true } = {}) {
+  const sheet = model && Array.isArray(model.groups) ? model : statisticsModel();
+  const root = el('div', 'sf-statistics k-hang k-stage');
+  root.setAttribute('data-sf-scroll', 'statistics');
+  root.tabIndex = 0;
+  root.setAttribute('aria-label', 'Statistics readings');
+  if (withTitle) root.appendChild(statisticsTitle());
   for (const group of sheet.groups) {
     const band = el('section', 'sf-statistics__group');
     band.dataset.group = group.id;
@@ -52,21 +60,41 @@ export const statisticsScreen = {
   id: 'statistics',
 
   mount(rootEl, ctx) {
+    this._root = rootEl;
+    this.refresh(ctx);
+  },
+
+  onShow(ctx) { this.refresh(ctx); },
+
+  refresh(ctx, options = {}) {
+    if (options.periodic) return; // This modal pauses the simulation; refresh on each arrival.
+    const rootEl = this._root;
+    if (!rootEl) return;
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage');
     rootEl.setAttribute('aria-label', STATISTICS_LABEL);
     const player = ctx && ctx.state && ctx.state.player;
+    const fine = ctx && ctx.state && ctx.state.lawSecurity && ctx.state.lawSecurity.fineOffer;
     const model = statisticsModel({
       career: careerStats(),
       playerStats: (player && player.stats) || {},
+      law: player ? {
+        heat: Number(player.heat) || 0,
+        wanted: wantedTierInfo(Number(player.heat) || 0).label,
+        fines: fine && fine.status !== 'paid' ? Number(fine.amount) || 0 : 0,
+      } : null,
     });
-    rootEl.appendChild(renderStatistics(model));
+    rootEl.appendChild(statisticsTitle());
+    rootEl.appendChild(renderStatistics(model, { withTitle: false }));
     const back = words([{ label: 'Back', action: 'back', primary: true }], {
       row: true,
       size: 'emph',
       ariaLabel: 'Statistics actions',
       onPick: () => { cue('confirm'); close(ctx); },
     });
-    rootEl.appendChild(back);
+    const foot = el('footer', 'k-foot');
+    foot.appendChild(back);
+    rootEl.appendChild(foot);
   },
+  dispose() { this._root = null; },
 };

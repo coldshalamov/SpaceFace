@@ -203,8 +203,9 @@ ipcMain.handle(SHELL_WINDOW_MODE_SET, (event, payload) => {
   const win = senderWindow(event);
   const mode = applyWindowMode(win, payload && payload.mode);
   if (!mode) return { ok: false, reason: 'bad-mode' };
-  const live = win.isFullScreen() ? 'fullscreen' : win.isMaximized() ? 'maximized' : 'windowed';
-  return { ok: true, mode: live };
+  // Native fullscreen transitions settle asynchronously; report the accepted request.
+  // Subsequent getWindowMode reads the native state after the transition.
+  return { ok: true, mode };
 });
 
 // PQ-033.03 Steam: the optional steamworks.js binding (absent unless a Steam build adds it) behind two

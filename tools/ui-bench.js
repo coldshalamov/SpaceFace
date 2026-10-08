@@ -50,6 +50,7 @@ const SCREENS = Object.freeze({
   missionLog: () => import('../src/ui/screens/missionLog.js').then((m) => m.missionLogScreen),
   credits: () => import('../src/ui/screens/credits.js').then((m) => m.creditsScreen),
   achievements: () => import('../src/ui/screens/achievements.js').then((m) => m.achievementsScreen),
+  statistics: () => import('../src/ui/screens/statistics.js').then((m) => m.statisticsScreen),
   gameOver: () => import('../src/ui/screens/gameOver.js').then((m) => m.gameOverScreen),
   techTree: () => import('../src/ui/screens/techTree.js').then((m) => m.techTreeScreen),
   range: () => import('../src/ui/screens/range.js').then((m) => m.rangeScreen),

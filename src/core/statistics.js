@@ -57,7 +57,7 @@ function pairs(obj) {
  * `career` is careerStats(). `playerStats` is state.player.stats.
  * Law stays a sentence unless a real field is present.
  */
-export function statisticsModel({ career = {}, playerStats = {} } = {}) {
+export function statisticsModel({ career = {}, playerStats = {}, law = null } = {}) {
   const stats = playerStats && typeof playerStats === 'object' ? playerStats : {};
   const flight = [
     ['Distance flown', formatStat(career.distanceFlownWu, 'wu')],
@@ -72,7 +72,7 @@ export function statisticsModel({ career = {}, playerStats = {} } = {}) {
     counted('Crushing impacts', counter(career, 'crushingImpacts')),
   ].filter(Boolean);
   const fight = [
-    ['Kills', formatStat(stats.kills != null ? stats.kills : career.kills)],
+    ['Kills', formatStat(Object.values(career.killsByWeapon || {}).reduce((sum, value) => sum + num(value), 0))],
     ...pairs(career.killsByWeapon).map(([name, value]) => [name + ' kills', value]),
     ['Ships lost', formatStat(career.shipsLost)],
   ];
@@ -82,24 +82,24 @@ export function statisticsModel({ career = {}, playerStats = {} } = {}) {
     ['Biggest profit', formatStat(stats.biggestSingleProfit, 'cr')],
     ['Smuggled', formatStat(stats.smuggledValue, 'cr')],
     ['Passive earned', formatStat(stats.totalPassiveEarnedLifetime, 'cr')],
-    ['Ore hauled', formatStat(counter(career, 'oreUnits'), 'u')],
-    counted('Contracts', counter(career, 'contracts')),
+    ['Ore hauled · career', formatStat(counter(career, 'oreUnits'), 'u')],
+    counted('Contracts · career', counter(career, 'contracts')),
   ].filter(Boolean);
-  const law = [];
-  if (stats.wantedTier != null) law.push(['Wanted', String(stats.wantedTier)]);
-  if (stats.heat != null) law.push(['Heat', formatStat(stats.heat)]);
-  if (stats.fines != null) law.push(['Fines', formatStat(stats.fines, 'cr')]);
+  const lawRows = [];
+  if (law && law.wanted != null) lawRows.push(['Status', String(law.wanted)]);
+  if (law && Number.isFinite(law.heat)) lawRows.push(['Heat', formatStat(law.heat * 100, '%')]);
+  if (law && Number.isFinite(law.fines) && law.fines > 0) lawRows.push(['Outstanding fine', formatStat(law.fines, 'cr')]);
   const wantedTimes = counted('Times wanted', counter(career, 'wantedTimes'));
-  if (wantedTimes) law.push(wantedTimes);
-  const lawGroup = law.length
-    ? { id: 'law', label: 'Law', rows: law }
-    : { id: 'law', label: 'Law', rows: [], note: 'No heat, no fines, not wanted.' };
+  if (wantedTimes) lawRows.push(wantedTimes);
+  const lawGroup = lawRows.length
+    ? { id: 'law', label: 'Law', rows: lawRows }
+    : { id: 'law', label: 'Law', rows: [], note: 'No law reading available.' };
   return {
     groups: [
-      { id: 'flight', label: 'Flight', rows: flight },
-      { id: 'line', label: 'Line', rows: [['Biggest throw', formatStat(career.biggestThrowSpeed, 'wu/s')], ...lineExtras] },
-      { id: 'fight', label: 'Fight', rows: fight },
-      { id: 'trade', label: 'Trade', rows: trade },
+      { id: 'flight', label: 'Flight · career', rows: flight },
+      { id: 'line', label: 'Line · career', rows: [['Biggest throw', formatStat(career.biggestThrowSpeed, 'wu/s')], ...lineExtras] },
+      { id: 'fight', label: 'Fight · career', rows: fight },
+      { id: 'trade', label: 'Trade · this save', rows: trade },
       lawGroup,
     ],
   };

@@ -26,6 +26,17 @@ function kitWord(kit) {
     .join(' ');
 }
 
+/** Real records retain the starter in their immutable rule descriptor. */
+export function recordedKitId(row) {
+  const explicit = row && (row.kitId || row.kit);
+  if (typeof explicit === 'string' && explicit) return explicit;
+  try {
+    const rules = row && row.recordRules && row.recordRules.loadoutRules;
+    const descriptor = typeof rules === 'string' ? JSON.parse(rules) : rules;
+    return descriptor && typeof descriptor.starter === 'string' ? descriptor.starter : null;
+  } catch { return null; }
+}
+
 /** Compact kit-balance lines from a kitBalanceBoard() result. Empty stays quiet. */
 export function kitBalanceLines(board) {
   const order = board && Array.isArray(board.order) ? board.order : [];

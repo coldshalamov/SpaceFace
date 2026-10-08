@@ -137,7 +137,7 @@ import { STUNT_RULE_REVISIONS, stuntAssistProfile } from '../../combat/stuntRunR
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
 import { el, settle, stamp, cue } from '../kit/index.js';
-import { renderResultsSheet, resultsSheetModel } from './resultsSheet.js';
+import { renderResultsSheet, resultsSheetModel, recordedKitId } from './resultsSheet.js';
 import { capPins, platePins, panePins, channelPins, rowPins }
   from '../kit/computedMaterial.js';
 
@@ -2841,7 +2841,7 @@ function crucibleSheetReadings() {
   }
   const cells = [];
   for (const row of history) {
-    const kit = row && (row.kitId || row.kit);
+    const kit = recordedKitId(row);
     if (typeof kit !== 'string' || !kit) continue;
     cells.push({ kit, seed: row.seed, score: row.score });
   }

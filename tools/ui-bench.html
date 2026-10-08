@@ -90,15 +90,16 @@
     color: #b9c4bd; border: 1px dashed #4a5650; padding: 22px; background: rgb(8 10 12 / 0.85);
   }
   #bench-broken strong { display: block; color: #e6ece5; font-size: 17px; margin-bottom: 8px; }
-  /* Overlay host for the comms fan and wingman radial. Above the HUD, under screens. */
+  /* The shared overlay host owns the HUD, screens and confirmation dialogs, as in index.html. */
   #ui-root { z-index: 30; }
 </style>
 </head>
 <body>
   <img id="bench-bg" alt="" />
-  <div id="hud"></div>
-  <div id="ui-root"></div>
-  <main id="screens"></main>
+  <div id="ui-root">
+    <div id="hud"></div>
+    <main id="screens"></main>
+  </div>
   <header id="bench-bar">
     <label>screen <select id="bench-picker"></select></label>
     <label>still <input id="bench-still" size="34" placeholder=".devshots/ui-stills/flight.png" /></label>

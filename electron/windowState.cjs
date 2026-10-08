@@ -84,7 +84,8 @@ function sanitizeWindowState(raw, displays) {
   const maxHeight = rows.reduce((best, row) => Math.max(best, row.bounds.height), 0);
   const width = clamp(Math.max(MIN_WIDTH, finiteInt(raw && raw.width) || 0), MIN_WIDTH, Math.max(MIN_WIDTH, maxWidth));
   const height = clamp(Math.max(MIN_HEIGHT, finiteInt(raw && raw.height) || 0), MIN_HEIGHT, Math.max(MIN_HEIGHT, maxHeight));
-  const mode = MODES.includes(raw && raw.mode) ? raw.mode : 'windowed';
+  const requestedMode = raw && raw.mode === 'borderless' ? 'maximized' : raw && raw.mode;
+  const mode = MODES.includes(requestedMode) ? requestedMode : 'windowed';
   const x = finiteInt(raw && raw.x);
   const y = finiteInt(raw && raw.y);
   const rect = { x: x == null ? 0 : x, y: y == null ? 0 : y, width, height };
@@ -127,7 +128,7 @@ function writeWindowStateFile(filePath, value) {
 
 const WINDOW_MODE_LABELS = Object.freeze([
   ['windowed', 'Windowed'],
-  ['maximized', 'Borderless'],
+  ['maximized', 'Maximized'],
   ['fullscreen', 'Fullscreen'],
 ]);
 

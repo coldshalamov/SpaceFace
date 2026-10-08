@@ -39,9 +39,9 @@ test('FB-103 the statistics model prints every supplied counter and does not inv
   assert.match(text, /Ships lost 2/);
   assert.match(text, /Smuggled 4,242 cr/);
   assert.match(text, /Passive earned 70 cr/);
-  assert.match(text, /Ore hauled 0 u/);
+  assert.match(text, /Ore hauled · career 0 u/);
   assert.equal(text.includes('Jumps'), false, 'a zero jump count stays off the sheet');
-  assert.match(text, /No heat, no fines, not wanted/);
+  assert.match(text, /No law reading available/);
   assert.equal(text.includes('helios_prime'), false);
 
   const lived = statisticsModel({
@@ -51,10 +51,10 @@ test('FB-103 the statistics model prints every supplied counter and does not inv
     playerStats: {},
   });
   const livedText = lived.groups.flatMap((group) => (group.rows || []).map((row) => row.join(' '))).join('\n');
-  assert.match(livedText, /Ore hauled 4,242 u/);
+  assert.match(livedText, /Ore hauled · career 4,242 u/);
   assert.match(livedText, /Jumps 3/);
   assert.match(livedText, /Throws 2/);
-  assert.match(livedText, /Contracts 1/);
+  assert.match(livedText, /Contracts · career 1/);
   assert.match(livedText, /Times wanted 1/);
   assert.equal(livedText.includes('Latches'), false);
 

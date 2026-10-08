@@ -8,6 +8,17 @@ import { createStuntCallout, calloutTextFor, handlineSenseLine } from '../src/ui
 
 const SEED = 4242;
 
+test('successive catches replace their displayed grade on the shared callout line', () => {
+  const { callout, bus } = mount();
+  try {
+    bus.emit('tether:snapCatch', { rating: 'clean', landTangentialSpeed: 120 });
+    assert.match(calloutTextFor(callout.root), /CLEAN SNAG/);
+    bus.emit('tether:snapCatch', { rating: 'rough', landTangentialSpeed: 40 });
+    assert.match(calloutTextFor(callout.root), /ROUGH SNAG/);
+    assert.doesNotMatch(calloutTextFor(callout.root), /CLEAN SNAG/);
+  } finally { callout.destroy(); }
+});
+
 function fakeDocument() {
   function createElement() {
     const el = {
