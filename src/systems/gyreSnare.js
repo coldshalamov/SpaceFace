@@ -836,7 +836,10 @@ export const gyreSnare = {
       // building thumps — same convention as the launch cue below. The grip
       // shake grades by mass too — coring a wreck lands heavier than a pebble.
       this.bus.emit('audio:cue', { id: 'gyre_snare_snag', rate: 1.08 - Math.min(0.3, rt.clumpMass / 500) });
-      this.bus.emit('camera:shake', { amount: 0.10 + 0.10 * Math.min(1, rt.clumpMass / D.maxClumpMass) });
+      // /200 grades against a realistic snag mass, not the 2400t cap — a ~40t
+      // pebble lands ~0.12 and a 200t wreck the full 0.20; versus maxClumpMass
+      // every real snag was a flat ~0.10 and the differentiation was dead code.
+      this.bus.emit('camera:shake', { amount: 0.10 + 0.10 * Math.min(1, rt.clumpMass / 200) });
     }
     return true;
   },
@@ -1094,6 +1097,9 @@ export const gyreSnare = {
           id: 'gyre_snare_absorb', gain: 0.7,
           rate: 1.15 - Math.min(0.5, em / 160)
             + 0.3 * Math.pow(Math.min(1, rt.clumpMass / D.maxClumpMass), 0.75),
+          // The meal swallows where the clump IS — off-axis meals play off-axis
+          // like every other body-scoped gyre voice (snag/windup/launch/death).
+          position: { x: core.pos.x, z: core.pos.z },
         });
         // The haptic ride shares the gate: a dense belt feed would otherwise hold the
         // pad in a continuous buzz exactly where the audio designers decided it should
@@ -1688,7 +1694,7 @@ export const gyreSnare = {
         if (this.bus && rt.launchWindup === D.launchWindupTicks - 1) {
           // First coil tick: the pad rides a low rumble through the draw — the
           // slingshot pull-back is the feel-rich part, and silence undersold it.
-          this.bus.emit(GYRE_EVENTS.windup, { tick: state.tick });
+          this.bus.emit(GYRE_EVENTS.windup, { id: core.id, tick: state.tick });
           // A whisper of camera anticipation on the draw — the pull-back is felt,
           // not only seen/heard. amount 0.01 is deliberately sub-perceptual: it
           // leans the frame into the coil without moving the reticle.
@@ -1751,6 +1757,7 @@ export const gyreSnare = {
             // speed is honest: launchSpeedEff + positive residual (ship translating
             // into the throw bowls hotter; an aft draw still lands the floor).
             this.bus.emit(GYRE_EVENTS.thrown, {
+              id: core.id,
               tick: state && state.tick,
               speed: rt.launchSpeedEff + Math.max(0, rt.launchFwd),
             });

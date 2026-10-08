@@ -476,6 +476,9 @@ export class GyreSnarePresentation {
     }
     slot.used = true;
     slot.spawnT = this.time;         // grow-in: lumps swell in over ~150 ms, not pop
+    // The body the lump replaces vanished THIS tick — seed at nearly half scale so
+    // the eye tracks the meal continuously instead of the mesh popping out first.
+    slot.spawnScale = 0.45;
     const m = slot.mesh;
     m.material = this._lumpMaterial(member.type);
     // Katamari compaction: the member ledger caps at MAX_LUMPS but the ball keeps
@@ -484,7 +487,7 @@ export class GyreSnarePresentation {
     const r = Math.max(0.35, finite(member.radius, 2) * 0.62)
       * Math.min(3, Math.max(1, finite(this._clumpRadius, 12) / 14));
     slot.baseScale = r;
-    m.scale.setScalar(r * 0.2);
+    m.scale.setScalar(r * (slot.spawnScale || 0.45));
     const spread = Math.max(0, finite(this._clumpRadius) - r * 0.45);
     m.position.set(
       finite(member.nx, 0) * spread,
@@ -805,8 +808,8 @@ export class GyreSnarePresentation {
         const k = Math.max(0, 1 - this._closeT / (this._closeSpan || 0.25));
         const kk = k * k;
         // The dying funnel keeps its last pace — a post-launch close inhaling at full
-      // pre-spend speed while the glass collapses would betray the spent read.
-      if (calm !== 0) this._moteT += sdt * (this._lastSpent == null ? 1 : this._lastSpent);
+        // pre-spend speed while the glass collapses would betray the spent read.
+        if (calm !== 0) this._moteT += sdt * (this._lastSpent == null ? 1 : this._lastSpent);
         this._spiralMat.uniforms.uTime.value = this._moteT;
         this._spiralMat.uniforms.uFade.value = kk; // the scatter fades on the same 250ms ramp as the glass
         this._coneMat.uniforms.uTime.value = this.time;
@@ -1048,7 +1051,7 @@ export class GyreSnarePresentation {
       for (const l of this._lumps) {
         if (!l.used) continue;
         const g = Math.min(1, Math.max(0, (this.time - l.spawnT) / 0.15));
-        l.mesh.scale.setScalar(l.baseScale * (0.2 + 0.8 * g));
+        l.mesh.scale.setScalar(l.baseScale * ((l.spawnScale || 0.45) + (1 - (l.spawnScale || 0.45)) * g));
         // Zero-G rubble: a quiet per-lump bob (±15% of its own size, plus a hair of
         // lateral sway) keeps each chunk reading as debris in loose formation rather
         // than part of a rigid wheel. Frozen under reduced-motion like the spiral.
@@ -1096,6 +1099,9 @@ export class GyreSnarePresentation {
         const ballR = Math.max(2.5, finite(sb.r, 8));
         this._secVeil.scale.setScalar(ballR * 1.22);
         this._secVeilMat.opacity = 0.07 * flashCalm;
+        // Rebuild key is (id, member-count): launch-meta members are FROZEN at
+        // throw, so sbm.length only moves on a re-adopt — a live-members refactor
+        // would silently never re-lay-out the lumps if this stayed id-only.
         if (this._secId !== sb.id || this._secN !== (sbm ? sbm.length : 0)) {
           this._secId = sb.id;
           this._secN = sbm ? sbm.length : 0;

@@ -238,3 +238,58 @@ test('FB-005: the haptics level survives profile normalization; corrupt values r
   save._restoreSettings({ accessibility: { haptics: 'loud' } });
   assert.equal(bogus.settings.accessibility.haptics, 'full', 'an unknown level repairs to full');
 });
+
+test('gyre vocabulary routes through the pulse table — torn/dropped/droppedEmpty pseudo-keys', () => {
+  installedPad = makePad();
+  const bus = createBus();
+  const state = padState();
+  const gp = createGamepad({ bus, state });
+  gp.tick(1 / 60, state);
+  assert.equal(gp.connected, true);
+
+  // [event, payload, spec the emit should own] — the dropped pseudo-key switch:
+  // a torn clump is the big loss beat, an empty beam's close the soft flick, a
+  // held clump's release the full thud. `reason` wins over the id key.
+  const cases = [
+    ['gyre:beamOn', {}, 'gyre:beamOn'],
+    ['gyre:snagged', {}, 'gyre:snagged'],
+    ['gyre:windup', {}, 'gyre:windup'],
+    ['gyre:thrown', {}, 'gyre:thrown'],
+    ['gyre:full', {}, 'gyre:full'],
+    ['gyre:fuseLow', {}, 'gyre:fuseLow'],
+    ['gyre:ballGrave', {}, 'gyre:ballGrave'],
+    ['gyre:strained', {}, 'gyre:strained'],
+    ['gyre:dropped', { reason: 'strained', coreId: null }, 'gyre:torn'],
+    ['gyre:dropped', { reason: 'launched', coreId: null }, 'gyre:droppedEmpty'],
+    ['gyre:dropped', { coreId: 7 }, 'gyre:dropped'],
+  ];
+  for (const [event, payload, specName] of cases) {
+    step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2); // let any prior pulse/gap fully expire
+    bus.emit(event, payload);
+    step(gp, state);
+    const spec = HAPTIC_VERB_PULSES[specName];
+    assert.equal(gp._lastVerbPulse, specName, `${event} ${JSON.stringify(payload)} → ${specName}`);
+    assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, spec.strong, `${specName} strong channel`);
+    assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, spec.weak, `${specName} weak channel`);
+  }
+
+  // The absorb tick lerps by meal mass: mass 0 is the authored flick, 80+ t lands
+  // the drop-thud end of the lerp.
+  const base = HAPTIC_VERB_PULSES['gyre:absorbTick'];
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:absorbTick', { mass: 0 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, base.strong, 'pebble stays the authored flick');
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:absorbTick', { mass: 80 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, base.strong + 0.25, 'wreck lerp tops out');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, base.weak + 0.1, 'wreck lerp weak channel');
+
+  // Boundary/quiet drops are context resets — silence, and the live pulse is untouched.
+  const last = gp._lastVerbPulse;
+  bus.emit('gyre:dropped', { quiet: true, coreId: 7 });
+  bus.emit('gyre:dropped', { boundary: true, coreId: 7 });
+  step(gp, state);
+  assert.equal(gp._lastVerbPulse, last, 'quiet/boundary drops never own a pulse');
+});
