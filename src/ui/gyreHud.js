@@ -168,7 +168,7 @@ export const gyreHud = {
           // The payoff beat keeps the destructive-yield telegraph too — HOLD and
           // BALL AWAY both carry DMG×; BOWL shouldn't drop the arc's climax.
           const bowlDmg = dmgText(this._bowlMass || 0);
-          return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t · DMG×${bowlDmg}${ballTxt}`, cls: 'gyre-launched' };
+          return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
@@ -224,7 +224,7 @@ export const gyreHud = {
       // Same DMG× the HOLD/AWAY reads carry — the throw's yield telegraph
       // doesn't drop for the payoff's own beat.
       const bowlDmg = dmgText(bowlMass);
-      return { text: `GYRE — BOWL ×${bowlN} · ${bowlMass}t · DMG×${bowlDmg}${ballTxt}`, cls: 'gyre-launched' };
+      return { text: `GYRE — BOWL ×${bowlN} · ${bowlMass}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;

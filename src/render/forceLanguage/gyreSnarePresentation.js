@@ -733,7 +733,7 @@ export class GyreSnarePresentation {
     // early-returning here froze the ring at t≈0.03 as a faint glow stuck at the grave.
     // The close-ramp owns the quiet window too: latching _quiet on the first dead frame
     // strangled the ramp after ~1 tick, leaving a ghost cone + frozen clump on screen.
-    if (!live && this._quiet && !this._closing && this._deathT <= 0 && !this._bursts.some((b) => b.t < 1) && this._tearFade == null) return;
+    if (!live && this._quiet && !this._closing && this._deathT <= 0 && !this._bursts.some((b) => b.t < 1) && this._tearFade == null && this._secGraveT == null) return;
     if (!live) { this._quiet = true; }
     else this._quiet = false;
 
@@ -1067,6 +1067,12 @@ export class GyreSnarePresentation {
         this._basinHalo.visible = false;
       }
     } else {
+      // The gulp kicks decay on the close path too — a drop/tear mid-feed followed
+      // by a fast re-beam would otherwise carry a stale gulp into the new funnel's
+      // first frames (the mouth/disc kicks own ~24% and ~+1.0 of leftover surge).
+      this._discKick *= Math.exp(-sdt * 4.2);
+      this._clumpKick *= Math.exp(-sdt * 6);
+      this._moteKick *= Math.exp(-sdt * 5);
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
       // down over ~0.25 s instead of popping — the collapse is part of the payoff.
       if (this._beamWasOn) {

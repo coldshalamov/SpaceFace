@@ -1619,6 +1619,19 @@ export const gyreSnare = {
         }
         if (!e || e.alive === false || !e.data || !e.data.gyreLaunched || !e.pos
           || e.data.despawnAt == null) {
+          // A marked non-primary that DIED in flight rings at its grave — the
+          // primary gets the same on any death (pub.ballGrave below), and it
+          // lives in this list too, so skip it or the ring blooms twice. Only
+          // while the mark still owns the body: an adopter's stripped corpse
+          // narrates for its new owner (the asymmetry documented below).
+          if (e && e.alive === false && e.pos && e.data && e.data.gyreLaunched
+            && rt.ballIds[i] !== rt.ballId) {
+            const gMeta = e.data.gyreLaunchMeta;
+            pub.graves.push({
+              x: e.pos.x, z: e.pos.z,
+              r: gMeta && Number.isFinite(gMeta.clumpRadius) ? gMeta.clumpRadius : entityRadius(e),
+            });
+          }
           if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.data.despawnAt == null) {
             this._handBack(e);
           } else if (e && e.alive !== false && e.data && e.data.gyreLaunched) {
