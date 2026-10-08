@@ -42,7 +42,7 @@ import {
   CHECKLIST_ITEMS,
   evaluateChecklist,
 } from '../accessibilityChecklist.js';
-import { recordMotionChoice } from '../accessibility.js';
+import { recordMotionChoice, applyTextScaleFromSettings } from '../accessibility.js';
 import { el, words, settle, cue } from '../kit/index.js';
 // ORRERY (design/frontend/ORRERY.md §6 Meta): the categories on a Ladder with the Hand, the sliders as
 // graduated Scales, and a live preview of what the focused row changes beside the list.
@@ -400,6 +400,31 @@ export function settingsInUseLabel(action) {
   return localizeText('In use: {action}', { action: action == null ? '' : action });
 }
 
+/** The conflict is a description, not only the button's new name. */
+export function announceBindingConflict(button, label) {
+  if (!button || typeof button.setAttribute !== 'function') return label;
+  const sentence = label || 'That key is already in use.';
+  const row = button.closest ? (button.closest('.k-row') || button.closest('li')) : null;
+  const host = row || button.parentNode;
+  let note = host && host.querySelector ? host.querySelector('[data-bind-conflict]') : null;
+  if (!note && host && typeof host.appendChild === 'function' && typeof document !== 'undefined') {
+    note = document.createElement('span');
+    note.dataset.bindConflict = '1';
+    note.className = 'k-row__sub';
+    host.appendChild(note);
+  }
+  if (note) {
+    if (!button.id) button.id = 'sf-bind-live';
+    note.id = button.id + '-conflict';
+    note.textContent = sentence;
+    button.setAttribute('aria-describedby', note.id);
+    if (host && host !== button && host.setAttribute) host.setAttribute('aria-describedby', note.id);
+  } else {
+    button.setAttribute('aria-description', sentence);
+  }
+  return sentence;
+}
+
 export function settingsQualityKeepsNote(keeps, substitutes) {
   return localizeText('Keeps {keeps}. Substitutes: {substitutes}.', {
     keeps: keeps == null ? '' : keeps,
@@ -591,6 +616,25 @@ export const settingsScreen = {
       rowSlider('Voice', () => a.voice == null ? 1 : a.voice, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'voice', v, persist));
     } else if (refs.active === 'Video') {
       const vd = s.video;
+      const shell = typeof window !== 'undefined' ? window.spacefaceShell : null;
+      if (shell && typeof shell.getWindowMode === 'function' && typeof shell.setWindowMode === 'function') {
+        if (!refs.windowMode) refs.windowMode = 'windowed';
+        rowSelect('Window', () => refs.windowMode, [
+          ['windowed', 'Windowed'],
+          ['maximized', 'Borderless'],
+          ['fullscreen', 'Fullscreen'],
+        ], (value) => {
+          refs.windowMode = value;
+          Promise.resolve(shell.setWindowMode(value)).then((res) => {
+            if (res && res.mode) refs.windowMode = res.mode;
+          }).catch(() => {});
+        });
+        Promise.resolve(shell.getWindowMode()).then((res) => {
+          if (!refs || !res || !res.mode || refs.windowMode === res.mode) return;
+          refs.windowMode = res.mode;
+          this._render(ctx);
+        }).catch(() => {});
+      }
       // One-click preset: writes the adaptive-quality tier (render scale, particle density, render
       // graph) and keeps the individual rows below as the source of truth for advanced edits.
       rowSelect('Quality preset', () => vd.qualityPreset || DEFAULT_QUALITY_PRESET,
@@ -831,6 +875,12 @@ export const settingsScreen = {
       rowToggle('Reduce flashing', () => !!ac.flashReduce, (v) => this._set(ctx, 'accessibility', 'flashReduce', v));
       rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
       motionEffectsRow(build, s, true);
+      build.slider('Text scale', () => (Number(ac.textScale) > 0 ? Number(ac.textScale) : 1), 0.85, 1.5, 0.05,
+        (value) => Math.round(value * 100) + '%',
+        (value, persist) => {
+          this._set(ctx, 'accessibility', 'textScale', value, persist);
+          applyTextScaleFromSettings(s);
+        });
       // FB-005: rumble has its own axis — it is haptic substitution, not motion. A calmer screen
       // often wants MORE rumble, so this never follows the reduce-motion choice.
       rowSelect('Controller rumble', () => ac.haptics || 'full',
@@ -1104,7 +1154,9 @@ export const settingsScreen = {
         const ownerOf = (code) => REBINDABLE.find((other) => other !== action && (live[other] || []).includes(code));
         const clashOwner = def.map(ownerOf).find(Boolean);
         if (clashOwner) {
-          btn.textContent = settingsInUseLabel(REBIND_LABELS[clashOwner] || clashOwner);
+          const conflict = settingsInUseLabel(REBIND_LABELS[clashOwner] || clashOwner);
+          btn.textContent = conflict;
+          announceBindingConflict(btn, conflict);
           cue('deny');
           setTimeout(() => done(false), 900);
           return;
@@ -1119,7 +1171,9 @@ export const settingsScreen = {
       for (const other of REBINDABLE) {
         if (other === action) continue;
         if ((live[other] || []).includes(ev.code)) {
-          btn.textContent = settingsInUseLabel(REBIND_LABELS[other] || other);
+          const conflict = settingsInUseLabel(REBIND_LABELS[other] || other);
+          btn.textContent = conflict;
+          announceBindingConflict(btn, conflict);
           cue('deny');
           setTimeout(() => done(false), 900);
           return;
@@ -1208,7 +1262,9 @@ export const settingsScreen = {
       const others = { ...liveMap, [action]: [] };
       const conflict = findGamepadBindConflict(others, action, stdName);
       if (conflict) {
-        btn.textContent = settingsInUseLabel(GAMEPAD_REBIND_LABELS[conflict] || conflict);
+        const conflictLabel = settingsInUseLabel(GAMEPAD_REBIND_LABELS[conflict] || conflict);
+        btn.textContent = conflictLabel;
+        announceBindingConflict(btn, conflictLabel);
         cue('deny');
         setTimeout(() => done(false), 900);
         return;

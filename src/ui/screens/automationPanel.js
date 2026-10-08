@@ -16,6 +16,7 @@ import { escapeHtml } from '../comms.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { industryReadoutFromState, renderIndustryStrip, traderCycleLine } from './industryReadout.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
@@ -333,6 +334,11 @@ const CSS = `
 #sf-automation .au-metric .v { margin-top: 4px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; color: var(--ink); }
 #sf-automation .au-metric .s { margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--ink-dim); }
 #sf-automation .au-note { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-top: 6px; }
+#sf-automation .au-industry { margin: 0; }
+#sf-automation .au-industry .au-note { margin-top: 0; }
+#sf-automation .au-industry-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+#sf-automation .au-industry-rows li { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; line-height: 1.4; color: var(--ink); }
+html body #screens #sf-automation.au-orrery .au-industry-rows li { color: rgb(var(--au-bone)); font-size: 13px; }
 #sf-automation .au-section-h { font-family: var(--sf-body-face); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-dim); border-bottom: 1px solid var(--panel-edge); padding-bottom: 8px; margin-bottom: 2px; }
 #sf-automation .au-card { display: flex; align-items: center; gap: 16px; padding: 14px 16px;
@@ -845,6 +851,19 @@ export const automationScreen = {
       if (!sel) return;
       this._onAction('assignProgram', sel.dataset.ref, sel.dataset.kind, sel.value);
     });
+
+    // A finished trader cycle had no reader. The strip says what the receipt paid.
+    this._cycleNote = '';
+    if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
+      const off = ctx.bus.on('automation:traderCycleCompleted', (payload) => {
+        this._cycleNote = traderCycleLine(payload);
+        const node = this._root && this._root.querySelector('[data-industry-cycle]');
+        if (!node) return;
+        node.hidden = !this._cycleNote;
+        node.textContent = this._cycleNote;
+      });
+      if (typeof off === 'function') this._offCycle = off;
+    }
   },
 
   onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
@@ -1141,6 +1160,8 @@ export const automationScreen = {
   },
 
   _renderOperationsBoard(frag) {
+    const readout = industryReadoutFromState(this._ctx && this._ctx.state);
+    frag.appendChild(renderIndustryStrip(readout, { cycle: this._cycleNote || '' }));
     const summary = summarizeAutomationOperations(this._ctx.state);
     const next = automationNextAction(this._ctx.state);
     const capLoad = describeAutomationCapLoad(summary);

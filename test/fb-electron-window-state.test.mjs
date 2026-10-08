@@ -17,10 +17,13 @@ import {
   MIN_WIDTH,
   MIN_HEIGHT,
   MODES,
+  WINDOW_MODE_LABELS,
+  applyWindowMode,
   readWindowStateFile,
   sanitizeWindowState,
   writeWindowStateFile,
 } from '../electron/windowState.cjs';
+import { readFileSync } from 'node:fs';
 
 const mockDisplays = [
   {
@@ -98,4 +101,33 @@ test('FB-106: malformed or empty state returns null', () => {
   assert.equal(sanitizeWindowState('not an object', mockDisplays), null);
   assert.equal(sanitizeWindowState([], mockDisplays), null);
   assert.equal(sanitizeWindowState({}, []), null, 'No displays returns null');
+});
+
+test('FB-106: Settings names maximized as Borderless and the shell can apply it', () => {
+  assert.deepEqual(WINDOW_MODE_LABELS, [
+    ['windowed', 'Windowed'],
+    ['maximized', 'Borderless'],
+    ['fullscreen', 'Fullscreen'],
+  ]);
+  const calls = [];
+  const win = {
+    fullscreen: false,
+    maximized: true,
+    isFullScreen() { return this.fullscreen; },
+    isMaximized() { return this.maximized; },
+    setFullScreen(on) { this.fullscreen = !!on; if (on) this.maximized = false; calls.push('fullscreen:' + on); },
+    maximize() { this.maximized = true; calls.push('maximize'); },
+    unmaximize() { this.maximized = false; calls.push('unmaximize'); },
+  };
+  assert.equal(applyWindowMode(win, 'windowed'), 'windowed');
+  assert.equal(win.maximized, false);
+  assert.equal(applyWindowMode(win, 'maximized'), 'maximized');
+  assert.equal(win.maximized, true);
+  assert.equal(applyWindowMode(win, 'borderless'), null);
+  const main = readFileSync(new URL('../electron/main.cjs', import.meta.url), 'utf8');
+  assert.match(main, /isolatedEvidence\s*\?\s*null/);
+  assert.match(main, /spaceface:window-mode-set/);
+  const settings = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
+  assert.match(settings, /Borderless/);
+  assert.match(settings, /getWindowMode/);
 });

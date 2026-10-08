@@ -76,6 +76,8 @@ const SHELL_WORKSHOP_STATUS_CHANNEL = 'spaceface:workshop-status';
 const SHELL_WORKSHOP_PUBLISH_CHANNEL = 'spaceface:workshop-publish';
 const SHELL_WORKSHOP_SYNC_CHANNEL = 'spaceface:workshop-sync';
 const SHELL_PERF_METRICS_CHANNEL = 'spaceface:perf-metrics';
+const SHELL_WINDOW_MODE_GET = 'spaceface:window-mode-get';
+const SHELL_WINDOW_MODE_SET = 'spaceface:window-mode-set';
 try {
   contextBridge.exposeInMainWorld('spacefaceShell', Object.freeze({
     quit() {
@@ -112,6 +114,13 @@ try {
     // Absent in the browser build (no spacefaceShell) — callers must feature-detect.
     perfMetrics() {
       return ipcRenderer.invoke(SHELL_PERF_METRICS_CHANNEL);
+    },
+    getWindowMode() {
+      return ipcRenderer.invoke(SHELL_WINDOW_MODE_GET);
+    },
+    setWindowMode(mode) {
+      const word = mode === 'maximized' || mode === 'fullscreen' || mode === 'windowed' ? mode : 'windowed';
+      return ipcRenderer.invoke(SHELL_WINDOW_MODE_SET, { mode: word });
     },
   }));
 } catch (e) {}

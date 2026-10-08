@@ -129,6 +129,7 @@ const SCREEN_MODULES = [
   // ACHIEVEMENTS (PQ-033.03): the local achievement ledger, reached from the title's fine line and
   // from Pause. Reads the same ledger the Steam mirror sends from.
   { path: './screens/achievements.js', load: () => import('./screens/achievements.js'), name: 'achievementsScreen' },
+  { path: './screens/statistics.js', load: () => import('./screens/statistics.js'), name: 'statisticsScreen' },
   { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
   { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
   // Wave B11 — Physics lab / Sandbox toy on front door.

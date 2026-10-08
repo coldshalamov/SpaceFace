@@ -125,12 +125,38 @@ function writeWindowStateFile(filePath, value) {
   }
 }
 
+const WINDOW_MODE_LABELS = Object.freeze([
+  ['windowed', 'Windowed'],
+  ['maximized', 'Borderless'],
+  ['fullscreen', 'Fullscreen'],
+]);
+
+/** Apply a remembered mode to a window-like object. Unknown modes do nothing. */
+function applyWindowMode(win, mode) {
+  if (!win || typeof win !== 'object' || !MODES.includes(mode)) return null;
+  const fullscreen = typeof win.isFullScreen === 'function' && win.isFullScreen();
+  const maximized = typeof win.isMaximized === 'function' && win.isMaximized();
+  if (mode === 'fullscreen') {
+    if (maximized && typeof win.unmaximize === 'function') win.unmaximize();
+    if (typeof win.setFullScreen === 'function') win.setFullScreen(true);
+  } else if (mode === 'maximized') {
+    if (fullscreen && typeof win.setFullScreen === 'function') win.setFullScreen(false);
+    if (typeof win.maximize === 'function') win.maximize();
+  } else {
+    if (fullscreen && typeof win.setFullScreen === 'function') win.setFullScreen(false);
+    if (maximized && typeof win.unmaximize === 'function') win.unmaximize();
+  }
+  return mode;
+}
+
 module.exports = {
   MIN_HEIGHT,
   MIN_VISIBLE_PX,
   MIN_WIDTH,
   MODES,
+  WINDOW_MODE_LABELS,
   WINDOW_STATE_FILE,
+  applyWindowMode,
   readWindowStateFile,
   sanitizeWindowState,
   writeWindowStateFile,
