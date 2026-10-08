@@ -30,7 +30,14 @@ function courseLengthWU(gates) {
 }
 
 function freezeCourse(spec) {
-  const gates = spec.gates.map((g) => Object.freeze({ x: round2(g.x), z: round2(g.z) }));
+  // Put the finish on the start plane. A short approach aligns the final leg with the
+  // opening straight, so a lap closes physically rather than ending at a distant last buoy.
+  const route = spec.gates.map((g) => ({ x: round2(g.x), z: round2(g.z) }));
+  const a = route[0], b = route[1];
+  const length = Math.hypot(b.x - a.x, b.z - a.z);
+  route.push({ x: round2(a.x - (b.x - a.x) / length * 220), z: round2(a.z - (b.z - a.z) / length * 220) });
+  route.push({ ...a });
+  const gates = route.map(Object.freeze);
   const lengthWU = courseLengthWU(gates);
   const recordS = Math.max(12, Math.round(lengthWU / AUTHORED_RECORD_WU_S));
   return Object.freeze({
@@ -160,15 +167,19 @@ export function courseForLevel(id) {
   return level && level.course ? level.course : null;
 }
 
+const globalGateCache = new WeakMap();
 export function raceGateGlobals(params) {
   if (!params || !Array.isArray(params.gates)) return [];
   const sectorId = params.courseSectorId;
+  const cached = globalGateCache.get(params);
+  if (cached && cached.gates === params.gates && cached.sectorId === sectorId) return cached.value;
   const out = [];
   for (const gate of params.gates) {
     if (!gate || !Number.isFinite(gate.x) || !Number.isFinite(gate.z)) continue;
     const global = sectorLocalToGlobalForSector({ x: gate.x, z: gate.z }, sectorId, { x: 0, z: 0 });
     out.push({ x: global.x, z: global.z });
   }
+  globalGateCache.set(params, { gates: params.gates, sectorId, value: out });
   return out;
 }
 
@@ -192,6 +203,8 @@ function courseParams(course, extra) {
     courseId: course.courseId,
     courseName: course.courseName,
     courseKind: course.kind,
+    closedCircuit: true,
+    courseRevision: 2,
     courseSectorId: course.sectorId,
     gates: course.gates.map((g) => ({ x: g.x, z: g.z })),
     gateRadiusWU: course.gateRadiusWU,

@@ -704,7 +704,7 @@ export const settingsScreen = {
         ['racing', 'Racing — stern camera'],
         ['auto', 'Auto — stern on any race'],
       ], (v) => this._set(ctx, 'gameplay', 'steeringView', v));
-      build.note('Overhead is the default. A contract that requires the stern camera holds it anyway. Photo mode and the death cam stay overhead.');
+      build.note('Backslash toggles chase / overhead during flight; the View button also works on touch. Mission camera locks release automatically. Reduced motion keeps the horizon steady.');
       rowSlider('Racing camera distance', () => g.racingDistance == null ? 58 : g.racingDistance, 24, 140, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingDistance', v, persist));
       rowSlider('Racing camera height', () => g.racingHeight == null ? 22 : g.racingHeight, 6, 64, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingHeight', v, persist));
       rowSlider('Racing look-ahead', () => g.racingLookAhead == null ? 36 : g.racingLookAhead, 0, 120, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingLookAhead', v, persist));

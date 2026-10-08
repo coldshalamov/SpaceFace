@@ -10,6 +10,8 @@
 // counter-clockwise from above. With the eye behind the nose, that swing is already screen-right,
 // so A (yawLeft, negative turnIntent) stays screen-left. This module does not negate yaw.
 
+import { planeCrossFraction, circuitProgress, circuitPacePoint, circuitLaps } from './racingGeometry.js';
+
 export const STEERING_VIEWS = Object.freeze(['overhead', 'racing', 'auto']);
 
 export const RACING_RIG_DEFAULT = Object.freeze({
@@ -40,12 +42,9 @@ function activeMissions(state) {
 export function activeSteerLock(state) {
   for (const mission of activeMissions(state)) {
     if (!mission || mission.status !== 'active' || !mission.params) continue;
-    if (mission.params.steerLock === 'racing') {
-      return {
-        missionId: mission.id,
-        levelId: mission.params.levelId || null,
-        contractId: mission.params.racingContractId || null,
-      };
+    if (mission.params.steerLock === 'racing' && (!Array.isArray(mission.params.steerLockPhases)
+      || mission.params.steerLockPhases.includes(mission.phase ?? mission.params.phase))) {
+      return mission;
     }
   }
   return null;
@@ -72,7 +71,7 @@ export function activeAuthoredRace(state) {
  * pictures of a moment, not a steering mode. A steer-lock contract beats the setting.
  */
 export function resolveSteeringView(state, opts = {}) {
-  if (opts && (opts.photo || opts.death)) return 'overhead';
+  if ((opts && (opts.photo || opts.death)) || state?.render?.photoMode?.active) return 'overhead';
   if (activeSteerLock(state)) return 'racing';
   const pref = normalizeSteeringView(state && state.settings && state.settings.gameplay
     && state.settings.gameplay.steeringView);
@@ -81,18 +80,18 @@ export function resolveSteeringView(state, opts = {}) {
   return 'overhead';
 }
 
-export function racingRigOf(settings) {
+export function racingRigOf(settings, out = {}) {
   const g = (settings && settings.gameplay) || {};
   const num = (value, fallback, lo, hi) => {
+    if (value == null || value === '') return fallback;
     const n = Number(value);
     if (!Number.isFinite(n)) return fallback;
     return Math.min(hi, Math.max(lo, n));
   };
-  return {
-    distance: num(g.racingDistance, RACING_RIG_DEFAULT.distance, 24, 140),
-    height: num(g.racingHeight, RACING_RIG_DEFAULT.height, 6, 64),
-    lookAhead: num(g.racingLookAhead, RACING_RIG_DEFAULT.lookAhead, 0, 120),
-  };
+  out.distance = num(g.racingDistance, RACING_RIG_DEFAULT.distance, 24, 140);
+  out.height = num(g.racingHeight, RACING_RIG_DEFAULT.height, 6, 64);
+  out.lookAhead = num(g.racingLookAhead, RACING_RIG_DEFAULT.lookAhead, 0, 120);
+  return out;
 }
 
 /**
@@ -155,7 +154,7 @@ export function resolveLapAfterFinalGate(params) {
   const laps = Math.max(1, Math.round(Number(params && params.laps) || 1));
   if (laps <= 1) return { action: 'finish', laps: 1 };
   const lap = (params.lap | 0) + 1;
-  if (lap < laps) return { action: 'next-lap', lap, laps, nextGate: 0 };
+  if (lap < laps) return { action: 'next-lap', lap, laps, nextGate: params.closedCircuit ? 1 : 0 };
   return { action: 'finish', lap, laps };
 }
 
@@ -163,7 +162,7 @@ export function raceObjectiveUnits(params) {
   const gates = params && Array.isArray(params.gates) ? params.gates.length : 0;
   const n = Math.max(1, gates || 1);
   const laps = Math.max(1, Math.round(Number(params && params.laps) || 1));
-  return n * laps;
+  return params?.closedCircuit ? (n - 1) * laps + 1 : n * laps;
 }
 
 /**
@@ -172,28 +171,12 @@ export function raceObjectiveUnits(params) {
  * speed along that normal, and still inside the corridor. Occupying the bubble without a
  * crossing does not count — that is the FB-066 test, and this is not it.
  */
-export function planeGateCross({ prev, pos, vel, from, gate, radius }) {
-  if (!prev || !pos || !from || !gate) return false;
-  const dx = gate.x - from.x;
-  const dz = gate.z - from.z;
-  const len = Math.hypot(dx, dz);
-  if (!(len > 1e-3)) return false;
-  const nx = dx / len;
-  const nz = dz / len;
-  const prevAlong = (prev.x - gate.x) * nx + (prev.z - gate.z) * nz;
-  const nowAlong = (pos.x - gate.x) * nx + (pos.z - gate.z) * nz;
-  if (!(prevAlong < 0 && nowAlong >= -0.5)) return false;
-  const vx = vel && Number.isFinite(vel.x) ? vel.x : (pos.x - prev.x);
-  const vz = vel && Number.isFinite(vel.z) ? vel.z : (pos.z - prev.z);
-  if (!(vx * nx + vz * nz > 4)) return false;
-  const ox = (pos.x - gate.x) - nowAlong * nx;
-  const oz = (pos.z - gate.z) - nowAlong * nz;
-  const reach = Math.max(24, Number(radius) || 90) * 1.35;
-  return Math.hypot(ox, oz) <= reach;
+export function planeGateCross(sample) {
+  return planeCrossFraction(sample) !== null;
 }
 
 /**
- * Sector-local reset pose: just short of the gate still owed, heading along the segment.
+ * Sector-local recovery: behind the last CLEARED gate, aimed toward the gate still owed.
  * Gate 0 (the start, or a lap just wrapped) is the caller's start line, not this pose.
  */
 export function resetPoseLocal(params) {
@@ -206,30 +189,12 @@ export function resetPoseLocal(params) {
   const dx = target.x - prev.x;
   const dz = target.z - prev.z;
   const len = Math.hypot(dx, dz) || 1;
-  const back = 80;
+  const back = Math.min(80, len * 0.25);
   return {
-    x: target.x - (dx / len) * back,
-    z: target.z - (dz / len) * back,
+    x: prev.x - (dx / len) * back,
+    z: prev.z - (dz / len) * back,
     heading: Math.atan2(dz, dx),
   };
-}
-
-function pointAlong(gates, distance) {
-  if (!gates || !gates.length) return null;
-  let remain = Math.max(0, distance);
-  for (let i = 0; i + 1 < gates.length; i++) {
-    const a = gates[i];
-    const b = gates[i + 1];
-    const len = Math.hypot(b.x - a.x, b.z - a.z);
-    if (len < 1e-6) continue;
-    if (remain <= len) {
-      const t = remain / len;
-      return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
-    }
-    remain -= len;
-  }
-  const last = gates[gates.length - 1];
-  return { x: last.x, z: last.z };
 }
 
 function massOf(player) {
@@ -260,7 +225,7 @@ export function racingAssistIntents({ params, player, simTime, gatesGlobal }) {
   if (params.racingKind === 'draft') {
     const started = Number.isFinite(params.raceStartSimS) ? params.raceStartSimS : now;
     const elapsed = Math.max(0, now - started);
-    const pace = pointAlong(gatesGlobal, elapsed * DRAFT_SPEED_WU_S);
+    const pace = circuitPacePoint(gatesGlobal, elapsed * DRAFT_SPEED_WU_S + 70);
     if (pace) {
       const dx = pace.x - px;
       const dz = pace.z - pz;
@@ -279,14 +244,12 @@ export function racingAssistIntents({ params, player, simTime, gatesGlobal }) {
 
   const boostIndex = Number(params.boostGateIndex);
   if (Number.isInteger(boostIndex) && boostIndex >= 0 && boostIndex < gatesGlobal.length) {
-    const gate = gatesGlobal[boostIndex];
-    const d = Math.hypot(px - gate.x, pz - gate.z);
-    if (d <= radius && params.boostSpent !== boostIndex) {
+    if (Number.isInteger(params.boostClearedLap) && params.boostSpentLap !== params.boostClearedLap) {
       impulses.push({
         kind: 'boost-ring',
         impulse: { x: fx * mass * BOOST_IMPULSE_PER_MASS, y: 0, z: fz * mass * BOOST_IMPULSE_PER_MASS },
       });
-      patch.boostSpent = boostIndex;
+      patch.boostSpentLap = params.boostClearedLap;
     }
   }
 
@@ -342,12 +305,13 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
   const nextGate = Math.max(0, params && params.nextGate | 0);
   const started = params && Number.isFinite(params.raceStartSimS);
   const now = Number.isFinite(simTime) ? simTime : 0;
-  const gridUntil = params && Number(params.gridUntilSimS);
+  const gridUntil = params && params.gridUntilSimS;
   const holding = Number.isFinite(gridUntil) && now < gridUntil;
   const elapsed = started ? Math.max(0, now - params.raceStartSimS) : 0;
   const recordS = Number(params && params.recordS) || 0;
   const gate = gates[Math.min(nextGate, Math.max(0, gates.length - 1))] || null;
   const bearing = gateBearingDeg(player, gate);
+  const progress = circuitProgress(params, player && player.pos, gates);
   let wrongWay = false;
   let offRibbon = false;
   if (player && player.pos && gate) {
@@ -359,17 +323,21 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
     const spd = Math.hypot(vx, vz);
     const toward = dist > 1 ? (vx * tx + vz * tz) / dist : 0;
     wrongWay = spd > 30 && toward < -12 && dist > (Number(params.gateRadiusWU) || 90);
-    offRibbon = dist > (Number(params.gateRadiusWU) || 90) * 3.2 && nextGate > 0;
+    offRibbon = progress.distance > (Number(params.gateRadiusWU) || 90) * 3.2 && nextGate > 0;
   }
   const drafting = !!(params && Number.isFinite(params.draftNextSimS) && now < params.draftNextSimS);
   return {
-    lap: Math.min(laps, lap + (started ? 1 : 0)),
+    lap: Math.min(laps, lap + 1),
     laps,
     nextGate: Math.min(gateCount, nextGate + 1),
     gateCount,
     elapsed,
     recordS,
-    delta: started && recordS ? elapsed - recordS : null,
+    delta: started && recordS && nextGate > 0 ? elapsed - recordS * progress.fraction : null,
+    progress: progress.fraction,
+    speed: player && player.vel ? Math.hypot(player.vel.x || 0, player.vel.z || 0) : 0,
+    distanceToGate: player && player.pos && gate ? Math.hypot(gate.x-player.pos.x, gate.z-player.pos.z) : 0,
+    resets: Math.max(0, params?.resetCount | 0),
     bearing,
     steerHint: bearing > 8 ? 'right' : bearing < -8 ? 'left' : 'ahead',
     wrongWay,
@@ -386,24 +354,39 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
   };
 }
 
-const RECORD_KEY = 'spaceface.raceRecords.v1';
+const RECORD_KEY = 'spaceface.raceRecords.v2';
+export function raceRecordKey(params) {
+  if (!params || !params.racingContractId || !params.courseId) return null;
+  return `${params.courseId}@${params.courseRevision || 1}:${params.racingContractId}:${circuitLaps(params)}L`;
+}
+
 
 export function readRaceRecords(storage) {
   try {
     const raw = storage && storage.getItem && storage.getItem(RECORD_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const clean = {};
+    for (const [key, value] of Object.entries(parsed).slice(0, 128)) {
+      if (key !== '__proto__' && key !== 'constructor' && key !== 'prototype'
+        && key.length < 200 && Number.isFinite(value) && value > 0) clean[key] = value;
+    }
+    return clean;
   } catch {
     return {};
   }
 }
 
 export function rememberRaceRecord(storage, levelId, elapsedS) {
-  if (!storage || !levelId || !Number.isFinite(elapsedS) || elapsedS <= 0) return null;
+  if (!storage || typeof levelId !== 'string' || !levelId || levelId.length >= 200
+    || ['__proto__', 'constructor', 'prototype'].includes(levelId)
+    || !Number.isFinite(elapsedS) || elapsedS <= 0) return null;
   const bag = readRaceRecords(storage);
   const prev = Number(bag[levelId]);
   if (Number.isFinite(prev) && prev <= elapsedS) return prev;
-  bag[levelId] = Math.round(elapsedS * 100) / 100;
-  try { storage.setItem(RECORD_KEY, JSON.stringify(bag)); } catch { /* private mode */ }
+  bag[levelId] = Math.max(0.01, Math.round(elapsedS * 100) / 100);
+  const keys = Object.keys(bag);
+  for (const key of keys.slice(0, Math.max(0, keys.length - 128))) delete bag[key];
+  try { storage.setItem(RECORD_KEY, JSON.stringify(bag)); } catch { return null; }
   return bag[levelId];
 }

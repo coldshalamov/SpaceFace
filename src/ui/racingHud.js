@@ -1,152 +1,91 @@
-// RACE-01 flight tape. Buttons only — V is cruise, C is scan, R is detonate.
-// Mounts on #ui-root so flight keys ignore it. Hidden in menus and when the player
-// is on the overhead camera with no live race.
-
+// Continuous flight instrument. Mission receipts still belong to the shared toast floor.
 import { raceGateGlobals } from '../data/raceLevels.js';
-import {
-  STEERING_VIEWS,
-  activeAuthoredRace,
-  activeRaceMission,
-  normalizeSteeringView,
-  readRaceTape,
-  resolveSteeringView,
-} from '../systems/racingSteer.js';
-
-function writeSteeringView(state, bus, value) {
-  const next = normalizeSteeringView(value);
-  if (!state.settings) state.settings = {};
-  if (!state.settings.gameplay || typeof state.settings.gameplay !== 'object') {
-    state.settings.gameplay = {};
-  }
-  state.settings.gameplay.steeringView = next;
-  if (bus && typeof bus.emit === 'function') {
-    bus.emit('settings:changed', { section: 'gameplay', key: 'steeringView', value: next });
-  }
-  return next;
-}
-
-function fmtTime(seconds) {
-  if (!Number.isFinite(seconds)) return '—';
-  const s = Math.max(0, seconds);
-  const m = Math.floor(s / 60);
-  const rem = s - m * 60;
-  if (m <= 0) return rem.toFixed(1);
-  return `${m}:${rem.toFixed(1).padStart(4, '0')}`;
-}
+import { activeAuthoredRace, activeRaceMission, activeSteerLock, readRaceTape, resolveSteeringView } from '../systems/racingSteer.js';
+import { injectDeckplate } from './deckplate/index.js';
+import { BINDINGS } from './bindings.js';
+import { toggleSteeringView, rememberRacingResult } from './racingControls.js';
+import { createRacingMap, formatRaceTime } from './racingMap.js';
 
 export function mountRacingHud({ root, bus, state, screens }) {
   if (!root || typeof document === 'undefined') return null;
-  const panel = document.createElement('div');
-  panel.id = 'race-tape';
-  panel.setAttribute('role', 'region');
-  panel.setAttribute('aria-label', 'Racing');
-  panel.style.cssText = [
-    'position:fixed',
-    'top:64px',
-    'left:50%',
-    'transform:translateX(-50%)',
-    'z-index:24',
-    'display:none',
-    'min-width:280px',
-    'max-width:440px',
-    'padding:8px 10px 10px',
-    'color:#d7e6f5',
-    'background:rgba(6,10,16,0.78)',
-    'border:1px solid rgba(180,210,230,0.38)',
-    'font:12px/1.35 ui-monospace,monospace',
-    'pointer-events:auto',
-    'text-align:center',
-  ].join(';');
-
-  const line = document.createElement('div');
-  line.style.letterSpacing = '0.04em';
-  const sub = document.createElement('div');
-  sub.style.opacity = '0.8';
-  sub.style.marginTop = '2px';
-  const row = document.createElement('div');
-  row.style.marginTop = '8px';
-  row.style.display = 'flex';
-  row.style.gap = '6px';
-  row.style.justifyContent = 'center';
-
-  function button(label) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = label;
-    b.style.cssText = [
-      'font:inherit',
-      'color:#d7e6f5',
-      'background:transparent',
-      'border:1px solid rgba(180,210,230,0.45)',
-      'padding:3px 8px',
-      'cursor:pointer',
-    ].join(';');
-    return b;
-  }
-
-  const viewBtn = button('View');
-  const resetBtn = button('Reset');
-  const boardBtn = button('Circuits');
-  viewBtn.addEventListener('click', () => {
-    const cur = normalizeSteeringView(state.settings && state.settings.gameplay
-      && state.settings.gameplay.steeringView);
-    const i = STEERING_VIEWS.indexOf(cur);
-    writeSteeringView(state, bus, STEERING_VIEWS[(i + 1) % STEERING_VIEWS.length]);
+  injectDeckplate();
+  const make = (tag, cls, text = '') => { const e = document.createElement(tag); e.className = cls; e.textContent = text; return e; };
+  const panel = make('section', 'race-tape dp-glass');
+  panel.id = 'race-tape'; panel.setAttribute('aria-label', 'Circuit telemetry'); panel.hidden = true;
+  const readings = make('div','race-tape-readings');
+  const line = make('div','race-tape-title');
+  const sub = make('div','race-tape-stats');
+  const hints = make('div','race-tape-hint');
+  const mapHost = make('div','race-tape-map');
+  const row = make('div','race-tape-actions');
+  const live = make('span','race-sr-only'); live.setAttribute('role','status'); live.setAttribute('aria-live','polite');
+  const button = (text, action) => {
+    const b = make('button','k-word',text); b.type='button'; b.addEventListener('click',action); row.appendChild(b); return b;
+  };
+  const view = button(`View ${BINDINGS.steeringView.label}`,()=>toggleSteeringView(state,bus));
+  const reset = button('Recover',()=>bus?.emit?.('race:reset',{}));
+  const board = button('Circuits',()=>screens?.pushScreen?.('raceBoard'));
+  board.title = 'Routes, local best times and last result';
+  const leave = button('Leave run',()=>bus?.emit?.('race:abort',{}));
+  readings.append(line,sub,hints); panel.append(mapHost,readings,row,live); root.appendChild(panel);
+  let map = null, missionId = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
+  const offs = [];
+  const listen = (name,fn) => { const off=bus?.on?.(name,fn); if(typeof off==='function')offs.push(off); };
+  listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
+  listen('settings:changed',()=>{lastTick=-Infinity;});
+  listen('mission:gateCleared',p=>{
+    if (p?.missionId !== missionId) return;
+    const split = Number.isFinite(p.splitDeltaS) ? ` · ${p.splitDeltaS>=0?'+':''}${p.splitDeltaS.toFixed(2)}s reference` : '';
+    pulse = `${p.lapCompleted ? 'LAP' : 'GATE'} ${p.gateIndex+1} CLEAR${split}`;
+    pulseUntil = (state.simTime||0)+1.6; live.textContent=pulse;
   });
-  resetBtn.addEventListener('click', () => {
-    if (bus && typeof bus.emit === 'function') bus.emit('race:reset', {});
-  });
-  boardBtn.addEventListener('click', () => {
-    if (screens && typeof screens.pushScreen === 'function') screens.pushScreen('raceBoard');
-  });
-  row.append(viewBtn, resetBtn, boardBtn);
-  panel.append(line, sub, row);
-  root.appendChild(panel);
-
-  function frame(live) {
-    const st = live || state;
-    const inFlight = !!(st && st.mode === 'flight' && !(st.ui && st.ui.docked));
-    const race = activeRaceMission(st);
-    const authored = activeAuthoredRace(st);
-    const view = resolveSteeringView(st, { photo: false, death: false });
-    const show = inFlight && (view === 'racing' || !!race);
-    panel.style.display = show ? 'block' : 'none';
-    if (!show) return;
-    const pref = normalizeSteeringView(st.settings && st.settings.gameplay && st.settings.gameplay.steeringView);
-    viewBtn.textContent = `View ${pref}`;
-    resetBtn.disabled = !authored;
-    resetBtn.style.opacity = authored ? '1' : '0.4';
-    if (!race || !race.params) {
-      line.textContent = view === 'racing' ? 'STERN CAMERA' : 'RACING';
-      sub.textContent = 'No circuit on the book.';
-      return;
-    }
-    const globals = race.params.racingContractId ? raceGateGlobals(race.params) : [];
-    const player = st.entities && st.playerId != null ? st.entities.get(st.playerId) : null;
-    const tape = readRaceTape(race.params, player, globals, st.simTime || 0);
-    if (tape.holding) {
-      line.textContent = `GRID ${tape.gridLeft.toFixed(1)}`;
-      sub.textContent = tape.gridLine || tape.courseName || race.title || 'Hold.';
-      return;
-    }
-    const delta = tape.delta == null ? '' : `  ${tape.delta >= 0 ? '+' : ''}${tape.delta.toFixed(1)}`;
-    const name = tape.courseName || race.title || 'RACE';
-    line.textContent = `${name}   L${tape.lap}/${tape.laps}   G${tape.nextGate}/${tape.gateCount}`;
-    const flags = [
-      tape.steerHint ? tape.steerHint.toUpperCase() : '',
-      fmtTime(tape.elapsed) + (tape.recordS ? ` / ${Math.round(tape.recordS)}s` : '') + delta,
-      tape.wrongWay ? 'WRONG WAY' : '',
-      tape.offRibbon ? 'OFF RIBBON' : '',
-      tape.drafting ? 'DRAFT' : '',
-      tape.locked ? 'LOCK' : '',
-    ].filter(Boolean);
-    sub.textContent = flags.join('   ');
-  }
+  listen('mission:completed',p=>{ if(p?.racingContractId) { rememberRacingResult(p); live.textContent=`Circuit complete in ${formatRaceTime(p.raceElapsedS)}`; } });
+  listen('race:armed',()=>{ pulse=''; lastTick=-Infinity; });
 
   return {
-    frame,
-    dispose() {
-      if (panel.parentNode) panel.parentNode.removeChild(panel);
+    frame(liveState) {
+      const st = liveState || state;
+      const inFlight = st?.mode === 'flight' && !st.ui?.docked && !screens?.isOpen?.()
+        && !st.render?.photoMode?.active && st.entities?.get?.(st.playerId)?.alive !== false;
+      panel.hidden=!inFlight;
+      if(!inFlight)return;
+      const now=st.simTime||0;
+      if(now>=lastTick&&now-lastTick<0.1)return;
+      lastTick=now;
+      const authored=activeAuthoredRace(st), race=authored||activeRaceMission(st), lock=activeSteerLock(st);
+      const viewMode=resolveSteeringView(st);
+      panel.dataset.compact=authored?'false':'true';
+      view.textContent=lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${BINDINGS.steeringView.label}`;
+      view.disabled=!!lock; view.setAttribute('aria-pressed',String(viewMode==='racing'));
+      view.title=lock?'This section temporarily requires the chase camera.':'Toggle chase / overhead camera';
+      reset.hidden=leave.hidden=!authored;
+      mapHost.hidden=readings.hidden=!authored;
+      if(!authored){if(missionId!==null){missionId=null;map=null;mapHost.replaceChildren();}return;}
+      if(missionId!==race.id){
+        missionId=race.id;lastTick=-Infinity;pulse='';lastHolding=false;
+        map=createRacingMap(raceGateGlobals(race.params),'Circuit, next gate and ship');
+        mapHost.replaceChildren(...(map?[map.element]:[]));
+      }
+      // Readings are 10 Hz; camera and flight remain full-rate. No per-frame SVG rebuilding.
+      const player=st.entities?.get?.(st.playerId);
+      const tape=readRaceTape(race.params,player,raceGateGlobals(race.params),now);
+      map?.update(player,race.params.nextGate);
+      const name=tape.courseName||race.title||'Circuit';
+      line.textContent=`${name} · LAP ${tape.lap}/${tape.laps}`;
+      if(tape.holding){
+        const count=Math.ceil(tape.gridLeft);
+        sub.textContent=`${count} · HOLD THE GRID`;
+        hints.textContent='Accelerate on green · Touch: up drives, sides steer, down brakes';
+        if(!lastHolding)live.textContent='Grid countdown';
+        lastHolding=true;return;
+      }
+      if(lastHolding){pulse='GO';pulseUntil=now+1;live.textContent='Go';lastHolding=false;}
+      sub.textContent=`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} wu/s · GATE ${tape.nextGate}/${tape.gateCount}`;
+      const warnings=[tape.wrongWay?'WRONG WAY':'',tape.offRibbon?'OFF COURSE':'',tape.drafting?'IN SLIPSTREAM':'',tape.resets?'RECOVERY RUN':''].filter(Boolean);
+      hints.textContent=warnings.length?warnings.join(' · '):now<pulseUntil?pulse:
+        `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} wu`+
+        (tape.delta===null?'':` · ${tape.delta>=0?'+':''}${tape.delta.toFixed(1)}s reference pace`);
     },
+    dispose(){ for(const off of offs)off();panel.remove(); },
   };
 }

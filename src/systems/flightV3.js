@@ -259,6 +259,7 @@ export const flightV3 = {
     const runtime = propulsionRuntime(entity, baseProfile);
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt,
       isPlayer ? _stepInputPlayer : _stepInputNpc);
+    const gridHeld = isPlayer && raceGridHolding(state);
     const tether = isPlayer && state.player && state.player.tether;
     let profile = isPlayer && state.input?.autoFire
       ? applyAutoTargetHelmProfile(baseProfile)
@@ -268,7 +269,8 @@ export const flightV3 = {
     }
     let autopilot = null;
     if (isPlayer) {
-      autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
+      if (gridHeld) stopAutopilot(this, state, 'race-grid');
+      else autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
       if (autopilot && autopilot.input) {
         input = autopilot.input;
       }
@@ -354,7 +356,7 @@ export const flightV3 = {
       input.unvectoredCruiseSteering = vectoringSetting === false
         && !(autopilot && autopilot.active)
         && !(tether && tether.active === true);
-      debitTravelBurn(this, entity, input, dt, state);
+      if (!gridHeld) debitTravelBurn(this, entity, input, dt, state);
     }
 
     let orbitAssist = null;
@@ -387,7 +389,7 @@ export const flightV3 = {
       // The module returns ONE bounded additive impulse from thrust the hull already has —
       // it never writes velocity and never clamps earned speed.
       const pursuitSlotStep = this._stepPursuitSlot(entity, body, input, profile, dt, state, {
-        controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+        controlsBlocked: gridHeld || !playerFlightControlsActive(state, entity) || !!input.drawFlight,
         tetherLive: !!(tether && tether.active === true),
         autopilotActive: !!(autopilot && autopilot.active),
       });
@@ -395,6 +397,12 @@ export const flightV3 = {
       if (pursuitSlot.active && pursuitSlot.impulse) {
         queuePhysicsImpulse(entity, pursuitSlot.impulse);
       }
+    }
+    if (gridHeld) {
+      input.throttle = input.strafe = input.turn = 0;
+      input.boost = input.boostPressed = false;
+      input.brake = true;
+      input.drawFlight = input.travelDrive = undefined;
     }
     _stepArgs.dt = dt;
     _stepArgs.body = body;
@@ -1122,7 +1130,7 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.boostReleased = !o.boost && previousBoost;
   o.brake = !gridHeld && !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
   o.assistMode = resolveAssistMode(entity, state, raw);
-  o.drawFlight = isPlayer && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
+  o.drawFlight = isPlayer && !gridHeld && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
   // Reset every key downstream code may have written last tick: autopilot/orbit-assist
   // substitution and the massline/travelDrive/vectoring blocks above write optional keys onto
   // the packet, so a reused scratch must drop them before they can leak into the next craft.

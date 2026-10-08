@@ -24,7 +24,8 @@ import {
   stepBoostLag,
   stepLatchSpring,
 } from '../presentation/flightOverheadMath.js';
-import { resolveSteeringView, racingChaseTarget, racingRigOf } from '../systems/racingSteer.js';
+import { resolveSteeringView, racingRigOf } from '../systems/racingSteer.js';
+import { createRacingCameraBlend, stepRacingCameraBlend } from './racingCameraBlend.js';
 
 // M2 floating origin: chase focus / camera pose are frame-local. Entity.pos stays galactic-global.
 const _frameOriginScratch = { x: 0, z: 0 };
@@ -1362,6 +1363,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _snappedPlayerId = null;
   // Predictive obstacle glide (cameraGlide.js). Owns clearance via the column-addressable roof query.
   const _glide = createCameraGlide();
+  const _racingBlend = createRacingCameraBlend();
+  const _racingRig = {};
+  const _overheadPose = {};
+  const _racingPose = {};
   let _exceptionalHold = 0;
   let _anchorHoldX = 0;
   let _anchorHoldZ = 0;
@@ -1650,6 +1655,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         }
       }
       if (photo && photo.active && photo.freeCamera !== false) {
+        _racingBlend.mix = 0;
         stepPhotoFreeCamera(photo, state.input, frameDt);
         c.focus.x = finiteOr(photo.focusX, finiteOr(c.focus.x, 0));
         c.focus.z = finiteOr(photo.focusZ, finiteOr(c.focus.z, 0));
@@ -2168,63 +2174,39 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         stepCameraKick(_kick, frameDt);
       }
       c.kickOffset.set(_kick.x, 0, _kick.z);
-      const camX = c.focus.x + offset.x + c.shakeOffset.x + c.kickOffset.x;
-      const camZ = c.focus.z + offset.z + c.shakeOffset.z + c.kickOffset.z;
-      let camY = offset.y;
-      let dollyX = 0;
-      let dollyZ = 0;
-      const stern = !_deathCam && resolveSteeringView(state, { death: _deathCam }) === 'racing' && p;
-      if (!stern && typeof clearanceAt === 'function' && typeof clearanceAt.roofAt === 'function') {
-        // Dolly along the ray from the look-at target through the camera: the framing direction is
-        // untouched, the shot simply pulls up and back ahead of anything it would otherwise enter.
-        const tx = c.focus.x + c.kickOffset.x;
-        const tz = c.focus.z + c.kickOffset.z;
-        const rx = camX - tx;
-        const rz = camZ - tz;
-        const glideCeiling = Number.isFinite(cam.far) && cam.far > 0 ? cam.far : 14000;
-        const s = stepCameraGlide(_glide, frameDt, tx, tz, rx, camY, rz, clearanceAt.roofAt, glideCeiling);
-        dollyX = rx * (s - 1);
-        dollyZ = rz * (s - 1);
-        camY *= s;
-        c.clearanceScale = s;
+      const reduced = isMotionReduced(state);
+      const stern = !!p && !_deathCam && resolveSteeringView(state, { death: _deathCam }) === 'racing';
+      _overheadPose.eyeX = c.focus.x + offset.x + c.shakeOffset.x + c.kickOffset.x;
+      _overheadPose.eyeZ = c.focus.z + offset.z + c.shakeOffset.z + c.kickOffset.z;
+      _overheadPose.eyeY = offset.y;
+      _overheadPose.lookX = c.focus.x + c.kickOffset.x;
+      _overheadPose.lookZ = c.focus.z + c.kickOffset.z;
+      racingRigOf(state && state.settings, _racingRig);
+      const hullRadius = p && Number.isFinite(p.radius) ? Math.max(0, p.radius) : 0;
+      _racingRig.distance = Math.max(_racingRig.distance, hullRadius * 2.2);
+      _racingRig.height = Math.max(_racingRig.height, hullRadius * 0.8);
+      const pose = stepRacingCameraBlend(_racingBlend, frameDt, stern,
+        p ? _playerLocalScratch : c.focus, p && p.rot, playerSpeed,
+        _racingRig, _overheadPose, reduced, _racingPose,
+        _deathCam || !!(photo && photo.active));
+      // BOTH views use the same predictive solid-clearance solver. The stern rig is anchored
+      // to the presented hull, not the overhead camera's velocity/threat-biased focus.
+      let camX = pose.eyeX, camY = pose.eyeY, camZ = pose.eyeZ;
+      if (typeof clearanceAt === 'function' && typeof clearanceAt.roofAt === 'function') {
+        const rx = camX - pose.lookX, rz = camZ - pose.lookZ;
+        const ceiling = Number.isFinite(cam.far) && cam.far > 0 ? cam.far : 14000;
+        const scale = stepCameraGlide(_glide, frameDt, pose.lookX, pose.lookZ,
+          rx, camY, rz, clearanceAt.roofAt, ceiling);
+        camX += rx * (scale - 1); camZ += rz * (scale - 1); camY *= scale;
+        c.clearanceScale = scale;
         c.clearanceDiag = _glide.diag;
       }
-      if (stern) {
-        const pose = racingChaseTarget(
-          c.focus,
-          p.rot,
-          playerSpeed,
-          racingRigOf(state && state.settings),
-          isMotionReduced(state),
-        );
-        const sx = c.shakeOffset.x + c.kickOffset.x;
-        const sz = c.shakeOffset.z + c.kickOffset.z;
-        cam.position.set(pose.eyeX + sx, pose.eyeY, pose.eyeZ + sz);
-        applyChaseLookAt(
-          cam,
-          pose.eyeX + sx,
-          pose.eyeY,
-          pose.eyeZ + sz,
-          pose.lookX,
-          pose.lookZ,
-          _lookAtCache,
-        );
-      } else {
-        cam.position.set(camX + dollyX, camY, camZ + dollyZ);
-        applyChaseLookAt(
-          cam,
-          camX + dollyX,
-          camY,
-          camZ + dollyZ,
-          c.focus.x + c.kickOffset.x,
-          c.focus.z + c.kickOffset.z,
-          _lookAtCache,
-        );
-      }
+      cam.position.set(camX, camY, camZ);
+      applyChaseLookAt(cam, camX, camY, camZ, pose.lookX, pose.lookZ, _lookAtCache);
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so
       // we never clobber the heading (safe with the no-yaw-follow rule).
-      const targetRoll = Math.max(-ROLL_MAX, Math.min(ROLL_MAX, bankForLean));
+      const targetRoll = reduced ? 0 : Math.max(-ROLL_MAX, Math.min(ROLL_MAX, bankForLean));
       camRoll = damp(camRoll, targetRoll, ROLL_LERP, frameDt);
       _rollQ.setFromAxisAngle(_FORWARD, camRoll);
       cam.quaternion.multiply(_rollQ);

@@ -2,11 +2,13 @@
 // not: enterSector always charts, and the Veil is charted:false. In-sector arming only
 // posts the offer and relocates onto the grid.
 
+import { activeRaceMission } from '../systems/racingSteer.js';
 import { raceLevelById, racingOfferFor, racingSeedFor, startLineFor } from '../data/raceLevels.js';
 
 let pending = null;
 
 export function stageRacingLaunch(contractId) {
+  if (!racingOfferFor(contractId)) { pending = null; return null; }
   pending = {
     contractId,
     seed: racingSeedFor(contractId),
@@ -18,7 +20,7 @@ export function stageRacingLaunch(contractId) {
 export function noteRacingNewGame(opts) {
   if (!pending) return;
   const seed = Number(opts && opts.seed);
-  if (!Number.isFinite(seed) || (seed >>> 0) !== pending.seed) pending = null;
+  if (opts?.racingSession !== true || !Number.isFinite(seed) || (seed >>> 0) !== pending.seed) pending = null;
 }
 
 export function takeRacingLaunch() {
@@ -47,6 +49,29 @@ export function armRacingContract(ctx, contractId, options = {}) {
     toast('Contracts are not ready.');
     return { ok: false, reason: 'no_missions' };
   }
+  const player = state?.entities?.get?.(state.playerId);
+  if (state?.mode !== 'flight' || state?.ui?.docked || !player?.pos || player.alive === false) {
+    toast('Launch from a live, undocked ship.');
+    return { ok: false, reason: 'not_flying' };
+  }
+  if (activeRaceMission(state)) {
+    toast('Finish or leave the current circuit before starting another.');
+    return { ok: false, reason: 'race_active' };
+  }
+  if (!world || typeof world.relocatePlayerInSector !== 'function') {
+    toast('The starting grid is not ready.');
+    return { ok: false, reason: 'no_relocation' };
+  }
+  const jump = state.jump?.state;
+  if (jump && jump !== 'idle') {
+    toast('Finish the jump before joining a circuit.');
+    return { ok: false, reason: 'jump_active' };
+  }
+  const maxActive = state.missions?.config?.maxActive || 8;
+  if ((state.missions?.active?.length || 0) >= maxActive) {
+    toast('Free a mission slot before joining a circuit.');
+    return { ok: false, reason: 'mission_capacity' };
+  }
   const here = state && state.world && state.world.currentSectorId;
   if (here !== level.sectorId) {
     if (!allowEnterSector) {
@@ -57,7 +82,6 @@ export function armRacingContract(ctx, contractId, options = {}) {
       toast('The sector chart is not ready.');
       return { ok: false, reason: 'no_world' };
     }
-    world.enterSector(level.sectorId);
   }
   const now = state && Number.isFinite(state.simTime) ? state.simTime : 0;
   if (Number(offer.params.gridHoldS) > 0 && !Number.isFinite(offer.params.gridUntilSimS)) {
@@ -70,13 +94,19 @@ export function armRacingContract(ctx, contractId, options = {}) {
       : 'The circuit did not take.');
     return result && result.ok === false ? result : { ok: false, reason: 'accept_failed', result };
   }
-  const start = startLineFor(offer.params);
-  if (start && world && typeof world.relocatePlayerInSector === 'function') {
-    world.relocatePlayerInSector(
-      { x: start.x, z: start.z, heading: start.heading },
-      { reason: 'race_grid' },
-    );
+  try {
+    if (here !== level.sectorId) world.enterSector(level.sectorId);
+    const start = startLineFor(offer.params);
+    if (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false) {
+      throw new Error('Grid relocation refused');
+    }
+  } catch (error) {
+    // Acceptance is rolled back via the mission owner, never by splicing its list from UI.
+    bus?.emit?.('mission:abandon', { missionId: result.missionId });
+    toast('The circuit could not open its starting grid. No active race was left behind.');
+    return { ok: false, reason: 'grid_failed' };
   }
+  bus?.emit?.('race:armed', { missionId: result.missionId, contractId });
   toast(offer.summary || offer.title, 'info');
   return result;
 }

@@ -192,14 +192,14 @@ import {
   RACE_BAND_MULT,
 } from '../data/raceCourses.js';
 import { raceGateGlobals, startLineFor } from '../data/raceLevels.js';
+import { advanceCircuit, circuitProgress } from './racingGeometry.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import {
-  planeGateCross,
   raceObjectiveUnits,
   racingAssistIntents,
   rememberRaceRecord,
+  raceRecordKey,
   resetPoseLocal,
-  resolveLapAfterFinalGate,
 } from './racingSteer.js';
 // FB-068 — external target loss names its cause from the shared kill-causality vocabulary,
 // so a void contract's receipt says what actually took the objective down.
@@ -1585,6 +1585,7 @@ export const missions = {
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
     bus.on('sector:exit', (p) => this._onSectorExit(p));
     bus.on('race:reset', () => this._resetAuthoredRace());
+    bus.on('race:abort', () => this._dnfAuthoredRaces('race_aborted'));
     // Census arm: mission-target spawns land inside the sector cook deterministically. The
     // cook drives the chunked twin across its slice clock; the emit listener drains the same
     // steps synchronously, so both paths mint the identical cohort.
@@ -4184,7 +4185,7 @@ export const missions = {
       case 'race':
         // Multi-lap authored circuits count every gate of every lap. A board race has no
         // laps field, so its target stays one unit per gate.
-        if (params && Number(params.laps) > 1) return raceObjectiveUnits(params);
+        if (params && (params.closedCircuit || Number(params.laps) > 1)) return raceObjectiveUnits(params);
         return Math.max(1, (params && Array.isArray(params.gates) && params.gates.length) || 1);
       case SPLIT_MANIFEST_TYPE:
         // One unit per net landed — the manifest itself decides when the contract settles.
@@ -7474,6 +7475,8 @@ export const missions = {
     )).filter((slot) => slot != null));
     let spawned = 0;
     for (let slot = 0; slot < gates.length; slot++) {
+      // A closed circuit reuses the start plane as its finish, not a second overlapping buoy.
+      if (params.racingContractId && params.closedCircuit && slot === gates.length - 1) continue;
       if (occupied.has(slot)) continue;
       const gatePos = this._raceGateGlobal(m, slot);
       if (!gatePos) continue;
@@ -7550,10 +7553,12 @@ export const missions = {
       }
     }
     if (!pose) return;
+    if (world.relocatePlayerInSector(pose, { reason: 'race_reset' }) === false) return;
     params.planeSample = null;
-    world.relocatePlayerInSector(pose, { reason: 'race_reset' });
+    params.planeSampleSimS = null;
+    params.resetCount = (params.resetCount | 0) + 1;
     this.bus.emit('toast', {
-      text: 'Reset behind the last clean gate. The clock keeps running.',
+      text: 'Recovered at the last cleared gate. Clock continues; this run cannot set a clean best.',
       kind: 'info',
       ttl: 3,
     });
@@ -7566,117 +7571,74 @@ export const missions = {
   _driveAuthoredRace(m, index, state) {
     const params = m.params || {};
     const gates = Array.isArray(params.gates) ? params.gates : [];
-    if (gates.length < 2) return;
-    const player = state.entities && state.playerId != null
-      ? state.entities.get(state.playerId) : null;
-    if (!player || !player.pos || player.alive === false) return;
-    const now = state.simTime || 0;
-    if (Number(params.gridHoldS) > 0 && !Number.isFinite(params.gridUntilSimS)) {
-      params.gridUntilSimS = now + Number(params.gridHoldS);
+    const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos || player.alive === false) {
+      this._failMission(m, index, 'race_pilot_lost');
+      return;
     }
-    if (Number.isFinite(params.gridUntilSimS) && now < params.gridUntilSimS) return;
-    if (!Number.isFinite(params.raceStartSimS)) params.raceStartSimS = now;
-
+    if (gates.length < 2 || (state.world?.currentSectorId && state.world.currentSectorId !== params.courseSectorId)) {
+      this._failMission(m, index, 'race_left_course');
+      return;
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (!Number.isFinite(params.gridUntilSimS)) params.gridUntilSimS = now + (Number(params.gridHoldS) || 0);
     const globals = raceGateGlobals(params);
-    if (globals.length !== gates.length) return;
-    const assist = racingAssistIntents({ params, player, simTime: now, gatesGlobal: globals });
-    if (assist.patch) Object.assign(params, assist.patch);
-    for (const row of assist.impulses) {
-      if (row && row.impulse) queuePhysicsImpulse(player, row.impulse);
-    }
-
-    const gateCount = gates.length;
-    const next = Math.max(0, Math.min(gateCount, params.nextGate | 0));
-    if (next >= gateCount) return;
-    const gate = globals[next];
-    let from;
-    if (next > 0) from = globals[next - 1];
-    else if ((params.lap | 0) > 0 || params.raceOpened) from = globals[gateCount - 1];
-    else {
-      const a = globals[0];
-      const b = globals[1];
-      const dx = b.x - a.x;
-      const dz = b.z - a.z;
-      const len = Math.hypot(dx, dz) || 1;
-      from = { x: a.x - dx / len, z: a.z - dz / len };
-    }
+    if (globals.length !== gates.length) { this._failMission(m, index, 'race_bad_course'); return; }
     const prev = params.planeSample;
+    const previousTime = Number.isFinite(params.planeSampleSimS) ? params.planeSampleSimS : now;
     params.planeSample = { x: player.pos.x, z: player.pos.z };
-    const reach = Math.max(24, Number(params.gateRadiusWU) || RACE_GATE_RADIUS_WU);
-    if (!planeGateCross({
-      prev,
-      pos: player.pos,
-      vel: player.vel,
-      from,
-      gate,
-      radius: reach,
-    })) {
-      for (let ahead = next + 1; ahead < gateCount; ahead++) {
-        const later = globals[ahead];
-        if (!later) continue;
-        const lx = player.pos.x - later.x;
-        const lz = player.pos.z - later.z;
-        if (lx * lx + lz * lz <= reach * reach) {
-          if (params.orderWarnGate !== ahead) {
-            params.orderWarnGate = ahead;
-            this.bus.emit('toast', {
-              text: `${m.title}: gates run in order — gate ${next + 1}/${gateCount} first.`,
-              kind: 'warn',
-              ttl: 3,
-            });
-          }
-          break;
-        }
+    params.planeSampleSimS = now;
+    if (now < params.gridUntilSimS) return;
+    // The green-light instant is authoritative, not whichever later tick observes it.
+    if (!Number.isFinite(params.raceStartSimS)) params.raceStartSimS = params.gridUntilSimS;
+
+    const events = advanceCircuit(params, { prev, pos: player.pos, vel: player.vel,
+      gates: globals, previousTime, now });
+    let finish = null;
+    for (const event of events) {
+      if (event.gateIndex === params.boostGateIndex) params.boostClearedLap = event.lap;
+      const expected = Number(params.recordS) * circuitProgress({ ...params, lap: event.lap,
+        nextGate: event.gateIndex }, globals[event.gateIndex], globals).fraction;
+      params.lastSplitDeltaS = event.elapsedS - expected;
+      params.lastSplitElapsedS = event.elapsedS;
+      if (event.lapCompleted) {
+        if (!Array.isArray(params.lapTimesS)) params.lapTimesS = [];
+        params.lapTimesS.push(Math.round(event.lapTimeS * 100) / 100);
+        // Bounded even on loaded malformed data.
+        if (params.lapTimesS.length > 100) params.lapTimesS.shift();
       }
-      return;
-    }
-    params.nextGate = next + 1;
-    params.raceOpened = true;
-    params.orderWarnGate = null;
-    const laps = Math.max(1, Math.round(Number(params.laps) || 1));
-    m.objectiveProgress = Math.min(
-      laps > 1 ? raceObjectiveUnits(params) : gateCount,
-      (params.lap | 0) * gateCount + params.nextGate,
-    );
-    this._refreshTrackedMissionNav(m);
-    const elapsedS = Math.max(0, now - params.raceStartSimS);
-    this.bus.emit('mission:gateCleared', {
-      missionId: m.id,
-      gateIndex: next,
-      gateCount,
-      elapsedS,
-      lap: params.lap | 0,
-    });
-    this.bus.emit('mission:updated', { missionId: m.id });
-    if (params.nextGate < gateCount) {
-      this.bus.emit('toast', { text: `Gate ${params.nextGate}/${gateCount}`, kind: 'info', ttl: 2 });
-      return;
-    }
-    const decision = resolveLapAfterFinalGate(params);
-    if (decision.action === 'next-lap') {
-      params.lap = decision.lap;
-      params.nextGate = 0;
-      m.objectiveProgress = (params.lap | 0) * gateCount;
-      this.bus.emit('toast', {
-        text: `Lap ${decision.lap + 1}/${decision.laps}`,
-        kind: 'info',
-        ttl: 2,
+      this.bus.emit('mission:gateCleared', { missionId: m.id, gateCount: gates.length,
+        gateIndex: event.gateIndex, elapsedS: event.elapsedS, lap: event.lap,
+        splitDeltaS: params.lastSplitDeltaS, lapCompleted: event.lapCompleted });
+      if (event.lapCompleted && !event.finished) this.bus.emit('toast', {
+        text: `Lap ${params.lap + 1}/${params.laps} · ${event.lapTimeS.toFixed(2)}s split`, kind: 'info', ttl: 2,
       });
-      this.bus.emit('mission:updated', { missionId: m.id });
-      return;
+      if (event.finished) finish = event;
     }
+    if (events.length) {
+      const legs = params.closedCircuit ? gates.length - 1 : gates.length;
+      m.objectiveProgress = Math.min(raceObjectiveUnits(params), (params.lap | 0) * legs + params.nextGate);
+      this._refreshTrackedMissionNav(m);
+      this.bus.emit('mission:updated', { missionId: m.id });
+    }
+    // Burn rings run after ordered crossings. Proximity alone cannot farm a boost.
+    const assist = racingAssistIntents({ params, player, simTime: now, gatesGlobal: globals });
+    Object.assign(params, assist.patch);
+    for (const row of assist.impulses) if (row?.impulse) queuePhysicsImpulse(player, row.impulse);
+    if (!finish) return;
+
+    const elapsedS = finish.elapsedS;
     const band = raceBandForElapsed(elapsedS, params);
-    const mult = RACE_BAND_MULT[band] != null ? RACE_BAND_MULT[band] : 1;
     params.raceBand = band;
     params.raceElapsedS = Math.round(elapsedS * 100) / 100;
-    m.reward_cr = Math.max(0, Math.round((m.reward_cr || 0) * mult));
-    try { rememberRaceRecord(globalThis.localStorage, params.levelId, params.raceElapsedS); }
-    catch { /* storage is not the save */ }
-    this.bus.emit('toast', {
-      text: `Course clear — ${band.toUpperCase()} time ${Math.round(elapsedS)}s vs record ${params.recordS}s.`,
-      kind: 'success',
-      ttl: 4,
-    });
+    params.raceClean = !(params.resetCount > 0);
+    m.reward_cr = Math.max(0, Math.round((m.reward_cr || 0) * (RACE_BAND_MULT[band] ?? 1)));
+    if (params.raceClean) {
+      try { rememberRaceRecord(globalThis.localStorage, raceRecordKey(params), params.raceElapsedS); }
+      catch { /* private-mode storage is optional; the mission result is not */ }
+    }
+    this.bus.emit('toast', { text: `Circuit complete · ${params.raceElapsedS.toFixed(2)}s · ${band.toUpperCase()}`
+      + (params.raceClean ? ' · clean run' : ' · recovery run, no best time'), kind: 'success', ttl: 5 });
     this._completeMission(m, index);
   },
 
@@ -7688,6 +7650,11 @@ export const missions = {
    */
   _driveRace(m, index, state) {
     const params = (m && m.params) || {};
+    // Authored terminal paths must run before the legacy out-of-sector early return.
+    if (params.racingContractId) {
+      this._driveAuthoredRace(m, index, state);
+      return;
+    }
     const gates = Array.isArray(params.gates) ? params.gates : [];
     if (!gates.length) return;
     const courseSectorId = params.courseSectorId || m.destSectorId;
@@ -7696,10 +7663,6 @@ export const missions = {
     const player = state.entities && state.playerId != null
       ? state.entities.get(state.playerId) : null;
     if (!player || !player.pos || player.alive === false) return;
-    if (params.racingContractId) {
-      this._driveAuthoredRace(m, index, state);
-      return;
-    }
     const gateCount = gates.length;
     const next = Math.max(0, Math.min(gateCount, params.nextGate | 0));
     if (next >= gateCount) return;
@@ -8383,6 +8346,9 @@ export const missions = {
       if (m.params.levelId) completedPayload.levelId = m.params.levelId;
       if (Number.isFinite(m.params.raceElapsedS)) completedPayload.raceElapsedS = m.params.raceElapsedS;
       if (m.params.raceBand) completedPayload.raceBand = m.params.raceBand;
+      completedPayload.raceClean = m.params.raceClean === true;
+      completedPayload.raceResetCount = m.params.resetCount | 0;
+      completedPayload.raceLapTimesS = (m.params.lapTimesS || []).slice();
     }
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.

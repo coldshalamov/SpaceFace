@@ -10,6 +10,13 @@ For the owner-directed production-quality and physics-playground planning pass, 
 It groups existing obligations into finite deliveries and resolves a first wave; it does not replace
 this board, change task statuses, or launch implementation automatically.
 
+For chase flight, authored circuits and their complementary expansion builds, use
+[`RACING_FLIGHT_PROGRAM.md`](./design/program/RACING_FLIGHT_PROGRAM.md). Its eight finite packets
+cover hull-aware handling/camera, raceable terrain, adventure mission sections, ghosts, actual
+rivals, earned-speed mechanics, career/rewards, and accessibility/runtime quality. Start with
+RF-01 → RF-02 → one RF-03 mission; RF-08 runs across every packet. These extend the existing
+mission/flight/render owners rather than creating a separate racing engine.
+
 ## 1. Start here — the one procedure (no scope words needed)
 
 **The goal, in the owner's words (2026-09-03):** *a super-fun space adventure game with fast-paced, physics-centric, arcade-style combat that plays optimally in swarm mode, and is super interesting and

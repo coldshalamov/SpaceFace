@@ -350,6 +350,13 @@ export function createUiInput(ctx, screenManager) {
     // --- pure flight: UI-owned global keys only (mode must be flight) ---
     if (state.mode !== 'flight') return;
 
+    if (matchesBinding(ev, BINDINGS.steeringView)) {
+      if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('race:toggleView', { source: 'keyboard' });
+      return;
+    }
     if (matchesBinding(ev, BINDINGS.band)) {
       ev.preventDefault();
       bus.emit('band:cycle', { source: 'keyboard' });

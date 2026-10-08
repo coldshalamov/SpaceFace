@@ -1,6 +1,8 @@
 import { MobileGestures, canFly, shouldEnable, screenDirection, shipOnScreen, steerToward } from './model.js';
 import { mountMobileView } from './view.js';
 import { ALL_POWERS } from './catalog.js';
+import { resolveSteeringView } from '../racingSteer.js';
+import { racingTouchDrive } from '../racingGeometry.js';
 
 const NEUTRAL = () => ({ flight: { active:false, magnitude:0, boost:false, brake:false }, actions:{}, aim:null });
 const VIRTUAL_ACTIONS = new Set(['tether','reelIn','reelOut','brake', ...ALL_POWERS.filter(p => p.kind !== 'ui').map(p => p.id)]);
@@ -125,7 +127,8 @@ export function enhanceMobileTouch(touch, ctx = {}, {
   touch.tick = function(dt, live = state, inputHost = null) {
     if (!this.active) { legacyTick(dt, live, inputHost); return; }
     attach(inputHost);
-    const context = `${live.mode}:${live.playerId}`;
+    const chase = resolveSteeringView(live) === 'racing';
+    const context = `${live.mode}:${live.playerId}:${chase}`;
     const allowed = canFly(live, doc);
     const tick = Number.isFinite(live.tick) ? live.tick : lastTick;
     if (!allowed || (lastContext && context !== lastContext) || tick < lastTick) {
@@ -141,9 +144,14 @@ export function enhanceMobileTouch(touch, ctx = {}, {
     if (frame.cancelledRoles?.has('tether')) neutralize('tether');
     const p = live.entities?.get?.(live.playerId);
     const width = win?.innerWidth || 1280, height = win?.innerHeight || 800;
-    const direction = frame.flight.magnitude > 0
+    const direction = !chase && frame.flight.magnitude > 0
       ? screenDirection(frame.flight.x, frame.flight.y, ctx.helpers, p, width, height) : null;
-    const drive = steerToward(direction, p?.rot || 0, frame.flight.magnitude);
+    const drive = chase ? racingTouchDrive(frame.flight)
+      : steerToward(direction, p?.rot || 0, frame.flight.magnitude);
+    if (chase) {
+      frame.flight.brake = frame.actions.brake = drive.brake;
+      frame.flight.boost = frame.flight.boost && !drive.brake && drive.thrust > 0.1;
+    }
     this.axes.leftX = drive.turn; this.axes.leftY = -drive.thrust;
     this.axes.rightX = 0; this.axes.rightY = 0;
     // Gun drag is deliberate independent aim; otherwise weapons/tether follow stick or heading.
