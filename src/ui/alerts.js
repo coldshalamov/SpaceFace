@@ -20,6 +20,8 @@ import { hazardLanguageFor } from '../data/hazardLanguage.js';
 import {
   WORLD_FEEL_SEAM_IDS,
   admitWorldFeelSeam,
+  createWorldFeelBook,
+  worldFeelRelevant,
   copySweptHullFeel,
   worldFeelTick,
   worldFeelVoice,
@@ -560,10 +562,11 @@ export function createAlerts(ctx) {
 
   // Worldfeel — developed rock, a hull skim, and a volatile stage. Each admits on sim tick
   // so a held beam does not refresh the floor every frame. Stable cargo is not a voice.
-  const worldFeelVoiceBook = Object.create(null);
+  const worldFeelVoiceBook = createWorldFeelBook(bus);
   for (const eventName of WORLD_FEEL_SEAM_IDS) {
     bus.on(eventName, (payload) => {
       const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;
+      if (!worldFeelRelevant(ctx.state, eventName, snap)) return;
       if (!admitWorldFeelSeam(worldFeelVoiceBook, eventName, snap, worldFeelTick(ctx.state))) return;
       const voice = worldFeelVoice(eventName, snap);
       if (voice) announce(voice);

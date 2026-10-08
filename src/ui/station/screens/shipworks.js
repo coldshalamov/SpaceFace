@@ -637,6 +637,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let presetRejectedUnsub = null;
   let presetAppliedUnsub = null;
   let pendingPresetRejection = null;
+  let stageShown = false;
   let sableDemo = null, sableSelection = null, sableStamp = null;
   const clearSableDemo = () => { sableDemo?.dispose(); sableDemo = null; sableStamp = null; };
   const sableLifecycleUnsubs = ['save:restoring', 'game:newGame'].map(event => ctx.bus?.on(event, clearSableDemo)).filter(Boolean);
@@ -758,7 +759,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const id = pendingPresetRejection.presetId;
     if (!id || /["'\\]/.test(id)) return;
     const button = el.querySelector(`button.sx-sw-preset[data-loadout-preset-id="${id}"]:not([data-loadout-preset-save])`);
-    if (button) applyPresetRejection(button, pendingPresetRejection.reason);
+    if (button) {
+      applyPresetRejection(button, pendingPresetRejection.reason, { focus: stageShown && !pendingPresetRejection.focused });
+      if (stageShown) pendingPresetRejection.focused = true;
+    }
   }
 
   function ensurePresetRejectedHandler() {
@@ -5265,6 +5269,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     setHost,
     get host() { return host; },
     onShow() {
+      stageShown = true;
       restoreShipView();
       ensureRangeIntentHandler();
       ensureAppearanceSavedHandler();
@@ -5274,6 +5279,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       powerBeam.setActive(true);
     },
     onHide() {
+      stageShown = false;
+      pendingPresetRejection = null;
       clearSableDemo(); sableSelection = null;
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       previewSettleTimer = 0;

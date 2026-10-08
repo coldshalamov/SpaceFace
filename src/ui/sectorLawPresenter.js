@@ -131,22 +131,32 @@ export function collisionResponsibilityLine(payload) {
   const cause = payload.cause;
   if (cause !== 'terrain_collision' && cause !== 'ship_collision') return null;
   if (payload.playerCaused !== true) return 'Not your collision. You are not responsible.';
-  if (payload.outcome === 'lawful') return 'Your throw hit a hostile. Law clears it.';
+  if (payload.outcome === 'lawful') return 'Your collision killed a hostile. Law clears it.';
   if (payload.outcome === 'unwitnessed') {
     return payload.sustainedAssault === true
       ? 'You kept at them, but nobody saw the collision. No charge yet.'
-      : 'Your throw. Nobody saw it, so there is no charge.';
+      : 'Your collision. Nobody saw it, so there is no charge yet.';
   }
   if (payload.outcome === 'charged_unstable') {
-    return 'The collision is yours, but law could not file a stable record.';
+    return 'Authorities witnessed your collision. No charge has been filed.';
   }
+  if (payload.kind === 'lawful_kill') return 'Your collision killed a protected patrol. A charge has been filed.';
   if (payload.sustainedAssault === true || payload.kind === 'unlawful_kill') {
     return 'You kept hitting them. This collision is the attack, not an accident.';
   }
   if (payload.outcome === 'charged' || payload.kind === 'reckless_kill') {
-    return 'One thrown contact. Charged reckless, not a continued attack.';
+    return 'Your collision killed a civilian. Charged reckless, not a continued attack.';
   }
   return null;
+}
+
+export function collisionResponsibilityReceipt(payload) {
+  const line = collisionResponsibilityLine(payload);
+  if (!line) return null;
+  const charged = payload.outcome === 'charged' || payload.outcome === 'discovered';
+  return { outcome: 'collision_responsibility', text: line, cause: payload.cause,
+    stationId: payload.stationId ?? null, danger: charged,
+    statusText: charged ? 'CHARGE FILED' : payload.outcome === 'lawful' ? 'CLEARED' : 'NO CHARGE FILED' };
 }
 
 export function authorityIncidentReadout(payload, state, simTime = state && state.simTime || 0) {
@@ -301,10 +311,10 @@ export function createSectorLawPresenter(ctx) {
     const receiptText = directLawReceiptText(receipt);
     if (!receiptText) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
-    root.className = receipt.outcome === 'retaliation_authorized' ? 'sf-law--receipt sf-law--danger' : 'sf-law--receipt';
+    root.className = receipt.outcome === 'retaliation_authorized' || receipt.danger ? 'sf-law--receipt sf-law--danger' : 'sf-law--receipt';
     text(els.flag, 'AUTHORITY RECEIPT');
-    text(els.status, receipt.outcome === 'retaliation_authorized' ? 'SELF-DEFENSE'
-      : receipt.outcome === 'customs_complied' ? 'COMPLIANCE LOGGED' : 'STAND DOWN');
+    text(els.status, receipt.statusText || (receipt.outcome === 'retaliation_authorized' ? 'SELF-DEFENSE'
+      : receipt.outcome === 'customs_complied' ? 'COMPLIANCE LOGGED' : 'STAND DOWN'));
     text(els.headline, receiptText);
     text(els.meta, receipt.stationId ? stationName(state, receipt.stationId).toUpperCase() : 'OUTSIDE PROTECTED JURISDICTION');
     text(els.detail, receipt.cause === 'player_attack' ? 'Cause: player fired first.'
@@ -363,13 +373,8 @@ export function createSectorLawPresenter(ctx) {
   subscribe('law:incidentResolved', renderIncident);
   subscribe('law:incidentReceipt', showDirectReceipt);
   subscribe('law:killedAdjudicated', (payload) => {
-    const line = collisionResponsibilityLine(payload);
-    if (!line) return false;
-    return showDirectReceipt({
-      outcome: 'collision_responsibility',
-      text: line,
-      cause: payload.cause,
-    });
+    const receipt = collisionResponsibilityReceipt(payload);
+    return receipt ? showDirectReceipt(receipt) : false;
   });
   subscribe('drill:start', hide);
   subscribe('drill:end', hide);

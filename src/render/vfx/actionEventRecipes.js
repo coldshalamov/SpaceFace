@@ -429,17 +429,23 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     };
   }
   if (name === 'flight:sweptHull') {
-    const near = p && (p.sliding === true
-      || (Number.isFinite(p.timeToContactS) && p.timeToContactS >= 0 && p.timeToContactS < 1.25));
+    const near = p && p.sliding === true && Number.isFinite(p.contactDistance)
+      && p.contactDistance >= 0 && p.contactDistance <= 3;
     if (!near || p.active === false) return null;
     const ship = body(state, p.shipId ?? (state && state.playerId));
-    if (point(p.contactPoint)) {
+    const face = body(state, p.contactId);
+    // Advisory contactPoint is the obstacle's predicted centre, not the face
+    // the hull is skimming. Put the grind at the near surface of the real body.
+    if (point(face?.pos) && point(ship?.pos) && face.radius > 0) {
+      const dx = ship.pos.x - face.pos.x, dz = ship.pos.z - face.pos.z;
+      const distance = Math.hypot(dx, dz);
+      if (!(distance > 0)) return null;
       return {
         targetId: ship && ship.id,
         shipId: p.shipId,
         contactId: p.contactId,
         sliding: p.sliding === true,
-        pos: copyPoint(p.contactPoint),
+        pos: { x: face.pos.x + dx / distance * face.radius, z: face.pos.z + dz / distance * face.radius },
         attachToTarget: false,
       };
     }

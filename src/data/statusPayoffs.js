@@ -5,9 +5,9 @@ const LINES = Object.freeze({
   status_pinned: Object.freeze({ key: 'status:pinned', name: 'PINNED', detail: 'HEAVIER' }),
   status_unmoored: Object.freeze({ key: 'status:unmoored', name: 'UNMOORED', detail: 'LIGHTER' }),
   status_tumbling: Object.freeze({ key: 'status:tumbling', name: 'TUMBLING', detail: 'NO HELM' }),
-  status_burning: Object.freeze({ key: 'status:burning', name: 'BURNING', detail: 'HEAT TICKS' }),
-  status_goo: Object.freeze({ key: 'status:goo', name: 'GOOED', detail: 'WALLOWS' }),
-  status_scrambled: Object.freeze({ key: 'status:scrambled', name: 'SCRAMBLED', detail: 'ION + HEAT' }),
+  status_burning: Object.freeze({ key: 'status:burning', name: 'BURNING', detail: 'HULL TAKING HEAT' }),
+  status_goo: Object.freeze({ key: 'status:goo', name: 'GOOED', detail: 'HEAVY THRUST · HULL CORRODING' }),
+  status_scrambled: Object.freeze({ key: 'status:scrambled', name: 'SCRAMBLED', detail: 'SENSORS + LOCK OFFLINE' }),
 });
 
 const PRIME_TRIGGERS = Object.freeze({

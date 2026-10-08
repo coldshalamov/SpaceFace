@@ -85,6 +85,7 @@ export function readOrdnanceModel(state, tracker, bindings) {
     const r = rail[slot.index] || {};
     const st = RAIL_STATE[r.state] || 'ready';
     const entry = { state: st };
+    if (slot.index === 1 || slot.index === 9) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
     // inside the well) — a cue, not a new surface.
@@ -216,17 +217,21 @@ export function mountOrreryCluster(root, state, { bindings = null, bus = null } 
   const tracker = createCooldownTracker();
   let ordnance = null;
   let ceiling = null;
+  const syncLegend = (liveState = state, livePlayer = liveState?.entities?.get?.(liveState.playerId)) => {
+    cluster.setRingLegend(readActiveHullLegend(liveState, livePlayer));
+  };
   let offName = null;
   if (bus && typeof bus.on === 'function' && typeof cluster.setRingLegend === 'function') {
     offName = bus.on('ship:nameChanged', (payload = {}) => {
       const active = activeHullIndex(state);
       if (payload.shipIndex != null && Number(payload.shipIndex) !== active) return;
-      cluster.setRingLegend({ defName, classLine, customName: payload.name || '' });
+      syncLegend();
     });
   }
   return {
     host,
     update(liveState, p, slow) {
+      if (slow && typeof cluster.setRingLegend === 'function') syncLegend(liveState, p);
       if (!p) return;
       if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker, bindings);
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);
@@ -241,6 +246,13 @@ export function mountOrreryCluster(root, state, { bindings = null, bus = null } 
       if (root.dataset.hud === 'orrery') delete root.dataset.hud;
     },
   };
+}
+
+export function readActiveHullLegend(state, player = state?.entities?.get?.(state.playerId)) {
+  const def = SHIP_BY_ID.get(player?.data?.defId || player?.data?.shipId);
+  return { defName: def?.name || 'Hull',
+    classLine: `${def?.role || 'hull'} · tier ${Number.isFinite(def?.tier) ? def.tier : 0}`,
+    customName: customNameForActiveHull(state) };
 }
 
 function activeHullIndex(state) {

@@ -1,6 +1,8 @@
 import {
   WORLD_FEEL_SEAM_IDS,
   admitWorldFeelSeam,
+  createWorldFeelBook,
+  worldFeelRelevant,
   copySweptHullFeel,
   worldFeelHaptic,
   worldFeelTick,
@@ -856,10 +858,11 @@ export function createGamepad(ctx) {
     bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));
     // Worldfeel seams: a developed rock, a grazing face, a volatile stage. Own admit book so a
     // held beam cannot turn the pad into a buzz. The pulse still shares the one-live-pulse gate.
-    const worldFeelBook = Object.create(null);
+    const worldFeelBook = createWorldFeelBook(bus);
     for (const eventName of WORLD_FEEL_SEAM_IDS) {
       bus.on(eventName, (payload) => {
         const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;
+        if (!worldFeelRelevant(state, eventName, snap)) return;
         if (!admitWorldFeelSeam(worldFeelBook, eventName, snap, worldFeelTick(state))) return;
         const spec = worldFeelHaptic(eventName, snap);
         if (spec) startPulse(spec, eventName);

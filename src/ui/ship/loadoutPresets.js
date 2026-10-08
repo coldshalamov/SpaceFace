@@ -255,7 +255,7 @@ export function loadoutRejectionSpeech(reason) {
  * Focus belongs here — the player is in Shipworks, not on the helm.
  * A second paint of the same reason does not steal focus again.
  */
-export function applyPresetRejection(button, reason) {
+export function applyPresetRejection(button, reason, { focus = true } = {}) {
   const speech = loadoutRejectionSpeech(reason);
   if (!button) return speech;
   const key = typeof reason === 'string' ? reason : '';
@@ -266,7 +266,7 @@ export function applyPresetRejection(button, reason) {
   button.setAttribute('data-preset-rejection', key);
   const sub = typeof button.querySelector === 'function' ? button.querySelector('.sx-sw-preset__sub') : null;
   if (sub) sub.textContent = speech;
-  if (prior !== key && typeof button.focus === 'function') button.focus();
+  if (focus && prior !== key && typeof button.focus === 'function') button.focus();
   return speech;
 }
 

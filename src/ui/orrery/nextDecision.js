@@ -1,11 +1,10 @@
 // SFQ-B202 — one sentence for the next flight decision. Empty when the picture is quiet,
 // so a healthy cluster does not grow a caption. Reads a cluster model; writes nothing.
 
-const HULL_BREAK = 'Break off — the hull will not take another hit';
+const HULL_BREAK = 'Hull critical — disengage and repair at a station';
 const SHIELD_DOWN = 'Shield is down — keep the next hit off the hull';
 const GUN_HOT = 'Ease fire — the gun is hot';
 const ORDNANCE_EMPTY = 'Ordnance is empty — restock at a station';
-const PAST_MARK = 'Ease off — you are past the governed mark';
 
 export const NEXT_DECISION_CLASS = 'orr-cluster__next';
 
@@ -30,12 +29,12 @@ export function nextFlightDecision(model) {
   if (heat > 0.75) return GUN_HOT;
   const ordnance = model.ordnance && typeof model.ordnance === 'object' ? model.ordnance : null;
   if (ordnance) {
-    for (const entry of Object.values(ordnance)) {
-      if (entry && entry.state === 'empty') return ORDNANCE_EMPTY;
-    }
+    // Empty command sockets mean there is nothing deployed to command. Only
+    // actual stocked tools can need rearming; one dry tool does not empty the bay.
+    const supplies = Object.values(ordnance).filter((entry) => entry?.consumable === true);
+    if (supplies.length && supplies.every((entry) => entry.state === 'empty')) return ORDNANCE_EMPTY;
   }
-  const speed = num(model.speed);
-  const speedRef = num(model.speedRef);
-  if (speedRef > 0 && speed > speedRef * 1.02) return PAST_MARK;
+  // Boost, travel burn and earned momentum intentionally exceed the reference
+  // mark. Speed alone is not a hazard and must never tell the pilot to brake.
   return '';
 }

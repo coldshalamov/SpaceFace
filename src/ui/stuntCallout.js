@@ -377,11 +377,12 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   injectStyle(doc);
 
   const root = mk(doc, 'div', 'sf-stuntcall');
-  root.setAttribute('aria-hidden', 'true');
   root.hidden = true;
   const lines = mk(doc, 'div', 'sf-stuntcall__lines');
+  lines.setAttribute('aria-hidden', 'true');
   root.appendChild(lines);
   const meter = mk(doc, 'div', 'sf-stuntcall__meter');
+  meter.setAttribute('aria-hidden', 'true');
   meter.hidden = true;
   const rowTop = mk(doc, 'div', 'sf-stuntcall__rowtop');
   const mult = mk(doc, 'span', 'sf-stuntcall__mult', '');
@@ -417,6 +418,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   let spoken = '';
   let frameOff = null;
   let destroyed = false;
+  const heardStatuses = new Map();
 
   const getState = () => state;
 
@@ -725,7 +727,24 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       if (destroyed) return;
       const st = getState();
       if (!calloutScope(st) || !payload || payload.targetId !== st.playerId) return;
+      const previous = heardStatuses.get(payload.statusId);
+      const tick = Number(st.tick) || 0;
+      heardStatuses.set(payload.statusId, { stacks: payload.stacks || 1,
+        expiresTick: Number.isFinite(payload.expiresTick) ? payload.expiresTick : tick + 60 });
+      // A refreshed field status is still the same condition. Speak onset and
+      // increased severity; never hammer the reading floor once per damage tick.
+      if (previous && previous.expiresTick > tick && previous.stacks >= (payload.stacks || 1)) return;
       speak(statusPayoffLine(payload.statusId));
+    }));
+    unsubs.push(bus.on('combat:statusExpired', (payload) => {
+      if (payload?.targetId === getState()?.playerId) heardStatuses.delete(payload.statusId);
+    }));
+    for (const event of ['game:newGame', 'save:loaded']) unsubs.push(bus.on(event, () => {
+      heardStatuses.clear();
+      for (const entry of lineNodes.values()) if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
+      lineNodes.clear();
+      sr.textContent = '';
+      root.hidden = true;
     }));
     unsubs.push(bus.on('bombs:primed', (payload) => {
       if (destroyed) return;

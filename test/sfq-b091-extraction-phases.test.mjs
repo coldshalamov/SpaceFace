@@ -1,72 +1,55 @@
-// SFQ-B091 — survey, cut, and collect are different pictures. Fracture stays its own sheet.
-// Seed 4242. The ear for these phases was already four recipes; this pins that and the new sheets.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-
+import * as THREE from 'three';
+import { ActionVfx } from '../src/render/actionVfx.js';
+import { WORLD_CUE_ACTION_RECIPE, isComposedMiningCue } from '../src/render/vfx/worldCueRecipes.js';
 import { AUDIO_CUE_TO_RECIPE } from '../src/audio/audioSystem.js';
-import { combatVerbRecipe } from '../src/audio/combatVerbCues.js';
-import {
-  MINING_PHASE_SHEETS,
-  miningPhaseSheet,
-  paintMiningPhaseSheet,
-} from '../src/render/vfxMiningPhases.js';
 
-const SEED = 4242;
-
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+function fixture(reduced = false) {
+  const player = { id: 1, alive: true, type: 'ship', radius: 6, pos: { x: 0, z: 0 }, rot: 0 };
+  const rock = { id: 2, alive: true, type: 'asteroid', radius: 12, pos: { x: 30, z: 0 }, rot: 0 };
+  return { simTime: 1, playerId: 1, entities: new Map([[1, player], [2, rock]]),
+    settings: { video: { motionReduce: reduced, flashReduce: reduced } } };
 }
 
-test('survey, cut, and collect are three sheets; fracture is not one of them', () => {
-  assert.equal(SEED, 4242);
-  const survey = miningPhaseSheet('mining.survey.classified');
-  const cut = miningPhaseSheet('mining.extraction.locked');
-  const collect = miningPhaseSheet('mining.yield.collected');
-  assert.equal(survey, MINING_PHASE_SHEETS.survey);
-  assert.equal(cut, MINING_PHASE_SHEETS.cut);
-  assert.equal(collect, MINING_PHASE_SHEETS.collect);
-  assert.equal(new Set([survey.shape, cut.shape, collect.shape]).size, 3);
-  assert.equal(new Set([survey.color, cut.color, collect.color]).size, 3);
-  assert.equal(miningPhaseSheet('mining.fracture.released'), null);
-  assert.equal(miningPhaseSheet('mining.fracture.anticipation'), null);
-  assert.equal(miningPhaseSheet('mining.rich_core.exposed'), null);
+test('survey, cutter and collected yield use the production geometry owner at their real anchors', () => {
+  const state = fixture(), owner = new ActionVfx(new THREE.Scene());
+  try {
+    for (const id of ['mining.survey.pulse', 'mining.extraction.locked', 'mining.yield.collected']) {
+      assert.equal(isComposedMiningCue(id), true, 'the legacy sprite path must yield ownership');
+      assert.equal(owner.emit('presentation:cue', { id, sourceId: 1, targetId: 2 }, state), true);
+    }
+    const slots = owner.slots.filter(s => s.alive);
+    assert.deepEqual(slots.map(s => s.recipe.verb), ['survey', 'grind', 'harvest']);
+    assert.deepEqual(slots.map(s => s.id), [1, 2, 2]);
+    state.simTime = 1.15;
+    owner.update(state);
+    assert.ok(owner.batch.count > 0, 'shared geometry contains visible work');
+    state.simTime = 3;
+    owner.update(state);
+    assert.equal(owner.live, 0, 'phase responses retire rather than become held loops');
+  } finally { owner.dispose(); }
 });
 
-test('reduced motion keeps one short sheet in the phase color (seed 4242)', () => {
-  const rand = mulberry32(SEED);
-  for (const sheet of Object.values(MINING_PHASE_SHEETS)) {
-    const full = [];
-    const short = [];
-    paintMiningPhaseSheet({ sprite: (s) => full.push(s) }, sheet, { x: 0, z: 0 }, 10, false, rand);
-    paintMiningPhaseSheet({ sprite: (s) => short.push(s) }, sheet, { x: 0, z: 0 }, 10, true, rand);
-    assert.equal(short.length, 1, sheet.phase);
-    assert.ok(full.length >= 1, sheet.phase);
-    assert.equal(short[0].color, sheet.color);
-    if (sheet.shape === 'ring') assert.equal(full.length, 6);
-    if (sheet.shape === 'spark') assert.equal(full.length, 2);
-    if (sheet.shape === 'bead') assert.equal(full.length, 1);
-  }
-  const ring = [];
-  const spark = [];
-  paintMiningPhaseSheet({ sprite: (s) => ring.push(s) }, MINING_PHASE_SHEETS.survey, { x: 1, z: 2 }, 8, false, mulberry32(SEED));
-  paintMiningPhaseSheet({ sprite: (s) => spark.push(s) }, MINING_PHASE_SHEETS.cut, { x: 1, z: 2 }, 8, false, mulberry32(SEED));
-  assert.notEqual(ring[0].kind, spark[0].kind);
+test('reduced motion preserves the surface response and stale/missing anchors invent nothing', () => {
+  const state = fixture(true), owner = new ActionVfx(new THREE.Scene());
+  try {
+    assert.equal(owner.emit('presentation:cue', { id: 'mining.extraction.locked', sourceId: 1, targetId: 99 }, state), false);
+    assert.equal(owner.emit('presentation:cue', { id: 'mining.extraction.locked', sourceId: 1, targetId: 2 }, state), true);
+    state.simTime += 0.1;
+    owner.update(state);
+    assert.ok(owner.batch.count > 0);
+    assert.equal(owner.particles.live, 0);
+    assert.equal(WORLD_CUE_ACTION_RECIPE.variants['mining.extraction.locked'].surfaceWork, true);
+    state.simTime = 0;
+    owner.update(state);
+    assert.equal(owner.live, 0, 'load/rewind clears the old phase');
+  } finally { owner.dispose(); }
 });
 
-test('survey, lock, fracture, and yield already use four different recipes', () => {
-  const survey = AUDIO_CUE_TO_RECIPE['presentation.mining.scan_classified'];
-  const lock = AUDIO_CUE_TO_RECIPE['presentation.mining.cutter_lock'];
-  const fracture = AUDIO_CUE_TO_RECIPE['presentation.mining.fracture_break'];
-  const yieldCue = AUDIO_CUE_TO_RECIPE['presentation.mining.yield'];
-  const beam = combatVerbRecipe('mining:start');
-  const ids = [survey, lock, fracture, yieldCue, beam];
-  assert.equal(ids.every(Boolean), true);
+test('survey, lock, fracture and yield keep distinct sound recipes', () => {
+  const ids = ['presentation.mining.scan_classified', 'presentation.mining.cutter_lock',
+    'presentation.mining.fracture_break', 'presentation.mining.yield'].map(id => AUDIO_CUE_TO_RECIPE[id]);
+  assert.ok(ids.every(Boolean));
   assert.equal(new Set(ids).size, ids.length);
 });

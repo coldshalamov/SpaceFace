@@ -1,4 +1,4 @@
-// INFERENCE — onboarding:rangePrompt, rescue:complete, and firsthour:complete
+// INFERENCE â€” onboarding:rangePrompt, rescue:complete, and firsthour:complete
 // were emitted and unsubscribed. Voice owns them; a toast is the headless fallback.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,8 +23,7 @@ function busOf() {
   return bus;
 }
 
-test('seed 4242: the three unfelt first-hour seams each toast once without a voice', () => {
-  assert.equal(4242, 4242);
+test('the three unfelt first-hour seams each toast once without a voice', () => {
   const bus = busOf();
   const toasts = [];
   bus.on('toast', (payload) => toasts.push(payload));
@@ -48,7 +47,7 @@ test('seed 4242: the three unfelt first-hour seams each toast once without a voi
   assert.equal(toasts.length, 3);
 });
 
-test('seed 4242: tutorial voice takes the seam and does not also toast', () => {
+test('tutorial voice takes the seam and does not also toast', () => {
   const bus = busOf();
   const toasts = [];
   const said = [];
@@ -69,4 +68,23 @@ test('seed 4242: tutorial voice takes the seam and does not also toast', () => {
   assert.equal(said[0].id, 'firsthour:range:3');
   assert.equal(said[1].id, 'rescue:complete');
   assert.equal(said[2].id, 'firsthour:complete');
+});
+
+
+test('Continue and New Game re-arm feedback through the onboarding tutorial owner', () => {
+  const bus = busOf(), heard = [];
+  const bound = bindFirstHourFelt(bus, { say: (line) => heard.push(line) });
+  bus.emit('rescue:complete', {});
+  bus.emit('rescue:complete', {});
+  assert.equal(heard.length, 1);
+  bus.emit('save:loaded', {});
+  bus.emit('rescue:complete', {});
+  assert.equal(heard.length, 2);
+  bus.emit('game:newGame', {});
+  bus.emit('rescue:complete', {});
+  assert.equal(heard.length, 3);
+  bound.destroy();
+  bus.emit('game:newGame', {});
+  bus.emit('rescue:complete', {});
+  assert.equal(heard.length, 3);
 });

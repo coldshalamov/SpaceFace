@@ -388,7 +388,12 @@ export const onboarding = {
     this.registry = ctx.registry || null;
     this.gamepad = ctx.gamepad;
     this.touch = ctx.touch;
-    this._firstHourFelt = bindFirstHourFelt(this.bus, { voice: this.helpers.voice });
+    this._firstHourFelt?.destroy();
+    this._firstHourFelt = bindFirstHourFelt(this.bus, { say: (text, event) => {
+      // The Range pointer already sits beside the current objective. It must
+      // never replace the actionable verb on the tutorial's single voice floor.
+      if (event !== 'onboarding:rangePrompt') this._sayTutorial(text);
+    } });
     this._panel = null;
     this._bodyEl = null;
     this._titleEl = null;

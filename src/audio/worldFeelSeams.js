@@ -64,6 +64,8 @@ export function copySweptHullFeel(payload) {
     sliding: payload.sliding === true,
     contactId: payload.contactId,
     contactType: payload.contactType,
+    contactRadius: payload.contactRadius,
+    contactDistance: payload.contactDistance,
     timeToContactS: payload.timeToContactS,
     contactPoint: point && Number.isFinite(point.x) && Number.isFinite(point.z)
       ? { x: point.x, z: point.z }
@@ -73,9 +75,30 @@ export function copySweptHullFeel(payload) {
 
 function sweptHullNear(payload) {
   if (!payload || payload.active === false) return false;
-  if (payload.sliding === true) return true;
-  const t = payload.timeToContactS;
-  return Number.isFinite(t) && t >= 0 && t < 1.25;
+  // A predictive sweep can be hundreds of metres ahead at travel speed. It is
+  // telemetry, not contact. `sliding` means lateral flight, so it also needs an
+  // actual small surface gap; a sideways approach across the map stays silent.
+  return payload.sliding === true && Number.isFinite(payload.contactDistance)
+    && payload.contactDistance >= 0 && payload.contactDistance <= 3;
+}
+
+export function createWorldFeelBook(bus) {
+  const book = Object.create(null);
+  const reset = () => { for (const key of Object.keys(book)) delete book[key]; };
+  for (const event of ['game:newGame', 'save:loaded', 'sector:enter']) bus?.on?.(event, reset);
+  return book;
+}
+
+/** Tactile and danger feedback belongs to the pilot's surroundings, not every
+ * volatile container simulated anywhere in the sector. */
+export function worldFeelRelevant(state, eventName, payload) {
+  if (eventName === 'flight:sweptHull') return payload?.shipId === state?.playerId;
+  if (eventName !== 'cargo:volatileExposed') return true;
+  const pod = state?.entities?.get?.(payload?.podId);
+  const pilot = state?.entities?.get?.(state.playerId);
+  if (!pod?.pos || pod.alive === false || !pilot?.pos) return false;
+  if (state.player?.tether?.active && state.player.tether.targetId === pod.id) return true;
+  return Math.hypot(pod.pos.x - pilot.pos.x, pod.pos.z - pilot.pos.z) <= 240;
 }
 
 function admitKey(eventName, payload) {
@@ -89,6 +112,13 @@ function admitKey(eventName, payload) {
 export function admitWorldFeelSeam(book, eventName, payload, tick) {
   if (!WORLD_FEEL_SEAM_IDS.includes(eventName)) return false;
   if (!Number.isFinite(tick)) return false;
+  if (book) {
+    // Also handle direct restoration and test hosts without a boundary bus.
+    if (Number.isFinite(book._tick) && tick < book._tick) {
+      for (const key of Object.keys(book)) delete book[key];
+    }
+    book._tick = tick;
+  }
   if (eventName === 'mining:beamLocked' && (!payload || payload.asteroidId == null)) return false;
   if (eventName === 'flight:sweptHull' && !sweptHullNear(payload)) return false;
   if (eventName === 'cargo:volatileExposed') {
@@ -100,6 +130,10 @@ export function admitWorldFeelSeam(book, eventName, payload, tick) {
   const gap = ADMIT_TICKS[eventName];
   if (Number.isFinite(last) && tick - last < gap) return false;
   if (book) book[key] = tick;
+  if (book && Object.keys(book).length > 256) {
+    const oldest = Object.keys(book).find((entry) => entry !== '_tick');
+    if (oldest) delete book[oldest];
+  }
   return true;
 }
 
@@ -170,7 +204,6 @@ export function worldFeelPosition(state, eventName, payload) {
   if (!payload) return null;
   if (eventName === 'mining:beamLocked') return entityPos(state, payload.asteroidId);
   if (eventName === 'flight:sweptHull') {
-    if (payload.contactPoint) return { x: payload.contactPoint.x, z: payload.contactPoint.z };
     return entityPos(state, payload.shipId);
   }
   if (eventName === 'cargo:volatileExposed') return entityPos(state, payload.podId);
@@ -178,6 +211,7 @@ export function worldFeelPosition(state, eventName, payload) {
 }
 
 export function playWorldFeelSeam(host, book, eventName, payload) {
+  if (!worldFeelRelevant(host?.state, eventName, payload)) return null;
   const tick = worldFeelTick(host && host.state);
   if (!admitWorldFeelSeam(book, eventName, payload, tick)) return null;
   const cue = worldFeelCue(eventName, payload);
@@ -195,7 +229,7 @@ export function playWorldFeelSeam(host, book, eventName, payload) {
 
 export function installWorldFeelSeams(host, bus) {
   if (!bus || typeof bus.on !== 'function') return WORLD_FEEL_SEAM_IDS;
-  const book = Object.create(null);
+  const book = createWorldFeelBook(bus);
   for (const eventName of WORLD_FEEL_SEAM_IDS) {
     bus.on(eventName, (payload) => {
       const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;

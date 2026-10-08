@@ -1,13 +1,12 @@
-// SFQ-B111 — a collision kill the law already adjudicated is spoken. Gun kills
+// SFQ-B111 â€” a collision kill the law already adjudicated is spoken. Gun kills
 // stay on their own receipt. Seed 4242 names the pin; the function is pure.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { collisionResponsibilityLine, directLawReceiptText } from '../src/ui/sectorLawPresenter.js';
+import { collisionResponsibilityLine, collisionResponsibilityReceipt, directLawReceiptText } from '../src/ui/sectorLawPresenter.js';
 
-test('seed 4242: collision responsibility matches the published outcomes', () => {
-  assert.equal(4242, 4242);
+test('collision responsibility matches the published outcomes', () => {
   assert.equal(collisionResponsibilityLine({ cause: 'kinetic', playerCaused: true, outcome: 'charged' }), null);
   assert.match(
     collisionResponsibilityLine({ cause: 'ship_collision', playerCaused: false, outcome: 'charged' }),
@@ -27,7 +26,7 @@ test('seed 4242: collision responsibility matches the published outcomes', () =>
   );
   assert.match(
     collisionResponsibilityLine({ cause: 'terrain_collision', playerCaused: true, outcome: 'charged_unstable' }),
-    /could not file a stable record/,
+    /No charge has been filed/,
   );
   const reckless = collisionResponsibilityLine({
     cause: 'terrain_collision', playerCaused: true, outcome: 'charged', kind: 'reckless_kill', sustainedAssault: false,
@@ -43,4 +42,18 @@ test('seed 4242: collision responsibility matches the published outcomes', () =>
   assert.match(source, /law:killedAdjudicated/);
   assert.match(source, /Cause: the body hit terrain/);
   assert.match(source, /Cause: hull on hull/);
+});
+
+
+test('charged collision receipts retain their jurisdiction and never say stand down', () => {
+  const receipt = collisionResponsibilityReceipt({ cause: 'ship_collision', playerCaused: true,
+    outcome: 'charged', kind: 'lawful_kill', stationId: 'station_helios' });
+  assert.match(receipt.text, /protected patrol/);
+  assert.doesNotMatch(receipt.text, /reckless/);
+  assert.equal(receipt.stationId, 'station_helios');
+  assert.equal(receipt.statusText, 'CHARGE FILED');
+  assert.equal(receipt.danger, true);
+  const cleared = collisionResponsibilityReceipt({ cause: 'ship_collision', playerCaused: true, outcome: 'lawful' });
+  assert.equal(cleared.statusText, 'CLEARED');
+  assert.equal(cleared.danger, false);
 });

@@ -1,13 +1,11 @@
-// SFQ-B033 — primed, pinned, gooed, tumbling, and burning say their payoff.
+// SFQ-B033 â€” primed, pinned, gooed, tumbling, and burning say their payoff.
 // The combinations already resolve in the status service; this is the glass.
-// Seed 4242.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { bombPrimeLine, statusPayoffLine } from '../src/data/statusPayoffs.js';
 import { calloutTextFor, createStuntCallout } from '../src/ui/stuntCallout.js';
 
-const SEED = 4242;
 
 function fakeDocument() {
   function createElement() {
@@ -51,7 +49,6 @@ function fakeBus() {
 function mount(playerId = 1) {
   const bus = fakeBus();
   const state = {
-    seed: SEED,
     mode: 'flight',
     run: null,
     ui: { screenStack: [], docked: false },
@@ -68,7 +65,7 @@ test('the catalog sentences name the payoff and stay quiet for an unknown status
   assert.equal(statusPayoffLine('status_goo').name, 'GOOED');
   assert.equal(statusPayoffLine('status_tumbling').detail, 'NO HELM');
   assert.equal(statusPayoffLine('status_burning').name, 'BURNING');
-  assert.equal(statusPayoffLine('status_scrambled').detail, 'ION + HEAT');
+  assert.equal(statusPayoffLine('status_scrambled').detail, 'SENSORS + LOCK OFFLINE');
   assert.equal(statusPayoffLine('status_unmoored').name, 'UNMOORED');
   assert.equal(statusPayoffLine('status_gravity_marked'), null);
   assert.equal(statusPayoffLine('nope'), null);
@@ -78,7 +75,7 @@ test('the catalog sentences name the payoff and stay quiet for an unknown status
   assert.equal(bombPrimeLine({ bombId: 3, trigger: 'fuze' }).detail, 'FUZE');
 });
 
-test('seed 4242: the player hull hears the status; an NPC hull stays quiet', () => {
+test('the player hull hears the status; an NPC hull stays quiet', () => {
   const { bus, callout } = mount(1);
   try {
     bus.emit('combat:statusApplied', { targetId: 2, statusId: 'status_scrambled', stacks: 1 });
@@ -88,15 +85,15 @@ test('seed 4242: the player hull hears the status; an NPC hull stays quiet', () 
     callout.update(0);
     const text = calloutTextFor(callout.root);
     assert.match(text, /SCRAMBLED/);
-    assert.match(text, /ION \+ HEAT/);
+    assert.match(text, /SENSORS \+ LOCK OFFLINE/);
     bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_burning', stacks: 2 });
     callout.update(0);
     assert.match(calloutTextFor(callout.root), /BURNING/);
-    assert.match(calloutTextFor(callout.root), /HEAT TICKS/);
+    assert.match(calloutTextFor(callout.root), /HULL TAKING HEAT/);
   } finally { callout.destroy(); }
 });
 
-test('seed 4242: a bomb the player primed says PRIMED and the trigger', () => {
+test('a bomb the player primed says PRIMED and the trigger', () => {
   const { bus, callout } = mount(1);
   try {
     bus.emit('bombs:primed', { bombId: 50, ownerId: 9, trigger: 'proximity', payloadId: 'bomb_frag' });
@@ -107,5 +104,24 @@ test('seed 4242: a bomb the player primed says PRIMED and the trigger', () => {
     const text = calloutTextFor(callout.root);
     assert.match(text, /PRIMED/);
     assert.match(text, /COMMAND/);
+  } finally { callout.destroy(); }
+});
+
+
+test('status refresh does not repeat onset; expiry and a new run re-arm it', () => {
+  const { bus, callout, state } = mount(1);
+  state.tick = 10;
+  try {
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_scrambled', stacks: 1, expiresTick: 100 });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /SCRAMBLED/);
+    callout.update(10000);
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_scrambled', stacks: 1, expiresTick: 110 });
+    callout.update(10000);
+    assert.equal(callout.root.hidden, true, 'an unchanged status does not renew a finished callout');
+    bus.emit('game:newGame', {});
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_scrambled', stacks: 1, expiresTick: 110 });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /SCRAMBLED/);
   } finally { callout.destroy(); }
 });

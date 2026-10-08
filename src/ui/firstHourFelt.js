@@ -34,6 +34,13 @@ export function bindFirstHourFelt(bus, options = {}) {
   const voice = options.voice || null;
   const seen = new Set();
   const offs = [];
+  const listen = (event, handler) => {
+    const off = bus.on(event, handler);
+    offs.push(typeof off === 'function' ? off : () => bus.off?.(event, handler));
+  };
+  // The UI survives New Game and Continue. Dedupe belongs to the current run, not
+  // to the lifetime of this mounted presenter.
+  for (const event of ['game:newGame', 'save:loaded']) listen(event, () => seen.clear());
   for (const event of FIRST_HOUR_FELT_EVENTS) {
     const handler = (payload) => {
       const text = firstHourFeltLine(event, payload);
@@ -41,13 +48,16 @@ export function bindFirstHourFelt(bus, options = {}) {
       const id = feltId(event, payload);
       if (seen.has(id)) return false;
       seen.add(id);
+      if (typeof options.say === 'function') {
+        options.say(text, event);
+        return true;
+      }
       const said = voice && typeof voice.say === 'function'
         && voice.say({ channel: 'tutorial', text, kind: 'info', ttl: 6, id });
       if (!said) bus.emit('toast', { text, kind: 'info', ttl: 6, id });
       return true;
     };
-    bus.on(event, handler);
-    offs.push(() => { if (typeof bus.off === 'function') bus.off(event, handler); });
+    listen(event, handler);
   }
   return {
     destroy() {
