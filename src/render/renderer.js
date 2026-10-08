@@ -2101,28 +2101,45 @@ function runCookSyncTwin(label, run, fallback = undefined) {
 // Per-lane fault rollup on state.render — O(1) at fault time only. A lane that
 // parks and degrades for N epochs is otherwise invisible to diagnostics (frame
 // counters only cover whole-frame kills); the rollup keeps it observable.
-function noteLaneFault(state, lane) {
+function noteLaneFault(state, lane, parked = false) {
   const render = state && state.render;
   if (!render) return;
   const rollup = render.laneFaults || (render.laneFaults = {});
   const row = rollup[lane] || (rollup[lane] = { faults: 0, parkedEpoch: null, lastAt: 0 });
   row.faults += 1;
+  if (parked === true) row.parkedEpoch = serviceFaultEpoch(state);
   row.lastAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now();
 }
 
-// One syncEntityViews row faulted mid-pass: epoch-latch the quarantine so it
-// can't re-throw every pass, count it, warn once per epoch. Degrade direction:
-// the row serves its last pose for the epoch rather than killing the whole
-// presented pass.
+// One syncEntityViews row faulted mid-pass: quarantine so it can't re-throw
+// every pass — but a transient one-off fault used to freeze a visible mesh at
+// its last pose for the whole epoch. The structured stamp carries the bounded
+// in-epoch retry every lane-level catch already honors: ≤3 faults at ≥1 s
+// spacing heal; the cap parks the row for the epoch, same degrade direction
+// (serve last pose rather than killing the presented pass).
+const PRESENTATION_ROW_FAULT_MAX = 3;
 function notePresentationRowFault(owner, mesh, entityId, err) {
   const userData = mesh && mesh.userData;
   if (!userData) return;
   const epoch = serviceFaultEpoch(owner.state);
-  if (userData.sfRowFaultedEpoch === epoch) return;
-  userData.sfRowFaultedEpoch = epoch;
-  noteLaneFault(owner.state, 'entityViewRow');
-  console.warn('[render] entity-view row faulted; quarantined for this epoch', entityId, err);
+  const stamp = userData.sfRowFaultedEpoch && userData.sfRowFaultedEpoch.epoch === epoch
+    ? userData.sfRowFaultedEpoch : { epoch, faults: 0, retryAt: 0 };
+  stamp.faults += 1;
+  stamp.retryAt = Date.now() + 1000;
+  userData.sfRowFaultedEpoch = stamp;
+  const parked = stamp.faults >= PRESENTATION_ROW_FAULT_MAX;
+  noteLaneFault(owner.state, 'entityViewRow', parked);
+  console.warn(parked
+    ? '[render] entity-view row faulted repeatedly; quarantined for this epoch'
+    : '[render] entity-view row faulted; retrying after cooldown', entityId, err);
+}
+function presentationRowQuarantined(owner, mesh) {
+  const userData = mesh && mesh.userData;
+  const stamp = userData && userData.sfRowFaultedEpoch;
+  if (!stamp || stamp.epoch !== serviceFaultEpoch(owner.state)) return false;
+  return stamp.faults >= PRESENTATION_ROW_FAULT_MAX
+    || Date.now() < (stamp.retryAt || 0);
 }
 
 // prepareFrame tail call sites: a throw here reaches the frame-level catch and
@@ -2137,7 +2154,7 @@ function tryPresentedCall(owner, label, run, fallback = undefined) {
     if (latched.epoch !== epoch) { latched.epoch = epoch; latched.warned = false; }
     if (!latched.warned) {
       latched.warned = true;
-      noteLaneFault(owner.state, `presentedTail.${label}`);
+      noteLaneFault(owner.state, `presentedTail.${label}`, true);
       console.warn(`[render] presented tail '${label}' faulted; serving last state`, tailError);
     }
     return fallback;
@@ -2375,7 +2392,7 @@ function driveProtectedFirstFlightDrain(owner) {
       && owner._protectedFirstFlightDegradedEpoch !== drainEpoch
       && typeof owner._drainProtectedFirstFlightBuilds === 'function') {
       owner._protectedFirstFlightDegradedEpoch = drainEpoch;
-      noteLaneFault(owner.state, 'protectedFirstFlightDrain');
+      noteLaneFault(owner.state, 'protectedFirstFlightDrain', true);
       return runCookSyncTwin('protected first-flight drain',
         () => owner._drainProtectedFirstFlightBuilds(), 0);
     }
@@ -2586,6 +2603,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           // service tail — the mint gate above re-arms on the next serial.
           owner._residentReattachIter = null;
           owner._residentReattachFaultEpoch = serviceFaultEpoch(st);
+          noteLaneFault(st, 'residentReattach', true);
           console.warn('[render] resident reattach sweep faulted; parked until the next enter', err);
           break;
         }
@@ -3071,6 +3089,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         owner._arrivalReserveFaultEpoch = arrivalLiveEpoch;
         owner._arrivalReserveFaultRetries = (owner._arrivalReserveFaultRetries | 0) + 1;
         owner._arrivalReserveRetryAt = now() + 1000;
+        noteLaneFault(owner.state, 'arrivalReserve',
+          (owner._arrivalReserveFaultRetries | 0) >= 3);
         owner._arrivalReservePending = true;
         console.warn('[render] arrival capacity reserve failed; retrying under cooldown', err);
         break;
@@ -3142,6 +3162,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           owner._reconcileFaultEpoch = reconcileFaultEpoch;
           owner._reconcileFaultRetries = (owner._reconcileFaultRetries | 0) + 1;
           owner._reconcileRetryAt = now() + 1000;
+          noteLaneFault(owner.state, 'residencyReconcile',
+            (owner._reconcileFaultRetries | 0) >= 3);
           console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
           break;
         }
@@ -3208,6 +3230,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           owner._residencyPollFaultEpoch = pollFaultEpoch;
           owner._residencyPollFaultRetries = (owner._residencyPollFaultRetries | 0) + 1;
           owner._residencyPollRetryAt = now() + 1000;
+          noteLaneFault(owner.state, 'residencyPoll',
+            (owner._residencyPollFaultRetries | 0) >= 3);
           console.warn('[render] residency poll drive failed; parked until the next enter', err);
           break;
         }
@@ -3534,7 +3558,7 @@ function driveHoldExemptDegrade(owner, state, sliceMs) {
     // lanes already use.
     if (owner._holdExemptSyncTwinEpoch !== degradeEpoch) {
       owner._holdExemptSyncTwinEpoch = degradeEpoch;
-      noteLaneFault(state, 'holdExemptEnqueue');
+      noteLaneFault(state, 'holdExemptEnqueue', true);
       const frame = owner._activityFrame;
       const evaluator = makeHoldExemptMeshBuildEvaluator(
         state, frame && frame.renderGlassIds);
@@ -25346,7 +25370,7 @@ export const render = {
       this._entityViewSyncFaultEpoch = epoch;
       if (!this._entityViewSyncFaultWarned) {
         this._entityViewSyncFaultWarned = true;
-        noteLaneFault(this.state, 'entityViewSync');
+        noteLaneFault(this.state, 'entityViewSync', true);
         console.warn('[render] syncEntityViews drive faulted; serving last-painted picture', syncError);
       }
       return undefined;
@@ -25445,7 +25469,7 @@ export const render = {
       if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
       const mesh = world.meshRefs[slot];
       if (!mesh) continue;
-      if (mesh.userData && mesh.userData.sfRowFaultedEpoch === serviceFaultEpoch(this.state)) continue;
+      if (presentationRowQuarantined(this, mesh)) continue;
       const entityId = world.entityIds[slot];
       try {
         const packedFlags = world.flags[slot];
@@ -25559,7 +25583,7 @@ export const render = {
       const packedFlags = world.flags[slot];
       const entity = world.entityRefs[slot];
       if (!mesh || (entity && entity.alive === false)) continue;
-      if (mesh.userData && mesh.userData.sfRowFaultedEpoch === serviceFaultEpoch(this.state)) continue;
+      if (presentationRowQuarantined(this, mesh)) continue;
       try {
         const userData = mesh.userData || (mesh.userData = {});
         // Roots frozen while culled rejoin the live compose path here — mount-frozen static
@@ -26767,6 +26791,21 @@ export const render = {
     // Mint on the durable latch — the consume flags that armed it are gone by
     // the next pass, and a rebuilt+0-delta feed (which never armed it) keeps
     // skipping the re-mint like before.
+    if (rebindFaulted && this._openingRebindOwed === true
+        && this._rebindSyncTwinEpoch !== serviceFaultEpoch(this.state)) {
+      // Once-per-epoch sync twin — same trade the sibling faulted lanes
+      // already take: a parked stepped drive leaves every fallback-published
+      // row unbound for the whole epoch (a fallback consume mints no
+      // spawnedSlots, so the spawned leg covers nothing). One bounded atomic
+      // whole-_meshes walk heals the binds inside the epoch.
+      this._rebindSyncTwinEpoch = serviceFaultEpoch(this.state);
+      runCookSyncTwin('presentation rebind', () => {
+        const it = this._rebindPresentationMeshesSteps();
+        for (;;) { if (it.next().done) break; }
+        this._openingRebindOwed = false;
+        this._openingSpawnedBindPending = null;
+      });
+    }
     if (!rebindFaulted && this._openingRebindOwed === true) {
       // A REMAP (world.clear() or rebuildFromEntities) drops every mesh
       // binding by construction — the whole-_meshes rebind must mint — and a
@@ -26832,6 +26871,8 @@ export const render = {
           this._rebindFaultEpoch = rebindEpoch;
           this._rebindFaultRetries = (this._rebindFaultRetries | 0) + 1;
           this._rebindRetryAt = Date.now() + 1000;
+          noteLaneFault(this.state, 'presentationRebind',
+            (this._rebindFaultRetries | 0) >= 3);
           console.warn('[render] presentation rebind drive failed; retrying under cooldown', err);
           break;
         }
@@ -28971,6 +29012,16 @@ export const render = {
         this._armDepthStage();
         return;
       }
+      // Fault-park gate: the catch at the arm's tail counts ceremony faults
+      // per service epoch; at ≥3 the arm parks for the epoch — queued roots
+      // re-drain when an enqueue re-arms after the epoch flips (meshes keep
+      // rendering; only staged depth policy is lost).
+      const armServiceEpoch = serviceFaultEpoch(this.state);
+      if (this._depthStageArmFaultEpoch === armServiceEpoch
+          && (this._depthStageArmFaults | 0) >= 3) {
+        this._depthStageScheduled = false;
+        return;
+      }
       this._depthStageLedgerSkips = 0;
       const armForcedRun = armPacedSpent;
       let slice = null;
@@ -29377,6 +29428,20 @@ export const render = {
           break;
         }
       }
+      } catch (armErr) {
+        // The (b)-inverse of the fault-park contract: a persistently faulting
+        // ceremony used to throw→requeue→re-arm every ~48 ms idle arm forever
+        // (every sibling lane got FaultRetries+park in W109; the arm's outer
+        // try had none). Bound it the same way — ≥3 faults in one service
+        // epoch parks the arm until the epoch flips.
+        const armFaultEpoch = serviceFaultEpoch(this.state);
+        if (this._depthStageArmFaultEpoch !== armFaultEpoch) {
+          this._depthStageArmFaultEpoch = armFaultEpoch;
+          this._depthStageArmFaults = 0;
+        }
+        this._depthStageArmFaults = (this._depthStageArmFaults | 0) + 1;
+        noteLaneFault(this.state, 'depthStageArm', (this._depthStageArmFaults | 0) >= 3);
+        console.warn('[render] depth-stage arm faulted; queued roots re-arm', armErr);
       } finally {
         // Requeue whatever the restore loop never reached — a throw mid-slice
         // can't orphan withheld members (the slice already dropped their pending
