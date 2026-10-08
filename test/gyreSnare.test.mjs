@@ -1967,7 +1967,10 @@ test('the ball watch list drops its oldest watch without stripping a live ball\'
   // More launches than the 8-deep watch list — A, the oldest watch, retires live.
   for (let i = 0; i < 9; i++) {
     t.player.cap = 100;
-    rock(t.sim, T.mawDist, 0, 40, 6);
+    // Behind the live maw: launch recoil drifts the ship (and maw) backward per
+    // bowl — a fixed-lane spawn falls out of snagRadius by iteration ~7.
+    const mawX = t.player.pos.x + T.mawDist;
+    rock(t.sim, mawX - 30, t.player.pos.z, 40, 6);
     hold(t);
     for (let j = 0; j < 20; j++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
     release(t);
@@ -3068,6 +3071,29 @@ test('orbit rate floors at 0.3 — a capped moon still circles', () => {
   assert.equal(t.sys._orbitRate(rt), T.orbitRate, 'the ponderous knee is exactly orbitRatePonderR');
 });
 
+test('the orbit phase integrates — a mid-arc absorb never teleports the slot', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 45; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const rt = t.sys._rt;
+  assert.equal(rt.phase, 'holding');
+  // Seeded at the snag, then advanced by rate·dt per hold tick — the wave-91 bug:
+  // the slot used seed + dir·simTime·rate, so every post-knee absorb moved it by
+  // simTime·Δrate (~25 rad at t=300 s) — a spring lurch plus a holdLag spike that
+  // could false-fire the strain warn on a routine meal.
+  const before = rt.orbitAngle;
+  rt.clumpRadius = 60; // a mid-arc absorb landing past the ponderous knee (rate 0.85 → floor)
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const step = Math.abs(rt.orbitAngle - before);
+  const maxStep = T.orbitRate * DT * 1.5;
+  assert.ok(step <= maxStep,
+    `one tick advances the slot by at most rate·dt (moved ${step.toFixed(3)} rad, bound ${maxStep.toFixed(3)})`);
+  assert.ok(step > 1e-4,
+    `the phase keeps integrating through the derate (moved ${step.toFixed(4)})`);
+  t.cleanup();
+});
+
 test('a too-heavy rock parked inside the suck annulus still eats the courtesy tug', async () => {
   const t = await bootPhysics();
   rock(t.sim, T.mawDist, 0, 6, 4);
@@ -3183,11 +3209,13 @@ test('the 9th live ball evicts the oldest watch — disarmed but still marked', 
   const t = await bootPhysics();
   const balls = [];
   for (let n = 0; n < 9; n++) {
-    // Off the +x throw corridor: the previous bowl plows the lane it was thrown
-    // down, and snag's ~150 ms wake gate gives a corridor spawn time to be
-    // knocked out of reach before it can core. 20 wu off-axis stays inside
-    // snagRadius (34) while clearing the launched ball's path.
-    const b = rock(t.sim, T.mawDist, 20, 40, 6);
+    // Behind the live maw on the -x side: the launch counter-impulse drifts the
+    // ship (and so the maw) backward a few wu per bowl — a fixed-lane spawn falls
+    // out of snagRadius by iteration ~7. maw-30 stays inside snagRadius (34) and
+    // behind every launch start (orbit slots land ≥ maw-22, balls fly +x), so no
+    // thrown ball's trajectory can plow the candidate before it cores.
+    const mawX = t.player.pos.x + T.mawDist; // rot stays 0 in this harness
+    const b = rock(t.sim, mawX - 30, t.player.pos.z, 40, 6);
     hold(t);
     for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
     assert.equal(t.sys._rt.coreId, b.id, `ball ${n} cored`);

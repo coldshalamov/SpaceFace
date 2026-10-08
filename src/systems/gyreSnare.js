@@ -152,6 +152,7 @@ function freshRuntime() {
     prevBasinN: 0,            // last-published basin count — the re-tick's position follows whichever lane grew
     prevSuckN: 0,             // same for the annulus half
     orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
+    orbitAngle: 0,         // integrated orbit phase — advanced by orbitRateEff·dt per hold tick so a ponderous-arc rate derate can't phase-jump the slot (rate × absolute t would lurch the clump on every absorb)
     orbitDir: 1,           // ±1 — revolution direction from the same hash, so successive clumps don't all circle one way
     swirlBlend: 1,         // eased stir sign — chases orbitDir over ~0.5 s (dt·4 across a range of 2) so a snag can't flip the funnel's spiral mid-feed
     tornTrack: null,       // {id, ticks} — a strain-freed core's last ~0.5 s: the close lets the lash visibly LOSE the ball
@@ -267,6 +268,7 @@ export const gyreSnare = {
     rt.holdLag = 0; // dead-state hygiene — the lag read is HOLD-only but resets like the rest
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
+    rt.orbitAngle = 0;
     rt.orbitDir = 1;
     rt.swirlBlend = 1;
     // A boundary drop also forgets the flying ball mirror — stale ballPos would leak a
@@ -992,6 +994,9 @@ export const gyreSnare = {
     // Revolution direction from another hash bit — successive clumps don't all
     // circle the maw the same way.
     rt.orbitDir = (seedHash & 0x10000) !== 0 ? 1 : -1;
+    // The integrated phase starts at the seed — the slot sits on the circle at the
+    // seeded angle on tick one, then revolves as the angle advances per hold tick.
+    rt.orbitAngle = rt.orbitSeed;
     best.data = best.data || {};
     best.data.gyreCore = true;
     // A timed body (timedWreckOrAsteroidDeadline) cored mid-hold would die at its own
@@ -1052,7 +1057,12 @@ export const gyreSnare = {
       + Math.sin(t * D.orbitLiftRate + rt.orbitSeed)
         * D.orbitLiftWu * Math.min(2, orbitBaseR / D.orbitRadiusMin);
     const orbitRateEff = this._orbitRate(rt);
-    const angle = rt.orbitSeed + rt.orbitDir * t * orbitRateEff
+    // Integrated phase, not rate × absolute t: orbitRateEff derates as the clump
+    // grows (orbitRatePonderR), and a rate change against absolute time would
+    // teleport the slot by simTime·Δrate — a spring lurch plus a holdLag spike
+    // that could false-fire the strain warn on routine mid-arc absorbs.
+    rt.orbitAngle += rt.orbitDir * orbitRateEff * dt;
+    const angle = rt.orbitAngle
       + Math.sin(t * D.orbitWobbleRate + rt.orbitSeed) * D.orbitWobbleRad;
     const tx = maw.x + Math.cos(angle) * orbitR;
     const tz = maw.z + Math.sin(angle) * orbitR;
@@ -1552,6 +1562,7 @@ export const gyreSnare = {
     rt.holdLag = 0;
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
+    rt.orbitAngle = 0;
     rt.orbitDir = 1;
     rt.swirlBlend = 1;
     rt.lastAbsorbCueS = -1e9;
