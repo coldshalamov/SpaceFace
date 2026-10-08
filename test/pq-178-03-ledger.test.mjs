@@ -169,7 +169,7 @@ test('a completion method replaces the generic beat, and a hitch stays a second 
     "taking the traders' intro",
     "finished the traders' proving runs",
     'hitching the false-mass spindle',
-    'cutting for the pod',
+    'the line took',
     'cut for the pod',
   ]);
 });
@@ -224,7 +224,7 @@ test('a miss stays in the retelling ahead of the later knock', () => {
   assert.equal(recordBeatStep(state, 'mission:completed', {}, 80).ok, true);
   assert.deepEqual(retellLedger(leftoverLedgerLine(state)), [
     'missing the variance tower',
-    'knocking the variance tower',
+    'the attempt failed',
     'knocked the variance tower',
   ]);
 });
