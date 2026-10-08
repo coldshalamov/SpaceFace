@@ -119,6 +119,21 @@ export function handlineSenseLine(eventName, payload) {
     const id = p.releaseId != null ? String(p.releaseId) : 'throw';
     return { key: `throw:${id}`, name: 'THROWN', detail: spd == null ? '' : String(spd) };
   }
+  // The latch click and the capture picture do not say whether the snag was clean.
+  if (eventName === 'tether:snapCatch') {
+    const name = p.rating === 'clean' ? 'CLEAN SNAG'
+      : p.rating === 'good' ? 'GOOD SNAG'
+      : p.rating === 'rough' ? 'ROUGH SNAG'
+      : null;
+    if (!name) return null;
+    const kept = Number.isFinite(p.landTangentialSpeed) ? Math.round(p.landTangentialSpeed) : null;
+    return { key: 'snap-catch', name, detail: kept == null ? '' : String(kept) };
+  }
+  // A low or medium pump is the winch. Only the snap-risk stroke gets a word.
+  if (eventName === 'tether:reelPump') {
+    if (p.risk !== 'high') return null;
+    return { key: 'pump-hot', name: 'PUMP HOT', detail: '' };
+  }
   return null;
 }
 
@@ -622,6 +637,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
     unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
     unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
+    unsubs.push(bus.on('tether:snapCatch', onHandlineSense('tether:snapCatch')));
+    unsubs.push(bus.on('tether:reelPump', onHandlineSense('tether:reelPump')));
     // SWARM-03 — the physics cause tag, on the lane that already names tricks.
     unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }

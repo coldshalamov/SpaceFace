@@ -100,3 +100,27 @@ test('massline:throw reaches a callout naming the throw speed', () => {
   assert.match(text, /133/);
   callout.destroy();
 });
+
+test('tether:snapCatch names the grade and the speed kept; an unrated snap stays quiet', () => {
+  assert.equal(handlineSenseLine('tether:snapCatch', { rating: 'missed' }), null);
+  const { bus, callout } = mount();
+  bus.emit('tether:snapCatch', { rating: 'clean', landTangentialSpeed: 41.6, targetId: 2 });
+  callout.update(0);
+  const text = calloutTextFor(callout.root);
+  assert.match(text, /CLEAN SNAG/);
+  assert.match(text, /42/);
+  callout.destroy();
+});
+
+test('tether:reelPump warns only when the stroke is hot', () => {
+  assert.equal(handlineSenseLine('tether:reelPump', { risk: 'low', strain: 0.2 }), null);
+  assert.equal(handlineSenseLine('tether:reelPump', { risk: 'medium', strain: 0.5 }), null);
+  const { bus, callout } = mount();
+  bus.emit('tether:reelPump', { risk: 'medium', strain: 0.5, targetId: 2 });
+  callout.update(0);
+  assert.equal(calloutTextFor(callout.root), '');
+  bus.emit('tether:reelPump', { risk: 'high', strain: 0.8, targetId: 2 });
+  callout.update(0);
+  assert.match(calloutTextFor(callout.root), /PUMP HOT/);
+  callout.destroy();
+});
