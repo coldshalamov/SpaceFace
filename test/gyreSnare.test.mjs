@@ -24,7 +24,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { gyreSnare } from '../src/systems/gyreSnare.js';
 import { physics } from '../src/core/physics.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
-import { readRecentImpulseProvenance, clearImpulseProvenance } from '../src/combat/impulseKernel.js';
+import { readRecentImpulseProvenance, clearImpulseProvenance, resolveCollisionConsequence } from '../src/combat/impulseKernel.js';
 import { GYRE_SNARE } from '../src/data/gyreSnare.js';
 import { gyreHud } from '../src/ui/gyreHud.js';
 
@@ -312,6 +312,43 @@ test('release bowls the clump along the nose at launch speed with kill-credit pr
   t.cleanup();
 });
 
+test('a thrown ball\'s physics:impact lands attributed damage through the consequence kernel', async () => {
+  const t = await bootPhysics();
+  const ball = rock(t.sim, T.mawDist, 0, 60, 8);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) t.sim.step();
+  assert.equal(ball.data.gyreLaunched, true, 'the ball is a live weapon');
+  const prov = readRecentImpulseProvenance(ball, t.state.tick);
+  assert.ok(prov && prov.actorId === t.player.id && prov.tag === 'gyre_launch',
+    'the flight-window provenance is stamped');
+
+  // The victim hull the bowling ball smashes — the consequence kernel resolves
+  // the strike with the ball's own weapon-scaled impact and the stamped credit.
+  const victim = {
+    id: 9901, type: 'ship', mass: 24,
+    physicsBody: { mass: 24 }, pos: { x: ball.pos.x + 10, z: ball.pos.z },
+  };
+  const con = resolveCollisionConsequence({
+    target: victim, other: ball,
+    exchangedMomentum: ball.physicsBody.mass * 120, // a committed slam
+    tick: t.state.tick,
+    provenance: {
+      actorId: prov.actorId, weaponId: prov.weaponId,
+      tag: prov.tag, appliedTick: prov.appliedTick,
+    },
+    pos: victim.pos, normal: { x: -1, z: 0 },
+    preSolveClosingSpeed: 120,
+  });
+  assert.ok(con, 'the consequence resolves');
+  assert.ok(con.impactDamage > 0,
+    `the strike lands damage — the 8x weapon scale feeds the terrain-surface multiplier (got ${con.impactDamage})`);
+  assert.equal(con.provenance.actorId, t.player.id, 'the kill credits the pilot');
+  assert.equal(con.provenance.tag, 'gyre_launch', 'the family provenance survives the kernel');
+  t.cleanup();
+});
+
 test('releasing an empty beam just closes it (no launch, no ghost ball)', async () => {
   const t = await bootPhysics();
   hold(t);
@@ -329,6 +366,24 @@ test('low capacitor refuses to wake the beam (warn toast, stays off)', async () 
   hold(t);
   assert.equal(t.sys._rt.phase, 'off');
   assert.ok(t.events.some((e) => e.name === 'toast'), 'warn toast fired');
+  t.cleanup();
+});
+
+test('a denied wake speaks once per press and re-arms on release', async () => {
+  const t = await bootPhysics();
+  t.player.cap = T.capActivateMin - 1;
+  // The held key must not re-fire the refusal every tick — dryDenyDone latches it.
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const toasts = t.events.filter((e) => e.name === 'toast');
+  const denies = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'ui_deny');
+  assert.equal(toasts.length, 1, 'exactly one warn toast across the held ticks');
+  assert.equal(denies.length, 1, 'exactly one deny voice across the held ticks');
+  // Release + re-press re-arms the voice — the latch is per-press, not forever.
+  t.state.input.actions.gyreSnare = false; t.sim.step();
+  for (let i = 0; i < 3; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.events.filter((e) => e.name === 'toast').length, 2,
+    'the re-pressed key gets its own refusal');
+  assert.equal(t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'ui_deny').length, 2);
   t.cleanup();
 });
 

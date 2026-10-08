@@ -593,6 +593,9 @@ export const gyreSnare = {
       const e = state.entities.get(wid);
       if (!e || e.alive === false || !e.pos || !e.data || !e.data.gyreLaunched) continue;
       const score = Number.isFinite(e.data.despawnAt) ? e.data.despawnAt : -Infinity;
+      // A live-but-expired candidate dies inside the same sweep — skip it rather
+      // than promote it for one tick (self-correcting, but the flicker reads).
+      if (score <= (Number.isFinite(state.simTime) ? state.simTime : -Infinity)) continue;
       if (score > bestScore) { bestScore = score; best = e; }
     }
     if (!best) return;
@@ -920,6 +923,9 @@ export const gyreSnare = {
     best.data.gyrePrevDespawnAt = best.data.despawnAt;
     best.data.gyrePrevTtl = best.ttl;
     delete best.data.despawnAt;
+    // Acknowledged foreign-field ride: `ttl` belongs to the lifetime sweep, outside
+    // the declared data.* namespace — stashed and restored symmetrically on both
+    // the drop and the future-only hand-back so the sweep's own contract resumes.
     best.ttl = Infinity;
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(best);
     if (this.bus) {
