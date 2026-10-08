@@ -3181,6 +3181,33 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     }
     notePacedFrameSpend(now() - leaseSliceStart);
   }
+  // The sector:exit cache cleanup rides the same paced slice clock — it used
+  // to pay two O(assets x owners) census passes plus their release/dispose
+  // tails inside the boundary-crossing frame (sync + a microtask second pass).
+  // No epoch guard here: the cleanup exists precisely to drain across the
+  // enterSerial seam, so it must not be dropped when the serial flips.
+  if (owner._sectorExitCleanupIter) {
+    const exitSliceStart = now();
+    for (;;) {
+      const iterator = owner._sectorExitCleanupIter;
+      if (!iterator) break;
+      let step;
+      try {
+        step = iterator.next();
+      } catch (_) {
+        try { iterator.return?.(); } catch (_) { /* best effort */ }
+        owner._sectorExitCleanupIter = null;
+        break;
+      }
+      if (step.done) {
+        if (owner._sectorExitCleanupIter === iterator) owner._sectorExitCleanupIter = null;
+        break;
+      }
+      if (now() - exitSliceStart >= 4
+          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+    }
+    notePacedFrameSpend(now() - exitSliceStart);
+  }
   // The arrival roster minted by the sector:enter emit rides the same paced
   // slice clock — each yield is a bounded scan segment, so a few beats after
   // the enter the roster/reserve stamps land complete instead of the whole
@@ -7695,6 +7722,13 @@ export function tickShieldShellClock(pool, state) {
 // the arm's identical-opts restore needs the dirty, but a queued clean root must not
 // re-pay the signature collect every presented frame until its arm lands.
 const STAGE_SELF_DIRTY_KEY = '__spacefaceDepthStageSelfDirty';
+// The census epoch under which the root's withhold/collect bookkeeping was last
+// asserted. Stamped everywhere STAGE_SELF_DIRTY_KEY lands: a light-census flip
+// kills every sfDepthMark in the scene, and a clean band-1 root (stampedSeq ==
+// dirtySeq, not queued) otherwise never re-opens collectGate — its dead-marked
+// casters would keep castShadow=true and link the novel-sig depth variant
+// inside the next presented shadow refresh.
+const STAGE_COLLECT_EPOCH_KEY = '__spacefaceDepthCollectEpoch';
 
 // One private stage render pays the whole leg's caster count atomically — bound
 // the leg by meshes so a station-family burst can't stack ~2000 draws inside one
@@ -11901,17 +11935,23 @@ export const render = {
               ? collectUnstagedShadowCastersFlag([root], census, flagBudget, this.cam && this.cam.obj)
               : null;
             const lodLevel = (root.userData && root.userData.lod && root.userData.lod.level) || 'lod0';
-            if (collected !== null && isUnstagedCollectOverCover(collected)) {
-              // The flag walk outran its shared node budget mid-root — a partial
-              // set can't be trusted for per-mesh withhold. Withhold the whole
-              // subtree instead of leaving castShadow live while the arm's
-              // re-derivation waits queued: an unstaged caster that draws
-              // pre-stage links its depth variant inside a presented refresh.
-              // The band-0 stamp keeps later syncs on the cheap queued early-out.
+            if (collected === null || isUnstagedCollectOverCover(collected)) {
+              // collected === null: the pending-mint window can't classify
+              // marks — but every mark in the scene is provably dead while the
+              // mint is in flight, so whole-subtree withhold is EXACT here, not
+              // over-cover (a mesh admitted then drawn before its next sync
+              // eval would otherwise pay a cold depth-variant link).
+              // Over-cover sentinel: the flag walk outran its shared node
+              // budget mid-root — a partial set can't be trusted for per-mesh
+              // withhold. Withhold the whole subtree instead of leaving
+              // castShadow live while the arm's re-derivation waits queued: an
+              // unstaged caster that draws pre-stage links its depth variant
+              // inside a presented refresh. The band-0 stamp keeps later syncs
+              // on the cheap queued early-out.
               const overOut = { receiverDelta: 0 };
               syncShadowCasterPolicy(root, lodLevel, { allowCast: false, out: overOut });
               noteShadowPolicyChanged(this._shadowReceiverTally, overOut);
-            } else if (collected !== null) {
+            } else {
               for (const mesh of collected) mesh.castShadow = false;
               if (collected.length > 0) {
                 const cache = this._withheldDepthCasters
@@ -11928,7 +11968,10 @@ export const render = {
             // the live census — an over-cover abort queues whole-subtree for that
             // re-derivation, the same contract the settings toggle runs.
             this._invalidateShadowPolicy(root);
-            if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+            if (root.userData) {
+              root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+              root.userData[STAGE_COLLECT_EPOCH_KEY] = shadowCensusEpoch();
+            }
             // Same parked-record carry the checked-sync feeders run — an
             // over-cover queue of a previously parked root otherwise re-pays
             // the undersized collect+abort arm the park already earned.
@@ -17885,7 +17928,25 @@ export const render = {
         // defer the remaining chunks; the arm's flagged unstaged re-collect
         // owns them once the stepped memo lands.
         const chunkSig = freshDepthLightSig();
-        if (chunkSig == null) break;
+        if (chunkSig == null) {
+          // Queue the deferred tail instead of dropping it: a flagged caster in
+          // the un-collected remainder would draw unproven until a later consult
+          // caught it — the arm's own collect is already sig-gated, so a queued
+          // root re-derives under the live sig exactly once.
+          for (let j = i; j < depthSubjects.length; j += 1) {
+            const tailRoot = depthSubjects[j];
+            if (!tailRoot) continue;
+            this._invalidateShadowPolicy(tailRoot);
+            if (tailRoot.userData) {
+              tailRoot.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(tailRoot);
+              tailRoot.userData[STAGE_COLLECT_EPOCH_KEY] = shadowCensusEpoch();
+            }
+            this._queueShadowDepthStage(tailRoot,
+              (tailRoot.userData && tailRoot.userData.lod && tailRoot.userData.lod.level) || 'lod0',
+              shadowPolicyEntityOf(tailRoot, this.state));
+          }
+          break;
+        }
         const unstagedPart = collectUnstagedShadowCasters(
           renderer, depthSubjects.slice(i, i + 512), scene, chunkSig, unstagedCollectBudget);
         if (isUnstagedCollectOverCover(unstagedPart)) break;
@@ -17972,7 +18033,24 @@ export const render = {
         const rescanCollectBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
         for (let i = 0; i < rescanDelta.length; i += 512) {
           const rescanSig = freshDepthLightSig();
-          if (rescanSig == null) break;
+          if (rescanSig == null) {
+            // Same unsigned-window contract as the first collect pass — queue
+            // the un-swept remainder for the arm's sig-gated re-collect rather
+            // than letting flagged casters draw unproven.
+            for (let j = i; j < rescanDelta.length; j += 1) {
+              const tailRoot = rescanDelta[j];
+              if (!tailRoot) continue;
+              this._invalidateShadowPolicy(tailRoot);
+              if (tailRoot.userData) {
+                tailRoot.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(tailRoot);
+                tailRoot.userData[STAGE_COLLECT_EPOCH_KEY] = shadowCensusEpoch();
+              }
+              this._queueShadowDepthStage(tailRoot,
+                (tailRoot.userData && tailRoot.userData.lod && tailRoot.userData.lod.level) || 'lod0',
+                shadowPolicyEntityOf(tailRoot, this.state));
+            }
+            break;
+          }
           const unstagedPart = collectUnstagedShadowCasters(
             renderer, rescanDelta.slice(i, i + 512), scene, rescanSig, rescanCollectBudget);
           if (isUnstagedCollectOverCover(unstagedPart)) break;
@@ -19189,7 +19267,31 @@ export const render = {
     });
     onBus('sector:exit', ({ sectorId } = {}) => {
       if (this._assetResidency) {
-        applySectorExitResidency(this._assetResidency, sectorId);
+        const self = this;
+        applySectorExitResidency(this._assetResidency, sectorId, {
+          // The two census passes (sync + a microtask re-pass) used to land
+          // inside the boundary-crossing frame — an O(assets x owners) census
+          // plus release/dispose tails exactly when the next sector is still
+          // warming. The residency poll drives the same Steps census across
+          // presented frames; the post-dispatch leg rides the same iterator,
+          // so by the time it runs the caller's preview/instance owner
+          // release has landed.
+          driveCacheCleanup(primaryReason, postDispatchReason) {
+            try { self._sectorExitCleanupIter?.return?.(); } catch (_) { /* best effort */ }
+            const residency = self._assetResidency;
+            if (!residency || typeof residency.releaseUnreferencedCacheOwnersSteps !== 'function') {
+              // Registries without a Steps twin keep the sync contract.
+              try { residency?.releaseUnreferencedCacheOwners?.(primaryReason); } catch (_) { /* best effort */ }
+              try { residency?.releaseUnreferencedCacheOwners?.(postDispatchReason); } catch (_) { /* best effort */ }
+              self._sectorExitCleanupIter = null;
+              return;
+            }
+            self._sectorExitCleanupIter = (function* () {
+              yield* residency.releaseUnreferencedCacheOwnersSteps(primaryReason);
+              yield* residency.releaseUnreferencedCacheOwnersSteps(postDispatchReason);
+            })();
+          },
+        });
       }
       const exactSectorId = sectorId == null ? null : String(sectorId);
       if (this._currentSectorPrewarm && this._currentSectorPrewarm.sectorId === exactSectorId) {
@@ -28960,12 +29062,20 @@ export const render = {
     // dirtySeq release would otherwise mint a private ≤32768-node wallet per
     // root and stack 8×32k atomic visits inside one pass.
     let parkedReleaseScaled = false;
+    // A pending stepped mint serves the DEAD epoch's sig — any park-side
+    // compare against it is decided against a light set the frame never had.
+    // Both consults below hold while the mint is in flight: an unprovable
+    // park is just kept (fail-closed direction — transient shadow loss beats
+    // releasing withheld bookkeeping mid-window).
+    const parkedServeFresh = !!(this._shadowCensusMemo
+      && this._shadowCensusMemo.epoch === shadowCensusEpoch()
+      && !this._shadowCensusMemo.pendingIter);
     // A null lightSig stamp is the unsigned direction, not a verdict — the
     // entry minted before the stepped census mint landed, so the drift clause
     // below can never fire for it. Re-consult the memo each eval: once a real
     // signature exists the entry re-keys and drift-compares normally.
     if (parkedEntry && parkedEntry.lightSig == null) {
-      const liveParkedSig = this._shadowCensusForFrame();
+      const liveParkedSig = parkedServeFresh ? this._shadowCensusForFrame() : null;
       if (liveParkedSig != null) {
         if (parkedEntry.lightSigEpoch !== shadowCensusEpoch()) {
           // The unsigned window spanned a real census flip: re-keying to the
@@ -28990,7 +29100,7 @@ export const render = {
     } else if (parkedEntry && dirtySeq > parkedEntry.seq) parkedRelease = true;
     else if (parkedEntry && parkedEntry.lightSig != null
         && parkedEntry.lightSigEpoch !== shadowCensusEpoch()
-        && parkedEntry.lightSig !== this._shadowCensusForFrame()) {
+        && parkedServeFresh && parkedEntry.lightSig !== this._shadowCensusForFrame()) {
       // The census epoch prefilter is O(1) — only a noted light mutation bumps
       // it, so quiet frames never compare the sig string. On a bump the
       // memoized sig compare decides cosmetic-vs-real drift and the release
@@ -29079,6 +29189,23 @@ export const render = {
       || (parked && !parkedRelease);
     const stampedSeq = (root.userData && typeof root.userData[STAGE_SELF_DIRTY_KEY] === 'number')
       ? root.userData[STAGE_SELF_DIRTY_KEY] : -1;
+    // The census epoch the root's collect bookkeeping last proved under — a
+    // novel census sig kills every sfDepthMark in the scene, and a CLEAN
+    // band-1 root (stampedSeq == dirtySeq, not queued, no band flip) would
+    // otherwise keep its dead-marked casters live into the next presented
+    // refresh: the exact cold-link mass the staging machinery exists to
+    // prevent. The clause opens only on a fresh serve — during pendingIter
+    // there is no honest sig to prove against, so the root simply stays clean
+    // one more eval.
+    const stampedCollectEpoch = (root.userData
+      && typeof root.userData[STAGE_COLLECT_EPOCH_KEY] === 'number')
+      ? root.userData[STAGE_COLLECT_EPOCH_KEY] : -1;
+    const censusEpochNow = shadowCensusEpoch();
+    const censusFreshNow = !!(this._shadowCensusMemo
+      && this._shadowCensusMemo.epoch === censusEpochNow
+      && !this._shadowCensusMemo.pendingIter);
+    const cleanRootCensusDrift = band === 1 && !queued
+      && stampedCollectEpoch !== censusEpochNow && censusFreshNow;
     // The stamp records the invalidation generation our own bookkeeping produced —
     // a genuine re-dirty landing while the root waits queued bumps the generation
     // past the stamp, so the collect re-runs and the fresh meshes join the withhold.
@@ -29095,7 +29222,7 @@ export const render = {
     // staged-vs-unstaged with zero signature mints inside the presented frame.
     const collectGate = (opts.allowCast === true && this._shadowSettingOn === true
         && this.renderer && this.scene && this._keyLight
-        && (parkedRecheck || parkedReleaseOnDrift || parkedRelease
+        && (parkedRecheck || parkedReleaseOnDrift || parkedRelease || cleanRootCensusDrift
           || (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0))));
     // Bound the collects one pass pays: a mass ortho-entry or packaged burst can
     // re-dirty tens of roots in one presented frame and each collect is a subtree
@@ -29532,7 +29659,10 @@ export const render = {
       // rest of the root was never evaluated — skip the stamp so the next
       // whole-root sync still collects it.
       this._invalidateShadowPolicy(root);
-      if (!scopedSync) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+      if (!scopedSync) {
+        root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+        root.userData[STAGE_COLLECT_EPOCH_KEY] = shadowCensusEpoch();
+      }
       // Fresh unstaged meshes — a parked root's park no longer describes it.
       if (parked && this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(root);
       this._queueShadowDepthStage(root, lodLevel, entity,
@@ -29977,6 +30107,7 @@ export const render = {
                   // leg's settle eval) stops a never-drawable member from
                   // vetoing its drawable siblings' release forever.
                   const undrawn = !!(undrawnSeen
+                    && undrawnSeen.get(rescueMesh) != null
                     && undrawnSeen.get(rescueMesh) === withheldGens.sets.get(rescueWithheld));
                   if (undrawn || withheldDepthCasterProvablyDead(rescueMesh, root)) {
                     const strike = pruneProbation.get(rescueMesh);
@@ -30035,7 +30166,10 @@ export const render = {
                 // and withheld casters exactly like the restore leg's row.
                 // Re-stamp self-dirty so the sync lane drives the parked walk.
                 this._shadowMapDirty = true;
-                if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+                if (root.userData) {
+                  root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+                  root.userData[STAGE_COLLECT_EPOCH_KEY] = shadowCensusEpoch();
+                }
                 continue;
               }
               if (rescueChanged) {
@@ -30057,6 +30191,7 @@ export const render = {
             if (root.userData) {
               delete root.userData.sfDepthUndrawableCycles;
               root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+              root.userData[STAGE_COLLECT_EPOCH_KEY] = shadowCensusEpoch();
             }
           }
           const rescueElapsed = armNow() - rescueStart;
@@ -30194,6 +30329,14 @@ export const render = {
               ? this._shadowCensusForFrame() : null;
             const collectSigs = collectSig != null ? [collectSig] : [];
             if (collectLiveSig != null && collectLiveSig !== collectSig) collectSigs.push(collectLiveSig);
+            // Witness width note: a THIRD live sig landing between the arm's
+            // mint and this compare (a suspended arm across multiple flips)
+            // still reads a live-marked caster unstaged — the miss is bounded
+            // to extra arm work (re-offer → re-stage), fail-closed, and the
+            // verdict eval's casterDepthMarkAnyCurrent backstop keeps deny
+            // verdicts honest. Widening this tuple past two sigs buys a rare
+            // avoided re-stage for a wider per-mesh compare — deliberately
+            // not widened.
             const cache = entry && entry.unstagedCache;
             if (cache && cache.seq === shadowCasterPolicyDirtySeq(sliceRoots[collected])) {
               const still = [];
@@ -30611,7 +30754,10 @@ export const render = {
         // The arm's own whole-slice collect covered every dirty to this instant —
         // stamp the live generation so the checked sync doesn't re-collect this
         // root every presented frame (writing false left stampedSeq=-1 forever).
-        if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+        if (root.userData) {
+          root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+          root.userData[STAGE_COLLECT_EPOCH_KEY] = shadowCensusEpoch();
+        }
         if (this._withheldDepthCasters) {
           this._withheldDepthCasters.delete(root);
         }
@@ -30818,6 +30964,7 @@ export const render = {
           // drifted while shadows were OFF so its marks describe a dead light set.
           this._invalidateShadowPolicy(child);
           child.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(child);
+          child.userData[STAGE_COLLECT_EPOCH_KEY] = shadowCensusEpoch();
           // Same parked-scale carry the checked-sync feeders run — a queued root
           // whose park earned an oversized node-scale keeps it instead of
           // re-paying the collect+abort arm.
@@ -30858,6 +31005,7 @@ export const render = {
         }
         this._invalidateShadowPolicy(root);
         root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+        root.userData[STAGE_COLLECT_EPOCH_KEY] = shadowCensusEpoch();
         // Resolve entity/lodLevel now — the arm's restore calls _shadowPolicyOptions
         // with whatever's queued, and a null entity forces allowCast=true (band-1
         // over-cast for a frame on every out-of-ortho root) plus lodLevel=null
