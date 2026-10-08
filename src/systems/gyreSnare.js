@@ -149,6 +149,8 @@ function freshRuntime() {
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
     basinCatchLatched: false, // the first basin catch ticks once per empty->net edge
     catchTickPeak: 0,         // escalation ratchet — quieter count-graded ticks fire on each new shown +N peak
+    prevBasinN: 0,            // last-published basin count — the re-tick's position follows whichever lane grew
+    prevSuckN: 0,             // same for the annulus half
     orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
     orbitDir: 1,           // ±1 — revolution direction from the same hash, so successive clumps don't all circle one way
     swirlBlend: 1,         // eased stir sign — chases orbitDir over ~0.5 s (dt·4 across a range of 2) so a snag can't flip the funnel's spiral mid-feed
@@ -360,7 +362,9 @@ export const gyreSnare = {
         this.bus.emit('audio:cue', {
           // A strain break is the verb's biggest loss beat — it gets its own clink +
           // harsh-dust TEAR voice, not the polite release's descending fizzle.
-          id: emitId != null ? (reason === 'strained' ? 'gyre_snare_tear' : 'gyre_snare_drop') : 'gyre_snare_off',
+          // core_lost joins the tear voice: a clump destroyed in the grip is a
+          // shatter, not a polite release — same glassier cue, same close shape.
+          id: emitId != null ? ((reason === 'strained' || reason === 'core_lost') ? 'gyre_snare_tear' : 'gyre_snare_drop') : 'gyre_snare_off',
           gain: emitId != null ? 0.9 : 0.5,
         });
         // A strain break is the verb's biggest loss beat — land it in the body too
@@ -1812,7 +1816,10 @@ export const gyreSnare = {
     bTmp.length = 0;
     for (let i = 0; i < rt.ballIds.length; i++) {
       const id = rt.ballIds[i];
-      if (id === rt.ballId) continue;
+      // The primary skips this lane only while it still owns the clump group
+      // (no live core): a new snag mid-flight hands the overlay to the fresh
+      // core and the still-flying ball would draw bald for its remaining TTL.
+      if (id === rt.ballId && rt.coreId == null) continue;
       const e = state && state.entities ? state.entities.get(id) : null;
       if (!e || e.alive === false || !e.data || !e.data.gyreLaunched || !e.pos) continue;
       const ttlS = e.data.despawnAt != null && Number.isFinite(state && state.simTime)
@@ -1891,14 +1898,22 @@ export const gyreSnare = {
       // stacking — the ratchet keys on the SHOWN count so merges (which pull
       // a body out of it) never double-narrate over the absorb's own voice.
       const shownN = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
+      // Which lane grew? The tick belongs where the arrival happened — a basin
+      // arrival speaks at the maw, an annulus arrival at the clump (up to ~90 wu
+      // apart — an always-maw tick points the ear at empty space during HOLD).
+      const dBasin = rt.basinCount - rt.prevBasinN;
+      const dSuck = (rt.phase === PHASE.HOLD ? rt.suckCount : 0) - rt.prevSuckN;
+      rt.prevBasinN = rt.basinCount;
+      rt.prevSuckN = rt.phase === PHASE.HOLD ? rt.suckCount : 0;
       if ((rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && shownN > rt.catchTickPeak) {
         rt.catchTickPeak = shownN;
         const n = Math.min(6, shownN);
+        const at = dSuck > dBasin ? pub.corePos : maw;
         this.bus.emit('audio:cue', {
           id: 'gyre_snare_catch',
           gain: 0.16 + 0.03 * n,
           rate: 1.3 + 0.05 * n,
-          position: { x: maw.x, z: maw.z },
+          position: { x: at.x, z: at.z },
         });
       }
     }

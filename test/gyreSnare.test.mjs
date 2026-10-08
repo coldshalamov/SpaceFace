@@ -1185,6 +1185,74 @@ test('absorbables inside the cone publish basinCount for the net-read', async ()
   t.cleanup();
 });
 
+// -- the net-read voice: one loud catch tick, then quieter count-graded peaks --
+test('the basin catch voice ticks once, count-grades new peaks, and never re-ticks a regained peak', async () => {
+  const t = await bootPhysics();
+  const cues = () => t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_catch');
+  // Park absorbables inside the basin but past snag range (~34 wu) — the beam
+  // keeps searching with bodies in the net instead of coring the first one.
+  const a = rock(t.sim, T.mawDist + 45, 10, 6, 4);   // ~46 wu off the maw
+  const b = rock(t.sim, T.mawDist + 55, -20, 6, 4);  // ~58 wu
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // press
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // hash-index step for the spawns
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'beaming');
+  assert.equal(t.state.gyreSnare.basinCount, 2);
+  // (a) the first empty→net edge fires exactly one louder tick — the escalation
+  // ratchet seeds from the same count, so no same-tick second emit.
+  assert.equal(cues().length, 1, 'first catch fires once');
+  assert.ok(Math.abs(cues()[0].p.gain - 0.3) < 1e-6, 'first catch is the louder tick');
+  assert.ok(Math.abs(cues()[0].p.rate - 1.35) < 1e-6);
+
+  // (b) a NEW shown peak ticks again, quieter and count-graded.
+  rock(t.sim, T.mawDist + 50, 40, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // index step
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // counted
+  assert.equal(t.state.gyreSnare.basinCount, 3);
+  assert.equal(cues().length, 2, 'new shown peak re-ticks');
+  assert.ok(Math.abs(cues()[1].p.gain - (0.16 + 0.03 * 3)) < 1e-6, `escalation gain grades by n=3 (got ${cues()[1] && cues()[1].p.gain})`);
+  assert.ok(Math.abs(cues()[1].p.rate - (1.3 + 0.05 * 3)) < 1e-6);
+
+  // (c) ratchet-up-only: lose one, regain to the SAME peak — stays silent.
+  b.alive = false; // something ate it while it was still in the funnel
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.basinCount, 2);
+  rock(t.sim, T.mawDist + 52, 12, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // index
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // counted — back to 3, not past
+  assert.equal(t.state.gyreSnare.basinCount, 3, 'regained the old peak');
+  assert.equal(cues().length, 2, 'a regained peak must not re-tick');
+  rock(t.sim, T.mawDist + 48, -45, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.basinCount, 4);
+  assert.equal(cues().length, 3, 'past the old peak ticks again');
+  assert.ok(Math.abs(cues()[2].p.gain - (0.16 + 0.03 * 4)) < 1e-6);
+
+  // (d) the latch re-arms on basin empty: a fresh catch is the loud tick again.
+  a.alive = false;
+  for (const e of t.state.entities.values()) if (e !== t.player && e.type === 'asteroid' && e.alive !== false && e.data && !e.data.gyreCore) e.alive = false;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.basinCount, 0);
+  rock(t.sim, T.mawDist + 46, 15, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.basinCount, 1);
+  assert.equal(cues().length, 4, 're-armed latch refires the first-catch tick');
+  assert.ok(Math.abs(cues()[3].p.gain - 0.3) < 1e-6, 'the re-armed catch is loud again');
+
+  // (e) _drop resets the whole lane — a fresh beam catches loud once more.
+  // (The (d) rock is still in the net: no new spawn, so the re-catch is one tick.)
+  release(t);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.ok(t.state.gyreSnare.basinCount >= 1, 'the net has material (the (d) rock is still in it)');
+  assert.equal(cues().length, 5, 'post-drop catch fires the loud tick');
+  assert.ok(Math.abs(cues()[4].p.gain - 0.3) < 1e-6);
+  release(t);
+  t.cleanup();
+});
+
 // -- saturation beat: gyre_snare_full latches once at the cap crossing --
 test('the absorb that fills the mass cap fires exactly one FULL cue', async () => {
   const t = await bootPhysics();

@@ -92,9 +92,13 @@ void main() {
   float glint = pow(abs(sin(vUv.x * 6.2832 - uTime * 2.4 * uCalm)), 24.0) * mix(0.3, 1.0, uCalm);
   float band = 0.5 + 0.5 * sin(vUv.y * 34.0 - uTime * 13.0 * uCalm);
   float band2 = 0.5 + 0.5 * sin(vUv.y * 71.0 - uTime * 23.0 * uCalm);
+  // Same calm contract as the glint: frozen full-contrast interference bands
+  // bake permanent axial stripes onto a cone the animated version never shows
+  // — fold the product down to an even sheen under reduced motion.
+  float bands = mix(0.25, band * band2, uCalm);
   float rim = smoothstep(0.80, 1.0, vUv.y);
   float apex = smoothstep(0.20, 0.0, vUv.y);
-  float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + band * band2 * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.22);
+  float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + bands * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.22);
   vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4, 0.0, 1.0));
   // Strain warning = a warm wash toward uColWarn, not the near-identical rim
   // white — 'about to tear' is chromatic, not just kinetic. Raw strain (not
@@ -475,6 +479,18 @@ export class GyreSnarePresentation {
     this._halo.visible = false;
     this._halo.frustumCulled = false;
     scene.add(this._halo);
+
+    // Basin edge during HOLD: the pull lane keeps dragging bodies through the
+    // cone while the suck annulus owns the shared halo around the clump — a
+    // second, fainter ring keeps the two-zone gravity story drawn.
+    this._basinHaloMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(glass), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    this._basinHalo = new THREE.Mesh(haloGeo, this._basinHaloMat);
+    this._basinHalo.visible = false;
+    this._basinHalo.frustumCulled = false;
+    scene.add(this._basinHalo);
 
     // Basin pull glows: a faint flat brighten on each body the cone is actually
     // dragging this tick — "increases gravity" reads on the victim itself, not
@@ -930,6 +946,10 @@ export class GyreSnarePresentation {
       // ring + disc warm toward amber as the clump nears slipping.
       this._mawMat.color.copy(this._colHot).lerp(this._colWarn, strainW * 0.6);
       this._discMat.uniforms.uCol.value.copy(this._colMaw).lerp(this._colWarn, strainW * 0.6);
+      // The mouth shivers too: glass, clump and funnel all tremble under strain
+      // while the ring stayed geometrically calm — the tear's tremor belongs at
+      // the rim where the snap actually happens, not only in its color.
+      this._maw.scale.multiplyScalar(1 + 0.03 * strainW * Math.sin(this.time * 31) * calm);
       // Net anticipation: absorbables already inside the cone make the mouth glow
       // brighter before the catch — "×N IN NET" through the glass itself.
       const net = Math.min(3, finite(mirror.basinCount, 0));
@@ -1018,6 +1038,18 @@ export class GyreSnarePresentation {
       } else if (phase === 'launching' && this._halo.visible) {
         this._halo.visible = false;
       }
+      // The basin pull lane runs through the hold too — bodies inside the cone
+      // still get dragged to the maw — so the pull edge stays drawn, fainter:
+      // the suck annulus owns the bright read now, the basin is the outer zone.
+      if (phase === 'holding') {
+        this._basinHalo.position.set(mL.x, 0.42, mL.z);
+        this._basinHalo.scale.setScalar(finite(GYRE_SNARE.basinRadius, 86)
+          * (1 + 0.02 * Math.sin(this.time * 1.7) * calm));
+        this._basinHaloMat.opacity = 0.03 * flashCalm;
+        this._basinHalo.visible = true;
+      } else if (this._basinHalo.visible) {
+        this._basinHalo.visible = false;
+      }
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
       // down over ~0.25 s instead of popping — the collapse is part of the payoff.
@@ -1029,9 +1061,13 @@ export class GyreSnarePresentation {
         // ~120 ms (half the normal ramp) and a ring blooms where the core slipped —
         // the sim publishes the drop reason so the close reads it. Every other close
         // (release, post-launch, boundary) keeps the ~250 ms ease.
-        this._closeSpan = mirror.dropReason === 'strained' ? 0.12 : 0.25;
-        this._closeTear = mirror.dropReason === 'strained';
-        if (mirror.dropReason === 'strained') {
+        // 'strained' AND 'core_lost' close like tears — a clump shot apart in
+        // the grip reads as a shatter, not the calm release ramp. core_lost has
+        // no body to whip (it died), so its burst blooms radially at the spot.
+        const tornClose = mirror.dropReason === 'strained' || mirror.dropReason === 'core_lost';
+        this._closeSpan = tornClose ? 0.12 : 0.25;
+        this._closeTear = tornClose;
+        if (tornClose) {
           // The verb's biggest loss beat outlives the routine bloom like the throw
           // does (rate 1.1 → ~0.9 s) and stretches along the parting whip the sim
           // just applied — the same directed payoff the thrownBeat ring gets.
@@ -1651,7 +1687,7 @@ export class GyreSnarePresentation {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    this.scene.remove(this._beam, this._clump, this._trail, this._trail2, this._grip, this._halo, this._secGroup);
+    this.scene.remove(this._beam, this._clump, this._trail, this._trail2, this._grip, this._halo, this._basinHalo, this._secGroup);
     this._secVeil.geometry.dispose(); this._secVeilMat.dispose();
     for (const m of this._secLumps) m.geometry.dispose(); // lump MATERIALS stay shared via _lumpMats
     this._halo.geometry.dispose(); this._haloMat.dispose();
