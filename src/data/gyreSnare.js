@@ -158,7 +158,7 @@ export const GYRE_SNARE = Object.freeze({
   fuseLowWarnS: 3,           // s of burn left → the fuse-low warning fires (ears/hands, ~3 s out)
   fuseWarnVisS: 8,           // s — the visual telegraph window: HUD ·Ns + bar and the glass
                            // dim all key on this so the countdown reads in one window
-  ballTtlWarnS: 4,           // s — the ball's quiet-TTL telegraph window for HUD `·Ns` +
+  ballTtlWarnS: 3,           // s — the ball's quiet-TTL telegraph window for HUD `·Ns` +
                            // grave countdown (the ribbon's own fade is a separate shape)
   capHoldMult: 1.35,         // ×drain while a clump is held (holding mass is heavier work)
   // Hold drain scales with clump mass up to a cap: the mass term saturates at

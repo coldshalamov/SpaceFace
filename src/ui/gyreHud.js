@@ -136,7 +136,11 @@ export const gyreHud = {
           // ballTxt rides the BOWL-hold window too — the countdown belongs on EVERY
           // phase while a ball flies; a phase flip inside the 0.8s window shouldn't
           // swallow the freshly-thrown ball's own ·Ns.
-          return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t${ballTxt}`, cls: 'gyre-launched' };
+          // The payoff beat keeps the destructive-yield telegraph too — HOLD and
+          // BALL AWAY both carry DMG×; BOWL shouldn't drop the arc's climax.
+          const bowlDmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
+            GYRE_SNARE.launchImpactScaleBase + (this._bowlMass || 0) / GYRE_SNARE.launchImpactScalePerMass).toFixed(1);
+          return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t · DMG×${bowlDmg}${ballTxt}`, cls: 'gyre-launched' };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
@@ -168,7 +172,11 @@ export const gyreHud = {
       // HOLD showed ×N a tick earlier and BALL AWAY will show it again — the biggest
       // beat keeps the member count too (same +1 core convention as the HOLD read).
       this._bowlN = (g.absorbs || 0) + 1;
-      return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t${ballTxt}`, cls: 'gyre-launched' };
+      // Same DMG× the HOLD/AWAY reads carry — the throw's yield telegraph
+      // doesn't drop for the payoff's own ~0.8 s.
+      const bowlDmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
+        GYRE_SNARE.launchImpactScaleBase + (this._bowlMass || 0) / GYRE_SNARE.launchImpactScalePerMass).toFixed(1);
+      return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t · DMG×${bowlDmg}${ballTxt}`, cls: 'gyre-launched' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;

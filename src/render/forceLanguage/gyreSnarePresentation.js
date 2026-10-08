@@ -645,7 +645,9 @@ export class GyreSnarePresentation {
     // Alpha floor: a pebble's 9 s flight keeps a readable streak at range — the
     // throw's mass still grades the shimmer but can't drop the ribbon to ~0.2.
     const massFade = 0.8 + 0.3 * Math.min(1, finite(spec.mass) / GYRE_SNARE.maxClumpMass);
-    mat.uniforms.uAlpha.value = Math.max(spec.alpha * massFade, 0.28) * flashCalm
+    // Proportional floor: a pebble keeps ~85% of its slot alpha — readable at
+    // range without flattening the primary/secondary streak hierarchy.
+    mat.uniforms.uAlpha.value = Math.max(spec.alpha * massFade, spec.alpha * 0.85) * flashCalm
       * (1 - (spec.wind || 0)) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.25));
     mesh.visible = true;
   }
@@ -736,15 +738,20 @@ export class GyreSnarePresentation {
       // The beam projects: the glass GROWS nose→maw over the ignition ramp instead
       // of fading in already-extended — a lash that shoots out to its reach.
       const drawLen = len * Math.max(0.12, wakeEase);
-      this._cone.scale.set(endR, drawLen, endR);
-      this._coneBody.scale.set(endR * 0.97, drawLen, endR * 0.97);
-      this._maw.position.set(drawLen, 0, 0);
+      // The ~100 ms coil responds geometrically, not just in the pulse floor: the
+      // funnel tapers ~7% and the mouth cocks aft a few wu — the glass visibly
+      // tenses against the payload it's about to sling.
+      const windup = phase === 'launching' ? clamp01(finite(mirror.launchWindup01)) : 0;
+      const coilR = endR * (1 - windup * 0.07);
+      const coilBack = windup * Math.min(6, endR * 0.5);
+      this._cone.scale.set(coilR, drawLen, coilR);
+      this._coneBody.scale.set(coilR * 0.97, drawLen, coilR * 0.97);
+      this._maw.position.set(drawLen - coilBack, 0, 0);
       // The mouth gulps geometrically: each absorb kick dilates ring + disc, not just
       // their opacity — the verb's face visibly swallows. During the coil the maw
       // engorges off launchWindup01 — the mouth swells full before it blows.
-      const windup = phase === 'launching' ? clamp01(finite(mirror.launchWindup01)) : 0;
       this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick + 0.16 * windup)); // uniform — the torus circle spans local X and Y
-      this._disc.position.set(drawLen + 1.5, 0, 0);
+      this._disc.position.set(drawLen + 1.5 - coilBack, 0, 0);
       this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick + 0.10 * windup));
       // holdLag stretch: while the ship drags the clump off its orbit slot the mouth
       // leans a few wu toward the displaced hold point — the stretch reads in the
@@ -1369,9 +1376,15 @@ export class GyreSnarePresentation {
         // Same loose-rubble drift as the primary clump — secondaries bob on the
         // group's own orbit-seeded phase, not flat at 0.6 like a HUD overlay.
         this._secGroup.position.set(lp.x,
-          0.6 + Math.sin(this.time * 0.7 + (finite(sb.id) % 7)) * 0.3 * calm, lp.z);
+          0.6 + Math.sin(this.time * 0.7 + (Math.abs(this._secIdHash) % 7)) * 0.3 * calm, lp.z);
         const ballR = Math.max(2.5, finite(sb.r, 8));
         this._secR = ballR; // grave scatter flings off this radius
+        // String ids hash like the member-lump seed — finite(id)%7 folds every
+        // non-numeric id to 0 and locksteps the bob phase across secondaries.
+        let sbh = 0;
+        const sids = String(sb.id);
+        for (let c2 = 0; c2 < sids.length; c2++) sbh = ((sbh * 31) + sids.charCodeAt(c2)) | 0;
+        this._secIdHash = sbh;
         this._secVeil.scale.setScalar(ballR * 1.22);
         // Mass-graded like its siblings — a capped secondary katamari flies with
         // more than a pebble's whisper veil.
