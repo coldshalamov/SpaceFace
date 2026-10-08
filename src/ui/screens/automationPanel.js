@@ -16,6 +16,7 @@ import { escapeHtml } from '../comms.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { industryReadoutFromState, renderIndustryStrip, traderCycleLine } from './industryReadout.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
@@ -845,6 +846,19 @@ export const automationScreen = {
       if (!sel) return;
       this._onAction('assignProgram', sel.dataset.ref, sel.dataset.kind, sel.value);
     });
+
+    // A finished trader cycle had no reader. The strip says what the receipt paid.
+    this._cycleNote = '';
+    if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
+      const off = ctx.bus.on('automation:traderCycleCompleted', (payload) => {
+        this._cycleNote = traderCycleLine(payload);
+        const node = this._root && this._root.querySelector('[data-industry-cycle]');
+        if (!node) return;
+        node.hidden = !this._cycleNote;
+        node.textContent = this._cycleNote;
+      });
+      if (typeof off === 'function') this._offCycle = off;
+    }
   },
 
   onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
@@ -1141,6 +1155,8 @@ export const automationScreen = {
   },
 
   _renderOperationsBoard(frag) {
+    const readout = industryReadoutFromState(this._ctx && this._ctx.state);
+    frag.appendChild(renderIndustryStrip(readout, { cycle: this._cycleNote || '' }));
     const summary = summarizeAutomationOperations(this._ctx.state);
     const next = automationNextAction(this._ctx.state);
     const capLoad = describeAutomationCapLoad(summary);
