@@ -86,7 +86,7 @@ function fieldAt(seed, dtDays) {
 // ── pure kernel ────────────────────────────────────────────────────────────────────────────
 
 test('covers all 24 stable sectors in seeded order', () => {
-  assert.equal(SECTORS.length, 24);
+  assert.equal(SECTORS.length, 25);
   const field = fieldAt(42, 2);
   const proj = projectFieldEmbodiment({
     field,
@@ -96,7 +96,7 @@ test('covers all 24 stable sectors in seeded order', () => {
     baseDangerFor: (id) => dangerIndex(SECTOR_BY_ID.get(id)),
   });
   const keys = Object.keys(proj.bySector);
-  assert.equal(keys.length, 24);
+  assert.equal(keys.length, 25);
   assert.deepEqual(keys, SECTOR_IDS);
   assert.ok(proj.intents.length >= 24 * 3, 'at least core intents per sector');
   // Global list sorted by intentId
@@ -292,7 +292,7 @@ test('sectorSim emits embodiment for all 24 sectors on field advance', () => {
   assert.equal(payload.writesCargo, false);
   assert.equal(payload.writesRep, false);
   assert.equal(payload.writesHull, false);
-  assert.equal(payload.sectorIds.length, 24);
+  assert.equal(payload.sectorIds.length, 25);
   assert.deepEqual(payload.sectorIds, SECTOR_IDS);
   assert.ok(payload.intents.length > 0);
   // Single-writer: no direct credits/faction/cargo mutations

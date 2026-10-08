@@ -1,4 +1,4 @@
-// src/data/sectors.js – canonical 24-sector persistent galaxy graph.
+// src/data/sectors.js – canonical persistent galaxy graph.
 // Sector IDs use sector_ prefix; station IDs use station_ prefix; faction IDs use faction_ prefix.
 // Fixed geography (stations/gates/fields/POIs) merged from sectorAnchors.js — see design/world-identity/PIPELINE.md.
 import {
@@ -13,6 +13,7 @@ import { VESPER } from './vesper.js';
 import { SOLSTICE } from './solstice.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
+import { BOLUS_PALETTE, bolusSectorCard } from './theBolus.js';
 // Per ARCHITECTURE §0.8:
 //   dangerTier(s) = clamp(round((1 - s.security) * 5), 0, 5)
 //   wealthIndex(s) = clamp(0.3 + 0.16*tier + 0.10*(1-security), 0.3, 1.6)
@@ -42,6 +43,8 @@ export const SECTOR_PALETTE_CLASSES = {
     key: 0xc8b6ff, rim: 0x54ffb0, fill: 0x4ddc92, ambient: 0x494760,
     fog: 0x08050d, fogDensity: 0.00012, nebulaTint: 0x5a1e8a, dust: 0x79ffc8,
   },
+  // Wet interior. Luminance stays inside the palette check; the room goes dark at runtime.
+  viscera: BOLUS_PALETTE,
 };
 
 const CORE_SECTORS = [
@@ -672,6 +675,7 @@ export const SECTORS = [
       : sector;
   }),
   ...FRONTIER_SECTORS,
+  { ...bolusSectorCard(), palette: SECTOR_PALETTE_CLASSES.viscera },
 ]
   .map(appendPq019FacilityPois)
   .map(applySectorAnchors)

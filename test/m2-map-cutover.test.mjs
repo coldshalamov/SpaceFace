@@ -367,9 +367,9 @@ test('C4-WP-04 galaxyMap emits world:requestRoute + ui:setCourse; never assigns 
 // ════════════════════════════════════════════════════════════════════════════
 
 test('C4-GRAPH-01 SECTORS is 24 unique regions; Helios reaches all; corridor ids match', () => {
-  assert.equal(SECTORS.length, 24);
-  assert.equal(new Set(SECTORS.map((s) => s.id)).size, 24);
-  assert.equal(reachableFrom(HELIOS).length, 24);
+  assert.equal(SECTORS.length, 25);
+  assert.equal(new Set(SECTORS.map((s) => s.id)).size, 25);
+  assert.equal(reachableFrom(HELIOS).length, 25);
   assert.deepEqual(CORRIDOR_SECTOR_IDS, SECTORS.map((s) => s.id));
 });
 
@@ -552,7 +552,7 @@ test('C4-DISC-02 buildGalaxyModel is discovery-aware pure reader (no fog write)'
   const model = buildGalaxyModel(state);
   assert.equal(model.level, 'galaxy');
   assert.ok(Array.isArray(model.nodes));
-  assert.equal(model.nodes.length, 24, 'galaxy model must surface all 24 region nodes');
+  assert.equal(model.nodes.length, 25, 'galaxy model must surface all 25 region nodes');
   assert.ok(Array.isArray(model.edges));
   // Pure: discovery bag unchanged
   const before = JSON.stringify(state.world.discovery);

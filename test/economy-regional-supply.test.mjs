@@ -41,10 +41,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CMDTY_IDS = new Set(COMMODITIES.map((c) => c.id));
 const SECTOR_IDS = new Set(SECTORS.map((s) => s.id));
 
-test('live galaxy is 24 sectors', () => {
-  assert.equal(SECTORS.length, 24);
-  assert.equal(REGIONAL_ECONOMY_PROFILES.length, 24);
-  assert.equal(REGIONAL_ECONOMY_SECTOR_IDS.length, 24);
+test('live galaxy is 25 sectors', () => {
+  assert.equal(SECTORS.length, 25);
+  assert.equal(REGIONAL_ECONOMY_PROFILES.length, 25);
+  assert.equal(REGIONAL_ECONOMY_SECTOR_IDS.length, 25);
 });
 
 test('catalog validation is clean', () => {
@@ -56,7 +56,7 @@ test('catalog validation is clean', () => {
   assert.equal(result.errors.length, 0);
 });
 
-test('all 24 live sectors covered by profiles + recipes', () => {
+test('all 25 live sectors covered by profiles + recipes', () => {
   for (const sector of SECTORS) {
     const profile = getRegionalEconomyProfile(sector.id);
     assert.ok(profile, `missing profile for ${sector.id}`);
@@ -66,7 +66,7 @@ test('all 24 live sectors covered by profiles + recipes', () => {
     assert.ok(recipes.length <= MAX_RECIPES_PER_REGION, `too many recipes for ${sector.id}`);
   }
   const all = allRegionalPressureRecipes();
-  assert.equal(Object.keys(all).length, 24);
+  assert.equal(Object.keys(all).length, 25);
 });
 
 test('commodity and sector ids are valid', () => {
@@ -121,8 +121,8 @@ test('identity keys and fingerprints are distinct', () => {
     assert.ok(!fps.has(fp), `dup fingerprint ${fp}`);
     fps.add(fp);
   }
-  assert.equal(keys.size, 24);
-  assert.equal(fps.size, 24);
+  assert.equal(keys.size, 25);
+  assert.equal(fps.size, 25);
 });
 
 test('pressure and units are bounded; signs match role', () => {

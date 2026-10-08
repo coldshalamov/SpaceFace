@@ -29,6 +29,11 @@ import {
   SOUTH_ANCHORS,
   SOUTH_ZONES,
 } from './south.js';
+import {
+  BOLUS_SECTOR_ID,
+  BOLUS_CHARON_GATE_POS,
+  BOLUS_ASHFALL_GATE_POS,
+} from '../theBolus.js';
 
 export const FRONTIER_SECTOR_IDS = Object.freeze([
   ...WEST_REGION_IDS,
@@ -75,7 +80,8 @@ export const FRONTIER_CORE_NEIGHBOR_PATCHES = Object.freeze({
   sector_ceres_belt: Object.freeze(['sector_hyperion_cut']),
   sector_pallas_drift: Object.freeze(['sector_nyx_march']),
   sector_sker_haven: Object.freeze(['sector_kepler_scar', 'sector_rhea_cinder']),
-  sector_ashfall_reach: Object.freeze(['sector_eris_margin', 'sector_sedna_dark']),
+  sector_ashfall_reach: Object.freeze(['sector_eris_margin', 'sector_sedna_dark', BOLUS_SECTOR_ID]),
+  sector_charon_expanse: Object.freeze([BOLUS_SECTOR_ID]),
   sector_io_reach: Object.freeze(['sector_nereid_shoal']),
   sector_tethys_junction: Object.freeze(['sector_nereid_shoal', 'sector_dione_lane']),
   sector_veil_nebula: Object.freeze(['sector_proteus_well', 'sector_triton_wake']),
@@ -95,6 +101,10 @@ export const FRONTIER_CORE_GATE_PATCHES = Object.freeze({
   sector_ashfall_reach: Object.freeze([
     Object.freeze({ to: 'sector_eris_margin', pos: Object.freeze({ x: -3189, z: 3189 }) }),
     Object.freeze({ to: 'sector_sedna_dark', pos: Object.freeze({ x: 1094, z: 4375 }) }),
+    Object.freeze({ to: BOLUS_SECTOR_ID, pos: Object.freeze({ x: BOLUS_ASHFALL_GATE_POS.x, z: BOLUS_ASHFALL_GATE_POS.z }) }),
+  ]),
+  sector_charon_expanse: Object.freeze([
+    Object.freeze({ to: BOLUS_SECTOR_ID, pos: Object.freeze({ x: BOLUS_CHARON_GATE_POS.x, z: BOLUS_CHARON_GATE_POS.z }) }),
   ]),
   sector_io_reach: Object.freeze([
     Object.freeze({ to: 'sector_nereid_shoal', pos: Object.freeze({ x: 3374, z: -1687 }) }),

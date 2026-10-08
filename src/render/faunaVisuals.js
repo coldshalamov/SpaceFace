@@ -4,7 +4,7 @@
 // Entities are kinematic (type 'fauna', no physics body) — the mesh IS the creature.
 
 import * as THREE from 'three';
-import { faunaSpeciesById } from '../data/alienFauna.js';
+import { faunaSpeciesById, FAUNA_SPECIES } from '../data/alienFauna.js';
 import { alienStrainById } from '../data/alienEcology.js';
 import { creatureSkin } from './creatureSkinLibrary.js';
 
@@ -651,6 +651,74 @@ function buildPilgrimSpine(colors) {
   return g;
 }
 
+function buildBolusFauna(colors, species) {
+  const g = new THREE.Group();
+  const id = species && species.id || 'bolus_knob';
+  const kind = id.replace(/^bolus_/, '');
+  const scale = Math.max(6, (species && species.radius) || 12);
+  const tissue = tissueMat(colors.tissue);
+  const cord = tissueMat(colors.filament);
+  const glow = glowMat(colors.glow, 0.9);
+  const ball = (key, mat, sx, sy, sz, x, y, z) => {
+    const mesh = new THREE.Mesh(geo(key, () => new THREE.SphereGeometry(1, 10, 8)), mat);
+    mesh.scale.set(sx, sy, sz);
+    mesh.position.set(x || 0, y || 0, z || 0);
+    g.add(mesh);
+  };
+  ball(`bolus_${kind}_core`, tissue, scale, scale * 0.55, scale * 0.85, 0, 0, 0);
+  if (kind === 'tendril' || kind === 'nerve' || kind === 'frenum' || kind === 'tendon' || kind === 'pleat') {
+    const mesh = new THREE.Mesh(geo('bolus_cord', () => {
+      const shape = new THREE.CylinderGeometry(0.12, 0.22, 3.4, 6);
+      shape.rotateZ(Math.PI / 2);
+      return shape;
+    }), cord);
+    mesh.scale.setScalar(scale * 0.85);
+    g.add(mesh);
+    if (kind === 'tendril') {
+      const fork = new THREE.Mesh(geo('bolus_tendril_fork', () => {
+        const shape = new THREE.CylinderGeometry(0.08, 0.16, 2.1, 5);
+        shape.rotateZ(Math.PI / 3);
+        return shape;
+      }), cord);
+      fork.scale.setScalar(scale * 0.7);
+      fork.position.set(scale * 0.35, 0, scale * 0.15);
+      g.add(fork);
+    }
+  } else if (kind === 'tooth' || kind === 'spur' || kind === 'papilla' || kind === 'uvula') {
+    const mesh = new THREE.Mesh(geo(`bolus_spike_${kind}`, () => {
+      const shape = new THREE.ConeGeometry(0.4, 1.7, 5);
+      shape.rotateX(Math.PI / 2);
+      return shape;
+    }), tissue);
+    mesh.scale.setScalar(scale);
+    g.add(mesh);
+  } else if (kind === 'lantern' || kind === 'blister' || kind === 'floater' || kind === 'cyst') {
+    const mesh = new THREE.Mesh(geo('bolus_glowball', () => new THREE.SphereGeometry(0.35, 8, 6)), glow);
+    mesh.scale.setScalar(scale);
+    mesh.position.y = scale * 0.15;
+    g.add(mesh);
+  } else if (kind === 'drum' || kind === 'ring' || kind === 'suture' || kind === 'baleen' || kind === 'comb' || kind === 'hush') {
+    const mesh = new THREE.Mesh(geo(`bolus_torus_${kind}`, () => new THREE.TorusGeometry(0.75, 0.16, 6, 10)), kind === 'suture' ? glow : cord);
+    mesh.scale.setScalar(scale * 0.9);
+    g.add(mesh);
+  } else if (kind === 'hauler') {
+    const mesh = new THREE.Mesh(geo('bolus_hauler_box', () => new THREE.BoxGeometry(1.8, 0.35, 0.7)), cord);
+    mesh.scale.setScalar(scale * 0.7);
+    g.add(mesh);
+  } else if (kind === 'glove' || kind === 'hairball' || kind === 'bezoar' || kind === 'concretion') {
+    ball(`bolus_${kind}_lump`, cord, scale * 0.55, scale * 0.4, scale * 0.5, scale * 0.45, 0, scale * 0.15);
+  } else if (kind === 'rib' || kind === 'crook') {
+    const mesh = new THREE.Mesh(geo('bolus_hook', () => {
+      const shape = new THREE.TorusGeometry(0.7, 0.12, 5, 8, Math.PI);
+      return shape;
+    }), cord);
+    mesh.scale.setScalar(scale);
+    g.add(mesh);
+  }
+  g.name = `SF_Fauna_${id}`;
+  return g;
+}
+
 const BUILDERS = {
   veil_ray: (c, s) => buildVeilRay(c),
   needle_swarm: (c, s) => buildNeedleSwarm(c, s),
@@ -675,6 +743,12 @@ const BUILDERS = {
   stone_lung: (c) => buildStoneLung(c),
   pilgrim_spine: (c) => buildPilgrimSpine(c),
 };
+
+for (const speciesId of Object.keys(FAUNA_SPECIES)) {
+  if (speciesId.startsWith('bolus_') && !BUILDERS[speciesId]) {
+    BUILDERS[speciesId] = (colors, species) => buildBolusFauna(colors, species);
+  }
+}
 
 export function buildFaunaMesh(entity) {
   const eco = entity && entity.data && entity.data.ecology;

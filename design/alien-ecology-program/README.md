@@ -30,6 +30,7 @@ The program obeys current canon unless the owner later explicitly revises it. In
 - 10_EXECUTION_ROADMAP.md — dependency-ordered phases and agent-sized packets.
 - 11_CONTENT_CATALOG.md — a large quarry of creatures, sites, events, rewards, machine relics, setpieces, and late-game moments.
 - 12_MIGRATION_AND_CONFLICTS.md — how to reconcile Understory, Mycelia, Vael "alien" metadata, Vethari canon, and Verge-Layers without throwing away existing work.
+- 16_THE_BOLUS.md — interior sector. A colonized carrier throat between Charon and Ashfall: ship set, hold list, and the build contract.
 
 ## North-star rules
 

@@ -44,6 +44,7 @@ import {
 } from '../src/data/frontierRegions/west.js';
 
 const ALL_24_IDS = [...ORIGINAL_STORY_IDS, ...FRONTIER_SECTOR_IDS].sort();
+const BOLUS_FIXTURE_ID = 'sector_the_bolus';
 
 function makeOrigin(id, cellX, cellY) {
   return { id, x: cellX * LATTICE_WU, z: cellY * LATTICE_WU };
@@ -61,10 +62,10 @@ function makeOrigins(records) {
   return out;
 }
 
-/** A minimal connected, reciprocal 24-sector graph on the canonical lattice. */
+/** A minimal connected, reciprocal 25-sector graph on the canonical lattice. */
 function makePassingFixture() {
-  // Build a spanning tree from Helios through all 24 IDs, then make it reciprocal.
-  const ordered = [...ALL_24_IDS];
+  // Story + frontier stay the original 24. The bolus is the extra interior host.
+  const ordered = [...ALL_24_IDS, BOLUS_FIXTURE_ID];
   const neighbors = {};
   for (let i = 0; i < ordered.length; i += 1) {
     neighbors[ordered[i]] = [];
@@ -77,9 +78,9 @@ function makePassingFixture() {
   }
 
   // Place origins on a clean lattice strip so spacing is unambiguous.
-  const origins = ALL_24_IDS.map((id, idx) => makeOrigin(id, idx, 0));
+  const origins = ordered.map((id, idx) => makeOrigin(id, idx, 0));
   return {
-    sectors: makeSectors(ALL_24_IDS, neighbors),
+    sectors: makeSectors(ordered, neighbors),
     origins: makeOrigins(origins),
   };
 }
@@ -109,7 +110,7 @@ function findCheck(result, name) {
 // ── contract constants ──────────────────────────────────────────────────────────────────────
 
 test('canonical counts and ID lists are stable', () => {
-  assert.equal(EXPECTED_TOTAL_SECTORS, 24);
+  assert.equal(EXPECTED_TOTAL_SECTORS, 25);
   assert.equal(EXPECTED_STORY_COUNT, 10);
   assert.equal(EXPECTED_FRONTIER_COUNT, 14);
   assert.equal(ORIGINAL_STORY_IDS.length, 10);
@@ -119,7 +120,7 @@ test('canonical counts and ID lists are stable', () => {
 
 // ── passing fixture ─────────────────────────────────────────────────────────────────────────
 
-test('passing 24-sector fixture accepts all checks', () => {
+test('passing 25-sector fixture accepts all checks', () => {
   const { sectors, origins } = makePassingFixture();
   const result = checkM2bSectorGraph({ sectors, origins });
 

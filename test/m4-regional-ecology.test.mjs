@@ -59,13 +59,13 @@ function makeHarness(seed = 47) {
   return { state, bus, log, system };
 }
 
-test('regional ecology catalog covers all 24 regions with bounded distinct identities', () => {
-  assert.equal(REGIONAL_ECOLOGY_PROFILES.length, 24);
+test('regional ecology catalog covers all 25 regions with bounded distinct identities', () => {
+  assert.equal(REGIONAL_ECOLOGY_PROFILES.length, 25);
   assert.deepEqual(
     new Set(REGIONAL_ECOLOGY_PROFILES.map((profile) => profile.sectorId)),
     new Set(SECTORS.map((sector) => sector.id)),
   );
-  assert.equal(new Set(REGIONAL_ECOLOGY_PROFILES.map((profile) => profile.fingerprint)).size, 24);
+  assert.equal(new Set(REGIONAL_ECOLOGY_PROFILES.map((profile) => profile.fingerprint)).size, 25);
   const liveFamilies = new Set(REGIONAL_ECOLOGY_PROFILES.map((profile) => profile.familyId));
   assert.ok(liveFamilies.size >= 6, `need ≥6 macro-families, got ${liveFamilies.size}`);
   for (const familyId of liveFamilies) {

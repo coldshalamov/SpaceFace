@@ -59,6 +59,32 @@ export const FAUNA_STIMULI = Object.freeze([
 ]);
 
 // Per-species grammar. Angles/ranges in WU; times in sim seconds.
+function bolusFauna(id, name, radius, speed, role, note) {
+  return Object.freeze({
+    id,
+    name,
+    signature: 'fauna',
+    role,
+    radius,
+    members: 1,
+    speed,
+    fleeSpeed: speed > 0 ? speed * 1.4 : 0,
+    turnRate: 0.8,
+    alertR: 240,
+    threatenR: 40,
+    preferredR: 80,
+    relayAffinity: 0.1,
+    sessile: speed === 0,
+    capturable: true,
+    physicsBody: true,
+    stimuli: Object.freeze({ heat: 0.2, vibration: 0.7, scan: 0.15, mass: 0.25, weapon: 0.35, precursor_tone: 0.05, spore_density: 0.45 }),
+    anatomy: Object.freeze({ hostTissue: 'colonized carrier tissue', fungalTissue: 'ashfall choir filament', relayTissue: false, cystLoad: 'light' }),
+    coherenceLoss: Object.freeze({ alertMult: 1, speedMult: 1, latency: 0.4 }),
+    drives: Object.freeze({ idle: speed ? 'drift' : 'anchored', curious: 'drift', tense: 'flee', panic: 'flee' }),
+    note,
+  });
+}
+
 export const FAUNA_SPECIES = Object.freeze({
   // ── Phase 0–4 vertical-slice species ────────────────────────────────────────────────
   needle_swarm: Object.freeze({
@@ -467,6 +493,38 @@ export const FAUNA_SPECIES = Object.freeze({
     drives: Object.freeze({ idle: 'migrate', curious: 'migrate', tense: 'migrate', panic: 'flee' }),
     note: 'A procession of linked segments walking a route older than the charts. Where it ends, nothing has reached yet.',
   }),
+  bolus_knob: bolusFauna('bolus_knob', 'Cartilage Knob', 22, 0, 'sessile', 'A swing point on the wall road. It holds.'),
+  bolus_tendon: bolusFauna('bolus_tendon', 'Tract Tendon', 24, 0, 'sessile', 'A taut line here stalls the swallow for one cycle.'),
+  bolus_tooth: bolusFauna('bolus_tooth', 'False Tooth', 22, 0, 'sessile', 'Looks like a knob. Pulls while the line is taut.'),
+  bolus_tendril: bolusFauna('bolus_tendril', 'Filament Curtain', 26, 0, 'sessile', 'A fleshy curtain. Legal Massline endpoint.'),
+  bolus_lantern: bolusFauna('bolus_lantern', 'Gall Lantern', 14, 0, 'sessile', 'A wet light. It does not burn.'),
+  bolus_fingerling: bolusFauna('bolus_fingerling', 'Fingerling', 8, 28, 'grazer', 'Nursery young. They bolt when you boost.'),
+  bolus_louse: bolusFauna('bolus_louse', 'Coin-Louse', 8, 16, 'scavenger', 'Scurries in the dark. Freezes in the nose cone.'),
+  bolus_drum: bolusFauna('bolus_drum', 'Blind Drum', 16, 28, 'hunter', 'Chases thrust, not light. Throwable.'),
+  bolus_valve: bolusFauna('bolus_valve', 'Valve Lip', 24, 0, 'sessile', 'Hold the line and it keeps a stitch.'),
+  bolus_suture: bolusFauna('bolus_suture', 'White Suture', 24, 0, 'sessile', 'A valve that already took the stitch.'),
+  bolus_glove: bolusFauna('bolus_glove', 'Glove-Tick', 20, 8, 'carrier', 'Nudges the slow ship. Yanks the fast one.'),
+  bolus_hauler: bolusFauna('bolus_hauler', 'Digesting Hauler', 48, 0, 'sessile', 'A hull the trench has not finished.'),
+  bolus_rib: bolusFauna('bolus_rib', 'Loose Rib', 16, 0, 'scavenger', 'A bone you can throw.'),
+  bolus_bezoar: bolusFauna('bolus_bezoar', 'Bezoar', 14, 0, 'scavenger', 'Grit the gut would not keep. Whip it once.'),
+  bolus_mite: bolusFauna('bolus_mite', 'Line Mite', 6, 10, 'grazer', 'Slow contact fouls the hull. It does not cut the line.'),
+  bolus_nerve: bolusFauna('bolus_nerve', 'Nerve Cord', 20, 0, 'sessile', 'Hold the line. There is no heart to kill.'),
+  bolus_ring: bolusFauna('bolus_ring', 'Stitch-Ring', 26, 0, 'sessile', 'An honest anchor. It does not move.'),
+  bolus_hairball: bolusFauna('bolus_hairball', 'Hairball', 36, 0, 'sessile', 'Fused scrap near the cough.'),
+  bolus_baleen: bolusFauna('bolus_baleen', 'Baleen Toll', 28, 0, 'sessile', 'Go limp and it lets you. Boost and it shoves.'),
+  bolus_floater: bolusFauna('bolus_floater', 'Gall Sac', 18, 6, 'drifter', 'A gross drift. It does not chase.'),
+  bolus_blister: bolusFauna('bolus_blister', 'Gall Blister', 22, 0, 'sessile', 'A taut hold pays a dressing.'),
+  bolus_cyst: bolusFauna('bolus_cyst', 'Milk Cyst', 14, 0, 'scavenger', 'One stone, then it is still on the line.'),
+  bolus_polyp: bolusFauna('bolus_polyp', 'Polyp', 22, 0, 'sessile', 'A dressing with a little hull sheen attached.'),
+  bolus_concretion: bolusFauna('bolus_concretion', 'Cough Concretion', 12, 0, 'scavenger', 'A pebble in the hairball lee.'),
+  bolus_papilla: bolusFauna('bolus_papilla', 'Sour Papilla', 22, 0, 'sessile', 'Sours the false tooth. Does not disarm it.'),
+  bolus_hush: bolusFauna('bolus_hush', 'Iris Pin', 22, 0, 'sessile', 'Pins the breath shut for twelve seconds.'),
+  bolus_spur: bolusFauna('bolus_spur', 'Drum Spur', 22, 0, 'sessile', 'Nearby drums go deaf to thrust.'),
+  bolus_frenum: bolusFauna('bolus_frenum', 'Mouth Frenum', 22, 0, 'sessile', 'The glove forgets how to yank.'),
+  bolus_comb: bolusFauna('bolus_comb', 'Filter Comb', 22, 0, 'sessile', 'The trench stops biting for a few seconds.'),
+  bolus_uvula: bolusFauna('bolus_uvula', 'Road Uvula', 22, 0, 'sessile', 'While the line is held, it walks you back to the wall.'),
+  bolus_crook: bolusFauna('bolus_crook', 'Louse Crook', 22, 0, 'sessile', 'Lice nearby freeze while the line is held.'),
+  bolus_pleat: bolusFauna('bolus_pleat', 'Tract Pleat', 22, 0, 'sessile', 'One cough up-tract, then it needs a rest.'),
 });
 
 export function faunaSpeciesById(id) {
