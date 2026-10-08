@@ -19231,7 +19231,11 @@ export const render = {
           state.render.liveSectorFirstFlightIds = null;
           this._arrivalRosterIds = null;
           this._arrivalRosterIter = null;
-          mintResidentReattachSweep(this);
+          // Honor the lane's fault park like the service pump does — a keep-GPU
+          // event inside the same epoch must not re-mint a faulted sweep.
+          if (this._residentReattachFaultEpoch !== serviceFaultEpoch(state)) {
+            mintResidentReattachSweep(this);
+          }
           resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
           if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
             state.render.resumeDeferredPipelineAdmissions({ hullsOnly: true });
@@ -19304,7 +19308,9 @@ export const render = {
     onBus('save:loaded', () => {
       clearRendererMeshLatches(this.state);
       if (this._sessionRecookKeepGpu === true) {
-        mintResidentReattachSweep(this);
+        if (this._residentReattachFaultEpoch !== serviceFaultEpoch(this.state)) {
+          mintResidentReattachSweep(this);
+        }
         // Same as the sector:enter keep-GPU path: reattach only covers entities whose ids
         // survived the restore, so leave the reconcile armed for the loading-mode gap pass.
         this._meshReconcileDirty = true;
