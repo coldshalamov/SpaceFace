@@ -3574,7 +3574,7 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
   staticBatches.flush();
   yield;
   reconcileMaplessHullMaterialAliases(palette);
-  canonicalizeMaplessHullMaterials(root, palette);
+  yield* canonicalizeMaplessHullMaterials(root, palette);
   yield;
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
@@ -4336,7 +4336,6 @@ function failAuthoredPlaceAdmission(
   boundary, fallbackRoot, entity, renderer, options, setActive, reason, error, flags = {},
 ) {
   assertQueuedAuthoredAdmissionActive(options, 'before-place-failure');
-  if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason);
   const admissionEntity = options.admissionEntity || entity;
   // A stale run's fail legs are bookkeeping-only: the epoch-scoped release frees its own pins,
   // but every verdict write — readmission mark, same-semantic-fallback settle, 'unavailable' —
@@ -4691,6 +4690,32 @@ export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, ce
 
 const _composedPlaceBoundsBox = new THREE.Box3();
 const _composedPlaceBoundsVec = new THREE.Vector3();
+const _composedPlaceBoundsExpand = new THREE.Box3();
+
+// Stepped twin of `box.setFromObject(root, precise=false)` — the union is
+// order-free so an explicit-stack DFS reproduces it identically while the
+// station-scale walk paces inside the build leg's yield budget.
+function* expandComposedPlaceBoundsSteps(root, box) {
+  box.makeEmpty();
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    object.updateWorldMatrix(false, false);
+    const geometry = object.geometry;
+    if (geometry) {
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      if (geometry.boundingBox) {
+        _composedPlaceBoundsExpand.copy(geometry.boundingBox).applyMatrix4(object.matrixWorld);
+        box.union(_composedPlaceBoundsExpand);
+      }
+    }
+    const kids = object.children || [];
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
+  }
+}
 
 // Measured committed envelopes per resolved file stem, in authored units (committed
 // size ÷ resolvePlaceDrawScale). The pending stamp's record/census estimate covers only the
@@ -4826,7 +4851,7 @@ function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options 
   staticBatches.flush();
   yield;
   reconcileMaplessHullMaterialAliases(palette);
-  canonicalizeMaplessHullMaterials(root, palette);
+  yield* canonicalizeMaplessHullMaterials(root, palette);
   yield;
   normalizePlacePropBindings(bindings);
   centerAuthoredPlaceRoot(root, record, scale, latchPlaceTransform(data) || tallyThreePlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data));
@@ -4834,9 +4859,9 @@ function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options 
   // not the GLB's internal assetId.
   installAuthoredApproachYaw(root, entity, ownerBoundary?.userData?.placeId || placeId);
   installWorldSitePresentation(root, entity);
-  installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings);
-  installStationOpaqueDepthPrepass(root, entity, bindings);
-  specializeClaimRelayOpaqueMaterials(root, placeId);
+  yield* installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings);
+  yield* installStationOpaqueDepthPrepass(root, entity, bindings);
+  yield* specializeClaimRelayOpaqueMaterials(root, placeId);
   yield;
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
@@ -4874,7 +4899,7 @@ function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options 
   // entityVisualCullRadius prefers the stamp over its own lazy measurement, so an
   // under-covering stamp would classify the biggest on-glass bodies at a fraction of their
   // drawn reach for the root's whole life.
-  _composedPlaceBoundsBox.setFromObject(root);
+  yield* expandComposedPlaceBoundsSteps(root, _composedPlaceBoundsBox);
   if (!_composedPlaceBoundsBox.isEmpty()) {
     const measuredCenter = _composedPlaceBoundsBox.getCenter(_composedPlaceBoundsVec);
     const measuredSize = [
@@ -4910,39 +4935,47 @@ function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options 
   };
 }
 
-function specializeClaimRelayOpaqueMaterials(root, placeId) {
+function* specializeClaimRelayOpaqueMaterials(root, placeId) {
   if (!root || placeId !== CLAIM_RELAY_PLACE_ID) return;
   const variants = new Map();
   const roles = new Set();
   let packedOrmMaterialCount = 0;
 
-  root.traverse((object) => {
-    if (!object.isMesh || object.userData?.spacefaceStaticBatch !== true || !object.material) return;
-    const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material];
-    const specialized = sourceMaterials.map((source) => {
-      if (!source) return source;
-      let variant = variants.get(source);
-      if (!variant) {
-        // Preserve the source's shader hooks — a bare clone() drops own-property
-        // onBeforeCompile, and installSingleSamplePackedOrmShader would then capture the
-        // dropped default as its chain target instead of the real patch.
-        variant = cloneMaterialPreservingShaderHooks(source);
-        variant.name = `${source.name || 'ClaimRelayMaterial'}_ClosedFrontPackedOrm`;
-        variant.side = THREE.FrontSide;
-        variant.userData = {
-          ...(source.userData || {}),
-          spacefaceClaimRelayClosedSurface: true,
-        };
-        installSingleSamplePackedOrmShader(variant);
-        if (variant.userData.spacefacePackedOrmSingleSample === true) packedOrmMaterialCount += 1;
-        const role = String(variant.userData.spacefaceMaterialRole || variant.name || '').trim();
-        if (role) roles.add(role);
-        variants.set(source, variant);
-      }
-      return variant;
-    });
-    object.material = Array.isArray(object.material) ? specialized : specialized[0];
-  });
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.isMesh && object.userData?.spacefaceStaticBatch === true && object.material) {
+      const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material];
+      const specialized = sourceMaterials.map((source) => {
+        if (!source) return source;
+        let variant = variants.get(source);
+        if (!variant) {
+          // Preserve the source's shader hooks — a bare clone() drops own-property
+          // onBeforeCompile, and installSingleSamplePackedOrmShader would then capture the
+          // dropped default as its chain target instead of the real patch.
+          variant = cloneMaterialPreservingShaderHooks(source);
+          variant.name = `${source.name || 'ClaimRelayMaterial'}_ClosedFrontPackedOrm`;
+          variant.side = THREE.FrontSide;
+          variant.userData = {
+            ...(source.userData || {}),
+            spacefaceClaimRelayClosedSurface: true,
+          };
+          installSingleSamplePackedOrmShader(variant);
+          if (variant.userData.spacefacePackedOrmSingleSample === true) packedOrmMaterialCount += 1;
+          const role = String(variant.userData.spacefaceMaterialRole || variant.name || '').trim();
+          if (role) roles.add(role);
+          variants.set(source, variant);
+        }
+        return variant;
+      });
+      object.material = Array.isArray(object.material) ? specialized : specialized[0];
+    }
+    const kids = object.children || [];
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
+  }
 
   root.userData.claimRelayMaterialPolicy = {
     assetId: placeId,
@@ -5014,14 +5047,21 @@ function centerAuthoredPlaceRoot(root, record, scale, physical = null) {
   };
 }
 
-function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
+function* installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
   if (!root || placeId !== WRECK_CATHEDRAL_PLACE_ID) return;
   const sources = [];
-  root.traverse((object) => {
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
     if (object.isMesh && object.userData?.spacefaceStaticBatch && opaqueDoubleSidedDepthSource(object)) {
       sources.push(object);
     }
-  });
+    const kids = object.children || [];
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
+  }
   if (sources.length === 0) return;
 
   // The Cathedral is a close-range capital-wreck shell. Its eight authored PBR material groups are
@@ -5050,6 +5090,7 @@ function installWreckCathedralOpaqueDepthPrepass(root, placeId, bindings) {
   const prepasses = [];
   const topologyByLod = {};
   for (const source of sources) {
+    yield;
     const tags = clonePrimitiveTags(source.userData.spacefaceTags);
     const topology = specializeWreckCathedralDepthTopology(source);
     if (topology) topologyByLod[tags.lod || 'always'] = topology.report;
@@ -5180,42 +5221,57 @@ function stationDepthPrepassScope(source, root) {
   return scope || source.parent;
 }
 
-function installStationOpaqueDepthPrepass(root, entity, bindings) {
+function* installStationOpaqueDepthPrepass(root, entity, bindings) {
   if (!root || !entity || entity.type !== 'station') return;
   const sources = [];
-  root.traverse((object) => {
-    if (!object.isMesh || object.isSkinnedMesh || object.isInstancedMesh) return;
-    if (object.userData?.spacefaceDepthPrepass) return;
-    if (!object.parent) return;
-    if (object.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return;
-    const geometry = object.geometry;
-    if (!geometry?.attributes?.position) return;
-    if (geometry.morphAttributes && Object.keys(geometry.morphAttributes).length) return;
-    const tags = object.userData?.spacefaceTags || {};
-    if (object.visible === false && !tags.lod) return;
-    // A prepass sibling copies the source's local matrix once — only meshes whose own
-    // transform never animates qualify (the same markers shouldFreezeStaticChild uses).
-    if (tags.drive || tags.motionGroup || object.userData?.animated || object.userData?.hlod
-      || object.userData?.updateRuntimeState || object.userData?.updateDriveState) return;
-    if (!geometry.boundingSphere) geometry.computeBoundingSphere();
-    const localRadius = Number(geometry.boundingSphere?.radius) || 0;
-    if (localRadius <= 0) return;
-    object.getWorldScale(_stationDepthPrepassScale);
-    const worldScale = Math.max(
-      Math.abs(_stationDepthPrepassScale.x),
-      Math.abs(_stationDepthPrepassScale.y),
-      Math.abs(_stationDepthPrepassScale.z),
-    );
-    if (localRadius * worldScale < STATION_DEPTH_PREPASS_MIN_WORLD_RADIUS) return;
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    if (!materials.some(stationDepthPrepassEligibleMaterial)) return;
-    sources.push(object);
-  });
+  const collectStack = [root];
+  let visited = 0;
+  while (collectStack.length) {
+    const object = collectStack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.isMesh && !object.isSkinnedMesh && !object.isInstancedMesh
+      && !object.userData?.spacefaceDepthPrepass
+      && object.parent
+      && object.onBeforeRender === THREE.Object3D.prototype.onBeforeRender) {
+      const geometry = object.geometry;
+      if (geometry?.attributes?.position
+        && !(geometry.morphAttributes && Object.keys(geometry.morphAttributes).length)) {
+        const tags = object.userData?.spacefaceTags || {};
+        if (object.visible !== false || tags.lod) {
+          // A prepass sibling copies the source's local matrix once — only meshes whose own
+          // transform never animates qualify (the same markers shouldFreezeStaticChild uses).
+          if (!(tags.drive || tags.motionGroup || object.userData?.animated || object.userData?.hlod
+            || object.userData?.updateRuntimeState || object.userData?.updateDriveState)) {
+            if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+            const localRadius = Number(geometry.boundingSphere?.radius) || 0;
+            if (localRadius > 0) {
+              object.getWorldScale(_stationDepthPrepassScale);
+              const worldScale = Math.max(
+                Math.abs(_stationDepthPrepassScale.x),
+                Math.abs(_stationDepthPrepassScale.y),
+                Math.abs(_stationDepthPrepassScale.z),
+              );
+              if (localRadius * worldScale >= STATION_DEPTH_PREPASS_MIN_WORLD_RADIUS) {
+                const materials = Array.isArray(object.material) ? object.material : [object.material];
+                if (materials.some(stationDepthPrepassEligibleMaterial)) {
+                  sources.push(object);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    const collectKids = object.children || [];
+    for (let i = collectKids.length - 1; i >= 0; i--) collectStack.push(collectKids[i]);
+  }
   if (!sources.length) return;
 
   const depthMaterial = stationDepthPrepassMaterial();
   const prepasses = [];
   for (const source of sources) {
+    yield;
     const geometry = source.geometry;
     const materials = Array.isArray(source.material) ? source.material : [source.material];
     const groups = Array.isArray(geometry.groups) && geometry.groups.length
@@ -10317,7 +10373,7 @@ export function releaseBoundaryResidency(renderer, boundary, reason, admissionEp
   // the new epoch's instance slots the same way. Detach/disposal callers pass no epoch.
   if (admissionEpoch != null && boundary && boundary.userData
       && boundary.userData.admissionEpoch !== admissionEpoch) return 0;
-  if (boundary) releaseOwnerInstances(boundary);
+  if (boundary) releaseOwnerInstances(boundary, admissionEpoch);
   return residency && boundary ? residency.releaseOwner(boundary, reason) : 0;
 }
 
@@ -10734,7 +10790,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   yield;
   staticBatches.flush();
   reconcileMaplessHullMaterialAliases(palette);
-  canonicalizeMaplessHullMaterials(root, palette);
+  yield* canonicalizeMaplessHullMaterials(root, palette);
 
   const primaryDrive = completeDriveBinding(bindings);
   // A fitted drive is read through the nacelle it powers: tint the bound core + plume so a
@@ -11068,7 +11124,8 @@ function* disposeAbortPartialPreScanSteps(partial) {
       try { instance.dispose('compose-aborted'); } catch { /* best-effort */ }
     }
     if (object.userData && object.userData.spacefaceStaticBatch === true
-      && object.geometry && typeof object.geometry.dispose === 'function') {
+      && object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
       try { object.geometry.dispose(); } catch { /* best-effort */ }
     }
     const children = object.children || [];
@@ -16314,28 +16371,37 @@ function reconcileMaplessHullMaterialAliases(palette) {
   }
 }
 
-function canonicalizeMaplessHullMaterials(root, palette) {
+function* canonicalizeMaplessHullMaterials(root, palette) {
   const tint = tintHex(palette, 'hull');
   const canonical = findCanonicalTexturedHullMaterial(tint);
   if (!canonical || !root) return;
-  root.traverse((object) => {
-    if (!object || !object.isMesh) return;
-    const tags = object.userData && object.userData.spacefaceTags || {};
-    if (tags.drive || tags.canopy || tags.decal) return;
-    if (tags.damageRole) return;
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    let changed = false;
-    for (let i = 0; i < materials.length; i++) {
-      const material = materials[i];
-      if (!material || material === canonical) continue;
-      const name = String(material.name || '');
-      if (!isMaplessSharedHullName(name)) continue;
-      materials[i] = canonical;
-      changed = true;
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.isMesh) {
+      const tags = object.userData && object.userData.spacefaceTags || {};
+      if (!tags.drive && !tags.canopy && !tags.decal && !tags.damageRole) {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        let changed = false;
+        for (let i = 0; i < materials.length; i++) {
+          const material = materials[i];
+          if (!material || material === canonical) continue;
+          const name = String(material.name || '');
+          if (!isMaplessSharedHullName(name)) continue;
+          materials[i] = canonical;
+          changed = true;
+        }
+        if (changed) {
+          object.material = Array.isArray(object.material) ? materials : materials[0];
+        }
+      }
     }
-    if (!changed) return;
-    object.material = Array.isArray(object.material) ? materials : materials[0];
-  });
+    const kids = object.children || [];
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
+  }
 }
 
 function materialShareSignature(material, tags = {}) {
@@ -16710,25 +16776,38 @@ export function disposeDetachedObject(root) {
 // boundaries so the teardown paces inside a deferred commit tail. Shared-asset
 // guards are identical; a suspended walk still owns the whole detached subtree.
 export function* disposeDetachedObjectSteps(root) {
+  // Root hooks are fenced individually — a throwing hook must not veto the
+  // subtree teardown (a retry mint would re-throw at the same hook and leak the
+  // whole tree).
   const releaseStandIn = root && root.userData && root.userData.admissionStandInRelease;
-  if (typeof releaseStandIn === 'function') releaseStandIn();
+  if (typeof releaseStandIn === 'function') {
+    try { releaseStandIn(); } catch { /* best-effort */ }
+  }
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
-  if (typeof disposePresentation === 'function') disposePresentation();
+  if (typeof disposePresentation === 'function') {
+    try { disposePresentation(); } catch { /* best-effort */ }
+  }
+  const detachMotion = root && root.userData && root.userData.detachAuthoredMotion;
+  if (typeof detachMotion === 'function') {
+    try { detachMotion(); } catch { /* best-effort */ }
+  }
   const stack = [root];
   let visited = 0;
   while (stack.length) {
     const object = stack.pop();
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
-    if (object.geometry && typeof object.geometry.dispose === 'function'
-      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
-      object.geometry.dispose();
-    }
-    const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
-    for (const material of materials) {
-      if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
-      if (material && typeof material.dispose === 'function') material.dispose();
-    }
+    try {
+      if (object.geometry && typeof object.geometry.dispose === 'function'
+        && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+        object.geometry.dispose();
+      }
+      const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+      for (const material of materials) {
+        if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
+        if (material && typeof material.dispose === 'function') material.dispose();
+      }
+    } catch { /* best-effort — a bad node can't veto the rest of the walk */ }
     const children = object.children || [];
     for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
   }
@@ -16738,6 +16817,7 @@ function disposeDetachedPlaceFallback(root) {
   root?.userData?.ceresCradleLayoutGuard?.dispose();
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') disposePresentation();
+  root?.userData?.detachAuthoredMotion?.();
   const geometries = new Set();
   const materials = new Set();
   root.traverse((object) => {
@@ -16761,6 +16841,7 @@ function* disposeDetachedPlaceFallbackSteps(root) {
   root?.userData?.ceresCradleLayoutGuard?.dispose();
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') disposePresentation();
+  root?.userData?.detachAuthoredMotion?.();
   const geometries = new Set();
   const materials = new Set();
   const stack = [root];
