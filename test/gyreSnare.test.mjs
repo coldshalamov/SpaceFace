@@ -1141,13 +1141,75 @@ test('strain cue latches once above 0.4 and re-arms below 0.25', async () => {
   assert.equal(t.sys._rt.coreId, core.id);
   // Strain measures distance to the MAW (player+mawDist along the nose), not the
   // ship: pin the core at mawDist+560 so strain = (560-480)/160 = 0.5 > 0.4 while
-  // staying under the 640 wu break — a long excursion without a drop.
-  for (let i = 0; i < 10; i++) {
+  // staying under the 640 wu break — a held excursion across the +30-tick sustain.
+  for (let i = 0; i < 40; i++) {
     core.pos.x = t.player.pos.x + T.mawDist + 560; core.pos.z = t.player.pos.z;
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
   const strains = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain');
-  assert.equal(strains.length, 1, `strain voice latched once during the excursion (got ${strains.length})`);
+  assert.equal(strains.length, 2, `latch + one sustain shimmer in a held excursion (got ${strains.length})`);
+  assert.equal(strains[0].p.gain, 0.7, 'the latch edge keeps its full rise');
+  assert.ok(Math.abs(strains[1].p.gain - 0.45) < 1e-6 && strains[1].p.rate === 0.9,
+    'the sustain rides the softer strain-scaled shimmer');
+  // Dip under 0.25 — the latch re-arms and a re-excursion re-speaks at full gain.
+  for (let i = 0; i < 5; i++) {
+    core.pos.x = t.player.pos.x + T.mawDist + 100; core.pos.z = t.player.pos.z;
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  for (let i = 0; i < 5; i++) {
+    core.pos.x = t.player.pos.x + T.mawDist + 560; core.pos.z = t.player.pos.z;
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  const strains2 = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain');
+  assert.equal(strains2.length, 3, 'the re-armed excursion speaks its own latch edge');
+  assert.equal(strains2[2].p.gain, 0.7);
+  t.cleanup();
+});
+
+// -- coverage: the absorb knock floors at 0.15 wu/s so capped clumps still rock --
+test('a small meal into a heavy clump still knocks at the Δv floor', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 800, 8); // a heavy snag — near-cap ball
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id);
+  // Mass-proportional knock would give Δv = 6·3/800 ≈ 0.02 wu/s — dead at the
+  // fantasy's climax. The floor must rescue it to coreMass·0.15 = 120 impulse.
+  const meal = rock(t.sim, core.pos.x - 30, core.pos.z, 6, 4);
+  const dx = core.pos.x - meal.pos.x, dz = core.pos.z - meal.pos.z;
+  const dist = Math.hypot(dx, dz);
+  consumePhysicsCommand(core); // drain pending lane impulses so only the knock remains
+  t.sys._absorb(t.state, t.sys._rt, core, meal, dx, dz, dist);
+  const cmd = consumePhysicsCommand(core);
+  assert.ok(cmd && cmd.impulses.length >= 1, 'the knock crossed the membrane');
+  const j = Math.hypot(
+    cmd.impulses.reduce((s, i) => s + i.x, 0),
+    cmd.impulses.reduce((s, i) => s + i.z, 0),
+  );
+  assert.ok(Math.abs(j - 800 * 0.15) < 1e-6,
+    `floor impulse = coreMass·0.15 (got ${j}, want 120)`);
+  assert.ok(cmd.impulses[0].x > 0, 'the flinch points away from the meal');
+  t.cleanup();
+});
+
+test('a light clump keeps the mass-proportional knock (floor never fires)', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id);
+  // 6·3 = 18 impulse ≫ 6·0.15 = 0.9 — the pebble branch is untouched.
+  const meal = rock(t.sim, core.pos.x - 30, core.pos.z, 6, 4);
+  const dx = core.pos.x - meal.pos.x, dz = core.pos.z - meal.pos.z;
+  const dist = Math.hypot(dx, dz);
+  consumePhysicsCommand(core);
+  t.sys._absorb(t.state, t.sys._rt, core, meal, dx, dz, dist);
+  const cmd = consumePhysicsCommand(core);
+  const j = Math.hypot(
+    cmd.impulses.reduce((s, i) => s + i.x, 0),
+    cmd.impulses.reduce((s, i) => s + i.z, 0),
+  );
+  assert.ok(Math.abs(j - 6 * 3) < 1e-6, `meal-mass knock (got ${j}, want 18)`);
   t.cleanup();
 });
 

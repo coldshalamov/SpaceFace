@@ -404,7 +404,8 @@ export const gyreSnare = {
   _clearCoreMark() {
     const rt = this._rt;
     if (!rt) return; // destroy() before init() — nothing tracked
-    const core = rt.coreId != null && this.state ? this.state.entities.get(rt.coreId) : null;
+    const core = rt.coreId != null && this.state && this.state.entities
+      ? this.state.entities.get(rt.coreId) : null;
     if (core && core.data && core.data.gyreCore) {
       delete core.data.gyreCore;
       this._restoreLifetime(core);
