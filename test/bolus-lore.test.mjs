@@ -1,3 +1,5 @@
+import { createDamageRouter } from '../src/combat/damage.js';
+import { createCombatCatalog } from '../src/combat/runtime.js';
 // Lore pass. One-line laws. Locked velocities stay in the cut and play tests.
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -79,7 +81,10 @@ test('a taut swing in the trench does not drop hull, and three stitches halve th
   flags['bolus:valve:bolus_valve_1'] = true;
   flags['bolus:valve:bolus_valve_2'] = true;
   tickBolus(bare.world, 0.1);
-  assert.ok(Math.abs(bare.state.entities.get('p').hull - 79.9) < 1e-9);
+  const unstitched = worldFor(pilot(400, 0), []);
+  tickBolus(unstitched.world, 0.1);
+  assert.ok(Math.abs((80 - bare.state.entities.get('p').hull) * 2
+    - (80 - unstitched.state.entities.get('p').hull)) < 1e-9);
   assert.equal(toasts(bare, BOLUS_LORE.shy).length, 0);
 });
 
@@ -247,14 +252,18 @@ function worldFor(player, faunaList) {
     combat: { attachments: { byId: {} } },
   };
   player.id = 'p';
+  player.type = 'ship';
   ensureAlienEcologyState(state);
   const events = [];
+  const bus = { emit(name, payload) { events.push({ name, payload }); } };
+  const helpers = { routeCombatDamage: createDamageRouter({ state, bus, catalog: createCombatCatalog(), helpers: {} }, { schedule() {} }) };
   return {
     state,
     events,
     world: {
       state,
-      bus: { emit(name, payload) { events.push({ name, payload }); } },
+      bus,
+      helpers,
       _sectorOrigin() { return { x: 0, z: 0 }; },
     },
   };

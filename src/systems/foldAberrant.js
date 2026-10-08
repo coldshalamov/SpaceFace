@@ -19,6 +19,7 @@ import {
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { DEFAULT_MASK, Masks } from '../core/entity.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 
 const HEADING = 0.65;
 const RIBBON_HALF = 14;
@@ -284,7 +285,11 @@ function spawnScar(world, bag, sectorId, anchor) {
 
 function spawnSplinter(world, bag, sectorId, anchor) {
   const rec = siteRec(world.state);
-  if (rec.splinterSpawned) return null;
+  // Old saves only recorded spawn, so preserve their no-duplicate promise. New
+  // rewards remain pending until cargo accepts them, including across sector eviction.
+  if (rec.splinterCollected || (rec.splinterSpawned && !rec.splinterPending)) return null;
+  const existing = world.state.entityList?.find((e) => e?.alive !== false && e?.data?.foldSplinter === FOLD.siteId);
+  if (existing) return existing;
   const ent = world.helpers.spawnEntity({
     type: 'pickup',
     pos: { x: anchor.x + 18, z: anchor.z + 8 },
@@ -296,10 +301,12 @@ function spawnSplinter(world, bag, sectorId, anchor) {
       commodityId: 'cmdty_inertial_datum',
       amount: 1,
       name: 'Inertial Datum',
+      foldSplinter: FOLD.siteId,
     },
   });
   if (!ent) return null;
   rec.splinterSpawned = true;
+  rec.splinterPending = true;
   pushDressing(bag, ent);
   return ent;
 }
@@ -798,7 +805,7 @@ export function materializeFoldAberrant(world, sector, active) {
   const anchor = globalAnchor(world, sector.id);
   if (rec.foldCleared) {
     spawnScar(world, active, sector.id, anchor);
-    if (!rec.splinterSpawned) spawnSplinter(world, active, sector.id, anchor);
+    spawnSplinter(world, active, sector.id, anchor);
     return;
   }
   const existing = live(state, rec.bodyId, 'body') || findRole(state, 'body');
@@ -807,6 +814,16 @@ export function materializeFoldAberrant(world, sector, active) {
     return;
   }
   spawnBody(world, active, sector.id, anchor);
+}
+
+export function noteFoldSplinterCollected(world, payload) {
+  const state = world?.state;
+  if (!state || payload?.collectorId !== state.playerId || successfulPickupAmount(payload) < 1) return;
+  const pickup = state.entities?.get(payload.pickupId);
+  if (pickup?.data?.foldSplinter !== FOLD.siteId) return;
+  const rec = siteRec(state);
+  rec.splinterCollected = true;
+  rec.splinterPending = false;
 }
 
 export function tickFoldAberrant(world, dt) {

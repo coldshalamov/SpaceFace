@@ -1,3 +1,5 @@
+import { createDamageRouter } from '../src/combat/damage.js';
+import { createCombatCatalog } from '../src/combat/runtime.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -218,14 +220,18 @@ function worldFor(player, fauna, simTime = 0) {
     combat: { attachments: { byId: {} } },
   };
   player.id = 'p';
+  player.type = 'ship';
   ensureAlienEcologyState(state);
   const events = [];
+  const bus = { emit(name, payload) { events.push({ name, payload }); } };
+  const helpers = { routeCombatDamage: createDamageRouter({ state, bus, catalog: createCombatCatalog(), helpers: {} }, { schedule() {} }) };
   return {
     state,
     events,
     world: {
       state,
-      bus: { emit(name, payload) { events.push({ name, payload }); } },
+      bus,
+      helpers,
       _sectorOrigin() { return { x: 0, z: 0 }; },
     },
   };

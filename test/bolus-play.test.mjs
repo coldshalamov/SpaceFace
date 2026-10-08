@@ -1,3 +1,6 @@
+import { createDamageRouter } from '../src/combat/damage.js';
+import { createCombatCatalog } from '../src/combat/runtime.js';
+import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 // Play pass on The Bolus. Locked cut velocities stay in bolus-cut.test.mjs.
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -314,6 +317,62 @@ test('play cues are recipes, not new samples', () => {
   }
 });
 
+test('native bodies receive the authored kick and a single cone stop at their real masses', async () => {
+  const owner = await createSg02DynamicBodyOwner();
+  try {
+    const tooth = fauna('tooth', 'bolus_tooth', -180, -220);
+    const louse = fauna('louse', 'bolus_louse_0', 100, 0);
+    louse.type = 'fauna'; louse.radius = 8; louse.collides = true;
+    louse.vel.x = 12;
+    const player = pilot(0, 0);
+    player.mass = 120; player.radius = 8; player.collides = true;
+    player.physicsBody = { dynamic: true, mass: 120, radius: 8, shape: 'ball' };
+    const bag = worldFor(player, [tooth, louse]);
+    bag.state.settings = { gameplay: { physicsBackend: 'rapier-dynamic' } };
+    bag.state.player.tether.phase = 'loaded';
+    bag.state.combat.attachments.byId.line = { state: 'active', ownerId: 'p', targetId: tooth.id };
+    owner.syncFromEntities([player, louse]);
+    tickBolus(bag.world, 1 / 60);
+    assert.equal(player.vel.x, 0, 'gameplay queues motion without writing the native mirror');
+    assert.equal(louse.vel.x, 12);
+    owner.step(1 / 60);
+    assert.ok(Math.abs(player.vel.x - 160) < 0.05, player.vel.x);
+    assert.ok(Math.abs(louse.vel.x) < 0.05, louse.vel.x);
+  } finally { owner.dispose(); }
+});
+
+test('acid uses ordinary damage protection and kills once through combat', () => {
+  const player = pilot(400, 0);
+  const bag = worldFor(player, []);
+  player.flags.invuln = true;
+  tickBolus(bag.world, 0.1);
+  assert.equal(player.hull, 80);
+  player.flags.invuln = false;
+  player.hull = 0.001;
+  tickBolus(bag.world, 0.1);
+  tickBolus(bag.world, 0.1);
+  assert.equal(player.alive, false);
+  assert.equal(bag.events.filter((e) => e.name === 'entity:killed').length, 1);
+});
+
+test('a full hold does not spend the nerve sample or contamination outcome', () => {
+  const nerve = fauna('nerve', 'bolus_nerve', 0, 30);
+  const bag = worldFor(pilot(0, 0), [nerve]);
+  bag.state.player.cargo.capVolume = 0;
+  bag.state.player.tether.phase = 'loaded';
+  bag.state.combat.attachments.byId.line = { state: 'active', ownerId: 'p', targetId: nerve.id };
+  for (let n = 0; n < 31; n++) tickBolus(bag.world, 0.1);
+  const flags = ensureAlienEcologyState(bag.state).sectorFlags;
+  assert.notEqual(flags['bolus:sampled'], true);
+  assert.equal(nerve.data.bolus.spent, false);
+  bag.state.player.cargo.capVolume = 100;
+  tickBolus(bag.world, 0.1);
+  assert.equal(flags['bolus:sampled'], true);
+  assert.equal(bag.state.player.cargo.items.cmdty_live_specimen, 1);
+  tickBolus(bag.world, 0.1);
+  assert.equal(bag.state.player.cargo.items.cmdty_live_specimen, 1);
+});
+
 function worldFor(player, faunaList) {
   const state = {
     simTime: 0,
@@ -325,14 +384,18 @@ function worldFor(player, faunaList) {
     combat: { attachments: { byId: {} } },
   };
   player.id = 'p';
+  player.type = 'ship';
   ensureAlienEcologyState(state);
   const events = [];
+  const bus = { emit(name, payload) { events.push({ name, payload }); } };
+  const helpers = { routeCombatDamage: createDamageRouter({ state, bus, catalog: createCombatCatalog(), helpers: {} }, { schedule() {} }) };
   return {
     state,
     events,
     world: {
       state,
-      bus: { emit(name, payload) { events.push({ name, payload }); } },
+      bus,
+      helpers,
       _sectorOrigin() { return { x: 0, z: 0 }; },
     },
   };

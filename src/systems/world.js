@@ -210,6 +210,7 @@ import {
   materializeFoldAberrant,
   tickFoldAberrant,
   noteFoldAberrantKilled,
+  noteFoldSplinterCollected,
 } from './foldAberrant.js'; // The Unclosed (doc 16): damaged containment instrument, not a machine kind
 import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
 import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
@@ -608,6 +609,7 @@ export const world = {
     // SFQ-B141: a committed pickup receipt is the courier token's custody transfer — the
     // machine layer settles intercept/stolen on the same receipt cargo's listener wrote.
     bus.on('pickup:collected', (p) => handleMachinePickupCollected(this, p || {}));
+    bus.on('pickup:collected', (p) => noteFoldSplinterCollected(this, p || {}));
     bus.on('save:restoring', () => {
       this._vestaDecisionSignature = null;
       this._pallasDecisionSignature = null;

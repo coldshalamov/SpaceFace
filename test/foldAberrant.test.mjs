@@ -26,6 +26,7 @@ import {
   materializeFoldAberrant,
   tickFoldAberrant,
   noteFoldAberrantKilled,
+  noteFoldSplinterCollected,
 } from '../src/systems/foldAberrant.js';
 import { aftermathWrecks } from '../src/systems/aftermathWrecks.js';
 import { lootShards } from '../src/systems/lootShards.js';
@@ -432,4 +433,26 @@ test('catalog pins are untouched', () => {
   assert.equal(VERB_TYPE_MEMBERSHIP.contact.has('drone'), true);
   assert.equal(COMMODITIES.some((c) => c.id === 'cmdty_inertial_datum'), true);
   assert.equal(foldPhase(0), 0);
+});
+
+
+test('an uncollected splinter survives eviction and an accepted splinter never returns', () => {
+  const state = makeState(1), world = makeWorld(state);
+  materializeFoldAberrant(world, { id: FOLD.sectorId }, world.active);
+  const body = bodies(state)[0];
+  body.alive = false;
+  noteFoldAberrantKilled(world, { id: body.id });
+  const first = state.entityList.find((e) => e.data?.foldSplinter);
+  assert.ok(first);
+  first.alive = false; // FULL extras retirement, which removes dressing pickups.
+  materializeFoldAberrant(world, { id: FOLD.sectorId }, world.active);
+  const next = state.entityList.find((e) => e.alive && e.data?.foldSplinter);
+  assert.ok(next);
+  assert.notEqual(next.id, first.id);
+  noteFoldSplinterCollected(world, { pickupId: next.id, collectorId: state.playerId, amount: 1, acceptedAmount: 0 });
+  assert.equal(ensureAlienEcologyState(state).machineSites[FOLD.siteId].splinterPending, true);
+  noteFoldSplinterCollected(world, { pickupId: next.id, collectorId: state.playerId, amount: 1, acceptedAmount: 1 });
+  next.alive = false;
+  materializeFoldAberrant(world, { id: FOLD.sectorId }, world.active);
+  assert.equal(state.entityList.filter((e) => e.alive && e.data?.foldSplinter).length, 0);
 });

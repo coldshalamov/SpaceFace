@@ -24,10 +24,11 @@ export function syncMarrowCone(renderer) {
   if (renderer.spaceBg && renderer.spaceBg.group) {
     renderer.spaceBg.group.visible = !inside;
   }
+  if (!inside && !renderer._marrowSpot) return;
   const spot = ensureSpot(renderer);
   spot.visible = inside;
   if (!inside) return;
-  const player = renderer.state.playerId && renderer.state.entities
+  const player = renderer.state.playerId != null && renderer.state.entities
     ? renderer.state.entities.get(renderer.state.playerId)
     : null;
   if (!player || !player.pos || !renderer._frameMembrane) return;
@@ -41,7 +42,8 @@ export function syncMarrowCone(renderer) {
 }
 
 function ensureSpot(renderer) {
-  if (renderer._marrowSpot) return renderer._marrowSpot;
+  if (renderer._marrowSpot?.parent === renderer.scene) return renderer._marrowSpot;
+  disposeMarrowCone(renderer);
   const spot = new THREE.SpotLight(0xffc2a8, 0, 340, (18 * Math.PI) / 180, 0.45, 1.2);
   spot.intensity = 14;
   spot.castShadow = false;
@@ -49,4 +51,13 @@ function ensureSpot(renderer) {
   renderer.scene.add(spot.target);
   renderer._marrowSpot = spot;
   return spot;
+}
+
+export function disposeMarrowCone(renderer, { disposeGpu = true } = {}) {
+  const spot = renderer?._marrowSpot;
+  if (!spot) return;
+  spot.removeFromParent();
+  spot.target.removeFromParent();
+  if (disposeGpu) spot.dispose();
+  renderer._marrowSpot = null;
 }

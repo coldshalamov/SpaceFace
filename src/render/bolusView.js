@@ -14,7 +14,6 @@ import {
   ribRadial,
 } from './bolusCanal.js';
 import { bolusCoughOffset, bolusIrisShutter } from '../data/bolusPlay.js';
-import { applyBolusCableStyle } from './bolusCable.js';
 import { bolusSilhouette } from './bolusSilhouettes.js';
 
 const scratch = { x: 0, y: 0, z: 0 };
@@ -24,6 +23,7 @@ export function syncBolusView(renderer) {
   if (!renderer || !renderer.scene || !renderer.state) return;
   const sectorId = renderer.state.world && renderer.state.world.currentSectorId;
   const inside = sectorId === BOLUS_SECTOR_ID;
+  if (!inside && !renderer._bolusView) return;
   const view = ensureView(renderer);
   view.group.visible = inside;
   for (let i = 0; i < view.lights.length; i++) view.lights[i].visible = inside;
@@ -89,12 +89,12 @@ export function syncBolusView(renderer) {
     view.lights[i].intensity = pulseBase + i * 0.15;
   }
   syncFreezeCards(view, renderer.state);
-  applyBolusCableStyle(renderer.state);
 }
 
 function ensureView(renderer) {
-  if (renderer._bolusView) return renderer._bolusView;
   const seed = renderer.state && renderer.state.meta ? renderer.state.meta.seed : 1;
+  if (renderer._bolusView?.group.parent === renderer.scene && renderer._bolusView.seed === seed) return renderer._bolusView;
+  disposeBolusView(renderer);
   const canal = buildBolusCanal(seed);
   const group = new THREE.Group();
   group.name = 'SF_BolusCanal';
@@ -139,8 +139,22 @@ function ensureView(renderer) {
   cards.name = 'SF_BolusFreeze';
   group.add(cards);
   renderer.scene.add(group);
-  renderer._bolusView = { group, ribs, cilia, baleen, iris, acid, lights, cards, cough };
+  renderer._bolusView = { group, ribs, cilia, baleen, iris, acid, lights, cards, cough, seed };
   return renderer._bolusView;
+}
+
+export function disposeBolusView(renderer, { disposeGpu = true } = {}) {
+  const view = renderer?._bolusView;
+  if (!view) return;
+  view.group.removeFromParent();
+  if (disposeGpu) {
+    view.group.traverse((node) => {
+      node.geometry?.dispose();
+      if (Array.isArray(node.material)) node.material.forEach((material) => material.dispose());
+      else node.material?.dispose();
+    });
+  }
+  renderer._bolusView = null;
 }
 
 function meshFromPart(row) {

@@ -12,9 +12,8 @@ function uvulaHold(state) {
   if (!byId) return null;
   const pid = state.playerId;
   const list = state.entityList || [];
-  const rows = Object.values(byId);
-  for (let i = 0; i < rows.length; i++) {
-    const att = rows[i];
+  for (const id in byId) {
+    const att = byId[id];
     if (!att || att.state !== 'active') continue;
     if (att.ownerId !== pid && att.controllerId !== pid) continue;
     for (let k = 0; k < list.length; k++) {
@@ -34,24 +33,13 @@ export function bolusCableStyle(state) {
   return SHORT;
 }
 
-/** Write the style onto the active uvula attachment. No geometry. */
-export function applyBolusCableStyle(state) {
-  const style = bolusCableStyle(state);
-  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
-  if (!byId) return style;
-  const pid = state.playerId;
-  const list = state.entityList || [];
-  const rows = Object.values(byId);
-  for (let i = 0; i < rows.length; i++) {
-    const att = rows[i];
-    if (!att || att.state !== 'active') continue;
-    if (att.ownerId !== pid && att.controllerId !== pid) continue;
-    for (let k = 0; k < list.length; k++) {
-      const ent = list[k];
-      if (!ent || ent.id !== att.targetId || !ent.data || !ent.data.bolus) continue;
-      if (ent.data.bolus.role !== 'uvula') continue;
-      att.bolusCable = style;
-    }
-  }
-  return style;
+/** Adapt only the renderer-owned profile; the attachment remains simulation-owned. */
+export function applyBolusCableProfile(profile, style) {
+  if (!profile || !style || !(profile.coreHalfWidth > 0)) return profile;
+  const scale = (style.width * 0.5) / profile.coreHalfWidth;
+  profile.coreHalfWidth *= scale;
+  profile.sheathHalfWidth *= scale;
+  profile.collarCrownHalfWidth *= scale;
+  profile.collarLipHalfWidth *= scale;
+  return profile;
 }

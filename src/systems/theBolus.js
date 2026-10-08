@@ -4,6 +4,7 @@
 import { addCargo } from './cargo.js';
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { Masks } from '../core/entity.js';
 import {
   BOLUS_SECTOR_ID,
@@ -128,34 +129,36 @@ function speedOf(entity) {
   return Math.hypot(vel.x || 0, vel.z || 0);
 }
 
-function push(entity, ix, iz) {
+function push(world, entity, ix, iz) {
   if (!entity) return;
+  if (world.state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') {
+    const mass = Number(entity.physicsBody?.mass) || Number(entity.mass) || 1;
+    queuePhysicsImpulse(entity, { x: ix * mass, y: 0, z: iz * mass });
+    return;
+  }
   if (!entity.vel) entity.vel = { x: 0, y: 0, z: 0 };
   entity.vel.x += ix;
   entity.vel.z += iz;
-  queuePhysicsImpulse(entity, { x: ix, y: 0, z: iz });
 }
 
-function drive(entity, vx, vz) {
+function drive(world, entity, vx, vz) {
   if (!entity) return;
   if (!entity.vel) entity.vel = { x: 0, y: 0, z: 0 };
   const dx = vx - (entity.vel.x || 0);
   const dz = vz - (entity.vel.z || 0);
-  entity.vel.x = vx;
-  entity.vel.z = vz;
-  if (dx !== 0 || dz !== 0) queuePhysicsImpulse(entity, { x: dx, y: 0, z: dz });
+  if (dx !== 0 || dz !== 0) push(world, entity, dx, dz);
 }
 
-function hurt(entity, amount) {
+function hurt(world, entity, amount) {
   if (!entity || !(amount > 0)) return;
-  let left = amount;
-  const shield = Number(entity.shield) || 0;
-  if (shield > 0) {
-    const used = shield < left ? shield : left;
-    entity.shield = shield - used;
-    left -= used;
-  }
-  if (left > 0) entity.hull = Math.max(0, (Number(entity.hull) || 0) - left);
+  const request = {
+    attackerId: null,
+    targetId: entity.id,
+    packet: scalarHitToDamagePacket({ damage: amount, damageType: 'thermal', source: { kind: 'bolus_acid' } }),
+    origin: { kind: 'bolus_acid' },
+  };
+  if (typeof world.helpers?.routeCombatDamage === 'function') world.helpers.routeCombatDamage(request);
+  else world.bus?.emit('combat:routeDamage', request);
 }
 
 function toast(world, text) {
@@ -297,10 +300,14 @@ export function tickBolus(world, dt) {
           toast(world, BOLUS_LORE.pearlShut);
         }
       } else if (!tag.spent && tag.role !== 'tendon') {
-        const committed = commitBolusLatch(flags, tag.role, tag.key, tag.hold, simTime);
+        // A finite reward is spent only when the cargo owner accepts it. Keep the
+        // latch available after a full hold so the player can return for the specimen.
+        const pendingFlags = Object.create(flags);
+        let committed = commitBolusLatch(pendingFlags, tag.role, tag.key, tag.hold, simTime);
+        if (committed?.cargo && addCargo(state, committed.cargo, committed.qty) < committed.qty) committed = null;
         if (committed) {
+          Object.assign(flags, pendingFlags);
           tag.spent = true;
-          if (committed.cargo) addCargo(state, committed.cargo, committed.qty);
           if (committed.exposure) {
             ae.exposure = Math.min(1, (ae.exposure || 0) + committed.exposure);
             if (tag.role === 'nerve' && bolusIrisOpen(simTime) && flags['bolus:breathSample'] !== true) {
@@ -376,7 +383,7 @@ export function tickBolus(world, dt) {
     if (tag.role === 'rib' && flags['bolus:ribLodged'] !== true
         && Math.hypot(ex - P.coughAnchorX, ez - P.coughAnchorZ) < P.ribLodge) {
       flags['bolus:ribLodged'] = true;
-      drive(ent, 0, 0);
+      drive(world, ent, 0, 0);
     }
     if (tag.role === 'baleen' && boosting && Math.hypot(ex - lx, ez - lz) < F.baleenReach
         && !(Number(flags['bolus:baleenUntil']) > simTime)) {
@@ -492,13 +499,13 @@ export function tickBolus(world, dt) {
     cue(world, BOLUS_CUE.cough);
   }
 
-  if (ix !== 0 || iz !== 0) push(player, ix, iz);
+  if (ix !== 0 || iz !== 0) push(world, player, ix, iz);
 
   const galling = Number(flags['bolus:gallUntil']) > simTime;
   const quiet = Number(flags['bolus:acidQuietUntil']) > simTime;
   const strip = lx >= BOLUS_ACID_X0 && lx <= BOLUS_ACID_X1;
   if (strip && !quiet && !galling) {
-    if (!swingHeld) hurt(player, F.acidDps * bolusAcidScale(flags) * step);
+    if (!swingHeld) hurt(world, player, F.acidDps * bolusAcidScale(flags) * step);
     if (flags['bolus:inAcid'] !== true) {
       flags['bolus:inAcid'] = true;
       cue(world, BOLUS_CUE.acid);
@@ -571,14 +578,16 @@ function steerFauna(row, ctx) {
   const inCone = bolusInCone(ctx.lx, ctx.lz, ctx.rot, ex, ez);
   const crookFreeze = tag.role === 'louse' && ctx.crookHeld && Math.hypot(ex - CROOK_AT.x, ez - CROOK_AT.z) <= F.crookReach;
 
-  if (tag.role === 'louse' && !crookFreeze) {
+  if (SMALL.has(tag.role) && (inCone || crookFreeze)) {
+    drive(ctx.world, ent, 0, 0);
+  } else if (tag.role === 'louse') {
     const phase = (tag.phase || 0) + ctx.simTime * 0.7;
-    drive(ent, Math.cos(phase) * F.louseScurry, Math.sin(phase) * F.louseScurry);
+    drive(ctx.world, ent, Math.cos(phase) * F.louseScurry, Math.sin(phase) * F.louseScurry);
   } else if (tag.role === 'drum') {
     const spur = Number(ctx.flags['bolus:spurUntil']) > ctx.simTime
       && Math.hypot(ex - SPUR_AT.x, ez - SPUR_AT.z) <= 450;
     if (inCone || spur) {
-      drive(ent, 0, 0);
+      drive(ctx.world, ent, 0, 0);
     } else if (Number(ctx.flags['bolus:drumSlideUntil']) > ctx.simTime) {
       return;
     } else if (Number(ctx.flags['bolus:fastFor']) >= F.drumChaseDelay) {
@@ -589,58 +598,57 @@ function steerFauna(row, ctx) {
       const dx = ctx.lx - ex;
       const dz = ctx.lz - ez;
       const dist = Math.hypot(dx, dz) || 1;
-      drive(ent, (dx / dist) * F.drumChase, (dz / dist) * F.drumChase);
+      drive(ctx.world, ent, (dx / dist) * F.drumChase, (dz / dist) * F.drumChase);
     } else {
       const phase = (ent.rot || 0) + ctx.simTime * 0.2;
-      drive(ent, Math.cos(phase) * F.drumWander, Math.sin(phase) * F.drumWander);
+      drive(ctx.world, ent, Math.cos(phase) * F.drumWander, Math.sin(phase) * F.drumWander);
     }
   } else if (tag.role === 'fingerling') {
     if (ctx.schoolFlee && bolusNearNursery(ex, ez)) {
       const dx = ex - ctx.lx;
       const dz = ez - ctx.lz;
       const dist = Math.hypot(dx, dz) || 1;
-      drive(ent, (dx / dist) * P.fingerlingFlee, (dz / dist) * P.fingerlingFlee);
+      drive(ctx.world, ent, (dx / dist) * P.fingerlingFlee, (dz / dist) * P.fingerlingFlee);
     } else {
       const radius = bolusNurseryRadius(ctx.fingerlingHeld && !ctx.boosting);
       const phase = ctx.simTime * 0.8 + (tag.phase || 0);
-      drive(ent, (tag.anchorX + Math.cos(phase) * radius - ex) * 0.8, (tag.anchorZ + Math.sin(phase) * radius - ez) * 0.8);
+      drive(ctx.world, ent, (tag.anchorX + Math.cos(phase) * radius - ex) * 0.8, (tag.anchorZ + Math.sin(phase) * radius - ez) * 0.8);
     }
   } else if (tag.role === 'floater') {
     const kind = bolusFloaterKind(ctx.exposure, ex);
     if (kind === 'wake') {
-      drive(ent, 0, ctx.vz || 0);
+      drive(ctx.world, ent, 0, ctx.vz || 0);
     } else {
       const scale = kind === 'heavy' ? P.floaterHeavyScale : 1;
       const phase = (tag.phase || 0) + ctx.simTime * 0.35;
       const ax = tag.anchorX + Math.cos(phase) * 40;
       const az = tag.anchorZ + Math.sin(phase * 0.7) * 26;
-      drive(ent, (ax - ex) * 0.4 * scale, (az - ez) * 0.4 * scale);
+      drive(ctx.world, ent, (ax - ex) * 0.4 * scale, (az - ez) * 0.4 * scale);
     }
   } else if (tag.role === 'mite') {
     if (Number(ctx.flags['bolus:miteFleeUntil']) > ctx.simTime) {
       const dx = ex - ctx.lx;
       const dz = ez - ctx.lz;
       const dist = Math.hypot(dx, dz) || 1;
-      drive(ent, (dx / dist) * P.miteFlee, (dz / dist) * P.miteFlee);
+      drive(ctx.world, ent, (dx / dist) * P.miteFlee, (dz / dist) * P.miteFlee);
     } else {
       const phase = ctx.simTime * 1.4 + (ent.rot || 0);
-      drive(ent, Math.cos(phase) * 10, Math.sin(phase) * 8);
+      drive(ctx.world, ent, Math.cos(phase) * 10, Math.sin(phase) * 8);
     }
   } else if (tag.role === 'glove') {
-    drive(ent, (tag.anchorX - ex) * 0.6, (tag.anchorZ - ez) * 0.6);
+    drive(ctx.world, ent, (tag.anchorX - ex) * 0.6, (tag.anchorZ - ez) * 0.6);
   } else if (tag.role === 'mote') {
     if (inCone) {
       const dx = ex - ctx.lx;
       const dz = ez - ctx.lz;
       const dist = Math.hypot(dx, dz) || 1;
-      drive(ent, (dx / dist) * 22, (dz / dist) * 22);
+      drive(ctx.world, ent, (dx / dist) * 22, (dz / dist) * 22);
     } else {
       const phase = (tag.phase || 0) + ctx.simTime * 0.9;
-      drive(ent, Math.cos(phase) * 8, Math.sin(phase) * 6);
+      drive(ctx.world, ent, Math.cos(phase) * 8, Math.sin(phase) * 6);
     }
   }
 
-  if (SMALL.has(tag.role) && (inCone || crookFreeze)) drive(ent, 0, 0);
   const frozen = SMALL.has(tag.role) && (inCone || crookFreeze);
   if (frozen && tag.frozen !== true) {
     cue(ctx.world, BOLUS_CUE.freeze);
