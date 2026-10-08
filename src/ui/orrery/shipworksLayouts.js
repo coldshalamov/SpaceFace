@@ -432,6 +432,7 @@ ${W} .sx-sw-circuit__acts { margin-top:8px !important; }
   ${W}.orr-sw--jig .sx-sw__stats { top:132px !important; width:236px !important; max-height:calc(100% - 140px) !important; }
   /* a short screen: the verbs stand in a row at the stage's foot, left of the readings line */
   ${W}.orr-sw--jig .sx-sw-verbs { left:258px !important; bottom:40px !important; width:auto !important; flex-direction:row !important; gap:0 16px !important; }
+  ${W}.orr-sw--jig .sx-sw__nameplate .sx-sw__blurb { display:none !important; }
   ${W}:not(.orr-sw--jig) .sx-sw__stage { flex:0 0 200px !important; min-height:200px !important; }
   ${W}:not(.orr-sw--jig) .sx-sw-verbs { margin-top:4px !important; }
   ${W} .sx-sw-band__meta, ${W} .sx-sw-band--presets { display:none !important; }
