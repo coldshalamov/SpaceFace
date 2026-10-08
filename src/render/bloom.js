@@ -1821,6 +1821,14 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // threshold, so the traversal cost cannot matter; keep it armed for the same reason the brick
   // warning itself is always armed.
   const seenBloomGeometryUuids = new Set();
+  // A sustained slow stretch bricks EVERY frame — and each brick used to pay
+  // three scene traverses plus a report serialization inside the presented
+  // pass, worsening the frame it was diagnosing. Dedup: the first brick and
+  // every 120th carry the full describe payload; bricks ≥1 s apart emit a
+  // cheap summary; everything between is counted and suppressed.
+  let brickSeq = 0;
+  let brickLastWarnAt = -Infinity;
+  let brickSuppressed = 0;
 
   function describeUnstampedVisibleGeometries(scene) {
     if (!scene || typeof scene.traverse !== 'function') return [];
@@ -2024,26 +2032,43 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         const grewGeometries = geometriesAfter != null && geometriesBefore != null
           && geometriesAfter > geometriesBefore;
         if (brick) {
-          console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify({
-            // Owners first: probe collectors truncate long warning payloads, so the fields that
-            // NAME the producer must precede the bulky key lists.
-            owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
-            newGeometries: grewGeometries
-              ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
-              : [],
-            unstampedVisible: describeUnstampedVisibleGeometries(scene),
-            programsBefore,
-            programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
-            geometriesBefore,
-            geometriesAfter,
-            texturesBefore,
-            texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
-            // Three appends to info.programs as it acquires them, so the tail beyond
-            // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
-            // previous-brick set reported every program acquired since the last brick — dozens of
-            // legitimately warm ones — which made the payload unusable for naming a producer.
-            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 512)),
-          })}`);
+          brickSeq += 1;
+          const brickNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+            ? performance.now() : Date.now();
+          const sampled = brickSeq === 1 || (brickSeq % 120) === 0;
+          const heartbeat = brickNow - brickLastWarnAt >= 1000;
+          if (sampled || heartbeat) {
+            brickLastWarnAt = brickNow;
+            const suppressed = brickSuppressed;
+            brickSuppressed = 0;
+            console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify(sampled ? {
+              // Owners first: probe collectors truncate long warning payloads, so the fields that
+              // NAME the producer must precede the bulky key lists.
+              owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
+              newGeometries: grewGeometries
+                ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
+                : [],
+              unstampedVisible: describeUnstampedVisibleGeometries(scene),
+              programsBefore,
+              programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
+              geometriesBefore,
+              geometriesAfter,
+              texturesBefore,
+              texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
+              // Three appends to info.programs as it acquires them, so the tail beyond
+              // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
+              // previous-brick set reported every program acquired since the last brick — dozens of
+              // legitimately warm ones — which made the payload unusable for naming a producer.
+              newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 512)),
+              suppressedBricks: suppressed,
+            } : {
+              programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
+              geometriesAfter,
+              suppressedBricks: suppressed,
+            })}`);
+          } else {
+            brickSuppressed += 1;
+          }
         }
         if (brick || grewGeometries) rememberBloomGeometries(scene);
       }

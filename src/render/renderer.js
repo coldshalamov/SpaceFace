@@ -2153,6 +2153,31 @@ function noteLaneFault(state, lane, parked = false) {
 // warn is the amplifier. Cap verbatim warns per lane per service epoch; the
 // stamped laneFaults counters keep full truth regardless.
 const LANE_WARN_BUDGET_PER_EPOCH = 8;
+// laneWarn's scope-less sibling for module-level helpers with no owner/state:
+// per-site storm dedup — first warns verbatim, then a suppressed count
+// re-summarized on a >=1 s heartbeat.
+const _stormWarnLog = new Map();
+function stormWarn(site, ...args) {
+  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now() : Date.now();
+  let row = _stormWarnLog.get(site);
+  if (!row) {
+    if (_stormWarnLog.size >= 256) _stormWarnLog.clear();
+    row = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
+    _stormWarnLog.set(site, row);
+  }
+  if (row.logged < LANE_WARN_BUDGET_PER_EPOCH) {
+    row.logged += 1;
+    console.warn(...args);
+    return;
+  }
+  row.suppressed += 1;
+  if (now - row.lastWarnAt >= 1000) {
+    row.lastWarnAt = now;
+    console.warn(`[render] '${site}' faulted ${row.suppressed} more times; latest:`, ...args);
+    row.suppressed = 0;
+  }
+}
 function laneWarn(owner, lane, ...args) {
   const state = owner && owner.state;
   const render = state && state.render;
@@ -9039,7 +9064,7 @@ function requestAuthoredUpgrade(mesh, renderer, scene, options = {}) {
       return result;
     });
   } catch (error) {
-    console.warn('[render] authored asset upgrade request failed', error);
+    stormWarn('authoredUpgradeRequest', '[render] authored asset upgrade request failed', error);
     return Promise.resolve({ status: 'authored-upgrade-request-threw', error });
   }
 }
@@ -11839,7 +11864,7 @@ export const render = {
                 ? { depthNodeScale: parkedEntry.depthNodeScale } : null);
           } catch (error) {
             noteLaneFault(this.state, 'flightDepthAdmission');
-            console.warn('[render] flight shadow-depth admission failed', error);
+            laneWarn(this, 'flightDepthAdmission', '[render] flight shadow-depth admission failed', error);
           }
         }
       };
@@ -12177,7 +12202,7 @@ export const render = {
           try {
             await reattachDetachedSubjectTextures(subject);
           } catch (error) {
-            console.warn('[render] admission touch texture reattach failed', error);
+            laneWarn(this, 'admissionTouch', '[render] admission touch texture reattach failed', error);
           }
           // compile() resolves under the armed admission state; the presented pass can still
           // ask the driver for a different program key (shadow-gate drift, env binding, target
@@ -12188,12 +12213,27 @@ export const render = {
           try {
             touchExactTargetSubject(subject);
           } catch (error) {
-            console.warn('[render] exact-target admission touch failed', error);
+            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
             // Identify which texture threw on upload and why: package-detach empties a
             // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
             // under a different upload-cache key (colorSpace/sampler/flipY) reads mipmaps[0]
-            // on the empty array. Fires only on failure; walks the subject once.
+            // on the empty array. Fires only on failure; walks the subject once — so a
+            // persistently-faulting subject would pay the walk + stringify per retry.
+            // Sampled: first 4 per service epoch carry the full diag; later ones warn bare.
             try {
+              const diagEpoch = serviceFaultEpoch(this.state);
+              const diagRollup = this.state && this.state.render
+                && (this.state.render.touchFailDiag
+                  || (this.state.render.touchFailDiag = { epoch: -1, runs: 0 }));
+              if (diagRollup && diagRollup.epoch !== diagEpoch) {
+                diagRollup.epoch = diagEpoch; diagRollup.runs = 0;
+              }
+              const diagSampled = !diagRollup || (diagRollup.runs += 1) <= 4;
+              if (!diagSampled) {
+                laneWarn(this, 'admissionTouch',
+                  '[render] touch-fail texture diag skipped (epoch budget spent)');
+                throw new Error('diag-skipped');
+              }
               const rows = [];
               subject.traverse?.((o) => {
                 const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
@@ -12215,9 +12255,12 @@ export const render = {
                   });
                 }
               });
-              console.warn('[render] touch-fail texture diag', JSON.stringify(rows));
+              laneWarn(this, 'admissionTouchDiag', '[render] touch-fail texture diag', JSON.stringify(rows));
             } catch (diagError) {
-              console.warn('[render] touch-fail diag errored', String(diagError && diagError.message || diagError));
+              if (diagError && diagError.message !== 'diag-skipped') {
+                laneWarn(this, 'admissionTouchDiag', '[render] touch-fail diag errored',
+                  String(diagError && diagError.message || diagError));
+              }
             }
           } finally {
             restore();
@@ -12320,7 +12363,7 @@ export const render = {
       if (detachedPendingUpload.length > 0) {
         return rehydrateDetachedTextures(detachedPendingUpload, { yieldToMain: admissionPaceYield })
           .catch((error) => {
-            console.warn('[render] exact-target touch texture reattach failed', error);
+            laneWarn(this, 'admissionTouch', '[render] exact-target touch texture reattach failed', error);
           })
           .then(() => {
             const restoreDetached = revealSubjectWithAncestors(subject);
@@ -12329,7 +12372,7 @@ export const render = {
             } catch (error) {
               // Sync callers catch the same throw; the async branch logs it here so the
               // returned promise never lands an unhandled rejection on a best-effort caller.
-              console.warn('[render] exact-target admission touch failed', error);
+              laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
               return { skipped: true, reason: 'touch-failed' };
             } finally {
               restoreDetached();
@@ -12506,7 +12549,8 @@ export const render = {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, root);
         this._persistentSubmitLanes.markDirty(entity.id, 'geometry-ready');
       },
-      onError: (error, entity) => console.warn('[render] live geometry admission failed', entity.id, error),
+      onError: (error, entity) => laneWarn(this, 'liveGeometryAdmission',
+        '[render] live geometry admission failed', entity.id, error),
     });
     state.render.yieldToNextPresent = yieldToNextPresent;
     state.render.openingAdmission = openingCohort;
@@ -14861,7 +14905,8 @@ export const render = {
                 // loop retries on a fresh iterator or ends by deadline rather
                 // than releasing the shell on a half-counted census.
                 closeCookStepsIter(sweepIter);
-                console.warn('[render] boundary settle sweep drive failed; treating as still-pending', driveError);
+                laneWarn(this, 'boundarySettleSweep',
+                  '[render] boundary settle sweep drive failed; treating as still-pending', driveError);
                 pendingBoundaryCount = 1;
                 break;
               }
@@ -22314,7 +22359,7 @@ export const render = {
           if (!render.parkedWarmRoots.includes(root)) render.parkedWarmRoots.push(root);
         }
       } catch (error) {
-        console.warn('[render] bounded warm root park failed', root.name, error);
+        laneWarn(this, 'warmRootPark', '[render] bounded warm root park failed', root.name, error);
       }
       const debitAt = parkNow();
       notePacedFrameSpend(debitAt - lastDebitAt);
@@ -23246,7 +23291,8 @@ export const render = {
         // the set so the next flush retries them instead of pinning dead
         // meshes in that registry's motion records for the session's life.
         rePend = true;
-        console.warn('[render] mesh-release registry flush failed; rows re-pended', releaseError);
+        laneWarn(this, 'meshReleaseFlush',
+          '[render] mesh-release registry flush failed; rows re-pended', releaseError);
       }
       if (i + 1 < registries.length && flushNow() - flushStartedAt >= 4) {
         this._meshReleaseRegistryIndex = i + 1;
@@ -29506,13 +29552,78 @@ export const render = {
         this._armDepthStage();
         return;
       }
-      // Fault-park gate: the catch at the arm's tail counts ceremony faults
-      // per service epoch; at ≥3 the arm parks for the epoch — queued roots
-      // re-drain when an enqueue re-arms after the epoch flips (meshes keep
-      // rendering; only staged depth policy is lost).
+      // Fault gate, sibling-lane shape (protected-first-flight/reconcile): a
+      // fault stamps a ~1 s retry delay; three faults in one epoch parks the
+      // arm — but first pays one forced-wallet sync-twin rescue that restores
+      // real shadow policy on the pending set, so a transient burst can't
+      // leave withheld casters dark for the whole sector enter. The retry
+      // branch re-arms instead of returning: a bare return would strand the
+      // queue until an unrelated enqueue.
       const armServiceEpoch = serviceFaultEpoch(this.state);
-      if (this._depthStageArmFaultEpoch === armServiceEpoch
-          && (this._depthStageArmFaults | 0) >= 3) {
+      const armFaultCount = this._depthStageArmFaultEpoch === armServiceEpoch
+        ? (this._depthStageArmFaults | 0) : 0;
+      if (armFaultCount > 0
+          && (armFaultCount >= 3 || armNow() < (this._depthStageArmRetryAt || 0))) {
+        if (armFaultCount < 3) {
+          this._armDepthStage();
+          return;
+        }
+        if (this._depthStageArmDegradedEpoch !== armServiceEpoch
+            && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
+          this._depthStageArmDegradedEpoch = armServiceEpoch;
+          noteLaneFault(this.state, 'depthStageArm', true);
+          const rescueStart = armNow();
+          const rescueDeadline = rescueStart + 8;
+          for (const [root, entry] of pending) {
+            if (armNow() >= rescueDeadline) break;
+            if (!root || !root.parent) {
+              pending.delete(root);
+              continue;
+            }
+            // A deferred stepped compile still owns this root's marks —
+            // restoring now would un-withhold casters whose depth variant
+            // never linked.
+            if (this._deferredDepthStageRoots && this._deferredDepthStageRoots.has(root)) continue;
+            if (entry && entry.authoredCastShadow === true) {
+              if (root.castShadow !== true) {
+                root.castShadow = true;
+                this._shadowMapDirty = true;
+              }
+            } else try {
+              const rescueOut = { receiverDelta: 0 };
+              const rescueChanged = driveShadowPolicySteps(this, root, root,
+                (entry && entry.lodLevel) || 'lod0', {
+                  ...this._shadowPolicyOptions(entry && entry.entity, root),
+                  out: rescueOut,
+                }, () => false);
+              if (rescueChanged) {
+                this._shadowMapDirty = true;
+                if (!noteShadowPolicyChanged(this._shadowReceiverTally, {
+                  changed: true,
+                  receiverDelta: rescueOut.receiverDelta,
+                })) {
+                  this._shadowReceiversDirty = true;
+                }
+              }
+            } catch (rescueError) {
+              laneWarn(this, 'depthStageArm',
+                '[render] depth-stage rescue restore failed', rescueError);
+              continue;
+            }
+            pending.delete(root);
+            if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+            if (root.userData) {
+              delete root.userData.sfDepthUndrawableCycles;
+              root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+            }
+          }
+          const rescueElapsed = armNow() - rescueStart;
+          if (rescueElapsed > 0) noteForcedFrameSpend(rescueElapsed);
+        }
+        if (pending.size === 0) {
+          this._pendingDepthStageRoots = null;
+          this._killDepthStageSession();
+        }
         this._depthStageScheduled = false;
         return;
       }
@@ -29992,6 +30103,10 @@ export const render = {
         if (pending.size > 0) {
           this._armDepthStage();
         } else {
+          // Clean drain: reset the fault counter so sparse faults hours apart
+          // can't accumulate into a park — only a burst of ≥3 in one epoch
+          // (with the retry spacing failing) parks.
+          this._depthStageArmFaults = 0;
           this._pendingDepthStageRoots = null;
           this._depthStageScheduled = false;
           this._killDepthStageSession();
@@ -30018,8 +30133,12 @@ export const render = {
       this._depthStageArmFaults = 0;
     }
     this._depthStageArmFaults = (this._depthStageArmFaults | 0) + 1;
+    // Sibling-lane retry spacing: a transient fault re-arms ~1 s later instead
+    // of losing the whole epoch.
+    this._depthStageArmRetryAt = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now()) + 1000;
     noteLaneFault(this.state, 'depthStageArm', (this._depthStageArmFaults | 0) >= 3);
-  },
+  }, 
 
   _stageShadowDepthOnSettingEnable() {
     // Cast promotions applied while the map was off could neither withhold nor stage
@@ -31402,7 +31521,7 @@ function drainSceneEnvRebindQueue(owner) {
       // a done head so the rest of the service tail survives.
       try { head.iter.return?.(); } catch (_) { /* already torn */ }
       noteLaneFault(owner.state, 'envRebindWalk');
-      console.warn('[render] env rebind walk failed; dropping the entry', driveError);
+      laneWarn(owner, 'envRebindWalk', '[render] env rebind walk failed; dropping the entry', driveError);
       queue.shift();
       if (head.disposeTarget) { try { head.disposeTarget.dispose(); } catch (_) {} }
       continue;

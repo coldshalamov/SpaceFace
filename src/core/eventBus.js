@@ -27,12 +27,43 @@ export const PRESENTATION_LISTENER_DRAIN_BUDGET = 8;
 // (no listener is ever skipped); it does not promise that delivery stays sliced.
 export const MAX_QUEUED_SLICED_EMITS = 8;
 
+// A persistently-throwing listener on a hot event used to pay a full Error +
+// stack serialization per emit — emit-rate volume for the rest of the session.
+// Per-event storm dedup (the laneWarn shape): the first few faults log verbatim,
+// the storm folds into a suppressed count re-summarized on a >=1 s heartbeat.
+const BUS_ERROR_VERBATIM = 8;
+const busErrorLog = new Map(); // event -> { logged, suppressed, lastWarnAt }
+
+function noteBusHandlerError(event, err, label) {
+  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now() : Date.now();
+  let entry = busErrorLog.get(event);
+  if (!entry) {
+    entry = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
+    busErrorLog.set(event, entry);
+  }
+  if (entry.logged < BUS_ERROR_VERBATIM) {
+    entry.logged += 1;
+    console.error(`[bus] ${label} for "${event}":`, err);
+    return;
+  }
+  entry.suppressed += 1;
+  if (now - entry.lastWarnAt >= 1000) {
+    entry.lastWarnAt = now;
+    console.error(
+      `[bus] ${label} for "${event}": ${entry.suppressed} further fault(s) suppressed; latest:`,
+      err,
+    );
+    entry.suppressed = 0;
+  }
+}
+
 function dispatchRange(fns, payload, event, start, end) {
   const last = Math.min(fns.length, end);
   let i = start;
   for (; i < last; i++) {
     try { fns[i](payload, event); }
-    catch (err) { console.error(`[bus] handler error for "${event}":`, err); }
+    catch (err) { noteBusHandlerError(event, err, 'handler error'); }
   }
   return i;
 }
@@ -294,7 +325,7 @@ export function createBus() {
           const fn = slice.fns[slice.index];
           slice.index += 1;
           try { fn(slice.payload, slice.event); }
-          catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
+          catch (err) { noteBusHandlerError(slice.event, err, 'handler error'); }
         }
         if (emitSlice === slice) emitSlice = null;
         else break; // clear() or a re-entrant sliced emit swapped the global — stop here
@@ -343,7 +374,7 @@ export function createBus() {
       slice.index += 1;
       ran += 1;
       try { fn(slice.payload, slice.event); }
-      catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
+      catch (err) { noteBusHandlerError(slice.event, err, 'handler error'); }
       // The caller's deadline plus the shared paced ledger — a frame that already
       // spent its paced budget doesn't also get this drain's whole wallet.
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
@@ -411,7 +442,7 @@ export function createBus() {
       head.index += 1;
       ran += 1;
       try { fn(head.payload, head.event); }
-      catch (err) { console.error(`[bus] presentation handler error for "${head.event}":`, err); }
+      catch (err) { noteBusHandlerError(head.event, err, 'presentation handler error'); }
       if (head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }

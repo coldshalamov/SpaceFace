@@ -23,6 +23,37 @@ const ACCEPTED_SCAN_SOURCE = 'player-scanner';
 // entityId -> Set<controller>. entity.id is the durable join key the scanner payload carries.
 const registry = new Map();
 
+// A persistently-throwing controller on a hot event (scan:pulse, killed,
+// m:event) used to warn per dispatch for the session's life — warn rate ==
+// event rate. First few faults per key log verbatim; the storm folds into a
+// suppressed count re-summarized on a >=1 s heartbeat. The key set is bounded
+// (entity churn over a very long session could still grow it) by a cap reset.
+const AUTHORED_WARN_VERBATIM = 8;
+const AUTHORED_WARN_CAP = 512;
+const authoredWarnLog = new Map();
+
+function noteAuthoredWarn(key, message, error) {
+  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now() : Date.now();
+  let entry = authoredWarnLog.get(key);
+  if (!entry) {
+    if (authoredWarnLog.size >= AUTHORED_WARN_CAP) authoredWarnLog.clear();
+    entry = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
+    authoredWarnLog.set(key, entry);
+  }
+  if (entry.logged < AUTHORED_WARN_VERBATIM) {
+    entry.logged += 1;
+    console.warn(message, error);
+    return;
+  }
+  entry.suppressed += 1;
+  if (now - entry.lastWarnAt >= 1000) {
+    entry.lastWarnAt = now;
+    console.warn(`${message} — ${entry.suppressed} further rejection(s) suppressed; latest:`, error);
+    entry.suppressed = 0;
+  }
+}
+
 export function registerAuthoredMotionController(entityId, controller) {
   if (entityId == null || !controller) return;
   let set = registry.get(entityId);
@@ -246,7 +277,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
         controller.handleEvent?.(type, payload, anchor);
         hits += 1;
       } catch (error) {
-        console.warn(`[authoredMotion] ${type} rejected by controller`, error);
+        noteAuthoredWarn(`dispatch:${type}:${entityId}`, `[authoredMotion] ${type} rejected by controller`, error);
       }
     }
     return hits;
@@ -367,7 +398,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.settleGroups?.(durationS, simNow(), SERVICE_GROUPS);
       } catch (error) {
-        console.warn('[authoredMotion] service-rig settle rejected', error);
+        noteAuthoredWarn(`service-settle:${id}`, '[authoredMotion] service-rig settle rejected', error);
       }
     }
   };
@@ -445,7 +476,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.handleEvent?.(type, payload, anchor);
       } catch (error) {
-        console.warn(`[authoredMotion] ${type} rejected by nav_buoy controller`, error);
+        noteAuthoredWarn(`nav-buoy:${type}`, `[authoredMotion] ${type} rejected by nav_buoy controller`, error);
       }
     }
   };
@@ -472,7 +503,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.settleGroups?.(0.9, anchorS(payload), ['mast_beam', 'mast_rod']);
       } catch (error) {
-        console.warn('[authoredMotion] site machine settle rejected', error);
+        noteAuthoredWarn(`site-settle:${payload.siteId}`, '[authoredMotion] site machine settle rejected', error);
       }
     }
   };
@@ -491,7 +522,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.settleGroups?.(0.9, anchorS(payload), ['mast_beam', 'mast_rod']);
       } catch (error) {
-        console.warn('[authoredMotion] planet collector settle rejected', error);
+        noteAuthoredWarn(`planet-collector:${payload.siteId}`, '[authoredMotion] planet collector settle rejected', error);
       }
     }
   };
@@ -540,7 +571,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
           controller.settleGroups?.(0.9, now, ['snare_core']);
         }
       } catch (error) {
-        console.warn('[authoredMotion] cruise:dropped rejected by interdiction_buoy', error);
+        noteAuthoredWarn('cruise-dropped', '[authoredMotion] cruise:dropped rejected by interdiction_buoy', error);
       }
     }
   };
@@ -628,7 +659,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.handleEvent?.(type, payload, anchor);
       } catch (error) {
-        console.warn(`[authoredMotion] ${type} rejected by ${rigId} controller`, error);
+        noteAuthoredWarn(`fanout:${type}:${rigId}`, `[authoredMotion] ${type} rejected by ${rigId} controller`, error);
       }
     }
   };
@@ -749,7 +780,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
             settled = controller.settleGroups?.(0.8, simNow(), STRUT_GROUPS) || settled;
           }
         } catch (error) {
-          console.warn('[authoredMotion] kestrel:strutsStow rejected', error);
+          noteAuthoredWarn(`kestrel-struts:${id}`, '[authoredMotion] kestrel:strutsStow rejected', error);
         }
       }
       if (!settled) dispatch('kestrel:strutsStow', id, payload, () => true);
@@ -788,7 +819,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
         try {
           controller.settleGroups?.(0.7, simNow(), CAP_GROUPS);
         } catch (error) {
-          console.warn('[authoredMotion] armorFix settle rejected', error);
+          noteAuthoredWarn(`armor-fix:${id}`, '[authoredMotion] armorFix settle rejected', error);
         }
       }
       return;
@@ -855,7 +886,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
           controller.handleEvent?.('mining:stop', payload, simTime);
         }
       } catch (error) {
-        console.warn('[authoredMotion] pod seal rejected by controller', error);
+        noteAuthoredWarn(`pod-seal:${payload.targetId}`, '[authoredMotion] pod seal rejected by controller', error);
       }
     }
   };
@@ -886,7 +917,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
           }
         }
       } catch (error) {
-        console.warn('[authoredMotion] fab queue receipt rejected by controller', error);
+        noteAuthoredWarn(`fab-queue:${entityId}`, '[authoredMotion] fab queue receipt rejected by controller', error);
       }
     }
   };

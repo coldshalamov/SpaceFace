@@ -3396,7 +3396,9 @@ function commitAuthoredCargoCapsuleBoundary(
     // root was detached, so pay any leftover variant here rather than in a presented pass.
     if (typeof options.touchAuthoredExactTarget === 'function') {
       try { options.touchAuthoredExactTarget(authored.root); }
-      catch (error) { console.warn('[partsLibrary] cargo publish touch failed', error); }
+      catch (error) {
+        warnOnce(`cargo-publish-touch:${entity && entity.id}`, '[partsLibrary] cargo publish touch failed', error);
+      }
     }
     boundary.userData.authoredAssetState = 'authored';
     // The first in-frame cull consult would otherwise pay Box3.setFromObject
@@ -3405,7 +3407,9 @@ function commitAuthoredCargoCapsuleBoundary(
     primeDrawnCullStamps(boundary);
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
-      catch (error) { console.warn('[partsLibrary] cargo swap observer failed', error); }
+      catch (error) {
+        warnOnce(`cargo-swap-observer:${entity && entity.id}`, '[partsLibrary] cargo swap observer failed', error);
+      }
     }
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
     return true;
@@ -4355,7 +4359,9 @@ async function commitAuthoredPlaceBoundary(
     // root was detached, so pay any leftover variant here rather than in a presented pass.
     if (typeof options.touchAuthoredExactTarget === 'function') {
       try { options.touchAuthoredExactTarget(authored.root); }
-      catch (error) { console.warn('[partsLibrary] place publish touch failed', error); }
+      catch (error) {
+        warnOnce(`place-publish-touch:${admissionEntity && admissionEntity.id}`, '[partsLibrary] place publish touch failed', error);
+      }
     }
     if (authored.root.userData.ceresWorkfleetAuthoredSource) {
       recordCeresWorkfleetAuthoredSource(boundary, authored.root.userData.ceresWorkfleetAuthoredSource);
@@ -4370,7 +4376,9 @@ async function commitAuthoredPlaceBoundary(
     primeDrawnCullStamps(boundary);
     if (typeof options.onSwap === 'function') {
       try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity: admissionEntity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
-      catch (error) { console.warn('[partsLibrary] place swap observer failed', error); }
+      catch (error) {
+        warnOnce(`place-swap-observer:${admissionEntity && admissionEntity.id}`, '[partsLibrary] place swap observer failed', error);
+      }
     }
     setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
     return true;
