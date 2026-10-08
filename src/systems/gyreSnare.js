@@ -1137,10 +1137,14 @@ export const gyreSnare = {
    * a capped katamari out-reaches the beam's basin deliberately, never ~2× past it.
    * The floor band shrinks on a fresh snag: suckBandWidth 88 alone already
    * out-reaches basinRadius 86, so the "appetite widens with mass" arc had no
-   * headroom at the small end — min(88, 50 + r) keeps a pebble's reach honest. */
+   * headroom at the small end — min(88, 50 + r·rise) keeps a pebble's reach honest.
+   * The two growth slopes are tuned so the 129 wu cap lands at maxClumpRadius
+   * exactly — the appetite ring keeps widening for the WHOLE katamari arc
+   * instead of going flat halfway through it. */
   _suckRadius(rt) {
     return Math.min(D.basinRadius * 1.5,
-      rt.clumpRadius * (1 + D.suckBandMassGain) + Math.min(D.suckBandWidth, D.suckBandFloor + rt.clumpRadius));
+      rt.clumpRadius * (1 + D.suckBandMassGain)
+      + Math.min(D.suckBandWidth, D.suckBandFloor + rt.clumpRadius * D.suckBandFloorRise));
   },
 
   /** Drag absorbables onto the clump and merge the ones that touch. */

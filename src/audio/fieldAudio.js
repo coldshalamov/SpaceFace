@@ -269,6 +269,15 @@ export function syncFieldAudioLoops(host) {
   for (const spec of wanted) {
     const existing = rt.loops[spec.key];
     if (existing) {
+      // The primary gyreBall key is fixed but its subject isn't: when the watch
+      // promotes a different ball into launchedId, the live voice's follow/
+      // trackId still points at the retired corpse — re-bind instead of riding
+      // the wrong ball until the loop self-ends.
+      if (existing.trackId !== spec.trackId) {
+        stopLoop(host, spec.key);
+        startFieldLoop(host, spec);
+        continue;
+      }
       existing._fieldEnvelope = spec.envelope;
       existing._statusScale = 1;
       const pitch = fieldLoopPitch(spec.envelope) * (rt._bulletTimePitch || 1);

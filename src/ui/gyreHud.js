@@ -81,6 +81,7 @@ export const gyreHud = {
     this._bowlN = null;     //   fallback must be able to tell armed from absent
     this._lastAbsorbs = 0;  // absorb ledger delta → the counter's ~150 ms gulp
     this._eatUntil = -1;
+    this._lastHudPhase = null; // edge-true BOWL arming needs last frame's phase
   },
 
   destroy() {
@@ -113,7 +114,10 @@ export const gyreHud = {
   },
 
   _resolve(g, now) {
-    if (!g) return { text: '', cls: '' };
+    // The phase latch resets on a null mirror too — a mirror vanishing
+    // mid-launch would otherwise strand 'launching' and the next launch's
+    // launchEdge could never re-arm the BOWL window.
+    if (!g) { this._lastHudPhase = null; return { text: '', cls: '' }; }
     // BOWL arming is edge-true: the ~0.8 s grave window starts on the OFF->LAUNCH
     // flip, not re-armed every launching tick (which would stretch it to ~1.0 s).
     const launchEdge = g.phase === 'launching' && this._lastHudPhase !== 'launching';

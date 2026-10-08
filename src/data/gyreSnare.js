@@ -105,10 +105,16 @@ export const GYRE_SNARE = Object.freeze({
                              // weaker than the motion it interrupts.
   // ── Katamari growth ───────────────────────────────────────────────────────────────
   suckBandWidth: 88,         // wu — core sucks absorbables within core.radius + this
-  suckBandFloor: 50,         // wu — floor band on a fresh snag: min(88, 50 + clumpRadius)
-                           // keeps a pebble's reach under basinRadius so the appetite
-                           // escalation is visible from the very first meal
-  suckBandMassGain: 0.5,     // extra band wu per wu of clump radius — the annulus widens
+  suckBandFloor: 50,         // wu — floor band on a fresh snag:
+                           // min(88, 50 + clumpRadius*suckBandFloorRise) keeps a pebble's
+                           // reach under basinRadius so the appetite escalation is
+                           // visible from the very first meal
+  suckBandFloorRise: 0.1667, // the floor band's own growth rate — deliberately ~1/6 of
+                           // the old 1.0 slope so it doesn't saturate at r>=38; paired
+                           // with the mass gain below the 129 wu cap lands EXACTLY at
+                           // maxClumpRadius (60) instead of mid-arc (~32) — the appetite
+                           // ring keeps widening for the whole katamari growth arc
+  suckBandMassGain: 0.15,    // extra band wu per wu of clump radius — the annulus widens
                            // as the ball grows: a capped 60 wu katamari is hungrier than
                            // a fresh snag, and the halo reads the escalating appetite
   suckAccel: 800,            // wu/s² — pull toward the core inside the suck band:

@@ -3026,11 +3026,15 @@ test('suck-band floor: a fresh snag\'s reach stays inside the basin, mass re-wid
   const fresh = t.sys._suckRadius(rt);
   assert.ok(fresh < T.basinRadius,
     `fresh snag reach ${fresh.toFixed(1)} wu must sit under the basin's ${T.basinRadius} wu`);
-  assert.ok(Math.abs(fresh - (6 * (1 + T.suckBandMassGain) + Math.min(T.suckBandWidth, T.suckBandFloor + 6))) < 1e-6,
-    'the floor band is min(suckBandWidth, suckBandFloor + clumpRadius)');
+  assert.ok(Math.abs(fresh - (6 * (1 + T.suckBandMassGain) + Math.min(T.suckBandWidth, T.suckBandFloor + 6 * T.suckBandFloorRise))) < 1e-6,
+    'the floor band is min(suckBandWidth, suckBandFloor + clumpRadius*rise)');
   rt.clumpRadius = 30;
   assert.ok(t.sys._suckRadius(rt) > T.basinRadius,
     'the annulus out-reaches the basin once the ball has mass — the appetite arc');
+  const mid = t.sys._suckRadius(rt);
+  rt.clumpRadius = 45;
+  assert.ok(t.sys._suckRadius(rt) > mid && t.sys._suckRadius(rt) < T.basinRadius * 1.5,
+    'the appetite ring keeps growing past mid-arc — the cap lands at maxClumpRadius');
   rt.clumpRadius = 60;
   assert.equal(t.sys._suckRadius(rt), T.basinRadius * 1.5, 'the top-end reach cap is unchanged');
 });

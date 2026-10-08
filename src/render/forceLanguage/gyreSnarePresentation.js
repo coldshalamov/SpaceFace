@@ -519,6 +519,8 @@ export class GyreSnarePresentation {
     this._throwBeat = false;   // latched once per launch: the big ring blooms on the sim's thrownBeat tick
     this._lastGraveTick = -1;  // graves dedupe — one bloom per sim tick, not per render frame
     this._deathT = 0;          // >0 while a dead ball's rubble dissolves into its grave (~0.25 s)
+    this._secGraveT = null;    // >0 while a secondary ball's lumps scatter into its grave
+    this._launchKick = 0;      // armed veil surge on the thrown ball — ~0.7 s tail off thrownBeat
   }
 
   _lumpMaterial(type) {
@@ -1059,10 +1061,6 @@ export class GyreSnarePresentation {
         this._basinHalo.visible = false;
       }
     } else {
-      // The basin pull lane dies with the beam — its edge ring is a scene-level
-      // child (beam.visible can't cover it) and must not linger parked at the
-      // maw's last spot through the close + quiet-latch sleep.
-      if (this._basinHalo.visible) this._basinHalo.visible = false;
       // The gulp kicks decay on the close path too — a drop/tear mid-feed followed
       // by a fast re-beam would otherwise carry a stale gulp into the new funnel's
       // first frames (the mouth/disc kicks own ~24% and ~+1.0 of leftover surge).
@@ -1085,6 +1083,13 @@ export class GyreSnarePresentation {
           body: this._bodyMat.opacity * calmA,
           maw: this._mawMat.opacity * calmA,
           disc: this._discMat.uniforms.uAlpha.value * calmA,
+          // The scene-level rings ride the same ramp — a ring that pops out
+          // mid-collapse while every sibling fades breaks the close's one
+          // language. (Invisible rings seed dead — an opacity seed never
+          // re-shows a ring the live path already hid.)
+          grip: this._gripMat.opacity * calmA,
+          halo: this._haloMat.opacity * calmA,
+          basinHalo: this._basinHaloMat.opacity * calmA,
         };
         // A strain break is a TEAR, not a polite release: the glass snaps down in
         // ~120 ms (half the normal ramp) and a ring blooms where the core slipped —
@@ -1094,7 +1099,10 @@ export class GyreSnarePresentation {
         // the grip reads as a shatter, not the calm release ramp. core_lost has
         // no body to whip (it died), so its burst blooms radially at the spot.
         const tornClose = mirror.dropReason === 'strained' || mirror.dropReason === 'core_lost';
-        this._closeSpan = tornClose ? 0.12 : 0.25;
+        // Three close speeds, three stories: tear ~120 ms (snaps), spent sling
+        // ~150 ms (the launch's glass drops fast — the ball already left),
+        // polite release ~250 ms.
+        this._closeSpan = tornClose ? 0.12 : (mirror.dropReason === 'launched' ? 0.15 : 0.25);
         this._closeTear = tornClose;
         if (tornClose) {
           // The verb's biggest loss beat outlives the routine bloom like the throw
@@ -1132,19 +1140,32 @@ export class GyreSnarePresentation {
         // flashCalm rides every close-ramp alpha too — a reduced-flash user shouldn't
         // get a brighter 250 ms tail than those elements ever show while live. The
         // seeds are the last live alphas (fallbacks keep the old flat ramp).
-        const sd = this._closeSeeds || { cone: 0.42, body: 0.1, maw: 0.55, disc: 0.55 };
+        const sd = this._closeSeeds || { cone: 0.42, body: 0.1, maw: 0.55, disc: 0.55, grip: 0, halo: 0, basinHalo: 0 };
         this._bodyMat.opacity = sd.body * kk * flashCalm;
         this._mawMat.opacity = sd.maw * kk * flashCalm;
         this._discMat.uniforms.uAlpha.value = sd.disc * kk * flashCalm;
+        this._gripMat.opacity = sd.grip * kk * flashCalm;
+        this._haloMat.opacity = sd.halo * kk * flashCalm;
+        this._basinHaloMat.opacity = sd.basinHalo * kk * flashCalm;
         this._closeK = kk; // the clump block below shrinks the freed ball on the same ramp
         this._spiral.visible = true; // static scatter under reduced-motion too
-        if (k <= 0) { this._closing = false; this._beam.visible = false; this._spiral.visible = false; }
+        if (k <= 0) {
+          this._closing = false; this._beam.visible = false; this._spiral.visible = false;
+          this._grip.visible = false; this._halo.visible = false; this._basinHalo.visible = false;
+        }
         // _closeTear survives the 120 ms glass ramp — the rubble follows the torn
         // body for its published ~0.5 s track and clears on tornId, not on k.
-      } else if (this._beam.visible) {
-        this._beam.visible = false;
-        this._spiral.visible = false; // spiral now stays visible through closing — hide it on the rare non-ramp off
-        this._closeK = 0;
+      } else {
+        // No ramp to ride: the basin/pull rings are scene-level children — they
+        // die with the beam, never parked under the quiet latch.
+        this._grip.visible = false;
+        this._halo.visible = false;
+        this._basinHalo.visible = false;
+        if (this._beam.visible) {
+          this._beam.visible = false;
+          this._spiral.visible = false; // spiral now stays visible through closing — hide it on the rare non-ramp off
+          this._closeK = 0;
+        }
       }
     }
 
@@ -1299,11 +1320,14 @@ export class GyreSnarePresentation {
         this._drawTrail(this._trail, this._trailMat, this._ballTrailSpec(_bs[0], 0.3), flashCalm);
         this._drawTrail(this._trail2, this._trail2Mat, this._ballTrailSpec(_bs[1], 0.22), flashCalm);
       }
-      this._grip.visible = false;
-      this._halo.visible = false;
+      // While the close ramp runs it owns the rings' alphas — an instant hide
+      // here would pop them out mid-collapse while every sibling fades on kk.
+      if (!this._closing) {
+        this._grip.visible = false;
+        this._halo.visible = false;
+        this._basinHalo.visible = false;
+      }
       if (phase === 'off' && this._ballId == null && !this._closing && this._deathT <= 0) this._clearLumps();
-      // (Basin edge hides in the close path — _basinHalo is drawn above only
-      // while the beam block runs, so it can't be touched here during beaming.)
     } else {
       this._deathT = 0;
       this._closeTear = false; // a re-beam mid-tear-follow hands the clump group to the new core
@@ -1352,10 +1376,16 @@ export class GyreSnarePresentation {
       // climbs, landing the cap on the thing the player is watching, not just the pill.
       const fullGlow = holding && finite(mirror.clumpMass) >= Math.max(1, finite(mirror.maxClumpMass, 1))
         ? 0.05 + 0.02 * Math.sin(this.time * 3.4) * calm : 0;
-      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow) * flashCalm;
+      // The thrown ball reads ARMED, not just a rock + ribbon: an ~0.7 s surge
+      // off the thrownBeat latch brightens the veil and warms it toward rim-hot
+      // (strain/clumpKick/fullGlow are all dead channels once it's flying).
+      this._launchKick *= Math.exp(-sdt * 4);
+      const armed = Math.min(1, this._launchKick);
+      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow + armed * 0.1) * flashCalm;
       // Warn reaches the veil too — the ball is the object the player is actually
       // watching when strain climbs; cone/maw/disc already warm (strain * 0.6).
-      this._veilMat.color.copy(this._colGlass).lerp(this._colWarn, clamp01(finite(mirror.strain01)) * 0.4);
+      this._veilMat.color.copy(this._colGlass).lerp(this._colWarn, clamp01(finite(mirror.strain01)) * 0.4)
+        .lerp(this._colHot, armed * 0.6);
       this._veil.visible = this._veilMat.opacity > 0.004;
       // Strain tremble: under load the held rubble visibly quivers — the core mesh
       // stays physics-true while its swarm shakes, which is exactly "about to slip".
@@ -1463,7 +1493,7 @@ export class GyreSnarePresentation {
         this._grip.scale.set(gd, 1, 2.2 * (1 + strain * 0.35 * Math.sin(this.time * 37) * calm) * (1 - wind * 0.45));
         this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2 + wind * 0.4) * flashCalm;
         this._grip.visible = true;
-      } else if (this._grip.visible) {
+      } else if (!this._closing && this._grip.visible) {
         this._grip.visible = false;
       }
 
@@ -1482,7 +1512,7 @@ export class GyreSnarePresentation {
         this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
         this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6);
         this._halo.visible = true;
-      } else if (this._halo.visible) {
+      } else if (!this._closing && this._halo.visible) {
         this._halo.visible = false;
       }
 
@@ -1707,6 +1737,7 @@ export class GyreSnarePresentation {
     // on the decrement tick, a tick before the first impulse).
     if (phase === 'launching' && !this._throwBeat && mirror.thrownBeat === true) {
       this._throwBeat = true;
+      this._launchKick = 1; // the freed ball's veil surges armed for ~0.7 s
       const bx = mirror.ballPos ? finite(mirror.ballPos.x) : finite(mirror.corePos && mirror.corePos.x);
       const bz = mirror.ballPos ? finite(mirror.ballPos.z) : finite(mirror.corePos && mirror.corePos.z);
       const br = Math.max(6, finite(mirror.ballClumpRadius, finite(mirror.clumpRadius, 8)) * 2.2);
