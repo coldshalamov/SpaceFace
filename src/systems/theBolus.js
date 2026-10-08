@@ -7,8 +7,6 @@ import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import {
   BOLUS_SECTOR_ID,
-  BOLUS_WALL_X,
-  BOLUS_IRIS_Z,
   BOLUS_ACID_X0,
   BOLUS_ACID_X1,
   planBolusLayout,
@@ -17,13 +15,12 @@ import {
   bolusInCone,
   bolusIrisOpen,
 } from '../data/theBolus.js';
+import { BOLUS_FORCES as F } from '../data/bolusForces.js';
+import { BOLUS_CUE } from '../data/bolusAudio.js';
 
-const EXPOSURE_PER_SEC = 0.015;
-const ACID_DPS = 2;
-const LIMP_SPEED = 22;
-const FAST_SPEED = 55;
 const DRIVEN = new Set(['louse', 'drum', 'fingerling', 'floater', 'mite', 'glove']);
-const FIRST_KNOB = { x: -700, z: -2000 };
+const LOOSE = new Set(['drum', 'rib', 'bezoar', 'cyst']);
+const SMALL = new Set(['louse', 'mite', 'fingerling']);
 const CROOK_AT = { x: 480, z: -1680 };
 const SPUR_AT = { x: 640, z: 80 };
 
@@ -109,7 +106,7 @@ function speedOf(entity) {
   return Math.hypot(vel.x || 0, vel.z || 0);
 }
 
-function push(entity, ix, iz, _state) {
+function push(entity, ix, iz) {
   if (!entity) return;
   if (!entity.vel) entity.vel = { x: 0, y: 0, z: 0 };
   entity.vel.x += ix;
@@ -117,7 +114,7 @@ function push(entity, ix, iz, _state) {
   queuePhysicsImpulse(entity, { x: ix, y: 0, z: iz });
 }
 
-function drive(entity, vx, vz, _state) {
+function drive(entity, vx, vz) {
   if (!entity) return;
   if (!entity.vel) entity.vel = { x: 0, y: 0, z: 0 };
   const dx = vx - (entity.vel.x || 0);
@@ -144,6 +141,18 @@ function toast(world, text) {
   if (bus && typeof bus.emit === 'function') bus.emit('toast', { text, kind: 'info', ttl: 3.4 });
 }
 
+function cue(world, id) {
+  const bus = world && world.bus;
+  if (bus && typeof bus.emit === 'function') bus.emit('audio:cue', { id });
+}
+
+function kickHold(flags, simTime) {
+  return Number(flags['bolus:crestHoldUntil']) > simTime
+    || Number(flags['bolus:irisKickUntil']) > simTime
+    || Number(flags['bolus:baleenKickUntil']) > simTime
+    || Number(flags['bolus:pleatHoldUntil']) > simTime;
+}
+
 export function tickBolus(world, dt) {
   const state = world && world.state;
   if (!state || !(dt > 0)) return;
@@ -153,6 +162,7 @@ export function tickBolus(world, dt) {
   const step = dt > 0.1 ? 0.1 : dt;
   const origin = world._sectorOrigin(BOLUS_SECTOR_ID);
   if (!origin) return;
+  if (!player.vel) player.vel = { x: 0, y: 0, z: 0 };
   const lx = player.pos.x - origin.x;
   const lz = player.pos.z - origin.z;
   const simTime = Number(state.simTime) || 0;
@@ -164,13 +174,18 @@ export function tickBolus(world, dt) {
   const rot = player.rot || 0;
   const cast = [];
 
-  ae.exposure = Math.min(1, (ae.exposure || 0) + EXPOSURE_PER_SEC * step);
+  ae.exposure = Math.min(1, (ae.exposure || 0) + F.exposurePerSec * step);
+  if (boosting || speed >= F.fast) flags['bolus:fastFor'] = (Number(flags['bolus:fastFor']) || 0) + step;
+  else flags['bolus:fastFor'] = 0;
 
-  let toothPull = 0;
-  let uvula = false;
+  let toothRising = false;
+  let uvulaHold = 0;
+  let uvulaHeld = false;
   let pleat = false;
   let crookHeld = false;
   let miteHit = false;
+  let baleenCandidate = false;
+  let gloveCandidate = null;
 
   const list = state.entityList || [];
   for (let i = 0; i < list.length; i++) {
@@ -179,6 +194,11 @@ export function tickBolus(world, dt) {
     if (ent.homeSectorId !== BOLUS_SECTOR_ID) continue;
     const tag = ent.data.bolus;
     const heldLine = taut.has(ent.id);
+    const wasHeld = tag.held === true;
+    if (wasHeld && !heldLine && LOOSE.has(tag.role)) {
+      flags[`bolus:loose:${tag.key}`] = simTime + F.looseWindow;
+    }
+    tag.held = heldLine;
     if (!heldLine) {
       tag.hold = 0;
       tag.spent = false;
@@ -195,6 +215,7 @@ export function tickBolus(world, dt) {
           if (committed.cargo) addCargo(state, committed.cargo, committed.qty);
           if (committed.exposure) ae.exposure = Math.min(1, (ae.exposure || 0) + committed.exposure);
           if (committed.toast) toast(world, committed.toast);
+          cue(world, BOLUS_CUE.latch);
           if (committed.event === 'suture') {
             tag.role = 'suture';
             if (!ent.data.ecology) ent.data.ecology = {};
@@ -211,122 +232,181 @@ export function tickBolus(world, dt) {
         }
       }
     }
-    if (heldLine && tag.role === 'tooth') toothPull = flags['bolus:papilla'] ? 0.5 : 1;
-    if (heldLine && tag.role === 'uvula' && tag.hold >= 0.4) uvula = true;
+    if (heldLine && tag.role === 'tooth') {
+      if (flags['bolus:toothHeld'] !== true && !(Number(flags['bolus:toothYankUntil']) > simTime)) toothRising = true;
+    }
+    if (heldLine && tag.role === 'uvula') {
+      uvulaHeld = true;
+      uvulaHold = tag.hold;
+    }
     if (heldLine && tag.role === 'crook' && tag.hold >= 0.4) crookHeld = true;
     const ex = ent.pos.x - origin.x;
     const ez = ent.pos.z - origin.z;
-    if (tag.role === 'mite' && !flags['bolus:mite'] && Math.hypot(ex - lx, ez - lz) < 36 && speed < LIMP_SPEED) {
+    if (tag.role === 'mite' && !flags['bolus:mite'] && Math.hypot(ex - lx, ez - lz) < 36 && speed < F.limp) {
       miteHit = true;
     }
-    if (tag.role === 'baleen' && boosting && Math.hypot(ex - lx, ez - lz) < 90 && !(Number(flags['bolus:baleenUntil']) > simTime)) {
-      flags['bolus:baleenUntil'] = simTime + 2;
-      push(player, 0, -18, state);
+    if (tag.role === 'baleen' && boosting && Math.hypot(ex - lx, ez - lz) < F.baleenReach
+        && !(Number(flags['bolus:baleenUntil']) > simTime)) {
+      baleenCandidate = true;
     }
-    if (tag.role === 'glove' && Math.hypot(ex - lx, ez - lz) < 240) {
-      const frenum = Number(flags['bolus:frenumUntil']) > simTime;
-      if (speed < LIMP_SPEED) {
-        const kx = FIRST_KNOB.x - lx;
-        const kz = FIRST_KNOB.z - lz;
-        const dist = Math.hypot(kx, kz) || 1;
-        push(player, (kx / dist) * 12 * step, (kz / dist) * 12 * step, state);
-      } else if (!frenum && speed >= FAST_SPEED) {
-        const gx = ex - lx;
-        const gz = ez - lz;
-        const dist = Math.hypot(gx, gz) || 1;
-        push(player, (gx / dist) * 16 * step, (gz / dist) * 16 * step, state);
+    if (tag.role === 'glove') {
+      const near = Math.hypot(ex - lx, ez - lz) < F.gloveReach;
+      if (!near) tag.gloveHot = false;
+      else if (!tag.gloveHot) {
+        const frenum = Number(flags['bolus:frenumUntil']) > simTime;
+        if (speed < F.limp) {
+          const kx = F.gloveKnob.x - lx;
+          const kz = F.gloveKnob.z - lz;
+          const dist = Math.hypot(kx, kz) || 1;
+          gloveCandidate = { tag, ix: (kx / dist) * F.gloveNudge, iz: (kz / dist) * F.gloveNudge };
+        } else if (!frenum && speed >= F.fast) {
+          const gx = ex - lx;
+          const gz = ez - lz;
+          const dist = Math.hypot(gx, gz) || 1;
+          gloveCandidate = { tag, ix: (gx / dist) * F.gloveYank, iz: (gz / dist) * F.gloveYank };
+        }
       }
     }
     cast.push({ ent, tag, heldLine, ex, ez });
   }
 
-  if (!(Number(flags['bolus:peristalsisUntil']) > simTime)) {
-    const wave = 6 + 8 * Math.sin((simTime / 12) * Math.PI * 2);
-    push(player, 0, wave * step, state);
+  let ix = 0;
+  let iz = 0;
+  let xKicked = false;
+  let zKicked = false;
+  const sour = !!flags['bolus:papilla'];
+
+  if (toothRising) {
+    ix = sour ? F.toothXSour : F.toothX;
+    xKicked = true;
+    flags['bolus:toothYankUntil'] = simTime + F.toothQuiet;
+  } else if (!bolusIrisOpen(simTime) && !(Number(flags['bolus:hushUntil']) > simTime)
+      && !(Number(flags['bolus:irisBumpUntil']) > simTime)
+      && Math.abs(lz - F.irisAt) < F.irisHalfWidth && Math.abs(lx) < F.irisSkirt) {
+    iz = (lz <= F.irisAt ? -1 : 1) * F.irisZ;
+    zKicked = true;
+    flags['bolus:irisBumpUntil'] = simTime + F.irisQuiet;
+    flags['bolus:irisKickUntil'] = simTime + F.irisKick;
+    cue(world, BOLUS_CUE.iris);
+  } else if (pleat) {
+    iz = F.pleatZ;
+    zKicked = true;
+    flags['bolus:pleatHoldUntil'] = simTime + F.pleatHold;
+  } else if (baleenCandidate) {
+    iz = F.baleenZ;
+    zKicked = true;
+    flags['bolus:baleenUntil'] = simTime + F.baleenRearm;
+    flags['bolus:baleenKickUntil'] = simTime + F.baleenKick;
+  } else if (gloveCandidate) {
+    ix = gloveCandidate.ix;
+    iz = gloveCandidate.iz;
+    xKicked = true;
+    zKicked = true;
+    gloveCandidate.tag.gloveHot = true;
+  } else if (crestDue(flags, simTime)) {
+    iz = F.peristalsisZ;
+    zKicked = true;
+    flags['bolus:peristalsisMark'] = Math.floor(simTime / F.peristalsisPeriod);
+    flags['bolus:crestHoldUntil'] = simTime + F.crestHold;
+    cue(world, BOLUS_CUE.crest);
   }
-  if (Math.abs(lx - BOLUS_WALL_X) < 180 && !boosting && speed < 40) {
-    push(player, 0, 8 * step, state);
+
+  if (uvulaHeld && uvulaHold >= F.uvulaHold) {
+    const arrived = Math.abs(lx - F.uvulaX) <= F.uvulaArrive;
+    const want = arrived ? 0 : Math.sign(F.uvulaX - lx) * F.uvulaSpeed;
+    if (!xKicked) ix += want - (player.vel.x || 0);
+    flags['bolus:uvulaSeek'] = true;
+  } else if (flags['bolus:uvulaSeek']) {
+    flags['bolus:uvulaSeek'] = false;
+    if (!xKicked) ix += -(player.vel.x || 0);
   }
+
+  if (!zKicked && !kickHold(flags, simTime) && lx >= F.ciliaX0 && lx <= F.ciliaX1) {
+    const vz = player.vel.z || 0;
+    if (vz < F.ciliaZ) iz += F.ciliaZ - vz;
+  }
+
+  if (ix !== 0 || iz !== 0) push(player, ix, iz);
+
   if (!(Number(flags['bolus:acidQuietUntil']) > simTime) && lx >= BOLUS_ACID_X0 && lx <= BOLUS_ACID_X1) {
-    hurt(player, ACID_DPS * step);
+    hurt(player, F.acidDps * step);
   }
-  if (!(Number(flags['bolus:hushUntil']) > simTime) && !bolusIrisOpen(simTime)
-      && Math.abs(lz - BOLUS_IRIS_Z) < 90 && lx > -900 && lx < 900) {
-    push(player, 0, lz < BOLUS_IRIS_Z ? -28 * step : 28 * step, state);
-  }
-  if (toothPull) push(player, 18 * toothPull * step, 0, state);
-  if (uvula) push(player, (lx < BOLUS_WALL_X ? 1 : -1) * 6 * step, 0, state);
-  if (pleat) push(player, 0, 14, state);
   if (miteHit) {
     flags['bolus:mite'] = true;
     ae.exposure = Math.min(1, (ae.exposure || 0) + 0.04);
     toast(world, 'Something thin is on the line.');
   }
 
+  flags['bolus:toothHeld'] = false;
   for (let i = 0; i < cast.length; i++) {
-    steerFauna(cast[i], { lx, lz, rot, speed, boosting, simTime, flags, crookHeld, state });
+    if (cast[i].heldLine && cast[i].tag.role === 'tooth') flags['bolus:toothHeld'] = true;
+    steerFauna(cast[i], { lx, lz, rot, speed, boosting, simTime, flags, crookHeld, state, world });
   }
+}
+
+function crestDue(flags, simTime) {
+  const mark = Math.floor(simTime / F.peristalsisPeriod);
+  if (!Object.prototype.hasOwnProperty.call(flags, 'bolus:peristalsisMark')) {
+    flags['bolus:peristalsisMark'] = mark;
+    return false;
+  }
+  if (mark === flags['bolus:peristalsisMark']) return false;
+  if (Number(flags['bolus:peristalsisUntil']) > simTime) {
+    flags['bolus:peristalsisMark'] = mark;
+    return false;
+  }
+  return true;
 }
 
 function steerFauna(row, ctx) {
   const { ent, tag, heldLine, ex, ez } = row;
+  if (Number(ctx.flags[`bolus:loose:${tag.key}`]) > ctx.simTime) return;
   if (heldLine || !DRIVEN.has(tag.role)) return;
   if (!ent.physicsBody || ent.physicsBody.dynamic === false) return;
-  const { state } = ctx;
-  if (tag.role === 'louse') {
-    const frozen = bolusInCone(ctx.lx, ctx.lz, ctx.rot, ex, ez)
-      || (ctx.crookHeld && Math.hypot(ex - CROOK_AT.x, ez - CROOK_AT.z) <= 220);
-    if (frozen) {
-      drive(ent, 0, 0, state);
-      return;
-    }
+  const inCone = bolusInCone(ctx.lx, ctx.lz, ctx.rot, ex, ez);
+  const crookFreeze = tag.role === 'louse' && ctx.crookHeld && Math.hypot(ex - CROOK_AT.x, ez - CROOK_AT.z) <= F.crookReach;
+
+  if (tag.role === 'louse' && !crookFreeze) {
     const phase = (tag.phase || 0) + ctx.simTime * 0.7;
-    drive(ent, Math.cos(phase) * 16, Math.sin(phase * 1.3) * 16, state);
-    return;
-  }
-  if (tag.role === 'drum') {
+    drive(ent, Math.cos(phase) * F.louseScurry, Math.sin(phase) * F.louseScurry);
+  } else if (tag.role === 'drum') {
     const spur = Number(ctx.flags['bolus:spurUntil']) > ctx.simTime
       && Math.hypot(ex - SPUR_AT.x, ez - SPUR_AT.z) <= 450;
     if (spur) {
-      drive(ent, 0, 0, state);
-      return;
-    }
-    if (!(ctx.boosting || ctx.speed >= FAST_SPEED)) {
+      drive(ent, 0, 0);
+    } else if (Number(ctx.flags['bolus:fastFor']) >= F.drumChaseDelay) {
+      const dx = ctx.lx - ex;
+      const dz = ctx.lz - ez;
+      const dist = Math.hypot(dx, dz) || 1;
+      drive(ent, (dx / dist) * F.drumChase, (dz / dist) * F.drumChase);
+    } else {
       const phase = (ent.rot || 0) + ctx.simTime * 0.2;
-      drive(ent, Math.cos(phase) * 6, Math.sin(phase) * 6, state);
-      return;
+      drive(ent, Math.cos(phase) * F.drumWander, Math.sin(phase) * F.drumWander);
     }
-    const dx = ctx.lx - ex;
-    const dz = ctx.lz - ez;
-    const dist = Math.hypot(dx, dz) || 1;
-    drive(ent, (dx / dist) * 28, (dz / dist) * 28, state);
-    return;
-  }
-  if (tag.role === 'fingerling') {
+  } else if (tag.role === 'fingerling') {
     if (ctx.boosting && Math.hypot(ex - ctx.lx, ez - ctx.lz) < 220) {
       const dx = ex - ctx.lx;
       const dz = ez - ctx.lz;
       const dist = Math.hypot(dx, dz) || 1;
-      drive(ent, (dx / dist) * 36, (dz / dist) * 36, state);
-      return;
+      drive(ent, (dx / dist) * 36, (dz / dist) * 36);
+    } else {
+      const phase = ctx.simTime * 0.8 + (tag.phase || 0);
+      drive(ent, (tag.anchorX + Math.cos(phase) * 30 - ex) * 0.8, (tag.anchorZ + Math.sin(phase) * 30 - ez) * 0.8);
     }
-    const phase = ctx.simTime * 0.8 + (tag.phase || 0);
-    drive(ent, (tag.anchorX + Math.cos(phase) * 30 - ex) * 0.8, (tag.anchorZ + Math.sin(phase) * 30 - ez) * 0.8, state);
-    return;
-  }
-  if (tag.role === 'floater') {
+  } else if (tag.role === 'floater') {
     const phase = (tag.phase || 0) + ctx.simTime * 0.35;
     const ax = tag.anchorX + Math.cos(phase) * 40;
     const az = tag.anchorZ + Math.sin(phase * 0.7) * 26;
-    drive(ent, (ax - ex) * 0.4, (az - ez) * 0.4, state);
-    return;
-  }
-  if (tag.role === 'mite') {
+    drive(ent, (ax - ex) * 0.4, (az - ez) * 0.4);
+  } else if (tag.role === 'mite') {
     const phase = ctx.simTime * 1.4 + (ent.rot || 0);
-    drive(ent, Math.cos(phase) * 10, Math.sin(phase) * 8, state);
-    return;
+    drive(ent, Math.cos(phase) * 10, Math.sin(phase) * 8);
+  } else if (tag.role === 'glove') {
+    drive(ent, (tag.anchorX - ex) * 0.6, (tag.anchorZ - ez) * 0.6);
   }
-  if (tag.role === 'glove') {
-    drive(ent, (tag.anchorX - ex) * 0.6, (tag.anchorZ - ez) * 0.6, state);
-  }
+
+  if (SMALL.has(tag.role) && (inCone || crookFreeze)) drive(ent, 0, 0);
+  const frozen = SMALL.has(tag.role) && (inCone || crookFreeze);
+  if (frozen && tag.frozen !== true) cue(ctx.world, BOLUS_CUE.freeze);
+  tag.frozen = frozen;
 }

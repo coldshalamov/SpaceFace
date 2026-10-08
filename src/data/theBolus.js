@@ -106,6 +106,11 @@ export function bolusIrisOpen(simTime, period = BOLUS_IRIS_PERIOD, openAt = BOLU
   return m >= openAt && m < openAt + window;
 }
 
+/** 0 shut, 1 open. Samples stay 0 / 1 / 0 at t = 0 / 3 / 8. */
+export function bolusIrisOpenAmount(simTime) {
+  return bolusIrisOpen(simTime) ? 1 : 0;
+}
+
 export function bolusResolvedSpec(spec, flags) {
   if (spec && spec.role === 'valve' && flags && flags[`bolus:valve:${spec.key}`]) {
     return {

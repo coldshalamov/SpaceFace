@@ -290,6 +290,7 @@ import {
 } from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { syncMarrowCone } from './marrowCone.js';
+import { syncBolusView } from './bolusView.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../data/lookMoods.js';
 import { beginLookMood, updateLook } from './look.js';
@@ -26964,6 +26965,7 @@ export const render = {
     this._updateSectorPostTransition(frameDt);
     this._updateSectorPaletteTransition(frameDt);
     syncMarrowCone(this);
+    syncBolusView(this);
     this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {
       if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
