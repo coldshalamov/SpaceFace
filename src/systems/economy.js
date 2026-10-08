@@ -68,7 +68,7 @@ import {
 } from '../economy/customsRisk.js';
 import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
-import { priceModForState } from './factions.js';
+import { priceModForState, rankServiceDiscount } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { contaminationSaleMult } from '../data/alienEcology.js'; // AE-077/078 biohazard market policy
@@ -179,6 +179,18 @@ export const SERVICE_PRICES = Object.freeze({
   hullWashCr: HULL_WASH_CR,
   salvageRightCr: SALVAGE_RIGHT_CR,
 });
+
+/**
+ * Docked-service unit price after the standing discount — the one source the quote layer and
+ * the charge both read, so the number on the button is the number the yard takes. The rank
+ * that matters is the player's standing with the docked station's own faction; only a docked
+ * service honors it, so the off-station emergency reserve and depot running costs stay at list.
+ */
+export function serviceUnitCr(state, baseCr) {
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  const info = stationId ? stationInfo(state, stationId) : null;
+  return baseCr * (1 - rankServiceDiscount(state, info && info.factionId));
+}
 
 /** Live hull-insurance defaults. The deductible is the named sink PQ-155.01 reads. */
 export const INSURANCE_DEFAULTS = Object.freeze({
@@ -3308,15 +3320,16 @@ export const economy = {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
       const want = p.amount != null ? p.amount : (fuel.max - fuel.current);
       const units = Math.max(0, Math.min(want, fuel.max - fuel.current));
-      const cost = round(units * FUEL_UNIT_CR);
+      const fuelUnit = serviceUnitCr(state, FUEL_UNIT_CR);
+      const cost = round(units * fuelUnit);
       if (units <= 0) return;
       const credits = normalizeCredits(state.player.credits);
-      const realUnits = credits < cost ? Math.max(0, Math.min(units, Math.floor(credits / FUEL_UNIT_CR))) : units;
+      const realUnits = credits < cost ? Math.max(0, Math.min(units, Math.floor(credits / fuelUnit))) : units;
       if (realUnits <= 0) {
         // FB-101 hardship branch: a broke pilot still gets the smallest fill that can jump —
         // the berth files the unpaid units on the note instead of stranding the hull.
         const reserve = Math.min(EMERGENCY_FUEL_U, units);
-        const debtCr = this._fileDebt(Math.round(reserve * FUEL_UNIT_CR));
+        const debtCr = this._fileDebt(Math.round(reserve * fuelUnit));
         const fuelYard = this._serviceYard();
         const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
         if (fuelYard && fuelYard.enqueuePlayerJob({
@@ -3331,7 +3344,7 @@ export const economy = {
         }
         return;
       }
-      const realCost = round(realUnits * FUEL_UNIT_CR);
+      const realCost = round(realUnits * fuelUnit);
       this.chargeCredits(realCost, 'service:refuel');
       // The yard owns timed delivery when the player is on a live dock (fuel is a pump, not an
       // instant fill). Harness docks without the production latch keep the instant path below.
@@ -3360,7 +3373,8 @@ export const economy = {
       const missArmor = Math.max(0, (e.armorMax || 0) - (e.armorHp || 0));
       const totalMiss = missHull + missArmor;
       if (totalMiss <= 0.5) { this.bus.emit('toast', { text: 'Hull already intact', kind: 'info', ttl: 2 }); return; }
-      const cost = round(totalMiss * REPAIR_HP_CR);
+      const repairUnit = serviceUnitCr(state, REPAIR_HP_CR);
+      const cost = round(totalMiss * repairUnit);
       const credits = normalizeCredits(state.player.credits);
       const repairYard = this._serviceYard();
       const yardUnits = credits < cost ? totalMiss * (cost > 0 ? credits / cost : 0) : totalMiss;
