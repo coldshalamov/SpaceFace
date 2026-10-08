@@ -30372,10 +30372,9 @@ export const render = {
           let collected = 0;
           let abortedPark = null;
           const deferredRoots = this._deferredDepthStageRoots;
-          // Flip-triggered bulk re-stage: a census flip re-queues the whole cohort,
-          // and N per-root subtree collects are N walks + N bookkeeping passes. One
-          // stepped DFS over the live scene attributes casters to every pending
-          // ancestor under the identical signature verdict — completed roots take
+          // Bulk re-stage visits only pending roots reachable from the live scene,
+          // pruning nested roots from the traversal while attributing their casters
+          // to every pending ancestor under the identical signature verdict. Completed roots take
           // their unstaged set wholesale; roots the walk never finished (shared
           // budget, deferred compile, a root outside the scene) fall through to the
           // ordinary per-root path untouched.

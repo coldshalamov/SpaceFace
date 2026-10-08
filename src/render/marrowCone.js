@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { BOLUS_SECTOR_ID } from '../data/theBolus.js';
+import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 
 const DIM = Object.freeze({ ambient: 0.35, key: 0.28, rim: 0.45, fill: 0.4 });
 const scratch = { x: 0, z: 0 };
@@ -51,6 +52,7 @@ function ensureSpot(renderer) {
   spot.castShadow = false;
   renderer.scene.add(spot);
   renderer.scene.add(spot.target);
+  noteShadowCensusLightMutation();
   renderer._marrowSpot = spot;
   return spot;
 }
@@ -58,8 +60,10 @@ function ensureSpot(renderer) {
 export function disposeMarrowCone(renderer, { disposeGpu = true } = {}) {
   const spot = renderer?._marrowSpot;
   if (!spot) return;
+  const wasMounted = spot.parent != null;
   spot.removeFromParent();
   spot.target.removeFromParent();
+  if (wasMounted) noteShadowCensusLightMutation();
   if (disposeGpu) spot.dispose();
   renderer._marrowSpot = null;
 }

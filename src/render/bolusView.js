@@ -15,6 +15,7 @@ import {
 } from './bolusCanal.js';
 import { bolusCoughOffset, bolusIrisShutter } from '../data/bolusPlay.js';
 import { bolusSilhouette } from './bolusSilhouettes.js';
+import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 
 const scratch = { x: 0, y: 0, z: 0 };
 const FREEZE = new Set(['louse', 'fingerling', 'mite']);
@@ -149,6 +150,7 @@ function ensureView(renderer) {
   group.add(cards);
   renderer.scene.add(group);
   renderer.scene.add(lightGroup);
+  noteShadowCensusLightMutation();
   renderer._bolusView = { group, lightGroup, ribs, cilia, baleen, iris, acid, lights, cards, cough, seed };
   return renderer._bolusView;
 }
@@ -156,8 +158,10 @@ function ensureView(renderer) {
 export function disposeBolusView(renderer, { disposeGpu = true } = {}) {
   const view = renderer?._bolusView;
   if (!view) return;
+  const hadMountedLights = view.lightGroup?.parent != null;
   view.group.removeFromParent();
   view.lightGroup?.removeFromParent();
+  if (hadMountedLights) noteShadowCensusLightMutation();
   if (disposeGpu) {
     view.group.traverse((node) => {
       node.geometry?.dispose();

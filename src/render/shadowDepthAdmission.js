@@ -617,10 +617,9 @@ export function collectUnstagedShadowCasters(renderer, subjects, lightingScene, 
 }
 
 /**
- * Flip-triggered bulk twin of collectUnstagedShadowCasters: ONE stepped DFS over
- * `roots` (the arm passes the live scene) that attributes each casting mesh to every
- * pending ancestor in `pendingSet` — a census flip re-queues the whole cohort, and N
- * per-root subtree walks + N bookkeeping passes become one census-shaped pass.
+ * Bulk twin of collectUnstagedShadowCasters: `roots` bounds scene membership, while
+ * one stepped DFS visits only the reachable pending forest. Nested pending roots
+ * share a walk; unrelated scene branches never spend the collection budget.
  * Subject verdicts and the staged-signature compare mirror the per-root variant
  * exactly: a caster incapable of minting signatures is skipped (identical to the
  * signatures.length===0 path), and an empty staged set unstages every castable
@@ -635,6 +634,27 @@ export function collectUnstagedShadowCasters(renderer, subjects, lightingScene, 
  */
 export function* collectUnstagedShadowCastersBulkSteps(roots, pendingSet, renderer, lightSig, nodeBudget = null, yieldEvery = 512) {
   const list = Array.isArray(roots) ? roots : [roots];
+  const boundaries = new Set(list);
+  const reachable = new Set();
+  for (const root of pendingSet) {
+    for (let ancestor = root; ancestor; ancestor = ancestor.parent) {
+      if (boundaries.has(ancestor)) {
+        reachable.add(root);
+        break;
+      }
+    }
+  }
+  const forest = [];
+  for (const root of reachable) {
+    let covered = false;
+    for (let ancestor = root.parent; ancestor; ancestor = ancestor.parent) {
+      if (reachable.has(ancestor)) {
+        covered = true;
+        break;
+      }
+    }
+    if (!covered) forest.push(root);
+  }
   const seen = new Set();
   const unstagedByRoot = new Map();
   const completedRoots = new Set();
@@ -642,8 +662,8 @@ export function* collectUnstagedShadowCastersBulkSteps(roots, pendingSet, render
   const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
   let visited = 0;
   const stack = [];
-  for (let i = list.length - 1; i >= 0; i -= 1) {
-    if (list[i]) stack.push([list[i], 'enter']);
+  for (let i = forest.length - 1; i >= 0; i -= 1) {
+    stack.push([forest[i], 'enter']);
   }
   while (stack.length > 0) {
     const entry = stack.pop();
