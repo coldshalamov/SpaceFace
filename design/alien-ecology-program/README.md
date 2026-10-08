@@ -32,6 +32,7 @@ The program obeys current canon unless the owner later explicitly revises it. In
 - 12_MIGRATION_AND_CONFLICTS.md — how to reconcile Understory, Mycelia, Vael "alien" metadata, Vethari canon, and Verge-Layers without throwing away existing work.
 - 16_THE_BOLUS.md — interior sector. A colonized carrier throat between Charon and Ashfall: ship set, hold list, and the build contract.
 - 17_BOLUS_CUT.md — the readable cut on top of that contract: canal, silhouettes, and the edge-triggered swings.
+- 18_BOLUS_PLAY.md — how the throat plays: lane, tooth, iris, cough. Motion and cues. No captions.
 
 ## North-star rules
 

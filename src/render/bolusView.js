@@ -13,6 +13,7 @@ import {
   irisBlades,
   ribRadial,
 } from './bolusCanal.js';
+import { bolusCoughOffset, bolusIrisShutter } from '../data/bolusPlay.js';
 import { applyBolusCableStyle } from './bolusCable.js';
 import { bolusSilhouette } from './bolusSilhouettes.js';
 
@@ -71,11 +72,17 @@ export function syncBolusView(renderer) {
     view.acid.userData.scroll = acidScroll(sim, quiet, view.acid.userData.scroll || 0);
     view.acid.position.z = view.acid.userData.scroll;
   }
-  const open = irisOpenAmount(sim);
+  const open = bolusIrisShutter(sim);
   for (let i = 0; i < view.iris.length; i++) {
     const angle = (i / view.iris.length) * Math.PI * 2;
     const slide = (260 - 16) * open;
     view.iris[i].position.set(Math.cos(angle) * slide, Math.sin(angle) * slide, 0);
+  }
+  const cracked = flags['bolus:coughCracked'] === true;
+  const coughMeshes = view.cough || [];
+  for (let i = 0; i < coughMeshes.length; i++) {
+    const mesh = coughMeshes[i];
+    mesh.position.y = bolusCoughOffset(cracked, mesh.name);
   }
   const pulseBase = 4 + 3 * Math.sin(sim * 0.7);
   for (let i = 0; i < view.lights.length; i++) {
@@ -83,12 +90,6 @@ export function syncBolusView(renderer) {
   }
   syncFreezeCards(view, renderer.state);
   applyBolusCableStyle(renderer.state);
-}
-
-function irisOpenAmount(sim) {
-  const span = 20;
-  const m = ((sim % span) + span) % span;
-  return m >= 2 && m < 8 ? 1 : 0;
 }
 
 function ensureView(renderer) {
@@ -101,6 +102,7 @@ function ensureView(renderer) {
   const cilia = [];
   const baleen = [];
   const iris = [];
+  const cough = [];
   let acid = null;
   for (let i = 0; i < canal.parts.length; i++) {
     const row = canal.parts[i];
@@ -113,6 +115,7 @@ function ensureView(renderer) {
     } else if (row.kind === 'cilia') cilia.push(mesh);
     else if (row.kind === 'baleen') baleen.push(mesh);
     else if (row.kind === 'acid') acid = mesh;
+    else if (row.kind === 'cough') cough.push(mesh);
     group.add(mesh);
   }
   const shut = irisBlades(0);
@@ -136,7 +139,7 @@ function ensureView(renderer) {
   cards.name = 'SF_BolusFreeze';
   group.add(cards);
   renderer.scene.add(group);
-  renderer._bolusView = { group, ribs, cilia, baleen, iris, acid, lights, cards };
+  renderer._bolusView = { group, ribs, cilia, baleen, iris, acid, lights, cards, cough };
   return renderer._bolusView;
 }
 
