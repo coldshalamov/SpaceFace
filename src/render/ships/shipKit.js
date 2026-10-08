@@ -657,6 +657,34 @@ export function buildDrive(parent, opts) {
 //   entity              — the ship entity (reads radius for scale, vel for drive speed)
 //   designRadius        — the authored radius the hull geometry was built at
 // ---------------------------------------------------------------------------------------------
+const READABILITY_BAY_GEO = noDispose(new THREE.BoxGeometry(0.16, 0.08, 0.10));
+const READABILITY_WIN_GEO = noDispose(new THREE.BoxGeometry(0.22, 0.025, 0.025));
+
+function stampAuthoredReadability(root, hull) {
+  if (!root || !hull || root.userData.readabilityKit) return;
+  let opaque = null;
+  let glow = null;
+  hull.traverse((obj) => {
+    if (!obj.isMesh || !obj.material || Array.isArray(obj.material) || obj.material.transparent) return;
+    if (!opaque && (obj.material.isMeshStandardMaterial || obj.material.isMeshPhysicalMaterial)) opaque = obj.material;
+    if (!glow && obj.material.emissive && obj.material.emissiveIntensity > 0.4) glow = obj.material;
+  });
+  if (!opaque) return;
+  const bay = new THREE.Mesh(READABILITY_BAY_GEO, opaque);
+  bay.name = 'readability-bay';
+  bay.userData.spacefaceSharedAsset = true;
+  bay.position.set(0.22, 0.08, 0);
+  hull.add(bay);
+  if (glow && glow !== opaque) {
+    const win = new THREE.Mesh(READABILITY_WIN_GEO, glow);
+    win.name = 'readability-windows';
+    win.userData.spacefaceSharedAsset = true;
+    win.position.set(0.12, 0.12, 0);
+    hull.add(win);
+  }
+  root.userData.readabilityKit = true;
+}
+
 export function finalizeShip(options) {
   const {
     root, hull, decals = [], driveParts = null, damageParts = null, navLightBase = null,
@@ -667,6 +695,7 @@ export function finalizeShip(options) {
   if (hull && designRadius && entity && Number.isFinite(entity.radius)) {
     hull.scale.setScalar(entity.radius / designRadius);
   }
+  stampAuthoredReadability(root, hull);
 
   // ---- LOD reaction: keep decals through LOD1. That band is still a readable contact
   //      (lod.js LOD1_BELOW). Drop them only at LOD2, where the hull is a distant speck.

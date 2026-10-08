@@ -7207,8 +7207,60 @@ function queueContactShadowGrowth(pool, demand) {
   return growth;
 }
 
+const CONTACT_DECK_BERTH_SLACK_WU = 20;
+const _contactDeckScratch = [];
+
+function retainContactShadowsOnDecks(frame) {
+  const list = frame && Array.isArray(frame.contactShadows) ? frame.contactShadows : null;
+  const source = frame && Array.isArray(frame.records) ? frame.records : null;
+  if (!list || !source) return;
+  _contactDeckScratch.length = 0;
+  for (let i = 0; i < source.length; i++) {
+    const rec = source[i];
+    const entity = rec && rec.entity;
+    if (!entity || entity.type !== 'station' || entity.alive === false) continue;
+    const data = entity.data || {};
+    if (data.isGate || data.isWormhole) continue;
+    const dock = Number(data.dockRadius);
+    if (!(dock > 0)) continue;
+    const mesh = rec.mesh;
+    const x = mesh && Number.isFinite(mesh.position.x) ? mesh.position.x : 0;
+    const z = mesh && Number.isFinite(mesh.position.z) ? mesh.position.z : 0;
+    _contactDeckScratch.push(x, z, dock * 0.72 + CONTACT_DECK_BERTH_SLACK_WU);
+  }
+  let write = 0;
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i];
+    const entity = item && (item.entity || item);
+    if (!entity) continue;
+    const data = entity.data || {};
+    if (entity.type === 'station') {
+      if (data.isGate || data.isWormhole) continue;
+      list[write++] = item;
+      continue;
+    }
+    if (entity.type !== 'ship') {
+      list[write++] = item;
+      continue;
+    }
+    const mesh = item.mesh;
+    const x = mesh && Number.isFinite(mesh.position.x) ? mesh.position.x : 0;
+    const z = mesh && Number.isFinite(mesh.position.z) ? mesh.position.z : 0;
+    let onDeck = false;
+    for (let d = 0; d < _contactDeckScratch.length; d += 3) {
+      const dx = x - _contactDeckScratch[d];
+      const dz = z - _contactDeckScratch[d + 1];
+      const limit = _contactDeckScratch[d + 2];
+      if (dx * dx + dz * dz <= limit * limit) { onDeck = true; break; }
+    }
+    if (onDeck) list[write++] = item;
+  }
+  list.length = write;
+}
+
 export function syncContactShadowPool(pool, frameOrRecords, meshes) {
   if (!pool || !pool.mesh) return;
+  retainContactShadowsOnDecks(frameOrRecords);
   const records = frameOrRecords && Array.isArray(frameOrRecords.contactShadows)
     ? frameOrRecords.contactShadows
     : (Array.isArray(frameOrRecords) ? frameOrRecords : []);
