@@ -5703,6 +5703,7 @@ export const npcJobsRuntime = {
           this.bus.emit('npcjobs:distress', {
             jobId: job.id, kind: job.kind, sectorId: entry.sectorId || null,
             threatId: threat.id,
+            hullId: hull ? hull.id : null,
             pos: hull && hull.pos ? { x: hull.pos.x, z: hull.pos.z } : null,
             hold: { x: entry.routeHold.x, z: entry.routeHold.z },
             simTime: now,
