@@ -577,7 +577,9 @@ export class GyreSnarePresentation {
       const stag = ((l.bobPhase || 0) % 1.5) / 1.5 * 0.4;
       const tt = Math.min(1, Math.max(0, e * 1.4 - stag));
       const bl = Math.hypot(l.basePos.x, l.basePos.z) || 1;
-      const out = tt * (finite(this._clumpRadius, 8) + 6);
+      // Floor + scale: a small ball still flings its rubble ~1.3 clump-radii clear
+      // of the silhouette (16 wu min) — a capped moon scatters ~78 wu.
+      const out = tt * Math.max(16, finite(this._clumpRadius, 8) * 1.3);
       l.mesh.position.set(
         l.basePos.x + (l.basePos.x / bl) * out,
         l.basePos.y + tt * 2.5,
@@ -1358,6 +1360,7 @@ export class GyreSnarePresentation {
     // "nothing held, secondaries still flying" branch alike.
     {
       const sb = mirror.balls && mirror.balls.length ? mirror.balls[0] : null;
+      if (sb) this._secGraveT = null; // a fresh ball takes the slot — cancel the grave
       const sbm = sb && Array.isArray(sb.members) ? sb.members : null;
       if (sb && Number.isFinite(sb.x) && this.toLocal) {
         const lp = this.toLocal(sb.x, sb.z, this._ballPt);
@@ -1366,6 +1369,7 @@ export class GyreSnarePresentation {
         this._secGroup.position.set(lp.x,
           0.6 + Math.sin(this.time * 0.7 + (finite(sb.id) % 7)) * 0.3 * calm, lp.z);
         const ballR = Math.max(2.5, finite(sb.r, 8));
+        this._secR = ballR; // grave scatter flings off this radius
         this._secVeil.scale.setScalar(ballR * 1.22);
         // Mass-graded like its siblings — a capped secondary katamari flies with
         // more than a pebble's whisper veil.
@@ -1426,9 +1430,33 @@ export class GyreSnarePresentation {
           }
         }
         this._secGroup.visible = true;
-      } else if (this._secGroup.visible) {
-        this._secGroup.visible = false;
-        this._secId = null;
+      } else if (this._secGroup.visible && this._secGraveT == null) {
+        // Same grave language as the primary clump: a brief scatter before the
+        // de-rez — a second katamari shouldn't vanish the frame its ring blooms.
+        this._secGraveT = 0.15;
+        for (const lm of this._secLumps) {
+          const bl = Math.hypot(lm.position.x, lm.position.z) || 1;
+          lm.userData.scatX = lm.position.x / bl;
+          lm.userData.scatZ = lm.position.z / bl;
+        }
+      }
+      // Secondary grave scatter — decays independent of whether a new ball
+      // replaced the slot (a fresh sb cancels it via the branch above).
+      if (this._secGraveT != null) {
+        this._secGraveT -= sdt;
+        const fling = Math.max(8, finite(this._secR, 8) * 2.2);
+        for (const lm of this._secLumps) {
+          lm.position.x += (lm.userData.scatX || 0) * fling * sdt;
+          lm.position.y += 1.5 * sdt;
+          lm.position.z += (lm.userData.scatZ || 0) * fling * sdt;
+          lm.scale.multiplyScalar(Math.exp(-sdt * 4));
+        }
+        this._secVeilMat.opacity *= Math.exp(-sdt * 12);
+        if (this._secGraveT <= 0) {
+          this._secGraveT = null;
+          this._secGroup.visible = false;
+          this._secId = null;
+        }
       }
     }
 

@@ -109,6 +109,9 @@ function freshRuntime() {
     // while the key is still down the re-armed rising edge must not double-narrate
     // 'needs charge to wake'. Clears when the key releases.
     dryDenyDone: false,
+    beamWake: 0,           // s since BEAM opened — the basin's pull ramps in over the
+                           // cone's own ~150 ms projection so the physics edge and
+                           // the drawn edge agree (a body doesn't slide pre-reach)
     // Clump ledger (hold phase): the core entity + what it has eaten.
     coreId: null,
     clumpMass: 0,          // t — bookkeeping mass (base core + absorbed members)
@@ -274,6 +277,7 @@ export const gyreSnare = {
     // stamp would silence the absorb tick for the old run's whole length), and a fresh
     // clump's first strain excursion should re-arm the latch instead of inheriting it hot.
     rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; rt.strainCueNextTick = 0;
+    rt.beamWake = 0; // the next beam's pull re-ramps with its own projection
     rt.fullCueLatched = false;
     rt.fuseCueLatched = false;
     rt.basinCatchLatched = false;
@@ -663,6 +667,7 @@ export const gyreSnare = {
   _pullPass(dt, state, player, maw, nose, owned) {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
+    this._rt.beamWake += dt; // the lane only runs while the lash is live
     this._rt.basinCount = 0; // reset above the guard — a helper-less host must not
     // towCount resets at the two callers: _suckPass runs before this lane in HOLD and
     // its annulus tow would be wiped by a local reset here.
@@ -801,7 +806,11 @@ export const gyreSnare = {
       // Projectiles excluded: fire streaking through the wedge gets the point-defense
       // tug, but a bullet isn't "loot in tow" — it would fake the retrievable count.
       if (!absorbable && admission !== 'too-heavy' && e.type !== 'projectile' && pullK > 0.05) this._rt.towCount += 1;
-      this._queueAccel(e, ax, az, mass, dt, state);
+      // The gravity edge moves at the cone's own projection speed: the glass
+      // takes ~150 ms to reach the maw, so the pull eases in over the same ramp
+      // — a parked body no longer starts sliding before the cone visibly arrives.
+      const wake = Math.min(1, this._rt.beamWake / 0.15);
+      this._queueAccel(e, ax * wake, az * wake, mass, dt, state);
     }
     // Strongest grips glow first: in a dense belt the 8 slots go to the bodies being
     // dragged hardest — a rock about to cross snagRadius mustn't lose its glow to a
@@ -1388,6 +1397,7 @@ export const gyreSnare = {
     rt.dropReason = 'launched';
     rt.fuseCueLatched = false;
     rt.strainCueNextTick = 0; // ledger symmetry with _drop — dead data, nothing stale survives
+    rt.beamWake = 0;
     // Same live-side ledger reset _drop does: after the ball dies a core-less re-beam
     // must not publish the dead clump's count/cue state as if it were live. The frozen
     // ball ledger (ballId/ballMass/ballMembers/ballClumpRadius/ballAbsorbs) survives —
@@ -1863,6 +1873,7 @@ export const gyreSnare = {
       const cap = this._cap(player);
       if (cap >= D.capActivateMin) {
         rt.phase = PHASE.BEAM;
+        rt.beamWake = 0;
         rt.dropReason = null; // a fresh wake forgets why the last lash died
         if (this.bus) {
           this.bus.emit(GYRE_EVENTS.beamOn, { id: player.id, playerId: player.id, tick: state.tick });

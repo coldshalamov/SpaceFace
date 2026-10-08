@@ -31,6 +31,7 @@ export const GYRE_HUD_CSS = `
 }
 .sf-gyre-pill.gyre-holding { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-search { color: var(--dp-lamp-dim, #8a6b3a); } /* beam live, nothing gripped yet */
+.sf-gyre-pill.gyre-heavy { color: var(--dp-lamp-dim, #8a6b3a); border-left-color: var(--dp-lamp, #f2b950); } /* a body it can never eat — warmer than plain search */
 .sf-gyre-pill.gyre-strain { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
 .sf-gyre-pill.gyre-launched { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-ball { border-left-color: var(--dp-lamp-dim, #8a6b3a); }
@@ -209,7 +210,7 @@ export const gyreHud = {
       return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
     }
     if (heavy > 0) {
-      return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
+      return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}`, cls: 'gyre-heavy', fuse: fuseS };
     }
     return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
   },

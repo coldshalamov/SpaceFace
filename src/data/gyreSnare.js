@@ -94,9 +94,9 @@ export const GYRE_SNARE = Object.freeze({
   tumbleTorqueK: 2.2,        // gain steering the held core's spin toward tumbleTargetRadS
   tumbleTargetRadS: 0.55,    // rad/s — lazy rubble drift; a servo target so the spin settles
                            // instead of winding up open-loop over a long hold
-  tearSnapWuS: 15,           // wu/s — parting whip FLOOR on a strain break: above a
-                           // cruising player's pace so a torn pebble reads 'slip',
-                           // not 'release' (the frac term already covers big balls)
+  tearSnapWuS: 24,           // wu/s — parting whip FLOOR on a strain break: an
+                           // ejection read (~2x cruise), not a drift-off — the
+                           // frac term already covers big balls at ~1.2x orbit
   tearSnapOrbitFrac: 1.2,    // the whip scales to this fraction of orbit tangential speed —
                            // it must OUTRUN the revolve (~18 wu/s on a ponderous-floored
                            // capped moon) or the snap reads weaker than the motion it
