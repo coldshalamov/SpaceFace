@@ -217,7 +217,9 @@ export const gyreHud = {
       return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
     }
     if (tow > 0) {
-      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
+      // The too-heavy read is the actionable half of the line — carry the warm
+      // face whenever a body it can never eat is inside, not only when tow==0.
+      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
     }
     if (heavy > 0) {
       return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}`, cls: 'gyre-heavy', fuse: fuseS };

@@ -327,7 +327,9 @@ export const gyreSnare = {
           this._evidence(st.tick | 0));
         // The rubble rides the freed body for ~0.5 s (pub.tornPos) — the whip
         // reads as the lash LOSING the ball, not rubble de-rezzing mid-flight.
-        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S) };
+        // The whip's own direction goes out too (pub.tornDir) so the tear ring
+        // can stretch along the actual ejection axis, not a guessed radial.
+        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S), dir: { x: ix, z: iz } };
         // Same-tick freshness: the tear ring blooms where the body IS — coreId
         // clears above, so _publish won't rewrite corePos this tick; last tick's
         // published spot is stale by up to a shove's worth (a teleport past
@@ -1198,10 +1200,13 @@ export const gyreSnare = {
         // into the pull lane's scratch (_suckPass runs before _pullPass in HOLD) so a
         // spiraling meal competes for the 8 glow slots by the same k ordering.
         if (couple > 0.05 && this._spotScratch.length < D.basinSpotMax * 4) {
-          // 1.25x boost: the meal CLOSEST to being eaten should outrank a distant
-          // basin absorber for the hot seat — raw couple (≤1) always lost to a
-          // basin-heart k=1, so the imminent feed never got the highlight.
-          this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: Math.min(1, couple * 1.25), abs: true });
+          // 1.25x boost keys on couple (mass response) — then folds in distance:
+          // (1 + 1−dist/suckR) doubles the weight at the skin vs the annulus lip,
+          // so the meal about to be eaten outranks a heavier body still crossing
+          // the band for the hot seat instead of losing on raw response alone.
+          this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er,
+            k: Math.min(1, couple * 1.25 * (1 + Math.max(0, 1 - dist / Math.max(1, suckR)))),
+            abs: true });
         }
       }
     }
@@ -1718,7 +1723,7 @@ export const gyreSnare = {
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, launchBurst01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
       liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
-      tornId: null, tornPos: { x: 0, z: 0 },
+      tornId: null, tornPos: { x: 0, z: 0 }, tornDir: { x: 0, z: 0 },
     });
   },
 
@@ -1737,6 +1742,7 @@ export const gyreSnare = {
       if (torn && torn.alive !== false && torn.pos && rt.tornTrack.ticks > 0) {
         pub.tornId = rt.tornTrack.id;
         pub.tornPos.x = torn.pos.x; pub.tornPos.z = torn.pos.z;
+        if (rt.tornTrack.dir) { pub.tornDir.x = rt.tornTrack.dir.x; pub.tornDir.z = rt.tornTrack.dir.z; }
       } else { rt.tornTrack = null; pub.tornId = null; }
     } else pub.tornId = null;
     // The funnel's drawn spiral + the clump's float phase ride the same eased stir /

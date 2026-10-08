@@ -517,7 +517,11 @@ export class GyreSnarePresentation {
       this._lumps.push(slot);
     }
     slot.used = true;
-    slot.spawnT = this.time;         // grow-in: lumps swell in over ~150 ms, not pop
+    // grow-in: lumps swell in over ~150 ms, not pop. Same-tick absorbs stagger
+    // ~45 ms apart (per-frame counter, reset in update) — a dense feed lands as
+    // a wave of arrivals, not N lumps blooming in lockstep. Rebuilds restore now.
+    slot.spawnT = instant ? this.time : this.time - (this._spawnStagger || 0) * 0.045;
+    if (!instant) this._spawnStagger = (this._spawnStagger || 0) + 1;
     // The body the lump replaces vanished THIS tick — seed at nearly half scale so
     // the eye tracks the meal continuously instead of the mesh popping out first.
     // A ledger rebuild isn't a meal: `instant` restores full scale so the same
@@ -658,6 +662,7 @@ export class GyreSnarePresentation {
 
   update(dt, state = {}) {
     if (this.disposed) return;
+    this._spawnStagger = 0; // same-tick absorbs stagger their grow-in per lump
     const mirror = state.gyreSnare;
     const phase = mirror && mirror.phase ? mirror.phase : 'off';
     const live = phase !== 'off' || (mirror && mirror.launchedId != null)
@@ -986,8 +991,14 @@ export class GyreSnarePresentation {
         this._closeSpan = mirror.dropReason === 'strained' ? 0.12 : 0.25;
         this._closeTear = mirror.dropReason === 'strained';
         if (mirror.dropReason === 'strained') {
+          // The verb's biggest loss beat outlives the routine bloom like the throw
+          // does (rate 1.1 → ~0.9 s) and stretches along the parting whip the sim
+          // just applied — the same directed payoff the thrownBeat ring gets.
+          const tdx = finite(mirror.tornDir && mirror.tornDir.x),
+            tdz = finite(mirror.tornDir && mirror.tornDir.z);
           this._fireBurst(finite(mirror.corePos.x), finite(mirror.corePos.z),
-            Math.max(6, finite(mirror.clumpRadius, 8) * 1.4), flashCalm);
+            Math.max(6, finite(mirror.clumpRadius, 8) * 1.4), flashCalm,
+            Math.hypot(tdx, tdz) > 0.01 ? { x: tdx, z: tdz } : null, 1.1);
         }
       }
       if (this._closing) {
@@ -1298,6 +1309,19 @@ export class GyreSnarePresentation {
         const wind = winding ? clamp01(finite(mirror.launchWindup01)) : 0;
         const gL = this.toLocal(cx, cz, this._ballPt);
         const mL2 = this.toLocal(finite(mirror.maw && mirror.maw.x), finite(mirror.maw && mirror.maw.z), this._mawPt);
+        if (winding && mirror.launchDir && mirror.nose) {
+          // The glass pins to the FROZEN launchDir frame through the coil — anchor
+          // the spoke's root on the drawn maw (nose + launchDir·len, len chasing
+          // the ball's tail like the beam) or a mid-coil yaw detaches the line's
+          // root from the mouth by tens of wu.
+          const nL2 = this.toLocal(finite(mirror.nose.x), finite(mirror.nose.z), this._spokeN || (this._spokeN = { x: 0, z: 0 }));
+          const dl = Math.hypot(finite(mirror.launchDir.x, 1), finite(mirror.launchDir.z, 0)) || 1;
+          const dux = finite(mirror.launchDir.x, 1) / dl, duz = finite(mirror.launchDir.z, 0) / dl;
+          const axial = (gL.x - nL2.x) * dux + (gL.z - nL2.z) * duz;
+          const drawLen = Math.max(1, Math.hypot(mL2.x - nL2.x, mL2.z - nL2.z), axial);
+          mL2.x = nL2.x + dux * drawLen;
+          mL2.z = nL2.z + duz * drawLen;
+        }
         const gx = gL.x - mL2.x, gz = gL.z - mL2.z;
         const gd = Math.max(1, Math.hypot(gx, gz));
         // Ride the same vertical bob as the clump's heart — a flat spoke at y=0.55
