@@ -1,6 +1,30 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Active continuation — 8 October 2026, 21:30 UTC
+
+Branch: `dot/expansion-continuation-2026-10-08`, starting from current master
+`518c8d6fce7202f412d54995876c4ced0ddfd696`. Public clone, current source checkout,
+locked production dependencies and Rapier are available. Connector branch creation was
+independently read back; CLI login is not a blanket blocker. No old recovery snapshot
+has been applied over current upstream.
+
+The owner requested a durable correction to repeated status-only continuation. See
+[CONTINUATION_RUNBOOK.md](CONTINUATION_RUNBOOK.md). The read-only local diagnostic
+`node scripts/check-continuation-readiness.mjs` has eight passing tests; it deliberately
+does not infer remote access or connector authentication from local state. This is
+requested support tooling, not a completed gameplay unit.
+
+Active gameplay unit: Pallet Jack ordinary clamp and repeated cold Continue. Exact
+working paths are `test/pallet-jack-route.test.mjs`, `src/ai/palletJack.js`,
+`src/ai/stack.js`, and `src/systems/tacticalAI.js`, plus focused Pallet steering tests.
+The first native reproduction confirmed the old fixture dumps cargo while the real
+director is still quiet and lets the pod escape. A valid catchable-load case exposed
+Pallet waypoints being applied after motor planning. A pre-planner repair is under
+test; existing refusal, patrol, physics and save contracts must remain intact.
+Full clamp/Continue and independent review are not yet passed. Next command:
+`node --test test/pallet-jack-route.test.mjs` against the repaired source.
+
 ## Source checkpoint for cloud work - 8 October 2026
 
 The owner requested publication of all current work, including unfinished sources, before
