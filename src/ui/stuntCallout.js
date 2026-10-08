@@ -94,6 +94,34 @@ function injectStyle(doc) {
 
 /* --- pure builders. Everything the layer says is decided here, DOM-free. --------------------- */
 
+/**
+ * Four event seams that were emitted and never subscribed by a player sense.
+ * Open release-window already speaks through audio:cue massline.solutionLock;
+ * the close did not. A ride, a cleared snag, and a throw named themselves
+ * nowhere this event could reach.
+ * Returns null when the edge should stay quiet.
+ */
+export function handlineSenseLine(eventName, payload) {
+  const p = payload || {};
+  if (eventName === 'massline:releaseWindow') {
+    if (p.open === true) return null;
+    return { key: 'window-shut', name: 'WINDOW CLOSED', detail: '' };
+  }
+  if (eventName === 'massline:rideStarted') {
+    const spd = Number.isFinite(p.anchorSpeed) ? Math.round(p.anchorSpeed) : null;
+    return { key: 'ride-started', name: 'RIDE', detail: spd == null ? '' : String(spd) };
+  }
+  if (eventName === 'tether:snagCleared') {
+    return { key: 'line-clear', name: 'LINE CLEAR', detail: '' };
+  }
+  if (eventName === 'massline:throw') {
+    const spd = Number.isFinite(p.payloadSpeed) ? Math.round(p.payloadSpeed) : null;
+    const id = p.releaseId != null ? String(p.releaseId) : 'throw';
+    return { key: `throw:${id}`, name: 'THROWN', detail: spd == null ? '' : String(spd) };
+  }
+  return null;
+}
+
 function trickBaseName(trick) {
   if (trick && typeof trick.name === 'string' && trick.name) return trick.name;
   const def = trick && TRICK_DEFINITIONS[trick.trickId];
@@ -563,6 +591,21 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:salvageRightsClaimed', (p) => onSalvageRightsClaimed(p)));
     unsubs.push(bus.on('stunt:lineContractCompleted', (p) => onLineContract(p)));
     unsubs.push(bus.on('stunt:bridge', (p) => onBridgeTick(p)));
+    // Silent seams: the event itself had no subscriber that a pilot could see or hear.
+    const onHandlineSense = (eventName) => (payload) => {
+      if (destroyed) return;
+      if (!calloutScope(getState())) return;
+      const line = handlineSenseLine(eventName, payload);
+      if (!line) return;
+      addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
+      spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
+      sr.textContent = spoken;
+      wake();
+    };
+    unsubs.push(bus.on('massline:releaseWindow', onHandlineSense('massline:releaseWindow')));
+    unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
+    unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
+    unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
     // SWARM-03 — the physics cause tag, on the lane that already names tricks.
     unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }
