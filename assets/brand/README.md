@@ -24,7 +24,7 @@ cut corners), not a rounded app-store square, so it is recognisable by silhouett
 | `spaceface-emblem-small.svg` | Transparent optical master for 16-32 px. |
 | `spaceface-emblem-mono.svg` | One colour (black) — decals, engraving, light backgrounds. |
 | `spaceface-emblem-reverse.svg` | One colour (warm bone) — dark backgrounds. |
-| `exports/spaceface.ico` | Windows: 16, 20, 24, 32, 40, 48, 64, 128, 256 — each frame rendered from its own master. |
+| `exports/spaceface.ico` | Windows: 16, 20, 24, 32, 40, 48, 64, 96, 128, 256 — each frame rendered from its own master. |
 | `exports/spaceface.icns` | macOS (128 / 256 / 512 / 1024 PNG payloads). |
 | `exports/spaceface-launcher-*.png` | 16 … 1024 px plates; `-256` is the Electron window icon off Windows, `-512` is Linux. |
 | `exports/spaceface-emblem-*.png` | 256 … 2048 px transparent mark. |
