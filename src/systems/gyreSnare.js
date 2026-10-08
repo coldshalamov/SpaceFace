@@ -889,7 +889,7 @@ export const gyreSnare = {
   /** Hold phase: orbit the core around the maw; suck absorbables onto the clump. */
   _holdPass(dt, state, player, maw, nose) {
     const rt = this._rt;
-    const core = state.entities.get(rt.coreId);
+    const core = state.entities ? state.entities.get(rt.coreId) : null;
     if (!core || core.alive === false || !core.pos) { this._drop('core_lost'); return; }
     if (hasProtectedContent(core)) { this._releaseProtectedCore(core); return; }
     const t = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
@@ -1397,6 +1397,9 @@ export const gyreSnare = {
     // (unwatch + disarm + meta shed) and must not depend on a presentation mirror
     // existing first. "unwatched ⇒ disarmed" runs on the very first tick.
     const pub = this._ensurePub(state);
+    // The torn-core follow window counts down HERE — _publish only reads the
+    // track, so sim bookkeeping stays out of the read-only publish pass.
+    if (rt.tornTrack && (rt.tornTrack.ticks -= 1) <= 0) rt.tornTrack = null;
     // Default each tick: the grave ring only blooms when the ball actually DIES — an
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
     // launchedId without a grave, and must not shatter under a still-live body.
@@ -1585,12 +1588,10 @@ export const gyreSnare = {
     // Torn-core follow: ~0.5 s of the strain-freed body's live pos so the close
     // ramp can fly the rubble off WITH it. Dead entity / elapsed window -> null.
     if (rt.tornTrack) {
-      const torn = state.entities.get(rt.tornTrack.id);
+      const torn = state.entities ? state.entities.get(rt.tornTrack.id) : null;
       if (torn && torn.alive !== false && torn.pos && rt.tornTrack.ticks > 0) {
         pub.tornId = rt.tornTrack.id;
         pub.tornPos.x = torn.pos.x; pub.tornPos.z = torn.pos.z;
-        rt.tornTrack.ticks -= 1;
-        if (rt.tornTrack.ticks <= 0) { rt.tornTrack = null; }
       } else { rt.tornTrack = null; pub.tornId = null; }
     } else pub.tornId = null;
     // The funnel's drawn spiral + the clump's float phase ride the same eased stir /
@@ -1732,7 +1733,7 @@ export const gyreSnare = {
     // ring blooms on this same tick instead of a frame early off windup01.
     pub.thrownBeat = rt.phase === PHASE.LAUNCH
       && rt.launchLeft === D.launchTicks - 1;
-    const core = rt.coreId != null ? state.entities.get(rt.coreId) : null;
+    const core = rt.coreId != null && state.entities ? state.entities.get(rt.coreId) : null;
     if (core && core.pos) {
       pub.corePos.x = core.pos.x; pub.corePos.z = core.pos.z;
       // The held body's real spin — the VFX lumps ride it instead of an authored rate.

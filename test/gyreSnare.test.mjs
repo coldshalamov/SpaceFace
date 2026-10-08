@@ -345,6 +345,25 @@ test('a dry capacitor mid-hold auto-bowls the clump', async () => {
   t.cleanup();
 });
 
+test('a tap wholly inside the launch window is swallowed — the throw is committed', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  release(t);
+  assert.equal(t.sys._rt.phase, 'launching');
+  // A press+release inside the ~11-tick coil+burst can never abort or re-fire:
+  // the slingshot is committed the instant the release edge lands.
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // phantom second press
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release mid-coil
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) t.sim.step();
+  assert.equal(t.events.filter((e) => e.name === 'gyre:launched').length, 1, 'exactly one launch');
+  assert.equal(t.events.filter((e) => e.name === 'gyre:thrown').length, 1, 'the ball still throws');
+  assert.equal(t.sys._rt.phase, 'off', 'launch completes to OFF');
+  t.cleanup();
+});
+
 // ── boundaries ────────────────────────────────────────────────────────────────────
 test('save:loaded drops the beam cold and unmarks the core', async () => {
   const t = await bootPhysics();

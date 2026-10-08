@@ -8,6 +8,9 @@ export const POWER_PAGES = Object.freeze([
     power('cycleBomb', 'NEXT BOMB', 'cycle', 'Select the next bomb type.'),
     power('countermeasure', 'DECOY', 'decoy', 'Deploy the equipped countermeasure.'),
     power('cloak', 'CLOAK', 'cloak', 'Toggle your cloak.'),
+    // Same hold-to-toggle contract as the desktop latch: tap lashes the beam,
+    // tap again bowls the clump straight ahead.
+    power('gyreSnare', 'GYRE', 'gyre', 'Lash the nearest body, then tap again to bowl it.', 'toggle'),
   ] },
   { name: 'Fieldwork', powers: [
     power('deployMassSeed', 'MASS SEED', 'seed', 'Launch an anchor toward your aim.'),
@@ -40,6 +43,7 @@ const paths = {
   tether: 'M4 19l7-7 M8 8a5 5 0 1 1 8 8 M16 4l4 4 M2 16l6 6',
   charge: 'M8 6h8v13H8z M10 3h4 M11 10l3 2-3 3',
   blast: 'M12 2l2 6 6-3-3 6 5 3-7 1 1 7-5-5-6 4 2-7-5-3 7-1z',
+  gyre: 'M4 4l7 7 M8 16a5 5 0 1 0 10 0 5 5 0 0 0-10 0 M11 11l2 2',
   bomb: 'M15 5l3-3 M17 2h4 M9 6h6v3 M18 15a6 6 0 1 1-12 0 6 6 0 0 1 12 0',
   cycle: 'M4 9a8 8 0 0 1 14-3l3 3 M21 3v6h-6 M20 15a8 8 0 0 1-14 3l-3-3 M3 21v-6h6',
   decoy: 'M12 3v7 M3 12h7 M14 12h7 M12 14v7 M5 5l4 4 M15 15l4 4 M5 19l4-4 M15 9l4-4',

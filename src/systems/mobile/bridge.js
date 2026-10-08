@@ -180,7 +180,8 @@ export function enhanceMobileTouch(touch, ctx = {}, {
     frame.shipScreen = ship; frame.heading = ship ? ship.headingDeg : null;
     // Gesture holds never inherit desktop accessibility latches after the thumb lifts.
     const holds = { boost:frame.flight.boost, brake:frame.actions.brake, massline:frame.actions.tether,
-      bulletTime:frame.actions.bulletTime, reelIn:frame.actions.reelIn, reelOut:frame.actions.reelOut };
+      bulletTime:frame.actions.bulletTime, reelIn:frame.actions.reelIn, reelOut:frame.actions.reelOut,
+      gyreSnare:frame.actions.gyreSnare };
     for (const key of Object.keys(holds)) {
       if (previousHolds[key] && !holds[key] && host?._holdToggleLatches) host._holdToggleLatches[key] = false;
     }
