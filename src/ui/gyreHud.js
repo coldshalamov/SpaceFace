@@ -161,7 +161,7 @@ export const gyreHud = {
       }
       // No primary, but secondaries are still streaking (one retires before the rest) —
       // the pill shouldn't go dark while balls fly. balls[] is ttlS-sorted: [0] dies first.
-      const bs = g && g.balls;
+      const bs = g && g.balls; // kept for clarity in the off-branch
       if (bs && bs.length) {
         const warnS = GYRE_SNARE.ballTtlWarnS;
         const sTxt = bs[0].ttlS > 0 && bs[0].ttlS < warnS
@@ -172,17 +172,27 @@ export const gyreHud = {
       }
       return { text: '', cls: '' };
     }
-    if (launchEdge) {
-      this._bowlUntil = now + 0.8;
-      this._bowlMass = Math.round(g.clumpMass || 0);
-      // HOLD showed ×N a tick earlier and BALL AWAY will show it again — the biggest
-      // beat keeps the member count too (same +1 core convention as the HOLD read).
-      this._bowlN = (g.absorbs || 0) + 1;
+    if (g.phase === 'launching') {
+      // The whole ~11-tick coil+burst rides the BOWL read — arming edge-true
+      // covered only tick 1 and falling through to the beaming tail flashed
+      // SEARCHING ×~10 ticks mid-throw (basin/tow zeroed by _launch) before
+      // BALL AWAY took over. The flight's own ~0.8 s window still applies.
+      if (launchEdge) {
+        this._bowlUntil = now + 0.8;
+        this._bowlMass = Math.round(g.clumpMass || 0);
+        // HOLD showed ×N a tick earlier and BALL AWAY will show it again — the
+        // biggest beat keeps the member count too (same +1 core convention).
+        this._bowlN = (g.absorbs || 0) + 1;
+      }
+      // Fallbacks cover a HUD attaching mid-coil (reload/host swap) — the
+      // frozen ledger still publishes during launching.
+      const bowlMass = this._bowlMass != null ? this._bowlMass : Math.round(g.clumpMass || 0);
+      const bowlN = this._bowlN != null ? this._bowlN : (g.absorbs || 0) + 1;
       // Same DMG× the HOLD/AWAY reads carry — the throw's yield telegraph
-      // doesn't drop for the payoff's own ~0.8 s.
+      // doesn't drop for the payoff's own beat.
       const bowlDmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
-        GYRE_SNARE.launchImpactScaleBase + (this._bowlMass || 0) / GYRE_SNARE.launchImpactScalePerMass).toFixed(1);
-      return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t · DMG×${bowlDmg}${ballTxt}`, cls: 'gyre-launched' };
+        GYRE_SNARE.launchImpactScaleBase + bowlMass / GYRE_SNARE.launchImpactScalePerMass).toFixed(1);
+      return { text: `GYRE — BOWL ×${bowlN} · ${bowlMass}t · DMG×${bowlDmg}${ballTxt}`, cls: 'gyre-launched' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;

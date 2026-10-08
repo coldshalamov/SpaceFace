@@ -1447,18 +1447,20 @@ export class GyreSnarePresentation {
       const sbm = sb && Array.isArray(sb.members) ? sb.members : null;
       if (sb && Number.isFinite(sb.x) && this.toLocal) {
         const lp = this.toLocal(sb.x, sb.z, this._ballPt);
+        // String ids hash like the member-lump seed — finite(id)%7 folds every
+        // non-numeric id to 0 and locksteps the bob phase across secondaries.
+        // Computed BEFORE position.set — reading the previous ball's hash made
+        // the first frame after a secondary swap bob on a stale phase.
+        let sbh = 0;
+        const sids = String(sb.id);
+        for (let c2 = 0; c2 < sids.length; c2++) sbh = ((sbh * 31) + sids.charCodeAt(c2)) | 0;
+        this._secIdHash = sbh;
         // Same loose-rubble drift as the primary clump — secondaries bob on the
         // group's own orbit-seeded phase, not flat at 0.6 like a HUD overlay.
         this._secGroup.position.set(lp.x,
           0.6 + Math.sin(this.time * 0.7 + (Math.abs(this._secIdHash) % 7)) * 0.3 * calm, lp.z);
         const ballR = Math.max(2.5, finite(sb.r, 8));
         this._secR = ballR; // grave scatter flings off this radius
-        // String ids hash like the member-lump seed — finite(id)%7 folds every
-        // non-numeric id to 0 and locksteps the bob phase across secondaries.
-        let sbh = 0;
-        const sids = String(sb.id);
-        for (let c2 = 0; c2 < sids.length; c2++) sbh = ((sbh * 31) + sids.charCodeAt(c2)) | 0;
-        this._secIdHash = sbh;
         this._secVeil.scale.setScalar(ballR * 1.22);
         // Mass-graded like its siblings — a capped secondary katamari flies with
         // more than a pebble's whisper veil.

@@ -117,10 +117,10 @@ export const GYRE_SNARE = Object.freeze({
   suckSwirlFrac: 0.28,       // tangential share of the suck pull — meals corkscrew the
                            // last stretch instead of ray-shooting (matches the funnel's
                            // own swirl language + the basin's mawSwirlAccel)
-  suckDamping: 1.35,         // 1/s — frame-damping on inbound mass so it settles into the
-                             // skin, not slingshots past it — the last ~50 wu under
-                             // suckSwirlFrac's sideways v needs more frame-grip than the
-                             // basin, not less (basin settles at 1.6, annulus was 1.1)
+  suckDamping: 1.5,          // 1/s — nearly the basin's grip (1.6): the swirl term adds
+                             // lateral v the damping must kill before contact or meals
+                             // slingshot past the skin. Held a hair under the basin so a
+                             // meal keeps a whisper of its corkscrew into the surface.
   absorbEpsilonWu: 4,        // contact = clumpRadius + memberRadius + this — just past skin
                            // touch at a FIXED margin: a 1.15x factor scaled with the ball
                            // and a capped clump ate things ~10 wu before resting contact
