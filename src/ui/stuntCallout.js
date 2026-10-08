@@ -233,6 +233,30 @@ export function selfSlingCalloutText(bonusDv) {
 }
 
 /**
+ * FB-007 — the completed stroke's band, named the way a release is named.
+ * The number beside it is the peak speed the grader already measured.
+ * A missing or unknown band stays quiet. Zero speed stays blank.
+ */
+export function strokeGradeLine(stroke) {
+  if (!stroke || typeof stroke !== 'object') return null;
+  const name = stroke.band === 'razor' ? 'RAZOR STROKE'
+    : stroke.band === 'clean' ? 'CLEAN STROKE'
+    : stroke.band === 'good' ? 'GOOD STROKE'
+    : stroke.band === 'messy' ? 'MESSY STROKE'
+    : null;
+  if (!name) return null;
+  const spd = Number.isFinite(stroke.peakSpeed) && stroke.peakSpeed > 0
+    ? Math.round(stroke.peakSpeed) : null;
+  const dist = Number.isFinite(stroke.distanceWu) ? stroke.distanceWu : 0;
+  const time = Number.isFinite(stroke.timeOnPathS) ? stroke.timeOnPathS : 0;
+  return {
+    key: `stroke:${stroke.band}:${dist}:${time}`,
+    name,
+    detail: spd == null ? '' : String(spd),
+  };
+}
+
+/**
  * The words for a settled bank receipt. A quiet/deadline/round_clear bank is a BANK;
  * a hard crash or death settles the open line at ×1 (SCORING_AND_COMBO §4.5) and the line
  * says so — the player lost composition, not the truth of what happened.
@@ -647,6 +671,21 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     root,
     update,
     active: () => !destroyed && !root.hidden,
+    announceStroke(stroke) {
+      if (destroyed) return false;
+      if (!calloutScope(getState())) return false;
+      const line = strokeGradeLine(stroke);
+      if (!line) return false;
+      const now = calloutNow();
+      const seen = lineNodes.has(line.key);
+      addLine(line.key, line.name, line.detail, now, CALLOUT_TTL_MS, false);
+      if (!seen) {
+        spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
+        sr.textContent = spoken;
+      }
+      wake();
+      return true;
+    },
     destroy() {
       destroyed = true;
       if (frameOff) { frameOff(); frameOff = null; }
@@ -673,8 +712,16 @@ export function ensureStuntCallout(ctx) {
   liveCallout = createStuntCallout({
     state: ctx && ctx.state,
     bus: ctx && ctx.bus,
+    host: ctx && ctx.host,
+    doc: ctx && ctx.doc,
   });
   return liveCallout;
+}
+
+/** The massline HUD calls this the frame a completed stroke first lands. No live callout, no speech. */
+export function announceStrokeGrade(stroke) {
+  if (!liveCallout || typeof liveCallout.announceStroke !== 'function') return false;
+  return liveCallout.announceStroke(stroke);
 }
 
 /** Release the mount (results screen dispose). Dormant-after-menu sessions re-ensure on next door. */
