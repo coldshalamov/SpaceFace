@@ -2342,10 +2342,37 @@ export const onboarding = {
       rescue.completedAt = atS;
       const fails = RESCUE_ORDER.reduce((n, k) => n + (rescue.beats[k].fails || 0), 0);
       this.bus.emit('rescue:complete', buildRescueCompleteEvent(atS, fails));
+      this._postOpeningRescueRecognition(atS);
     }
     this._setRescueWaypoint(true);
     this._refreshBeatPanel();
     if (key === 'grab') this._maybeAdvanceMissingThree();
+  },
+
+  // The opening pod is a real rescue. INF-074 already turns recovery:completed
+  // (outcome rescue) into bar gossip — post that receipt once, with no pay, and
+  // never overwrite a notice a later rescue already wrote for this sector.
+  _postOpeningRescueRecognition(atS) {
+    const st = this.state;
+    if (!st || !this.bus) return false;
+    const sectorId = st.world && st.world.currentSectorId;
+    if (!sectorId) return false;
+    const notices = st.stationLife && st.stationLife.rescueNotices;
+    if (notices && notices[sectorId]) return false;
+    const seed = st.meta && st.meta.seed;
+    const recoveryId = `onboarding-pod:${seed == null ? 0 : seed}`;
+    this.bus.emit('recovery:completed', {
+      id: `recovery-receipt:${recoveryId}`,
+      recoveryId,
+      sectorId,
+      outcome: 'rescue',
+      pos: { x: 0, z: 0 },
+      credits: 0,
+      repDelta: 0,
+      cargo: {},
+      completedAt: atS,
+    });
+    return true;
   },
 
   _rescueFail(key, reason) {
