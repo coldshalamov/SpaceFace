@@ -20,7 +20,7 @@ import { ensureAlienEcologyState } from '../src/data/alienEcologyState.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { Masks } from '../src/core/entity.js';
 import { COMMODITIES } from '../src/data/commodities.js';
-import { isHostileToPlayer } from '../src/systems/scanner.js';
+import { isHostileToPlayer, contactStateWord } from '../src/systems/scanner.js';
 import { isHostileForAI } from '../src/ai/engagementAuthority.js';
 import {
   materializeFoldAberrant,
@@ -372,8 +372,13 @@ test('fold hostility is the player category only', () => {
   const ordinary = { id: 4, team: 1, data: {} };
   assert.equal(isHostileToPlayer(ordinary, 0, state), true);
   assert.equal(isHostileToPlayer(quiet, 0, state), false);
+  assert.equal(contactStateWord(quiet, 0, state), 'QUIET');
   quiet.data.combat = { targetId: 1 };
   assert.equal(isHostileToPlayer(quiet, 0, state), true);
+  assert.equal(contactStateWord(quiet, 0, state), 'FOLD');
+  assert.equal(contactStateWord({ id: 9, team: 2, data: { foldAberrant: { role: 'scar' } } }, 0, state), 'SCAR');
+  assert.equal(contactStateWord({ id: 10, team: 2, data: { foldAberrant: { role: 'plate' } } }, 0, state), 'PLATE');
+  assert.equal(contactStateWord({ id: 11, team: 2, data: { foldAberrant: { role: 'corner' } } }, 0, state), 'CORNER');
   const wing = { id: 3, team: 0, data: {} };
   const player = state.entities.get(1);
   assert.equal(isHostileForAI(state, wing, quiet), false);
