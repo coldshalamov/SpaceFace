@@ -25,11 +25,12 @@ function boot() {
   state.entityList.push(station);
 
   const assigned = [];
+  let nextId = 77;
   const owner = {
     state, bus,
     helpers: {
       spawnEntity: (spec) => {
-        const e = { id: 77, alive: true, type: 'ship', pos: { ...spec.pos }, vel: { x: 0, z: 0 }, data: spec.data };
+        const e = { id: nextId++, alive: true, type: 'ship', pos: { ...spec.pos }, vel: { x: 0, z: 0 }, data: spec.data };
         state.entities.set(e.id, e);
         return e;
       },
@@ -70,4 +71,25 @@ test('occupation switch: empty departures still close quietly', () => {
   const t = boot();
   t.sw.departed({ fieldId: 'field_a', sectorId: 'sector_test', entityId: null, holdQty: 0, hold: {} });
   assert.equal(t.toasts.length, 0, 'nothing hauled, nothing said');
+});
+
+test('occupation switch: a killed hauler is mourned once, and a stranger death is not', () => {
+  const t = boot();
+  t.sw.departed({ fieldId: 'field_a', sectorId: 'sector_test', entityId: null, holdQty: 4, hold: { cmdty_alloy: 4 } });
+  const hauler = t.state.entities.get(77);
+  assert.ok(hauler, 'the switch spawned its hauler');
+  assert.equal(t.toasts.length, 1);
+
+  t.sw.killed({ id: 77 });
+  assert.equal(t.toasts.length, 2, 'the loss speaks once');
+  assert.equal(t.toasts[1].kind, 'warn');
+  assert.ok(t.toasts[1].text.includes('4u'), `the line names what burned: ${t.toasts[1].text}`);
+
+  t.sw.killed({ id: 77 });
+  assert.equal(t.toasts.length, 2, 'a second report on the same hull stays quiet');
+
+  t.sw.departed({ fieldId: 'field_b', sectorId: 'sector_test', entityId: null, holdQty: 2, hold: { cmdty_alloy: 2 } });
+  assert.equal(t.toasts.length, 3);
+  t.sw.killed({ id: 999 });
+  assert.equal(t.toasts.length, 3, 'a stranger hull never borrows the loss line');
 });
