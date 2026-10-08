@@ -2293,3 +2293,29 @@ Saturation: all four lanes `saturated: false` → streak 0/3; W118 spawns on `ea
 - **bonus — `disposeRendererMeshRoots` `this.state` → `state`**: `this` is unbound on every call path (plain function calls inside `disposeRendererOwnedResources`), so the line threw TypeError whenever teardown disposed meshes — latent since `d5e6728ce`, freed 3 tests in the ceres-workfleet suite (2 remaining reds reproduce identically on clean `f6b4b8d93` — canon).
 
 Saturation: all four lanes `saturated: false` → streak 0/3; W119 spawns on `ce56958f0`.
+
+## Wave 119 (HEAD `ce56958f0`) — drift-gate collect epoch re-key, pendingIter fails closed, under-budget governor short-circuit, soft-budget tail drains, sliced restore epilogue/combat legs, async deferred lane, publisher self-clear
+
+### lod-in-frame — `saturated: false` (2 findings, `b9851308f`)
+
+- **lod F1 (H/S) — `cleanRootCensusDrift` re-opened on every stamped clean root per census flip**: the drift compare keyed clean roots on the consult-time census epoch, so every flip re-marked all clean roots dirty — the first `SHADOW_DEPTH_PASS_COLLECT_CAP` (8) drifted roots permanently saturated the cap in a dense field, forcing every later root needing a collect into the whole-subtree `allowCast:false` over-cover withhold + arm-queue amplification. Proven-clean roots now re-key `STAGE_COLLECT_EPOCH_KEY = censusEpochNow` — drift re-opens only on genuinely new mutations.
+- **lod F2 (M-H/S) — pendingIter fall-through live-synced `castShadow` onto never-marked meshes**: an unproven dirty root under the unsigned census window (genuine dirty, park recheck/release) reached `syncOpts = opts` and cold-linked `castShadow=true` across the subtree — a presented-frame variant compile exactly in the light-drift frames that hurt most. The fall-through now withholds whole-subtree like the unsigned-window admission twin; no dirty stamp lands and the root re-proves under the live sig next pass.
+
+### popin-admission — `saturated: false` (5 findings, `8b2540701`)
+
+- **popin F1 (H/S) — `enforceBudget` paid the full governor census under the named ceiling**: every consult walked `assets.values()` twice + built `governor.plan`'s spread/sort/index even when `residentBytes <= maxBytes` made evict provably empty — paid per `sector:exit` emit and every soft-budget drain. Under-ceiling now short-circuits to a synthetic plan (no sort/index); the entries census doubles as the blocked-breakdown after-table when `plan.evict` is empty; the active-pending consult is one `Set` snapshot per call (O(A+P), was O(A×P) per entry pass ×2).
+- **popin F2 (M/S) — `softBudgetPending` armed by the release lanes but drained only by the ~1 s prune sweep**: `releaseUnreferencedCacheOwners` — the lane doing the mass releasing on exit/admission drains — set the flag and left it, so the budget enforcement the sweep exists for lagged ~1 s per burst. Both sync + Steps tails now drain the flag inline (`releaseDetachedBoundaryOwners` already had the twin).
+- **popin F3 (M/S) — primary-leg fault forfeited the un-started postDispatch leg**: the fused `_sectorExitCleanupIter` generator dropped wholesale on a primary-leg throw, silently skipping the post-dispatch census. The catch now re-mints a standalone postDispatch iterator once (a post-dispatch fault drops for real; the decay sweep remains the backstop); the custom `cacheCleanupReason` is stored on the arm.
+- **popin F4 (S/S) — warm-handoff coverage scans allocated `[...owners]` per entry**: `handoffWarmOwnerWhenCovered`/`handoffOwnerWhenCovered` built a temp array per warm entry per retain burst — O(K) scan + alloc in the retain hot path. Early-exit `for..of` loop now, no copy.
+- **popin F5 (L) — per-entry `asset-retained` emits in mass retains**: DEFERRED — L-impact, emit-contract risk; documented in the lane report.
+
+### boot-loading — `saturated: false` (6 findings, `2947dea34`)
+
+- **boot B1 (H/S) — `physics.completeRestore` ran inside the same generator step as the resume chain**: the whole-census WASM world adopt was the largest un-sliced span between "loaded" and veil lift on mature saves — veil-lift hitch exactly at the worst moment. `yield 'physics-restored'` before it, plus `yield 'save-finalized'` before the settings reconcile emits.
+- **boot B2 (M/S) — combat/afterContinue run was one contiguous step**: entity-ref restore → combat ledger → 8 `afterContinue()` systems → deployable deserializes ran between 'persistent-spawned' and 'combat-restored' with no seam. Interleaved yields: `entity-refs-restored`, `combat-ledger-restored`, `after-continue-applied`, `impulse-charges-restored`.
+- **boot B3 (M/S) — `_restoreAsync`'s deferred continuation re-entered the SYNC `_restore` lane**: `deferRunTransition` queued restores drained inside `_closeRestoreSession` ran the whole generator atomically in one live-flight frame. The deferred callback now routes to `this._restoreAsync(...)` (fire-and-forget `.catch` → `save:error` + `{restored:false, error:true}`); `.drained` has no consumers.
+- **boot B4 — persistent spawn batch**: verified already wall-bounded upstream (`_spawnPersistentEntities` breaks at `RESTORE_YIELD_SLICE_MS`, saveSystem.js:5941) — no edit.
+- **boot B5 (L-M) — `primeDrawnCullStamps` `setFromObject` tails**: DEFERRED — the commit-tail Box3 is the documented last-resort measure for non-enveloped authored roots; L-M impact vs emit-contract risk.
+- **boot B6 (S/S) — `installPreparedBoundaryPublisher` lacked the disposer twin's stale-epoch self-clear**: a refused publisher slot stayed armed (every later consult kept bouncing off it) and retained its closure chain. Mirror of `installPreparedBoundaryDisposer`'s named-`installed` + guarded `delete` now.
+
+Saturation: lod + popin + boot `saturated: false` → streak 0/3; hitches lane auditing; W120 spawns on the merged HEAD once all four land.
