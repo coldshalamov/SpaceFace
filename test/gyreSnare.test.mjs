@@ -1867,6 +1867,57 @@ test('a retired primary promotes the surviving watched ball into the primary lan
   t.cleanup();
 });
 
+test('a retired primary promotes the youngest of three live flights, not the oldest', async () => {
+  const t = await bootPhysics();
+  const balls = [];
+  for (let n = 0; n < 3; n++) {
+    const e = rock(t.sim, T.mawDist + n * 2, n * 3, 6 + n, 4);
+    hold(t);
+    for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+    release(t);
+    for (let i = 0; i < 10; i++) t.sim.step();
+    balls.push(e);
+  }
+  const [a, b, c] = balls;
+  assert.equal(t.sys._rt.ballId, c.id, 'C is the freshest launch');
+  assert.ok(t.state.gyreSnare.ballTtlLeftS > 0,
+    'the renamed publish carries the seconds-left countdown (renamed from ballTtlS)');
+
+  // C's grave lands while A+B fly — B is the youngest SURVIVOR (latest despawnAt),
+  // not simply the next id in watch order.
+  c.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 6; i++) t.sim.step();
+  assert.equal(c.alive, false, 'C retired');
+  assert.equal(t.sys._rt.ballId, b.id,
+    'B promotes over A — youngest survivor by deadline, not watch position');
+  assert.ok(t.sys._rt.ballMass > 0, 'the ledger rehydrated');
+
+  b.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 6; i++) t.sim.step();
+  assert.equal(b.alive, false, 'B retired');
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the last ball standing');
+  t.cleanup();
+});
+
+test('the basin pull ramps in over the cone projection — the gravity edge moves at the glass\'s speed', async () => {
+  const t = await bootPhysics();
+  // Parked in the basin well past snag range — pulled, never cored.
+  const prey = rock(t.sim, T.mawDist + 50, 0, 6, 4);
+  t.state.input.actions.gyreSnare = true;
+  t.sim.step(); // OFF -> BEAM arm tick: the pull lanes open NEXT step
+  assert.equal(t.sys._rt.phase, 'beaming', 'the lash armed');
+  const dvs = [];
+  for (let i = 0; i < 6; i++) {
+    const pvx = prey.vel.x, pvz = prey.vel.z;
+    t.sim.step();
+    dvs.push(Math.hypot(prey.vel.x - pvx, prey.vel.z - pvz));
+  }
+  assert.ok(dvs[0] > 0, 'the basin reaches the parked body on the first pull tick');
+  assert.ok(dvs[0] < dvs[4] * 0.6,
+    `wake ramp: the first pull (dv=${dvs[0].toFixed(4)}) is a whisper of the post-ramp pull (dv=${dvs[4].toFixed(4)})`);
+  t.cleanup();
+});
+
 
 // ── wave-21 coverage ────────────────────────────────────────────────────────────
 test('thrownBeat fires on exactly one tick — the first burst tick, with gyre:thrown', async () => {

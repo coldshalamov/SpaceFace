@@ -584,7 +584,7 @@ export const gyreSnare = {
   // Scored by despawnAt like the boundary sweep (adoptScore): the watch list's
   // push order is launch order at home but map-iteration order after a reload —
   // the latest deadline is the youngest flight either way.
-  _promoteNextBall(rt, state) {
+  _promoteNextBall(rt, state, pub) {
     if (!rt || !state || !state.entities) return;
     let best = null;
     let bestScore = -Infinity;
@@ -599,6 +599,9 @@ export const gyreSnare = {
     const wmeta = best.data.gyreLaunchMeta;
     rt.ballId = best.id;
     rt.launchedId = best.id;
+    // Seed the ribbon at the promoted ball's live spot — only when no grave is
+    // blooming this tick (a dead primary keeps its last-seen pos for the ring).
+    if (pub && !pub.ballGrave) { pub.ballPos.x = best.pos.x; pub.ballPos.z = best.pos.z; }
     rt.ballMass = entityMass(best);
     rt.ballClumpRadius = wmeta && Number.isFinite(wmeta.clumpRadius)
       ? wmeta.clumpRadius : entityRadius(best);
@@ -1584,7 +1587,7 @@ export const gyreSnare = {
         // Promote the freshest surviving watch — with two katamari in flight the
         // younger one keeps the primary overlay/ribbon/×N ledger instead of the
         // read degrading to the lighter pub.balls[] lane.
-        this._promoteNextBall(rt, state);
+        this._promoteNextBall(rt, state, pub);
         // Mirror hygiene parity: ballPos stays last-seen deliberately (the grave
         // ring blooms where it died) but velocity zeroes like ttl/radius — a dead
         // ball has no heading to keep.
@@ -1628,7 +1631,7 @@ export const gyreSnare = {
           delete ball.data.gyreLaunchMeta;
           this._unwatchBall(rt.ballId);
           rt.ballId = null; rt.launchedId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
-          this._promoteNextBall(rt, state); // a younger flight inherits the primary lane
+          this._promoteNextBall(rt, state, pub); // a younger flight inherits the primary lane
           pub.ballVx = 0; pub.ballVz = 0; // dead balls keep no heading (see the dead-ball lane above)
         }
       }
@@ -1920,6 +1923,8 @@ export const gyreSnare = {
         // every other tool's no-cap edge gets, or the held key reads dead.
         this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake', ttl: 1.6 });
         this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.7 });
+        rt.dryDenyDone = true; // the flag's contract is 'denied while held' — every
+                             // deny lane sets it, not just the cap_dry close sites
       }
     }
     if (!held) rt.dryDenyDone = false; // a released key re-arms the deny voice
