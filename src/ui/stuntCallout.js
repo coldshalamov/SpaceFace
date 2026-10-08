@@ -153,6 +153,20 @@ export function trickCalloutName(trick) {
   return parts.join(' · ');
 }
 
+/**
+ * The momentum figure beside a named act. Not a score: available momentum first,
+ * then a raw momentum, then the useful delta-v the receipt already carried.
+ * Zero and missing stay blank so a nameless ordinary kill cannot grow a number.
+ */
+export function trickMomentumText(trick) {
+  const metrics = trick && trick.metrics;
+  if (!metrics || typeof metrics !== 'object') return '';
+  const raw = [metrics.availableMomentum, metrics.momentum, metrics.usefulDeltaV]
+    .find((n) => Number.isFinite(n) && n > 0);
+  if (raw == null) return '';
+  return String(Math.round(raw));
+}
+
 const clamp01 = (x) => Math.min(1, Math.max(0, Number(x) || 0));
 
 /**
@@ -396,8 +410,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     if (!name) return;
     const now = wallNow();
     const key = `ep:${trick.episodeId ?? trick.trickId}`;
-    addLine(key, name, '', now, CALLOUT_TTL_MS, false);
+    const mom = trickMomentumText(trick);
+    addLine(key, name, mom, now, CALLOUT_TTL_MS, false);
     spoken = trickSpokenText(trick);
+    if (mom) spoken = `${spoken}, ${mom}`;
     sr.textContent = spoken;
     wake();
   }
