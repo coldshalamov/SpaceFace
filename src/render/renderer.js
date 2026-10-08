@@ -359,6 +359,7 @@ import {
 } from './latePipelineAdmission.js';
 import {
   armAdmissionShadows,
+  casterDepthMarkAnyCurrent,
   casterDepthMarkCurrent,
   closeShadowDepthStagingSession,
   collectPotentialShadowCastSubjects,
@@ -28934,7 +28935,12 @@ export const render = {
           parkedRelease = parkedReleaseOnDrift = parkedReleaseScaled = true;
         } else {
           parkedEntry.lightSig = liveParkedSig;
-          parkedEntry.lightSigEpoch = shadowCensusEpoch();
+          // The served sig's real epoch: a pending stepped mint still serves
+          // the previous epoch's sig — stamping the live epoch would pair an
+          // E-1 sig with 'evaluated under E' and hide the drift the
+          // release prefilter exists to catch.
+          parkedEntry.lightSigEpoch = this._shadowCensusMemo
+            ? this._shadowCensusMemo.epoch : shadowCensusEpoch();
         }
       }
     }
@@ -28986,7 +28992,8 @@ export const render = {
       // ortho releases and re-collects normally.
       parkedEntry.seq = dirtySeq;
       parkedEntry.lightSig = this._shadowCensusForFrame();
-      parkedEntry.lightSigEpoch = shadowCensusEpoch();
+      parkedEntry.lightSigEpoch = this._shadowCensusMemo
+        ? this._shadowCensusMemo.epoch : shadowCensusEpoch();
       parkedEntry.castBand = shadowCasterBand(root);
       if (this._keyLight && this._keyLight.target) {
         const cell = (this._shadowOrthoExtent || 1) / 2;
@@ -29865,6 +29872,7 @@ export const render = {
                 const rescueCamera = this.cam && this.cam.obj;
                 const pruneProbation = this._withheldDepthCasterProbation
                   || (this._withheldDepthCasterProbation = new WeakMap());
+                const undrawnSeen = this._withheldDepthUndrawn || null;
                 let rescueAllCurrent = true;
                 for (const rescueMesh of rescueWithheld) {
                   // A member that can never mint a current mark under this
@@ -29885,17 +29893,34 @@ export const render = {
                   // unshadowed until a collect re-covers it. Death must
                   // persist across an eval boundary before the member
                   // leaves; a re-attaching member keeps honest coverage.
-                  if (withheldDepthCasterProvablyDead(rescueMesh, root)) {
-                    if (pruneProbation.get(rescueMesh) === root) {
+                  // Drawability evidence reads dead the same way: a member
+                  // offered to the staged ortho that never drew can never
+                  // mint a mark under this census — recording it (in the
+                  // leg's settle eval) stops a never-drawable member from
+                  // vetoing its drawable siblings' release forever.
+                  const undrawn = !!(undrawnSeen
+                    && undrawnSeen.get(rescueMesh) === rescueWithheld);
+                  if (undrawn || withheldDepthCasterProvablyDead(rescueMesh, root)) {
+                    const strike = pruneProbation.get(rescueMesh);
+                    // Probation keys (root, set-generation): a member struck
+                    // under a withheld Set that was since re-minted carries
+                    // no strike — it re-probates at strike-1 inside the new
+                    // generation instead of inheriting the old boundary.
+                    if (strike && strike.root === root && strike.set === rescueWithheld) {
                       rescueWithheld.delete(rescueMesh);
                       pruneProbation.delete(rescueMesh);
+                      if (undrawnSeen) undrawnSeen.delete(rescueMesh);
                       continue;
                     }
-                    pruneProbation.set(rescueMesh, root);
+                    // Strike every newly-dead member per eval, not one — a
+                    // set decaying K members otherwise takes K+1 evals to
+                    // release, each rescanning the whole set.
+                    pruneProbation.set(rescueMesh, { root, set: rescueWithheld });
                     rescueAllCurrent = false;
-                    break;
+                    continue;
                   }
                   if (pruneProbation.has(rescueMesh)) pruneProbation.delete(rescueMesh);
+                  if (undrawnSeen) undrawnSeen.delete(rescueMesh);
                   if (!casterDepthMarkCurrent(rescueMesh, rescueSig, rescueCamera)) {
                     rescueAllCurrent = false;
                     break;
@@ -30068,11 +30093,29 @@ export const render = {
             // live arm sig regardless. Keying epoch as well threw away every
             // valid collect on any light churn and paid the full O(subtree)
             // re-walk for roots that never moved.
+            // The compare sig re-consults per root: the arm's markSig is a
+            // mint-time snapshot but a suspended arm resumes across presents —
+            // a census landing mid-arm must re-prove marks under the live
+            // census, not the sig the arm pinned when it started. The consult
+            // is the epoch-gated collect's memo read (never an atomic mint).
+            const collectSig = lightSig != null ? lightSig : this._depthCollectLightSig(scene);
             const cache = entry && entry.unstagedCache;
             if (cache && cache.seq === shadowCasterPolicyDirtySeq(sliceRoots[collected])) {
               const still = [];
+              const live = [];
               for (const mesh of cache.meshes) {
-                if (!casterDepthMarkCurrent(mesh, markSig, camera)) still.push(mesh);
+                // Membership re-prove: a subtree member detached without a
+                // dirtySeq bump stays in the tracked set — offering it stages
+                // a corpse and retains it for the entry's life. The ancestor
+                // walk is the same shape withheldDepthCasterProvablyDead uses;
+                // reachable meshes keep their slot regardless of mark state.
+                let member = false;
+                for (let p = mesh; p; p = p.parent) {
+                  if (p === sliceRoots[collected]) { member = true; break; }
+                }
+                if (!member) continue;
+                live.push(mesh);
+                if (!casterDepthMarkCurrent(mesh, collectSig, camera)) still.push(mesh);
               }
               // The tracked set stays the full collect: marks minted under a
               // census sig that flips go stale together, and a mesh dropped
@@ -30080,7 +30123,9 @@ export const render = {
               // re-collected, drawing castShadow under the new light set with
               // variants only staged under the old. Shrinking to `still`
               // saved O(set) compares per consult; the re-prove is the cheap
-              // part of this cache, the stranded caster was not.
+              // part of this cache, the stranded caster was not. (Only
+              // provably-detached members leave — the membership walk above.)
+              cache.meshes = live;
               cache.epoch = armSigEpoch;
               if (still.length > 0) unstagedByRoot.set(sliceRoots[collected], still);
               for (const mesh of still) unstaged.push(mesh);
@@ -30098,12 +30143,12 @@ export const render = {
             // 32 traverses inside one arm under a deadline that can't interrupt
             // it. Defer every unvisited root to the next arm instead; the
             // skipped-tail splice below requeues them still-withheld.
-            if (markSig == null) break;
+            if (collectSig == null) break;
             const collectNodeBudget = {
               remaining: SHADOW_DEPTH_PASS_NODE_CAP * ((entry && entry.depthNodeScale) || 1),
             };
             const found = collectUnstagedShadowCasters(
-              renderer, [sliceRoots[collected]], scene, markSig, collectNodeBudget);
+              renderer, [sliceRoots[collected]], scene, collectSig, collectNodeBudget);
             if (isUnstagedCollectOverCover(found)) {
               if (entry && (entry.depthNodeScale | 0) >= 8) {
                 // Still over the node cap at maximum scale: the subtree can
@@ -30132,7 +30177,8 @@ export const render = {
                   recheck: Math.ceil((96 + (this._parkedRecheckStamp % 32))
                     * Math.min(8, 1 << (cycles - 1)) * (abortedGlassAdj ? 0.5 : 1)),
                   lightSig: markSig,
-                  lightSigEpoch: shadowCensusEpoch(),
+                  lightSigEpoch: lightSig != null ? armSigEpoch
+                    : (this._shadowCensusMemo ? this._shadowCensusMemo.epoch : armSigEpoch),
                   oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
                   oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
                   castBand: shadowCasterBand(abortedRoot),
@@ -30266,6 +30312,27 @@ export const render = {
                 || (lightSig == null
                   && !!this._shadowCensusMemo
                   && this._shadowCensusMemo.epoch !== verdictLiveEpoch);
+              // Drawability evidence: the leg knows exactly which offered
+              // casters drew in the staged ortho — an offered-but-undrawn
+              // member can never mint a mark under this census, so record
+              // it on the withheld set (keyed by Set instance: a re-minted
+              // set re-proves fresh). The rescue consult above prunes
+              // evidence-struck members instead of letting a never-drawable
+              // member veto its drawable siblings' release every eval.
+              if (legResult && Array.isArray(legResult.drawn) && unstagedByRoot) {
+                const drawnSet = new Set(legResult.drawn);
+                const undrawnLedger = this._withheldDepthUndrawn
+                  || (this._withheldDepthUndrawn = new WeakMap());
+                for (const [deferRoot, deferMeshes] of unstagedByRoot) {
+                  const withheldSet = this._withheldDepthCasters
+                    && this._withheldDepthCasters.get(deferRoot);
+                  if (!withheldSet) continue;
+                  for (const mesh of deferMeshes) {
+                    if (drawnSet.has(mesh)) undrawnLedger.delete(mesh);
+                    else if (legSet && legSet.has(mesh)) undrawnLedger.set(mesh, withheldSet);
+                  }
+                }
+              }
               if (legDriveFailed !== true && legAborted !== true && legSet && !verdictStale) {
                 const entryByRoot = new Map(slice);
                 for (const [deferRoot, deferMeshes] of unstagedByRoot) {
@@ -30280,6 +30347,14 @@ export const render = {
                         allUnmarked = false;
                         break;
                       }
+                    }
+                    // A mark minted mid-leg under an intermediate census the
+                    // witness set doesn't name (flip landing between the arm's
+                    // pin and the served memo) still proves staged — its
+                    // discriminant re-proves live state; counting it unmarked
+                    // denied roots that were stageable all along.
+                    if (allUnmarked && casterDepthMarkAnyCurrent(mesh, camera)) {
+                      allUnmarked = false;
                     }
                     if (!allUnmarked) break;
                   }
@@ -30304,7 +30379,13 @@ export const render = {
                     recheck: Math.ceil((96 + (this._parkedRecheckStamp % 32))
                       * Math.min(8, 1 << (cycles - 1)) * (deferGlassAdj ? 0.5 : 1)),
                     lightSig: verdictSig,
-                    lightSigEpoch: shadowCensusEpoch(),
+                    // Stamp the epoch the sig was actually minted under: while
+                    // a stepped re-mint pends the served sig is the previous
+                    // epoch's — pairing it with the live epoch would claim
+                    // 'evaluated under E' with an E-1 sig and hide the very
+                    // drift the parked-release prefilter compares against.
+                    lightSigEpoch: lightSig != null ? armSigEpoch
+                      : (this._shadowCensusMemo ? this._shadowCensusMemo.epoch : armSigEpoch),
                     oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
                     oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
                     castBand: shadowCasterBand(deferRoot),
@@ -30367,6 +30448,9 @@ export const render = {
                 leftoverMarked = true;
                 break;
               }
+            }
+            if (!leftoverMarked && casterDepthMarkAnyCurrent(mesh, camera)) {
+              leftoverMarked = true;
             }
             if (leftoverMarked) continue;
             (set || (set = [])).push(mesh);

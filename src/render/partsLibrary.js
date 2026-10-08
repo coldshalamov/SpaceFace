@@ -3511,8 +3511,11 @@ function* detachedFallbackTeardownThenClearSteps(root) {
 function disposeDetachedAuthoredCargoCapsule(root) {
   if (!root) return;
   // The authored-motion driver registers controllers under the entity id; a parked/admission-
-  // failed tree must release them the same way the boundary teardown path does.
-  if (typeof root.userData?.detachAuthoredMotion === 'function') root.userData.detachAuthoredMotion();
+  // failed tree must release them the same way the boundary teardown path does. Fenced like
+  // the other detached teardown hooks — a throwing hook must not veto the dispose below.
+  if (typeof root.userData?.detachAuthoredMotion === 'function') {
+    try { root.userData.detachAuthoredMotion(); } catch { /* best-effort — teardown continues */ }
+  }
   // Authored compositions use cloned batch geometry plus materials marked by the shared-resource
   // policy. Reuse the established detached-place disposer so only owner-local GPU resources
   // retire — paced on the shared queue so an abandon inside a presented beat no longer pays
@@ -6777,6 +6780,7 @@ function driveOpeningPublicationResume(render, queue) {
     const resumeForced = resumeSpent;
     const resumeStarted = monotonicNow();
     const entrySpend = pacedFrameSpend();
+    const entryForcedSpend = forcedFrameSpend();
     const batchLimit = Math.min(
       OPENING_PUBLICATION_RESUME_MAX_BATCH,
       Math.max(OPENING_PUBLICATION_RESUME_BATCH, Math.ceil(queue.length / 8)),
@@ -6837,7 +6841,8 @@ function driveOpeningPublicationResume(render, queue) {
       // double-counts both. Same residual shape as the hop debit: forced
       // pays only the unaccounted remainder.
       const forcedResidual = (monotonicNow() - resumeStarted)
-        - Math.max(0, pacedFrameSpend() - entrySpend);
+        - Math.max(0, pacedFrameSpend() - entrySpend)
+        - Math.max(0, forcedFrameSpend() - entryForcedSpend);
       if (forcedResidual > 0) {
         noteForcedFrameSpend(Math.min(forcedResidual, FORCED_FRAME_BUDGET_MS));
       }
@@ -16814,10 +16819,15 @@ export function* disposeDetachedObjectSteps(root) {
 }
 
 function disposeDetachedPlaceFallback(root) {
-  root?.userData?.ceresCradleLayoutGuard?.dispose();
+  // Root hooks are fenced individually — a throwing hook must not veto the
+  // subtree teardown (a retry mint would re-throw at the same hook and leak
+  // the whole tree).
+  try { root?.userData?.ceresCradleLayoutGuard?.dispose(); } catch { /* best-effort */ }
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
-  if (typeof disposePresentation === 'function') disposePresentation();
-  root?.userData?.detachAuthoredMotion?.();
+  if (typeof disposePresentation === 'function') {
+    try { disposePresentation(); } catch { /* best-effort */ }
+  }
+  try { root?.userData?.detachAuthoredMotion?.(); } catch { /* best-effort */ }
   const geometries = new Set();
   const materials = new Set();
   root.traverse((object) => {
@@ -16838,10 +16848,12 @@ function disposeDetachedPlaceFallback(root) {
 // Stepped twin — collect and dispose phases each yield at stride boundaries;
 // the dedup sets live in generator scope so a suspended walk keeps them.
 function* disposeDetachedPlaceFallbackSteps(root) {
-  root?.userData?.ceresCradleLayoutGuard?.dispose();
+  try { root?.userData?.ceresCradleLayoutGuard?.dispose(); } catch { /* best-effort */ }
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
-  if (typeof disposePresentation === 'function') disposePresentation();
-  root?.userData?.detachAuthoredMotion?.();
+  if (typeof disposePresentation === 'function') {
+    try { disposePresentation(); } catch { /* best-effort */ }
+  }
+  try { root?.userData?.detachAuthoredMotion?.(); } catch { /* best-effort */ }
   const geometries = new Set();
   const materials = new Set();
   const stack = [root];

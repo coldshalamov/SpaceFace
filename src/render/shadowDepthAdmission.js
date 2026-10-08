@@ -398,6 +398,20 @@ export function casterDepthMarkCurrent(caster, lightSig, camera = null) {
 }
 
 /**
+ * Same certificate check without the light-signature clause: a mark minted mid-drive
+ * under an intermediate census — the arm pinned one sig, the drive's retry minted
+ * under a second, the live memo already serves a third — is unwitnessed by either
+ * verdict sig but still proves the caster staged. The discriminant fields re-prove
+ * the live state, so a mark internally current under its OWN sig keeps the verdict
+ * sound when no minted witness names its census.
+ */
+export function casterDepthMarkAnyCurrent(caster, camera = null) {
+  const mark = caster && caster.userData ? caster.userData[DEPTH_MARK_KEY] : null;
+  if (!mark) return false;
+  return casterDepthMarkCurrent(caster, mark.l, camera);
+}
+
+/**
  * Flag-collect twin of collectUnstagedShadowCasters for the presented-frame policy
  * sync: same unstaged set (signature-capable casters with no current mark) without
  * paying signature mints + staged-Set probes per caster. The arm re-collects with the
@@ -844,6 +858,9 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
     // link on a listed name proves the program key drifted, an absent name proves it never drew.
     stagedNames: sliced.stagedNames || [],
     stagedKeys: sliced.stagedKeys || [],
+    // Offered casters that actually drew in the staged ortho (null when the
+    // draw couldn't be witnessed) — the caller mints drawability evidence.
+    drawn: sliced.drawn || null,
   };
 }
 
@@ -1073,6 +1090,11 @@ export function createShadowDepthStagingSession(options = {}) {
           stagedNames: [...sliceNames]
             .filter((name) => /CommonRockInstances|LivingHull|InstancePool|Wreck_Batch/.test(name)),
           stagedKeys: [...sliceKeys],
+          // The casters that actually drew in the staged ortho — an offered
+          // subject absent from this set can never mint a mark under this
+          // census. null when the draw couldn't be witnessed (no
+          // renderBufferDirect to intercept) so consumers mint no evidence.
+          drawn: originalRenderBufferDirect ? [...sliceDrawn] : null,
         };
       } finally {
         if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
@@ -1110,6 +1132,11 @@ export function createShadowDepthStagingSession(options = {}) {
       const names = new Set();
       const sKeys = new Set();
       const failures = [];
+      const drawnUnion = new Set();
+      // Evidence availability is all-or-nothing across sub-batches: a batch
+      // that couldn't witness draws would brand its casters undrawn in a
+      // partial union.
+      let drawnWitnessed = true;
       let subjects = 0;
       for (let i = 0; i < casting.length; i += 32) {
         if (sliceOpts && typeof sliceOpts.stale === 'function' && sliceOpts.stale()) {
@@ -1121,6 +1148,8 @@ export function createShadowDepthStagingSession(options = {}) {
         for (const k of r.programCacheKeys || []) keys.add(k);
         for (const n of r.stagedNames || []) names.add(n);
         for (const k of r.stagedKeys || []) sKeys.add(k);
+        if (Array.isArray(r.drawn)) for (const d of r.drawn) drawnUnion.add(d);
+        else drawnWitnessed = false;
         if (Array.isArray(r.programBindingFailures)) failures.push(...r.programBindingFailures);
         if (i + 32 < casting.length) yield;
       }
@@ -1131,6 +1160,7 @@ export function createShadowDepthStagingSession(options = {}) {
         programBindingFailures: failures,
         stagedNames: [...names],
         stagedKeys: [...sKeys],
+        drawn: drawnWitnessed ? [...drawnUnion] : null,
       };
     },
     close() {
