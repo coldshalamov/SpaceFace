@@ -41,6 +41,13 @@ export function formatSpeedFigure(value) {
   return '999G+';
 }
 
+/** Earned speed the governor deliberately does not spend, in world units per second.
+ *  Zero at or under the governed reference. The 100% mark stays the reference. */
+export function overspeedBand(speed, governed) {
+  if (!Number.isFinite(speed) || !Number.isFinite(governed) || !(governed > 0)) return 0;
+  return Math.max(0, speed - governed);
+}
+
 /** Pure model for consumers/tests. The frame writer below uses scalar caches, not this allocation. */
 export function velocityRailModel(value, reference) {
   const available = Number.isFinite(value);
@@ -51,6 +58,7 @@ export function velocityRailModel(value, reference) {
     available, speed, hasReference,
     fraction: Math.round(fraction * RESOLUTION) / RESOLUTION,
     aboveReference: available && hasReference && Math.round(speed) > Math.round(reference),
+    overspeed: hasReference ? overspeedBand(speed, reference) : 0,
   };
 }
 
@@ -174,6 +182,7 @@ export function setKitGauge(el, value, reference) {
   attr(el, 'data-available', available);
   attr(el, 'data-over-reference', aboveReference);
   attr(el, 'data-has-reference', hasReference);
+  attr(el, 'data-overspeed', hasReference ? Math.round(overspeedBand(speed, reference)) : 0);
   // A physical speed may exceed REF. Keep meter bounds valid and the exact (unabbreviated) value
   // available to assistive technology. No live region: this is a reading, not an alert stream.
   if (available) {

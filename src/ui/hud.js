@@ -34,7 +34,7 @@ import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { estimateBrakingSolution, evaluateArrivalCue } from '../core/flight/flightTelemetry.js';
-import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS } from './bindings.js';
@@ -5651,7 +5651,11 @@ export function createHud(ctx, alerts) {
       const vx = p.vel && Number.isFinite(p.vel.x) ? p.vel.x : 0;
       const vz = p.vel && Number.isFinite(p.vel.z) ? p.vel.z : 0;
       const sp = Math.hypot(vx, vz);
-      setKitGauge(speedGaugeEl, sp, Math.max(1, p.maxSpeed || 1));
+      // FB-008 — the 100% mark is the governed combat speed the kernel holds, not the
+      // legacy derived maxSpeed. Earned momentum above that cap stays on the band
+      // (data-overspeed) and does not move the mark.
+      const governed = resolveGovernedCombatSpeed(p, state, p.maxSpeed || 1);
+      setKitGauge(speedGaugeEl, sp, Math.max(1, governed || 1));
       if (slow) setText(elSpeed, Math.round(sp) + '');
     }
     if (slow && p) {
