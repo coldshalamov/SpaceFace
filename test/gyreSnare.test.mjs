@@ -2474,3 +2474,56 @@ test('protected adoption at the release edge bowls nothing', () => {
   assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_adopted'),
     'drop reason is core_adopted, not released');
 });
+
+test('mid-launch protected adoption hands the half-thrown ball back', () => {
+  const t = boot(9292);
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  t.state.input.actions.gyreSnare = true;
+  for (let i = 0; i < 15; i++) t.sim.step();
+  assert.equal(t.sys._rt.phase, 'holding');
+  release(t);
+  assert.equal(t.sys._rt.phase, 'launching');
+  assert.ok(t.sys._rt.launchWindup > 0 || t.sys._rt.launchLeft > 0, 'the throw is mid-flight');
+  assert.equal(core.data.gyreLaunched, true, 'the ball is armed for the burst');
+  assert.ok(core.physicsBody.impactDamageScale >= T.launchImpactScaleBase, 'weapon scale is live');
+  // A mission owner pins the ball while the sling is still winding — the throw
+  // must abort, not bowl protected cargo.
+  core.data.missionPinned = true;
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'the launch aborted');
+  assert.equal(core.data.gyreLaunched, undefined, 'the mark sheds on hand-back');
+  assert.equal(core.data.gyreLaunchMeta, undefined, 'the credit shadow sheds');
+  assert.equal(core.physicsBody.impactDamageScale, undefined, 'the weapon payload disarmed');
+  assert.ok(!t.events.some((e) => e.name === 'gyre:thrown'), 'the throw never completed');
+  assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_adopted'),
+    'drop reason is core_adopted');
+});
+
+test('an adopter that keeps despawnAt still retires the marked ball on its own TTL', () => {
+  const t = boot(9393);
+  const primary = rock(t.sim, T.mawDist, 0, 6, 4);
+  const kept = rock(t.sim, T.mawDist + 40, 0, 6, 4);
+  // A foreign owner adopts the second ball but LEAVES its deadline — the lash's
+  // marks ride it to that TTL, then the quiet lane disarms + sheds the shadow.
+  kept.data.gyreLaunched = true;
+  kept.data.gyreLaunchMeta = { mass: 6, members: [{ type: 'asteroid', radius: 4 }], clumpRadius: 6 };
+  kept.physicsBody.impactDamageScale = 8;
+  kept.data.gyrePrevImpactScale = 1.5;
+  primary.data.gyreLaunched = true;
+  primary.data.despawnAt = t.state.simTime + 9;
+  t.sys._rt.ballId = primary.id;
+  t.sys._rt.launchedId = primary.id;
+  t.sys._rt.ballIds.push(primary.id, kept.id);
+  t.sys._rt.ballMass = 6; t.sys._rt.ballClumpRadius = 6;
+  // ~1.2 ticks of deadline: survives step 1 (pub doesn't exist yet — the sweep
+  // early-returns on the literal first update), expires by step 2's sweep while
+  // the ball is still alive, so the quiet-TTL lane fires with a live body.
+  kept.data.despawnAt = t.state.simTime + 0.02;
+  t.sim.step();
+  t.sim.step();
+  assert.ok(kept.data.gyreLaunched, 'the mark rides to its own TTL (adopter contract)');
+  assert.equal(kept.data.gyreLaunchMeta, undefined, 'the credit shadow shed on retire');
+  assert.equal(kept.physicsBody.impactDamageScale, 1.5, 'the authored scale restored');
+  assert.equal(kept.data.gyrePrevImpactScale, undefined, 'the stash consumed');
+  assert.ok(!t.sys._rt.ballIds.includes(kept.id), 'the retired ball left the watch list');
+});

@@ -302,7 +302,9 @@ export const gyreSnare = {
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
       this.bus.emit(GYRE_EVENTS.dropped, {
-        coreId: emitId, reason: String(reason || 'dropped'), boundary, quiet,
+        // `id` rides beside coreId: the {id:…} event convention so a future
+        // consumer doesn't need to know which key a given event chose.
+        id: emitId, coreId: emitId, reason: String(reason || 'dropped'), boundary, quiet,
         tick: this.state && this.state.tick,
       });
       // A live lash ending without a launch gets the descending release voice — quiet for
@@ -831,7 +833,7 @@ export const gyreSnare = {
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(best);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.snagged, {
-        coreId: best.id, type: best.type, mass: rt.clumpMass, radius: rt.clumpRadius,
+        id: best.id, coreId: best.id, type: best.type, mass: rt.clumpMass, radius: rt.clumpRadius,
         tick: state.tick,
       });
       // Mass-graded snag voice: a pebble cracks bright, a rock the size of a
@@ -875,8 +877,9 @@ export const gyreSnare = {
     // calm float, grows while a fast-moving ship drags the ball behind: the milder
     // "lashing" read strain01 folds in at publish (capped below the tear band).
     rt.holdLag = Math.hypot(tx - core.pos.x, tz - core.pos.z);
-    // The funnel's stir chases the ball's real revolution over ~0.25 s — a snag
-    // rolling -1 re-stirs the vortex smoothly instead of flipping it mid-feed.
+    // The funnel's stir chases the ball's real revolution over ~0.5 s for a full
+    // sign flip (dt·4 across a range of 2) — a snag rolling -1 re-stirs the
+    // vortex smoothly instead of flipping it mid-feed.
     rt.swirlBlend += clamp(rt.orbitDir - rt.swirlBlend, -dt * 4, dt * 4);
     // The lean channel one-poles the lag (~0.13 s) — a raw single-frame residual
     // would jiggle the glass whenever the ship jinks.
@@ -1085,7 +1088,7 @@ export const gyreSnare = {
     }
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.absorbed, {
-        coreId: core.id, victimId: e.id, victimType: e.type, mass: em,
+        id: e.id, coreId: core.id, victimId: e.id, victimType: e.type, mass: em,
         clumpMass: rt.clumpMass, clumpRadius: rt.clumpRadius,
         nx: dist > 1e-4 ? -dx / dist : 0, nz: dist > 1e-4 ? -dz / dist : 0,
         tick: state.tick,
@@ -1240,7 +1243,7 @@ export const gyreSnare = {
     if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(core);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.launched, {
-        coreId: core.id, mass: rt.clumpMass, radius: rt.clumpRadius,
+        id: core.id, coreId: core.id, mass: rt.clumpMass, radius: rt.clumpRadius,
         // The honest speed at the release edge is launchSpeedEff (post-mass-penalty);
         // carry isn't known until the burst, so the authored floor would lie.
         speed: rt.launchSpeedEff, dir: { x: dir.x, z: dir.z }, members: rt.members.length,
@@ -1729,7 +1732,16 @@ export const gyreSnare = {
 
     if (rt.phase === PHASE.LAUNCH) {
       const core = rt.launchedId != null ? state.entities.get(rt.launchedId) : null;
-      if (core && core.alive !== false && rt.launchWindup > 0) {
+      // The coil+burst takes ~11 ticks — the same protected-content contract HOLD
+      // and the launch edge enforce must hold HERE too: a pin landing mid-throw
+      // means the ball is a mission owner's body now, not our projectile. Hand it
+      // back (mark + weapon payload + credit shadow shed, adopter's deadlines kept)
+      // and drop — bowling protected cargo can never complete.
+      if (core && core.alive !== false && hasProtectedContent(core)) {
+        this._handBack(core);
+        this._unwatchBall(core.id);
+        this._drop('core_adopted');
+      } else if (core && core.alive !== false && rt.launchWindup > 0) {
         // Wind-up beat: a ~100 ms coil that drags the clump slightly aft of the maw
         // before the burst — the release reads as a slingshot, not an instant shove.
         rt.launchWindup -= 1;
@@ -1840,7 +1852,9 @@ export const gyreSnare = {
         rt.launchLeft = 0;
         rt.launchWindup = 0;
       }
-      if (rt.launchWindup <= 0 && rt.launchLeft <= 0) this._finishLaunch(state);
+      // Phase re-checked: the adoption branch above already dropped and reported —
+      // _finishLaunch must not crown a thrown-out hand-back with a 'launched' close.
+      if (rt.phase === PHASE.LAUNCH && rt.launchWindup <= 0 && rt.launchLeft <= 0) this._finishLaunch(state);
     } else if (rt.phase === PHASE.BEAM) {
       rt.towCount = 0;
       rt.tooHeavyCount = 0;
