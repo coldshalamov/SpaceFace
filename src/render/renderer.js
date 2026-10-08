@@ -3202,7 +3202,21 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         noteLaneFault(owner.state, 'sectorExitCleanup');
         laneWarn(owner.state, 'sectorExitCleanup', '[render] sector-exit cleanup iterator faulted; dropped', err);
         try { iterator.return?.(); } catch (_) { /* best effort */ }
-        owner._sectorExitCleanupIter = null;
+        // A fault in the primary leg used to forfeit the never-started post-dispatch
+        // leg with it — its cache-only rows then sat resident until the decay sweep's
+        // age/byte gates. Re-mint just that leg once; a post-dispatch fault drops the
+        // drive for real (the 10s decay sweep is the documented backstop).
+        if (owner._sectorExitCleanupPendingPost) {
+          owner._sectorExitCleanupPendingPost = false;
+          const residency = owner._assetResidency;
+          owner._sectorExitCleanupIter = residency
+            && typeof residency.releaseUnreferencedCacheOwnersSteps === 'function'
+            ? residency.releaseUnreferencedCacheOwnersSteps(
+              owner._sectorExitCleanupPostReason || 'sector-exit-cache-only:post-dispatch')
+            : null;
+        } else {
+          owner._sectorExitCleanupIter = null;
+        }
         break;
       }
       if (step.done) {
@@ -19302,8 +19316,11 @@ export const render = {
               self._sectorExitCleanupIter = null;
               return;
             }
+            self._sectorExitCleanupPendingPost = true;
+            self._sectorExitCleanupPostReason = postDispatchReason;
             self._sectorExitCleanupIter = (function* () {
               yield* residency.releaseUnreferencedCacheOwnersSteps(primaryReason);
+              self._sectorExitCleanupPendingPost = false;
               yield* residency.releaseUnreferencedCacheOwnersSteps(postDispatchReason);
             })();
           },
