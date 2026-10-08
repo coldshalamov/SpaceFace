@@ -92,6 +92,11 @@ export function authorityTargetText(payload, state) {
   return entityName(entityById(state, payload.attackerId)) || `CONTACT ${String(payload.attackerId).toUpperCase()}`;
 }
 
+export function authorityAggressorText(target) {
+  const value = String(target || '');
+  return /AGGRESSOR|INCIDENT SUBJECT/.test(value) ? value : `AGGRESSOR ${value}`;
+}
+
 function causeText(cause) {
   switch (String(cause || '')) {
     case 'player_assault': return 'Patrol assault inside protected jurisdiction';
@@ -241,9 +246,10 @@ export function createSectorLawPresenter(ctx) {
     text(els.flag, view.flag);
     text(els.status, view.statusText);
     text(els.headline, view.headline);
-    text(els.meta, `${view.authority.toUpperCase()} · ${view.station.toUpperCase()} · AGGRESSOR ${view.target}`);
+    const aggressor = authorityAggressorText(view.target);
+    text(els.meta, `${view.authority.toUpperCase()} · ${view.station.toUpperCase()} · ${aggressor}`);
     text(els.detail, view.detail);
-    root.setAttribute('aria-label', `${view.flag}. ${view.headline}. Authority ${view.authority}. Aggressor ${view.target}. ${view.detail}. ${view.statusText}.`);
+    root.setAttribute('aria-label', `${view.flag}. ${view.headline}. Authority ${view.authority}. ${aggressor}. ${view.detail}. ${view.statusText}.`);
     lastEtaText = view.statusText;
     root.hidden = false;
     return true;
