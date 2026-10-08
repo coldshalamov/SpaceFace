@@ -106,6 +106,7 @@ import {
 import {
   buildLoadoutPresetRailModel,
   sanitizePresetSelectionMap,
+  applyPresetRejection,
 } from '../../ship/loadoutPresets.js';
 import { fitHullInk, layoutHullCallouts, pointsBox, separateBeads } from '../../ship/calloutLayout.js';
 import { createStagePoster, loadHullPosterManifest } from '../../ship/hullPoster.js';
@@ -633,6 +634,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let selectedBand = 'handling'; // which of the four foot heroes explains itself beneath
   let rangeIntentUnsub = null;
   let appearanceSavedUnsub = null;
+  let presetRejectedUnsub = null;
+  let presetAppliedUnsub = null;
+  let pendingPresetRejection = null;
   let sableDemo = null, sableSelection = null, sableStamp = null;
   const clearSableDemo = () => { sableDemo?.dispose(); sableDemo = null; sableStamp = null; };
   const sableLifecycleUnsubs = ['save:restoring', 'game:newGame'].map(event => ctx.bus?.on(event, clearSableDemo)).filter(Boolean);
@@ -743,6 +747,31 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (!viewed || !owned().length) return;
       if (Number.isFinite(index) && index !== owned().indexOf(viewed)) return;
       refreshPaintedPreview();
+    });
+  }
+
+  // ship:loadoutPresetApplyRejected already toasts. The instrument still has to say the
+  // rack-specific reason on the build that failed, and keep that sentence after the
+  // apply path's refresh rebuilds the rail.
+  function paintPendingPresetRejection() {
+    if (!pendingPresetRejection || !el || typeof el.querySelector !== 'function') return;
+    const id = pendingPresetRejection.presetId;
+    if (!id || /["'\\]/.test(id)) return;
+    const button = el.querySelector(`button.sx-sw-preset[data-loadout-preset-id="${id}"]:not([data-loadout-preset-save])`);
+    if (button) applyPresetRejection(button, pendingPresetRejection.reason);
+  }
+
+  function ensurePresetRejectedHandler() {
+    if (presetRejectedUnsub || !ctx.bus || typeof ctx.bus.on !== 'function') return;
+    presetRejectedUnsub = ctx.bus.on('ship:loadoutPresetApplyRejected', (payload = {}) => {
+      const presetId = payload && payload.presetId;
+      if (!presetId) return;
+      pendingPresetRejection = { presetId: String(presetId), reason: payload.reason };
+      paintPendingPresetRejection();
+    });
+    presetAppliedUnsub = ctx.bus.on('ship:loadoutPresetApplied', (payload = {}) => {
+      if (!pendingPresetRejection) return;
+      if (!payload || payload.presetId === pendingPresetRejection.presetId) pendingPresetRejection = null;
     });
   }
 
@@ -1728,6 +1757,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         ? `<section class="sx-sw-record"><p class="k-caps sx-sw-band__label">Record</p><ul class="k-rows sx-sw-record__grid">${recordRowsHtml(model)}</ul></section>`
         : '');
     dressApron();
+    paintPendingPresetRejection();
   }
 
   // The hull's systems round the dial: each slot type once, how many of its slots are fitted, and
@@ -5238,6 +5268,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       restoreShipView();
       ensureRangeIntentHandler();
       ensureAppearanceSavedHandler();
+      ensurePresetRejectedHandler();
       refresh();
       if (mount) mount.setActive(true);
       powerBeam.setActive(true);
@@ -5257,6 +5288,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       if (projectionFrame) cancelAnimationFrame(projectionFrame);
       if (appearanceSavedUnsub) { try { appearanceSavedUnsub(); } catch (_) {} appearanceSavedUnsub = null; }
+      if (presetRejectedUnsub) { try { presetRejectedUnsub(); } catch (_) {} presetRejectedUnsub = null; }
+      if (presetAppliedUnsub) { try { presetAppliedUnsub(); } catch (_) {} presetAppliedUnsub = null; }
       if (stageResizeObserver) stageResizeObserver.disconnect();
       if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
       rangeIntentUnsub = null;
