@@ -1866,10 +1866,14 @@ export const gyreSnare = {
     // stays held through the overlay (massline parity) but the countdown is behind
     // it — draining blind could force a _launch the player literally cannot see.
     const modalHeld = !!(state.ui && state.ui.screenStack && state.ui.screenStack.length)
+      || !!(state.ui && state.ui.fulfillmentBlackoutActive)
       || !!(state.input && state.input.blocked);
     const drain = modalHeld ? 0 : D.capDrainPerS * drainMult * dt;
     this._spendCap(player, drain);
-    const dry = this._cap(player) <= 0;
+    // Same blind-commit rule on the OTHER side of the drain: a foreign system that
+    // emptied the tank while the screen was up still can't bowl behind the modal —
+    // the dry edge fires on the first tick the player can see.
+    const dry = !modalHeld && this._cap(player) <= 0;
 
     const maw = this._maw(player, this._mawObj || (this._mawObj = { x: 0, z: 0 }));
     const nose = this._noseDir(player, this._noseObj || (this._noseObj = { x: 1, z: 0 }));

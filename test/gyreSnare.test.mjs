@@ -503,6 +503,17 @@ test('the fuse freezes while a screen holds the flight input neutral', async () 
   t.state.ui.screenStack.length = 0;
   for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.ok(t.player.cap < held, 'fuse resumes the moment the screen closes');
+  // The other two neutralize paths hold too — input.blocked (drill approach) and
+  // fulfillmentBlackoutActive (the class-driven blackout with no stack entry).
+  t.state.input.blocked = true;
+  const held2 = t.player.cap;
+  for (let i = 0; i < 60; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.player.cap, held2, 'capacitor frozen under input.blocked');
+  t.state.input.blocked = false;
+  t.state.ui.fulfillmentBlackoutActive = true;
+  for (let i = 0; i < 60; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.player.cap, held2, 'capacitor frozen under fulfillment blackout');
+  t.state.ui.fulfillmentBlackoutActive = false;
   t.cleanup();
 });
 
