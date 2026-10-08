@@ -58,6 +58,9 @@ function fixture(providers = []) {
     rendererGenerationIsActive: () => owner._rendererGeneration === 2 && !owner._rendererResourcesDisposed, scene: { environment: {} },
     renderer: { getContext: () => ({ flush: noop, isContextLost: () => false }) },
     globalThis: { requestAnimationFrame: fn => frames.push(fn) },
+    // The yield seams now resume through the bounded background post (the W119
+    // post-present contract) — on this harness that rides the same frame pump.
+    postTaskAtBackgroundPriorityBounded: (cb) => frames.push(cb),
     performance: { now: () => now += 10 }, yieldToBrowser: async () => {},
     beginOpeningCookLedger: () => ({}), bindEnvironmentToStandardMaterials: noop,
     bindEnvironmentToStandardMaterialsSteps: function* () {},

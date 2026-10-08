@@ -28,6 +28,7 @@ import {
   sharedImageTextureFor,
   texturePayloadIntact,
 } from './imageSourceDedupe.js';
+import { dedupWarn, dedupError } from '../core/warnDedup.js';
 
 const EXTENSION = 'KHR_texture_basisu';
 // Records which userData keys a document's image extras applied, so a dedupe-shared clone can drop
@@ -153,13 +154,13 @@ function decodeEmbeddedSource(parser, sourceDef, loader) {
         if (typeof sourceDef.extras === 'object') {
           Object.assign(texture.userData, sourceDef.extras);
           texture.userData[APPLIED_EXTRAS_KEY] = Object.keys(sourceDef.extras);
-        } else console.warn(`THREE.GLTFLoader: Ignoring primitive type .extras, ${sourceDef.extras}`);
+        } else dedupWarn('gltf:primitive-extras-ignored', 'THREE.GLTFLoader: Ignoring primitive type .extras,', sourceDef.extras);
       }
       texture.userData.mimeType = sourceDef.mimeType || 'image/ktx2';
       return texture;
     })
     .catch((error) => {
-      console.error('THREE.GLTFLoader: Couldn\'t load texture', `bufferView ${sourceDef.bufferView}`);
+      dedupError('gltf:ktx2-texture-load-failed', 'THREE.GLTFLoader: Couldn\'t load texture', `bufferView ${sourceDef.bufferView}`);
       throw error;
     });
 }

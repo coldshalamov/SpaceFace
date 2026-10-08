@@ -193,6 +193,29 @@ const PLAYER_MODULE_INVENTORY_ENCODE_CHUNK = 512;
 const AUTOSAVE_BAG_CHUNK_MIN = 64;
 const AUTOSAVE_BAG_CHUNK_ITEMS = 64;
 const PLAYER_INCREMENTAL_CAPTURE_THRESHOLD = 256;
+
+// Resume the next restore chunk in a separate task after the arming one — a
+// rAF/timer callback resolving inline lands the whole next generator leg
+// inside the presented loading-paint frame it armed in (same class of seam
+// compilePresentSlice's bounded background post closes on the render side;
+// cloned here because the save layer stays render-free).
+function postRestoreTaskAtBackgroundPriorityBounded(callback, boundMs = 48) {
+  let fired = false;
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    callback();
+  };
+  const sched = typeof globalThis.scheduler === 'object' && globalThis.scheduler
+    ? globalThis.scheduler
+    : null;
+  const postTask = sched && typeof sched.postTask === 'function'
+    ? sched.postTask.bind(sched)
+    : null;
+  if (postTask) postTask(fire, { priority: 'background' });
+  else setTimeout(fire, 0);
+  setTimeout(fire, Math.max(0, Number(boundMs) || 0));
+}
 const PLAYER_CAPTURE_MAX_RESTARTS = 3;
 const SAVE_VALIDATION_CHUNK_CHARS = 8_192;
 const SAVE_WORKER_TIMEOUT_MS = 4000;
@@ -4654,7 +4677,15 @@ export const save = {
       const marker = { queued: true, stale: true, slot };
       this.deferRunTransition(() => {
         try {
-          return this._restore(data, slot, options);
+          // The deferred continuation inherits this lane's pacing contract: the close
+          // that drains it can run after the veil cleared, so re-entering the SYNC
+          // _restore there would pay the whole generator inside one live-flight frame.
+          // Same chunk sequence, just frame-gated like the original request.
+          return this._restoreAsync(data, slot, options).catch((error) => {
+            console.error('[save] deferred restore failed', error);
+            this.bus.emit('save:error', { slot, reason: 'load_failed' });
+            return { restored: false, slot, error: true };
+          });
         } catch (error) {
           console.error('[save] deferred restore failed', error);
           this.bus.emit('save:error', { slot, reason: 'load_failed' });
@@ -4717,7 +4748,7 @@ export const save = {
         if (done) return;
         done = true;
         this._restoreYieldStarved = viaTimer ? (this._restoreYieldStarved || 0) + 1 : 0;
-        resolve();
+        postRestoreTaskAtBackgroundPriorityBounded(resolve);
       };
       // After the timer wins twice running, the compositor is demonstrably starved and every
       // further gated boundary would burn its full 48ms — downgrade to setTimeout(0), which
@@ -5019,12 +5050,14 @@ export const save = {
       this._restoreEntityIdAllocator(data.entities);
 
       this._restoreCeresEntityReferences(data.entities?.ceresWorkfleetRefs, legacyFinite, entityIdRemap);
+      yield 'entity-refs-restored';
 
       // 11. clear stale entity-id references (the saved targets belong to entities that no longer exist).
       this._clearStaleTargets();
 
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
       this._restoreCombat(data.combat, entityIdRemap);
+      yield 'combat-ledger-restored';
       this.registry.get('lastShift')?.afterContinue?.();
       this.registry.get('redKite')?.afterContinue?.();
       this.registry.get('ilexArk')?.afterContinue?.();
@@ -5034,6 +5067,7 @@ export const save = {
       this.registry.get('secondRinse')?.afterContinue?.();
       this.registry.get('towlineTable')?.afterContinue?.();
       this.registry.get('borrowedVoice')?.afterContinue?.();
+      yield 'after-continue-applied';
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
       // selection). No entity ids inside — live bomb actors are transient and never persist.
       // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.
@@ -5047,6 +5081,7 @@ export const save = {
       // impulseCharges/masslineSnares. Deserialize resolves registry names — passing the
       // data key looked up nothing and silently dropped every deployed network on load.
       this._callDeserialize('impulseCharges', data.charges);
+      yield 'impulse-charges-restored';
       this._callDeserialize('masslineSnares', data.snares);
       this._reportRestoreProgress(0.21, 'Restoring combat memory');
       yield 'combat-restored';
@@ -5267,6 +5302,10 @@ export const save = {
       this._resumeCeresEntityReferences();
       if (deferredStunts) restoreStunts();
       this._resumeCeresAttachmentRestore();
+      // The native world adopt is the epilogue's one unbounded span — yield first so
+      // the async lane can paint between the resume chain and the whole-census WASM
+      // rebuild instead of stacking them inside one generator step before veil lift.
+      yield 'physics-restored';
       this.registry?.get?.('physics')?.completeRestore?.({
         entityIdRemap,
         pendingBodyRefs: [...(this._ceresEntityReferenceRestore?.pending?.values() || [])].map(entry => entry.alias),
@@ -5293,6 +5332,7 @@ export const save = {
           );
         }
       }
+      yield 'save-finalized';
       // Reconcile restored runtime resources without treating load as a user edit. The save/profile
       // listener ignores persist:false, so Continue does not rewrite the raw profile or timestamp.
       if (!this._pendingRunTransition) {

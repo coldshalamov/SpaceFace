@@ -29,21 +29,27 @@ const DEFAULT_UNSTICK_MS = 48;
  * task when there is no compositor cadence). Mirrors the shape of yieldToNextPresent in
  * startupGpuResidency.js — reimplemented here to keep this module import-cycle free.
  */
-function waitForPresentedFrame(unstickMs = DEFAULT_UNSTICK_MS) {
+function waitForPresentedFrame(unstickMs = DEFAULT_UNSTICK_MS, scheduleTask = null) {
   return new Promise((resolve) => {
     const requestFrame = typeof globalThis.requestAnimationFrame === 'function'
       ? globalThis.requestAnimationFrame.bind(globalThis)
       : null;
-    const scheduleTask = (callback) => setTimeout(callback, 0);
+    // A rAF/timer arm resolving inline would land the gl.finish() continuation
+    // inside the presented frame's beat — callers pass the bounded background
+    // post (compilePresentSlice) so the resume waits out the present like
+    // composeYield's fire(); setTimeout(0) stays the no-scheduler fallback.
+    const schedule = typeof scheduleTask === 'function'
+      ? scheduleTask
+      : (callback) => setTimeout(callback, 0);
     if (!requestFrame) {
-      scheduleTask(resolve);
+      schedule(resolve);
       return;
     }
     let fired = false;
     const fire = () => {
       if (fired) return;
       fired = true;
-      scheduleTask(resolve);
+      schedule(resolve);
     };
     requestFrame(fire);
     // An occluded or starved compositor may stall rAF; a parked admission must still advance.
@@ -86,7 +92,7 @@ export function makeGpuQueuePacer(renderer, options = {}) {
   if (parallel) return null;
   const unstickMs = Number.isFinite(options.unstickMs) ? options.unstickMs : DEFAULT_UNSTICK_MS;
   return async function paceGpuQueue() {
-    await waitForPresentedFrame(unstickMs);
+    await waitForPresentedFrame(unstickMs, options.scheduleTask);
     let gl = null;
     try {
       gl = renderer.getContext();

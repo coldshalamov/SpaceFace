@@ -1,4 +1,5 @@
 import { sweepCollisionProxyInto } from './collisionProxySweep.js';
+import { dedupWarn } from './warnDedup.js';
 import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
 import { reconcileLatchBeforePhysics } from './latchNineMaterialization.js';
 import { resolveDockRange } from './dockRange.js';
@@ -515,7 +516,7 @@ export const physics = {
       // receipts early, or stomp its runtime diagnostics.
       if (sg02TokenAtPrepare !== this._sg02Token) return false;
       if (!settled) {
-        console.warn('[physics] SG-02 dynamic authority init did not settle within'
+        dedupWarn('physics:sg02-init-timeout', '[physics] SG-02 dynamic authority init did not settle within'
           + ` ${Math.round(initTimeoutMs)} ms; startup fails closed to a retryable state instead of`
           + ' holding the session frozen at loading. A late init still installs for the next attempt.');
         this._diag.sg02InitTimedOut = true;
@@ -673,7 +674,7 @@ export const physics = {
         })
         .catch((err) => {
           if (token === this._sg02Token) {
-            console.warn('[physics] SG-02 dynamic authority failed; craft motion is fail-closed', err);
+            dedupWarn('physics:sg02-authority-failed', '[physics] SG-02 dynamic authority failed; craft motion is fail-closed', err);
             this._sg02 = null;
           }
           // Whatever the token state, this promise can no longer deliver an owner;

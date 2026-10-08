@@ -31,23 +31,41 @@ export const MAX_QUEUED_SLICED_EMITS = 8;
 // stack serialization per emit — emit-rate volume for the rest of the session.
 // Per-event storm dedup (the laneWarn shape): the first few faults log verbatim,
 // the storm folds into a suppressed count re-summarized on a >=1 s heartbeat.
+//
+// Rows hang off the listener itself (WeakMap → [{ label, event, ... }]) — a
+// re-registered listener folds into the same row because its fn identity never
+// changes, and the per-fault path is one map hop + a === scan instead of the
+// old `${label}|${event}|${token}` composite string mint per throw. Non-function
+// listeners (none today — defensive) hold a parallel keyed Map so WeakMap key
+// typing never breaks the fault path. busErrorIndex keeps every minted row
+// enumerable for faultSummary without giving up row identity.
 const BUS_ERROR_VERBATIM = 8;
 const BUS_ERROR_CAP = 256;
-const busErrorLog = new Map(); // tier|event|listenerToken -> { logged, suppressed, lastWarnAt }
+const BUS_ERROR_INDEX_CAP = 512;
+const busErrorRows = new WeakMap(); // fn -> [{ label, event, logged, suppressed, faults, lastWarnAt, lastErrorHead }]
+const busErrorRowsByKey = new Map(); // non-function listener key -> same rows
+const busErrorIndex = new Set(); // every minted row, insertion-ordered, oldest-evict at cap
 
-// Re-registering a listener moves its snapshot index, so an index-keyed row
-// minted a fresh 8-verbatim budget on every roster churn. The WeakMap id pins
-// the row to the listener itself — a churned re-registration folds into the
-// same row — while non-function callers (none today) keep the index key.
-const busListenerIds = new WeakMap();
-let busListenerSeq = 0;
-function busListenerToken(listenerOrIndex) {
-  if (typeof listenerOrIndex !== 'function') {
-    return listenerOrIndex === undefined ? '?' : listenerOrIndex;
+function rowsForBusListener(listener) {
+  if (typeof listener === 'function') {
+    let rows = busErrorRows.get(listener);
+    if (!rows) { rows = []; busErrorRows.set(listener, rows); }
+    return rows;
   }
-  let id = busListenerIds.get(listenerOrIndex);
-  if (id === undefined) { id = ++busListenerSeq; busListenerIds.set(listenerOrIndex, id); }
-  return id;
+  const key = listener === undefined ? '?' : listener;
+  let rows = busErrorRowsByKey.get(key);
+  if (!rows) {
+    if (busErrorRowsByKey.size >= BUS_ERROR_CAP) {
+      // Oldest-row evict, not clear(): a cap-hit wipe re-arms every storming
+      // key's verbatim budget simultaneously and erases accrued suppressed
+      // counts before their heartbeat can report them.
+      const oldest = busErrorRowsByKey.keys().next();
+      if (!oldest.done) busErrorRowsByKey.delete(oldest.value);
+    }
+    rows = [];
+    busErrorRowsByKey.set(key, rows);
+  }
+  return rows;
 }
 
 // Fault history may suppress logs, never delivery: the next payload can be valid,
@@ -60,22 +78,26 @@ function invokeBusListener(fn, payload, event, label) {
 function noteBusHandlerError(event, err, label, listener) {
   const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
     ? performance.now() : Date.now();
-  // Per-listener key: an event-level row let one storming handler consume the
+  // Per-listener row: an event-level row let one storming handler consume the
   // verbatim budget for every faulting listener on that event — the second
   // distinct fault's identity never appeared verbatim.
-  const key = `${label}|${event}|${busListenerToken(listener)}`;
-  let entry = busErrorLog.get(key);
-  if (!entry) {
-    if (busErrorLog.size >= BUS_ERROR_CAP) {
-      // Oldest-row evict, not clear(): a cap-hit wipe re-arms every storming
-      // key's verbatim budget simultaneously and erases accrued suppressed
-      // counts before their heartbeat can report them.
-      const oldest = busErrorLog.keys().next();
-      if (!oldest.done) busErrorLog.delete(oldest.value);
-    }
-    entry = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
-    busErrorLog.set(key, entry);
+  const rows = rowsForBusListener(listener);
+  let entry = null;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.label === label && row.event === event) { entry = row; break; }
   }
+  if (!entry) {
+    if (busErrorIndex.size >= BUS_ERROR_INDEX_CAP) {
+      const oldest = busErrorIndex.values().next();
+      if (!oldest.done) busErrorIndex.delete(oldest.value);
+    }
+    entry = { label, event, logged: 0, suppressed: 0, faults: 0, lastWarnAt: -Infinity, lastErrorHead: null };
+    rows.push(entry);
+    busErrorIndex.add(entry);
+  }
+  entry.faults += 1;
+  entry.lastErrorHead = (err && typeof err.message === 'string' ? err.message : String(err)).slice(0, 160);
   if (entry.logged < BUS_ERROR_VERBATIM) {
     entry.logged += 1;
     console.error(`[bus] ${label} for "${event}":`, err);
@@ -90,6 +112,27 @@ function noteBusHandlerError(event, err, label, listener) {
     );
     entry.suppressed = 0;
   }
+}
+
+// Name the hot throwing listeners — the dominant per-fault cost (Error+stack
+// inside the thrower) is only fixable once forensics can see WHO storms. Top-N
+// by total faults, read by render diagnostics next to laneFaults.
+export function busFaultSummary(limit = 8) {
+  const rows = [];
+  for (const entry of busErrorIndex) {
+    if (entry.faults > 0) {
+      rows.push({
+        label: entry.label,
+        event: entry.event,
+        faults: entry.faults,
+        suppressed: entry.suppressed,
+        lastErrorHead: entry.lastErrorHead,
+        lastWarnAt: entry.lastWarnAt,
+      });
+    }
+  }
+  rows.sort((a, b) => b.faults - a.faults);
+  return rows.slice(0, Math.max(0, limit | 0));
 }
 
 function dispatchRange(fns, payload, event, start, end) {

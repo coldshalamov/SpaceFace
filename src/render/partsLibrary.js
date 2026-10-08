@@ -4200,7 +4200,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     } catch (error) {
       assertQueuedAuthoredAdmissionActive(options, 'after-place-overlay-error');
       overlayRecord = null;
-      console.warn('[partsLibrary] trade-hub overlay unavailable; hub still publishes', error);
+      dedupWarn('partsLibrary:trade-hub-overlay', '[partsLibrary] trade-hub overlay unavailable; hub still publishes', error);
     }
   }
 
@@ -7930,7 +7930,7 @@ function admitNextUpgradeJob(state) {
       }
     }
     if (!cancelled && !timedOut) {
-      console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
+      dedupWarn('partsLibrary:queued-composition-failed', '[partsLibrary] queued authored composition failed; retaining fallback', error);
     }
   })
     .finally(() => {
@@ -8834,15 +8834,19 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   // idempotent policies also run at the presentation boundary, but applying them only after this
   // detached-root compile changes the program key and leaves the first draw to link synchronously.
   assertAuthoredVisualPreparationActive(options, 'before-material-policy');
-  const policiesStartedAtMs = monotonicNow();
+  // policiesMs sums the walk spans only — the paced yield's wait is present
+  // time, not work, and counting it skewed the admission-leg forensics.
+  let policiesMs = 0;
   // Each policy walk is an independent whole-subtree traverse of the detached
   // root — under the stage gate they pace with a ledger debit + present yield
   // between them instead of landing as one contiguous prefix inside the commit.
   const pacePolicyWalk = async (walk) => {
     const legStarted = monotonicNow();
     const result = walk();
+    const legMs = monotonicNow() - legStarted;
+    policiesMs += Math.max(0, legMs);
     if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
-      notePacedFrameSpend(monotonicNow() - legStarted);
+      notePacedFrameSpend(legMs);
       await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
       assertAuthoredVisualPreparationActive(options, 'material-policy-yield');
     }
@@ -8854,7 +8858,6 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   // Retained program specimens ride this admission's own compile (cache-hit binds, no extra
   // links) and keep each covered program key alive after the boundary's materials release.
   const programSpecimenMount = await pacePolicyWalk(() => mountCanonicalProgramSpecimens(root));
-  const policiesMs = Math.max(0, monotonicNow() - policiesStartedAtMs);
   const tier1 = tier1CausalCounters();
   if (tier1) {
     tier1.countPipelinePreparation('material-policies', 1);
@@ -9366,16 +9369,25 @@ function installPreparedBoundaryPublisher(boundary, publish) {
   // prepared content under B's epoch grafts a stale root over the live one.
   const installedEpoch = boundary && boundary.userData
     ? boundary.userData.admissionEpoch : undefined;
-  boundary.userData.__publishPreparedAuthoredBoundary = () => {
+  const installed = () => {
     if (published) return true;
     if (boundary && boundary.userData
-        && boundary.userData.admissionEpoch !== installedEpoch) return false;
+        && boundary.userData.admissionEpoch !== installedEpoch) {
+      // Same self-clear as the disposer twin: a stale-era slot kept armed would
+      // refuse every later consult AND retain its commit closure — clear only
+      // when the slot is still this install so the live run's re-arm survives.
+      if (boundary.userData.__publishPreparedAuthoredBoundary === installed) {
+        delete boundary.userData.__publishPreparedAuthoredBoundary;
+      }
+      return false;
+    }
     const result = publish();
     if (result === false) return false;
     published = true;
     delete boundary.userData.__publishPreparedAuthoredBoundary;
     return true;
   };
+  boundary.userData.__publishPreparedAuthoredBoundary = installed;
 }
 
 /**
@@ -14281,7 +14293,7 @@ export async function warmRenderPackageShipPool(scene, record, witnessPairs, opt
     });
     planEntries = probe?.planEntries || null;
   } catch (error) {
-    console.warn('[partsLibrary] pool witness probe failed for', record.assetId || record.url, error);
+    dedupWarn('partsLibrary:pool-witness-probe', '[partsLibrary] pool witness probe failed for', record.assetId || record.url, error);
     return 0;
   }
   if (!Array.isArray(planEntries)) return 0;
@@ -14338,7 +14350,7 @@ export async function warmRenderPackageShipPool(scene, record, witnessPairs, opt
           );
           warmed++;
         } catch (error) {
-          console.warn('[partsLibrary] pool witness candidate failed for', record.assetId || record.url, error);
+          dedupWarn('partsLibrary:pool-witness-candidate', '[partsLibrary] pool witness candidate failed for', record.assetId || record.url, error);
         }
       }
     }
@@ -14359,7 +14371,7 @@ export async function warmRenderPackageShipPool(scene, record, witnessPairs, opt
       }
       try { activateRenderPackagePoolAdmission(admission); }
       catch (error) {
-        console.warn('[partsLibrary] pool witness chunk activation failed', record.assetId || record.url, error);
+        dedupWarn('partsLibrary:pool-witness-chunk-activation', '[partsLibrary] pool witness chunk activation failed', record.assetId || record.url, error);
       }
     }
   }
@@ -14392,7 +14404,7 @@ export function paletteWarmSubjectsForRecord(record, palette) {
     });
     planEntries = probe?.planEntries || null;
   } catch (error) {
-    console.warn('[partsLibrary] palette warm probe failed for', record.assetId || record.url, error);
+    dedupWarn('partsLibrary:palette-warm-probe', '[partsLibrary] palette warm probe failed for', record.assetId || record.url, error);
     return [];
   }
   if (!Array.isArray(planEntries)) return [];

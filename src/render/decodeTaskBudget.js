@@ -10,6 +10,8 @@
 //
 // Scheduling only: decoded bytes, resolution values, and per-decoder task order are unchanged.
 
+import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
+
 const FALLBACK_CORES = 4;
 // Floor of 2 keeps decode parallel on tiny hosts while still leaving the present thread a core.
 const MIN_LIMIT = 2;
@@ -311,12 +313,16 @@ const GLTF_PARSE_MAX_SKIPPED_FRAMES = 2;
 // queued drain behind the never-firing arm until an outer timeout bounces it.
 // Dual-arm with a short timer: under real frames rAF wins and the drain runs
 // where it always did; starved hosts converge at timer cadence.
+// Whichever arm wins, the drain resumes through the bounded background post —
+// a rAF/timer callback that ran the drain inline would land the whole parse
+// burst at compositor/timer priority inside the frame it armed in (the same
+// defect composeYield's fire() routes around in partsLibrary).
 function armFrameDrain(callback) {
   let fired = false;
   const fire = () => {
     if (fired) return;
     fired = true;
-    callback();
+    postTaskAtBackgroundPriorityBounded(callback);
   };
   requestAnimationFrame(fire);
   setTimeout(fire, 48);

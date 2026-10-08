@@ -36,7 +36,7 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
-import { revealSubjectWithAncestors } from './compilePresentSlice.js';
+import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from './compilePresentSlice.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
@@ -525,7 +525,7 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
   // links overlap on purpose and pacing would serialize them). Each call yields one task-queue
   // slot then finishes the GL queue while it is still ~one unit deep, so a whole cohort never
   // drains inside one compositor readback. Callers invoke it between issued units.
-  const paceQueue = makeGpuQueuePacer(renderer);
+  const paceQueue = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
   batch.handle = {
     paceQueue,
     join(gl, programs, settle) {
