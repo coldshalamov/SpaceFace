@@ -4797,16 +4797,21 @@ export const save = {
       // call — the driver skips the real frame yield inside RESTORE_YIELD_SLICE_MS, so
       // cheap sections stay in-frame while a heavy one (solstice/factions) can't freeze
       // the loading paint in a single ~8-call brick.
-      yield* this._callDeserializeEach([
-        ['morrow', data.morrow],
-        ['vesper', data.vesper],
-        ['bracket', data.bracket],
-        ['ravel', data.ravel],
-        ['solstice', data.solstice],
-        ['rubric', data.rubric],
-        ['ruckus', data.ruckus],
-        ['salvage', data.salvage],
-      ]);
+      this._callDeserialize('morrow', data.morrow);
+      yield 'morrow-restored';
+      this._callDeserialize('vesper', data.vesper);
+      yield 'vesper-restored';
+      this._callDeserialize('bracket', data.bracket);
+      yield 'bracket-restored';
+      this._callDeserialize('ravel', data.ravel);
+      yield 'ravel-restored';
+      this._callDeserialize('solstice', data.solstice);
+      yield 'solstice-restored';
+      this._callDeserialize('rubric', data.rubric);
+      yield 'rubric-restored';
+      this._callDeserialize('ruckus', data.ruckus);
+      yield 'ruckus-restored';
+      this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
       // listener must already see durable pod records (stripped stays stripped, oxygen keeps
@@ -4831,21 +4836,30 @@ export const save = {
       this._callDeserialize('scanner', data.signalInvestigation);
       yield 'deserialized-scanner';
       // The long incident/encounter tail is the restore's biggest contiguous un-sliced
-      // block — each entry is its own slice point under the same driver cadence.
-      yield* this._callDeserializeEach([
-        ['recoveryEncounter', data.recoveryEncounters],
-        ['latchNine', data.latchNine],
-        ['scissorwake', data.scissorwake],
-        ['lastShift', data.lastShift],
-        ['redKite', data.redKite],
-        ['sableVenn', data.sableVenn],
-        ['ilexArk', data.ilexArk],
-        ['kilnback', data.kilnback],
-        ['mothlight', data.mothlight],
-        ['palletJack', data.palletJack],
-        ['towlineTable', data.towlineTable],
-        ['borrowedVoice', data.borrowedVoice],
-      ]);
+      // block — each call below is its own slice point under the same driver cadence.
+      this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
+      yield 'recovery-encounters-restored';
+      this._callDeserialize('latchNine', data.latchNine);
+      yield 'latch-nine-restored';
+      this._callDeserialize('scissorwake', data.scissorwake);
+      yield 'scissorwake-restored';
+      this._callDeserialize('lastShift', data.lastShift);
+      yield 'last-shift-restored';
+      this._callDeserialize('redKite', data.redKite);
+      yield 'red-kite-restored';
+      this._callDeserialize('sableVenn', data.sableVenn);
+      yield 'sable-venn-restored';
+      this._callDeserialize('ilexArk', data.ilexArk);
+      yield 'ilex-ark-restored';
+      this._callDeserialize('kilnback', data.kilnback);
+      yield 'kilnback-restored';
+      this._callDeserialize('mothlight', data.mothlight);
+      yield 'mothlight-restored';
+      this._callDeserialize('palletJack', data.palletJack);
+      yield 'pallet-jack-restored';
+      this._callDeserialize('towlineTable', data.towlineTable);
+      yield 'towline-table-restored';
+      this._callDeserialize('borrowedVoice', data.borrowedVoice);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
 
@@ -5788,16 +5802,6 @@ export const save = {
       return;
     }
     this._callDeserialize(name, data);
-  },
-
-  // List form of _callDeserialize: every entry is an async-lane slice point (the driver
-  // only real-yields past RESTORE_YIELD_SLICE_MS, so cheap sections stay contiguous
-  // in-frame). Call order and error.region tagging are identical to back-to-back calls.
-  *_callDeserializeEach(entries) {
-    for (const [name, data] of entries) {
-      this._callDeserialize(name, data);
-      yield name;
-    }
   },
 
   // Despawn every live entity, disposing meshes (synchronous, outside the sim sweep), and reset the
