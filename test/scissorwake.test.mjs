@@ -137,6 +137,23 @@ test('a native moving hull crosses the actual cable; render batching cannot alte
   assert.equal(runs[0], runs[1]);
 });
 
+test('the cutter-opening telegraph reaches the toast ribbon, not a dead alias', () => {
+  const sim = createSimulation({ seed: 7, systems: [scissorwake] });
+  try {
+    const h = fixture();
+    const sys = sim.registry.get('scissorwake');
+    sys.state = h.state; sys.ctx = { ...sys.ctx, state: h.state };
+    const toasts = [];
+    sim.bus.on('toast', (p) => toasts.push(p));
+    h.state.entities.set(3, h.cutter);
+    sim.bus.emit('ai:telegraph', { doctrineId: C.doctrineId, entityId: 3 });
+    assert.equal(toasts.length, 1, 'the opening warning is player-facing');
+    assert.ok(toasts[0].text.includes('CUTTER OPENING'), toasts[0].text);
+    sim.bus.emit('ai:telegraph', { doctrineId: 'someone-else', entityId: 3 });
+    assert.equal(toasts.length, 1, 'a foreign telegraph does not borrow the line');
+  } finally { sim.dispose(); }
+});
+
 test('introduction is once per run, respects pacing refusal and persists across Continue', () => {
   const sim = createSimulation({ seed: 7, systems: [scissorwake] });
   try {
