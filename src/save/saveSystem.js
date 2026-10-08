@@ -4793,13 +4793,24 @@ export const save = {
       yield 'player-restored';
       this._restoreCargo(data.cargo);
       yield 'cargo-restored';
+      // A run of back-to-back subsystem restores is still one async-lane slice point per
+      // call — the driver skips the real frame yield inside RESTORE_YIELD_SLICE_MS, so
+      // cheap sections stay in-frame while a heavy one (solstice/factions) can't freeze
+      // the loading paint in a single ~8-call brick.
       this._callDeserialize('morrow', data.morrow);
+      yield 'morrow-restored';
       this._callDeserialize('vesper', data.vesper);
+      yield 'vesper-restored';
       this._callDeserialize('bracket', data.bracket);
+      yield 'bracket-restored';
       this._callDeserialize('ravel', data.ravel);
+      yield 'ravel-restored';
       this._callDeserialize('solstice', data.solstice);
+      yield 'solstice-restored';
       this._callDeserialize('rubric', data.rubric);
-    this._callDeserialize('ruckus', data.ruckus);
+      yield 'rubric-restored';
+      this._callDeserialize('ruckus', data.ruckus);
+      yield 'ruckus-restored';
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
@@ -4824,17 +4835,30 @@ export const save = {
       yield 'deserialized-living-poi';
       this._callDeserialize('scanner', data.signalInvestigation);
       yield 'deserialized-scanner';
+      // The long incident/encounter tail is the restore's biggest contiguous un-sliced
+      // block — each call below is its own slice point under the same driver cadence.
       this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
+      yield 'recovery-encounters-restored';
       this._callDeserialize('latchNine', data.latchNine);
+      yield 'latch-nine-restored';
       this._callDeserialize('scissorwake', data.scissorwake);
+      yield 'scissorwake-restored';
       this._callDeserialize('lastShift', data.lastShift);
+      yield 'last-shift-restored';
       this._callDeserialize('redKite', data.redKite);
+      yield 'red-kite-restored';
       this._callDeserialize('sableVenn', data.sableVenn);
+      yield 'sable-venn-restored';
       this._callDeserialize('ilexArk', data.ilexArk);
+      yield 'ilex-ark-restored';
       this._callDeserialize('kilnback', data.kilnback);
+      yield 'kilnback-restored';
       this._callDeserialize('mothlight', data.mothlight);
+      yield 'mothlight-restored';
       this._callDeserialize('palletJack', data.palletJack);
+      yield 'pallet-jack-restored';
       this._callDeserialize('towlineTable', data.towlineTable);
+      yield 'towline-table-restored';
       this._callDeserialize('borrowedVoice', data.borrowedVoice);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';

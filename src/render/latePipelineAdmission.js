@@ -274,6 +274,35 @@ export function collectFirstFlightLayerDrawables(roots) {
   return drawables;
 }
 
+/** Chunked twin — same drawable set via explicit stacks, yielding per slice
+ * so a wide layer cohort does not mint inside one atomic traverse chain. */
+export function* collectFirstFlightLayerDrawablesSteps(roots, nodesPerSlice = 256) {
+  const drawables = [];
+  const seen = new Set();
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  let sinceYield = 0;
+  for (const root of Array.isArray(roots) ? roots : [roots]) {
+    if (!root) continue;
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (isLayerDrawable(object) && !seen.has(object)) {
+        seen.add(object);
+        drawables.push(object);
+      }
+      const children = object && object.children;
+      if (Array.isArray(children)) {
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      }
+      if (++sinceYield >= every) {
+        sinceYield = 0;
+        yield;
+      }
+    }
+  }
+  return drawables;
+}
+
 /** Instance-pool chunks live on the scene, not the entity mesh map. Include count=0 pending ones. */
 export function collectInstancePoolCompileRoots(scene) {
   const roots = [];

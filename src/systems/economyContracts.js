@@ -24,6 +24,7 @@
 // (their exported contracts), never edited. Budget: spawn:none at offer time · voice: one 'news'
 // line per offer · draw:none.
 
+import { dedupError } from '../core/warnDedup.js';
 import { SECTORS } from '../data/sectors.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { quoteMissionEconomics, affordableContractQuantity, economicRiskTier } from '../economy/economyMissionTerms.js';
@@ -351,7 +352,7 @@ export const economyContracts = {
       }
       // else: the board refused every row — the epoch stays open; the seeded offers retry.
     } catch (err) {
-      console.error('[economyContracts] dock:docked', err);
+      dedupError('economyContracts/dock-docked', '[economyContracts] dock:docked', err);
     }
   },
 

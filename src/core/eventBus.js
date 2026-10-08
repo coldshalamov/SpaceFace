@@ -27,12 +27,70 @@ export const PRESENTATION_LISTENER_DRAIN_BUDGET = 8;
 // (no listener is ever skipped); it does not promise that delivery stays sliced.
 export const MAX_QUEUED_SLICED_EMITS = 8;
 
+// A persistently-throwing listener on a hot event used to pay a full Error +
+// stack serialization per emit — emit-rate volume for the rest of the session.
+// Per-event storm dedup (the laneWarn shape): the first few faults log verbatim,
+// the storm folds into a suppressed count re-summarized on a >=1 s heartbeat.
+const BUS_ERROR_VERBATIM = 8;
+const BUS_ERROR_CAP = 256;
+const busErrorLog = new Map(); // tier|event|listenerToken -> { logged, suppressed, lastWarnAt }
+
+// Re-registering a listener moves its snapshot index, so an index-keyed row
+// minted a fresh 8-verbatim budget on every roster churn. The WeakMap id pins
+// the row to the listener itself — a churned re-registration folds into the
+// same row — while non-function callers (none today) keep the index key.
+const busListenerIds = new WeakMap();
+let busListenerSeq = 0;
+function busListenerToken(listenerOrIndex) {
+  if (typeof listenerOrIndex !== 'function') {
+    return listenerOrIndex === undefined ? '?' : listenerOrIndex;
+  }
+  let id = busListenerIds.get(listenerOrIndex);
+  if (id === undefined) { id = ++busListenerSeq; busListenerIds.set(listenerOrIndex, id); }
+  return id;
+}
+
+function noteBusHandlerError(event, err, label, listener) {
+  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now() : Date.now();
+  // Per-listener key: an event-level row let one storming handler consume the
+  // verbatim budget for every faulting listener on that event — the second
+  // distinct fault's identity never appeared verbatim.
+  const key = `${label}|${event}|${busListenerToken(listener)}`;
+  let entry = busErrorLog.get(key);
+  if (!entry) {
+    if (busErrorLog.size >= BUS_ERROR_CAP) {
+      // Oldest-row evict, not clear(): a cap-hit wipe re-arms every storming
+      // key's verbatim budget simultaneously and erases accrued suppressed
+      // counts before their heartbeat can report them.
+      const oldest = busErrorLog.keys().next();
+      if (!oldest.done) busErrorLog.delete(oldest.value);
+    }
+    entry = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
+    busErrorLog.set(key, entry);
+  }
+  if (entry.logged < BUS_ERROR_VERBATIM) {
+    entry.logged += 1;
+    console.error(`[bus] ${label} for "${event}":`, err);
+    return;
+  }
+  entry.suppressed += 1;
+  if (now - entry.lastWarnAt >= 1000) {
+    entry.lastWarnAt = now;
+    console.error(
+      `[bus] ${label} for "${event}": ${entry.suppressed} further fault(s) suppressed; latest:`,
+      err,
+    );
+    entry.suppressed = 0;
+  }
+}
+
 function dispatchRange(fns, payload, event, start, end) {
   const last = Math.min(fns.length, end);
   let i = start;
   for (; i < last; i++) {
     try { fns[i](payload, event); }
-    catch (err) { console.error(`[bus] handler error for "${event}":`, err); }
+    catch (err) { noteBusHandlerError(event, err, 'handler error', fns[i]); }
   }
   return i;
 }
@@ -294,7 +352,7 @@ export function createBus() {
           const fn = slice.fns[slice.index];
           slice.index += 1;
           try { fn(slice.payload, slice.event); }
-          catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
+          catch (err) { noteBusHandlerError(slice.event, err, 'handler error', fn); }
         }
         if (emitSlice === slice) emitSlice = null;
         else break; // clear() or a re-entrant sliced emit swapped the global — stop here
@@ -343,7 +401,7 @@ export function createBus() {
       slice.index += 1;
       ran += 1;
       try { fn(slice.payload, slice.event); }
-      catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
+      catch (err) { noteBusHandlerError(slice.event, err, 'handler error', fn); }
       // The caller's deadline plus the shared paced ledger — a frame that already
       // spent its paced budget doesn't also get this drain's whole wallet.
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
@@ -411,7 +469,7 @@ export function createBus() {
       head.index += 1;
       ran += 1;
       try { fn(head.payload, head.event); }
-      catch (err) { console.error(`[bus] presentation handler error for "${head.event}":`, err); }
+      catch (err) { noteBusHandlerError(head.event, err, 'presentation handler error', fn); }
       if (head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }
