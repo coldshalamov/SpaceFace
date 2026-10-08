@@ -169,10 +169,15 @@ test('docking and paused modes do not advance learning or encounter scheduling',
   assert.equal(t.state.nemesis.active.episode.total, 0);
 });
 test('an escaped captain physically leaves, while the shared budget fully releases', () => {
-  const t = boot(); t.start(); t.escape(); t.tick();
-  assert.equal(t.state.nemesis.active, null); assert.equal(t.state.entities.size, 1);
+  const t = boot(); t.start(); const bossId = t.state.nemesis.active.bossId; t.escape(); t.tick();
+  assert.equal(t.state.nemesis.active, null);
   assert.equal(t.allocations.size, 0); assert.equal(t.state.nemesis.completed, 1);
   assert.ok(t.state.nemesis.grudge > 0);
+  // INF-076: the flown hull is not despawned where the escape was confirmed. It keeps leaving
+  // (crew retired, budget released) and retires once it clears the player's radar.
+  assert.ok(t.state.entities.has(bossId)); assert.equal(t.state.entities.size, 2);
+  t.state.entities.get(bossId).pos = { x: t.player.pos.x + 4500, z: t.player.pos.z }; t.advance(0.5);
+  assert.equal(t.state.entities.size, 1);
 });
 test('forged early escape receipts cannot teleport a captain out of combat', () => {
   const t = boot(); t.start(); const a = t.state.nemesis.active;

@@ -5,7 +5,14 @@ import { LIMITS, clone, finite, normalizePlan, keyForId } from './model.js';
 
 const alive = (ship) => ship && ship.alive !== false && ship.dead !== true && finite(ship.hull) > 0;
 const sector = (state) => state.world && state.world.currentSectorId || '';
-const fresh = () => ({ version: 1, nextCheckAt: 0, reservation: null, retirement: [] });
+// An earned escape is confirmed at 1800 WU, already past the edge of any camera frame. The flown
+// hull keeps leaving from there and retires once it clears the player's radar, so no contact
+// blinks off the scope; a hull still loitering past escape range retires after a bounded wait.
+const ESCAPE_WU = 1800;
+const RADAR_FLOOR_WU = 4000;
+const RADAR_CLEAR_PAD_WU = 400;
+const DEPART_MAX_S = 60;
+const fresh = () => ({ version: 1, nextCheckAt: 0, reservation: null, retirement: [], departures: [] });
 function normalize(value) {
   const out = fresh();
   out.nextCheckAt = Math.max(0, finite(value && value.nextCheckAt));
@@ -18,6 +25,10 @@ function normalize(value) {
   out.retirement = (Array.isArray(value && value.retirement) ? value.retirement : [])
     .filter((row) => row && keyForId(row.id) && typeof row.requestId === 'string')
     .slice(0, LIMITS.maxCrew).map((row) => ({ id: row.id, requestId: row.requestId.slice(0, 120) }));
+  out.departures = (Array.isArray(value && value.departures) ? value.departures : [])
+    .filter((row) => row && keyForId(row.id) && typeof row.requestId === 'string')
+    .slice(0, LIMITS.maxCrew).map((row) => ({ id: row.id, requestId: row.requestId.slice(0, 120),
+      since: Math.max(0, finite(row.since)) }));
   return out;
 }
 
@@ -111,11 +122,12 @@ export function createNemesisEncounterHost({ makeSpawnSpec, approveEncounter = n
       if (this._queued) { const request = this._queued; this._queued = null; this._deploy(request); }
       if (finite(state.simTime) < state.nemesisDeployment.nextCheckAt) return;
       state.nemesisDeployment.nextCheckAt = finite(state.simTime) + LIMITS.checkS;
+      this._depart(false);
       const a = state.nemesis && state.nemesis.active;
       if (!a || a.retreatAt == null || finite(state.simTime) - a.retreatAt < 6) return;
       const boss = state.entities.get(a.bossId), player = state.entities.get(state.playerId);
       if (!alive(boss) || !alive(player) || !boss.pos || !player.pos) return;
-      if (Math.hypot(boss.pos.x - player.pos.x, boss.pos.z - player.pos.z) >= 1800) {
+      if (Math.hypot(boss.pos.x - player.pos.x, boss.pos.z - player.pos.z) >= ESCAPE_WU) {
         this.bus.emit('nemesis:escaped', { encounterId: a.id, bossId: a.bossId });
       }
     },
@@ -145,7 +157,12 @@ export function createNemesisEncounterHost({ makeSpawnSpec, approveEncounter = n
           || typeof this.helpers.removeEntity !== 'function') {
         this._reject(request, 'missing spawn/lifecycle/budget owner'); return;
       }
-      if (state.nemesisDeployment.reservation) { this._reject(request, 'previous crew has not retired'); return; }
+      // A captain still flying out past camera range retires now, as the new wing arrives; one
+      // still inside it (being chased down) holds the return. Never two Orras in one sector.
+      this._depart(true);
+      if (state.nemesisDeployment.reservation || state.nemesisDeployment.departures.length) {
+        this._reject(request, 'previous crew has not retired'); return;
+      }
       let specs;
       try { specs = buildNemesisSpawnSpecs(request, state, makeSpawnSpec); }
       catch (_) { this._reject(request, 'spawn-spec construction failed'); return; }
@@ -206,7 +223,37 @@ export function createNemesisEncounterHost({ makeSpawnSpec, approveEncounter = n
         // just verified. Bookkeeping is released below without removing the hull.
         && !(flown && id === bossId))
         .map((id) => ({ id, requestId: p.encounterId }));
-      if (flown) this._releaseId(bossId);
+      if (flown) {
+        this._releaseId(bossId);
+        // Released from the encounter, not abandoned: a departure row keeps the hull on its egress
+        // (ai/nemesisTactics) until _depart retires it out of radar reach. Without it the stock
+        // attack run resumed and the escaped captain turned back to shadow the player, cold.
+        const rows = deployment.departures.filter((row) => row.id !== bossId);
+        rows.push({ id: bossId, requestId: p.encounterId, since: finite(this.state.simTime) });
+        deployment.departures = rows.slice(-LIMITS.maxCrew);
+      }
+    },
+    _depart(arriving) {
+      const d = this.state.nemesisDeployment;
+      if (!d.departures.length || typeof this.helpers.removeEntity !== 'function') return;
+      const state = this.state, now = finite(state.simTime);
+      const player = state.entities.get(state.playerId);
+      const derived = player && player.data && player.data.derived;
+      const clearWu = Math.max(RADAR_FLOOR_WU, finite(derived && derived.radarRange)) + RADAR_CLEAR_PAD_WU;
+      let kept = 0;
+      for (let i = 0; i < d.departures.length; i++) {
+        const row = d.departures[i];
+        const ship = state.entities.get(row.id);
+        // Killed, unloaded with its sector, or the id now belongs to another body: nothing to retire.
+        if (!alive(ship) || !ship.data || !ship.data.nemesis || ship.data.nemesis.encounterId !== row.requestId) continue;
+        const distance = alive(player) && player.pos && ship.pos
+          ? Math.hypot(ship.pos.x - player.pos.x, ship.pos.z - player.pos.z) : Infinity;
+        const gone = distance >= ESCAPE_WU
+          && (arriving || distance >= clearWu || now - row.since >= DEPART_MAX_S);
+        if (gone) this.helpers.removeEntity(row.id);
+        else d.departures[kept++] = row;
+      }
+      d.departures.length = kept;
     },
     _retire() {
       const d = this.state.nemesisDeployment;

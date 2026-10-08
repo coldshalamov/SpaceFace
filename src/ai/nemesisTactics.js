@@ -17,6 +17,17 @@ function context(ship, state) {
     ? { tag, active } : null;
 }
 
+/** An escaped captain the encounter host is still flying out (nemesisDeployment.departures). */
+function departing(ship, state) {
+  const tag = ship && ship.data && ship.data.nemesis;
+  const rows = state && state.nemesisDeployment && state.nemesisDeployment.departures;
+  if (!tag || !Array.isArray(rows)) return false;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i] && rows[i].id === ship.id && rows[i].requestId === tag.encounterId) return true;
+  }
+  return false;
+}
+
 /** Pure authorization gate: denial only. It never grants fire that normal AI denied. */
 export function nemesisFireAllowed(ship, state) {
   const tag = ship && ship.data && ship.data.nemesis;
@@ -38,18 +49,21 @@ export function nemesisFireAllowed(ship, state) {
 export function shapeNemesisManeuverRequest(request, state, sensorFrame = null) {
   if (!request || !state || !state.entities || typeof state.entities.get !== 'function') return request;
   const ship = state.entities.get(request.entityId), ctx = context(ship, state);
-  if (!ctx || !usablePosition(ship.pos) || !request.forceLocal) return request;
+  // The encounter closing does not end the egress: a departing captain keeps leaving instead of
+  // falling back into its stock attack run. Fire stays denied for any tagged hull without a wing.
+  const leaving = !ctx && departing(ship, state);
+  if ((!ctx && !leaving) || !usablePosition(ship.pos) || !request.forceLocal) return request;
   // Collision avoidance, line escape and deadlock handling always outrank authored style.
   if (request.brake || ['escape_tether', 'clear_deadlock', 'cut_tether'].includes(request.kind)) return request;
-  const { active, tag } = ctx;
-  if (active.surrenderedAt != null) return shaped(request, {
+  const tag = ship.data.nemesis, active = ctx ? ctx.active : null;
+  if (active && active.surrenderedAt != null) return shaped(request, {
     forceLocal: { forward: 0, right: 0 }, torqueYaw: 0, boost: false, brake: true,
     reason: 'nemesis:surrender', trajectory: [],
   });
   const contact = sensorFrame && Array.isArray(sensorFrame.contacts)
     && sensorFrame.contacts.find((c) => c.id === state.playerId && c.visible === true
       && c.valid !== false && c.alive !== false && finite(c.confidence, 1) >= 0.55 && usablePosition(c.pos));
-  const retiring = ship.id === active.bossId && active.retreatAt != null;
+  const retiring = leaving || (ship.id === active.bossId && active.retreatAt != null);
   let heading;
   if (retiring) {
     // No visible target? Continue the escape heading authored at deployment, not an x-ray pursuit.
