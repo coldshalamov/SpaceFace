@@ -29,6 +29,13 @@ import { createSaveFilmstrip } from '../orrery/saveFilmstrip.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import {
+  backupKeptLine,
+  importDestination,
+  profileImportedLine,
+  recoveryFailedLine,
+  recoveryNotice,
+} from './saveNotices.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
@@ -390,7 +397,17 @@ function deleteConfirmBody(id, meta) {
 
 export function importConfirmBody(file) {
   const name = (typeof file === 'string' ? file : (file && file.name)) || 'selected save file';
-  return 'Importing ' + name + ' will validate and load that save immediately. Unsaved progress is lost.';
+  const dest = importSlotWord || 'the selected slot';
+  return 'Importing ' + name + ' into ' + dest + ' will validate and load that save immediately. Unsaved progress is lost.';
+}
+
+let importSlotWord = '';
+
+export function armImportDestination(slot) {
+  importSlotWord = slot ? (slot === 'quick' || slot === 'autosave' || slot === 'auto'
+    ? slot.charAt(0).toUpperCase() + slot.slice(1)
+    : 'Slot ' + slot) : 'the selected slot';
+  return importSlotWord;
 }
 
 export function slotObjectiveSummary(meta) {
@@ -908,6 +925,28 @@ export const saveLoadScreen = {
     const unsubSynced = ctx.bus.on('save:store-synced', () => { if (refs) this._render(ctx); });
     const unsubValidated = ctx.bus.on('save:slotsValidated', () => { if (refs) this._render(ctx); });
     const unsubCompleted = ctx.bus.on('save:completed', () => { if (refs) this._render(ctx); });
+    this._notices = this._notices || {};
+    const noteAndRender = (note) => {
+      if (!note || note.slot == null || note.slot === '') return;
+      const prev = this._notices[note.slot];
+      if (note.kind === 'backup' && prev && prev.kind === 'recovered') return;
+      this._notices[note.slot] = note;
+      if (refs) this._render(ctx);
+    };
+    const unsubRecovered = ctx.bus.on('save:recovered', (payload) => noteAndRender(recoveryNotice(payload)));
+    const unsubBackup = ctx.bus.on('save:backup', (payload) => noteAndRender(backupKeptLine(payload)));
+    const unsubRecoveryFailed = ctx.bus.on('save:error', (payload = {}) => {
+      noteAndRender(recoveryFailedLine(payload));
+    });
+    const unsubProfile = ctx.bus.on('save:profile-imported', (payload) => {
+      const note = profileImportedLine(payload);
+      ctx.bus.emit('toast', { text: note.text, kind: 'good', ttl: 3200 });
+      if (!note.focus || !refs) return;
+      refs.selected = note.focus;
+      this._render(ctx);
+      const row = refs.list && refs.list.querySelector('[data-id="' + note.focus + '"]');
+      if (row && typeof row.focus === 'function') row.focus();
+    });
 
     // Foot: Export, Import (the hidden file input stays), Back.
     const foot = el('footer', orr ? 'k-foot' : 'k-foot of-pause');
@@ -939,6 +978,7 @@ export const saveLoadScreen = {
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
       cancelHullRelease, unsubLoading, unsubStartFailed, unsubLoadFailed, unsubSynced, unsubValidated, unsubCompleted,
+      unsubRecovered, unsubBackup, unsubRecoveryFailed, unsubProfile,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -976,12 +1016,13 @@ export const saveLoadScreen = {
       const meta = slots[id];
       const occupied = isOccupied(meta);
       const summary = slotSummaryLines(meta);
+      const note = this._notices && this._notices[id];
       return {
         id,
         name: slotLabel(id),
         sub: occupied
-          ? [shipLabel(meta.shipName), meta.sectorName, fmtPlaytime(meta.playtimeS)].filter(Boolean).join(' · ') || 'Saved game'
-          : summary.context,
+          ? [shipLabel(meta.shipName), meta.sectorName, fmtPlaytime(meta.playtimeS), note && note.text].filter(Boolean).join(' · ') || 'Saved game'
+          : [summary.context, note && note.text].filter(Boolean).join(' · '),
         num: occupied ? fmtCredits(meta.credits) : '',
         selected: refs.selected === id,
         occupied,
@@ -1129,11 +1170,13 @@ export const saveLoadScreen = {
     // Which slot, and when: the etched line at the top of the page.
     const badges = occupied ? slotBadges(id, meta, currentSlot, latestOccupiedSlot(refs.slots)) : [];
     const flown = occupied ? fmtLastFlown(meta.savedAt || meta.lastSavedAt) : '';
+    const notice = this._notices && this._notices[id];
     refs.fine.textContent = [
       slotLabel(id) + ' save',
       ...badges.filter((badge) => !/^v\d/.test(badge)),
       occupied ? (flown ? 'flown ' + flown : 'filed') : 'empty',
-    ].join(' · ');
+      notice && notice.text,
+    ].filter(Boolean).join(' · ');
 
     paintEntityLine(refs.shipName, occupied && defId ? 'hull:' + defId : null,
       occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : 'Empty slot');
@@ -1394,6 +1437,8 @@ export const saveLoadScreen = {
       rejectOversize(fileBytes);
       return;
     }
+    const slot = importDestination(refs && refs.selected, refs && refs.ids);
+    armImportDestination(slot);
     const confirmed = await confirm({
       title: 'Import save file?',
       body: importConfirmBody(f),
@@ -1407,7 +1452,7 @@ export const saveLoadScreen = {
     };
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     if (sys && typeof sys.importFile === 'function') {
-      try { sys.importFile(f, finish); return; } catch (e) {}
+      try { sys.importFile(f, finish, slot); return; } catch (e) {}
     }
     const reader = new FileReader();
     reader.onload = () => {
@@ -1420,12 +1465,12 @@ export const saveLoadScreen = {
         return;
       }
       let ok = false;
-      if (sys && typeof sys.importString === 'function') { try { ok = !!sys.importString(text, 'quick'); } catch (e) {} }
+      if (sys && typeof sys.importString === 'function') { try { ok = !!sys.importString(text, slot); } catch (e) {} }
       else if (sys && typeof sys.importSave === 'function') { try { ok = !!sys.importSave(text); } catch (e) {} }
       if (!ok) {
         try {
           JSON.parse(text);
-          if (typeof localStorage !== 'undefined') { localStorage.setItem(LS_PREFIX + 'import', text); ok = true; }
+          if (typeof localStorage !== 'undefined') { localStorage.setItem(LS_PREFIX + slot, text); ok = true; }
         } catch (e) {
           ctx.bus.emit('toast', { text: 'Import failed: file is not valid JSON', kind: 'warn', ttl: 3000 });
           ok = false;
