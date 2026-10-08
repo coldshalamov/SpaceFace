@@ -3,7 +3,7 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, AMMO_BATCH } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -86,7 +86,7 @@ export function runFactionPresenceDockAction(bus, state, stationId, serviceId) {
   return { ok: true, targetTab: row.targetTab || null };
 }
 
-export const AMMO_BATCH = 100;         // munitions per ammo purchase
+export { AMMO_BATCH };                    // munitions per ammo purchase — owned by economy now
 const MUNITIONS = COMMODITIES.find((c) => c.id === 'cmdty_munitions') || { volPerU: 1 };
 
 const FUEL_WARN_FRAC = 0.45;
