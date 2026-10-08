@@ -30,7 +30,7 @@ import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine s
 import { dropWedgedAuthoredTasks, invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
 import { detachBoundaryResolvingMarker, installBoundaryResolvingMarker, packagedPropSpec } from './visualOverrides.js';
 import { getAssetResidency } from './assetResidency.js';
-import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
+import { attachAuthoredMotionDriver, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
 import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { invalidateShadowCasterPolicy } from './shadowCasterPolicy.js';
@@ -10281,7 +10281,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   }
   const template = flightRootTemplates.get(templateKey);
   if (template) {
-    const cached = instantiateFlightRootTemplate(
+    const cached = yield* instantiateFlightRootTemplateSteps(
       template, entity, templateKey, loadoutFingerprint, assemblySeed, library, scene, ownerBoundary, palette,
     );
     if (cached) return cached;
@@ -10348,7 +10348,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   yield;
   let hullPartRoot = null;
   if (hullRecord) {
-    hullPartRoot = instantiatePart(hullRecord, hull, wholeShipHullPlacement(hullRecord),
+    hullPartRoot = yield* instantiatePartSteps(hullRecord, hull, wholeShipHullPlacement(hullRecord),
       palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     noteUsed('hull', hullRecord);
   } else {
@@ -10372,7 +10372,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   const cockpitRecord = selected.get('cockpit');
   if (cockpitRecord) {
     yield;
-    instantiatePart(cockpitRecord, hull, cockpitPlacement,
+    yield* instantiatePartSteps(cockpitRecord, hull, cockpitPlacement,
       palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     noteUsed('cockpit', cockpitRecord);
   } else {
@@ -10394,7 +10394,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   if (engineRecord) {
     for (const placement of enginePlacements) {
       yield;
-      instantiatePart(engineRecord, hull, placement,
+      yield* instantiatePartSteps(engineRecord, hull, placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     }
     noteUsed('engine', engineRecord);
@@ -10423,7 +10423,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   for (const placement of finPlacements) {
     if (finRecord) {
       yield;
-      instantiatePart(finRecord, hull, placement,
+      yield* instantiatePartSteps(finRecord, hull, placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     } else {
       ownerLocalFallbackRoots.push(buildFallbackFin(hull, materials, placement));
@@ -10439,7 +10439,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     for (const mount of weaponMounts) {
       if (!mount.record) continue;
       yield;
-      instantiatePart(mount.record, hull, mount.placement,
+      yield* instantiatePartSteps(mount.record, hull, mount.placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       noteUsed('weapon', mount.record);
       mounted++;
@@ -10452,7 +10452,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     for (const mount of podMounts) {
       if (!mount.record) continue;
       yield;
-      const partRoot = instantiatePart(mount.record, hull, mount.placement,
+      const partRoot = yield* instantiatePartSteps(mount.record, hull, mount.placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       if (mount.damageRole === 'armor') bindings.armor.push(partRoot);
       else bindings.secondary.push(partRoot);
@@ -10464,7 +10464,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
 
   if (gearMount && gearMount.record) {
     yield;
-    const partRoot = instantiatePart(gearMount.record, hull, gearMount.placement,
+    const partRoot = yield* instantiatePartSteps(gearMount.record, hull, gearMount.placement,
       palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     bindings.secondary.push(partRoot);
     noteUsed('gear', gearMount.record);
@@ -10477,7 +10477,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     for (const mount of greebleMounts) {
       if (!mount.record) continue;
       yield;
-      instantiatePart(mount.record, hull, mount.placement,
+      yield* instantiatePartSteps(mount.record, hull, mount.placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       noteUsed('greeble', mount.record);
       mounted++;
@@ -10515,7 +10515,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
       }
       if (wholeShip) keepPlacementBehindNose(placement, mount.record, hullRecord);
       yield;
-      const partRoot = instantiatePart(mount.record, hull, placement,
+      const partRoot = yield* instantiatePartSteps(mount.record, hull, placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       bindings.secondary.push(partRoot);
       noteUsed(String(mount.file).startsWith('pods/') ? 'pod' : 'greeble', mount.record);
@@ -10538,7 +10538,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
       }
       keepPlacementBehindNose(mount.placement, mount.record, hullRecord);
       yield;
-      instantiatePart(mount.record, hull, mount.placement,
+      yield* instantiatePartSteps(mount.record, hull, mount.placement,
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
       noteUsed('weapon', mount.record);
     }
@@ -10805,7 +10805,14 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
               try { object.geometry.dispose(); } catch { /* best-effort */ }
             }
           });
-          try { disposeDetachedObject(partial); } catch { /* partial-root disposal is best-effort */ }
+          // The compose-aborted partial rides the paced detached-teardown
+          // queue like its sibling abort legs — sync traverse stays the
+          // no-queue fallback.
+          try {
+            if (!queuePacedDetachedTeardown(partial, disposeDetachedObjectSteps(partial))) {
+              disposeDetachedObject(partial);
+            }
+          } catch { /* partial-root disposal is best-effort */ }
           composeTrace.root = null;
         }
         return null;
@@ -11388,6 +11395,163 @@ function instantiateFlightRootTemplate(
   };
 }
 
+// Stepped twin of instantiateFlightRootTemplate — identical instance output,
+// but the clone+sanitize, the per-recipe package recreates, the bindings
+// restore, and the owner-material census each run under their own slices.
+// Generator callers (composedShipSteps) suspend here safely: the instance
+// root is still detached, so a parked compose presents nothing.
+function* instantiateFlightRootTemplateSteps(
+  entry,
+  entity,
+  templateKey,
+  loadoutFingerprint,
+  assemblySeed,
+  library = null,
+  scene = null,
+  ownerBoundary = null,
+  palette = null,
+) {
+  if (!entry || !entry.root) return null;
+  const root = yield* createFlightTemplateRootInstanceSteps(entry.root);
+  if (!root) return null;
+  clearFlightTemplateDynamicUserData(root);
+  const packageBindings = (entry.packageRecipes || EMPTY_ARRAY).length ? createBindings() : null;
+  const rootName = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
+  const assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${assemblySeed.toString(16)}`;
+  root.name = rootName;
+  root.userData.kind = 'ship';
+  root.userData.assetId = assetId;
+  root.userData.loadoutFingerprint = loadoutFingerprint;
+  root.userData.renderContract = cloneFlightTemplateMetadata(entry.renderContract || {});
+  root.userData.authoredPartsCache = [...(entry.authoredParts || EMPTY_ARRAY)];
+  root.userData.authoredSlotsCache = cloneFlightTemplateMetadata(entry.authoredSlots || {});
+  root.userData.wholeShip = entry.wholeShip === true;
+
+  if ((entry.packageRecipes || EMPTY_ARRAY).length > 0) {
+    if (!library || !scene || !ownerBoundary) return null;
+    const packageMutableMaterials = new Map();
+    for (const recipe of entry.packageRecipes) {
+      // Inter-recipe seam: each recreate mints a package instance and
+      // specializes its flat plan inside instantiateRenderPackagePartSteps.
+      yield;
+      const record = findFlightTemplatePackageRecord(library, recipe);
+      const parent = findFlightTemplateObject(root, recipe.parentPath);
+      if (!record || !parent) return null;
+      const sourceLength = Math.max(Number(record.bounds?.size?.[0]) || 1, 1e-6);
+      const placement = {
+        position: recipe.position || [0, 0, 0],
+        quaternion: new THREE.Quaternion().fromArray(recipe.quaternion || [0, 0, 0, 1]),
+        targetLength: sourceLength,
+        label: recipe.label || record.assetId || record.url || 'Package',
+      };
+      const partRoot = yield* instantiateRenderPackagePartSteps(
+        record, parent, placement, palette || paletteFor(entity), scene, ownerBoundary,
+        packageBindings, packageMutableMaterials,
+      );
+      if (Array.isArray(recipe.scale) && recipe.scale.length === 3) partRoot.scale.fromArray(recipe.scale);
+      partRoot.updateMatrix();
+      for (const path of recipe.objectPaths || EMPTY_ARRAY) {
+        const object = objectAtRootPath(partRoot, path.relativePath);
+        if (!object) continue;
+        object.userData = {
+          ...(object.userData || {}),
+          spacefaceFlightTemplatePath: (path.sourcePath || []).join('/'),
+        };
+      }
+    }
+  }
+  yield;
+  const hull = findFlightTemplateObject(root, entry.hullPath);
+  const shieldBubble = findFlightTemplateObject(root, entry.shieldBubblePath);
+  const safetyCore = findFlightTemplateObject(root, entry.safetyCorePath);
+  const bindings = restoreFlightTemplateBindings(root, entry.bindings, packageBindings);
+  if (!hull || !bindings) return null;
+  root.userData.hull = hull;
+  root.userData.shieldBubble = shieldBubble;
+  normalizeWaspDomeGlass(root, entity);
+
+  const primaryDrive = completeDriveBinding(bindings);
+  const navLightBase = bindings.navLights.map((mesh) => (
+    mesh && mesh.material && Number.isFinite(mesh.material.emissiveIntensity)
+      ? mesh.material.emissiveIntensity : 1
+  ));
+  yield;
+  kit.finalizeShip({
+    root,
+    hull,
+    entity,
+    designRadius: 1,
+    decals: bindings.decals,
+    driveParts: primaryDrive,
+    navLightBase,
+    damageParts: {
+      navLights: bindings.navLights,
+      navLightBase,
+      driveCore: primaryDrive && primaryDrive.driveCore,
+      plume: primaryDrive && primaryDrive.plume,
+      secondary: bindings.secondary,
+      armor: bindings.armor,
+      sensorSlits: bindings.sensorSlits,
+    },
+  });
+  synchronizeSecondaryDrives(primaryDrive, bindings);
+  installAuthoredLod(root, bindings, safetyCore, new Set(entry.authoredHullLevels || EMPTY_ARRAY), entry.wholeShip === true);
+  root.userData.updateLod('lod0');
+  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
+  if (entry.producerManifest) {
+    stampOpeningSubmissionPackage(root, entry.producerManifest, {
+      replace: true,
+      producer: 'procedural-flight-ship',
+      assetId,
+    });
+  }
+  cookFlightProduct(root, 'chase', { runtime: true });
+
+  const releaseFlightTemplate = retainFlightRootTemplate(entry);
+  if (!releaseFlightTemplate) return null;
+  root.userData.releaseAuthoredAssetResidency = (reason = 'flight-template-root-disposed') => (
+    releaseFlightTemplate(reason)
+  );
+
+  const ownerLocalMaterials = new Set();
+  const renderPackageInstances = [];
+  // Stepped census — same per-node work and pre-order as the sync traverse.
+  const censusStack = [root];
+  let censusVisited = 0;
+  while (censusStack.length > 0) {
+    const object = censusStack.pop();
+    if (!object) continue;
+    if ((++censusVisited % 128) === 0) yield;
+    const objectMaterials = object.material
+      ? (Array.isArray(object.material) ? object.material : [object.material])
+      : EMPTY_ARRAY;
+    for (const material of objectMaterials) {
+      if (material && material.userData?.spacefaceSharedAsset !== true) {
+        ownerLocalMaterials.add(material);
+      }
+    }
+    const instance = object.userData?.renderPackageInstance;
+    if (instance && typeof instance.dispose === 'function') renderPackageInstances.push(instance);
+    const children = object.children;
+    if (children) for (let i = children.length - 1; i >= 0; i--) censusStack.push(children[i]);
+  }
+  return {
+    root,
+    authoredParts: [...(entry.authoredParts || EMPTY_ARRAY)],
+    authoredSlots: cloneFlightTemplateMetadata(entry.authoredSlots || {}),
+    fallbackParts: [...(entry.fallbackParts || EMPTY_ARRAY)],
+    wholeShip: entry.wholeShip === true,
+    packagePoolAdmissions: [...bindings.packagePoolAdmissions],
+    ownerLocalObjects: [],
+    ownerLocalGeometries: [],
+    ownerLocalMaterials: [...ownerLocalMaterials],
+    renderPackageInstances,
+    fromFlightTemplateCache: true,
+    flightRootTemplateKey: templateKey,
+    releaseFlightTemplate,
+  };
+}
+
 function findFlightTemplatePackageRecord(library, recipe) {
   if (!library || typeof library.values !== 'function' || !recipe) return null;
   for (const records of library.values()) {
@@ -11410,6 +11574,30 @@ function createFlightTemplateRootInstance(templateRoot) {
     object.userData = sanitizeFlightTemplateUserData(object.userData);
     if (object.material) object.material = cloneFlightInstanceMaterials(object.material, materials);
   });
+  return root;
+}
+
+// Stepped twin — the clone itself is one atomic leg (THREE's deep clone cannot
+// suspend), but the sanitize/material pass paces per 128 nodes through the same
+// explicit-stack pre-order traverse() uses. Identical userData/material state.
+function* createFlightTemplateRootInstanceSteps(templateRoot, sliceEvery = 128) {
+  if (!templateRoot || typeof templateRoot.clone !== 'function') return null;
+  const root = templateRoot.clone(true);
+  const materials = new Map();
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  const stack = [root];
+  let visited = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % every) === 0) yield;
+    object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
+    object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
+    object.userData = sanitizeFlightTemplateUserData(object.userData);
+    if (object.material) object.material = cloneFlightInstanceMaterials(object.material, materials);
+    const children = object.children;
+    if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
   return root;
 }
 
@@ -12908,6 +13096,19 @@ function addStaticBatchMesh(parent, bindings, geometry, material, tags, urls, la
   return mesh;
 }
 
+// Generator twin of instantiatePart for composedShipSteps: render-package
+// records delegate to the stepped instantiation so their flat-plan
+// specialization and motion bind pace inside the compose instead of fusing
+// into the per-part leg.
+function* instantiatePartSteps(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
+  if (record?.renderPackage && typeof record.renderPackage.createInstance === 'function') {
+    return yield* instantiateRenderPackagePartSteps(
+      record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches,
+    );
+  }
+  return instantiatePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches);
+}
+
 function instantiatePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
   if (record?.renderPackage && typeof record.renderPackage.createInstance === 'function') {
     return instantiateRenderPackagePart(
@@ -13163,6 +13364,154 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
   // instance (one per mounted LOD file), so LOD switches never pop a transform. The template
   // path recreates packages through this same call, so cached roots rebind identically.
   const motionController = bindInstanceMotion(packageRoot, record.motionBank);
+  if (motionController) bindings.authoredMotions.push(motionController);
+  return partRoot;
+}
+
+// Stepped twin of instantiateRenderPackagePart for generator callers — same
+// prologue, same plan specialization order, same binding side effects; the
+// flat-plan loop yields per 128 nodes and the motion bind delegates to its own
+// Steps twin so a fat package instance no longer fuses into one leg.
+function* instantiateRenderPackagePartSteps(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
+  const partRoot = new THREE.Group();
+  partRoot.name = `GLTFKit_${placement.label}_${record.assetId}`;
+  applyPlacementTransform(partRoot, placement);
+  const sourceLength = Math.max(record.bounds.size[0], 1e-6);
+  const scale = placement.targetLength / sourceLength;
+  partRoot.scale.multiplyScalar(scale);
+  partRoot.updateMatrix();
+  partRoot.userData.spacefaceFlightPackageRecipe = {
+    url: record.url || null,
+    assetId: record.assetId || record.renderPackage?.assetId || null,
+    flightStaticV3: record.flightStaticV3 === true,
+    label: placement.label || record.assetId || record.url || 'Package',
+    position: partRoot.position.toArray(),
+    quaternion: partRoot.quaternion.toArray(),
+    scale: partRoot.scale.toArray(),
+  };
+  parent.add(partRoot);
+
+  const tagsByName = new Map([
+    ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
+    ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
+  ]);
+  const createNode = record.assetId !== CERES_BREAKER_ASSET
+    && canBatchRenderPackageOwner(owner?.userData?.kind) && scene?.isScene
+    ? createRenderPackageShipNodeFactory({
+        scene,
+      owner,
+      record,
+      palette,
+      tagsByName,
+      poolAdmissions: bindings.packagePoolAdmissions,
+    })
+    : null;
+  const mergePackageMeshes = staticBatches
+    && record.flightStaticV3 !== true
+    && (owner?.userData?.kind === 'place' || owner?.userData?.kind === 'station');
+  const createPackageInstance = record.flightStaticV3 === true
+    ? record.renderPackage.createFlightInstance?.bind(record.renderPackage)
+    : record.renderPackage.createInstance.bind(record.renderPackage);
+  if (typeof createPackageInstance !== 'function') {
+    throw new Error(
+      `Render package ${record.renderPackage.assetId || record.assetId} has no `
+      + `${record.flightStaticV3 === true ? 'flight-static' : 'ordinary'} instance route.`,
+    );
+  }
+  yield;
+  const instance = createPackageInstance({
+    name: `RenderPackage_${placement.label}_${record.assetId}`,
+    residencyOwner: owner,
+    residencyRole: 'live-boundary',
+    ...(createNode ? { createNode } : {}),
+  });
+  const packageRoot = instance?.root;
+  if (!packageRoot?.isObject3D) {
+    throw new Error(`Render package ${record.renderPackage.assetId || record.assetId} returned no Object3D root.`);
+  }
+  packageRoot.userData = {
+    ...(packageRoot.userData || {}),
+    spacefaceRenderPackageDirect: true,
+    spacefacePartUrl: record.url,
+    ...(record.flightStaticV3 === true ? { spacefaceFlightStaticV3: true } : {}),
+  };
+  partRoot.userData.renderPackageInstance = instance;
+  partRoot.add(packageRoot);
+  if (mergePackageMeshes) packageRoot.updateMatrixWorld(true);
+
+  const planNodes = instance.planNodes;
+  if (!Array.isArray(planNodes) || planNodes[0] !== packageRoot) {
+    throw new Error(
+      `Render package ${record.renderPackage.assetId || record.assetId} instance exposed no flat plan; `
+      + 'the loader must publish planNodes for package instantiation.',
+    );
+  }
+  for (let i = 1; i < planNodes.length; i++) {
+    if (i % 128 === 0) yield;
+    const object = planNodes[i];
+    const tags = tagsByName.get(object.name) || object.userData?.spacefaceTags || {};
+    object.userData = {
+      ...(object.userData || {}),
+      spacefacePartUrl: record.url,
+      spacefaceTags: tags,
+      spacefaceRenderPackageDirect: true,
+      spacefacePartNormalization: scale,
+    };
+
+    if (object.isMesh) {
+      if (object.visible === false) continue;
+      stampGeometryBatchKey(object.geometry, `${record.assetId || record.url}|${object.name}`);
+      const primitive = { material: object.material, tags };
+      if (object.userData?.spacefacePackageMaterialPrepared !== true) {
+        object.material = requiresPerShipMesh(primitive)
+          ? dedicatedMaterialFor(
+              object.material, tags, palette, mutableMaterials,
+              `${record.url}|${placement.label}|${object.name}`,
+            )
+          : sharedMaterialFor(object.material, tags, palette);
+      }
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      object.castShadow = materials.some((material) => material && !material.transparent && material.depthWrite !== false);
+      object.receiveShadow = materials.some((material) => material && !material.transparent);
+      const batchable = mergePackageMeshes
+        && isRigidOpaqueBatchableSurface(object, tags, { requiresPerShipMesh });
+      object.visible = !tags.lod || tags.lod === 'lod0';
+      if (batchable) {
+        staticBatches.add({
+          record,
+          primitive: {
+            geometry: object.geometry,
+            matrix: packageMeshMatrixInPartSpace(object, partRoot),
+            name: object.name,
+            tags,
+          },
+          partRoot,
+          material: object.material,
+        });
+        retirePackagePoolCandidate(scene, object);
+        demotePackageMeshToStaticBatch(object);
+      }
+      registerBinding(object, tags, bindings);
+      continue;
+    }
+
+    if (tags.socket) {
+      if (bindings.socketNames.has(object.name)) {
+        object.visible = false;
+        continue;
+      }
+      bindings.socketNames.add(object.name);
+      object.userData.spacefaceSocket = true;
+      object.userData.role = tags.socketRole || object.userData.role || 'attachment';
+      object.userData.forward = tags.socketForward || object.userData.forward || [1, 0, 0];
+    }
+    object.visible = !tags.lod || tags.lod === 'lod0';
+    registerBinding(object, tags, bindings);
+  }
+  const tier1 = tier1CausalCounters();
+  if (tier1) tier1.countPlanInstantiation(planNodes.length - 1, 'package-instance-specialize');
+
+  const motionController = yield* bindInstanceMotionSteps(packageRoot, record.motionBank);
   if (motionController) bindings.authoredMotions.push(motionController);
   return partRoot;
 }

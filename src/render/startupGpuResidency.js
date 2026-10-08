@@ -142,6 +142,9 @@ export function* collectStartupTexturesSteps(subjects, sliceEvery = 256) {
   const seenMaterials = new Set();
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   let visited = 0;
+  // Row-count yields alone under-pace: a fat stride of material-heavy nodes
+  // can still overrun — same wall-clock disjunct as the census family.
+  let strideAt = clockNow();
   for (const root of subjectRoots(subjects)) {
     if (root && root.isTexture === true) {
       textures.add(root);
@@ -152,7 +155,10 @@ export function* collectStartupTexturesSteps(subjects, sliceEvery = 256) {
     while (stack.length > 0) {
       const object = stack.pop();
       if (!object) continue;
-      if ((++visited % every) === 0) yield;
+      if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
+        strideAt = clockNow();
+        yield;
+      }
       const materials = Array.isArray(object.material)
         ? object.material
         : object.material ? [object.material] : [];
@@ -223,6 +229,7 @@ export function* collectStartupGeometryDrawablesSteps(subjects, options = {}, sl
   const seen = new Set();
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   let visited = 0;
+  let strideAt = clockNow();
   const visit = (object) => {
     if (!drawableHasWork(object, options) || seen.has(object)) return;
     seen.add(object);
@@ -247,7 +254,10 @@ export function* collectStartupGeometryDrawablesSteps(subjects, options = {}, sl
     while (stack.length > 0) {
       const object = stack.pop();
       if (!object) continue;
-      if ((++visited % every) === 0) yield;
+      if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
+        strideAt = clockNow();
+        yield;
+      }
       visit(object);
       const children = object.children;
       if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
@@ -284,6 +294,7 @@ export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery =
   const drawables = [];
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   let visited = 0;
+  let strideAt = clockNow();
   const visit = (object) => {
     if (!object || object.isInstancedMesh !== true || !object.geometry) return;
     const data = object.geometry.userData;
@@ -300,7 +311,10 @@ export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery =
     while (stack.length > 0) {
       const object = stack.pop();
       if (!object) continue;
-      if ((++visited % every) === 0) yield;
+      if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
+        strideAt = clockNow();
+        yield;
+      }
       visit(object);
       const children = object.children;
       if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
@@ -316,15 +330,22 @@ export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery =
  * upload inside the presented pass report unready.
  */
 export function hasUnresidentGeometry(root) {
-  let unready = false;
-  const visit = (object) => {
-    if (unready || !object || !object.geometry) return;
-    if (!(object.geometry.userData
-        && object.geometry.userData.spacefaceGpuResident === true)) unready = true;
-  };
-  if (root && typeof root.traverse === 'function') root.traverse(visit);
-  else visit(root);
-  return unready;
+  if (!root) return false;
+  const unresident = (object) => !!(object && object.geometry
+    && !(object.geometry.userData && object.geometry.userData.spacefaceGpuResident === true));
+  if (typeof root.traverse !== 'function') return unresident(root);
+  // traverse() cannot early-exit, so a live consult visited every descendant
+  // before answering. Explicit-stack DFS stops at the first unresident
+  // geometry — an all-resident subtree still walks in full.
+  const stack = [root];
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (!object) continue;
+    if (unresident(object)) return true;
+    const children = object.children;
+    if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+  return false;
 }
 
 function attributeByteLength(attribute) {
@@ -542,6 +563,9 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   } else {
     drawables = collectStartupGeometryDrawables(subjects, options);
   }
+  // The work-list mint is an unstepped linear scan — a boundary yield keeps a
+  // big cohort from fusing collect->mint->partition into one task.
+  await collectYield();
   const { work, uniqueGeometries } = createGeometryWorkItems(drawables, options);
   if (!renderer || typeof renderer.render !== 'function'
       || typeof renderer.setRenderTarget !== 'function'
@@ -578,6 +602,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   const paceQueue = typeof options.paceQueue === 'function'
     ? options.paceQueue
     : makeGpuQueuePacer(renderer);
+  await yieldToMain();
   const batches = partitionGeometryWork(work, options);
   const geometryProgress = beginBootWork(renderer, 'geometry', batches.length);
   const material = residencyMaterialFor(renderer);
@@ -713,6 +738,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   const hasDeadline = Number.isFinite(deadlineMs) && deadlineMs >= 0;
   const startedAt = now();
   let hitDeadline = false;
+  let scanStrideAt = startedAt;
   for (let index = 0; index < count; index++) {
     if (hasDeadline && now() - startedAt >= deadlineMs) {
       hitDeadline = true;
@@ -732,6 +758,13 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       detachPackageTexture(texture);
       residentTextures += 1;
       textureProgress.update(index + 1);
+      // Resident rows skip the upload path's yield — a mostly-resident
+      // re-verify (recook/F9/context restore) would otherwise run the whole
+      // O(N) scan atomically: detach + DOM progress write per row.
+      if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
+        scanStrideAt = now();
+        await yieldToMain();
+      }
       continue;
     }
     if (isPackageTextureDetached(texture)) {
@@ -740,6 +773,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       // copy, so count it resident and skip.
       residentTextures += 1;
       textureProgress.update(index + 1);
+      if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
+        scanStrideAt = now();
+        await yieldToMain();
+      }
       continue;
     }
     await yieldToMain();

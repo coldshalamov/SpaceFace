@@ -2194,17 +2194,30 @@ function laneWarn(owner, lane, ...args) {
   const epoch = serviceFaultEpoch(state);
   const rollup = render.laneWarns || (render.laneWarns = {});
   const row = rollup[lane]
-    || (rollup[lane] = { epoch: -1, warns: 0, suppressed: 0, summarized: false });
+    || (rollup[lane] = { epoch: -1, warns: 0, suppressed: 0, summarized: false, lastWarnAt: -Infinity });
   if (row.epoch !== epoch) {
     row.epoch = epoch; row.warns = 0; row.suppressed = 0; row.summarized = false;
   }
   row.warns += 1;
-  if (row.warns <= LANE_WARN_BUDGET_PER_EPOCH) { console.warn(...args); return; }
+  const warnNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now() : Date.now();
+  if (row.warns <= LANE_WARN_BUDGET_PER_EPOCH) { row.lastWarnAt = warnNow; console.warn(...args); return; }
   row.suppressed += 1;
   if (!row.summarized) {
     row.summarized = true;
+    row.lastWarnAt = warnNow;
     console.warn(`[render] '${lane}' faulted ${row.warns} times this epoch;`
       + ' suppressing further lane warns until the epoch flips');
+    return;
+  }
+  // stormWarn's heartbeat shape: suppressed counts re-surface every ~1 s so a
+  // sustained fault's true volume stays observable past the ninth warn — the
+  // lanes riding this (depthStageArm/shadowCensus/entityViewSync) are exactly
+  // the ones an audit reads for hitch evidence.
+  if (warnNow - row.lastWarnAt >= 1000) {
+    row.lastWarnAt = warnNow;
+    console.warn(`[render] '${lane}' faulted ${row.suppressed} more times; latest:`, ...args);
+    row.suppressed = 0;
   }
 }
 
@@ -12364,39 +12377,53 @@ export const render = {
         queued.add(subject);
         return { skipped: true, reason: 'context-recovery-queued' };
       }
-      // The seam is synchronous, but a cpu-detached package texture this draw would
-      // force-upload reads emptied mipmaps inside the draw and throws (D150) — for that
-      // subject only, re-attach the payloads first and run the identical reveal+touch in the
-      // continuation. Every other subject keeps the sync draw below.
-      const detachedPendingUpload = detachedSubjectUploadsPending(subject);
-      if (detachedPendingUpload.length > 0) {
-        return rehydrateDetachedTextures(detachedPendingUpload, { yieldToMain: admissionPaceYield })
-          .catch((error) => {
-            laneWarn(this, 'admissionTouch', '[render] exact-target touch texture reattach failed', error);
-          })
-          .then(() => {
-            const restoreDetached = revealSubjectWithAncestors(subject);
-            try {
-              return touchExactTargetSubject(subject);
-            } catch (error) {
-              // Sync callers catch the same throw; the async branch logs it here so the
-              // returned promise never lands an unhandled rejection on a best-effort caller.
-              laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
-              return { skipped: true, reason: 'touch-failed' };
-            } finally {
-              restoreDetached();
-            }
-          });
-      }
-      // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
-      // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
-      // the draw a silent no-op and leaves the exact variant cold for the presented pass.
-      const restore = revealSubjectWithAncestors(subject);
-      try {
-        return touchExactTargetSubject(subject);
-      } finally {
-        restore();
-      }
+      // The seam runs inside a paced admission leg, so the pending scan rides the
+      // Steps twin — the sync collect paid an atomic O(roots×nodes) texture
+      // traverse inside this publish seam. A cpu-detached package texture this
+      // draw would force-upload reads emptied mipmaps inside the draw and throws
+      // (D150) — for that subject only, re-attach the payloads first and run the
+      // identical reveal+touch in the continuation.
+      return detachedSubjectUploadsPendingAsync(subject)
+        .catch((error) => {
+          laneWarn(this, 'admissionTouch', '[render] exact-target pending-texture scan failed', error);
+          return null;
+        })
+        .then((detachedPendingUpload) => {
+          if (detachedPendingUpload === null) return { skipped: true, reason: 'scan-failed' };
+          if (detachedPendingUpload.length > 0) {
+            return rehydrateDetachedTextures(detachedPendingUpload, { yieldToMain: admissionPaceYield })
+              .catch((error) => {
+                laneWarn(this, 'admissionTouch', '[render] exact-target touch texture reattach failed', error);
+              })
+              .then(() => {
+                const restoreDetached = revealSubjectWithAncestors(subject);
+                try {
+                  return touchExactTargetSubject(subject);
+                } catch (error) {
+                  // The returned promise must never land an unhandled rejection
+                  // on a best-effort caller.
+                  laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
+                  return { skipped: true, reason: 'touch-failed' };
+                } finally {
+                  restoreDetached();
+                }
+              });
+          }
+          // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
+          // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
+          // the draw a silent no-op and leaves the exact variant cold for the presented pass.
+          const restore = revealSubjectWithAncestors(subject);
+          try {
+            return touchExactTargetSubject(subject);
+          } catch (error) {
+            // The whole seam is async now, so mirror the detached branch's
+            // anti-unhandled-rejection contract instead of propagating.
+            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
+            return { skipped: true, reason: 'touch-failed' };
+          } finally {
+            restore();
+          }
+        });
     };
     // The restore drain re-enters the public touch so the queued subject gets the same
     // reveal/park/cull treatment — and re-queues itself if a second loss lands mid-drain.
@@ -16062,9 +16089,76 @@ export const render = {
           this._rosterPrewarmRoots.push(crucibleWarmRoot);
         }
       }
+      // The reveal cohorts used to pay an atomic subtree walk per root at mint
+      // AND at restore (fused in the finally). Drive the Steps twin per root
+      // with the buffers lane's yield between subjects — per-256-node yields
+      // inside cover the fat ones — with the sync twin as rescue on a throwing
+      // drive. Restores pace through the same shape. null = cook superseded.
+      const driveRevealCohort = async (roots) => {
+        const minted = [];
+        for (const root of roots) {
+          let entry = null;
+          if (typeof revealSubjectForCompileSteps === 'function') {
+            const mint = revealSubjectForCompileSteps(root);
+            for (;;) {
+              let mintStep;
+              try {
+                mintStep = mint.next();
+              } catch (err) {
+                closeCookStepsIter(mint);
+                noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookRevealMint');
+                console.warn('[render] paced cook reveal mint failed; running the sync twin', err);
+                entry = {
+                  restore: runCookSyncTwin('cook reveal mint',
+                    () => revealSubjectForCompile(root), () => {}),
+                  restoreSteps: null,
+                };
+                break;
+              }
+              if (mintStep.done) { entry = mintStep.value; break; }
+              if (cookStale()) {
+                try { mint.throw(new Error('cook-superseded')); } catch (_) { /* prefix restored */ }
+                for (const prior of minted) {
+                  try { if (prior && prior.restore) prior.restore(); } catch (_) { /* best-effort */ }
+                }
+                return null;
+              }
+              await yieldBuffers();
+            }
+          } else {
+            entry = { restore: revealSubjectForCompile(root), restoreSteps: null };
+          }
+          minted.push(entry);
+          await yieldBuffers();
+        }
+        return minted;
+      };
+      const driveRestoreCohort = async (minted) => {
+        for (const entry of minted || []) {
+          if (!entry) continue;
+          if (entry.restoreSteps) {
+            try {
+              for (;;) {
+                const step = entry.restoreSteps.next();
+                if (step.done) break;
+                await yieldBuffers();
+              }
+            } catch (err) {
+              closeCookStepsIter(entry.restoreSteps);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookRevealRestore');
+              console.warn('[render] paced cook reveal restore failed; running the sync twin', err);
+              runCookSyncTwin('cook reveal restore', () => entry.restore(), undefined);
+            }
+          } else {
+            runCookSyncTwin('cook reveal restore', () => entry.restore(), undefined);
+          }
+          await yieldBuffers();
+        }
+      };
       const restoreFirstFlight = !bufferFirstFlightFx
         ? []
-        : firstFlightRoots.map((root) => revealSubjectForCompile(root));
+        : await driveRevealCohort(firstFlightRoots);
+      if (restoreFirstFlight === null) return cookSuperseded;
       const buffersStarted = cookNow();
       let buffers;
       try {
@@ -16084,7 +16178,7 @@ export const render = {
             });
         }
       } finally {
-        for (const restore of restoreFirstFlight) restore();
+        await driveRestoreCohort(restoreFirstFlight);
       }
       if (cookStale()) return cookSuperseded;
       recordOpeningCookStep(state.render, 'cook.buffers', buffersStarted,
@@ -16104,7 +16198,8 @@ export const render = {
         ? []
         : collectFirstFlightLayerDrawables([...firstFlightRoots, ...vfxRoots]);
       if (layerRoots.length > 0 && !cookOverBudget()) {
-        const restoreLayers = layerRoots.map((root) => revealSubjectForCompile(root));
+        const restoreLayers = await driveRevealCohort(layerRoots);
+        if (restoreLayers === null) return cookSuperseded;
         try {
           await prepareStartupGpuResidency(renderer, layerRoots, {
             includeGeometry: true,
@@ -16112,7 +16207,7 @@ export const render = {
             yieldToMain: yieldBuffers,
           });
         } finally {
-          for (const restore of restoreLayers) restore();
+          await driveRestoreCohort(restoreLayers);
         }
       }
       if (cookStale()) return cookSuperseded;
@@ -29539,7 +29634,22 @@ export const render = {
       const pending = this._pendingDepthStageRoots;
       // The sweep runs before the empty-queue early return: a parked or
       // withheld root that detaches on an idle drain has no other reaper.
-      this._sweepDetachedDepthStageRoots(pending);
+      // Cadence the non-empty path — during a degraded epoch the arm re-drives
+      // ~1/s and the O(pending+parked) sweep is the only per-tick map walk
+      // that isn't event-driven; once per second or on size change bounds the
+      // bookkeeping staleness without paying it every retry tick. The empty
+      // path still sweeps unconditionally (parked-map reaping is its job).
+      const sweepNow = armNow();
+      const pendingEmpty = !pending || pending.size === 0;
+      const sweepSize = (pending ? pending.size : 0)
+        + (this._parkedDepthStageRoots ? this._parkedDepthStageRoots.size : 0);
+      if (pendingEmpty || this._depthStageSweepAt === undefined
+          || sweepNow - this._depthStageSweepAt >= 1000
+          || this._depthStageSweepSize !== sweepSize) {
+        this._depthStageSweepAt = sweepNow;
+        this._depthStageSweepSize = sweepSize;
+        this._sweepDetachedDepthStageRoots(pending);
+      }
       if (!pending || pending.size === 0) {
         this._pendingDepthStageRoots = null;
         this._depthStageScheduled = false;
@@ -29602,8 +29712,22 @@ export const render = {
             if (this._withheldDepthCasters) {
               const rescueWithheld = this._withheldDepthCasters.get(root);
               if (rescueWithheld && rescueWithheld.size > 0) {
+                // The census memo deliberately serves the previous-epoch sig
+                // while a stepped re-mint pends — conservative for
+                // withholding, but a restore consult reads it in the
+                // fail-OPEN direction: a mark minted under the stale sig
+                // compares equal and releases a caster whose depth variant
+                // was never staged under the live census (one cold link
+                // inside the next shadow refresh per rescued root). Only a
+                // live-epoch, fully-minted sig proves restore currency —
+                // anything else keeps the row withheld (fail-closed; the
+                // next arm re-evaluates).
                 const rescueSig = this._shadowCensusForFrame();
-                if (rescueSig == null) continue;
+                const rescueMemo = this._shadowCensusMemo;
+                if (rescueSig == null
+                  || !rescueMemo
+                  || rescueMemo.epoch !== shadowCensusEpoch()
+                  || rescueMemo.pendingIter) continue;
                 const rescueCamera = this.cam && this.cam.obj;
                 let rescueAllCurrent = true;
                 for (const rescueMesh of rescueWithheld) {

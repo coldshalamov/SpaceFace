@@ -1904,13 +1904,59 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // harmless; an unbounded uuid set across sectors and generations is not.
   const SEEN_BLOOM_GEOMETRY_CAP = 2000;
 
-  function rememberBloomGeometries(scene) {
+  // The refill used to pay a full scene traverse inside the frames that had
+  // already bricked. The walk is parked as a stepped iterator instead: each
+  // request advances a bounded slice and registers uuids as visited, so the
+  // seen set stays honest while the refill amortizes across the storm's own
+  // frames. A geometry added inside an already-visited branch reports "new"
+  // once — diagnostic noise, not a contract breach (same as the cap reset).
+  let bloomGeometryWalkIter = null;
+  let bloomGeometryWalkScene = null;
+
+  function* bloomGeometryWalkSteps(root) {
+    const stack = [root];
+    while (stack.length) {
+      const object = stack.pop();
+      if (object) {
+        const geometry = object.geometry;
+        if (geometry && geometry.uuid && seenBloomGeometryUuids.size < SEEN_BLOOM_GEOMETRY_CAP) {
+          seenBloomGeometryUuids.add(geometry.uuid);
+        }
+        const children = object.children;
+        if (children) {
+          for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+        }
+      }
+      yield;
+    }
+  }
+
+  function driveBloomGeometryWalk(scene, drainAll) {
     if (!scene || typeof scene.traverse !== 'function') return;
-    if (seenBloomGeometryUuids.size >= SEEN_BLOOM_GEOMETRY_CAP) seenBloomGeometryUuids.clear();
-    scene.traverse((object) => {
-      const geometry = object && object.geometry;
-      if (geometry && geometry.uuid) seenBloomGeometryUuids.add(geometry.uuid);
-    });
+    if (bloomGeometryWalkScene !== scene) {
+      bloomGeometryWalkIter = null;
+      bloomGeometryWalkScene = scene;
+    }
+    if (!bloomGeometryWalkIter) {
+      if (seenBloomGeometryUuids.size >= SEEN_BLOOM_GEOMETRY_CAP) seenBloomGeometryUuids.clear();
+      bloomGeometryWalkIter = bloomGeometryWalkSteps(scene);
+    }
+    let visited = 0;
+    while (bloomGeometryWalkIter && (drainAll || visited < 256)) {
+      let step = null;
+      try { step = bloomGeometryWalkIter.next(); }
+      catch (_) { bloomGeometryWalkIter = null; return; }
+      if (step && step.done) { bloomGeometryWalkIter = null; return; }
+      visited += 1;
+    }
+  }
+
+  function rememberBloomGeometries(scene) {
+    driveBloomGeometryWalk(scene, false);
+  }
+
+  function drainBloomGeometryWalk(scene) {
+    driveBloomGeometryWalk(scene, true);
   }
 
   function describeNewProgramOwners(scene, seenKeys) {
@@ -2071,6 +2117,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           }
         }
         if (brick || grewGeometries) rememberBloomGeometries(scene);
+        else if (bloomGeometryWalkIter) driveBloomGeometryWalk(scene, false);
       }
     }
   }
@@ -2093,7 +2140,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       renderer.setRenderTarget(rtScene);
       renderer.clear(true, true, false);
       renderer.render(scene, camera);
-      rememberBloomGeometries(scene);
+      drainBloomGeometryWalk(scene);
       // The rehearsal's GL work sits in the driver's queue until something forces the flush —
       // without a drain here the deferred cost lands inside the presented frame it exists to
       // protect. gl.finish() moves that drain into the held gate.

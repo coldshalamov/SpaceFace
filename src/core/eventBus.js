@@ -32,15 +32,21 @@ export const MAX_QUEUED_SLICED_EMITS = 8;
 // Per-event storm dedup (the laneWarn shape): the first few faults log verbatim,
 // the storm folds into a suppressed count re-summarized on a >=1 s heartbeat.
 const BUS_ERROR_VERBATIM = 8;
-const busErrorLog = new Map(); // event -> { logged, suppressed, lastWarnAt }
+const busErrorLog = new Map(); // tier|event|listenerIndex -> { logged, suppressed, lastWarnAt }
 
-function noteBusHandlerError(event, err, label) {
+function noteBusHandlerError(event, err, label, listenerIndex) {
   const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
     ? performance.now() : Date.now();
-  let entry = busErrorLog.get(event);
+  // Per-listener key: an event-level row let one storming handler consume the
+  // verbatim budget for every faulting listener on that event — the second
+  // distinct fault's identity never appeared verbatim. The dispatch loops all
+  // know the snapshot index; idx is only a diagnostic key (positions drift on
+  // listener churn — worst case is one extra verbatim line).
+  const key = `${label}|${event}|${listenerIndex === undefined ? '?' : listenerIndex}`;
+  let entry = busErrorLog.get(key);
   if (!entry) {
     entry = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
-    busErrorLog.set(event, entry);
+    busErrorLog.set(key, entry);
   }
   if (entry.logged < BUS_ERROR_VERBATIM) {
     entry.logged += 1;
@@ -63,7 +69,7 @@ function dispatchRange(fns, payload, event, start, end) {
   let i = start;
   for (; i < last; i++) {
     try { fns[i](payload, event); }
-    catch (err) { noteBusHandlerError(event, err, 'handler error'); }
+    catch (err) { noteBusHandlerError(event, err, 'handler error', i); }
   }
   return i;
 }
@@ -325,7 +331,7 @@ export function createBus() {
           const fn = slice.fns[slice.index];
           slice.index += 1;
           try { fn(slice.payload, slice.event); }
-          catch (err) { noteBusHandlerError(slice.event, err, 'handler error'); }
+          catch (err) { noteBusHandlerError(slice.event, err, 'handler error', slice.index - 1); }
         }
         if (emitSlice === slice) emitSlice = null;
         else break; // clear() or a re-entrant sliced emit swapped the global — stop here
@@ -374,7 +380,7 @@ export function createBus() {
       slice.index += 1;
       ran += 1;
       try { fn(slice.payload, slice.event); }
-      catch (err) { noteBusHandlerError(slice.event, err, 'handler error'); }
+      catch (err) { noteBusHandlerError(slice.event, err, 'handler error', slice.index - 1); }
       // The caller's deadline plus the shared paced ledger — a frame that already
       // spent its paced budget doesn't also get this drain's whole wallet.
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
@@ -442,7 +448,7 @@ export function createBus() {
       head.index += 1;
       ran += 1;
       try { fn(head.payload, head.event); }
-      catch (err) { noteBusHandlerError(head.event, err, 'presentation handler error'); }
+      catch (err) { noteBusHandlerError(head.event, err, 'presentation handler error', head.index - 1); }
       if (head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }
