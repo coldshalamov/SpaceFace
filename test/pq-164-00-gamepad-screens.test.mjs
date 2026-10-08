@@ -146,10 +146,11 @@ test('PQ-164.00: the live screen catalog is real and pad UI is one shared modal 
 function drivePad(id, locked, pressedIdx) {
   installPad(-1);
   const bus = createBus();
-  const seen = { confirm: 0, cancel: 0, navigate: 0 };
+  const seen = { confirm: 0, cancel: 0, navigate: 0, cues: [] };
   bus.on('ui:confirm', () => { seen.confirm += 1; });
   bus.on('ui:cancel', () => { seen.cancel += 1; });
   bus.on('ui:navigate', () => { seen.navigate += 1; });
+  bus.on('audio:cue', (p) => { seen.cues.push(p && p.id); });
   const pops = [];
   const state = {
     mode: 'flight',
@@ -184,6 +185,19 @@ test('PQ-164.00: accept confirms on every registered screen through createUiInpu
     const { seen } = drivePad(id, false, 0);
     assert.ok(seen.confirm >= 1, `${id} A/accept must emit ui:confirm`);
   }
+});
+
+test('PQ-164.00: one pad accept voices exactly one confirm', async () => {
+  // The audio system binds ui:confirm to the confirm recipe. Any extra cue resolving to the same
+  // recipe on the same press is the doubled click this pins against.
+  const { resolveAudioCueRecipeId } = await import('../src/audio/audioSystem.js');
+  const audioSrc = readFileSync(fileURLToPath(new URL('../src/audio/audioSystem.js', import.meta.url)), 'utf8');
+  assert.match(audioSrc, /bus\.on\('ui:confirm', \(\) => this\._onCue\('confirm'\)\)/);
+  const confirmRecipe = resolveAudioCueRecipeId('confirm');
+  assert.ok(confirmRecipe, 'confirm resolves to a real recipe');
+  const { seen } = drivePad('pause', false, 0);
+  assert.equal(seen.confirm, 1);
+  assert.deepEqual(seen.cues.filter((id) => resolveAudioCueRecipeId(id) === confirmRecipe), []);
 });
 
 test('PQ-164.00: cancel pops a normal screen and traps a locked one', () => {

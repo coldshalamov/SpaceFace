@@ -1044,8 +1044,9 @@ export function createUiInput(ctx, screenManager) {
       // Accept / Cancel (A / B).
       if (gp.actions.accept && gp.actions.accept.pressed) {
         activateFocused();
+        // The audio system voices ui:confirm itself; a second ui_confirm cue here played the
+        // same sample twice on every pad accept.
         bus.emit('ui:confirm', {});
-        bus.emit('audio:cue', { id: 'ui_confirm' });
       }
       if (gp.actions.cancel && gp.actions.cancel.pressed) {
         if (def && def.id === 'station') undock();
