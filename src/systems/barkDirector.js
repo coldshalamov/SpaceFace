@@ -45,7 +45,12 @@ import { hintTextFor } from './survivalAnnounce.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 
 const BARK_SET = new Set([...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS]);
-const VOICE_TTL_S = 1.2;
+// Floor hold AND queue stale-drop (VoiceQueue expireAt = enqueuedAt + ttl). Barks are
+// rate-limited by a 1.5 s gap and a live bark holds the floor for its own ttl, so a line
+// queued behind another bark needs more patience than that gap or it expires unread —
+// 1.2 s died at t=1.4 s while the gap was still closed. 4 s outlives both.
+export const BARK_VOICE_TTL_S = 4;
+const VOICE_TTL_S = BARK_VOICE_TTL_S;
 // Ledger copy needs the player-facing cargo name (same union lookup fragileCargo uses —
 // freight manifests can carry ore ids as well as market commodity ids).
 const CARGO_NAME_BY_ID = new Map([...COMMODITIES, ...ORES].map((entry) => [entry.id, entry.name]));
@@ -642,7 +647,7 @@ export const barkDirector = {
         const bark = admitNpcCounterplayBark(this, payload, this.state && this.state.simTime);
         const voice = this.helpers && this.helpers.voice;
         if (bark && voice && typeof voice.say === 'function') {
-          voice.say({ channel: 'bark', text: bark.text, kind: bark.role, ttl: 3, id: bark.actorId });
+          voice.say({ channel: 'bark', text: bark.text, kind: bark.role, ttl: BARK_VOICE_TTL_S, id: bark.actorId });
         }
       };
       this.bus.on('massline:npcCounterplay', this._onNpcCounterplay);
@@ -1337,7 +1342,7 @@ export const barkDirector = {
     queued.status = 'submitted';
     queued.submittedTick=tick;
     if (incident && !queued.recognition) incident.barkStatus = 'submitted';
-    if (!voice.say({ channel: 'bark', text: queued.text, kind: 'stuntRecognition', ttl: 3, id: queued.id, factionId: queued.factionId })) {
+    if (!voice.say({ channel: 'bark', text: queued.text, kind: 'stuntRecognition', ttl: BARK_VOICE_TTL_S, id: queued.id, factionId: queued.factionId })) {
       queued.status = 'queued'; if (incident && !queued.recognition) incident.barkStatus = 'queued';
     }
   },
