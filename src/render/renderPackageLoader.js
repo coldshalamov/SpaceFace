@@ -23,6 +23,7 @@ import {
   packageDetachDiagnostics,
 } from './packageCpuDetach.js';
 import { dedupeGltfTextureSources } from './imageSourceDedupe.js';
+import { dedupWarn } from '../core/warnDedup.js';
 
 const ABSOLUTE_URL_RE = /^[a-z][a-z\d+.-]*:/i;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -365,7 +366,7 @@ export function createRenderPackageLoader(options = {}) {
             collectResources: collectImmutableResources,
           });
         } catch (error) {
-          if (typeof console !== 'undefined') console.warn('[renderPackageLoader] cpu detach manifest failed', error);
+          dedupWarn('renderPackageLoader:cpu-detach-manifest', '[renderPackageLoader] cpu detach manifest failed', error);
         }
         return loaded;
       })();
@@ -1204,7 +1205,7 @@ export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
     }
     meshoptWorkerPoolStarted = true;
   } catch (error) {
-    console.warn('[renderPackageLoader] meshopt worker decode unavailable; decoding on the present thread', error);
+    dedupWarn('renderPackageLoader:meshopt-worker-decode', '[renderPackageLoader] meshopt worker decode unavailable; decoding on the present thread', error);
   }
 }
 

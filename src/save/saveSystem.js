@@ -193,6 +193,29 @@ const PLAYER_MODULE_INVENTORY_ENCODE_CHUNK = 512;
 const AUTOSAVE_BAG_CHUNK_MIN = 64;
 const AUTOSAVE_BAG_CHUNK_ITEMS = 64;
 const PLAYER_INCREMENTAL_CAPTURE_THRESHOLD = 256;
+
+// Resume the next restore chunk in a separate task after the arming one — a
+// rAF/timer callback resolving inline lands the whole next generator leg
+// inside the presented loading-paint frame it armed in (same class of seam
+// compilePresentSlice's bounded background post closes on the render side;
+// cloned here because the save layer stays render-free).
+function postRestoreTaskAtBackgroundPriorityBounded(callback, boundMs = 48) {
+  let fired = false;
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    callback();
+  };
+  const sched = typeof globalThis.scheduler === 'object' && globalThis.scheduler
+    ? globalThis.scheduler
+    : null;
+  const postTask = sched && typeof sched.postTask === 'function'
+    ? sched.postTask.bind(sched)
+    : null;
+  if (postTask) postTask(fire, { priority: 'background' });
+  else setTimeout(fire, 0);
+  setTimeout(fire, Math.max(0, Number(boundMs) || 0));
+}
 const PLAYER_CAPTURE_MAX_RESTARTS = 3;
 const SAVE_VALIDATION_CHUNK_CHARS = 8_192;
 const SAVE_WORKER_TIMEOUT_MS = 4000;
@@ -4720,7 +4743,7 @@ export const save = {
         if (done) return;
         done = true;
         this._restoreYieldStarved = viaTimer ? (this._restoreYieldStarved || 0) + 1 : 0;
-        resolve();
+        postRestoreTaskAtBackgroundPriorityBounded(resolve);
       };
       // After the timer wins twice running, the compositor is demonstrably starved and every
       // further gated boundary would burn its full 48ms — downgrade to setTimeout(0), which

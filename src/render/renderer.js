@@ -1,5 +1,6 @@
 import { isPhysicalMachinery, bindMachineryPresentation, machineryPresentationPlace, machineryRequestedPresentation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
 import { noteLaneFault, serviceFaultEpoch } from '../core/warnDedup.js';
+import { busFaultSummary } from '../core/eventBus.js';
 import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
 // Render system: owns the WebGLRenderer, scene, lights, camera, starfield, and the entity→mesh
@@ -339,6 +340,7 @@ import {
   collectCompileSubjectsSteps,
   collectUniqueCompileSubjects,
   compileSubjectsAcrossPresents,
+  postTaskAtBackgroundPriorityBounded,
   revealSubjectForCompile,
   revealSubjectForCompileSteps,
   revealSubjectWithAncestors,
@@ -9512,7 +9514,7 @@ function invokeRendererDisposer(resource, label, allow = true) {
   } catch (error) {
     // Teardown is best effort per resource. Continue retiring independent renderer resources even
     // when an optional subsystem has already been invalidated by a driver reset.
-    if (typeof console !== 'undefined') console.warn(`[render] ${label} dispose failed`, error);
+    stormWarn('render:resource-dispose', `[render] ${label} dispose failed`, error);
   }
   return true;
 }
@@ -9522,7 +9524,7 @@ function disposeRendererObject(object, label, allow = true, state = null) {
   try {
     disposeObject(object, null, state);
   } catch (error) {
-    if (typeof console !== 'undefined') console.warn(`[render] ${label} teardown failed`, error);
+    stormWarn('render:resource-teardown', `[render] ${label} teardown failed`, error);
     return false;
   }
   return true;
@@ -9543,7 +9545,7 @@ function unregisterRendererDynamicOwner(dynamicOwner) {
   try {
     return unregisterDynamicBufferOwner(dynamicOwner);
   } catch (error) {
-    if (typeof console !== 'undefined') console.warn('[render] dynamic buffer owner teardown failed', error);
+    stormWarn('render:dynamic-buffer-owner-teardown', '[render] dynamic buffer owner teardown failed', error);
     return false;
   }
 }
@@ -9721,7 +9723,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   try {
     boundaryManager?.abortAll?.('renderer-destroyed');
   } catch (error) {
-    if (typeof console !== 'undefined') console.warn('[render] sector boundary abort failed', error);
+    stormWarn('render:sector-boundary-abort', '[render] sector boundary abort failed', error);
   }
   try { cancelAuthoredUpgradeQueue(scene, 'renderer-destroyed'); } catch (_) {}
   for (const record of [owner._incomingSectorPrewarm, owner._currentSectorPrewarm, owner._authoredSectorPrewarmPending]) {
@@ -9772,7 +9774,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   disposeShipAuxPool(owner._shipAuxPool, scene, disposeGpu);
   if (disposeGpu) {
     try { disposeAsteroidInstancePool(owner._asteroidInstancePool); } catch (error) {
-      if (typeof console !== 'undefined') console.warn('[render] asteroid instance pool dispose failed', error);
+      stormWarn('render:asteroid-instance-pool-dispose', '[render] asteroid instance pool dispose failed', error);
     }
   } else {
     abandonAsteroidInstancePool(owner._asteroidInstancePool, scene);
@@ -11093,7 +11095,7 @@ export const render = {
         // cohort overlap is the point). On software GL the coarse phases below queue whole
         // bursts into the command buffer; draining each phase behind a task-queue slot keeps any
         // single forced drain bounded instead of draining the whole boot inside one frame.
-        const paceBootQueue = makeGpuQueuePacer(renderer);
+        const paceBootQueue = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
         // Bake only when the IBL source moved since the last bake — the 120 ms starfield bake
         // already covers the common cold-boot case, and a same-source re-bake is pure GL churn.
         if (typeof this._bakeEnv === 'function'
@@ -13355,7 +13357,11 @@ export const render = {
               const gl = renderer.getContext && renderer.getContext();
               if (gl && typeof gl.flush === 'function') gl.flush();
             } catch { /* context may already be lost */ }
-            resolve();
+            // Resolving inline would resume the next leg inside this rAF/timer
+            // task — post-present at background priority, bounded, like
+            // composeYield's fire() (a presented frame's timer arm must not
+            // land the whole next leg mid-frame).
+            postTaskAtBackgroundPriorityBounded(resolve);
           };
           if (typeof raf === 'function') {
             raf(finish);
@@ -16852,7 +16858,11 @@ export const render = {
               const gl = renderer.getContext && renderer.getContext();
               if (gl && typeof gl.flush === 'function') gl.flush();
             } catch { /* context may already be lost */ }
-            resolve();
+            // Resolving inline would resume the next leg inside this rAF/timer
+            // task — post-present at background priority, bounded, like
+            // composeYield's fire() (a presented frame's timer arm must not
+            // land the whole next leg mid-frame).
+            postTaskAtBackgroundPriorityBounded(resolve);
           };
           if (typeof raf === 'function') {
             raf(finish);
@@ -25646,7 +25656,7 @@ export const render = {
     const work = Promise.resolve(priorRetirement).catch(error => {
       // Prior cleanup failed after its GPU fence settled. Keep the diagnosis, but do not
       // let a rejected prerequisite permanently poison later appearance requests.
-      console.warn('[render] previous appearance retirement failed', id, error);
+      stormWarn('render:appearance-retirement', '[render] previous appearance retirement failed', id, error);
     }).then(async () => {
       assertActive();
       const snapshot = { ...e, occupantGeneration, pos: { ...e.pos }, flags: { ...e.flags },
@@ -25790,7 +25800,7 @@ export const render = {
             place:machineryRequestedPlace,request:Symbol('machinery-appearance'),failure});
         }
       }
-      if (error.name !== 'AbortError' && !waitingForClearance) console.warn('[render] appearance replacement retained previous visual', id, error);
+      if (error.name !== 'AbortError' && !waitingForClearance) stormWarn('render:appearance-replacement-retained', '[render] appearance replacement retained previous visual', id, error);
       return { status: 'retained', error };
     }).finally(() => {
       scope.finish();
@@ -25802,7 +25812,7 @@ export const render = {
     });
     retirements.set(id, record);
     observePipelineAdmission(record.retirement,
-      (error) => console.warn('[render] appearance replacement cleanup failed', id, error));
+      (error) => stormWarn('render:appearance-replacement-cleanup', '[render] appearance replacement cleanup failed', id, error));
     return record.completion;
   },
 
@@ -31501,6 +31511,11 @@ export const render = {
       ? this._gpuTimers.getCapability()
       : { available: false, status: 'unavailable', reason: 'not-installed', enabled: false };
 
+    // Bus-fault top-N next to laneFaults: the Error+stack inside a storming
+    // listener is only removable once forensics can name the thrower.
+    const busFaults = busFaultSummary(8);
+    if (this.state && this.state.render) this.state.render.busFaults = busFaults;
+
     return {
       activePath,
       bloomSelected,
@@ -31536,6 +31551,7 @@ export const render = {
         : (pathDetails && Number.isFinite(pathDetails.targets) ? pathDetails.targets : 0),
       grainSource: pathDetails && pathDetails.grainSource ? pathDetails.grainSource : null,
       grainFps: pathDetails && Number.isFinite(pathDetails.grainFps) ? pathDetails.grainFps : null,
+      busFaults,
       renderTargetAllocationsTotal: telemetry.renderTargetAllocationsTotal,
       renderTargetAllocationsDuringSample: telemetry.renderTargetAllocationsDuringSample,
       lastAllocationReason: telemetry.lastAllocationReason,

@@ -669,7 +669,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   // page's task queue for ~25 s this way — CI run 36486329212).
   const paceQueue = typeof options.paceQueue === 'function'
     ? options.paceQueue
-    : makeGpuQueuePacer(renderer);
+    : makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
   await yieldToMain();
   let batches;
   if (typeof partitionGeometryWorkSteps === 'function') {
@@ -788,7 +788,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   // without a per-texture drain the queue drains inside one forced finish downstream.
   const paceQueue = typeof options.paceQueue === 'function'
     ? options.paceQueue
-    : makeGpuQueuePacer(renderer);
+    : makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
   let textures;
   if (typeof collectStartupTexturesSteps === 'function') {
     const collectIt = collectStartupTexturesSteps(subjects);
