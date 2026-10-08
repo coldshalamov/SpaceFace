@@ -30,6 +30,13 @@ export function resolveMasslineInstrumentColumns(state) {
   };
 }
 
+/** The whip column is a countdown the pilot is standing on. Inside one second
+ *  it is 'soon' (the warn colour). A live longer count is 'idle'. No line is 'none'. */
+export function whipUrgency(whip) {
+  if (whip == null || !Number.isFinite(whip)) return 'none';
+  return whip < 1 ? 'soon' : 'idle';
+}
+
 function columnText(key, value) {
   if (value == null || !Number.isFinite(value)) return '—';
   if (key === 'load' || key === 'apex') return value.toFixed(2);
@@ -56,6 +63,7 @@ export function createMasslineCadenceReadout(parent) {
   .ml-cadence[data-open="true"]{border-color:var(--ml-accent)}
   .ml-cadence[data-open="true"] .ml-cadence__status{color:var(--ml-accent)}
   .ml-cadence[data-field="true"] .ml-cadence__status{color:var(--ml-warn)}
+  .ml-cadence[data-whip="soon"] [data-ml="whip"]{color:var(--ml-warn)}
   @media(max-width:600px){.ml-cadence{padding:11px 13px;width:280px}.ml-cadence__status{font-size:20px}}
   </style>
   <div class="ml-cadence__top"><span>MASSLINE / CADENCE</span><span class="ml-cadence__phase"></span></div>
@@ -85,7 +93,7 @@ export function createMasslineCadenceReadout(parent) {
   // JS-side last-value caches: textContent/hidden/dataset/getAttribute are real DOM reads —
   // keep them off the hot path like the rest of the HUD's write-on-change grammar.
   const text=(node,value)=>{if(node._mlText!==value){node._mlText=value;node.textContent=value;}};
-  const prev={hide:null,open:null,field:null,degraded:null,barX:null,barW:null,barO:null};
+  const prev={hide:null,open:null,field:null,degraded:null,barX:null,barW:null,barO:null,whip:null};
   const hideRoot=hide=>{if(prev.hide!==hide){prev.hide=hide;root.hidden=hide;}};
   let destroyed=false;
   return { element: root,
@@ -95,7 +103,10 @@ export function createMasslineCadenceReadout(parent) {
       const tether=state?.player?.tether, solution=state?.massline2?.throw?.solution;
       const hide=!tether?.active;
       hideRoot(hide);
-      if(hide)return;
+      if(hide){
+        if(prev.whip!=='none'){prev.whip='none';root.dataset.whip='none';}
+        return;
+      }
       const window=solution?.window,open=!!(solution?.valid&&solution.onSolution&&!solution.decisionStale&&!solution.degraded);
       const field=solution?.fieldAware===true;
       const degraded=solution?.degraded===true;
@@ -118,6 +129,8 @@ export function createMasslineCadenceReadout(parent) {
       text(el.apex, columnText('apex', columns.apex));
       text(el.exit, columnText('exit', columns.exit));
       text(el.whip, columnText('whip', columns.whip));
+      const urgency = whipUrgency(columns.whip);
+      if(prev.whip!==urgency){prev.whip=urgency;root.dataset.whip=urgency;}
       const openText=String(open),fieldText=String(field),degradedText=String(degraded);
       if(prev.open!==openText){prev.open=openText;root.dataset.open=openText;}
       if(prev.field!==fieldText){prev.field=fieldText;root.dataset.field=fieldText;}

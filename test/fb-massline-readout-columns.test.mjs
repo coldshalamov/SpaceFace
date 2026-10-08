@@ -9,6 +9,7 @@ import { masslineTelemetry } from '../src/systems/masslineTelemetry.js';
 import {
   createMasslineCadenceReadout,
   resolveMasslineInstrumentColumns,
+  whipUrgency,
 } from '../src/ui/masslineCadenceReadout.js';
 
 const SEED = 4242;
@@ -91,4 +92,50 @@ test('FB-011: the mounted readout paints the five columns and hides with no line
   const painted = resolveMasslineInstrumentColumns(state);
   assert.ok(Number.isFinite(painted.load));
   assert.ok(Number.isFinite(painted.exit));
+});
+
+function mountableParent() {
+  const node = () => ({
+    textContent: '', style: {}, dataset: {}, className: '',
+    setAttribute() {},
+  });
+  const root = {
+    className: '', hidden: false, innerHTML: '', dataset: {},
+    querySelector() { return node(); },
+    setAttribute() {},
+    remove() {},
+  };
+  const doc = { createElement() { return root; } };
+  return {
+    ownerDocument: doc,
+    append() {},
+    root,
+  };
+}
+
+test('FB-011: the whip column warns inside one second and goes quiet with no line', () => {
+  assert.equal(whipUrgency(0.4), 'soon');
+  assert.equal(whipUrgency(0), 'soon');
+  assert.equal(whipUrgency(1), 'idle');
+  assert.equal(whipUrgency(3.2), 'idle');
+  assert.equal(whipUrgency(null), 'none');
+  assert.equal(whipUrgency(undefined), 'none');
+
+  const parent = mountableParent();
+  const view = createMasslineCadenceReadout(parent);
+  const state = swingState();
+  masslineTelemetry.update(1 / 60, state);
+  state.player.masslineTelemetry.arcPreview.timeToWhip = 0.4;
+  view.update(state);
+  assert.equal(view.element.dataset.whip, 'soon');
+  assert.match(view.element.innerHTML, /data-whip="soon"/);
+
+  state.player.masslineTelemetry.arcPreview.timeToWhip = 2.5;
+  view.update(state);
+  assert.equal(view.element.dataset.whip, 'idle');
+
+  state.player.tether.active = false;
+  view.update(state);
+  assert.equal(view.element.dataset.whip, 'none');
+  view.destroy();
 });
