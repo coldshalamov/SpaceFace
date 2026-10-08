@@ -21,6 +21,7 @@ import { arcGauge, orbitRing, ring } from './instruments.js';
 import { createSpring } from './motion.js';
 import { createCounter } from './text.js';
 import { createSpeedDial, SPEED_DIAL } from './speedDial.js';
+import { hullPosterUrl } from '../hullPosters.js';
 import { nextFlightDecision, NEXT_DECISION_CLASS } from './nextDecision.js';
 import { ringLegendText } from './ringLegend.js';
 
