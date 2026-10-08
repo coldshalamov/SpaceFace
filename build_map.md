@@ -1020,7 +1020,7 @@ on this board — closed with evidence, routed to a lane, or minted as a numbere
 | 287 | ADMIT-SFQ-M | 36 mission briefs → mission rows | ADMIT | OPEN |
 | 288 | ADMIT-SFQ-ART | 36 model-family briefs → rows; routes to L-PICTURE write sets | ADMIT | OPEN |
 | 289 | ADMIT-SFQ-FX | 32 VFX/audio briefs → rows; routes to L-PICTURE / L-EAR | ADMIT | OPEN |
-| 290 | ADMIT-FABLE | 13 Fable packets never referenced on the board (FB-006/007/010/012/014/084/085/086/087/102/103/106/107) plus ORRERY-routed leftovers (FB-028, FB-055, FB-110, FB-130, FB-112, FB-008) → rows or lane routing | ADMIT | OPEN — ORRERY pieces route to L-INSTRUMENT. Handline already true: FB-009, FB-013 (test/fb-massline-receipts.test.mjs). FB-011 landed on the cadence readout. |
+| 290 | ADMIT-FABLE | 12 Fable packets never referenced on the board (FB-006/007/012/014/084/085/086/087/102/103/106/107) plus ORRERY-routed leftovers (FB-028, FB-055, FB-110, FB-130, FB-112, FB-008) → rows or lane routing | ADMIT | OPEN — ORRERY pieces route to L-INSTRUMENT. Handline already true: FB-009, FB-013, FB-010 (test/fb-massline-receipts.test.mjs). FB-011 landed on the cadence readout. |
 | 291 | ADMIT-DEPTH | `02_REMAINING_WORK.md` Depth roll-up + Alpha M-rows: admitted scope never decomposed → dispatchable leaves | ADMIT | OPEN |
 
 Already-rowed parked work is the rest of the remainder and stays visible where it is: rows 155
