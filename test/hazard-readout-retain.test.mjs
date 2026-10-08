@@ -66,6 +66,26 @@ test('hazard readout survives exiting a nested same-type disc', () => {
   }
 });
 
+test('the once-per-type counterplay hint speaks on a channel that can win the floor', () => {
+  const bus = fakeBus();
+  const state = makeState({ x: 480, z: 410 }, ASHFALL_DISCS);
+  const said = [];
+  hazardHints.init({ bus, state, helpers: { voice: { say: (m) => { said.push(m); return true; } } } });
+  try {
+    bus.emit('hazard:enter', { entityId: 'player', zoneType: 'debris' });
+    assert.equal(said.length, 1, 'first entry speaks the counterplay hint');
+    // 'warn' was never an arbiter channel — it fell to info priority (10) and the hint lost
+    // the floor to barks/news exactly when first contact made it matter. Teaching rides
+    // 'tutorial' (70): preempts chatter/objective and can hold during onboarding protection.
+    assert.equal(said[0].channel, 'tutorial');
+    assert.match(said[0].text, /tether|route|speed|time/i);
+    bus.emit('hazard:enter', { entityId: 'player', zoneType: 'debris' });
+    assert.equal(said.length, 1, 'same type stays silent after the first hint');
+  } finally {
+    hazardHints.destroy();
+  }
+});
+
 test('machinery boundary exits (zoneId, no entityId) obey the same retain law', () => {
   const bus = fakeBus();
   const state = makeState({ x: 480, z: 410 }, ASHFALL_DISCS);
