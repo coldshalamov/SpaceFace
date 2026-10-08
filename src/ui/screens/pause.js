@@ -943,6 +943,7 @@ export const pauseScreen = {
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
     mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
+    mk('Statistics', () => nav(ctx, 'pushScreen', 'statistics'), { group: 'Reference', bank: true, icon: 'info' });
     // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
     // assets; filters off by default. Esc returns here. Do not restyle this sheet.
     mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', bank: true, icon: 'scan' });
