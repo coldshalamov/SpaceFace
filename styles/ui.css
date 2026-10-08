@@ -95,6 +95,11 @@ body.sf-flight-cursor,
 body.sf-flight-cursor #gl-canvas,
 body.sf-flight-cursor #ui-root,
 body.sf-flight-cursor #hud { cursor: none; }
+/* While the reticle owns the pointer (pure flight), no descendant may re-summon the OS
+   cursor: interactive opt-ins (toasts, radar, deck options, cargo rows) drew a second
+   system cursor that flickered in and out as elements passed under the mouse. Hover
+   state carries the affordance; the reticle is the cursor. */
+body.sf-flight-cursor * { cursor: none !important; }
 #ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); contain: layout style paint; }
 #ui-root > div { position: absolute; }
 /* FB-100: --sf-hud-scale/--sf-hud-opacity (settings.video.hudScale/hudOpacity, applied on the
