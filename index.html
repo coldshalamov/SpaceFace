@@ -199,7 +199,7 @@
   <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" href="./src/render/uiStage.js" />
-  <!-- modulepreload:registry:begin -->
+    <!-- modulepreload:registry:begin -->
   <link rel="modulepreload" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
@@ -251,6 +251,7 @@
   <link rel="modulepreload" href="./src/audio/bandBeds.js" />
   <link rel="modulepreload" href="./src/audio/barkVoice.js" />
   <link rel="modulepreload" href="./src/audio/bombAudio.js" />
+  <link rel="modulepreload" href="./src/audio/combatFeedbackEar.js" />
   <link rel="modulepreload" href="./src/audio/combatVerbCues.js" />
   <link rel="modulepreload" href="./src/audio/cuePriorityBus.js" />
   <link rel="modulepreload" href="./src/audio/elementaryVoices.js" />
@@ -457,6 +458,10 @@
   <link rel="modulepreload" href="./src/data/bandRadio.js" />
   <link rel="modulepreload" href="./src/data/barks.js" />
   <link rel="modulepreload" href="./src/data/blueprints.js" />
+  <link rel="modulepreload" href="./src/data/bolusAudio.js" />
+  <link rel="modulepreload" href="./src/data/bolusForces.js" />
+  <link rel="modulepreload" href="./src/data/bolusLore.js" />
+  <link rel="modulepreload" href="./src/data/bolusPlay.js" />
   <link rel="modulepreload" href="./src/data/bombs.js" />
   <link rel="modulepreload" href="./src/data/borrowedVoice.js" />
   <link rel="modulepreload" href="./src/data/borrowedVoiceBody.js" />
@@ -635,6 +640,7 @@
   <link rel="modulepreload" href="./src/data/flavor/index.generated.js" />
   <link rel="modulepreload" href="./src/data/flightFeelEnvelopes.js" />
   <link rel="modulepreload" href="./src/data/flightTuning.js" />
+  <link rel="modulepreload" href="./src/data/foldAberrant.js" />
   <link rel="modulepreload" href="./src/data/frontierRegions/east.js" />
   <link rel="modulepreload" href="./src/data/frontierRegions/index.js" />
   <link rel="modulepreload" href="./src/data/frontierRegions/north.js" />
@@ -776,6 +782,7 @@
   <link rel="modulepreload" href="./src/data/tallyThreeBody.js" />
   <link rel="modulepreload" href="./src/data/tech.js" />
   <link rel="modulepreload" href="./src/data/techVerbLadder.js" />
+  <link rel="modulepreload" href="./src/data/theBolus.js" />
   <link rel="modulepreload" href="./src/data/titles.js" />
   <link rel="modulepreload" href="./src/data/towlineTable.js" />
   <link rel="modulepreload" href="./src/data/towlineTableBodies.js" />
@@ -864,6 +871,10 @@
   <link rel="modulepreload" href="./src/render/authoredMotion.js" />
   <link rel="modulepreload" href="./src/render/authoredUpgradePolicy.js" />
   <link rel="modulepreload" href="./src/render/bloom.js" />
+  <link rel="modulepreload" href="./src/render/bolusCable.js" />
+  <link rel="modulepreload" href="./src/render/bolusCanal.js" />
+  <link rel="modulepreload" href="./src/render/bolusSilhouettes.js" />
+  <link rel="modulepreload" href="./src/render/bolusView.js" />
   <link rel="modulepreload" href="./src/render/bombPresentation.js" />
   <link rel="modulepreload" href="./src/render/borrowedVoiceVisuals.js" />
   <link rel="modulepreload" href="./src/render/broodPresentation.js" />
@@ -933,6 +944,7 @@
   <link rel="modulepreload" href="./src/render/flightProductCooker.js" />
   <link rel="modulepreload" href="./src/render/flightReadySet.js" />
   <link rel="modulepreload" href="./src/render/flightRenderPackage.js" />
+  <link rel="modulepreload" href="./src/render/foldAberrantVisual.js" />
   <link rel="modulepreload" href="./src/render/forceLanguage/bombFlowSurface.js" />
   <link rel="modulepreload" href="./src/render/forceLanguage/catalog.js" />
   <link rel="modulepreload" href="./src/render/forceLanguage/effectLifecycle.js" />
@@ -974,6 +986,7 @@
   <link rel="modulepreload" href="./src/render/lod.js" />
   <link rel="modulepreload" href="./src/render/look.js" />
   <link rel="modulepreload" href="./src/render/machineVisuals.js" />
+  <link rel="modulepreload" href="./src/render/marrowCone.js" />
   <link rel="modulepreload" href="./src/render/masslineCableSurface.js" />
   <link rel="modulepreload" href="./src/render/masslineChainReadout.js" />
   <link rel="modulepreload" href="./src/render/masslinePresentation.js" />
@@ -1169,6 +1182,7 @@
   <link rel="modulepreload" href="./src/save/saveSystem.js" />
   <link rel="modulepreload" href="./src/save/saveWorker.js" />
   <link rel="modulepreload" href="./src/save/sharedPlayerStore.js" />
+  <link rel="modulepreload" href="./src/save/slotStill.js" />
   <link rel="modulepreload" href="./src/sim/killcamTape.js" />
   <link rel="modulepreload" href="./src/sim/sector/embodiment.js" />
   <link rel="modulepreload" href="./src/sim/titleAttractTape.js" />
@@ -1264,6 +1278,7 @@
   <link rel="modulepreload" href="./src/systems/flight.js" />
   <link rel="modulepreload" href="./src/systems/flightV3.js" />
   <link rel="modulepreload" href="./src/systems/flybyFocus.js" />
+  <link rel="modulepreload" href="./src/systems/foldAberrant.js" />
   <link rel="modulepreload" href="./src/systems/fragileCargo.js" />
   <link rel="modulepreload" href="./src/systems/gamepad.js" />
   <link rel="modulepreload" href="./src/systems/gateControlDirector.js" />
@@ -1357,6 +1372,7 @@
   <link rel="modulepreload" href="./src/systems/setPieceMissionOffers.js" />
   <link rel="modulepreload" href="./src/systems/shipCapabilities.js" />
   <link rel="modulepreload" href="./src/systems/shipLedger.js" />
+  <link rel="modulepreload" href="./src/systems/siteIndustryPlanner.js" />
   <link rel="modulepreload" href="./src/systems/siteLogistics.js" />
   <link rel="modulepreload" href="./src/systems/siteProduction.js" />
   <link rel="modulepreload" href="./src/systems/siteSurvey.js" />
@@ -1402,6 +1418,7 @@
   <link rel="modulepreload" href="./src/systems/tensionDirector.js" />
   <link rel="modulepreload" href="./src/systems/terrainAnchors.js" />
   <link rel="modulepreload" href="./src/systems/tetherGameplay.js" />
+  <link rel="modulepreload" href="./src/systems/theBolus.js" />
   <link rel="modulepreload" href="./src/systems/theHiveArena.js" />
   <link rel="modulepreload" href="./src/systems/titles.js" />
   <link rel="modulepreload" href="./src/systems/touch.js" />
@@ -1429,6 +1446,7 @@
   <link rel="modulepreload" href="./src/ui/asteroid/asteroidRenderer2d.js" />
   <link rel="modulepreload" href="./src/ui/asteroid/asteroidRenderer3d.js" />
   <link rel="modulepreload" href="./src/ui/asteroid/buildPalette.js" />
+  <link rel="modulepreload" href="./src/ui/asteroid/industryPlanner.js" />
   <link rel="modulepreload" href="./src/ui/asteroid/inspector.js" />
   <link rel="modulepreload" href="./src/ui/asteroid/worksPartLoader.js" />
   <link rel="modulepreload" href="./src/ui/automationPayoff.js" />
@@ -1653,7 +1671,10 @@
   <link rel="modulepreload" href="./src/ui/screens/crucibleLabControls.js" />
   <link rel="modulepreload" href="./src/ui/screens/crucibleLabTelemetry.js" />
   <link rel="modulepreload" href="./src/ui/screens/drill.js" />
+  <link rel="modulepreload" href="./src/ui/screens/industryReadout.js" />
   <link rel="modulepreload" href="./src/ui/screens/replay.js" />
+  <link rel="modulepreload" href="./src/ui/screens/resultsSheet.js" />
+  <link rel="modulepreload" href="./src/ui/screens/saveNotices.js" />
   <link rel="modulepreload" href="./src/ui/screens/shareCode.js" />
   <link rel="modulepreload" href="./src/ui/screens/stageHull.js" />
   <link rel="modulepreload" href="./src/ui/sectorLawPresenter.js" />
