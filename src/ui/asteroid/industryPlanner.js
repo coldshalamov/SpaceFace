@@ -130,7 +130,9 @@ export function createIndustryPlanner(host) {
         paragraph(`${fmt(plan.machineSeconds / 60)} powered machine-minutes before power, lane, input or export delays. This is work required, not an arrival time.`);
         paragraph('Machines must already exist. Import the first construction kit; do not count on a factory to build itself. Hold intermediate materials at the port, then choose each machine’s recipe in the Site drawer. This planner does not automate mode changes.');
       }
-    } catch (error) { paragraph(`Plan unavailable: ${error.message}`); }
+    } catch (_error) {
+      paragraph('This plan cannot be drawn from the recipes on file.');
+    }
   }
 
   // Asteroid Works installs its action handler on DOCUMENT in capture phase. A dialog's
