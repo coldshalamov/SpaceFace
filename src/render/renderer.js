@@ -1991,7 +1991,12 @@ export function* reattachResidentGpuMeshesSteps(owner) {
   const reattachNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
   let reattachStrideAt = reattachNow();
-  for (const [id, mesh] of owner._meshes) {
+  // Iterate a snapshot: a key deleted-then-re-added mid-yield (despawn →
+  // respawn, another bind lane) would re-visit the row under live-map
+  // semantics and pay _bindPresentationMesh / world.bindMesh / lanes.reserve
+  // twice; a mid-yield delete reads as a stale row and falls through to the
+  // deferred rekey guards, which already re-check the live map.
+  for (const [id, mesh] of Array.from(owner._meshes)) {
     if ((++scanned % 64) === 0 || reattachNow() - reattachStrideAt >= 2) {
       reattachStrideAt = reattachNow();
       yield;
@@ -2051,6 +2056,10 @@ export function* reattachResidentGpuMeshesSteps(owner) {
         yield;
       }
       if (owner._meshes.get(oldId) !== mesh || owner._meshes.has(entity.id)) continue;
+      // The target was resolved before the stride yields — it could have died
+      // or bound elsewhere in the window; rekeying onto a corpse pins the mesh
+      // under a dead entity's id.
+      if (entity.alive === false || (entity.mesh && entity.mesh !== mesh)) continue;
       if (typeof owner._unbindPresentationMesh === 'function') owner._unbindPresentationMesh(oldId, mesh);
       owner._meshes.delete(oldId);
       owner._meshes.set(entity.id, mesh);
@@ -29591,11 +29600,24 @@ export const render = {
               }
             } else try {
               const rescueOut = { receiverDelta: 0 };
+              // The rescue's own wall deadline bounds between roots — inside a
+              // root the drive rides the same parked-iterator contract as the
+              // restore leg: a sector-scale subtree yields mid-walk instead of
+              // paying one uninterruptible traverse inside the fault gate.
               const rescueChanged = driveShadowPolicySteps(this, root, root,
                 (entry && entry.lodLevel) || 'lod0', {
                   ...this._shadowPolicyOptions(entry && entry.entity, root),
                   out: rescueOut,
-                }, () => false);
+                }, () => armNow() >= rescueDeadline);
+              if (rescueChanged === null) {
+                // Mid-walk: flags half-applied — the parked iterator resumes
+                // on the next policy drive; the root keeps its pending slot
+                // and withheld casters exactly like the restore leg's row.
+                // Re-stamp self-dirty so the sync lane drives the parked walk.
+                this._shadowMapDirty = true;
+                if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+                continue;
+              }
               if (rescueChanged) {
                 this._shadowMapDirty = true;
                 if (!noteShadowPolicyChanged(this._shadowReceiverTally, {
@@ -29622,9 +29644,17 @@ export const render = {
         }
         if (pending.size === 0) {
           this._pendingDepthStageRoots = null;
+          this._depthStageScheduled = false;
           this._killDepthStageSession();
+          return;
         }
-        this._depthStageScheduled = false;
+        // Roots the fault gate couldn't drain (rescue deadline, deferred-owned
+        // marks, a spent forced wallet) would sit dark until an unrelated
+        // enqueue — keep the arm scheduled. Re-evals re-hit this gate cheaply;
+        // once the service epoch flips the fault count clears and the ceremony
+        // drains them, and a deferred leg's .finally re-queues into the same
+        // armed queue.
+        this._armDepthStage();
         return;
       }
       this._depthStageLedgerSkips = 0;
@@ -29888,7 +29918,21 @@ export const render = {
               // literal null) — denying on that compare parked every root the
               // leg successfully staged. Roots stay queued for the next arm.
               const verdictSig = lightSig != null ? lightSig : this._shadowCensusForFrame();
-              if (legDriveFailed !== true && legAborted !== true && legSet && verdictSig != null) {
+              // The deny verdict is only sound when the compare sig is the one
+              // the leg's marks actually keyed under. Two drift shapes break
+              // that: (a) the live census flipped mid-leg — the drive re-mints
+              // via lightSigFor, marks land under the new sig while the arm's
+              // pinned lightSig names the old; (b) the arm was unsigned and
+              // this consult serves the previous epoch's memo sig while the
+              // stepped re-mint pends. Either reads every staged caster
+              // unmarked and deny-parks honest roots — skip the verdict like
+              // an aborted leg and leave the roots queued (the safe direction).
+              const verdictLiveEpoch = shadowCensusEpoch();
+              const verdictStale = verdictLiveEpoch !== armSigEpoch
+                || (lightSig == null
+                  && !!this._shadowCensusMemo
+                  && this._shadowCensusMemo.epoch !== verdictLiveEpoch);
+              if (legDriveFailed !== true && legAborted !== true && legSet && verdictSig != null && !verdictStale) {
                 const entryByRoot = new Map(slice);
                 for (const [deferRoot, deferMeshes] of unstagedByRoot) {
                   let allUnmarked = deferMeshes.length > 0;
