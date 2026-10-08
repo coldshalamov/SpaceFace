@@ -668,6 +668,24 @@ export function resolveMachineWorkCycle(stateName) {
   });
 }
 
+/** Yard loop sits on the rock the site is built into. The status event has no position. */
+export function machineWorkPosition(state, payload) {
+  const given = payload && payload.pos;
+  if (given && Number.isFinite(given.x) && Number.isFinite(given.z)) {
+    return { x: given.x, z: given.z };
+  }
+  const sites = state && state.sites && state.sites.byId;
+  const site = sites && payload && payload.siteId != null ? sites[payload.siteId] : null;
+  const asteroidId = site && site.asteroidId;
+  const entities = state && state.entities;
+  const ent = asteroidId != null && entities && typeof entities.get === 'function'
+    ? entities.get(asteroidId)
+    : null;
+  const pos = ent && ent.alive !== false && ent.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  return { x: pos.x, z: pos.z };
+}
+
 /** SF-233 — a swell is evidence, not a timer on the anomaly palette. */
 export function resolveAnomalyEvidenceCue(input = {}) {
   const type = String(input.type || input.poiType || input.kind || '').toLowerCase();
@@ -5891,7 +5909,7 @@ export const audio = {
       this._endLoopVoice(current);
       delete rt.loops[key];
     }
-    const started = this._startLoopVoice(voice.recipeId, p.pos || null, voice.gain, { rate: voice.rate });
+    const started = this._startLoopVoice(voice.recipeId, machineWorkPosition(this.state, p), voice.gain, { rate: voice.rate });
     if (!started) return;
     rt.loops[key] = started;
   },
