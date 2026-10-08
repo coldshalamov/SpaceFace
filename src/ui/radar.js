@@ -1027,7 +1027,10 @@ export function placeRadarObjectiveLabel(textWidth, markerX, markerY, size, cent
     { x: x - width / 2, y: preferAbove ? y + verticalGap : y - verticalGap - height },
   ];
   const playerSafe = { x: c - 16, y: c - 16, width: 32, height: 32 };
+  const markerSafe = { x: x - 8, y: y - 8, width: 16, height: 16 };
   const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+  const hit = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  let markerClear = null;
   for (const candidate of candidates) {
     const rect = {
       x: clamp(candidate.x, 4, viewport - 4 - width),
@@ -1035,12 +1038,11 @@ export function placeRadarObjectiveLabel(textWidth, markerX, markerY, size, cent
       width,
       height,
     };
-    const overlapsPlayer = rect.x < playerSafe.x + playerSafe.width
-      && rect.x + rect.width > playerSafe.x
-      && rect.y < playerSafe.y + playerSafe.height
-      && rect.y + rect.height > playerSafe.y;
-    if (!overlapsPlayer || Math.hypot(x - c, y - c) < 20) return rect;
+    if (hit(rect, markerSafe)) continue;
+    if (!hit(rect, playerSafe) || Math.hypot(x - c, y - c) < 20) return rect;
+    if (!markerClear) markerClear = rect;
   }
+  if (markerClear) return markerClear;
   const angle = Math.atan2(y - c, x - c);
   return {
     x: clamp(c + Math.cos(angle) * Math.min(r * 0.55, 36) - width / 2, 4, viewport - 4 - width),
