@@ -362,11 +362,6 @@ function drainGltfParseQueue() {
     // A departed owner's queued parse must not burn one of the frame's parse
     // slots (or the whole GLTF_PARSE_FRAME_MS span) ahead of live entries —
     // the compile tail's consumer-liveness consult, one stage earlier.
-    if (typeof task.isLive === 'function' && !task.isLive()) {
-      task.resolve(null);
-      continue;
-    }
-    ran += 1;
     // Run inside the drain: a synchronous scene-graph build (parseAsync — the
     // roster-warm burst class the count cap was minted for) pays inside this
     // measured span. fn()'s returned promise can ALSO carry same-frame work —
@@ -375,6 +370,11 @@ function drainGltfParseQueue() {
     // measures the tail that lands unmeasured otherwise (a resolved async
     // task frees its lane but its tail still ran this frame).
     try {
+      if (typeof task.isLive === 'function' && !task.isLive()) {
+        task.resolve(null);
+        continue;
+      }
+      ran += 1;
       const out = task.fn();
       const tailStart = now();
       // Same-frame gate: only a settle inside this frame's microtask
@@ -530,7 +530,7 @@ function drainGltfCompileQueue() {
     try {
       const out = task.fn();
       const tailStart = now();
-      Promise.resolve(out).then(() => {
+      const accountSettle = () => {
         const tail = now() - tailStart;
         if (tail > 0 && tail <= 24) {
           notePacedFrameSpend(tail);
@@ -549,7 +549,10 @@ function drainGltfCompileQueue() {
             if (forced) noteForcedFrameSpend(Math.min(spent, FORCED_FRAME_BUDGET_MS));
           }
         });
-      });
+      };
+      // Observe both outcomes. A fulfillment-only accounting branch would
+      // reject independently even when the task's owner handles cancellation.
+      Promise.resolve(out).then(accountSettle, accountSettle);
       task.resolve(out);
     } catch (error) { task.reject(error); }
   }

@@ -293,8 +293,8 @@ import {
   updateEntityShieldBubblePresentation,
 } from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
-import { syncMarrowCone } from './marrowCone.js';
-import { syncBolusView } from './bolusView.js';
+import { syncMarrowCone, disposeMarrowCone } from './marrowCone.js';
+import { syncBolusView, disposeBolusView } from './bolusView.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../data/lookMoods.js';
 import { beginLookMood, updateLook } from './look.js';
@@ -9617,7 +9617,7 @@ function disposeRendererMeshRoots(owner, scene, disposeGpu) {
       try { owner._unbindPresentationMesh?.(id, mesh, true); } catch (_) { /* best effort */ }
       try { releaseAsteroidInstancesForEntity(owner._asteroidInstancePool, id); } catch (_) { /* best effort */ }
       removeRendererRoot(scene, mesh);
-      if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`, true, this.state);
+      if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`, true, state);
       const entity = state?.entities?.get?.(id);
       clearEntityMeshReference(entity, mesh);
       meshes.delete?.(id);
@@ -9747,6 +9747,8 @@ export function disposeRendererOwnedResources(owner, options = {}) {
     try { owner._crucibleGhostPresentation?.detach?.(); } catch (_) { /* best effort */ }
   }
   disposeRendererMeshRoots(owner, scene, disposeGpu);
+  disposeBolusView(owner, { disposeGpu });
+  disposeMarrowCone(owner, { disposeGpu });
   disposeContactShadowPool(owner._contactShadowPool, scene, disposeGpu);
   disposeShipAuxPool(owner._shipAuxPool, scene, disposeGpu);
   if (disposeGpu) {
@@ -9759,7 +9761,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   if (owner._hazardVisuals && Array.isArray(owner._hazardVisuals)) {
     for (const root of owner._hazardVisuals) {
       removeRendererRoot(scene, root);
-      if (disposeGpu) disposeRendererObject(root, 'hazard visual', true, this.state);
+      if (disposeGpu) disposeRendererObject(root, 'hazard visual', true, state);
     }
     owner._hazardVisuals.length = 0;
   }
