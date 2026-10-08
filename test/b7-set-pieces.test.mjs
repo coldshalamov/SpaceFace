@@ -40,7 +40,8 @@ const EXPECTED = {
   liner_toll_run: {
     order: 348,
     deck: 'civilian',
-    script: 'convoy',
+    // PB-MIS-B (5f782c3f6) made the gate a self-registered runtime; 'convoy' is its fallbackScript.
+    script: 'selfRegistered',
     zoneTypes: ['trade_lane'],
     verbs: ['escort', 'fight', 'outrun'],
     signal: 'liner_gate_line',
@@ -414,57 +415,16 @@ test('B7 archive_dive: recovered, stripped, core_lost, deadline, and no_budget b
   }
 });
 
-test('B7 liner_toll_run: escorted, ran, lost, delayed, and no_budget branches', async () => {
+// The toll run's gate geometry (pylons, request_crossing / silence / run_the_gap, escorted, delayed,
+// bypassed, ran, lost) is pinned on a real sim in test/pb-mis-b-route-choice.test.mjs. The old
+// exitX-crossing branches here asserted the runtime PB-MIS-B (5f782c3f6) replaced; only the
+// missing-cast guard is not covered there.
+test('B7 liner_toll_run: a toll run without its picket aborts instead of staging a gate', () => {
   const mod = ENCOUNTER_MODULES.find((m) => m.trigger.id === 'liner_toll_run');
-  const ships = planShipsFor(mod,
-    { archetype: 'mule_trader', team: 2, pos: { x: 0, z: 0 } },
-    [
-      { archetype: 'customs_cutter', team: 2, pos: { x: 700, z: -50 } },
-      { archetype: 'customs_cutter', team: 2, pos: { x: 700, z: 50 } },
-    ]);
-  const fire = (plan = ships) => {
-    const d = makeDriver();
-    const live = makeLive('liner_toll_run', plan.map((s) => ({ ...s, pos: { ...s.pos } })));
-    mod.runtime.fire(d, live, {});
-    return { d, live };
-  };
-  {
-    const { d, live } = fire();
-    assert.equal(live.phase, 'escort');
-    assert.equal(live.approach.signal, mod.default.scoutApproach.signal);
-    const liner = d.entsOf(live, 'liner')[0];
-    liner.pos.x = live.data.tollrun.exitX + 1;
-    d.setNow(1010);
-    mod.runtime.tick(d, live, {}, d.now());
-    assert.equal(d.calls.resolutions.at(-1).outcome, 'escorted');
-    assert.equal(d.calls.grants.at(-1).amount, 350);
-    assert.deepEqual(d.calls.despawns.at(-1).role, 'cutter');
-    assert.equal(d.entsOf(live, 'liner').length, 1);
-  }
-  {
-    const { d, live } = fire();
-    for (const e of d.entsOf(live, 'cutter')) e.alive = false;
-    d.setNow(1010);
-    mod.runtime.tick(d, live, {}, d.now());
-    assert.equal(d.calls.resolutions.at(-1).outcome, 'ran');
-    assert.ok(d.calls.reps.some((r) => r.delta < 0), 'breaking the picket costs rep');
-    assert.equal(d.calls.reps.at(-1).factionId, 'faction_scn', 'rep hits the picket\'s faction');
-  }
-  {
-    const { d, live } = fire();
-    d.entsOf(live, 'liner')[0].alive = false;
-    d.setNow(1010);
-    mod.runtime.tick(d, live, {}, d.now());
-    assert.equal(d.calls.resolutions.at(-1).outcome, 'lost');
-  }
-  {
-    const { d, live } = fire();
-    d.setNow(live.deadlineAt + 1);
-    mod.runtime.tick(d, live, {}, d.now());
-    assert.equal(d.calls.resolutions.at(-1).outcome, 'delayed');
-  }
-  {
-    const { d, live } = fire(ships.slice(0, 1));
-    assert.equal(live.outcome, 'aborted:no_budget');
-  }
+  const [liner] = planShipsFor(mod, { archetype: 'mule_trader', team: 2, pos: { x: 0, z: 0 } }, []);
+  const d = makeDriver();
+  const live = makeLive('liner_toll_run', [{ ...liner, pos: { ...liner.pos } }]);
+  mod.runtime.fire(d, live, {});
+  assert.equal(live.outcome, 'aborted:no_cast');
+  assert.equal(d.ents.size, 0, 'nothing spawns for a gate with no picket');
 });

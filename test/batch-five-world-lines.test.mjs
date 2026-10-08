@@ -49,7 +49,9 @@ test('a miner relocation in the current sector is one cited headline', () => {
   assert.equal(state.ui.marketNews.log.length, 0, 'off-sector relocation stays off the ticker');
   bus.emit('npcjobs:minerRelocated', { sectorId: 'sector_helios_prime', simTime: 12 });
   assert.equal(state.ui.marketNews.log.length, 1);
-  assert.match(state.ui.marketNews.log[0].text, /sector_helios_prime/);
+  // Plain-language ticker (83fd33bd8): the sector's name, never its id slug; the id stays on sourceRef.
+  assert.match(state.ui.marketNews.log[0].text, /Helios Prime/);
+  assert.doesNotMatch(state.ui.marketNews.log[0].text, /sector_helios_prime/);
   assert.equal(state.ui.marketNews.log[0].sourceRef, 'miner-relocated:sector_helios_prime:12');
   wired.destroy && wired.destroy();
   news.destroy && news.destroy();

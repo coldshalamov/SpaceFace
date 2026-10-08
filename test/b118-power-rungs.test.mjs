@@ -236,7 +236,7 @@ test('skim_collects_band harvests the ring with the scoop open', () => {
     }
     assert.ok(result.verdict, 'the closed-scoop run must resolve');
     assert.equal(result.verdict.kind, 'fail');
-    assert.equal(result.verdict.text, 'SCOOP CLOSED');
+    assert.equal(result.verdict.text, 'THE SCOOP NEVER OPENED');
     assert.equal(sim.collected, 0);
   }
 
