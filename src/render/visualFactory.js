@@ -46,6 +46,7 @@ import { canonicalizeObjectSurfaceProgramKeys, canonicalizeObjectSurfaceProgramK
 import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCell, opticCellPoolResources } from './opticCellPresentation.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
+import { buildNurseryMineralRib } from './veilRayNurseryVisuals.js';
 import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import {
@@ -5950,6 +5951,7 @@ export function createVisualFactory() {
     build(e) {
       try {
         if (!e) return null;
+        if (Number.isInteger(e.data?.veilNurseryRib)) return stampBuiltVisual(buildNurseryMineralRib(e));
         if (isLatchActor(e) || isTallyThreeAssessor(e)) {
           const root = new THREE.Group(); root.name = isLatchActor(e) ? 'LatchNineAuthoredPending' : 'TallyThreeAuthoredPending'; return root;
         }

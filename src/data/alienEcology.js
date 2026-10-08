@@ -214,6 +214,19 @@ export function infestationModuleById(id) {
 
 // ── Site registry (doc 09 — the vertical slice owns the only entry) ──────────────────────────
 export const ALIEN_SITES = Object.freeze({
+  veil_ray_nursery: Object.freeze({
+    siteId: 'veil_ray_nursery', sectorId: 'sector_charon_expanse',
+    zoneId: 'zone_charon_cinder_nursery', poiId: 'poi_charon_veil_ray_nursery',
+    name: 'Veil-Ray Nursery', strainId: 'charon_grave', baseContamination: 0.12,
+    // A satellite of the existing Cinder Nursery, revealed by the existing R2 taxonomy.
+    center: Object.freeze({ x: 2020, z: -1220 }), requiresRevelation: 2,
+    nursery: true, sterile: true,
+    arrivalBands: Object.freeze({ long: 800, mid: 450, close: 180 }),
+    arrivalLines: Object.freeze({ long: 'Three pale membranes shelter a smaller flock beside the Cinder Nursery.',
+      mid: 'Fractured mineral ribs leave an eastern mouth and an outer bypass. Scan pulses, weapons and sustained thrust scatter the rays.',
+      close: 'Drift quietly outside the crescent to observe. A passive survey takes twelve seconds; nothing needs to be harvested.' }),
+    faunaCast: Object.freeze({ veil_ray: 3 }),
+  }),
   cinder_nursery: Object.freeze({
     siteId: 'cinder_nursery',
     worldSiteId: 'world_site_charon_cinder_nursery',

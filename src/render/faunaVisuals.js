@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { faunaSpeciesById } from '../data/alienFauna.js';
 import { alienStrainById } from '../data/alienEcology.js';
 import { creatureSkin } from './creatureSkinLibrary.js';
+import { buildNurseryRay, buildNurseryFlock } from './veilRayNurseryVisuals.js';
 
 const TISSUE = 0x9aa08e;
 const FILAMENT = 0xc94f3d;
@@ -681,6 +682,9 @@ export function buildFaunaMesh(entity) {
   const species = faunaSpeciesById(eco && eco.speciesId);
   if (!species) return null;
   const colors = strainColors(entity);
+  if (eco.siteId === 'veil_ray_nursery') {
+    return eco.aggregate ? buildNurseryFlock(entity, colors, tissueMat) : buildNurseryRay(entity, colors, tissueMat);
+  }
   const root = BUILDERS[species.id] ? BUILDERS[species.id](colors, species) : null;
   if (root) {
     root.userData.kind = 'fauna';
