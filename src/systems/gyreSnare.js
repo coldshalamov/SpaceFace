@@ -1493,7 +1493,9 @@ export const gyreSnare = {
       : 1;
     pub.fuseS = (player && rt.phase !== PHASE.OFF)
       ? this._cap(player) / Math.max(0.001, D.capDrainPerS * drainMult) : 0;
-    if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlS = 0; pub.ballClumpRadius = 0; }
+    // No-live-ball hygiene: heading zeroes with the rest of the ball channels —
+    // covers every exit path (boundary drops bypass the retire lanes above).
+    if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlS = 0; pub.ballClumpRadius = 0; pub.ballVx = 0; pub.ballVz = 0; }
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
     pub.towCount = rt.towCount || 0;

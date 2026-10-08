@@ -2432,3 +2432,45 @@ test('bus-less host: the tear snap and quiet-TTL retire are sim mutations, not c
   assert.equal(ball.data.gyrePrevImpactScale, undefined, 'the stash consumed');
   assert.equal(sys._rt.ballIds.length, 0, 'watch list emptied');
 });
+
+test('mid-hold protected adoption: a mission-pinned core is handed back, not held', () => {
+  const t = boot(9091);
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  core.data.despawnAt = t.state.simTime + 20; // authored deadline
+  core.ttl = 30;                            // authored countdown (entity channel)
+  t.state.input.actions.gyreSnare = true;
+  for (let i = 0; i < 15; i++) t.sim.step();
+  assert.equal(t.sys._rt.phase, 'holding');
+  assert.equal(t.sys._rt.coreId, core.id);
+  assert.equal(core.data.despawnAt, undefined, 'snag stashed + cleared the authored deadline');
+  assert.equal(core.ttl, Infinity, 'stasis froze the countdown');
+  // A mission/loot system adopts the held wreck mid-HOLD.
+  core.data.missionPinned = true;
+  t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'adoption frees the beam');
+  assert.equal(t.sys._rt.coreId, null);
+  assert.equal(core.data.gyreCore, undefined, 'the mark sheds');
+  assert.ok(core.data.despawnAt > t.state.simTime, 'authored despawnAt restored (still in the future)');
+  assert.equal(core.data.gyrePrevDespawnAt, undefined, 'despawnAt stash consumed');
+  assert.ok(Math.abs(core.ttl - 30) < 0.2, `authored ttl restored under the future-only contract (got ${core.ttl})`);
+  assert.equal(core.data.gyrePrevTtl, undefined, 'ttl stash consumed');
+  assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_adopted'),
+    'drop reason is core_adopted');
+});
+
+test('protected adoption at the release edge bowls nothing', () => {
+  const t = boot(9191);
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  t.state.input.actions.gyreSnare = true;
+  for (let i = 0; i < 15; i++) t.sim.step();
+  assert.equal(t.sys._rt.phase, 'holding');
+  // The adoption lands between the last HOLD tick and the release — the
+  // launch-edge guard must hand back instead of bowling protected cargo.
+  core.data.missionPinned = true;
+  release(t);
+  assert.equal(t.sys._rt.phase, 'off', 'the beam releases, nothing launches');
+  assert.equal(core.data.gyreCore, undefined, 'the mark sheds');
+  assert.ok(!t.events.some((e) => e.name === 'gyre:launched'), 'no launch fired');
+  assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_adopted'),
+    'drop reason is core_adopted, not released');
+});
