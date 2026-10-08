@@ -1,6 +1,8 @@
 import { isLatchActor,LATCH_PLACE_FILE,latchPlaceTransform,latchNineCatalogRow } from './latchNineVisuals.js';
 import { isTallyThreeAssessor, TALLY_THREE_PLACE_FILE } from './tallyThreeVisuals.js';
 import { tallyThreePlaceTransform } from '../data/tallyThreeBody.js';
+import { isRedKiteEntity, RED_KITE_RADIUS } from '../data/redKiteBody.js';
+import { isSableVennEntity, SABLE_VENN_RADIUS } from '../data/sableVennBody.js';
 import { recordCeresWorkfleetAuthoredSource, recordLatchAuthoredSource } from '../core/machineryPresentation.js';
 import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
 import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
@@ -1249,6 +1251,8 @@ const REQUIRED_WHOLE_SHIP_ASSET_REFS = Object.freeze(new Set([
  * kit cannot substitute while those bodies decode. Traffic-role maps still win over defId, so
  * Helios Lark/Span/Cradle stay on courier/hauler/miner. */
 export function requiresProductionWholeShipForEntity(entity) {
+  if (isRedKiteEntity(entity)) return true;
+  if (isSableVennEntity(entity)) return true;
   if (ceresWorkfleetRole(entity) === 'breaker') return true;
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
   const data = entity.data;
@@ -1669,6 +1673,8 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
   }),
 });
 const WHOLE_SHIP_LOD_FAMILY_BY_FILE = Object.freeze(Object.fromEntries([
+  ['wholeships/red_kite.glb', Object.freeze({lod0:'wholeships/red_kite.glb',lod1:'wholeships/red_kite_lod1.glb',lod2:'wholeships/red_kite_lod2.glb'})],
+  ['wholeships/sable_patchwork.glb', Object.freeze({lod0:'wholeships/sable_patchwork.glb',lod1:'wholeships/sable_patchwork_lod1.glb',lod2:'wholeships/sable_patchwork_lod2.glb'})],
   ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID).map((family) => [family.lod0, family]),
   ['wholeships/massline_express_liner_v1.glb', Object.freeze({
     lod0: 'wholeships/massline_express_liner_v1.glb',
@@ -2066,12 +2072,16 @@ function placeStampEnvelopeBounds(entity, bounds, boundary) {
 
 /** Source-origin fit shared by raw and packaged Ceres hull composition. */
 export function wholeShipHullPlacement(record) {
-  const scale = record.assetId === CERES_BREAKER_ASSET ? CERES_BREAKER_NORMALIZED_SCALE : null;
+  const scale = String(record.assetId).startsWith('SF_SHIP_RED_KITE') ? 1 / RED_KITE_RADIUS
+    : String(record.assetId).startsWith('SF_SHIP_SABLE_PATCHWORK') ? 1 / SABLE_VENN_RADIUS
+    : record.assetId === CERES_BREAKER_ASSET ? CERES_BREAKER_NORMALIZED_SCALE : null;
   return { position: [0, 0, 0], targetLength: scale == null ? 1.72 : record.bounds.size[0] * scale, label: 'Hull' };
 }
 
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
+  if (isRedKiteEntity(entity)) return liveWholeShipSelection('wholeships/red_kite.glb','SF_SHIP_RED_KITE','red_kite');
+  if (isSableVennEntity(entity)) return liveWholeShipSelection('wholeships/sable_patchwork.glb','SF_SHIP_SABLE_PATCHWORK','sable_patchwork');
   if (ceresWorkfleetRole(entity) === 'breaker') {
     return liveWholeShipSelection(CERES_BREAKER_FILE, CERES_BREAKER_ASSET, 'ceres_breaker');
   }
@@ -10327,6 +10337,8 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   if (hullRecord && ceresWorkfleetRole(entity) === 'breaker') {
     root.userData.ceresWorkfleetAuthoredSource = { assetId: hullRecord.assetId, file: hullRecord.url };
   }
+  if (hullRecord && isRedKiteEntity(entity)) root.userData.redKiteAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
+  if (hullRecord && isSableVennEntity(entity)) root.userData.sableVennAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   yield;
   let hullPartRoot = null;
   if (hullRecord) {
@@ -10472,7 +10484,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
   ensureStandardSockets(hull, hullRecord);
-  if (!ceresWorkfleetRole(entity)) attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
+  if (!ceresWorkfleetRole(entity) && !isRedKiteEntity(entity) && !isSableVennEntity(entity)) attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually

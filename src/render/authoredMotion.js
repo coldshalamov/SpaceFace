@@ -1,5 +1,7 @@
 import { isLatchActor, createLatchNineVisualDriver } from './latchNineVisuals.js';
 import { isTallyThreeAssessor, createTallyThreeVisualDriver } from './tallyThreeVisuals.js';
+import { isRedKiteCourier, createRedKiteVisualDriver } from './redKiteVisuals.js';
+import { isSableVennWorkshop, createSableVennVisualDriver } from './sableVennVisuals.js';
 import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
 // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
 //
@@ -103,8 +105,12 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   const workfleet=!!workfleetRole;
   const latch=isLatchActor(entity);
   const tally=isTallyThreeAssessor(entity);
-  if (!root || (!live.length && !workfleet && !latch && !tally)) return null;
+  const redKite=isRedKiteCourier(entity);
+  const sable=isSableVennWorkshop(entity);
+  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable)) return null;
   const tallyDriver=tally?createTallyThreeVisualDriver(root,entity):null;
+  const redKiteDriver=redKite?createRedKiteVisualDriver(root,entity):null;
+  const sableDriver=sable?createSableVennVisualDriver(root,entity):null;
   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
   const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):latch?createLatchNineVisualDriver(root,entity):null;
   const priorDriveUpdate=root.userData.updateDriveState;
@@ -147,6 +153,8 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     if (root.userData.updateCeresPhysicalState === updatePhysical) delete root.userData.updateCeresPhysicalState;
     propulsion?.dispose();
     tallyDriver?.dispose();
+    redKiteDriver?.dispose();
+    sableDriver?.dispose();
     if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
       if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
       else delete root.userData.updateDriveState;
@@ -199,6 +207,8 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     for (const controller of live) controller.update(simNow, a11y);
     updatePhysical?.(liveEntity, a11y);
     tallyDriver?.update(liveEntity, simNow, a11y, state);
+    redKiteDriver?.update(liveEntity, simNow, a11y, state);
+    sableDriver?.update(liveEntity, simNow, a11y, state);
 
   };
   root.userData.authoredMotionEvent = function authoredMotionEvent(type, payload, simNow) {

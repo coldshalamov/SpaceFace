@@ -32,6 +32,8 @@ import { latchNine } from '../systems/latchNine.js';
 import { scissorwake } from '../systems/scissorwake.js';
 import { tallyThree } from '../systems/tallyThree.js';
 import { lastShift } from '../systems/lastShift.js';
+import { redKite } from '../systems/redKite.js';
+import { sableVenn } from '../systems/sableVenn.js';
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
@@ -266,6 +268,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['scissorwake', scissorwake],
     ['tallyThree', tallyThree],
     ['lastShift', lastShift],
+    ['redKite', redKite],
+    ['sableVenn', sableVenn],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],

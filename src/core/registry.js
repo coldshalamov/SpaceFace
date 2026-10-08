@@ -34,6 +34,9 @@ import { scissorwake } from '../systems/scissorwake.js';
 import { tallyThree } from '../systems/tallyThree.js';
 import { lastShift } from '../systems/lastShift.js';
 import { lastShiftPrompt } from '../ui/lastShiftPrompt.js';
+import { redKite } from '../systems/redKite.js';
+import { redKitePrompt } from '../ui/redKitePrompt.js';
+import { sableVenn } from '../systems/sableVenn.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
@@ -466,6 +469,9 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['tallyThree', tallyThree],
     ['lastShift', lastShift],
     ['lastShiftPrompt', lastShiftPrompt],
+    ['redKite', redKite],
+    ['redKitePrompt', redKitePrompt],
+    ['sableVenn', sableVenn],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],

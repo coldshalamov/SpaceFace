@@ -1,0 +1,3393 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.red-kite-lod1.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.anchor.socket-courier-canister",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5999999046325684,
+        1.5700000524520874,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Courier_Canister",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5999999046325684,
+        1.5700000524520874,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.659999847412109,
+        -0.03999999910593033,
+        5,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.659999847412109,
+        -0.03999999910593033,
+        5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.anchor.socket-engine-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.569999694824219,
+        -0.12999999523162842,
+        -1.3799999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Port",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.569999694824219,
+        -0.12999999523162842,
+        -1.3799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.anchor.socket-engine-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.569999694824219,
+        -0.12999999523162842,
+        1.3799999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Starboard",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentNodeId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.569999694824219,
+        -0.12999999523162842,
+        1.3799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.75,
+        -0.03999999910593033,
+        5,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentNodeId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.75,
+        -0.03999999910593033,
+        5,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.red-kite-lod1",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f7c8d82e80e2f3eab595daa1956e0437122e2d4ebea50c0c18fb56a649ec53ea",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-port-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-port-armor"
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-starboard-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-starboard-armor"
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-flap-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-flap-armor"
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.motion-red-kite-clamp-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.red-kite-lod1.node.motion-red-kite-clamp-port"
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.motion-red-kite-clamp-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.red-kite-lod1.node.motion-red-kite-clamp-starboard"
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.motion-red-kite-flap.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.red-kite-lod1.node.motion-red-kite-flap"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          7.988974571228027,
+          0.8900285363197327,
+          -1.9995468854904175
+        ],
+        "min": [
+          -6.992896556854248,
+          0.5699714422225952,
+          -5.800453186035156
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "877d6fe9ac1829c393a6d6529457de793b4ecdee190c04db4680c4c6fe11a67f",
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-0.primitive.0",
+      "indexCount": 852,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_RED_KITE_PORT_SAIL_0",
+      "nodeId": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-0",
+      "primitiveIndex": 0,
+      "vertexCount": 712
+    },
+    {
+      "bounds": {
+        "max": [
+          7.9907684326171875,
+          0.8899089097976685,
+          -3.0052483081817627
+        ],
+        "min": [
+          0.0033680149354040623,
+          0.5700910687446594,
+          -9.991268157958984
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f099c0bb651cde329be260aef00d54bdd832aacfaff0c14b84574be868d7c6b2",
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-1.primitive.0",
+      "indexCount": 708,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_RED_KITE_PORT_SAIL_1",
+      "nodeId": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-1",
+      "primitiveIndex": 0,
+      "vertexCount": 580
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9935675859451294,
+          0.8899838328361511,
+          -7.150014877319336
+        ],
+        "min": [
+          -2.1934850215911865,
+          0.5700161457061768,
+          -9.991132736206055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c789516871598e1bba2c4bbffc00d1ec4fcfbf3ab76c8141043720102e7a8e9",
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-2.primitive.0",
+      "indexCount": 708,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_RED_KITE_PORT_SAIL_2",
+      "nodeId": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-2",
+      "primitiveIndex": 0,
+      "vertexCount": 588
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9823992252349854,
+          0.6899505853652954,
+          -0.999893307685852
+        ],
+        "min": [
+          -4,
+          0.0600493922829628,
+          -3.5001068115234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f0eaa9fcc336483e8aa4279f1933e3c18199a5ca0452dd01342226d4f06d140a",
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-spar.primitive.0",
+      "indexCount": 600,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_RED_KITE_PORT_SPAR",
+      "nodeId": "sf.render.red-kite-lod1.node.collision-red-kite-port-spar",
+      "primitiveIndex": 0,
+      "vertexCount": 512
+    },
+    {
+      "bounds": {
+        "max": [
+          11.7992582321167,
+          1.057909607887268,
+          1.3804105520248413
+        ],
+        "min": [
+          -7.399345397949219,
+          -0.7490454316139221,
+          -1.3804105520248413
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eca60975fdaeca8a9cc3580ad01efec44d7fc9cf73c17bae2dd12649d86b8bc4",
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-pressure-dart.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_RED_KITE_PRESSURE_DART",
+      "nodeId": "sf.render.red-kite-lod1.node.collision-red-kite-pressure-dart",
+      "primitiveIndex": 0,
+      "vertexCount": 881
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.2004063129425049,
+          0.7498842477798462,
+          5.799863815307617
+        ],
+        "min": [
+          -6.660073280334473,
+          -0.6998842358589172,
+          4.200136661529541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d959c5e4565ebed33861135dcfc4474493a3c1f51be8f1ceb7964727a493880a",
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-drive.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_RED_KITE_STARBOARD_DRIVE",
+      "nodeId": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-drive",
+      "primitiveIndex": 0,
+      "vertexCount": 845
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.1023061275482178,
+          0.23004098236560822,
+          4.998313903808594
+        ],
+        "min": [
+          -5.8935465812683105,
+          -0.3800409436225891,
+          1.100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c16cc7329652a0af498d533d65b7487971a235869f479b0cc736c7b3e1f3ec1c",
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-spar.primitive.0",
+      "indexCount": 660,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_RED_KITE_STARBOARD_SPAR",
+      "nodeId": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-spar",
+      "primitiveIndex": 0,
+      "vertexCount": 554
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.949957847595215,
+          0.50981605052948,
+          -0.7835004925727844
+        ],
+        "min": [
+          -10.569999694824219,
+          -0.5877030491828918,
+          -1.850000262260437
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "56b2c85f1a8efb20106475a5d51a201a98c62bf1ec9ca97b000f499f6984a36e",
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-stern-port.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_RED_KITE_STERN_PORT",
+      "nodeId": "sf.render.red-kite-lod1.node.collision-red-kite-stern-port",
+      "primitiveIndex": 0,
+      "vertexCount": 826
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.949957847595215,
+          0.50981605052948,
+          1.850000262260437
+        ],
+        "min": [
+          -10.569999694824219,
+          -0.5877030491828918,
+          0.7835004925727844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a3b9ab5c134bc74243c4c3c077d5b9a3947bf46c07cb5e47f85503c678e93acc",
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-stern-starboard.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_RED_KITE_STERN_STARBOARD",
+      "nodeId": "sf.render.red-kite-lod1.node.collision-red-kite-stern-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 822
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9820382595062256,
+          1.9295268058776855,
+          5.8001275062561035
+        ],
+        "min": [
+          -6.499875545501709,
+          -0.6474196910858154,
+          -9.698918342590332
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "44149125d968c2a1b273ea1ed0196177cad9aa5214b2ed498d01952e3e186d7d",
+      "id": "sf.render.red-kite-lod1.node.lod1-armor.primitive.0",
+      "indexCount": 2220,
+      "indexed": true,
+      "materialHash": "0de44fa6e689963345aa7f06bb14a0dfc7a1234db875d88a2abea4929fa62ec3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 712
+    },
+    {
+      "bounds": {
+        "max": [
+          7.400028705596924,
+          1.149911880493164,
+          0.549446702003479
+        ],
+        "min": [
+          3.5999648571014404,
+          0.8502395153045654,
+          -0.549622654914856
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fe65fb617610a31f39b74f992852c9e0456ce788628c20ed2c45da56b747fa5a",
+      "id": "sf.render.red-kite-lod1.node.lod1-canopy.primitive.0",
+      "indexCount": 762,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_CANOPY",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 187
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.361133098602295,
+          0.5474792122840881,
+          5.587500095367432
+        ],
+        "min": [
+          -10.569839477539062,
+          -0.6274791955947876,
+          -1.720750093460083
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5ea1241d024eb8e407b1f2d7a31de4a7fe69cf712c243de5e98e2cc0a8a65adb",
+      "id": "sf.render.red-kite-lod1.node.lod1-hook-drive-core.primitive.0",
+      "indexCount": 984,
+      "indexed": true,
+      "materialHash": "f6d728a95abef4b57bc593dbd60ef356f726c8b41cc1c7ca61785ab6beb30c4a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 358
+    },
+    {
+      "bounds": {
+        "max": [
+          0.042500000447034836,
+          1.0197514295578003,
+          -9.67750072479248
+        ],
+        "min": [
+          -0.042500000447034836,
+          0.960248589515686,
+          -9.762499809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "728c7b3d67e0784fc84821d40830b4a7ce2ec5d8a9d0b440b9710fc42edb30ec",
+      "id": "sf.render.red-kite-lod1.node.lod1-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "098c9708078bbaa98c4b60ebda4d4fbfdf0d7adf18a0b69f55ba0f4fac758ee2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.557499885559082,
+          0.5997514128684998,
+          5.742499828338623
+        ],
+        "min": [
+          -2.6424999237060547,
+          0.5402485728263855,
+          5.65749979019165
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d177ba49343b3571724a5ae2e5b1ea796ad878834e43eaffa7255469c8320746",
+      "id": "sf.render.red-kite-lod1.node.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f68c3db67969e9e0baea23a8c176f681e9d45be0104f35681896e40666027d99",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.800067901611328,
+          1.1099356412887573,
+          1.6490110158920288
+        ],
+        "min": [
+          -9.349037170410156,
+          -0.46493592858314514,
+          -9.990839004516602
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2c0394cf54462ee8c01c02fa03d0b966937724226e02cd6e4093222ef88b0de8",
+      "id": "sf.render.red-kite-lod1.node.lod1-hull.primitive.0",
+      "indexCount": 2520,
+      "indexed": true,
+      "materialHash": "c642f2f9c3ddd76f2ae4dda9f6d20e68e3de790695dff24f151049c4578e731d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 848
+    },
+    {
+      "bounds": {
+        "max": [
+          11.780753135681152,
+          2.043558120727539,
+          5.677071571350098
+        ],
+        "min": [
+          -10.569999694824219,
+          -0.7503713369369507,
+          -10.048330307006836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "181cb821f128e036d6f18cd0f31a74e5a6a2049219bb330ad09bc9afcc692156",
+      "id": "sf.render.red-kite-lod1.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 7338,
+      "indexed": true,
+      "materialHash": "2284f0794510fa1dc5fa0616921ea7fcdf6b60697250bb098a47825222df44ff",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 2334
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.9161654710769653,
+          2.140479454299836,
+          -0.38832832410557316
+        ],
+        "min": [
+          -3.28383469581604,
+          1.2511835009842829,
+          -0.8538459138609643
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6b98cedc293afb0a429a492a1f7cd70e888d5c7fa4a2feb136b8d4f474916e25",
+      "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-port-armor.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "0de44fa6e689963345aa7f06bb14a0dfc7a1234db875d88a2abea4929fa62ec3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_RED_KITE_CLAMP_PORT_Armor",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-port-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 450
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.9161653518676758,
+          2.1421051897386185,
+          0.8538459747243882
+        ],
+        "min": [
+          -3.283834934234619,
+          1.2511394343992597,
+          0.3883282632421493
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e0948818d5ec84fc4a47b23ea3d59a707b482c8cfd359ad2e8afcff75c4862c0",
+      "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-starboard-armor.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "0de44fa6e689963345aa7f06bb14a0dfc7a1234db875d88a2abea4929fa62ec3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_RED_KITE_CLAMP_STARBOARD_Armor",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-starboard-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 450
+    },
+    {
+      "bounds": {
+        "max": [
+          0.49971333146095276,
+          0.8489275557557835,
+          -5.8501366866013464
+        ],
+        "min": [
+          -3.4924583435058594,
+          0.5998965518911586,
+          -7.0496035325148645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "767b05d4ae1eb85fe482d61f66380ba2d8eb32c6bb7b6316e29fa31ba0c7d0b0",
+      "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-flap-armor.primitive.0",
+      "indexCount": 378,
+      "indexed": true,
+      "materialHash": "0de44fa6e689963345aa7f06bb14a0dfc7a1234db875d88a2abea4929fa62ec3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_RED_KITE_FLAP_Armor",
+      "nodeId": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-flap-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 123
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "098c9708078bbaa98c4b60ebda4d4fbfdf0d7adf18a0b69f55ba0f4fac758ee2",
+      "id": "material:098c9708078bbaa98c4b60eb",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "0de44fa6e689963345aa7f06bb14a0dfc7a1234db875d88a2abea4929fa62ec3",
+      "id": "material:0de44fa6e689963345aa7f06",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "2284f0794510fa1dc5fa0616921ea7fcdf6b60697250bb098a47825222df44ff",
+      "id": "material:2284f0794510fa1dc5fa0616",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c642f2f9c3ddd76f2ae4dda9f6d20e68e3de790695dff24f151049c4578e731d",
+      "id": "material:c642f2f9c3ddd76f2ae4dda9",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f68c3db67969e9e0baea23a8c176f681e9d45be0104f35681896e40666027d99",
+      "id": "material:f68c3db67969e9e0baea23a8",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f6d728a95abef4b57bc593dbd60ef356f726c8b41cc1c7ca61785ab6beb30c4a",
+      "id": "material:f6d728a95abef4b57bc593db",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_RED_KITE_PORT_SAIL_0",
+      "nodeName": "COLLISION_RED_KITE_PORT_SAIL_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_RED_KITE_PORT_SAIL_1",
+      "nodeName": "COLLISION_RED_KITE_PORT_SAIL_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_RED_KITE_PORT_SAIL_2",
+      "nodeName": "COLLISION_RED_KITE_PORT_SAIL_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-spar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_RED_KITE_PORT_SPAR",
+      "nodeName": "COLLISION_RED_KITE_PORT_SPAR",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-pressure-dart",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_RED_KITE_PRESSURE_DART",
+      "nodeName": "COLLISION_RED_KITE_PRESSURE_DART",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-drive",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_RED_KITE_STARBOARD_DRIVE",
+      "nodeName": "COLLISION_RED_KITE_STARBOARD_DRIVE",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-spar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_RED_KITE_STARBOARD_SPAR",
+      "nodeName": "COLLISION_RED_KITE_STARBOARD_SPAR",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-stern-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_RED_KITE_STERN_PORT",
+      "nodeName": "COLLISION_RED_KITE_STERN_PORT",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.collision-red-kite-stern-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_RED_KITE_STERN_STARBOARD",
+      "nodeName": "COLLISION_RED_KITE_STERN_STARBOARD",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_CANOPY",
+      "nodeName": "LOD1_CANOPY",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-hook-drive-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-hook-nav-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-hook-nav-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-port-armor",
+      "localTransform": [
+        0.6838346123695374,
+        0,
+        0,
+        0,
+        0,
+        0.6838346123695374,
+        0,
+        0,
+        0,
+        0,
+        0.6838346123695374,
+        0,
+        -1.7881393432617188e-7,
+        0.4458314776420593,
+        0.14891286194324493,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_RED_KITE_CLAMP_PORT_Armor",
+      "nodeName": "LOD1_MOTION_RED_KITE_CLAMP_PORT_Armor",
+      "nodePath": [
+        0,
+        16,
+        0
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.motion-red-kite-clamp-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        0.6838346123695374,
+        0,
+        0,
+        0,
+        0,
+        0.6838346123695374,
+        0,
+        0,
+        0,
+        0,
+        0.6838346123695374,
+        0,
+        -2.6000000834465027,
+        1.6958314776420593,
+        -0.6210871189832687,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-starboard-armor",
+      "localTransform": [
+        0.6838347911834717,
+        0,
+        0,
+        0,
+        0,
+        0.6838347911834717,
+        0,
+        0,
+        0,
+        0,
+        0.6838347911834717,
+        0,
+        -2.384185791015625e-7,
+        0.4466223120689392,
+        -0.14891286194324493,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_RED_KITE_CLAMP_STARBOARD_Armor",
+      "nodeName": "LOD1_MOTION_RED_KITE_CLAMP_STARBOARD_Armor",
+      "nodePath": [
+        0,
+        17,
+        0
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.motion-red-kite-clamp-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        0.6838347911834717,
+        0,
+        0,
+        0,
+        0,
+        0.6838347911834717,
+        0,
+        0,
+        0,
+        0,
+        0.6838347911834717,
+        0,
+        -2.6000001430511475,
+        1.6966223120689392,
+        0.6210871189832687,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-flap-armor",
+      "localTransform": [
+        1.996085837483406,
+        0,
+        0,
+        0,
+        0,
+        1.996085837483406,
+        0,
+        0,
+        0,
+        0,
+        1.996085837483406,
+        0,
+        0.003627493977546692,
+        -0.1055879294872284,
+        -0.6498699188232422,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_RED_KITE_FLAP_Armor",
+      "nodeName": "LOD1_MOTION_RED_KITE_FLAP_Armor",
+      "nodePath": [
+        0,
+        18,
+        0
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.motion-red-kite-flap",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1.996085837483406,
+        0,
+        0,
+        0,
+        0,
+        1.996085837483406,
+        0,
+        0,
+        0,
+        0,
+        1.996085837483406,
+        0,
+        -1.4963725060224533,
+        0.7244120538234711,
+        -6.4498701095581055,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.motion-red-kite-clamp-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5999999046325684,
+        1.25,
+        -0.7699999809265137,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_RED_KITE_CLAMP_PORT",
+      "nodeName": "MOTION_RED_KITE_CLAMP_PORT",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5999999046325684,
+        1.25,
+        -0.7699999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.motion-red-kite-clamp-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5999999046325684,
+        1.25,
+        0.7699999809265137,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_RED_KITE_CLAMP_STARBOARD",
+      "nodeName": "MOTION_RED_KITE_CLAMP_STARBOARD",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5999999046325684,
+        1.25,
+        0.7699999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.motion-red-kite-flap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.5,
+        0.8299999833106995,
+        -5.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_RED_KITE_FLAP",
+      "nodeName": "MOTION_RED_KITE_FLAP",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.5,
+        0.8299999833106995,
+        -5.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_SHIP_RED_KITE_ROOT",
+      "nodeName": "SF_SHIP_RED_KITE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.socket-courier-canister",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5999999046325684,
+        1.5700000524520874,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Courier_Canister",
+      "nodeName": "SOCKET_Courier_Canister",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5999999046325684,
+        1.5700000524520874,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.659999847412109,
+        -0.03999999910593033,
+        5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.659999847412109,
+        -0.03999999910593033,
+        5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.socket-engine-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.569999694824219,
+        -0.12999999523162842,
+        -1.3799999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Port",
+      "nodeName": "SOCKET_Engine_Port",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.569999694824219,
+        -0.12999999523162842,
+        -1.3799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.socket-engine-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.569999694824219,
+        -0.12999999523162842,
+        1.3799999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Starboard",
+      "nodeName": "SOCKET_Engine_Starboard",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10.569999694824219,
+        -0.12999999523162842,
+        1.3799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.red-kite-lod1.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.75,
+        -0.03999999910593033,
+        5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.red-kite-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.75,
+        -0.03999999910593033,
+        5,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "b88d1a58d6b2ee92ab0728e89d088fcaf517928018dc2f6f02ae8f1089e3e520"
+    },
+    "sourceGlb": {
+      "bytes": 461860,
+      "sha256": "fee2fc968b4da71df77041a9066506152f1725654e5544614b355c8e4d9d7102",
+      "uri": "red_kite_lod1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 233013,
+      "sha256": "d6494120852205f84844c9e2afda112b18a480a4e84edd3df88c04a37381558c",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 617664,
+    "sha256": "25249cbe888c178451211cc73e7af26c6a5ee037238a495220b2a8e7bb57d3f2",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.6150341033935547,
+        0.6958669264008339,
+        -2.124101400375366
+      ],
+      "max": [
+        11.800067901611328,
+        2.1421051897386185,
+        5.8001275062561035
+      ],
+      "min": [
+        -10.569999694824219,
+        -0.7503713369369507,
+        -10.048330307006836
+      ],
+      "size": [
+        22.370067596435547,
+        2.892476526675569,
+        15.84845781326294
+      ]
+    },
+    "hidden": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5999999046325684,
+          1.25,
+          -0.7699999809265137,
+          1
+        ],
+        "name": "MOTION_RED_KITE_CLAMP_PORT",
+        "planIndex": 18,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "red_kite_clamp_port",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -2.5999999046325684
+            ],
+            [
+              0,
+              1,
+              0,
+              0.7699999809265137
+            ],
+            [
+              0,
+              0,
+              1,
+              1.25
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_RED_KITE_CLAMP_PORT",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "red_kite_clamp_port"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_RED_KITE_CLAMP_PORT",
+            "recordIds": [
+              "sf.render.red-kite-lod1.node.motion-red-kite-clamp-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5999999046325684,
+          1.25,
+          0.7699999809265137,
+          1
+        ],
+        "name": "MOTION_RED_KITE_CLAMP_STARBOARD",
+        "planIndex": 20,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "red_kite_clamp_starboard",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -2.5999999046325684
+            ],
+            [
+              0,
+              1,
+              0,
+              -0.7699999809265137
+            ],
+            [
+              0,
+              0,
+              1,
+              1.25
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_RED_KITE_CLAMP_STARBOARD",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "red_kite_clamp_starboard"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_RED_KITE_CLAMP_STARBOARD",
+            "recordIds": [
+              "sf.render.red-kite-lod1.node.motion-red-kite-clamp-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.5,
+          0.8299999833106995,
+          -5.800000190734863,
+          1
+        ],
+        "name": "MOTION_RED_KITE_FLAP",
+        "planIndex": 22,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "red_kite_flap",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -1.5
+            ],
+            [
+              0,
+              1,
+              0,
+              5.800000190734863
+            ],
+            [
+              0,
+              0,
+              1,
+              0.8299999833106995
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_RED_KITE_FLAP",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "red_kite_flap"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_RED_KITE_FLAP",
+            "recordIds": [
+              "sf.render.red-kite-lod1.node.motion-red-kite-flap"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.red-kite-lod1.anchor.socket-camera-focus",
+              "sf.render.red-kite-lod1.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5999999046325684,
+          1.5700000524520874,
+          0,
+          1
+        ],
+        "name": "SOCKET_Courier_Canister",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Courier_Canister",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Courier_Canister",
+            "recordIds": [
+              "sf.render.red-kite-lod1.anchor.socket-courier-canister",
+              "sf.render.red-kite-lod1.node.socket-courier-canister"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -6.659999847412109,
+          -0.03999999910593033,
+          5,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.red-kite-lod1.anchor.socket-engine-main",
+              "sf.render.red-kite-lod1.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.569999694824219,
+          -0.12999999523162842,
+          -1.3799999952316284,
+          1
+        ],
+        "name": "SOCKET_Engine_Port",
+        "planIndex": 27,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Port",
+            "recordIds": [
+              "sf.render.red-kite-lod1.anchor.socket-engine-port",
+              "sf.render.red-kite-lod1.node.socket-engine-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.569999694824219,
+          -0.12999999523162842,
+          1.3799999952316284,
+          1
+        ],
+        "name": "SOCKET_Engine_Starboard",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Starboard",
+            "recordIds": [
+              "sf.render.red-kite-lod1.anchor.socket-engine-starboard",
+              "sf.render.red-kite-lod1.node.socket-engine-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -6.75,
+          -0.03999999910593033,
+          5,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.red-kite-lod1.anchor.socket-trail-main",
+              "sf.render.red-kite-lod1.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "drive": 1,
+      "glass": 1,
+      "hull": 14,
+      "mechanical": 1,
+      "signal": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      }
+    ],
+    "motionBank": {
+      "bytes": 2850,
+      "rigId": "red_kite_courier_controls",
+      "sha256": "7401fdb3cb10c8d18c92b8f538bac39a27bd84fb5f51fcd0c6feb8e4676954ba",
+      "uri": "assets/ships/motions/red-kite.motion.json"
+    },
+    "nodeCount": 30,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_CANOPY",
+        "planIndex": 12,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_CORE",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6838346123695374,
+          0,
+          0,
+          0,
+          0,
+          0.6838346123695374,
+          0,
+          0,
+          0,
+          0,
+          0.6838346123695374,
+          0,
+          -2.6000000834465027,
+          1.6958314776420593,
+          -0.6210871189832687,
+          1
+        ],
+        "name": "LOD1_MOTION_RED_KITE_CLAMP_PORT_Armor",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6838347911834717,
+          0,
+          0,
+          0,
+          0,
+          0.6838347911834717,
+          0,
+          0,
+          0,
+          0,
+          0.6838347911834717,
+          0,
+          -2.6000001430511475,
+          1.6966223120689392,
+          0.6210871189832687,
+          1
+        ],
+        "name": "LOD1_MOTION_RED_KITE_CLAMP_STARBOARD_Armor",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.996085837483406,
+          0,
+          0,
+          0,
+          0,
+          1.996085837483406,
+          0,
+          0,
+          0,
+          0,
+          1.996085837483406,
+          0,
+          -1.4963725060224533,
+          0.7244120538234711,
+          -6.4498701095581055,
+          1
+        ],
+        "name": "LOD1_MOTION_RED_KITE_FLAP_Armor",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/red_kite_lod1.glb"
+  },
+  "runtimeHash": "02d5e642b21b7e55e9a7adb9fe79a8076895d509e05a86765940116cbd9bc7bc",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          11.800067901611328,
+          2.1421051897386185,
+          5.8001275062561035
+        ],
+        "min": [
+          -10.569999694824219,
+          -0.7503713369369507,
+          -10.048330307006836
+        ]
+      },
+      "id": "sf.render.red-kite-lod1.body",
+      "nodeIds": [
+        "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-0",
+        "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-1",
+        "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-2",
+        "sf.render.red-kite-lod1.node.collision-red-kite-port-spar",
+        "sf.render.red-kite-lod1.node.collision-red-kite-pressure-dart",
+        "sf.render.red-kite-lod1.node.collision-red-kite-starboard-drive",
+        "sf.render.red-kite-lod1.node.collision-red-kite-starboard-spar",
+        "sf.render.red-kite-lod1.node.collision-red-kite-stern-port",
+        "sf.render.red-kite-lod1.node.collision-red-kite-stern-starboard",
+        "sf.render.red-kite-lod1.node.lod1-armor",
+        "sf.render.red-kite-lod1.node.lod1-canopy",
+        "sf.render.red-kite-lod1.node.lod1-hook-drive-core",
+        "sf.render.red-kite-lod1.node.lod1-hook-nav-port",
+        "sf.render.red-kite-lod1.node.lod1-hook-nav-starboard",
+        "sf.render.red-kite-lod1.node.lod1-hull",
+        "sf.render.red-kite-lod1.node.lod1-mechanicaldark",
+        "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-port-armor",
+        "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-starboard-armor",
+        "sf.render.red-kite-lod1.node.lod1-motion-red-kite-flap-armor",
+        "sf.render.red-kite-lod1.node.motion-red-kite-clamp-port",
+        "sf.render.red-kite-lod1.node.motion-red-kite-clamp-starboard",
+        "sf.render.red-kite-lod1.node.motion-red-kite-flap",
+        "sf.render.red-kite-lod1.node.sf-ship-red-kite-root",
+        "sf.render.red-kite-lod1.node.socket-camera-focus",
+        "sf.render.red-kite-lod1.node.socket-courier-canister",
+        "sf.render.red-kite-lod1.node.socket-engine-main",
+        "sf.render.red-kite-lod1.node.socket-engine-port",
+        "sf.render.red-kite-lod1.node.socket-engine-starboard",
+        "sf.render.red-kite-lod1.node.socket-trail-main"
+      ]
+    }
+  ]
+}

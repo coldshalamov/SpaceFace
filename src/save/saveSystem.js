@@ -652,6 +652,8 @@ export const save = {
       ['latchNine', () => this._callSerialize('latchNine')],
       ['scissorwake', () => this._callSerialize('scissorwake')],
       ['lastShift', () => this._callSerialize('lastShift')],
+      ['redKite', () => this._callSerialize('redKite')],
+      ['sableVenn', () => this._callSerialize('sableVenn')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
@@ -803,6 +805,10 @@ export const save = {
     yield 'serialize:scissorwake';
     data.lastShift = this._callSerialize('lastShift');
     yield 'serialize:lastShift';
+    data.redKite = this._callSerialize('redKite');
+    yield 'serialize:redKite';
+    data.sableVenn = this._callSerialize('sableVenn');
+    yield 'serialize:sableVenn';
     yield 'serialize:enemyMind';
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     yield 'serialize:lossLedger';
@@ -4799,6 +4805,8 @@ export const save = {
       this._callDeserialize('latchNine', data.latchNine);
       this._callDeserialize('scissorwake', data.scissorwake);
       this._callDeserialize('lastShift', data.lastShift);
+      this._callDeserialize('redKite', data.redKite);
+      this._callDeserialize('sableVenn', data.sableVenn);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
 
@@ -4927,6 +4935,7 @@ export const save = {
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
       this._restoreCombat(data.combat, entityIdRemap);
       this.registry.get('lastShift')?.afterContinue?.();
+      this.registry.get('redKite')?.afterContinue?.();
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
       // selection). No entity ids inside — live bomb actors are transient and never persist.
       // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.

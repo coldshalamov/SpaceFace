@@ -1586,6 +1586,10 @@ export const scanner = {
       this._noteHailRefusal(reason);
       return false;
     }
+    if (availability.kind === 'red_kite') {
+      this._clearContactHail('relay_handoff');
+      return this.registry.get('redKite')?.offer() === true;
+    }
     if (availability.kind === 'toll') {
       const demand = pirateParleyDemandForHandoff(availability.parley);
       if (!demand || !(Number(demand.deadlineAt) > Number(state.simTime || 0))) {

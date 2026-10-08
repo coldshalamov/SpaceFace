@@ -71,6 +71,8 @@ const packageJson = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8
 // External LOD siblings are separate releases: the runtime loads only the selected distance tier.
 // First-sector remasters must ship these alongside LOD0 or traffic silently remains full detail.
 const WHOLE_SHIP_FILES = [
+  'red_kite.glb', 'red_kite_lod1.glb', 'red_kite_lod2.glb',
+  'sable_patchwork.glb', 'sable_patchwork_lod1.glb', 'sable_patchwork_lod2.glb',
   'kestrel.glb',
   'kestrel_lod1.glb',
   'kestrel_lod2.glb',
