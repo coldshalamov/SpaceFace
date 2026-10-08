@@ -16,10 +16,12 @@ import { createSolstice, SOLSTICE_GLOBAL_ANCHOR } from '../src/systems/solstice.
 import { createRavel, RAVEL_GLOBAL_ANCHOR } from '../src/systems/ravel.js';
 import { createVesper } from '../src/systems/vesper.js';
 import { createBracket } from '../src/systems/bracket.js';
+import { createRuud } from '../src/systems/ruud.js';
 import { SOLSTICE } from '../src/data/solstice.js';
 import { RAVEL } from '../src/data/ravel.js';
 import { VESPER } from '../src/data/vesper.js';
 import { BRACKET } from '../src/data/bracket.js';
+import { RUUD } from '../src/data/ruud.js';
 import { SIM_TIER } from '../src/world/activityClassification.js';
 import { farActorCensus, farActorTableRadius, shouldVirtualizeFarActor, tickFarActors } from '../src/world/farActorTable.js';
 
@@ -30,6 +32,7 @@ const CHARACTERS = [
     anchor: RAVEL_GLOBAL_ANCHOR, owner: 'ravel', streamed: true },
   { name: 'vesper', make: createVesper, sectorId: VESPER.sectorId, owns: (e) => e.data?.vesper === true },
   { name: 'bracket', make: createBracket, sectorId: BRACKET.sectorId, owns: (e) => !!e.data?.bracketPart },
+  { name: 'ruud', make: createRuud, sectorId: RUUD.sectorId, owns: (e) => e.data?.ruudPart || e.data?.ruud === true },
 ];
 
 function boot(sectorId) {

@@ -156,6 +156,7 @@ import { ravel } from '../systems/ravel.js';
 import { solstice } from '../systems/solstice.js';
 import { rubric } from '../systems/rubric.js';
 import { ruckus } from '../systems/ruckus.js';
+import { ruud } from '../systems/ruud.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -349,6 +350,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['solstice', solstice],
     ['rubric', rubric],
     ['ruckus', ruckus],
+    ['ruud', ruud],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

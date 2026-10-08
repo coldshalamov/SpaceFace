@@ -10,6 +10,7 @@ import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegi
 import { applyClaimableBodySites } from './claimableBodies.js';
 import { KETTLE_LINE_POIS } from './kettleLine.js';
 import { VESPER } from './vesper.js';
+import { RUUD } from './ruud.js';
 import { SOLSTICE } from './solstice.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
@@ -347,6 +348,10 @@ const CORE_SECTORS = [
         },
       },
       { id: 'poi_vesta_red_cable_yard', type: 'anomaly', name: 'Red Cable Yard', pos: { x: -1400, z: -900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ruud_fin3', type: 'anomaly', name: 'HOOK-LEFT · Fin-3',
+        pos: { x: RUUD.fin.x, z: RUUD.fin.z }, runtimeOwner: 'ruud', scannerSignalKind: 'anomaly',
+        dressingExclusionRadius: RUUD.dressingExclusion,
+        chartNote: 'A living suit on radiator fin Fin-3. The cab stamped the rotation complete. The hook did not move.' },
     ],
   },
   {
