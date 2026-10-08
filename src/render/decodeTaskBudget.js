@@ -288,8 +288,15 @@ export function withVisibleDecodeClass(fn) {
 // unchanged; only the start instant moves. Headless hosts (no rAF) run immediately — there
 // are no frames to protect.
 const GLTF_PARSE_FRAME_LIMIT = 2;
+const GLTF_PARSE_FRAME_MS = 4;
 const gltfParsePending = [];
 let gltfParseDrainScheduled = false;
+// Frames skipped in a row because another paced slicer already spent the
+// frame's JS budget — the same aging contract the compile drain keeps: a
+// perpetually-busy stream cannot starve parse starts forever, and a
+// cap-fired run consults the shared forced wallet first.
+let gltfParseFramesSkipped = 0;
+const GLTF_PARSE_MAX_SKIPPED_FRAMES = 2;
 
 // A hidden or occluded tab can starve rAF for the whole load, wedging every
 // queued drain behind the never-firing arm until an outer timeout bounces it.
@@ -307,9 +314,46 @@ function armFrameDrain(callback) {
 }
 
 function drainGltfParseQueue() {
-  const batch = gltfParsePending.splice(0, GLTF_PARSE_FRAME_LIMIT);
-  for (const task of batch) {
-    Promise.resolve().then(task.fn).then(task.resolve, task.reject);
+  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? () => performance.now()
+    : () => Date.now();
+  // The compile drain one stage later got the wallet contract already; the
+  // parse drain never did: a decode burst settling N hulls on one rAF arm
+  // used to land GLTF_PARSE_FRAME_LIMIT arbitrary-cost parseAsync scene-graph
+  // constructions in the task right after the arm — unmeasured, unconsulted.
+  // Same consult + aging + forced-wallet shape as drainGltfCompileQueue.
+  const pacedSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+  if (pacedSpent
+      && (gltfParseFramesSkipped < GLTF_PARSE_MAX_SKIPPED_FRAMES
+        || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+    gltfParseFramesSkipped = Math.min(gltfParseFramesSkipped + 1, GLTF_PARSE_MAX_SKIPPED_FRAMES);
+    armFrameDrain(drainGltfParseQueue);
+    return;
+  }
+  gltfParseFramesSkipped = 0;
+  const forcedRun = pacedSpent;
+  const start = now();
+  let ran = 0;
+  // Count floor preserved (<=2 starts per arm); the ms box drops a second
+  // start when the first parse already spent the frame's budget.
+  while (ran < GLTF_PARSE_FRAME_LIMIT && (ran === 0 || now() - start < GLTF_PARSE_FRAME_MS)) {
+    const task = gltfParsePending.shift();
+    if (!task) break;
+    ran += 1;
+    // Run inside the drain: a synchronous scene-graph build (parseAsync — the
+    // roster-warm burst class the count cap was minted for) pays inside this
+    // measured span; genuinely-async tails (network loads) settle on their
+    // own fetch timing exactly as before.
+    try {
+      Promise.resolve(task.fn()).then(task.resolve, task.reject);
+    } catch (error) {
+      task.reject(error);
+    }
+  }
+  const elapsed = now() - start;
+  if (elapsed > 0) {
+    notePacedFrameSpend(elapsed);
+    if (forcedRun) noteForcedFrameSpend(elapsed);
   }
   // The tail must keep draining without a new push — re-arm while items remain
   // (the flag stays latched so pushes during the drain just enqueue).

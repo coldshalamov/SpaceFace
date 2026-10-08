@@ -29863,6 +29863,8 @@ export const render = {
                   || rescueMemo.epoch !== shadowCensusEpoch()
                   || rescueMemo.pendingIter) continue;
                 const rescueCamera = this.cam && this.cam.obj;
+                const pruneProbation = this._withheldDepthCasterProbation
+                  || (this._withheldDepthCasterProbation = new WeakMap());
                 let rescueAllCurrent = true;
                 for (const rescueMesh of rescueWithheld) {
                   // A member that can never mint a current mark under this
@@ -29874,10 +29876,26 @@ export const render = {
                   // collect union-adds it back if it regains capability. A
                   // live-but-unmarked member still vetoes — only the
                   // provably-dead leave the set.
+                  // Two-strike: detach transit (rebuild-bridge parks,
+                  // packaged re-grafts, pool adoption in flight) reads
+                  // identically to death for one eval, and a member pruned
+                  // mid-transit re-attaches still carrying castShadow=false
+                  // from its last withhold stamp — the restore's subtree
+                  // walk can't reach a detached node — and presents
+                  // unshadowed until a collect re-covers it. Death must
+                  // persist across an eval boundary before the member
+                  // leaves; a re-attaching member keeps honest coverage.
                   if (withheldDepthCasterProvablyDead(rescueMesh, root)) {
-                    rescueWithheld.delete(rescueMesh);
-                    continue;
+                    if (pruneProbation.get(rescueMesh) === root) {
+                      rescueWithheld.delete(rescueMesh);
+                      pruneProbation.delete(rescueMesh);
+                      continue;
+                    }
+                    pruneProbation.set(rescueMesh, root);
+                    rescueAllCurrent = false;
+                    break;
                   }
+                  if (pruneProbation.has(rescueMesh)) pruneProbation.delete(rescueMesh);
                   if (!casterDepthMarkCurrent(rescueMesh, rescueSig, rescueCamera)) {
                     rescueAllCurrent = false;
                     break;

@@ -193,6 +193,11 @@ export function withheldDepthCasterProvablyDead(mesh, root) {
     || mesh.isSkinnedMesh === true
     || mesh.isInstancedMesh === true;
   if (!drawable) return true;
+  // Same verdict collectPotentialShadowCastSubjects applies: a stub with no
+  // geometry can never draw — and the collect can never re-offer it — so a
+  // live reading vetoes the rescue forever (geometryPending rebuild-bridge
+  // parks, GL dispose drains clearing mesh.geometry).
+  if ('geometry' in mesh && mesh.geometry == null) return true;
   const ud = mesh.userData || {};
   if (ud.spacefaceNoShadow === true
     || ud.sharedContactShadow === true
@@ -201,6 +206,14 @@ export function withheldDepthCasterProvablyDead(mesh, root) {
   if (!materials.some(materialCanCastShadow)) return true;
   for (let p = mesh; p; p = p.parent) {
     if (p === root) return false;
+    // An invisible intermediate ancestor masks this member out of every pass
+    // the depth stage renders — it can never draw and never mint a mark, so
+    // letting it veto pins the whole root withheld forever (authoredLod layer
+    // flips, pool shelves). A re-shown ancestor re-joins through the union-add
+    // like any re-attach. The root's own visibility is deliberately not
+    // consulted: an invisible root renders no shadows at all, and its members
+    // keep honest coverage for the re-show.
+    if (p.visible === false) return true;
   }
   return true;
 }

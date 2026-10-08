@@ -6765,7 +6765,18 @@ function driveOpeningPublicationResume(render, queue) {
         }
       }
     }
-    if (resumeForced) noteForcedFrameSpend(Math.min(monotonicNow() - resumeStarted, FORCED_FRAME_BUDGET_MS));
+    if (resumeForced) {
+      // The span crosses setTimeout(0) hops whose residue already posted to
+      // the paced ledger above (and other lanes' paced debits inside the
+      // window charge their own work) — charging the gross elapsed on forced
+      // double-counts both. Same residual shape as the hop debit: forced
+      // pays only the unaccounted remainder.
+      const forcedResidual = (monotonicNow() - resumeStarted)
+        - Math.max(0, pacedFrameSpend() - entrySpend);
+      if (forcedResidual > 0) {
+        noteForcedFrameSpend(Math.min(forcedResidual, FORCED_FRAME_BUDGET_MS));
+      }
+    }
     if (queue.length > 0) driveOpeningPublicationResume(render, queue);
     else render._openingPublicationResumeQueue = null;
   }, { idleBoundMs: 48 });
@@ -14250,11 +14261,22 @@ function drivePoolAdmissionIfUnclaimed(admission, options) {
     }
     poolAdmissionLateSkips = gate.skippedCount;
     // The consult released a whole compile+touch pass a yield ago — settle-time
-    // debit is the honest accounting for an async forced unit.
+    // debit is the honest accounting for an async forced unit, MINUS the work
+    // already charged inside the span: the prepare's own paced debits and any
+    // other forced lane running inside the await post to the ledgers
+    // themselves, and pure wait time is not spend. Charging the gross window
+    // again double-counts all of it on forced (over-throttle under storms).
     const poolStarted = monotonicNow();
+    const poolPacedBefore = pacedFrameSpend();
+    const poolForcedBefore = forcedFrameSpend();
     await prepareRenderPackagePoolAdmission(admission, options);
     activateRenderPackagePoolAdmission(admission);
-    noteForcedFrameSpend(Math.min(monotonicNow() - poolStarted, FORCED_FRAME_BUDGET_MS));
+    const poolResidual = (monotonicNow() - poolStarted)
+      - Math.max(0, pacedFrameSpend() - poolPacedBefore)
+      - Math.max(0, forcedFrameSpend() - poolForcedBefore);
+    if (poolResidual > 0) {
+      noteForcedFrameSpend(Math.min(poolResidual, FORCED_FRAME_BUDGET_MS));
+    }
   }).catch((error) => {
     // A mid-preparation cancellation is the owner-gone race, not a defect — keep it off the
     // warning channel the same way the boundary path classifies 'owner became inactive'.
