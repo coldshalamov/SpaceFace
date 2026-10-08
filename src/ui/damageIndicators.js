@@ -198,6 +198,9 @@ export function createDamageIndicators() {
       angle: 0,
       age: Infinity,
       sourcePoint: { x: 0, y: 0, z: 0 },
+      // Last valid on-screen direction (unit vector); NaN until a trustworthy projection lands.
+      dirX: NaN,
+      dirY: NaN,
     });
   }
 
@@ -213,6 +216,8 @@ export function createDamageIndicators() {
     marker._sfChevron = '';
     marker.cue = null;
     marker.age = Infinity;
+    marker.dirX = NaN;
+    marker.dirY = NaN;
     if (activeCount > 0) activeCount--;
   }
 
@@ -246,6 +251,8 @@ export function createDamageIndicators() {
     selected.cue = cue;
     selected.angle = angle;
     selected.age = 0;
+    selected.dirX = NaN; // a stolen slot must not inherit the previous hit's direction
+    selected.dirY = NaN;
     selected.glyph.textContent = cue.glyph;
     selected.element.className = `sf-dmgind-marker layer-${cue.layer} severity-${cue.severity}`;
     return true;
@@ -256,6 +263,8 @@ export function createDamageIndicators() {
     marker.cue = cue;
     marker.angle = angle;
     marker.age = 0;
+    marker.dirX = NaN;
+    marker.dirY = NaN;
     marker.glyph.textContent = cue.glyph;
     marker.element.className = `sf-dmgind-marker layer-${cue.layer} severity-${cue.severity}`;
   }
@@ -308,11 +317,30 @@ export function createDamageIndicators() {
       marker.sourcePoint.x = player.pos.x + Math.cos(marker.angle) * 600;
       marker.sourcePoint.z = player.pos.z - Math.sin(marker.angle) * 600;
       const projected = worldToScreen(marker.sourcePoint, _diScreen);
-      let dx = (Number(projected && projected.x) || width * 0.5) - width * 0.5;
-      let dy = (Number(projected && projected.y) || height * 0.5) - height * 0.5;
-      const length = Math.hypot(dx, dy) || 1;
-      dx /= length;
-      dy /= length;
+      // A failed or behind-camera projection returns the {0,0} sentinel or mirrored coords; the
+      // old `|| half-viewport` fallback turned the sentinel into a dead-centre marker and the
+      // mirrored coords flipped the wedge 180°. Latch the last valid on-screen direction and
+      // hold it across bad ticks — never feed either failure through the direction math.
+      if (projected && projected.onScreen !== false
+        && Number.isFinite(projected.x) && Number.isFinite(projected.y)) {
+        const rawDx = projected.x - width * 0.5;
+        const rawDy = projected.y - height * 0.5;
+        const length = Math.hypot(rawDx, rawDy);
+        if (length > 0) { // a dead-centre projection carries no direction; keep the last latch
+          marker.dirX = rawDx / length;
+          marker.dirY = rawDy / length;
+        }
+      }
+      let dx = marker.dirX;
+      let dy = marker.dirY;
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+        // No valid projection yet this marker's life. The chase camera never yaws (camera.js),
+        // so the fixed ground→screen mapping — +X reads screen-left, +Z reads screen-up —
+        // approximates the wedge from the world angle alone. angleToSource is atan2(-dz, dx),
+        // which makes (−cos a, sin a) exactly that mapping.
+        dx = -Math.cos(marker.angle);
+        dy = Math.sin(marker.angle);
+      }
       const x = width * 0.5 + dx * extentX;
       const y = height * 0.5 + dy * extentY;
       const screenAngle = Math.atan2(dy, dx);
