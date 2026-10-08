@@ -178,6 +178,11 @@ test('lane errands yield flee, formation, and a tug on a booked load', () => {
   hull.data.towTargetId = 44;
   armLaneErrands(runtime, 84);
   assert.equal(entry.errand, null);
+  delete hull.data.trafficRole;
+  job.payload = job.payload || {};
+  job.payload.freightRole = 'tug';
+  armLaneErrands(runtime, 126);
+  assert.equal(entry.errand, null, 'a freightRole tug on a booked load is not an errand');
 });
 
 test('a failed lived fire waits out two ambient gaps before asking again', () => {
