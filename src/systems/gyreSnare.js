@@ -265,19 +265,42 @@ export const gyreSnare = {
     // clump's first strain excursion should re-arm the latch instead of inheriting it hot.
     rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; rt.fullCueLatched = false;
     rt.fuseCueLatched = false;
+    // dropped = a live beam/hold released without launch; coreId is null when the beam
+    // closed empty (no clump ever snagged) — AND during LAUNCH: the ball is already
+    // thrown (or winding), so a live id would read as a clump torn off the lash when
+    // the real story is "launch burst truncated" — pad/audio consumers take the
+    // quieter empty-drop channel for it.
+    const emitId = droppedPhase === PHASE.LAUNCH ? null : coreId;
+    // Docking, mode flips, and player loss are context resets too — the verb ends
+    // without a player choice, so they stay silent like boundaries (they do NOT join
+    // `boundary` itself: the residue sweep + ball-mirror wipe belong to map swaps
+    // only — a ball flying while you dock keeps flying).
+    const quiet = boundary || reason === 'player_docked' || reason === 'not_flight' || reason === 'player_lost';
+    // The tear snap is a SIM mutation — it must run on a bus-less host too, so it
+    // lives outside the bus guard below (a strain break's whip isn't a cue).
+    if (!wasOff && reason === 'strained' && emitId != null) {
+      const st = this.state;
+      const torn = st && st.entities ? st.entities.get(emitId) : null;
+      const pl = st && st.entities ? st.entities.get(st.playerId) : null;
+      if (torn && torn.pos && pl && pl.pos) {
+        const mw = this._maw(pl, this._dropMaw || (this._dropMaw = { x: 0, z: 0 }));
+        let rx = torn.pos.x - mw.x, rz = torn.pos.z - mw.z;
+        const rl = Math.hypot(rx, rz) || 1; rx /= rl; rz /= rl;
+        let ix = -rz * droppedDir + rx * 0.4;
+        let iz = rx * droppedDir + rz * 0.4;
+        const il = Math.hypot(ix, iz) || 1; ix /= il; iz /= il;
+        const m = entityMass(torn);
+        // The whip scales with the orbit's tangential speed: a capped moon
+        // already carries ~61 wu/s of revolve, so a flat snap vanishes on big
+        // clumps — 25% of tangential (floored at tearSnapWuS) reads at both ends.
+        const snapV = Math.max(D.tearSnapWuS, D.orbitRate * droppedOrbitR * D.tearSnapOrbitFrac);
+        queuePhysicsImpulse(torn,
+          { x: ix * m * snapV, y: 0, z: iz * m * snapV },
+          this._evidence(st.tick));
+      }
+    }
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
-      // dropped = a live beam/hold released without launch; coreId is null when the beam
-      // closed empty (no clump ever snagged) — AND during LAUNCH: the ball is already
-      // thrown (or winding), so a live id would read as a clump torn off the lash when
-      // the real story is "launch burst truncated" — pad/audio consumers take the
-      // quieter empty-drop channel for it.
-      const emitId = droppedPhase === PHASE.LAUNCH ? null : coreId;
-      // Docking, mode flips, and player loss are context resets too — the verb ends
-      // without a player choice, so they stay silent like boundaries (they do NOT join
-      // `boundary` itself: the residue sweep + ball-mirror wipe belong to map swaps
-      // only — a ball flying while you dock keeps flying).
-      const quiet = boundary || reason === 'player_docked' || reason === 'not_flight' || reason === 'player_lost';
       this.bus.emit(GYRE_EVENTS.dropped, {
         coreId: emitId, reason: String(reason || 'dropped'), boundary, quiet,
         tick: this.state && this.state.tick,
@@ -298,27 +321,6 @@ export const gyreSnare = {
           this.bus.emit('camera:shake', {
             amount: 0.15 + 0.1 * Math.min(1, droppedMass / D.maxClumpMass),
           });
-          // Parting snap: the freed clump whips off along its last orbit tangent,
-          // biased outward — the slip reads as motion, not a body coasting away.
-          const st = this.state;
-          const torn = emitId != null && st && st.entities ? st.entities.get(emitId) : null;
-          const pl = st && st.entities ? st.entities.get(st.playerId) : null;
-          if (torn && torn.pos && pl && pl.pos) {
-            const mw = this._maw(pl, this._dropMaw || (this._dropMaw = { x: 0, z: 0 }));
-            let rx = torn.pos.x - mw.x, rz = torn.pos.z - mw.z;
-            const rl = Math.hypot(rx, rz) || 1; rx /= rl; rz /= rl;
-            let ix = -rz * droppedDir + rx * 0.4;
-            let iz = rx * droppedDir + rz * 0.4;
-            const il = Math.hypot(ix, iz) || 1; ix /= il; iz /= il;
-            const m = entityMass(torn);
-            // The whip scales with the orbit's tangential speed: a capped moon
-            // already carries ~61 wu/s of revolve, so a flat snap vanishes on big
-            // clumps — 25% of tangential (floored at tearSnapWuS) reads at both ends.
-            const snapV = Math.max(D.tearSnapWuS, D.orbitRate * droppedOrbitR * D.tearSnapOrbitFrac);
-            queuePhysicsImpulse(torn,
-              { x: ix * m * snapV, y: 0, z: iz * m * snapV },
-              this._evidence(st.tick));
-          }
         }
       }
     }
@@ -1411,9 +1413,13 @@ export const gyreSnare = {
         // retire below goes silent. Sing the grave HERE, on the last tick the ball is
         // still live: otherwise the authored shatter is unreachable on normal expiry.
         if (ball.data.despawnAt != null && Number.isFinite(state.simTime)
-          && state.simTime >= ball.data.despawnAt && this.bus) {
-          this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: ball.pos.x, z: ball.pos.z } });
-          this.bus.emit(GYRE_EVENTS.ballGrave, { id: ball.id, tick: state && state.tick });
+          && state.simTime >= ball.data.despawnAt) {
+          if (this.bus) {
+            this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: ball.pos.x, z: ball.pos.z } });
+            this.bus.emit(GYRE_EVENTS.ballGrave, { id: ball.id, tick: state && state.tick });
+          }
+          // The retire itself is a sim mutation — on a bus-less host it must still
+          // disarm + shed + unwatch THIS tick instead of deferring to the !ball lane.
           pub.ballGrave = true; // its last live tick — the ring blooms as the body retires
           // unwatched ⇒ disarmed — the non-primary quiet-TTL path keeps this invariant;
           // the primary's gets it too even though the body dies moments later.
