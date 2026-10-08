@@ -5,6 +5,7 @@
 // same published mirror VFX/HUD consume — never touches the kernel or sim state.
 
 import { FIELD_DEFS } from '../data/fields.js';
+import { GYRE_SNARE } from '../data/gyreSnare.js';
 import { TABLE_HEARING_FAR_WU } from '../render/tabletopPolicy.js';
 
 export const FIELD_LOOP_PREFIX = 'fieldLoop_';
@@ -140,6 +141,10 @@ export function collectFieldLoopSpecs(state, out = []) {
     const dx = gyre.ballPos.x - px, dz = gyre.ballPos.z - pz;
     if (dx * dx + dz * dz <= HEARING_FAR2) {
       const mass = Number.isFinite(gyre.ballMass) ? gyre.ballMass : 0;
+      // The loop telegraphs the grave too — inside ballTtlWarnS the rumble sags
+      // toward silence like the ribbon fade and the ·Ns countdown it sits beside.
+      const pTtlWarn = GYRE_SNARE.ballTtlWarnS > 0 && Number.isFinite(gyre.ballTtlLeftS)
+        ? Math.min(1, gyre.ballTtlLeftS / GYRE_SNARE.ballTtlWarnS) : 1;
       out.push({
         key: FIELD_LOOP_PREFIX + 'gyreBall',
         fieldId: -2,
@@ -147,7 +152,7 @@ export function collectFieldLoopSpecs(state, out = []) {
         recipeId: 'sfx_field_loop_gyre_ball',
         gain: 0.24,
         trackId: gyre.launchedId,
-        envelope: Math.min(1, 0.5 + mass / 2400),
+        envelope: Math.min(1, 0.5 + mass / 2400) * (0.55 + 0.45 * pTtlWarn),
         phase: 'active',
         position: gyre.ballPos,
       });
@@ -163,6 +168,9 @@ export function collectFieldLoopSpecs(state, out = []) {
       const dx = b.x - px, dz = b.z - pz;
       if (dx * dx + dz * dz > HEARING_FAR2) continue;
       const mass = Number.isFinite(b.mass) ? b.mass : 0;
+      // Same grave sag as the primary, keyed on the secondary's own countdown.
+      const sTtlWarn = GYRE_SNARE.ballTtlWarnS > 0 && Number.isFinite(b.ttlS)
+        ? Math.min(1, b.ttlS / GYRE_SNARE.ballTtlWarnS) : 1;
       out.push({
         key: FIELD_LOOP_PREFIX + 'gyreBall' + String(b.id),
         fieldId: -2,
@@ -170,7 +178,7 @@ export function collectFieldLoopSpecs(state, out = []) {
         recipeId: 'sfx_field_loop_gyre_ball',
         gain: 0.2,
         trackId: b.id,
-        envelope: Math.min(1, 0.45 + mass / 2400),
+        envelope: Math.min(1, 0.45 + mass / 2400) * (0.55 + 0.45 * sTtlWarn),
         phase: 'active',
         position: { x: b.x, z: b.z },
       });

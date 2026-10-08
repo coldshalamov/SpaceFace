@@ -95,6 +95,10 @@ export const gyreHud = {
 
   _resolve(g, now) {
     if (!g) return { text: '', cls: '' };
+    // BOWL arming is edge-true: the ~0.8 s grave window starts on the OFF->LAUNCH
+    // flip, not re-armed every launching tick (which would stretch it to ~1.0 s).
+    const launchEdge = g.phase === 'launching' && this._lastHudPhase !== 'launching';
+    this._lastHudPhase = g.phase;
     // A live ball's quiet grave telegraphs on EVERY phase, not just OFF — a re-beamed
     // lash would otherwise swallow the countdown exactly while a second lash winds.
     // "+N" names the OTHER live balls still flying — the pill only mirrors the freshest,
@@ -168,7 +172,7 @@ export const gyreHud = {
       }
       return { text: '', cls: '' };
     }
-    if (g.phase === 'launching') {
+    if (launchEdge) {
       this._bowlUntil = now + 0.8;
       this._bowlMass = Math.round(g.clumpMass || 0);
       // HOLD showed ×N a tick earlier and BALL AWAY will show it again — the biggest

@@ -518,9 +518,12 @@ export class GyreSnarePresentation {
     }
     slot.used = true;
     // grow-in: lumps swell in over ~150 ms, not pop. Same-tick absorbs stagger
-    // ~45 ms apart (per-frame counter, reset in update) — a dense feed lands as
-    // a wave of arrivals, not N lumps blooming in lockstep. Rebuilds restore now.
-    slot.spawnT = instant ? this.time : this.time - (this._spawnStagger || 0) * 0.045;
+    // ~45 ms apart (per-frame counter, reset in update) — spawn in the FUTURE so
+    // later lumps literally bloom later: a dense feed lands as a wave of arrivals,
+    // oldest first, not N lumps in lockstep (nor reverse — a past spawnT would
+    // arrive already grown). Capped so a long feed never delays beyond ~0.4 s.
+    slot.spawnT = instant ? this.time
+      : this.time + Math.min(this._spawnStagger || 0, 8) * 0.045;
     if (!instant) this._spawnStagger = (this._spawnStagger || 0) + 1;
     // The body the lump replaces vanished THIS tick — seed at nearly half scale so
     // the eye tracks the meal continuously instead of the mesh popping out first.
@@ -835,7 +838,12 @@ export class GyreSnarePresentation {
         // and a wreck swallowing into the ball should land visibly harder than a
         // pebble. ~0.9 on a 4 wu rock, saturating at 1.5 from ~13 wu up.
         const mealK = Math.min(1.5, 0.6 + finite(mirror.absorbR, 4) * 0.07);
-        this._discKick = mealK; this._clumpKick = mealK; this._moteKick = mealK;
+        // Retriggers ADD, capped — a dense feed's third meal still visibly bumps
+        // instead of smearing into one sustained kick (the pad thumps discretely;
+        // the glass keeps time with it). 2.0 ceiling bounds the additive blowout.
+        this._discKick = Math.min(2.0, this._discKick + mealK);
+        this._clumpKick = Math.min(2.0, this._clumpKick + mealK);
+        this._moteKick = Math.min(2.0, this._moteKick + mealK);
         // The swallow ripples up the WHOLE glass, not just the mouth: a floor bump
         // on the shared pulse so each meal visibly travels the cone's surface.
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.2);
@@ -1207,15 +1215,23 @@ export class GyreSnarePresentation {
       this._clump.scale.setScalar(
         1 - 0.12 * this._clumpKick + 0.10 * Math.sin(this._clumpKick * Math.PI));
       // Coil wind: the payload visibly compresses through the ~100 ms draw — a
-      // drawn spring, not a passive ball waiting for the burst. x/z squash −8%,
-      // a hair of y-stretch, riding the sim's 0→1 windup ramp.
+      // drawn spring, not a passive ball waiting for the burst. DIRECTIONAL in
+      // the world launch frame: squash ALONG launchDir, bulge perpendicular — a
+      // uniform footprint shrink reads 'ball got smaller', this reads 'drew back'.
       const wind = clamp01(finite(mirror.launchWindup01));
-      if (wind > 0) {
+      if (wind > 0 && mirror.launchDir) {
         const squash = this._clump.scale.x;
-        this._clump.scale.set(squash * (1 - 0.08 * wind), squash * (1 + 0.05 * wind), squash * (1 - 0.08 * wind));
+        this._clump.scale.set(squash * (1 - 0.10 * wind), squash * (1 + 0.05 * wind), squash * (1 + 0.07 * wind));
       }
       this._clumpSpin += sdt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
+      if (wind > 0 && mirror.launchDir) {
+        // Rotate local +x (the squashed axis) onto the frozen launchDir: the
+        // clump keeps tumbling inside the squash frame while the cinch stays
+        // on the throw line in world space.
+        const dl = Math.hypot(finite(mirror.launchDir.x), finite(mirror.launchDir.z)) || 1;
+        this._clump.rotation.y -= Math.atan2(finite(mirror.launchDir.z) / dl, finite(mirror.launchDir.x) / dl);
+      }
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
       // Core veil: the held/grown ball's glass skin — swells with clump radius and
       // breathes faintly with strain, so the ball's heart reads as lash material.

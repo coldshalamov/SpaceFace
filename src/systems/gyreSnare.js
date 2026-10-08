@@ -2084,6 +2084,7 @@ export const gyreSnare = {
         // Wind-up beat: a ~100 ms coil that drags the clump slightly aft of the maw
         // before the burst — the release reads as a slingshot, not an instant shove.
         rt.launchWindup -= 1;
+        const windW01 = 1 - rt.launchWindup / D.launchWindupTicks;
         if (this.bus && rt.launchWindup === D.launchWindupTicks - 1) {
           // First coil tick: the pad rides a low rumble through the draw — the
           // slingshot pull-back is the feel-rich part, and silence undersold it.
@@ -2092,16 +2093,18 @@ export const gyreSnare = {
           // not only seen/heard. 0.025 is the smallest amount that still reads:
           // it leans the frame into the coil without moving the reticle.
           this.bus.emit('camera:shake', { amount: 0.025 });
-          // The draw gets a thin rising shimmer too — felt on the pad and seen in
-          // the maw, it was the one beat of the throw with no voice at all.
-          // The draw grades by payload like the launch it precedes — a capped
-          // moon's coil reads heavier in the ear, not just in the pull-back.
+        }
+        if (this.bus) {
+          // The draw CRESCENDOS: a shimmer per coil tick, gain + rate ramping
+          // 0→1 into the thrownBeat — the ~100 ms pull-back builds instead of
+          // front-loading one shimmer on tick 1. Payload still grades the voice —
+          // a capped moon's coil reads heavier in the ear, not just the pull-back.
           const windupFrac = Math.min(1, rt.ballMass / D.maxClumpMass);
           this.bus.emit('audio:cue', {
             id: 'gyre_snare_windup',
             position: { x: core.pos.x, z: core.pos.z },
-            gain: 0.4 + 0.3 * windupFrac,
-            rate: 1.05 - 0.3 * windupFrac,
+            gain: (0.4 + 0.3 * windupFrac) * (0.35 + 0.65 * windW01),
+            rate: (1.05 - 0.3 * windupFrac) - 0.25 * (1 - windW01),
           });
         }
         // The coil draw-back is absolute 13 wu — ~20% of a capped 60 wu katamari's
