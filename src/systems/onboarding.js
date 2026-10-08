@@ -2354,6 +2354,7 @@ export const onboarding = {
     // Never yank a different current verb off the rail.
     if (rescue.current && rescue.current !== key) return;
     const atS = this.state.simTime || 0;
+    const speakRecovery = (rescue.beats[key].fails || 0) === 0;
     rescue.beats[key].fails = (rescue.beats[key].fails || 0) + 1;
     rescue.beats[key].state = 'current';
     rescue.current = key;
@@ -2370,10 +2371,11 @@ export const onboarding = {
     // Stage a fresh tableau for the failed beat only: the rock, scout, and pod are the
     // working bodies; the wreck, wall, and beacon stand.
     this._respawnRescueSlot(key);
-    // Re-speak the verb once (recovery, not a lecture), then silence.
+    // Re-speak the verb once (recovery, not a lecture). Later fails of the same beat
+    // restage the body and keep the waypoint; they do not lecture again.
     const line = rescueBeatLine(key);
     if (this.state.onboarding) this.state.onboarding.beatAction = line;
-    this._sayTutorial(line);
+    if (speakRecovery) this._sayTutorial(line);
     this._setRescueWaypoint(true);
     this._refreshBeatPanel();
   },
