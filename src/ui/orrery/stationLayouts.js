@@ -85,7 +85,8 @@ ${S} .so-command-trigger::before, ${S} .so-command-trigger::after { display:none
 ${S} .so-command-trigger .so-icon { width:14px; height:14px; }
 /* the key hint is a word after a dot, never a drawn key cap */
 ${S} .so-command-trigger .dp-kbd { background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
-  padding:0 !important; font:inherit !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; }
+  padding:0 !important; font:inherit !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important;
+  display:inline-block !important; white-space:nowrap !important; }
 ${S} .so-command-trigger .dp-kbd::before { content:"· "; color:rgb(${BONE} / .4); }
 ${S} .so-command-trigger:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none !important; }
 ${S} .so-command-trigger:focus-visible { color:var(--dp-hand, #f2b950) !important; }
