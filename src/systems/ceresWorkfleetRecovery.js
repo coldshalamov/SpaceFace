@@ -12,6 +12,32 @@ const world=p=>compose({...C.sitePlacement.pos,rot:C.sitePlacement.rot},p);
 const finite=p=>p&&[p.x,p.z,p.rot].every(Number.isFinite);
 const at=e=>({x:e.pos.x,z:e.pos.z,rot:e.rot});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
+const captureOffset={x:0,z:-220,rot:Math.PI/2};
+const pointVelocity=(section,p)=>({x:section.vel.x-(section.angVel||0)*(p.z-section.pos.z),z:section.vel.z+(section.angVel||0)*(p.x-section.pos.x)});
+export function ceresWorkfleetRendezvousStage(section){return compose(at(section),captureOffset);}
+function predictSeat(seat,tick){
+ const seconds=(tick-seat.tick)/60;
+ const plate={x:seat.plate.x+seat.velocity.x*seconds,z:seat.plate.z+seat.velocity.z*seconds,rot:seat.plate.rot+seat.spin*seconds};
+ return {plate,stage:compose(plate,captureOffset)};
+}
+/** A moving capture uses measured point velocity and leaves reserve for finite closing/braking. */
+export function ceresWorkfleetRendezvous(b,plan,phase,tick){
+ const {breaker,section}=b;if(!breaker||!section)return {reason:'invalid-pose'};
+ const seated=phase==='recover_seat'&&plan.seat;
+ const frame=seated?predictSeat(plan.seat,tick):{plate:at(section),stage:ceresWorkfleetRendezvousStage(section)};
+ const reference=seated?pointVelocity({pos:frame.plate,vel:plan.seat.velocity,angVel:plan.seat.spin},frame.stage):pointVelocity(section,frame.stage);
+ const spin=seated?plan.seat.spin:section.angVel||0,linear=Math.hypot(reference.x,reference.z);
+ if(!finite(frame.stage)||![reference.x,reference.z,spin].every(Number.isFinite))return {reason:'invalid-motion'};
+ if(linear>.75||Math.abs(spin)>.0175||spin*spin*220>CERES_RECOVERY_LIMITS.accel*.25)return {reason:'moving-load-outside-thrust-budget'};
+ if(!insideWork(frame.stage,boxesFor(false))||!insideWork(frame.stage,boxesFor(true)))return {reason:'moving-load-outside-work-envelope'};
+ const target=phase==='recover_turn'?{...plan.start,rot:frame.stage.rot}:frame.stage;
+ return {target,stage:frame.stage,options:{speed:phase==='recover_turn'?0:Math.max(.1,1-linear),accel:.3,
+   angularSpeed:.035,angularAccel:.025,referenceVelocity:phase==='recover_turn'?{x:0,z:0}:reference,
+   referenceAngularVelocity:spin,totalSpeed:1,rendezvous:true}};
+}
+export function ceresWorkfleetBeginRecoverySeat(b,plan,tick){
+ return {tick,plate:at(b.section),velocity:{x:b.section.vel.x,z:b.section.vel.z},spin:b.section.angVel||0};
+}
 const loadedBoxes=C.assets.breaker.states.open.boxes.map((box,i)=>{const b=C.assets.breaker.states.retained.boxes[i];const minX=Math.min(box.center.x-box.size.x/2,b.center.x-b.size.x/2),maxX=Math.max(box.center.x+box.size.x/2,b.center.x+b.size.x/2),minZ=Math.min(box.center.z-box.size.z/2,b.center.z-b.size.z/2),maxZ=Math.max(box.center.z+box.size.z/2,b.center.z+b.size.z/2);return {...box,center:{...box.center,x:(minX+maxX)/2,z:(minZ+maxZ)/2},size:{...box.size,x:maxX-minX,z:maxZ-minZ}};});
 const boxesFor=(loaded)=>[
  ...(loaded?loadedBoxes:C.assets.breaker.states.open.boxes).map(box=>({box,local:{x:0,z:0,rot:0}})),
@@ -29,17 +55,19 @@ export function planCeresWorkfleetRecovery(b,tick){
  if(travel>CERES_RECOVERY_LIMITS.maxApproach||![turn,stage].every(p=>insideWork(p,boxesFor(false)))||!insideWork(stage,boxesFor(true)))return {reason:'outside-work-envelope'};
  // Four WU per side in the authored 76-WU mouth around the 68-WU plate. Keep half
  // for the real force-driven approach/rope response; predicted free drift may use only two.
- const seconds=travel/CERES_RECOVERY_LIMITS.approachSpeed+yaw/CERES_RECOVERY_LIMITS.angularSpeed+2/CERES_RECOVERY_LIMITS.accel+10;
+ let seconds=travel/CERES_RECOVERY_LIMITS.approachSpeed+yaw/CERES_RECOVERY_LIMITS.angularSpeed+2/CERES_RECOVERY_LIMITS.accel+10;
  const driftBudget=(C.assets.breaker.clearVolumes.open[0].z[1]-C.assets.breaker.clearVolumes.open[0].z[0]-C.existing.section.dimensions.x)/4;
  const tipRadius=Math.hypot(C.existing.section.dimensions.x/2,C.existing.section.dimensions.z/2);
- if(Math.hypot(section.vel.x,section.vel.z)*seconds+Math.abs(section.angVel||0)*seconds*tipRadius>driftBudget)return {reason:'moving-load-outside-capture-budget'};
+ const moving=Math.hypot(section.vel.x,section.vel.z)*seconds+Math.abs(section.angVel||0)*seconds*tipRadius>driftBudget;
+ if(moving){const capture=ceresWorkfleetRendezvous(b,{start:at(breaker)},'recover_approach',tick);if(capture.reason)return {reason:capture.reason};
+  seconds=travel/capture.options.speed+yaw/(CERES_RECOVERY_LIMITS.angularSpeed-Math.abs(section.angVel||0))+2/CERES_RECOVERY_LIMITS.accel+10;}
  const total=seconds+(C.route.seating.lineLengthFrom-C.route.seating.lineLengthTo)+travel/CERES_RECOVERY_LIMITS.returnSpeed+Math.abs(wrap(stage.rot-origin.rot))/.015+30;
  const budget=Math.ceil(total*1.5*60);if(budget>CERES_RECOVERY_LIMITS.maxTicks)return {reason:'route-time-budget',turnCheck:{from:at(breaker),to:turn}};
- return {plan:{schemaVersion:1,attempt:1,startedTick:tick,deadlineTick:tick+budget,start:at(breaker),plate,turn,stage,
-  returnStage:origin,predictedApproachSeconds:seconds,driftBudget,returnStart:null}};
+ return {plan:{schemaVersion:moving?2:1,attempt:1,startedTick:tick,deadlineTick:tick+budget,start:at(breaker),plate,turn,stage,
+  returnStage:origin,predictedApproachSeconds:seconds,driftBudget,returnStart:null,...(moving?{seat:null,returnStartedTick:null}:{})}};
 }
 export function restoreCeresWorkfleetRecovery(raw){
- if(!raw||raw.schemaVersion!==1||raw.attempt!==1||!Number.isSafeInteger(raw.startedTick)||!Number.isSafeInteger(raw.deadlineTick)
+ if(!raw||![1,2].includes(raw.schemaVersion)||raw.attempt!==1||!Number.isSafeInteger(raw.startedTick)||!Number.isSafeInteger(raw.deadlineTick)
   ||raw.startedTick<0||raw.deadlineTick<=raw.startedTick||raw.deadlineTick-raw.startedTick>CERES_RECOVERY_LIMITS.maxTicks)return null;
  for(const key of ['start','plate','turn','stage','returnStage'])if(!finite(raw[key]))return null;
  const origin=world(C.route.extraction.breakerTo),stage=compose(raw.plate,{x:0,z:-220,rot:Math.PI/2});
@@ -48,10 +76,25 @@ export function restoreCeresWorkfleetRecovery(raw){
   ||distance(raw.returnStage,origin)>1e-6||Math.abs(wrap(raw.returnStage.rot-origin.rot))>1e-6
   ||distance(raw.start,stage)>CERES_RECOVERY_LIMITS.maxApproach||![raw.start,raw.turn,raw.stage].every(p=>insideWork(p,boxesFor(false)))
   ||!insideWork(raw.stage,boxesFor(true)))return null;
- const returnStart=raw.returnStart==null?null:finite(raw.returnStart)&&distance(raw.returnStart,raw.stage)<=8&&Math.abs(wrap(raw.returnStart.rot-raw.stage.rot))<=.04?{...raw.returnStart}:false;
+ let seat=null,returnStartedTick=null;
+ if(raw.schemaVersion===2&&raw.seat!=null){
+  const s=raw.seat;
+  if(!Number.isSafeInteger(s.tick)||s.tick<raw.startedTick||s.tick>raw.deadlineTick||!finite(s.plate)
+    ||![s.velocity?.x,s.velocity?.z,s.spin].every(Number.isFinite))return null;
+  seat={tick:s.tick,plate:{...s.plate},velocity:{...s.velocity},spin:s.spin};
+  const probe={breaker:{pos:raw.start,rot:raw.start.rot},section:{pos:s.plate,rot:s.plate.rot,vel:s.velocity,angVel:s.spin}};
+  if(ceresWorkfleetRendezvous(probe,{start:raw.start,seat},'recover_seat',s.tick).reason)return null;
+ }
+ if(raw.schemaVersion===2&&raw.returnStart!=null){
+  returnStartedTick=raw.returnStartedTick;
+  if(!seat||!Number.isSafeInteger(returnStartedTick)||returnStartedTick<seat.tick||returnStartedTick>raw.deadlineTick)return null;
+ }
+ const returnReference=seat&&returnStartedTick!=null?predictSeat(seat,returnStartedTick).stage:raw.stage;
+ const returnStart=raw.returnStart==null?null:finite(raw.returnStart)&&distance(raw.returnStart,returnReference)<=8&&Math.abs(wrap(raw.returnStart.rot-returnReference.rot))<=.04&&insideWork(raw.returnStart,boxesFor(true))?{...raw.returnStart}:false;
  if(returnStart===false)return null;
- return {schemaVersion:1,attempt:1,startedTick:raw.startedTick,deadlineTick:raw.deadlineTick,
-  start:{...raw.start},plate:{...raw.plate},turn:{...raw.turn},stage:{...raw.stage},returnStage:{...raw.returnStage},returnStart};
+ return {schemaVersion:raw.schemaVersion,attempt:1,startedTick:raw.startedTick,deadlineTick:raw.deadlineTick,
+  start:{...raw.start},plate:{...raw.plate},turn:{...raw.turn},stage:{...raw.stage},returnStage:{...raw.returnStage},returnStart,
+  ...(raw.schemaVersion===2?{seat,returnStartedTick}:{})};
 }
 function shapePlanarReach(shape,q){
  const planar=Math.abs(q.x)<1e-12&&Math.abs(q.z)<1e-12;
@@ -99,7 +142,7 @@ const quat=a=>({x:0,y:-Math.sin(a/2),z:0,w:Math.cos(a/2)});
 // Each rotating interval is enclosed by the midpoint box plus the exact maximum
 // angular chord displacement of any corner. Translation is a continuous native cast.
 // This deliberately over-approximates curved sweeps; it never shrinks authored collision.
-export function ceresWorkfleetRecoveryClear(native,state,b,from,to,{loaded=false,sectionOnly=false,ignoreSection=false,headOnly=false,headTarget=null}={}){
+export function ceresWorkfleetRecoveryClear(native,state,b,from,to,{loaded=false,sectionOnly=false,ignoreSection=false,headOnly=false,headTarget=null,movingSeconds=0}={}){
  let parts=headOnly?C.assets.cutterHead.boxes.map(box=>({box,local:{x:0,z:0,rot:0}})):sectionOnly?C.existing.section.boxes.map(box=>({box,local:{x:0,z:0,rot:0}})):boxesFor(loaded);
  if(headTarget){
   // Enclose the complete detached-head route in the actual carrier frame. This is
@@ -122,7 +165,8 @@ export function ceresWorkfleetRecoveryClear(native,state,b,from,to,{loaded=false
   const nativePosition=valid?r.body.translation():null,position=nativePosition?{x:nativePosition.x+origin.x,z:nativePosition.z+origin.z}:coldCurrentPosition(e,state);
   const proxy=valid?null:resolveCollisionProxyManifest(e);
   const outer=valid?articulatedColliderRadius(r):unregisteredReach(e,proxy);
-  if(Math.hypot(position.x-cx,position.z-cz)>reach+outer)continue;
+  const movingReach=e===b.section?Math.hypot(e.vel.x,e.vel.z)*Math.min(1,movingSeconds)+2*outer*Math.sin(Math.abs(e.angVel||0)*Math.min(1,movingSeconds)/2):0;
+  if(Math.hypot(position.x-cx,position.z-cz)>reach+outer+movingReach)continue;
   if(!valid)return {ok:false,reason:'nearby-native-unresolved',blocker:e.data?.worldRecordId||e.id};
   const colliders=r.colliders.filter(c=>!c.isSensor()&&c.isEnabled());shapes+=colliders.length;
   if(colliders.length)peers.push({e,colliders});
@@ -131,7 +175,8 @@ export function ceresWorkfleetRecoveryClear(native,state,b,from,to,{loaded=false
  native.world.propagateModifiedBodyPositionsToColliders();
  for(const peer of peers)peer.shapes=peer.colliders.map(collider=>{const shape=collider.shape,position=collider.translation(),rotation=collider.rotation();return {collider,shape,position,rotation,reach:shapePlanarReach(shape,rotation)};});
  const origin=native._frameOrigin||{x:0,z:0};
- const delta=wrap(to.rot-from.rot),steps=Math.max(1,Math.ceil(Math.abs(delta)/.02));
+ const delta=wrap(to.rot-from.rot),moving=Math.max(0,Math.min(1,movingSeconds));
+ const steps=Math.max(1,Math.ceil(Math.abs(delta)/.02),Math.ceil(Math.abs(b.section.angVel||0)*moving/.02));
  for(let i=0;i<steps;i++){
   const a=i/steps,z=(i+1)/steps,m=(a+z)/2,rot=from.rot+delta*m;
   for(const {box,local,head,section}of parts){
@@ -141,9 +186,22 @@ export function ceresWorkfleetRecoveryClear(native,state,b,from,to,{loaded=false
    const start={x:from.x+(to.x-from.x)*a+offset.x-origin.x,y:0,z:from.z+(to.z-from.z)*a+offset.z-origin.z};
    const velocity={x:(to.x-from.x)/steps,y:0,z:(to.z-from.z)/steps},q=quat(rot+(local.rot||0));
    for(const {e,shapes}of peers)for(const peer of shapes){
-    if(segmentDistance(start,velocity,peer.position)>Math.hypot(box.size.x/2+pad,box.size.z/2+pad)+peer.reach+1e-4)continue;
-    const collider=peer.collider,contact=collider.contactShape(shape,start,q,0);if(contact&&contact.distance<0)return {ok:false,reason:'obstructed',blocker:e.data?.worldRecordId||e.id,part:box.id};
-    const hit=shape.castShape(start,q,velocity,peer.shape,peer.position,peer.rotation,{x:0,y:0,z:0},0,1,true);
+    let query=peer,peerVelocity={x:0,y:0,z:0};
+    if(moving&&e===b.section){
+     const ext=peer.shape.halfExtents;if(!ext)return {ok:false,reason:'moving-native-shape-unresolved'};
+     const sx=e.pos.x-origin.x,sz=e.pos.z-origin.z,ox=peer.position.x-sx,oz=peer.position.z-sz;
+     const angle=(e.angVel||0)*moving*m,c=Math.cos(angle),s=Math.sin(angle);
+     const arc=2*(Math.hypot(ox,oz)+Math.hypot(ext.x,ext.z))*Math.sin(Math.abs(e.angVel||0)*moving/(steps*4));
+     const predicted=new native.RAPIER.Cuboid(ext.x+arc,ext.y,ext.z+arc);
+     query={shape:predicted,position:{x:sx+e.vel.x*moving*a+ox*c-oz*s,y:peer.position.y,z:sz+e.vel.z*moving*a+ox*s+oz*c},
+      rotation:quat(-2*Math.atan2(peer.rotation.y,peer.rotation.w)+angle),reach:Math.hypot(ext.x+arc,ext.z+arc)};
+     peerVelocity={x:e.vel.x*moving/steps,y:0,z:e.vel.z*moving/steps};
+    }
+    if(segmentDistance(start,{x:velocity.x-peerVelocity.x,z:velocity.z-peerVelocity.z},query.position)>Math.hypot(box.size.x/2+pad,box.size.z/2+pad)+query.reach+1e-4)continue;
+    const contact=query===peer?peer.collider.contactShape(shape,start,q,0)
+      :shape.contactShape(start,q,query.shape,query.position,query.rotation,0);
+    if(contact&&contact.distance<0)return {ok:false,reason:'obstructed',blocker:e.data?.worldRecordId||e.id,part:box.id};
+    const hit=shape.castShape(start,q,velocity,query.shape,query.position,query.rotation,peerVelocity,0,1,true);
     if(hit&&hit.time_of_impact<1)return {ok:false,reason:'obstructed',blocker:e.data?.worldRecordId||e.id,part:box.id};
    }
   }

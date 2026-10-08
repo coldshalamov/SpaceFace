@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
+import {initialRecoveryWire} from './ceres-reacquire-harness.mjs';
 import {createSimulation} from '../src/core/sim.js';import {createGameState} from '../src/core/gameState.js';
 import {PRODUCTION_INIT_ORDER,PRODUCTION_UPDATE_ORDER} from '../src/runtime/authoritativeSystemManifest.js';
 import {flightV3} from '../src/systems/flightV3.js';import {physics as physicsSystem} from '../src/core/physics.js';
@@ -18,23 +19,8 @@ const stage=worldPose(C.route.extraction.breakerTo);
 function selected(state){const wo={name:'world',init(c){this.state=c.state;},upsertWorldRecord:world.upsertWorldRecord};const modules={flightSlot:flightV3,physics:physicsSystem,combat,asteroidSites,npcJobsRuntime,traffic,world:wo};return createSimulation({state,seed:47,systems:PRODUCTION_INIT_ORDER.filter(id=>modules[id]).map(id=>modules[id]),updateOrder:PRODUCTION_UPDATE_ORDER.filter(id=>modules[id]).map(id=>modules[id])});}
 function pose(e){return {pos:{x:e.pos.x,z:e.pos.z},vel:{x:e.vel.x,z:e.vel.z},rot:e.rot,angVel:e.angVel};}
 function refs(role){return role==='section'?{kind:'worldSite',siteId:C.siteId,payloadId:'long_plate',worldObjectId:C.identities.payload}:{kind:'worldRecord',recordId:C.identities[role==='breaker'?'worker':role]};}
-function initialWire({yaw=0,velocity=0}={}){
- const state=createGameState(47);state.mode='flight';state.world.currentSectorId=C.sectorId;
- const sim=createSimulation({state,seed:47,systems:[asteroidSites]}),sites=sim.registry.get('asteroidSites');sites._syncWorldSites();
- for(const [componentId,verb,amount,requestSequence]of[['long_plate_clamp','repair',24,1],['long_plate','cut',54,2],['long_plate_clamp','cut',18,3]])assert.equal(sites.applyWorldSiteBeamOperation({siteId:C.siteId,componentId,verb,amount,requestStreamId:'player-industrial-beam',requestSequence}).ok,true);
- const siteSave=sites.serialize();sim.dispose();
- // Constructed quiet displaced-state fixture. Only position comes from the historical
- // tick30000 observation; yaw/zero momentum are explicit independent test inputs.
- siteSave.worldById[C.siteId].payloads.long_plate.motion={pos:{x:-12938.895446777344,z:9488.7041015625},vel:{x:velocity,z:0},rot:yaw,angVel:0};
- const records={byId:{},order:[]};for(const [i,role]of['breaker','cutterHead','cradle'].entries()){
-  const spec=ceresWorkfleetHardwareSpec(role),p=role==='breaker'?stage:role==='cutterHead'?compose(stage,C.assets.breaker.headMountedPose):{...spec.pos,rot:spec.rot};
-  Object.assign(spec,{pos:{x:p.x,z:p.z},rot:p.rot,vel:{x:0,z:0},angVel:0});const record=captureEntityRecord({id:i+1,...spec},{sectorId:C.sectorId,tick:100});records.byId[record.recordId]=record;records.order.push(record.recordId);
- }
- const job={id:'job:ceres:second_measure:long_plate',worker:C.identities.worker,head:C.identities.cutterHead,section:C.identities.payload,cradle:C.identities.cradle,phase:'extract',phaseTick:100,updatedTick:100,index:3,sequence:0,mountId:'att_000004',towId:'att_000005',receiverId:null};
- const byId={att_000004:{id:'att_000004',defId:'attachment_transport_clamp',ownerRef:refs('cutterHead'),targetRef:refs('breaker'),sourceSocketId:'SOCKET_Mount',targetSocketId:'SOCKET_Cutter_Dock',sourceAnchorLocal:{x:-8,z:0},targetAnchorLocal:{x:-46,z:30},restLength:.026060374168755757},att_000005:{id:'att_000005',defId:'tether_standard',ownerRef:refs('breaker'),targetRef:refs('section'),sourceSocketId:'SOCKET_Tether_Massline',targetSocketId:'socket_tether_anchor',sourceAnchorLocal:{x:-46,z:0},targetAnchorLocal:{x:0,z:-55},restLength:211}};
- for(const line of Object.values(byId))Object.assign(line,{state:'active',controlMode:'ceres_workfleet',createdTick:100,brokenTick:null,breakReason:null,lastTension:0,lastImpulse:0});
- return {records,sites:siteSave,jobs:{ceresWorkfleet:job},combat:{attachments:{byId}},tick:100,simTime:100/60};
-}
+const initialWire=initialRecoveryWire;
+
 async function restore(wire){
  const state=createGameState(47);state.mode='flight';state.world.currentSectorId=C.sectorId;state.tick=wire.tick;state.simTime=wire.simTime;state.nextEntityId=700;state.world.frameOrigin={x:-12288,z:8192};state.world.frameOriginSeq=1;state.world.records=clone(wire.records);
  const sim=selected(state),sites=sim.registry.get('asteroidSites');sites.deserialize(clone(wire.sites));sites._syncWorldSites();for(const record of Object.values(state.world.records.byId))sim.spawn(spawnSpecFromRecord(record));
@@ -68,9 +54,9 @@ test('same original section force-reapproaches, seats, returns and preserves eve
  // Continue from a genuinely earned recovery seat, then finish the real return rather than only deserializing a phase string.
  const resumed=await restore(snapshots.get('recover_seat'));try{for(let i=0;i<40000&&resumed.job().phase!=='loaded'&&resumed.job().phase!=='recovery-interrupted';i++)resumed.sim.step();assert.equal(resumed.job().phase,'loaded',JSON.stringify(resumed.job()));checkOriginal(resumed);}finally{resumed.close();}
 });
-test('recovery planner rejects moving, spinning, shell-bound, closed-shoe and unbounded capture targets',async()=>{
+test('recovery planner rejects motion beyond finite authority, shell-bound, closed-shoe and unbounded capture targets',async()=>{
  const h=await restore(initialWire());try{assert.ok(planCeresWorkfleetRecovery(h.b,h.state.tick).plan);
-  for(const mutate of [b=>b.section.vel.x=.1,b=>b.section.angVel=.001,b=>b.section.pos.z=C.sitePlacement.pos.z-100,b=>b.section.pos.x-=1000,b=>b.breaker.data.ceresWorkfleetSlide=.1,b=>b.breaker.pos.z+=2]){const b=Object.fromEntries(Object.entries(h.b).map(([k,e])=>[k,{...e,pos:{...e.pos},vel:{...e.vel},data:{...e.data}}]));mutate(b);assert.ok(planCeresWorkfleetRecovery(b,h.state.tick).reason);}
+  for(const mutate of [b=>b.section.vel.x=.8,b=>b.section.angVel=.01,b=>b.section.pos.z=C.sitePlacement.pos.z-100,b=>b.section.pos.x-=1000,b=>b.breaker.data.ceresWorkfleetSlide=.1,b=>b.breaker.pos.z+=2]){const b=Object.fromEntries(Object.entries(h.b).map(([k,e])=>[k,{...e,pos:{...e.pos},vel:{...e.vel},data:{...e.data}}]));mutate(b);assert.ok(planCeresWorkfleetRecovery(b,h.state.tick).reason);}
   const p=planCeresWorkfleetRecovery(h.b,h.state.tick).plan;for(const mutate of [p=>p.stage.x+=.1,p=>p.returnStage.z++,p=>p.deadlineTick+=L.maxTicks,p=>p.attempt=2,p=>p.start.x+=2,p=>p.returnStart={...p.stage,x:p.stage.x+9},p=>p.plate.rot=NaN]){const bad=clone(p);mutate(bad);assert.equal(restoreCeresWorkfleetRecovery(bad),null);const job=restoreCeresWorkfleetJob({...h.job(),phase:'recover_seat',recovery:bad});assert.equal(job.phase,'recovery-interrupted');assert.equal(job.reason,'recovery-plan-invalid');}
  }finally{h.close();}
 });
