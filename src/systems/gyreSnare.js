@@ -1843,7 +1843,7 @@ export const gyreSnare = {
       // OFF zeroes the other transient HOLD channels too — a lagged clump's last
       // drag or spin can't publish forever. corePos DELIBERATELY stays last-seen:
       // the strain-break ring blooms there when the close ramp starts.
-      pub.holdLag01 = 0; pub.coreAngVel = 0;
+      pub.coreAngVel = 0;
       // Same dead-state hygiene for the launch channels: a boundary/dock/death drop
       // landing on the single thrownBeat tick would otherwise latch it for the whole
       // OFF phase, and launchWindup01 pins at 1.0 after every launch.
@@ -1945,11 +1945,9 @@ export const gyreSnare = {
           * (D.holdLagStrainMax
             + D.holdLagStrainMassGain * Math.min(1, rt.clumpMass / D.maxClumpMass)),
       ) : 0;
-      // Smoothed lag normalized — the presentation leans the maw toward the dragged
-      // clump (the glass stretching); strain01 stays on the RAW residual (an honest
-      // twitch there is a real read), the lean rides the one-poled channel.
-      pub.holdLag01 = rt.phase === PHASE.HOLD ? clamp(rt.holdLagSm / D.holdLagRefWu, 0, 1) : 0;
-    } else { pub.strain01 = 0; pub.coreAngVel = 0; pub.holdLag01 = 0; }
+      // (The normalized smoothed-lag mirror channel was retired — the presentation
+      // leans on corePos directly; strain01 above keeps the raw-residual read.)
+    } else { pub.strain01 = 0; pub.coreAngVel = 0; }
     // The newest meal's approach direction — the gulp dips toward the side the mass
     // actually hit. Rides rt.absorbDir, not the bounded member ledger: once the
     // ledger caps out the dip must keep updating with every meal, not freeze.

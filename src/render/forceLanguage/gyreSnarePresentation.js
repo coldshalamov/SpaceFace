@@ -668,10 +668,13 @@ export class GyreSnarePresentation {
     // Streak length reads SPEED, not size: a ricochet-stalled ball dragging a
     // 30 wu ribbon lies about its flight — 40 wu at bowl speed down to a 6 wu
     // whisper when the ball has no heading left.
-    const trailLen = Math.max(6, Math.min(40, finite(spec.vl) * 0.12));
+    // The cap relaxes with payload: a capped moon's width (bounded at 48 below)
+    // must stay SHORTER than its streak or the ribbon reads as a slab, not a
+    // streak — 40 wu + 0.4·r keeps length ≥ width at every ball size.
+    const trailLen = Math.max(6, Math.min(40 + 0.4 * finite(spec.r), finite(spec.vl) * 0.12));
     mesh.position.set(lp.x - spec.dx * trailLen * 0.5, 0.55, lp.z - spec.dz * trailLen * 0.5);
     mesh.rotation.y = Math.atan2(-spec.dz, spec.dx);
-    mesh.scale.set(trailLen, 1, Math.max(3, spec.r * 1.15));
+    mesh.scale.set(trailLen, 1, Math.max(3, Math.min(48, spec.r * 1.15, trailLen)));
     const ttl01 = Math.max(0, Math.min(1, finite(spec.ttl01, 1)));
     // Alpha floor: a pebble's 9 s flight keeps a readable streak at range — the
     // throw's mass still grades the shimmer but can't drop the ribbon to ~0.2.
@@ -1241,21 +1244,25 @@ export class GyreSnarePresentation {
         1 - 0.12 * this._clumpKick + 0.10 * Math.sin(this._clumpKick * Math.PI));
       // Coil wind: the payload visibly compresses through the ~100 ms draw — a
       // drawn spring, not a passive ball waiting for the burst. DIRECTIONAL in
-      // the world launch frame: squash ALONG launchDir, bulge perpendicular — a
-      // uniform footprint shrink reads 'ball got smaller', this reads 'drew back'.
+      // the world launch frame: squash ALONG launchDir, bulge perpendicular —
+      // applied per-lump in the placement pass (the group keeps tumbling
+      // untouched; rotating the group onto the throw line left the squash axis
+      // at clumpSpin+α — arbitrary tumble phase — plus a ≤180° position snap
+      // at coil start/end). The y bulge stays on the group scale.
       const wind = clamp01(finite(mirror.launchWindup01));
-      if (wind > 0 && mirror.launchDir) {
-        const squash = this._clump.scale.x;
-        this._clump.scale.set(squash * (1 - 0.10 * wind), squash * (1 + 0.05 * wind), squash * (1 + 0.07 * wind));
-      }
+      if (wind > 0) this._clump.scale.y *= (1 + 0.05 * wind);
       this._clumpSpin += sdt * spinRate;
       this._clump.rotation.y = -this._clumpSpin;
+      // launchDir in the clump's LOCAL frame — the group renders R_y(−spin), so
+      // world→local is R_y(+spin). The placement loop squashes each lump's
+      // offset along this axis: the cinch pins to the throw line in world
+      // space under any tumble phase.
+      this._coilLd = null;
       if (wind > 0 && mirror.launchDir) {
-        // Rotate local +x (the squashed axis) onto the frozen launchDir: the
-        // clump keeps tumbling inside the squash frame while the cinch stays
-        // on the throw line in world space.
-        const dl = Math.hypot(finite(mirror.launchDir.x), finite(mirror.launchDir.z)) || 1;
-        this._clump.rotation.y -= Math.atan2(finite(mirror.launchDir.z) / dl, finite(mirror.launchDir.x) / dl);
+        const dxw = finite(mirror.launchDir.x), dzw = finite(mirror.launchDir.z);
+        const dl = Math.hypot(dxw, dzw) || 1;
+        const cs = Math.cos(this._clumpSpin), sn = Math.sin(this._clumpSpin);
+        this._coilLd = { x: (dxw / dl) * cs + (dzw / dl) * sn, z: -(dxw / dl) * sn + (dzw / dl) * cs };
       }
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
       // Core veil: the held/grown ball's glass skin — swells with clump radius and
@@ -1451,6 +1458,16 @@ export class GyreSnarePresentation {
             const sh = this._moteKick * prox * l.baseScale * 0.35 * calm;
             l.mesh.position.x += Math.cos(la) * sh;
             l.mesh.position.z += Math.sin(la) * sh;
+          }
+          // Coil cinch: squash the rubble ALONG the throw line — the offset
+          // component parallel to the local launch dir compresses while the
+          // perpendicular bulges. Per-lump (not a group scale+rotation) so the
+          // squash axis stays pinned to launchDir in world space at any tumble.
+          if (this._coilLd) {
+            const kP = 1 - 0.10 * wind; const kN = 1 + 0.07 * wind;
+            const tp = l.mesh.position.x * this._coilLd.x + l.mesh.position.z * this._coilLd.z;
+            l.mesh.position.x = this._coilLd.x * tp * kP + (l.mesh.position.x - this._coilLd.x * tp) * kN;
+            l.mesh.position.z = this._coilLd.z * tp * kP + (l.mesh.position.z - this._coilLd.z * tp) * kN;
           }
         }
         // And it tumbles: a quiet per-lump yaw/roll drift (staggered at spawn) sells

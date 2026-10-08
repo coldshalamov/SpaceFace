@@ -3107,7 +3107,9 @@ export const RECIPES = [
     baseFreq: 430, freqSweep: [430, 960], sweepTimeS: 0.11,
     gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.15 },
     filterType: 'bandpass', filterFreq: 1250, filterQ: 1.7,
-    pitchRange: [0.96, 1.05],
+    // Tight band: the per-tick coil emits ramp ~4%/tick — a ±4.5% jitter would let
+    // adjacent voices invert the crescendo the ramp is for (absorb pins tight too).
+    pitchRange: [0.98, 1.02],
   },
   // Ball death: the clump's quiet grave — a muffled glass shatter for a ball expiring in
   // open space (impacts already sing through collision audio; this covers the silent TTL).
