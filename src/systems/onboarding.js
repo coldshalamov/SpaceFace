@@ -25,6 +25,7 @@ import { IS_DEMO } from '../core/demoMode.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
+import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { continueRecap } from '../ui/screens/missionLog.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -387,6 +388,7 @@ export const onboarding = {
     this.registry = ctx.registry || null;
     this.gamepad = ctx.gamepad;
     this.touch = ctx.touch;
+    this._firstHourFelt = bindFirstHourFelt(this.bus, { voice: this.helpers.voice });
     this._panel = null;
     this._bodyEl = null;
     this._titleEl = null;
@@ -2342,10 +2344,37 @@ export const onboarding = {
       rescue.completedAt = atS;
       const fails = RESCUE_ORDER.reduce((n, k) => n + (rescue.beats[k].fails || 0), 0);
       this.bus.emit('rescue:complete', buildRescueCompleteEvent(atS, fails));
+      this._postOpeningRescueRecognition(atS);
     }
     this._setRescueWaypoint(true);
     this._refreshBeatPanel();
     if (key === 'grab') this._maybeAdvanceMissingThree();
+  },
+
+  // The opening pod is a real rescue. INF-074 already turns recovery:completed
+  // (outcome rescue) into bar gossip — post that receipt once, with no pay, and
+  // never overwrite a notice a later rescue already wrote for this sector.
+  _postOpeningRescueRecognition(atS) {
+    const st = this.state;
+    if (!st || !this.bus) return false;
+    const sectorId = st.world && st.world.currentSectorId;
+    if (!sectorId) return false;
+    const notices = st.stationLife && st.stationLife.rescueNotices;
+    if (notices && notices[sectorId]) return false;
+    const seed = st.meta && st.meta.seed;
+    const recoveryId = `onboarding-pod:${seed == null ? 0 : seed}`;
+    this.bus.emit('recovery:completed', {
+      id: `recovery-receipt:${recoveryId}`,
+      recoveryId,
+      sectorId,
+      outcome: 'rescue',
+      pos: { x: 0, z: 0 },
+      credits: 0,
+      repDelta: 0,
+      cargo: {},
+      completedAt: atS,
+    });
+    return true;
   },
 
   _rescueFail(key, reason) {
@@ -2354,6 +2383,7 @@ export const onboarding = {
     // Never yank a different current verb off the rail.
     if (rescue.current && rescue.current !== key) return;
     const atS = this.state.simTime || 0;
+    const speakRecovery = (rescue.beats[key].fails || 0) === 0;
     rescue.beats[key].fails = (rescue.beats[key].fails || 0) + 1;
     rescue.beats[key].state = 'current';
     rescue.current = key;
@@ -2370,10 +2400,11 @@ export const onboarding = {
     // Stage a fresh tableau for the failed beat only: the rock, scout, and pod are the
     // working bodies; the wreck, wall, and beacon stand.
     this._respawnRescueSlot(key);
-    // Re-speak the verb once (recovery, not a lecture), then silence.
+    // Re-speak the verb once (recovery, not a lecture). Later fails of the same beat
+    // restage the body and keep the waypoint; they do not lecture again.
     const line = rescueBeatLine(key);
     if (this.state.onboarding) this.state.onboarding.beatAction = line;
-    this._sayTutorial(line);
+    if (speakRecovery) this._sayTutorial(line);
     this._setRescueWaypoint(true);
     this._refreshBeatPanel();
   },
