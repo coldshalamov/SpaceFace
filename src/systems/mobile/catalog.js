@@ -10,7 +10,7 @@ export const POWER_PAGES = Object.freeze([
     power('cloak', 'CLOAK', 'cloak', 'Toggle your cloak.'),
     // Same hold-to-toggle contract as the desktop latch: tap lashes the beam,
     // tap again bowls the clump straight ahead.
-    power('gyreSnare', 'GYRE', 'gyre', 'Lash the nearest body, then tap again to bowl it.', 'toggle'),
+    power('gyreSnare', 'GYRE', 'gyre', 'Snare a body in the cone, then tap again to bowl it.', 'toggle'),
   ] },
   { name: 'Fieldwork', powers: [
     power('deployMassSeed', 'MASS SEED', 'seed', 'Launch an anchor toward your aim.'),

@@ -248,6 +248,7 @@ export class GyreSnarePresentation {
     this._closeT = 0;
     this._closeSpan = 0.25;  // ramp seconds — a strain break snaps down in ~120 ms instead
     this._closeK = 0;        // last k*k of the ramp — the clump group shrinks on it
+    this._closeSeeds = null; // each element's last live alpha /flashCalm — the ramp starts continuous
     this._closeTear = false; // 'strained' close: the freed clump whips away — rubble rides its track
     this._tearFade = null;   // seconds left on the k² rubble fade once the torn track ends (no one-frame de-rez)
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
@@ -1079,6 +1080,17 @@ export class GyreSnarePresentation {
         this._beamWasOn = false;
         this._closing = true;
         this._closeT = 0;
+        // The ramp seeds from each element's LAST LIVE alpha — a flat seed stepped
+        // the maw ~+37% brighter on an empty-beam release (up to ~2× under a dying
+        // fuse) for the first frame of the collapse. /flashCalm so the ramp's own
+        // flashCalm multiply lands frame-0 exactly on the last live value.
+        const calmA = flashCalm > 1e-4 ? 1 / flashCalm : 0;
+        this._closeSeeds = {
+          cone: this._coneMat.uniforms.uAlpha.value * calmA,
+          body: this._bodyMat.opacity * calmA,
+          maw: this._mawMat.opacity * calmA,
+          disc: this._discMat.uniforms.uAlpha.value * calmA,
+        };
         // A strain break is a TEAR, not a polite release: the glass snaps down in
         // ~120 ms (half the normal ramp) and a ring blooms where the core slipped —
         // the sim publishes the drop reason so the close reads it. Every other close
@@ -1110,7 +1122,7 @@ export class GyreSnarePresentation {
         this._spiralMat.uniforms.uTime.value = this._moteT;
         this._spiralMat.uniforms.uFade.value = kk; // the scatter fades on the same 250ms ramp as the glass
         this._coneMat.uniforms.uTime.value = this.time;
-        this._coneMat.uniforms.uAlpha.value = 0.42 * kk * flashCalm;
+        this._coneMat.uniforms.uAlpha.value = (this._closeSeeds || { cone: 0.42 }).cone * kk * flashCalm;
         this._coneMat.uniforms.uPulse.value *= Math.exp(-sdt * 9);
         this._coneMat.uniforms.uStrain.value *= Math.exp(-sdt * 9); // warn dies with the ramp
         this._coneMat.uniforms.uTremble.value *= Math.exp(-sdt * 9); // tremble dies with the ramp
@@ -1123,10 +1135,12 @@ export class GyreSnarePresentation {
           this._discMat.uniforms.uCol.value.copy(this._colMaw).lerp(this._colWarn, sDecay * 0.6);
         }
         // flashCalm rides every close-ramp alpha too — a reduced-flash user shouldn't
-        // get a brighter 250 ms tail than those elements ever show while live.
-        this._bodyMat.opacity = 0.1 * kk * flashCalm;
-        this._mawMat.opacity = 0.55 * kk * flashCalm;
-        this._discMat.uniforms.uAlpha.value = 0.55 * kk * flashCalm;
+        // get a brighter 250 ms tail than those elements ever show while live. The
+        // seeds are the last live alphas (fallbacks keep the old flat ramp).
+        const sd = this._closeSeeds || { cone: 0.42, body: 0.1, maw: 0.55, disc: 0.55 };
+        this._bodyMat.opacity = sd.body * kk * flashCalm;
+        this._mawMat.opacity = sd.maw * kk * flashCalm;
+        this._discMat.uniforms.uAlpha.value = sd.disc * kk * flashCalm;
         this._closeK = kk; // the clump block below shrinks the freed ball on the same ramp
         this._spiral.visible = true; // static scatter under reduced-motion too
         if (k <= 0) { this._closing = false; this._beam.visible = false; this._spiral.visible = false; }
