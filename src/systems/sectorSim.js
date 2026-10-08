@@ -13,6 +13,7 @@
 import { SECTORS, dangerIndex, dangerTier } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { dedupError } from '../core/warnDedup.js';
 import {
   SECTOR_FIELD_VERSION,
   buildSectorGraph,
@@ -158,7 +159,7 @@ export const sectorSim = {
         this._refreshDiagnostics();
       }
     } catch (err) {
-      console.error('[sectorSim] update', err);
+      dedupError('sectorSim/update', '[sectorSim] update', err);
     }
   },
 

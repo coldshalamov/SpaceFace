@@ -47,6 +47,7 @@ import {
   readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason,
 } from '../ai/tensionPolicy.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { writePickupRemainder } from '../core/pickupAcceptance.js';
@@ -401,9 +402,7 @@ export const encounterDirector = {
     try {
       updateAmbientPredation(state, this._ambientPredationCtx());
     } catch (err) {
-      if (typeof console !== 'undefined' && console.warn) {
-        console.warn('[encounterDirector] ambient predation tick failed', err);
-      }
+      dedupWarn('encounterDirector/ambient-predation-tick', '[encounterDirector] ambient predation tick failed', err);
     }
   },
 
@@ -425,9 +424,7 @@ export const encounterDirector = {
       if (accelerateBoundRaiderEscape(this.state, entity, attackerId, ctx)) return true;
       return releaseBoundRaiderForRetaliation(this.state, entity, ctx);
     } catch (err) {
-      if (typeof console !== 'undefined' && console.warn) {
-        console.warn('[encounterDirector] predation retaliation release failed', err);
-      }
+      dedupWarn(`encounterDirector/predation-retaliation-release/${targetId}`, '[encounterDirector] predation retaliation release failed', err);
       return false;
     }
   },
@@ -1192,7 +1189,7 @@ export const encounterDirector = {
         try {
           ENCOUNTER_SCRIPTS.convoy.tickPredation(this, live, state, now);
         } catch (err) {
-          if (typeof console !== 'undefined' && console.warn) console.warn('[encounterDirector] predation tick failed', live.shapeId, err);
+          dedupWarn(`encounterDirector/predation-tick/${live.shapeId}`, '[encounterDirector] predation tick failed', live.shapeId, err);
         }
       }
       if (!script || typeof script.tick !== 'function') continue;

@@ -31960,12 +31960,18 @@ function notePolicyRootFault(owner, root, err) {
   const map = owner._policyRootFaults || (owner._policyRootFaults = new Map());
   let rec = map.get(root);
   if (!rec || rec.epoch !== epoch) {
-    rec = { epoch, faults: 0, deferUntil: 0 };
+    rec = { epoch, faults: 0, deferUntil: 0, deferrals: 0 };
     map.set(root, rec);
   }
   rec.faults += 1;
   if (rec.faults >= 3 && rec.deferUntil <= (owner._viewSyncSeq || 0)) {
-    rec.deferUntil = (owner._viewSyncSeq || 0) + 30 + ((rec.faults * 7) % 60);
+    // Back off per heal→refault cycle: a persistently bad root was re-faulting
+    // every ~0.5-1.5 s forever (each retry mints a walk + a whole-scene
+    // stepped recount). Doubling per deferral preserves healing while the
+    // drip decays to one retry per ~30 s.
+    rec.deferrals += 1;
+    const base = 30 + ((rec.faults * 7) % 60);
+    rec.deferUntil = (owner._viewSyncSeq || 0) + Math.min(2048, base * (1 << (rec.deferrals - 1)));
     noteLaneFault(owner.state, 'shadowPolicyRoot');
     laneWarn(owner, 'shadowPolicyRoot',
       `[render] shadow policy root faulted x${rec.faults}; serving no-change while deferred`, err);
