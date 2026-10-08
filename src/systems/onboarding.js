@@ -25,6 +25,7 @@ import { IS_DEMO } from '../core/demoMode.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
+import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { continueRecap } from '../ui/screens/missionLog.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -387,6 +388,7 @@ export const onboarding = {
     this.registry = ctx.registry || null;
     this.gamepad = ctx.gamepad;
     this.touch = ctx.touch;
+    this._firstHourFelt = bindFirstHourFelt(this.bus, { voice: this.helpers.voice });
     this._panel = null;
     this._bodyEl = null;
     this._titleEl = null;
