@@ -35,6 +35,19 @@ function fanOf(root) {
   return fan;
 }
 
+test('finalizing an authored hull preserves its geometry and painted silhouette', () => {
+  const root = new THREE.Group();
+  const hull = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 1), new THREE.MeshStandardMaterial());
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(.1, .1, .1), new THREE.MeshStandardMaterial({
+    emissive: 0xffa000, emissiveIntensity: 1,
+  }));
+  hull.add(body, lamp); root.add(hull);
+  finalizeShip({ root, hull, entity: { radius: 10 }, designRadius: 2 });
+  assert.deepEqual(hull.children, [body, lamp], 'readability belongs to authored geometry, not generic appendages');
+  assert.equal(hull.scale.x, 5);
+});
+
 test('PIC-04 hero fan advances on sim time and holds when that clock holds', () => {
   resetPresentationFrameClock();
   const entity = { radius: 14, vel: { x: 40, z: 0 } };

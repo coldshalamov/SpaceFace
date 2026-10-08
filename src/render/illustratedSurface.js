@@ -255,10 +255,8 @@ export function installIllustratedSurface(material) {
     shader.uniforms.sfLayoutAccent = { value: new Color(layout?.accent || '#ffffff') };
     shader.uniforms.sfHullCenter = { value: new Vector3().fromArray(layout?.center || [0, 0, 0]) };
     shader.uniforms.sfHullSize = { value: new Vector3().fromArray(layout?.size || [1, 1, 1]) };
-    shader.uniforms.sfBellyShade = { value: this.userData?.spacefaceBellyShade ? 1 : 0 };
     if (shader.vertexShader) shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 sfHullPosition;\nvarying vec3 vSfHullPosition;\nvarying vec3 vSfObjectNormal;')
-      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nvSfObjectNormal = objectNormal;')
+      .replace('#include <common>', '#include <common>\nattribute vec3 sfHullPosition;\nvarying vec3 vSfHullPosition;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfHullPosition = sfHullPosition;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <envmap_physical_pars_fragment>',
@@ -289,9 +287,7 @@ export function installIllustratedSurface(material) {
         uniform vec3 sfLayoutAccent;
         uniform vec3 sfHullCenter;
         uniform vec3 sfHullSize;
-        uniform float sfBellyShade;
         varying vec3 vSfHullPosition;
-        varying vec3 vSfObjectNormal;
       `)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float sfSurfaceRelief = 0.0;
@@ -313,7 +309,6 @@ export function installIllustratedSurface(material) {
           }
           if (sfLayoutStrength > 0.0) { ${HULL_LAYOUT_GLSL} }
         }
-        diffuseColor.rgb *= mix(1.0, mix(0.42, 1.0, clamp(normalize(vSfObjectNormal).y * 0.5 + 0.5, 0.0, 1.0)), sfBellyShade);
       `)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         // Recessed paint-panel joints catch light through the existing material normal. Their

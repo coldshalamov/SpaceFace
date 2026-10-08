@@ -482,6 +482,7 @@ function optimizeStaticBatches(root) {
 
 function isBatchCandidate(obj) {
   if (!obj || !obj.isMesh || obj.isBatchedMesh || obj.isInstancedMesh) return false;
+  if (obj.userData?.contactShadowReceiver === true) return false;
   if (obj.onBeforeRender && obj.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return false;
   if (obj.children && obj.children.length) return false;
   const g = obj.geometry, m = obj.material;
@@ -605,14 +606,12 @@ function hullMaterial(pal, panelCount = 14) {
     // hull should read as paint, not bare metal, so the metalness contrast with exposed hardware
     // (gunmetal/graphite at 0.78–0.88) carries the material hierarchy instead of a uniform sparkle.
     // Roughness is raised slightly so age reads; roughnessMap still provides the local history.
-    const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       map: albedo, roughnessMap: rough, normalMap: normal, color: 0xffffff,
       roughness: 0.66, metalness: 0.16,
       normalScale: new THREE.Vector2(0.7, 0.7),
       emissive: new THREE.Color(pal.emissive), emissiveIntensity: 0.04,
     }), SHARED_MATERIAL_ROLE.HULL);
-    material.userData.spacefaceBellyShade = true;
-    return material;
   });
 }
 
@@ -1107,78 +1106,86 @@ function addNavBlinkers(g, R, halfWidth, length, blinkers) {
 // jittered so it doesn't look mechanical. Each cluster is built from cached primitives.
 // =============================================================================================
 
-function addHullReadability(parent, R, vis, axis) {
-  if (!parent || parent.userData.readabilityKit) return;
-  const L = (vis && vis.length) || 1.2;
-  const H = (vis && vis.height) || 0.35;
-  const dark = getMaterial('greeb:dark', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0x14181f, roughness: 0.74, metalness: 0.62,
-  }), SHARED_MATERIAL_ROLE.HULL));
-  const win = emissiveMaterial('#ffd98a', 1.2, SHARED_MATERIAL_ROLE.HULL);
-  const bay = new THREE.Mesh(getGeometry('read:bay', () => new THREE.BoxGeometry(0.16, 0.08, 0.10)), dark);
-  const windows = new THREE.Mesh(getGeometry('read:win', () => new THREE.BoxGeometry(0.22, 0.03, 0.03)), win);
-  const along = 0.18 * L * R;
-  const up = H * 0.45 * R;
-  if (axis === 'z') {
-    bay.position.set(0, up, along);
-    windows.position.set(0, up + 0.06 * R, along * 0.55);
-  } else {
-    bay.position.set(along, up, 0);
-    windows.position.set(along * 0.55, up + 0.06 * R, 0);
-  }
-  bay.scale.setScalar(R);
-  windows.scale.setScalar(R);
-  parent.add(bay, windows);
-  parent.userData.readabilityKit = true;
-}
-
 function surfaceDetail(ctx) {
-  const { g, R, hm, vis, hints } = ctx;
+  const { g, R, pal, hm, vis, hints, seed } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
-  const density = hints.greeble != null ? hints.greeble : 0.5;
+  const density = hints.greeble != null ? hints.greeble : 0.5;       // 0..1
   const armored = hints.plating === 'armored';
-  const deckY = H * 0.5 * R;
-  const xMin = -L * 0.40;
+  const rnd = mulberryLite(seed ^ 0x9e37);
+  // deck bounds the detail scatters within (keep clear of the nose/engine/cockpit zones)
+  const xMin = -L * 0.40, xMax = L * 0.30;
+  const span = xMax - xMin;
+  const cellsX = Math.max(3, Math.round(span * 6));                  // grid resolution along X
+  const cellsZ = Math.max(2, Math.round(W * 2 * 6));
+  const deckY = H * 0.5 * R;                                          // top surface height
 
+  // shared cached geos
   const ventGeo = getGeometry('greeb:vent', () => new THREE.BoxGeometry(0.12, 0.03, 0.06));
+  const hatchGeo = getGeometry('greeb:hatch', () => new THREE.BoxGeometry(0.1, 0.025, 0.1));
   const ribGeo = getGeometry('greeb:rib', () => new THREE.BoxGeometry(0.05, 0.05, 0.32));
   const pipeGeo = getGeometry('greeb:pipe', () => new THREE.CylinderGeometry(0.018, 0.018, 0.4, 5).rotateZ(Math.PI / 2));
+  const rcsGeo = getGeometry('greeb:rcs', () => new THREE.CylinderGeometry(0.035, 0.05, 0.06, 6));
   const finGeo = getGeometry('greeb:fin', () => new THREE.BoxGeometry(0.04, 0.12, 0.08));
+  const ventMat = hm;
   const darkMat = getMaterial('greeb:dark', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x14181f, roughness: 0.74, metalness: 0.62,
   }), SHARED_MATERIAL_ROLE.HULL));
+  const glowMat = emissiveMaterial(pal.accent, 0.85, SHARED_MATERIAL_ROLE.PLUME);
 
-  // Fixed bolts. A per-entity scatter made a unique merged buffer per spawn.
-  const bolts = [
-    { geo: ventGeo, mat: darkMat, x: -L * 0.15, z: -W * 0.25 },
-    { geo: ventGeo, mat: darkMat, x: -L * 0.15, z: W * 0.25 },
-    { geo: ribGeo, mat: hm, x: L * 0.05, z: 0 },
-    { geo: pipeGeo, mat: darkMat, x: -L * 0.28, z: 0 },
-  ];
-  for (const bolt of bolts) {
-    const mesh = new THREE.Mesh(bolt.geo, bolt.mat);
-    mesh.position.set(bolt.x * R, deckY, bolt.z * R);
-    mesh.scale.setScalar(R);
-    g.add(mesh);
+  // walk the grid; each cell has a probability of hosting a cluster, gated by density
+  for (let ix = 0; ix < cellsX; ix++) {
+    for (let iz = 0; iz < cellsZ; iz++) {
+      if (rnd() > density * 0.55) continue;                          // sparseness control
+      const fx = xMin + (ix + 0.5) / cellsX * span;
+      const fz = (iz + 0.5) / cellsZ - 0.5;                          // -0.5..0.5 → ×2W
+      const z = fz * 2 * W;
+      // keep detail off the very edges (where wings/weapons live)
+      const edgeFade = 1 - Math.min(1, Math.abs(fz) * 1.4);
+      if (rnd() > edgeFade + 0.15) continue;
+      const px = fx * R, py = deckY, pz = z * R;
+      const roll = rnd();
+      if (roll < 0.34) {
+        // vent cluster: 2-3 slats
+        const v = new THREE.Mesh(ventGeo, darkMat); v.position.set(px, py, pz); v.scale.setScalar(R); g.add(v);
+        const v2 = v.clone(); v2.position.z = pz + 0.08 * R; g.add(v2);
+      } else if (roll < 0.55) {
+        // access hatch with a handle
+        const h = new THREE.Mesh(hatchGeo, ventMat); h.position.set(px, py, pz); h.scale.setScalar(R); g.add(h);
+        const handle = new THREE.Mesh(getGeometry('greeb:handle', () => new THREE.BoxGeometry(0.02, 0.015, 0.03)), darkMat);
+        handle.position.set(px, py + 0.02 * R, pz); handle.scale.setScalar(R); g.add(handle);
+      } else if (roll < 0.72) {
+        // frame rib spanning across the hull (reads as internal structure)
+        const r = new THREE.Mesh(ribGeo, ventMat); r.position.set(px, py, pz); r.scale.setScalar(R); g.add(r);
+      } else if (roll < 0.85) {
+        // pipe run along X
+        const p = new THREE.Mesh(pipeGeo, darkMat); p.position.set(px, py, pz); p.scale.setScalar(R); g.add(p);
+      } else {
+        // RCS thruster quad (small attitude jets at the corners) — emissive
+        const t = new THREE.Mesh(rcsGeo, glowMat); t.position.set(px, py, pz); t.scale.setScalar(R); g.add(t);
+      }
+    }
   }
+  // coolant/radiator fins lining both flanks (tier Mk.II+) — reads as heat-management machinery
   if (density > 0.55) {
     const finCount = Math.round(density * 5);
     for (let i = 0; i < finCount; i++) {
       for (const sgn of [1, -1]) {
-        const f = new THREE.Mesh(finGeo, hm);
+        const f = new THREE.Mesh(finGeo, ventMat);
         f.position.set((xMin + 0.1 + i * 0.12) * R, H * 0.35 * R, sgn * W * 0.95 * R);
         f.rotation.y = sgn * 0.3; f.scale.setScalar(R); g.add(f);
       }
     }
   }
+  // armored scallop plates (Mk.III) — overlapping defense plates along the spine
   if (armored) {
     const plateGeo = getGeometry('greeb:plate', () => new THREE.BoxGeometry(0.16, 0.04, 0.5));
     for (let i = 0; i < 5; i++) {
-      const p = new THREE.Mesh(plateGeo, hm);
+      const p = new THREE.Mesh(plateGeo, ventMat);
       p.position.set((xMin + 0.15 + i * 0.14) * R, H * 0.52 * R, 0);
       p.scale.setScalar(R); g.add(p);
     }
   }
+  // battle-damage scorch marks (highest tier only) — darkened emissive patches implying survived combat
   if (armored && density >= 0.9) {
     const scorchGeo = getGeometry('greeb:scorch', () => new THREE.CircleGeometry(0.08, 8));
     for (let i = 0; i < 3; i++) {
@@ -1186,7 +1193,7 @@ function surfaceDetail(ctx) {
         stampSharedMaterialRole(new THREE.MeshStandardMaterial({
           color: 0x0a0a0a, emissive: 0x000000, roughness: 1, transparent: true, opacity: 0.85,
         }), SHARED_MATERIAL_ROLE.HULL)));
-      s.position.set((xMin + 0.2 + i * 0.3) * R, H * 0.51 * R, 0);
+      s.position.set((xMin + 0.2 + i * 0.3 + rnd() * 0.1) * R, H * 0.51 * R, (rnd() - 0.5) * W * R);
       s.rotation.x = -Math.PI / 2; s.scale.setScalar(R); g.add(s);
     }
   }
@@ -1790,10 +1797,6 @@ function buildDetonatorDart(ctx) {
   fuse.position.set(0, R * 0.34, L * R * 0.35); g.add(fuse);
 }
 
-const Z_NOSE_FAMILIES = new Set([
-  'drone_swarm', 'sniper_lance', 'bruiser_armor', 'pirate_swoop', 'corsair_blade',
-]);
-
 const ENEMY_FAMILY_BUILDERS = {
   drone_swarm: buildDroneSwarm,
   sniper_lance: buildSniperLance,
@@ -1863,7 +1866,6 @@ function buildShipMesh(e, pal) {
   //     lever: deepens every player ship uniformly, density scales with tier. Enemies use their own
   //     bespoke detail in their family builders, so skip them here.
   if (!isEnemyFamily) surfaceDetail(ctx);
-  addHullReadability(g, R, ctx.vis, Z_NOSE_FAMILIES.has(family) ? 'z' : 'x');
 
   // 2c) PAINT PROFILE — the art direction: grime overlay, chrome env-map, nose-art decal, repair
   //     patches. All driven by the faction personality so the dirty-outlaw vs clean-authority contrast
@@ -2558,11 +2560,9 @@ function stationMaterial(pal) {
     const seed = hashId(pal.hull) & 0xffff;
     const greeble = getTexture(`greeble:${pal.hull}`, () =>
       makeGreebleTexture({ size: 256, seed, base: pal.hull, plate: shade(pal.hull, 1.25), line: shade(pal.hull, 0.4), accent: pal.accent }));
-    const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       map: greeble, roughness: 0.7, metalness: 0.5, color: 0xffffff,
     }), SHARED_MATERIAL_ROLE.STATION);
-    material.userData.spacefaceBellyShade = true;
-    return material;
   });
 }
 function shade(hex, mul) {
@@ -2972,82 +2972,25 @@ function animateGate(host, blinkers) {
 }
 
 
-function addStationSolidity(g, R, m, corridorDeg) {
-  const bearing = Number.isFinite(corridorDeg) ? corridorDeg : 0;
-  const dark = getMaterial('greeb:dark', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: 0x14181f, roughness: 0.74, metalness: 0.62,
-  }), SHARED_MATERIAL_ROLE.HULL));
-  const winMat = emissiveMaterial('#ffd98a', 1.2, SHARED_MATERIAL_ROLE.STATION);
+function addStationSolidity(g, R, material) {
+  // The fallback ring needs a load-bearing floor below the flight plane, not a
+  // second hull kit or a yard spine several station radii outside its collider.
   const deck = new THREE.Mesh(
-    getGeometry('stat:deck', () => new THREE.CylinderGeometry(0.72, 0.72, 0.004, 20)),
-    m,
+    getGeometry('stat:solidDeck', () => new THREE.CylinderGeometry(0.84, 0.84, 0.04, 48)),
+    material,
   );
-  deck.position.y = -0.55;
+  deck.name = 'Station_ContactDeck';
+  deck.position.y = -0.32 * R;
   deck.scale.setScalar(R);
   deck.receiveShadow = true;
+  // Keep this one receiver identifiable through static merging. Its true top
+  // plane and inscribed footprint are the contact-shadow contract.
+  deck.userData.contactShadowReceiver = true;
   g.add(deck);
-
-  const face = bearing * Math.PI / 180;
-  const bay = new THREE.Mesh(getGeometry('stat:bay', () => new THREE.BoxGeometry(0.22, 0.28, 0.08)), dark);
-  bay.position.set(Math.cos(face) * R * 0.38, R * 0.12, Math.sin(face) * R * 0.38);
-  bay.rotation.y = -face;
-  bay.scale.setScalar(R);
-  g.add(bay);
-  for (let i = 0; i < 5; i++) {
-    const w = new THREE.Mesh(getGeometry('stat:winrow', () => new THREE.BoxGeometry(0.08, 0.035, 0.02)), winMat);
-    w.position.set(Math.cos(face) * R * 0.41, R * (0.28 + (i - 2) * 0.07), Math.sin(face) * R * 0.41);
-    w.scale.setScalar(R);
-    g.add(w);
-  }
-
-  const hullGeo = getGeometry('stat:dockHull', () => new THREE.BoxGeometry(0.22, 0.06, 0.08));
-  const noseGeo = getGeometry('stat:dockNose', () => new THREE.ConeGeometry(0.04, 0.10, 5));
-  for (const turn of [120, 180, 240]) {
-    const a = (bearing + turn) * Math.PI / 180;
-    const x = Math.cos(a) * R * 0.78;
-    const z = Math.sin(a) * R * 0.78;
-    const hull = new THREE.Mesh(hullGeo, m);
-    hull.position.set(x, -0.45, z);
-    hull.rotation.y = -a;
-    hull.scale.setScalar(R);
-    g.add(hull);
-    const nose = new THREE.Mesh(noseGeo, m);
-    nose.position.set(Math.cos(a) * R * 0.12, 0, Math.sin(a) * R * 0.12);
-    nose.position.add(hull.position);
-    nose.rotation.y = -a;
-    nose.rotation.z = Math.PI / 2;
-    nose.scale.setScalar(R);
-    g.add(nose);
-  }
-
-  const craneA = (bearing + 180) * Math.PI / 180;
-  const cx = Math.cos(craneA) * R * 0.62;
-  const cz = Math.sin(craneA) * R * 0.62;
-  const post = new THREE.Mesh(getGeometry('stat:cranePost', () => new THREE.BoxGeometry(0.04, 0.35, 0.04)), m);
-  post.position.set(cx, R * 0.02, cz);
-  post.scale.setScalar(R);
-  g.add(post);
-  const arm = new THREE.Mesh(getGeometry('stat:craneArm', () => new THREE.BoxGeometry(0.28, 0.03, 0.03)), m);
-  arm.position.set(cx + Math.cos(craneA) * R * 0.08, R * 0.18, cz + Math.sin(craneA) * R * 0.08);
-  arm.rotation.y = -craneA;
-  arm.scale.setScalar(R);
-  g.add(arm);
-  const hook = new THREE.Mesh(getGeometry('stat:craneHook', () => new THREE.BoxGeometry(0.03, 0.08, 0.03)), m);
-  hook.position.set(cx + Math.cos(craneA) * R * 0.18, R * 0.1, cz + Math.sin(craneA) * R * 0.18);
-  hook.scale.setScalar(R);
-  g.add(hook);
-
-  const spine = (bearing + 40) * Math.PI / 180;
-  const segGeo = getGeometry('stat:spine', () => new THREE.BoxGeometry(0.34, 0.05, 0.08));
-  const segLen = 0.34;
-  for (let along = 0.95 + segLen * 0.5; along < 4.4; along += segLen) {
-    const piece = new THREE.Mesh(segGeo, m);
-    piece.position.set(Math.cos(spine) * R * along, -0.4, Math.sin(spine) * R * along);
-    piece.rotation.y = -spine;
-    piece.scale.setScalar(R);
-    piece.receiveShadow = true;
-    g.add(piece);
-  }
+  g.userData.contactShadowReceivers = [{
+    nodeName: deck.name, centerX: 0, centerZ: 0, y: 0.02,
+    innerRadius: 0, outerRadius: 0.838,
+  }];
 }
 
 function buildStation(e) {
@@ -3061,7 +3004,7 @@ function buildStation(e) {
 
   // greeble core cluster
   const rnd = mulberryLite(hashId(e.id));
-  const core = new THREE.Mesh(getGeometry('stat:hab', () => new THREE.CylinderGeometry(0.40, 0.40, 1.15, 12)), m);
+  const core = new THREE.Mesh(getGeometry('stat:core', () => new THREE.CylinderGeometry(0.42, 0.46, 0.6, 10)), m);
   core.scale.setScalar(R); g.add(core);
   for (let i = 0; i < 8; i++) {
     const geoBuilder = () => (i % 2 === 0
@@ -3168,7 +3111,7 @@ function buildStation(e) {
   // PAINT PROFILE for stations — the same dirty-vs-clean art direction as ships: grimy frontier
   // outposts (grime + patches), pristine chrome core stations (env-map foil + insignia). Reads the
   // faction personality via resolvePalette's profile, exactly like ships.
-  addStationSolidity(g, R, m, corridorDeg);
+  addStationSolidity(g, R, m);
   applyStructureProfile(g, pal, R, hashId(e.id));
   animateStation(core, blinkers);
   g.userData.kind = 'station';

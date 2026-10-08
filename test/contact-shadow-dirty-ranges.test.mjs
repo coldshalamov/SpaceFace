@@ -36,16 +36,29 @@ test.after(() => {
   else globalThis.document = previousDocument;
 });
 
-function createShadowFixture(id) {
+function createShadowFixture(id, scene) {
   const mesh = new THREE.Object3D();
   mesh.position.set(id * 3, 0, id * -2);
   mesh.visible = true;
   mesh.userData.hasContactShadow = true;
   mesh.userData.contactShadowRadius = 18 + (id % 5);
+  scene.add(mesh);
   return {
-    entity: { id, alive: true, type: id % 7 === 0 ? 'station' : 'ship', radius: 20 },
+    entity: { id, alive: true, type: 'ship', radius: 20 },
     mesh,
   };
+}
+
+function createReceiverFixture(scene) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(2000, 2000, 1, 32), new THREE.MeshBasicMaterial());
+  mesh.name = 'PoolTestDeck'; mesh.position.y = -2;
+  mesh.userData.contactShadowReceivers = [{ nodeName: mesh.name, outerRadius: 1900, y: .5 }];
+  scene.add(mesh);
+  return { entity: { id: 'deck', alive: true, type: 'station', data: {} }, mesh };
+}
+
+function shadowFrame(fixtures, receiver) {
+  return { records: [receiver, ...fixtures], contactShadows: fixtures };
 }
 
 function publish(coordinator, scene, camera, attribute, { initial = false } = {}) {
@@ -73,12 +86,13 @@ test('contact shadows publish retained matrix ranges and retire the owner throug
   const coordinator = createDynamicBufferCoordinator(scene);
   const camera = new THREE.PerspectiveCamera();
   const pool = createContactShadowPool(scene);
-  const fixtures = Array.from({ length: 12 }, (_, index) => createShadowFixture(index + 1));
+  const receiver = createReceiverFixture(scene);
+  const fixtures = Array.from({ length: 12 }, (_, index) => createShadowFixture(index + 1, scene));
   const meshes = new Map(fixtures.map(({ entity, mesh }) => [entity.id, mesh]));
 
   assert.ok(pool.dynamicBufferOwner);
   assert.equal(coordinator.getDiagnostics().registeredOwners, 1);
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.equal(pool.mesh.count, 12);
   assert.equal(pool.mesh.visible, true);
   assert.equal(pool.records.size, 12);
@@ -91,20 +105,20 @@ test('contact shadows publish retained matrix ranges and retire the owner throug
   );
 
   const staticVersion = initialAttribute.version;
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.deepEqual(publish(coordinator, scene, camera, initialAttribute), []);
   assert.equal(initialAttribute.version, staticVersion,
     'an unchanged contact-shadow frame publishes no range or upload version');
 
   const countOnlyRequestedBefore = requestedBytes(pool.dynamicBufferOwner);
-  syncContactShadowPool(pool, fixtures.slice(0, 6).map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures.slice(0, 6), receiver), meshes);
   assert.equal(pool.mesh.count, 6);
   assert.deepEqual(publish(coordinator, scene, camera, initialAttribute), [],
     'shrinking only the draw count does not manufacture a matrix upload');
   assert.equal(requestedBytes(pool.dynamicBufferOwner), countOnlyRequestedBefore);
 
   const restoreRequestedBefore = requestedBytes(pool.dynamicBufferOwner);
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.deepEqual(
     publish(coordinator, scene, camera, initialAttribute),
     [{ start: 6 * 16, count: 6 * 16 }],
@@ -119,7 +133,7 @@ test('contact shadows publish retained matrix ranges and retire the owner throug
   for (const fixture of fixtures) fixture.mesh.position.x += 9;
   const rangedRequestedBefore = requestedBytes(pool.dynamicBufferOwner);
   const rangedLogicalBefore = logicalBytes(pool.dynamicBufferOwner);
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.deepEqual(
     publish(coordinator, scene, camera, initialAttribute),
     [{ start: 0, count: 12 * 16 }],
@@ -133,7 +147,7 @@ test('contact shadows publish retained matrix ranges and retire the owner throug
   const rangedOrder = [...pool.records.keys()];
 
   for (const fixture of fixtures) fixture.mesh.position.x -= 9;
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   publish(coordinator, scene, camera, initialAttribute);
   assert.deepEqual(initialAttribute.array, matrixBaseline,
     'the matched full-span arm starts from the exact same matrix baseline');
@@ -142,7 +156,7 @@ test('contact shadows publish retained matrix ranges and retire the owner throug
   for (const fixture of fixtures) fixture.mesh.position.x += 9;
   const fullRequestedBefore = requestedBytes(pool.dynamicBufferOwner);
   const fullLogicalBefore = logicalBytes(pool.dynamicBufferOwner);
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.deepEqual(
     publish(coordinator, scene, camera, initialAttribute),
     [{ start: 0, count: initialAttribute.array.length }],
@@ -163,7 +177,7 @@ test('contact shadows publish retained matrix ranges and retire the owner throug
 
   pool.records.clear();
   const repopulateRequestedBefore = requestedBytes(pool.dynamicBufferOwner);
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.deepEqual(
     publish(coordinator, scene, camera, initialAttribute),
     [{ start: 0, count: 12 * 16 }],
@@ -183,11 +197,11 @@ test('contact shadows publish retained matrix ranges and retire the owner throug
   const oldOwner = pool.dynamicBufferOwner;
   const oldAttribute = pool.mesh.instanceMatrix;
   for (let id = 13; id <= 257; id++) {
-    const fixture = createShadowFixture(id);
+    const fixture = createShadowFixture(id, scene);
     fixtures.push(fixture);
     meshes.set(id, fixture.mesh);
   }
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.equal(pool.mesh.count, 257);
   assert.equal(pool.capacity, 512);
   assert.notEqual(pool.dynamicBufferOwner, oldOwner);
@@ -221,21 +235,22 @@ test('deferred growth clamps the frame, then activates an uploaded replacement',
     },
     shouldDeferGrowth: () => true,
   });
-  const fixtures = Array.from({ length: 12 }, (_, index) => createShadowFixture(index + 1));
+  const receiver = createReceiverFixture(scene);
+  const fixtures = Array.from({ length: 12 }, (_, index) => createShadowFixture(index + 1, scene));
   const meshes = new Map(fixtures.map(({ entity, mesh }) => [entity.id, mesh]));
 
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.equal(pool.mesh.count, 12);
   const firstMesh = pool.mesh;
 
   // Demand beyond capacity must not swap the mesh inside the sync pass — it clamps the frame
   // and queues detached growth instead.
   for (let id = 13; id <= 300; id++) {
-    const fixture = createShadowFixture(id);
+    const fixture = createShadowFixture(id, scene);
     fixtures.push(fixture);
     meshes.set(id, fixture.mesh);
   }
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.equal(pool.mesh, firstMesh, 'overflow demand leaves the live mesh in place');
   assert.equal(pool.mesh.count, 256, 'the frame clamps at current capacity');
   assert.equal(pool.capacity, 256);
@@ -250,7 +265,7 @@ test('deferred growth clamps the frame, then activates an uploaded replacement',
   assert.equal(pool.records.size, 0, 'stale CPU pose cache is invalidated on activation');
 
   // The next sync republishes every shadow into the grown buffer.
-  syncContactShadowPool(pool, fixtures.map(({ entity }) => entity), meshes);
+  syncContactShadowPool(pool, shadowFrame(fixtures, receiver), meshes);
   assert.equal(pool.mesh.count, 300);
   assert.equal(pool.records.size, 300);
   assert.equal(pool.pendingGrowth, null);
@@ -264,9 +279,10 @@ test('contact-shadow range validation fails before matrix or cache mutation', ()
   const scene = new THREE.Scene();
   const coordinator = createDynamicBufferCoordinator(scene);
   const pool = createContactShadowPool(scene);
-  const fixture = createShadowFixture(1);
+  const receiver = createReceiverFixture(scene);
+  const fixture = createShadowFixture(1, scene);
   const meshes = new Map([[fixture.entity.id, fixture.mesh]]);
-  syncContactShadowPool(pool, [fixture.entity], meshes);
+  syncContactShadowPool(pool, shadowFrame([fixture], receiver), meshes);
 
   const owner = pool.dynamicBufferOwner;
   const bindings = owner.bindings;
@@ -275,7 +291,7 @@ test('contact-shadow range validation fails before matrix or cache mutation', ()
   fixture.mesh.position.x += 20;
   owner.bindings = [];
   assert.throws(
-    () => syncContactShadowPool(pool, [fixture.entity], meshes),
+    () => syncContactShadowPool(pool, shadowFrame([fixture], receiver), meshes),
     /has no tracked attribute 0/,
   );
   assert.deepEqual(pool.mesh.instanceMatrix.array, matrixBefore,
@@ -286,5 +302,29 @@ test('contact-shadow range validation fails before matrix or cache mutation', ()
 
   assert.equal(unregisterDynamicBufferOwner(owner), true);
   assert.equal(coordinator.getDiagnostics().registeredOwners, 0);
+  pool.mesh.dispose();
+});
+
+test('contact pool republishes a changed receiver height and retires ink when that surface disappears', () => {
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+  const coordinator = createDynamicBufferCoordinator(scene), pool = createContactShadowPool(scene);
+  const receiver = createReceiverFixture(scene), ship = createShadowFixture(1, scene);
+  const frame = shadowFrame([ship], receiver);
+  Object.freeze(frame.records); Object.freeze(frame.contactShadows); Object.freeze(frame);
+  syncContactShadowPool(pool, frame);
+  const attribute = pool.mesh.instanceMatrix;
+  publish(coordinator, scene, camera, attribute, { initial: true });
+  assert.ok(Math.abs(attribute.array[13] - (-1.5 + .025)) < 1e-6);
+  receiver.mesh.position.y -= 1;
+  syncContactShadowPool(pool, frame);
+  assert.deepEqual(publish(coordinator, scene, camera, attribute), [{ start: 0, count: 16 }]);
+  assert.ok(Math.abs(attribute.array[13] - (-2.5 + .025)) < 1e-6,
+    'station motion updates the actual receiver height rather than retaining the old plane');
+  receiver.mesh.visible = false;
+  syncContactShadowPool(pool, frame);
+  assert.equal(pool.mesh.count, 0);
+  assert.equal(pool.records.size, 0);
+  assert.equal(frame.contactShadows.length, 1, 'pool filtering never alters the shared frame');
+  unregisterDynamicBufferOwner(pool.dynamicBufferOwner);
   pool.mesh.dispose();
 });

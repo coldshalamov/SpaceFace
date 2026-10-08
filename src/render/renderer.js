@@ -1,3 +1,4 @@
+import { createContactShadowSelection, selectContactShadowsOnReceivers } from './contactShadowReceivers.js';
 import { isPhysicalMachinery, bindMachineryPresentation, machineryPresentationPlace, machineryRequestedPresentation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
 import { noteLaneFault, serviceFaultEpoch } from '../core/warnDedup.js';
 import { busFaultSummary } from '../core/eventBus.js';
@@ -7077,6 +7078,7 @@ export function createContactShadowPool(scene, options = {}) {
     scene,
     capacity: 0,
     mesh: null,
+    receiverSelection: createContactShadowSelection(),
     records: new Map(),
     seen: new Set(),
     deferGrowth: options.deferGrowth === true,
@@ -7223,63 +7225,11 @@ function queueContactShadowGrowth(pool, demand) {
   return growth;
 }
 
-const CONTACT_DECK_BERTH_SLACK_WU = 20;
-const _contactDeckScratch = [];
-
-function retainContactShadowsOnDecks(frame) {
-  const list = frame && Array.isArray(frame.contactShadows) ? frame.contactShadows : null;
-  const source = frame && Array.isArray(frame.records) ? frame.records : null;
-  if (!list || !source) return;
-  _contactDeckScratch.length = 0;
-  for (let i = 0; i < source.length; i++) {
-    const rec = source[i];
-    const entity = rec && rec.entity;
-    if (!entity || entity.type !== 'station' || entity.alive === false) continue;
-    const data = entity.data || {};
-    if (data.isGate || data.isWormhole) continue;
-    const dock = Number(data.dockRadius);
-    if (!(dock > 0)) continue;
-    const mesh = rec.mesh;
-    const x = mesh && Number.isFinite(mesh.position.x) ? mesh.position.x : 0;
-    const z = mesh && Number.isFinite(mesh.position.z) ? mesh.position.z : 0;
-    _contactDeckScratch.push(x, z, dock * 0.72 + CONTACT_DECK_BERTH_SLACK_WU);
-  }
-  let write = 0;
-  for (let i = 0; i < list.length; i++) {
-    const item = list[i];
-    const entity = item && (item.entity || item);
-    if (!entity) continue;
-    const data = entity.data || {};
-    if (entity.type === 'station') {
-      if (data.isGate || data.isWormhole) continue;
-      list[write++] = item;
-      continue;
-    }
-    if (entity.type !== 'ship') {
-      list[write++] = item;
-      continue;
-    }
-    const mesh = item.mesh;
-    const x = mesh && Number.isFinite(mesh.position.x) ? mesh.position.x : 0;
-    const z = mesh && Number.isFinite(mesh.position.z) ? mesh.position.z : 0;
-    let onDeck = false;
-    for (let d = 0; d < _contactDeckScratch.length; d += 3) {
-      const dx = x - _contactDeckScratch[d];
-      const dz = z - _contactDeckScratch[d + 1];
-      const limit = _contactDeckScratch[d + 2];
-      if (dx * dx + dz * dz <= limit * limit) { onDeck = true; break; }
-    }
-    if (onDeck) list[write++] = item;
-  }
-  list.length = write;
-}
-
 export function syncContactShadowPool(pool, frameOrRecords, meshes) {
   if (!pool || !pool.mesh) return;
-  retainContactShadowsOnDecks(frameOrRecords);
-  const records = frameOrRecords && Array.isArray(frameOrRecords.contactShadows)
-    ? frameOrRecords.contactShadows
-    : (Array.isArray(frameOrRecords) ? frameOrRecords : []);
+  const records = selectContactShadowsOnReceivers(
+    pool.receiverSelection ||= createContactShadowSelection(), frameOrRecords, meshes,
+  );
   // Synchronous growth uploads the new instance buffer inside the presented pass. During flight
   // the pool defers: demand beyond capacity queues a detached replacement that is uploaded
   // post-paint and activated atomically; this frame's overflow simply skips a shadow.
@@ -7307,25 +7257,24 @@ export function syncContactShadowPool(pool, frameOrRecords, meshes) {
     } else {
       ensureContactShadowCapacity(pool, count + 1);
     }
-    const radius = Number(mesh.userData.contactShadowRadius) || Math.max(16, (entity.radius || 28) * 1.4);
-    // Prefer mesh frame-local pose (authoritative for Three.js after syncEntityViews).
-    const x = Number.isFinite(mesh.position.x) ? mesh.position.x : 0;
-    const z = Number.isFinite(mesh.position.z) ? mesh.position.z : 0;
+    const radius = item.shadowRadius;
+    // The receiver selector returns world-space ink wholly supported by the deck.
+    const x = item.shadowX, y = item.shadowY, z = item.shadowZ;
     seen.add(entity.id);
     let prev = priorRecords.get(entity.id);
     if (!prev || prev.index !== count ||
-        Math.abs(prev.x - x) > 0.01 || Math.abs(prev.z - z) > 0.01 || Math.abs(prev.radius - radius) > 0.01) {
-      CONTACT_SHADOW_POS.set(x, -0.5, z);
+        Math.abs(prev.x - x) > 0.01 || Math.abs(prev.y - y) > 0.01 || Math.abs(prev.z - z) > 0.01 || Math.abs(prev.radius - radius) > 0.01) {
+      CONTACT_SHADOW_POS.set(x, y, z);
       CONTACT_SHADOW_SCALE.set(radius, radius, radius);
       CONTACT_SHADOW_MATRIX.compose(CONTACT_SHADOW_POS, CONTACT_SHADOW_QUAT, CONTACT_SHADOW_SCALE);
       assertDynamicBufferOwnerWritable(pool.dynamicBufferOwner);
       markDynamicBufferItems(pool.dynamicBufferOwner, CONTACT_SHADOW_MATRIX_BINDING, count);
       pool.mesh.setMatrixAt(count, CONTACT_SHADOW_MATRIX);
       if (!prev) {
-        prev = { index: count, x, z, radius };
+        prev = { index: count, x, y, z, radius };
         priorRecords.set(entity.id, prev);
       } else {
-        prev.index = count; prev.x = x; prev.z = z; prev.radius = radius;
+        prev.index = count; prev.x = x; prev.y = y; prev.z = z; prev.radius = radius;
       }
       dirty = true;
     }
