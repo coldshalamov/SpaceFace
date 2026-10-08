@@ -1143,7 +1143,7 @@ export const gyreSnare = {
         // The haptic ride shares the gate: a dense belt feed would otherwise hold the
         // pad in a continuous buzz exactly where the audio designers decided it should
         // stay a discrete tick. gyre:absorbed still fires per-meal for HUD honesty.
-        this.bus.emit(GYRE_EVENTS.absorbTick, { coreId: core.id, mass: em, clumpMass: rt.clumpMass, tick: state.tick });
+        this.bus.emit(GYRE_EVENTS.absorbTick, { id: core.id, coreId: core.id, mass: em, clumpMass: rt.clumpMass, tick: state.tick });
       }
       // Escalation reaches the camera too — swallowing a wreck should feel physically
       // different from swallowing a pebble: heavy meals shake, mid meals get a
@@ -1572,7 +1572,7 @@ export const gyreSnare = {
       });
     }
     bTmp.sort((a, b) => a.ttlS - b.ttlS);
-    for (let i = 0; i < bTmp.length && pub.balls.length < 8; i++) pub.balls.push(bTmp[i]);
+    for (let i = 0; i < bTmp.length && pub.balls.length < D.ballWatchMax; i++) pub.balls.push(bTmp[i]);
     pub.ballMass = rt.ballId != null ? rt.ballMass : 0;
     if (rt.phase === PHASE.OFF) {
       pub.coreId = null; pub.strain01 = 0;
@@ -1710,7 +1710,7 @@ export const gyreSnare = {
         rt.phase = PHASE.BEAM;
         rt.dropReason = null; // a fresh wake forgets why the last lash died
         if (this.bus) {
-          this.bus.emit(GYRE_EVENTS.beamOn, { playerId: player.id, tick: state.tick });
+          this.bus.emit(GYRE_EVENTS.beamOn, { id: player.id, playerId: player.id, tick: state.tick });
           // The lash has its own wake voice now — a soft rising shimmer, distinct from the
           // snag bite that fires when mass actually grips.
           this.bus.emit('audio:cue', { id: 'gyre_snare_beam', gain: 0.55 });
