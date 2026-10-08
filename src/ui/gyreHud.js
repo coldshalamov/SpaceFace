@@ -99,7 +99,7 @@ export const gyreHud = {
     // lash would otherwise swallow the countdown exactly while a second lash winds.
     // "+N" names the OTHER live balls still flying — the pill only mirrors the freshest,
     // but a second bowl mid-flight shouldn't make the first one's grave invisible.
-    const bttl = g.ballTtlS || 0;
+    const bttl = g.ballTtlLeftS || 0;
     const extraBalls = Math.max(0, (g.liveBalls || 0) - 1);
     // floor keeps the countdown honest: ceil overstates the remaining flight by up
     // to ~0.9 s (3.05 → "4s" flashes the gate value itself), and the max() floor of

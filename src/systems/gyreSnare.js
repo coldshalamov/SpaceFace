@@ -578,6 +578,27 @@ export const gyreSnare = {
   // Retiring the HUD mirror's primary ball must unwatch it in the same breath — an id
   // left in ballIds re-enters the retire pass next tick as a dead non-primary and
   // fires a second grave + shatter for the same body.
+  // Promote the freshest surviving watched ball into the primary lane — same
+  // rehydration the boundary adoption uses: entityMass + the meta's frozen
+  // member ledger so the overlay/ribbon/×N read survives the retire.
+  _promoteNextBall(rt, state) {
+    if (!rt || !state || !state.entities) return;
+    for (let wi = rt.ballIds.length - 1; wi >= 0; wi--) {
+      const wid = rt.ballIds[wi];
+      const e = state.entities.get(wid);
+      if (!e || e.alive === false || !e.pos || !e.data || !e.data.gyreLaunched) continue;
+      const wmeta = e.data.gyreLaunchMeta;
+      rt.ballId = wid;
+      rt.launchedId = wid;
+      rt.ballMass = entityMass(e);
+      rt.ballClumpRadius = wmeta && Number.isFinite(wmeta.clumpRadius)
+        ? wmeta.clumpRadius : entityRadius(e);
+      rt.ballMembers = wmeta && Array.isArray(wmeta.members) ? wmeta.members : null;
+      rt.ballAbsorbs = wmeta && Number.isFinite(wmeta.absorbs) ? wmeta.absorbs : 0;
+      return;
+    }
+  },
+
   _unwatchBall(id) {
     const rt = this._rt;
     if (!rt) return;
@@ -1545,13 +1566,18 @@ export const gyreSnare = {
         if (ball && ball.alive !== false && ball.data && ball.data.gyreLaunched) {
           this._handBack(ball);
         }
-        this._unwatchBall(rt.ballId);
+        const retiredId = rt.ballId;
+        this._unwatchBall(retiredId);
         rt.ballId = null;
         rt.launchedId = null; // don't leave a stale entity reference on the retired id
         rt.ballMass = 0;
         rt.ballMembers = null;
         rt.ballClumpRadius = 0;
         rt.ballAbsorbs = 0;
+        // Promote the freshest surviving watch — with two katamari in flight the
+        // younger one keeps the primary overlay/ribbon/×N ledger instead of the
+        // read degrading to the lighter pub.balls[] lane.
+        this._promoteNextBall(rt, state);
         // Mirror hygiene parity: ballPos stays last-seen deliberately (the grave
         // ring blooms where it died) but velocity zeroes like ttl/radius — a dead
         // ball has no heading to keep.
@@ -1567,7 +1593,7 @@ export const gyreSnare = {
           ? Math.max(0, Math.min(1, (ball.data.despawnAt - state.simTime) / D.ballTtlS)) : 1;
         // Seconds left in the flight — the HUD's ·Ns countdown rides this so the
         // quiet-TTL grave is telegraphed instead of the ribbon just dimming away.
-        pub.ballTtlS = ball.data.despawnAt != null && Number.isFinite(state.simTime)
+        pub.ballTtlLeftS = ball.data.despawnAt != null && Number.isFinite(state.simTime)
           ? Math.max(0, ball.data.despawnAt - state.simTime) : 0;
         // TTL-imminent: the lifetime sweep marks the ball dead AND compacts it out of
         // the entity map later this same step — so next tick 'ball' is undefined and the
@@ -1595,6 +1621,7 @@ export const gyreSnare = {
           delete ball.data.gyreLaunchMeta;
           this._unwatchBall(rt.ballId);
           rt.ballId = null; rt.launchedId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
+          this._promoteNextBall(rt, state); // a younger flight inherits the primary lane
           pub.ballVx = 0; pub.ballVz = 0; // dead balls keep no heading (see the dead-ball lane above)
         }
       }
@@ -1611,7 +1638,7 @@ export const gyreSnare = {
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballVx: 0, ballVz: 0, ballMass: 0, ballTtl01: 1,
-      ballTtlS: 0,
+      ballTtlLeftS: 0,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, launchBurst01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
       liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
@@ -1651,7 +1678,7 @@ export const gyreSnare = {
       ? this._cap(player) / Math.max(0.001, D.capDrainPerS * drainMult) : 0;
     // No-live-ball hygiene: heading zeroes with the rest of the ball channels —
     // covers every exit path (boundary drops bypass the retire lanes above).
-    if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlS = 0; pub.ballClumpRadius = 0; pub.ballVx = 0; pub.ballVz = 0; }
+    if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlLeftS = 0; pub.ballClumpRadius = 0; pub.ballVx = 0; pub.ballVz = 0; }
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
     pub.towCount = rt.towCount || 0;

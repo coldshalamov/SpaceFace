@@ -1831,6 +1831,42 @@ test('a second bowl mid-flight keeps both balls marked and they retire independe
   t.cleanup();
 });
 
+test('a retired primary promotes the surviving watched ball into the primary lane', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, a.id, 'A cored');
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step();
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the flying ball');
+
+  // Second bowl while A flies — B becomes the primary.
+  const b = rock(t.sim, T.mawDist + 2, 0, 8, 5);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, b.id, 'B cored on the re-beam');
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step();
+  assert.equal(t.sys._rt.ballId, b.id, 'the mirror tracks the freshest launch');
+  const aMeta = a.data.gyreLaunchMeta;
+  assert.ok(aMeta, 'A carries its frozen ledger');
+
+  // B's grave lands while A still flies — A promotes back into the primary lane
+  // with its ledger rehydrated from gyreLaunchMeta, not the bare pub.balls slice.
+  b.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 6; i++) t.sim.step();
+  assert.equal(b.alive, false, 'B retired on its own deadline');
+  assert.equal(t.sys._rt.ballId, a.id,
+    'the surviving watch promotes instead of the read degrading to pub.balls[]');
+  assert.equal(t.sys._rt.launchedId, a.id, 'launchedId follows the promotion');
+  assert.ok(t.sys._rt.ballMass > 0, 'the ledger rehydrates off the meta');
+  assert.equal(t.sys._rt.ballAbsorbs, aMeta.absorbs, 'the ×N read survives the retire');
+  assert.ok(t.sys._rt.ballClumpRadius > 0, 'the overlay silhouette survives');
+  assert.equal(t.state.gyreSnare.launchedId, a.id, 'the mirror reads the promoted ball');
+  t.cleanup();
+});
+
 
 // ── wave-21 coverage ────────────────────────────────────────────────────────────
 test('thrownBeat fires on exactly one tick — the first burst tick, with gyre:thrown', async () => {
