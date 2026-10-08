@@ -128,3 +128,18 @@ export function admitAftermathHush(book, until, nowSim) {
   book.until = end;
   return true;
 }
+
+/** The story on a deep wreck read. One line per loss; a repeat replaces it. */
+export function wreckMemorialLine(payload) {
+  if (!payload || payload.lossId == null) return null;
+  const story = typeof payload.story === 'string' ? payload.story.trim() : '';
+  if (!story) return null;
+  const text = story.length > 160 ? `${story.slice(0, 157)}…` : story;
+  return {
+    channel: 'comms',
+    id: `wreckMemorial:${payload.lossId}`,
+    text,
+    kind: 'memorial',
+    ttl: 5,
+  };
+}

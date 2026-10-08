@@ -21,7 +21,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
-import { AFTERMATH_HUSH, distressCallCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, admitAftermathHush } from './combatFeedbackEar.js';
+import { AFTERMATH_HUSH, admitAftermathHush, distressCallCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -2449,6 +2449,12 @@ export const audio = {
       const book = rt._aftermathHush || (rt._aftermathHush = {});
       if (!admitAftermathHush(book, p.until, now)) return;
       this._triggerHush({ kind: 'aftermath' });
+    });
+    // scan:wreckInvestigated named the loss and nobody said it. One comms line
+    // per loss id, so a second read replaces the sentence instead of stacking it.
+    bus.on('scan:wreckInvestigated', (p) => {
+      const line = wreckMemorialLine(p);
+      if (line) this.bus.emit('voice:say', line);
     });
     bus.on('massline:releaseCancelled', () => this.play(combatVerbRecipe('massline:releaseCancelled'), { gain: 0.28 }));
     bus.on('weapons:momentumSinkPlanted', () => this.play(combatVerbRecipe('weapons:momentumSinkPlanted'), { gain: 0.4 }));
