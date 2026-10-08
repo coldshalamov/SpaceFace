@@ -86,6 +86,9 @@ export const GYRE_SNARE = Object.freeze({
   tumbleTorqueK: 2.2,        // gain steering the held core's spin toward tumbleTargetRadS
   tumbleTargetRadS: 0.55,    // rad/s — lazy rubble drift; a servo target so the spin settles
                            // instead of winding up open-loop over a long hold
+  tearSnapWuS: 9,            // wu/s — parting whip a strain break gives the freed clump
+                           // along its last orbit tangent (biased outward): the lash
+                           // slipping its grip reads as motion, not a body coasting off
   // ── Katamari growth ───────────────────────────────────────────────────────────────
   suckBandWidth: 88,         // wu — core sucks absorbables within core.radius + this
   suckBandMassGain: 0.5,     // extra band wu per wu of clump radius — the annulus widens

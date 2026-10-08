@@ -131,6 +131,7 @@ function freshRuntime() {
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
     orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
     orbitDir: 1,           // ±1 — revolution direction from the same hash, so successive clumps don't all circle one way
+    swirlBlend: 1,         // eased stir sign — chases orbitDir over ~0.25 s so a snag can't flip the funnel's spiral mid-feed
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
@@ -210,6 +211,7 @@ export const gyreSnare = {
     }
     const droppedPhase = rt.phase;
     const droppedMass = rt.clumpMass;
+    const droppedDir = rt.orbitDir; // captured before the reset — the tear snap needs the last revolution
     rt.dropReason = reason || 'dropped'; // a strain break is a tear, not a polite release — the close reads the reason
     rt.phase = PHASE.OFF;
     rt.coreId = null;
@@ -233,6 +235,7 @@ export const gyreSnare = {
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     rt.orbitDir = 1;
+    rt.swirlBlend = 1;
     // A boundary drop also forgets the flying ball mirror — stale ballPos would leak a
     // dead clump overlay into the next scene. The sweep then re-seeds watch + mirror
     // from what actually lives in the new map: a serialized ball mid-flight keeps its
@@ -285,6 +288,23 @@ export const gyreSnare = {
           this.bus.emit('camera:shake', {
             amount: 0.15 + 0.1 * Math.min(1, droppedMass / D.maxClumpMass),
           });
+          // Parting snap: the freed clump whips off along its last orbit tangent,
+          // biased outward — the slip reads as motion, not a body coasting away.
+          const st = this.state;
+          const torn = emitId != null && st && st.entities ? st.entities.get(emitId) : null;
+          const pl = st && st.entities ? st.entities.get(st.playerId) : null;
+          if (torn && torn.pos && pl && pl.pos) {
+            const mw = this._maw(pl, this._dropMaw || (this._dropMaw = { x: 0, z: 0 }));
+            let rx = torn.pos.x - mw.x, rz = torn.pos.z - mw.z;
+            const rl = Math.hypot(rx, rz) || 1; rx /= rl; rz /= rl;
+            let ix = -rz * droppedDir + rx * 0.4;
+            let iz = rx * droppedDir + rz * 0.4;
+            const il = Math.hypot(ix, iz) || 1; ix /= il; iz /= il;
+            const m = entityMass(torn);
+            queuePhysicsImpulse(torn,
+              { x: ix * m * D.tearSnapWuS, y: 0, z: iz * m * D.tearSnapWuS },
+              this._evidence(st.tick));
+          }
         }
       }
     }
@@ -677,11 +697,11 @@ export const gyreSnare = {
           ax -= (dx / distMaw) * pull;
           az -= (dz / distMaw) * pull;
           // Tangential swirl — the basin spirals bodies in rather than ray-shooting
-          // them — keyed to the held core's revolution direction (orbitDir): the
-          // funnel stirs the same way the clump circles, so nothing betrays
-          // "each clump is its own system". Pre-snag orbitDir is 1 (the reset).
-          ax += (dz / distMaw) * D.mawSwirlAccel * this._rt.orbitDir * couple;
-          az -= (dx / distMaw) * D.mawSwirlAccel * this._rt.orbitDir * couple;
+          // them — eased toward the held core's revolution direction via swirlBlend:
+          // the funnel stirs the way the clump circles, and a −1-rolling snag re-stirs
+          // the spiral smoothly instead of reversing it mid-feed.
+          ax += (dz / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple;
+          az -= (dx / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple;
         }
         // Frame damping inside the basin: settle relative to the ship so captures stick.
         ax -= (finite(e.vel && e.vel.x) - shipVx) * D.basinDamping;
@@ -1222,6 +1242,7 @@ export const gyreSnare = {
     rt.basinSpots.length = 0;
     rt.orbitSeed = 0;
     rt.orbitDir = 1;
+    rt.swirlBlend = 1;
     rt.lastAbsorbCueS = -1e9;
     rt.strainCueLatched = false;
     rt.fullCueLatched = false;
@@ -1498,7 +1519,10 @@ export const gyreSnare = {
         // thresholds so lag can tense the lash but never cry "tearing".
         clamp(rt.holdLag / D.holdLagRefWu, 0, 1) * D.holdLagStrainMax,
       ) : 0;
-    } else { pub.strain01 = 0; pub.coreAngVel = 0; }
+      // Raw lag normalized — the presentation leans the maw toward the dragged clump
+      // (the glass stretching), while strain01 stays the capped/deduced read.
+      pub.holdLag01 = rt.phase === PHASE.HOLD ? clamp(rt.holdLag / D.holdLagRefWu, 0, 1) : 0;
+    } else { pub.strain01 = 0; pub.coreAngVel = 0; pub.holdLag01 = 0; }
     // The newest member's approach direction — the gulp dips toward the side the mass
     // actually hit instead of reading omnidirectional. nx/nz ride the member ledger.
     const lastM = pub.members && pub.members.length ? pub.members[pub.members.length - 1] : null;
@@ -1580,7 +1604,9 @@ export const gyreSnare = {
 
     // Cap drain — an empty tank bowls whatever the beam is holding right now. Hold drain
     // scales with clump mass: a huge ball can out-pull the hull's regen — the bigger the
-    // katamari, the shorter the fuse on your hold.
+    // katamari, the shorter the fuse on your hold. LAUNCH keeps draining at 1× —
+    // deliberate (pinned by test): the slingshot's energy is the capacitor's own act,
+    // so the ~0.18 s coil+burst burns ~1.2 cap as the cost of the throw itself.
     const drainMult = rt.phase === PHASE.HOLD
       ? D.capHoldMult * (1 + Math.min(rt.clumpMass / D.capMassDrainRef, D.capMassDrainMax))
       : 1;

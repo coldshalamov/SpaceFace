@@ -90,7 +90,9 @@ void main() {
   // Strain warning = a warm wash toward uColWarn, not the near-identical rim
   // white — 'about to tear' is chromatic, not just kinetic. Raw strain (not
   // calm-gated): a color read is not motion, reduced-motion users keep it.
-  col = mix(col, uColWarn, uStrain * 0.45);
+  // Warn reads rim-ward: the tear happens at the maw — the stressed mouth glows
+  // amber while the apex stays glass, so 'about to slip' is localized not ambient.
+  col = mix(col, uColWarn, uStrain * 0.45 * smoothstep(0.35, 1.0, vUv.y));
   gl_FragColor = vec4(col, a);
 }
 `;
@@ -643,6 +645,14 @@ export class GyreSnarePresentation {
       this._maw.scale.setScalar(endR * (1 + 0.12 * this._discKick + 0.16 * windup)); // uniform — the torus circle spans local X and Y
       this._disc.position.set(drawLen + 1.5, 0, 0);
       this._disc.scale.setScalar(endR * 0.96 * (1 + 0.12 * this._discKick + 0.10 * windup));
+      // holdLag stretch: while the ship drags the clump off its orbit slot the mouth
+      // leans a few wu toward the displaced hold point — the stretch reads in the
+      // glass, not only in the thin grip-spoke. Same beam-local offset the funnel
+      // aims at (already smoothed — no snap on snag).
+      const lagLean = Math.max(-6, Math.min(6, (this._aimTarget ? this._aimTarget.z : 0) * 0.12))
+        * Math.min(1, finite(mirror.holdLag01));
+      this._maw.position.z += lagLean;
+      this._disc.position.z += lagLean;
       // The coil also raises the cone's pulse floor — the glass visibly tenses while it
       // winds back, legible at combat range where a subtle maw choke alone was too quiet.
       const holding = phase === 'holding';
