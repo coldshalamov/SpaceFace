@@ -865,13 +865,7 @@ export const gyreSnare = {
     // Orbit slot: revolves around the maw, breathes in/out — "loosely floating in zero G".
     const orbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale)
       + Math.sin(t * D.orbitLiftRate + rt.orbitSeed) * D.orbitLiftRad;
-    // Ponderous heavy: revolve rate falls off past orbitRatePonderR — a capped
-    // 60 wu moon lumbers at ~0.3 rad/s instead of whipping tangentially faster
-    // than a pebble (mass-invariant rate made the biggest ball read lightest).
-    // The 0.3 floor keeps the capped moon visibly circling — ~0.2 rad/s was an
-    // ~31 s orbit, a ball that reads frozen at the fantasy's climax.
-    const orbitRateEff = D.orbitRate
-      * Math.max(0.3, Math.min(1, D.orbitRatePonderR / Math.max(1, rt.clumpRadius)));
+    const orbitRateEff = this._orbitRate(rt);
     const angle = rt.orbitSeed + rt.orbitDir * t * orbitRateEff
       + Math.sin(t * D.orbitWobbleRate + rt.orbitSeed) * D.orbitWobbleRad;
     const tx = maw.x + Math.cos(angle) * orbitR;
@@ -941,6 +935,16 @@ export const gyreSnare = {
 
   /** The clump's own gravity well: it widens with the payload but stays bounded —
    * a capped katamari out-reaches the beam's basin deliberately, never ~2× past it. */
+  /** Ponderous heavy: revolve rate falls off past orbitRatePonderR — a capped
+   * 60 wu moon lumbers at ~0.26 rad/s instead of whipping tangentially faster
+   * than a pebble (mass-invariant rate made the biggest ball read lightest).
+   * The 0.3 floor keeps the capped moon visibly circling — ~0.2 rad/s was an
+   * ~31 s orbit, a ball that reads frozen at the fantasy's climax. */
+  _orbitRate(rt) {
+    return D.orbitRate
+      * Math.max(0.3, Math.min(1, D.orbitRatePonderR / Math.max(1, rt.clumpRadius)));
+  },
+
   _suckRadius(rt) {
     // The floor band shrinks on a fresh snag: suckBandWidth 88 alone already
     // out-reaches basinRadius 86, so the "appetite widens with mass" arc had no
@@ -1003,9 +1007,10 @@ export const gyreSnare = {
           // under tow (the projectile exclusion matches _pullPass: a bullet isn't loot).
           // Without it TOWING drops to 0 exactly while the dragged mass is closest.
           if (e.type !== 'projectile' && tugK > 0.05) rt.towCount += 1;
-          // Tugged mass inside the annulus glows at its discounted share too.
+          // Tugged mass inside the annulus glows at its discounted share too —
+          // abs:false: courtesy tows can never be caught, so they never get the hot seat.
           if (this._spotScratch.length < D.basinSpotMax * 4) {
-            this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: tugK });
+            this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: tugK, abs: false });
           }
         }
         continue;
@@ -1041,7 +1046,7 @@ export const gyreSnare = {
         // into the pull lane's scratch (_suckPass runs before _pullPass in HOLD) so a
         // spiraling meal competes for the 8 glow slots by the same k ordering.
         if (couple > 0.05 && this._spotScratch.length < D.basinSpotMax * 4) {
-          this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: couple });
+          this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: couple, abs: true });
         }
       }
     }

@@ -2046,7 +2046,54 @@ test('a body spiraling into the clump glows like a basin victim (suck-lane spots
   );
   assert.ok(spot, `the in-flight meal publishes a pull glow (spots=${JSON.stringify(t.state.gyreSnare.basinSpots)})`);
   assert.ok(spot.k > 0.05, 'glow rides a real grip share');
+  assert.equal(spot.abs, true, 'a meal spiraling in is absorbable — eligible for the hot seat');
   t.cleanup();
+});
+
+test('a courtesy-tugged pickup in the annulus publishes abs:false', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const core = t.state.entities.get(t.sys._rt.coreId);
+  const loot = rock(t.sim, core.pos.x + 40, core.pos.z, 2, 2, 'pickup');
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // spatial index registers the spawn
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  const spot = (t.state.gyreSnare.basinSpots || []).find(
+    (s) => Math.hypot(s.x - loot.pos.x, s.z - loot.pos.z) < 20,
+  );
+  assert.ok(spot, `the tugged loot publishes a pull glow (spots=${JSON.stringify(t.state.gyreSnare.basinSpots)})`);
+  assert.equal(spot.abs, false, 'loot under tow can never be caught — no hot seat');
+  t.cleanup();
+});
+
+test('suck-band floor: a fresh snag\'s reach stays inside the basin, mass re-widens it', () => {
+  const t = boot(9401);
+  const rt = t.sys._rt;
+  rt.clumpRadius = 6;
+  const fresh = t.sys._suckRadius(rt);
+  assert.ok(fresh < T.basinRadius,
+    `fresh snag reach ${fresh.toFixed(1)} wu must sit under the basin's ${T.basinRadius} wu`);
+  assert.ok(Math.abs(fresh - (6 * (1 + T.suckBandMassGain) + Math.min(T.suckBandWidth, T.suckBandFloor + 6))) < 1e-6,
+    'the floor band is min(suckBandWidth, suckBandFloor + clumpRadius)');
+  rt.clumpRadius = 30;
+  assert.ok(t.sys._suckRadius(rt) > T.basinRadius,
+    'the annulus out-reaches the basin once the ball has mass — the appetite arc');
+  rt.clumpRadius = 60;
+  assert.equal(t.sys._suckRadius(rt), T.basinRadius * 1.5, 'the top-end reach cap is unchanged');
+});
+
+test('orbit rate floors at 0.3 — a capped moon still circles', () => {
+  const t = boot(9407);
+  const rt = t.sys._rt;
+  rt.clumpRadius = 60;
+  assert.ok(Math.abs(t.sys._orbitRate(rt) - T.orbitRate * 0.3) < 1e-9,
+    `capped moon rate ${t.sys._orbitRate(rt)} vs floor ${(T.orbitRate * 0.3).toFixed(3)}`);
+  rt.clumpRadius = 6;
+  assert.equal(t.sys._orbitRate(rt), T.orbitRate, 'a pebble revolves at full rate');
+  rt.clumpRadius = T.orbitRatePonderR;
+  assert.equal(t.sys._orbitRate(rt), T.orbitRate, 'the ponderous knee is exactly orbitRatePonderR');
 });
 
 test('a too-heavy rock parked inside the suck annulus still eats the courtesy tug', async () => {
