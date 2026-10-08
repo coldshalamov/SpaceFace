@@ -71,7 +71,7 @@ export const GYRE_SNARE = Object.freeze({
   orbitRatePonderR: 14,      // wu — clump radius past which revolve rate falls off (rate × min(1, R/clumpRadius)); a big ball reads ponderous, not fast
   orbitWobbleRad: 0.22,      // rad — deterministic wander layered on the orbit angle
   orbitWobbleRate: 0.37,     // rad/s
-  orbitLiftRad: 3.5,         // wu — extra radial breathing (clump bobs toward/away from maw); kept under half of orbitRadiusMin so a small core's bob can't swallow its revolve
+  orbitLiftWu: 3.5,          // wu — extra radial breathing (clump bobs toward/away from maw); kept under half of orbitRadiusMin so a small core's bob can't swallow its revolve
   orbitLiftRate: 0.53,       // rad/s
   holdSpringK: 26,           // 1/s² — spring toward the orbit slot
   holdDamping: 7.5,          // 1/s — damping vs the ship's frame velocity (tracks, doesn't lag)

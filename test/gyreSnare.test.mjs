@@ -78,7 +78,16 @@ function rock(sim, x, z, mass = 6, radius = 4, type = 'asteroid') {
 function speed(e) { return Math.hypot(e.vel.x, e.vel.z); }
 function dist(a, b) { return Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z); }
 
-function hold(t) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+// Press the verb, then keep it held while the beam is still searching: snag is
+// wake-gated — the glass projects ~150 ms before a parked body may core, so a
+// snaggable body lands HOLD only after ~7 ticks. Sites asserting 'beaming' have
+// no snaggable candidate and are unaffected by the extra held steps.
+function hold(t) {
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  for (let i = 0; i < 13 && t.sys._rt.phase === 'beaming'; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+}
 function release(t) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
 
 test('oversized cores stay whole and report TOO HEAVY instead of IN NET', () => {
@@ -237,7 +246,7 @@ test('an absorbable at the maw snags into the clump core and orbits ahead of the
   const mawX = t.player.pos.x + T.mawDist; // rot 0, player at origin
   const dMaw = Math.hypot(body.pos.x - mawX, body.pos.z - t.player.pos.z);
   const envelope = Math.max(T.orbitRadiusMin, T.maxClumpRadius * T.orbitRadiusScale)
-    + T.orbitLiftRad + 30;
+    + T.orbitLiftWu + 30;
   assert.ok(dMaw <= envelope, `core rides the orbit slot (${dMaw.toFixed(1)} <= ${envelope.toFixed(1)})`);
   t.cleanup();
 });
@@ -256,7 +265,7 @@ test('held clump tracks the ship when the nose rotates', async () => {
   const mawZ = t.player.pos.z + T.mawDist;
   const dMaw = Math.hypot(body.pos.x - mawX, body.pos.z - mawZ);
   const envelope = Math.max(T.orbitRadiusMin, T.maxClumpRadius * T.orbitRadiusScale)
-    + T.orbitLiftRad + 40;
+    + T.orbitLiftWu + 40;
   assert.ok(dMaw <= envelope, `clump followed the nose around (dMaw=${dMaw.toFixed(1)} <= ${envelope.toFixed(1)})`);
   t.cleanup();
 });
@@ -1081,8 +1090,8 @@ test('a projectile in the basin gets pulled toward the maw but can never core', 
   const t = await bootPhysics();
   const shot = rock(t.sim, T.mawDist + 30, 10, 0.3, 0.7, 'projectile');
   shot.vel.x = -40; // inbound fast — the tug must bend it, not stop it
+  const sx0 = speed(shot); // pre-tug baseline (hold() runs the whole wake window)
   hold(t);
-  const sx0 = speed(shot);
   for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'beaming', 'a shot can never be cored');
   assert.equal(t.state.gyreSnare.towCount, 0, 'a streaking bullet never counts as towed loot');
@@ -2797,7 +2806,11 @@ test('the 9th live ball evicts the oldest watch — disarmed but still marked', 
   const t = await bootPhysics();
   const balls = [];
   for (let n = 0; n < 9; n++) {
-    const b = rock(t.sim, T.mawDist + n * 4, 0, 40, 6);
+    // Off the +x throw corridor: the previous bowl plows the lane it was thrown
+    // down, and snag's ~150 ms wake gate gives a corridor spawn time to be
+    // knocked out of reach before it can core. 20 wu off-axis stays inside
+    // snagRadius (34) while clearing the launched ball's path.
+    const b = rock(t.sim, T.mawDist, 20, 40, 6);
     hold(t);
     for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
     assert.equal(t.sys._rt.coreId, b.id, `ball ${n} cored`);

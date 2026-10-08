@@ -145,6 +145,10 @@ export function collectFieldLoopSpecs(state, out = []) {
       // toward silence like the ribbon fade and the ·Ns countdown it sits beside.
       const pTtlWarn = GYRE_SNARE.ballTtlWarnS > 0 && Number.isFinite(gyre.ballTtlLeftS)
         ? Math.min(1, gyre.ballTtlLeftS / GYRE_SNARE.ballTtlWarnS) : 1;
+      // It's a FLIGHT voice — a ricochet-stalled ball (the ribbon stall-hides
+      // under ~5 wu/s) sags to a whisper too instead of groaning parked for 9 s.
+      const pVl = Math.hypot(gyre.ballVx || 0, gyre.ballVz || 0);
+      const pSpeed = 0.2 + 0.8 * Math.min(1, Math.max(0, pVl / 40));
       out.push({
         key: FIELD_LOOP_PREFIX + 'gyreBall',
         fieldId: -2,
@@ -152,7 +156,7 @@ export function collectFieldLoopSpecs(state, out = []) {
         recipeId: 'sfx_field_loop_gyre_ball',
         gain: 0.24,
         trackId: gyre.launchedId,
-        envelope: Math.min(1, 0.5 + mass / 2400) * (0.55 + 0.45 * pTtlWarn),
+        envelope: Math.min(1, 0.5 + mass / 2400) * (0.55 + 0.45 * pTtlWarn) * pSpeed,
         phase: 'active',
         position: gyre.ballPos,
       });
@@ -171,6 +175,9 @@ export function collectFieldLoopSpecs(state, out = []) {
       // Same grave sag as the primary, keyed on the secondary's own countdown.
       const sTtlWarn = GYRE_SNARE.ballTtlWarnS > 0 && Number.isFinite(b.ttlS)
         ? Math.min(1, b.ttlS / GYRE_SNARE.ballTtlWarnS) : 1;
+      // Same stall sag as the primary — a parked secondary whispers, not groans.
+      const sVl = Math.hypot(b.vx || 0, b.vz || 0);
+      const sSpeed = 0.2 + 0.8 * Math.min(1, Math.max(0, sVl / 40));
       out.push({
         key: FIELD_LOOP_PREFIX + 'gyreBall' + String(b.id),
         fieldId: -2,
@@ -178,7 +185,7 @@ export function collectFieldLoopSpecs(state, out = []) {
         recipeId: 'sfx_field_loop_gyre_ball',
         gain: 0.2,
         trackId: b.id,
-        envelope: Math.min(1, 0.45 + mass / 2400) * (0.55 + 0.45 * sTtlWarn),
+        envelope: Math.min(1, 0.45 + mass / 2400) * (0.55 + 0.45 * sTtlWarn) * sSpeed,
         phase: 'active',
         position: { x: b.x, z: b.z },
       });

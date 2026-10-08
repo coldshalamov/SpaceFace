@@ -38,12 +38,18 @@ uniform float uPulse;
 uniform float uCalm;      // 0 = reduced motion: silhouette stays, ripple displacement off
 uniform float uStrain;    // 0..1 — clump strain: WARNS the hue (chromatic, not motion — NOT calm-gated)
 uniform float uTremble;   // 0..1 — strain * calm: the high-frequency shiver (motion — calm-gated)
+uniform float uLeanZ;     // local-units lateral bend: the glass flexes toward the
+                          // orbiting clump instead of the mouth sliding off a
+                          // rigid silhouette (rim takes full lean, nose none)
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
 void main() {
   vUv = uv;
   vec3 p = position;
+  // The lash flexes: lateral displacement grows from the nose's fixed anchor to
+  // the rim, so the mouth seats on the mass because the cone tip REACHES for it.
+  p.z += uLeanZ * smoothstep(0.25, 1.0, uv.y);
   float ang = atan(p.z, p.x);
   float ripple = sin(uv.y * 26.0 - uTime * 9.0 + ang * 4.0)
                + 0.55 * sin(uv.y * 47.0 - uTime * 15.0 - ang * 2.0)
@@ -266,6 +272,7 @@ export class GyreSnarePresentation {
       vertexShader: CONE_VERT, fragmentShader: CONE_FRAG,
       uniforms: {
         uTime: { value: 0 }, uPulse: { value: 0 }, uCalm: { value: 1 }, uStrain: { value: 0 }, uTremble: { value: 0 },
+        uLeanZ: { value: 0 },
         uColWarn: { value: new THREE.Color(P.warn) },
         uColGlass: { value: new THREE.Color(glass) },
         uColHot: { value: new THREE.Color(hot) },
@@ -291,6 +298,19 @@ export class GyreSnarePresentation {
       color: new THREE.Color(glass), transparent: true, opacity: 0,
       depthWrite: false, side: THREE.DoubleSide,
     });
+    // The skin must bend with the glass or the lean reads as the rim sliding off
+    // the cone's own silhouette — same uv-graded displacement, its own uniform
+    // (the skin scales z by coilR*0.97 vs the rim's coilR, so drawn-matched lean
+    // needs its own denominator).
+    this._bodyLeanU = { value: 0 };
+    const bodyLeanU = this._bodyLeanU;
+    this._bodyMat.onBeforeCompile = (sh) => {
+      sh.uniforms.uLeanZ = bodyLeanU;
+      sh.vertexShader = 'uniform float uLeanZ;\n' + sh.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\n\ttransformed.z += uLeanZ * smoothstep(0.25, 1.0, uv.y);'
+      );
+    };
     this._coneBody = new THREE.Mesh(coneGeo, this._bodyMat);
     this._coneBody.rotation.z = -Math.PI / 2;
     this._coneBody.frustumCulled = false;
@@ -776,6 +796,11 @@ export class GyreSnarePresentation {
       const lagLean = Math.max(-11, Math.min(11, (this._leanZ || 0) * 0.10));
       this._maw.position.z += lagLean;
       this._disc.position.z += lagLean;
+      // The GLASS flexes to reach that seat — uLeanZ is the same lean in cone-local
+      // units (divided by the mesh's z scale) so the rim's drawn offset equals the
+      // mouth's exactly; the skin carries it via its own material hook.
+      this._coneMat.uniforms.uLeanZ.value = lagLean / Math.max(1e-4, coilR);
+      this._bodyLeanU.value = lagLean / Math.max(1e-4, coilR * 0.97);
       // The coil also raises the cone's pulse floor — the glass visibly tenses while it
       // winds back, legible at combat range where a subtle maw choke alone was too quiet.
       const holding = phase === 'holding';

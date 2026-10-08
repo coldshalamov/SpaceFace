@@ -66,8 +66,8 @@ export const gyreHud = {
     this._laneSeat = '';
     this._strainOn = false; // hysteresis: enter at 0.40, exit at 0.25 — no boundary flapping
     this._bowlUntil = -1;   // simTime deadline — the BOWL read holds ~0.8 s past the 5-tick burst
-    this._bowlMass = 0;
-    this._bowlN = 0;        // member count at the throw — the katamari payoff stays legible through BOWL
+    this._bowlMass = null;  // null until a launch edge arms it — the mid-coil-attach
+    this._bowlN = null;     //   fallback must be able to tell armed from absent
   },
 
   destroy() {
@@ -99,6 +99,12 @@ export const gyreHud = {
     // flip, not re-armed every launching tick (which would stretch it to ~1.0 s).
     const launchEdge = g.phase === 'launching' && this._lastHudPhase !== 'launching';
     this._lastHudPhase = g.phase;
+    // The armed ledger dies with its grave window: a later mid-coil attach (or a
+    // second throw after the first expired) falls back to the live clump read
+    // instead of replaying the previous bowl's mass.
+    if (g.phase !== 'launching' && now >= this._bowlUntil) {
+      this._bowlMass = null; this._bowlN = null;
+    }
     // A live ball's quiet grave telegraphs on EVERY phase, not just OFF — a re-beamed
     // lash would otherwise swallow the countdown exactly while a second lash winds.
     // "+N" names the OTHER live balls still flying — the pill only mirrors the freshest,

@@ -918,6 +918,11 @@ export const gyreSnare = {
     const queryRadius = this.helpers && typeof this.helpers.queryRadius === 'function'
       ? this.helpers.queryRadius : null;
     if (!queryRadius) return false;
+    // Same edge-agreement rule the pull lane rides: the glass projects over
+    // ~150 ms (beamWake/0.15) — a body already parked at the dead lip must not
+    // core on frame 1, before the funnel exists. The catch is the verb's
+    // biggest early beat; it fires once the drawn edge is ~70% there.
+    if (Math.min(1, this._rt.beamWake / 0.15) < 0.7) return false;
     const cands = queryRadius(maw, D.snagRadius, this._scratch);
     let best = null, bestD = Infinity;
     for (let i = 0; i < cands.length; i++) {
@@ -1019,7 +1024,7 @@ export const gyreSnare = {
       // reads as breathing on a pebble but goes invisible on a capped moon
       // orbiting at ~72 wu — the loose float must not go rigid at the climax.
       + Math.sin(t * D.orbitLiftRate + rt.orbitSeed)
-        * D.orbitLiftRad * Math.min(2, orbitBaseR / D.orbitRadiusMin);
+        * D.orbitLiftWu * Math.min(2, orbitBaseR / D.orbitRadiusMin);
     const orbitRateEff = this._orbitRate(rt);
     const angle = rt.orbitSeed + rt.orbitDir * t * orbitRateEff
       + Math.sin(t * D.orbitWobbleRate + rt.orbitSeed) * D.orbitWobbleRad;
