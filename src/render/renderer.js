@@ -2264,19 +2264,33 @@ function presentationRowQuarantined(owner, mesh) {
 
 // prepareFrame tail call sites: a throw here reaches the frame-level catch and
 // kills the whole presented pass (PRESENTATION STALLED blast radius). Each site
-// degrades to its last state for the epoch — warn once per epoch per label and
-// continue the pass instead. A persistently-faulting tail no longer pays
-// throw+stack capture every frame: the same ≤3 faults at ≥1 s spacing contract
-// the row quarantine uses, then it parks for the epoch.
+// degrades to its last state — warn once per epoch per label and continue the
+// pass instead. A persistently-faulting tail no longer pays throw+stack
+// capture every frame: retry spacing doubles per fault (1 s → 30 s ceiling)
+// and resets on heal, so a transient burst can never silence a service drive
+// for the rest of the sector.
 function tryPresentedCall(owner, label, run, fallback = undefined) {
   const epoch = serviceFaultEpoch(owner.state);
   const key = `_presentedTailFault_${label}`;
   const latched = owner[key] || (owner[key] = { epoch: -1, warned: false, faults: 0, retryAt: 0 });
   if (latched.epoch !== epoch) { latched.epoch = epoch; latched.warned = false; latched.faults = 0; latched.retryAt = 0; }
-  if (latched.faults >= PRESENTATION_ROW_FAULT_MAX || Date.now() < latched.retryAt) return fallback;
-  try { return run(); } catch (tailError) {
+  if (Date.now() < latched.retryAt) return fallback;
+  try {
+    const result = run();
+    // A healed tail drops the escalation — the next fault restarts at the
+    // short cadence instead of inheriting an ancient deferral.
+    if (latched.faults > 0) latched.faults = 0;
+    return result;
+  } catch (tailError) {
     latched.faults += 1;
-    latched.retryAt = Date.now() + 1000;
+    // Escalated re-probe, not an epoch-long park: nearly every label wraps a
+    // subsystem drive (residency service, shadow follow, adaptive quality)
+    // rather than a cosmetic tail, so a transient triple-fault window used to
+    // silence the service for the rest of the sector. Doubling backoff decays
+    // the retry drip to ~30 s — the same shape notePolicyRootFault keeps —
+    // while the per-epoch latch still resets the warn.
+    const backoff = 1000 * (1 << Math.min(5, latched.faults - 1));
+    latched.retryAt = Date.now() + Math.min(30000, backoff);
     if (!latched.warned) {
       latched.warned = true;
       noteLaneFault(owner.state, `presentedTail.${label}`);
@@ -28864,10 +28878,15 @@ export const render = {
   // Every hierarchy/material invalidation the renderer drives also un-latches the
   // root's fault park: the dirtySeq bump IS explicit evidence the tree changed, so a
   // rec serving stale no-change from a transient mid-rebind fault must clear — the
-  // next eval retries for real instead of sitting out the deferral.
+  // next eval retries for real instead of sitting out the deferral. The rec itself
+  // survives: faults/deferrals carry the heal→refault escalation a genuinely-broken
+  // root needs (the dirtySeq-cover in driveShadowPolicySteps un-latches for the
+  // invalidate callers that never reach this wrapper — e.g. partsLibrary's authored
+  // swap sites — so the clear here is belt, not the load-bearing mechanism).
   _invalidateShadowPolicy(root) {
     const invalidated = invalidateShadowCasterPolicy(root);
-    if (this._policyRootFaults) this._policyRootFaults.delete(root);
+    const faultRec = this._policyRootFaults && this._policyRootFaults.get(root);
+    if (faultRec) faultRec.deferUntil = 0;
     return invalidated;
   },
 
@@ -32148,10 +32167,18 @@ function notePolicyRootFault(owner, root, err) {
   const map = owner._policyRootFaults || (owner._policyRootFaults = new Map());
   let rec = map.get(root);
   if (!rec || rec.epoch !== epoch) {
-    rec = { epoch, faults: 0, deferUntil: 0, deferrals: 0 };
+    rec = { epoch, faults: 0, deferUntil: 0, deferrals: 0, dirtySeq: -1 };
     map.set(root, rec);
   }
   rec.faults += 1;
+  // Stamp the root's mutation generation at fault time: the park gate only
+  // honours the deferral while the tree is still in the state it faulted
+  // under, so ANY invalidateShadowCasterPolicy caller — renderer wrapper or
+  // the partsLibrary authored-swap sites that bypass it — un-latches via the
+  // dirtySeq bump without touching the rec. The escalation ladder
+  // (faults/deferrals) survives: a genuinely-broken root re-dirtied by churn
+  // keeps decaying instead of re-faulting at the fresh cadence forever.
+  rec.dirtySeq = shadowCasterPolicyDirtySeq(root);
   if (rec.faults >= 3 && rec.deferUntil <= (owner._viewSyncSeq || 0)) {
     // Back off per heal→refault cycle: a persistently bad root was re-faulting
     // every ~0.5-1.5 s forever (each retry mints a walk + a whole-scene
@@ -32169,7 +32196,14 @@ function notePolicyRootFault(owner, root, err) {
 function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineFn) {
   const parkedMap = owner._policyStepsParked || (owner._policyStepsParked = new Map());
   const faultRec = owner._policyRootFaults && owner._policyRootFaults.get(root);
-  if (faultRec && faultRec.deferUntil > (owner._viewSyncSeq || 0)) return false;
+  // Parked only while ALL of: same fault epoch (a cross-epoch rec minted by a
+  // prior enter can't hold the root), the deferral is still owed, and the
+  // root's mutation generation hasn't advanced since the fault — any
+  // invalidate, whoever called it, un-latches.
+  if (faultRec
+      && faultRec.epoch === serviceFaultEpoch(owner.state)
+      && faultRec.deferUntil > (owner._viewSyncSeq || 0)
+      && faultRec.dirtySeq === shadowCasterPolicyDirtySeq(root)) return false;
   let slot = parkedMap.get(root);
   // The sig names only verdict-changing terms: lodLevel feeds no per-node
   // verdict (the walker's visit never reads it), so a mid-walk LOD flip

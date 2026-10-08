@@ -41,6 +41,7 @@
 //   • Secondary/story-only deltas with no other channel (e.g. B4 "opposing -10") → faction:repDelta.
 //
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
+import { dedupWarn } from '../core/warnDedup.js';
 import { RED_KITE, validRedKiteReceipt } from '../data/redKite.js';
 import { validIlexOutcome } from '../data/ilexArk.js';
 import {
@@ -2065,7 +2066,8 @@ export const missions = {
     }
     // A guarantee that cannot fire is worth hearing about — e.g. every reachable destination is
     // rep-gated for this pilot — rather than failing the row silently.
-    console.warn(`[missions] recovery slot rolled nothing flyable at ${info && info.id} epoch ${epoch}`);
+    dedupWarn('missions/recovery-slot-empty',
+      '[missions] recovery slot rolled nothing flyable', info && info.id, epoch);
   },
 
   /** True when the current fit can accept this offer with zero credits and zero hold room. */

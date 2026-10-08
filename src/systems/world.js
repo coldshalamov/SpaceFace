@@ -23,6 +23,7 @@
 //   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
 //   vitals order and may kill.
 import { playerBearingLetter } from '../core/playerCompass.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
@@ -960,7 +961,7 @@ export const world = {
   *enterSectorChunked(sectorId, opts = {}) {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
-    if (!sector) { console.warn('[world] enterSector: unknown sector', sectorId); return null; }
+    if (!sector) { dedupWarn('world/unknown-sector', '[world] enterSector: unknown sector', sectorId); return null; }
 
     this._ensureResidencyState();
     const fromSectorId = opts.fromSectorId != null ? opts.fromSectorId : (state.world.currentSectorId || null);

@@ -50,10 +50,22 @@ export function dedupError(site, ...args) {
 // Lane-fault rollup — shared home so non-renderer modules (partsLibrary
 // teardown twins, systems) stamp the same `state.render.laneFaults` ledger the
 // hitches parking logic and audit probes read, without importing renderer.js.
+// Per-state memo: the row-quarantine consult calls this once per mesh row per
+// presented pass (~36 sites × N rows) — the epoch string is identical across a
+// whole epoch, so mint it once per (enter, restoreSeq) pair per state.
+const _serviceFaultEpochMemo = new WeakMap();
+
 export function serviceFaultEpoch(state) {
   const st = state || {};
   const enter = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
-  return `${enter == null ? 'x' : enter}|${Number(st.contextRestoreSeq) || 0}`;
+  const restore = Number(st.contextRestoreSeq) || 0;
+  const memo = typeof st === 'object' && st !== null ? _serviceFaultEpochMemo.get(st) : null;
+  if (memo && memo.enter === enter && memo.restore === restore) return memo.value;
+  const value = `${enter == null ? 'x' : enter}|${restore}`;
+  if (typeof st === 'object' && st !== null) {
+    _serviceFaultEpochMemo.set(st, { enter, restore, value });
+  }
+  return value;
 }
 
 export function noteLaneFault(state, lane, parked = false) {
