@@ -429,7 +429,9 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       // forced wallet like the sibling skip-cap lanes. Forced-but-broke parks
       // again with the streak flag uncommitted, so the next schedule still
       // counts as the earned resume instead of re-skipping.
-      if (forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS) {
+      if (forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS && !ranSynchronously) {
+        // Async hosts park until a later frame. An inline scheduler has no
+        // later frame; falling through is the only way the queued compile runs.
         scheduleResumedBatch();
         return;
       }
