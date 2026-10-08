@@ -26,6 +26,8 @@ export const RUUD = Object.freeze({
   towSlack: 14,
   spareBuoy: 16,
   spareFin: 28,
+  hoseStart: 0.85,
+  buoySkin: 1.85,
   cutSpeed: 14,
   hours: 19,
   hull: 400,

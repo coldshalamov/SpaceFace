@@ -146,6 +146,9 @@ test('a decent release only counts on the buoy and never boards or flies the pla
   assert.equal(f.part('fin').data.ruudPose.hatch, 1);
   assert.equal(f.part('fin').data.ruudPose.sheared, 0);
   assert.equal(f.part('suit').data.ruudPose.moored, 1);
+  const moorGap = Math.hypot(suit.pos.x - buoy.pos.x, suit.pos.z - buoy.pos.z);
+  const hoseEnd = C.hoseStart + suit.data.ruudPose.linkLen;
+  assert.ok(Math.abs(hoseEnd - (moorGap - C.buoySkin)) < 1e-6, hoseEnd);
   f.player.pos.x += 800;
   impulse(suit);
   f.step();

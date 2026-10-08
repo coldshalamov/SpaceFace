@@ -115,7 +115,8 @@ function initialPose(memory, part) {
     return { ...pose, ...ruudLink(suit, ruudGlobal(memory.bodies.fin), C.coldInset, C.towSlack, 'span') };
   }
   if (memory.disposition === 'spared') {
-    return { ...pose, ...ruudLink(suit, ruudGlobal(memory.bodies.buoy), 1.2, 3.8, 'lead') };
+    const inset = C.hoseStart + C.buoySkin;
+    return { ...pose, ...ruudLink(suit, ruudGlobal(memory.bodies.buoy), inset, C.spareBuoy - inset, 'span') };
   }
   return { ...pose, ...ruudLink(suit, ruudGlobal(memory.bladder), 1.1, 3.6, 'lead') };
 }
@@ -341,7 +342,8 @@ export function createRuud() {
         if (m.disposition === 'unchosen' && fin && finiteXZ(fin.pos)) {
           Object.assign(suitPose, ruudLink(suit.pos, fin.pos, C.coldInset, C.towSlack, 'span'));
         } else if (m.disposition === 'spared' && buoy && finiteXZ(buoy.pos)) {
-          Object.assign(suitPose, ruudLink(suit.pos, buoy.pos, 1.2, 3.8, 'lead'));
+          const inset = C.hoseStart + C.buoySkin;
+          Object.assign(suitPose, ruudLink(suit.pos, buoy.pos, inset, C.spareBuoy - inset, 'span'));
         } else if (m.disposition === 'cut' && bladder && finiteXZ(bladder.pos)) {
           Object.assign(suitPose, ruudLink(suit.pos, bladder.pos, 1.1, 3.6, 'lead'));
         }

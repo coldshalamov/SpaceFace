@@ -194,7 +194,7 @@ function buildSuit(entity) {
       dir.set(rawX, 0, rawZ);
       if (dir.lengthSq() < 1e-8) dir.set(-1, 0, 0);
       dir.normalize();
-      const start = 0.85;
+      const start = C.hoseStart;
       hose.scale.set(1, len, 1);
       hose.position.set(dir.x * (start + len * 0.5), 1.15, dir.z * (start + len * 0.5));
       hose.quaternion.setFromUnitVectors(up, dir);
