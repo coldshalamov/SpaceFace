@@ -4,10 +4,14 @@ Core owns state creation, the event bus, fixed-step loop, system registry, lifet
 and shared low-level contracts.
 
 - `gameState.js` defines default state and backend flags; save normalization must agree with it.
-- `registry.js` owns system selection and update order. Reorder only with an explicit dependency
-  reason and focused order/determinism tests.
-- `loop.js` owns fixed-timestep simulation and render decoupling. Preserve bounded catch-up and frame
-  pacing; never make simulation frame-rate dependent.
+- `registry.js` selects the AI and flight slot objects and materializes order. The lists to edit
+  are `PRODUCTION_INIT_ORDER` and `PRODUCTION_UPDATE_ORDER` in `src/runtime/authoritativeSystemManifest.js`.
+  Reordering imports in `registry.js` does not change the tick. A new id needs a lookup entry and a
+  clock in that manifest. Hosts partition by `system.name`, which must match the manifest id or be
+  aliased in `getDeclaredSystemClock` (see `moralTrap` → `moralTrapSystem`).
+- `loop.js` is a facade. The fixed step lives in `simulationRunner.js` (`MAX_CATCHUP_STEPS` is 4;
+  hitch frames shed to 2). `presentationRunner.js` calls the sim runner, then the render phase.
+  Never make simulation frame-rate dependent.
 - `runtimeWitness.js` is the 1 Hz flight recorder (`window.__SF_WITNESS__`). It is how agents see
   whether the 3D picture is presenting and where the last frames went. Do not guess freeze or
   performance from source first; run `npm run probe:runtime-witness`.

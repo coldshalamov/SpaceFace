@@ -363,6 +363,11 @@ test('estimated fine is projection-only and never doubles hidden cargo', () => {
     // Full fine if fully exposed: 220*4*1.5 = 1320
     assert.equal(estimatedFine(stacks), 1320);
     assert.equal(FINE_MULT.contraband, 1.5);
+    // Two fractional lines round once, matching runScan, not once per line (2+2=4).
+    assert.equal(estimatedFine([
+      { commodityId: 'a', qty: 1, basePrice: 1, legality: 'contraband', volPerU: 1 },
+      { commodityId: 'b', qty: 1, basePrice: 1, legality: 'contraband', volPerU: 1 },
+    ]), 3);
     assert.equal(estimatedBribe(1320), Math.round(1320 * BRIBE_FRAC));
 
     const rem = remainingIllicit({ stacks, hiddenCapacity: 2.0 }); // exposes 1u

@@ -206,7 +206,7 @@ function normalizeRepHistory(raw, cap = REP_HISTORY_CAP) {
     if (!Number.isFinite(value) || value === 0 || !reason) continue;
     const t = Math.max(0, Math.round(Number(entry.t) || 0));
     out.push({ value, reason, t });
-    if (out.length >= cap) out.shift();
+    if (out.length > cap) out.shift();
   }
   return out;
 }

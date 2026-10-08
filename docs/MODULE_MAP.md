@@ -31,7 +31,7 @@
 | `src/core/gameState.js` | `createGameState(seed)` — the single flat `GameState`, including default backend flags and raw input axes (`actions.*` are added by input.js). | The one state object every system reads/writes. See `AGENTS.md` §6 for single-writer rules. |
 | `src/core/eventBus.js` | The event bus. All cross-system comms. Event names: `domain:verb`, lowercase, `:`-delimited. | ARCHITECTURE §0.3, §4.4. |
 | `src/core/registry.js` 🟢 | System registry: instantiates systems, runs `init(ctx)` in registration order, selects the flight/AI backends, and steps `UPDATE_ORDER`. `get(name)` returns the selected slot winner by name. | Authoritative order; use generated `SYSTEM_REGISTRY.md` as the navigable projection. |
-| `src/core/loop.js` 🟢 | Fixed-timestep loop. 60 Hz sim, render every frame, accumulator capped at 8 steps. | ARCHITECTURE §2. |
+| `src/core/loop.js` 🟢 | Facade over `simulationRunner.js` + `presentationRunner.js`. 60 Hz sim, render every frame, catch-up capped at 4 steps (`MAX_CATCHUP_STEPS`). | ARCHITECTURE §2. Order itself lives in `src/runtime/authoritativeSystemManifest.js`. |
 | `src/core/timeEffects.js` 🟢 | Sole runtime writer of `state.timeScale`. Per-state singleton; minimum named request wins (`0` pause, fractions slow-time, `1` normal). | Requests are transient/nonserialized; owners clear only their own source. |
 | `src/core/runTransitionGuard.js` 🟢 | Monotonic ownership for async New Game/load readiness. Privately branded token identity rejects forged/cloned generation objects; the issued current token commits once. | Complements save's synchronous latest-route deferral queue. |
 | `src/core/sim.js` / `simSnapshot.js` | Deterministic sim harness + canonical serialization (for replay hashing). | `canonicalStringify` is the hash basis — change it and all goldens break. |
@@ -133,7 +133,7 @@
 |---|---|
 | `src/systems/missions.js` (93KB) | Deterministic station boards, 10 mission types, objective tracking. |
 | `src/systems/story.js` | 8-beat story spine (co-owns `state.story` with missions.js). |
-| `src/systems/onboarding.js` (42KB) | First-hour rail, attention arbiter (one-voice gate), tutorial. Runs last in update order (reads state only). |
+| `src/systems/onboarding.js` (42KB) | First-hour rail, attention arbiter (one-voice gate), tutorial. Reads state; it is not the last update — HUD glass, `voiceArbiter`, and `save` follow it. |
 | `src/systems/telemetry.js` 📚 | Gameplay telemetry. Created in `main.js`, not a registry system. |
 | `src/systems/scenarioRuntime.js` | Scenario/47a runtime. |
 | `src/systems/intervention.js` | Dev/intervention hooks + salvage wreck pruning. |

@@ -63,7 +63,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // impoundPayPrompt, moralTrapPrompt and wreckChoicePrompt are event-only like customsPrompt —
   // init order matters (bus subscriptions); all are deliberately absent from
   // PRODUCTION_UPDATE_ORDER.
-  'impoundPayPrompt', 'moralTrapPrompt', 'wreckChoicePrompt',
+  'impoundPayPrompt', 'moralTrapPrompt', 'wreckChoicePrompt', 'stuckTowPrompt',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem', 'render', 'vfx', 'feel', 'audio', 'ui', 'save',
 ]);
@@ -245,8 +245,14 @@ export const CALENDAR_CLOCK_PERIOD_TICKS = 30;
 export const CALENDAR_CLOCK_COHORTS = 3;
 export const CALENDAR_CLOCK_COHORT_STRIDE = CALENDAR_CLOCK_PERIOD_TICKS / CALENDAR_CLOCK_COHORTS;
 
+export function clockLookupId(id) {
+  if (id === 'ai' || id === 'tacticalAI') return 'aiSlot';
+  if (id === 'moralTrap') return 'moralTrapSystem';
+  return id;
+}
+
 export function calendarCohortIndex(id) {
-  const idx = CALENDAR_CLOCK_IDS.indexOf(id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id);
+  const idx = CALENDAR_CLOCK_IDS.indexOf(clockLookupId(id));
   // Capability-clocked ids outside the list land in the last cohort deterministically.
   return ((idx % CALENDAR_CLOCK_COHORTS) + CALENDAR_CLOCK_COHORTS) % CALENDAR_CLOCK_COHORTS;
 }
@@ -302,7 +308,7 @@ const CALENDAR_CLOCK_SUB_PHASE = new Map();
 
 /** Sub-phase inside the owner's 10-tick cohort window (0 = cohort base tick). */
 export function calendarCohortSubPhase(id) {
-  return CALENDAR_CLOCK_SUB_PHASE.get(id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id) || 0;
+  return CALENDAR_CLOCK_SUB_PHASE.get(clockLookupId(id)) || 0;
 }
 
 /** The tick%30 value this calendar owner fires on (production profile). */
@@ -384,7 +390,8 @@ for (const id of TABLE_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.TABLE);
 export function getDeclaredSystemClock(id) {
   // Hosts partition instantiated systems by name, after resolving manifest slots. Both AI
   // backends must retain aiSlot's near clock or every extra catch-up step repeats full AI.
-  const clockId = id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id;
+  // moralTrap's object name is not the manifest id; without the alias it is clocked as table.
+  const clockId = clockLookupId(id);
   const mapped = CLOCK_BY_ID.get(clockId);
   if (mapped) return mapped;
   const cap = SYSTEM_CAPABILITIES[id];
@@ -396,7 +403,7 @@ export function getDeclaredSystemClock(id) {
 export function getSystemClock(id) {
   const declared = getDeclaredSystemClock(id);
   if (declared) return declared;
-  const clockId = id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id;
+  const clockId = clockLookupId(id);
   if (PRODUCTION_UPDATE_ORDER.includes(clockId)) {
     // A registered production system with no clock declaration is a manifest bug, not a
     // default. Throw so the missing line surfaces at host init, not as a silent 60 Hz join.
