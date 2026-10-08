@@ -413,6 +413,7 @@ import {
   noteForcedFrameSpend,
   notePacedFrameSpend,
   pacedFrameSpend,
+  paceEpochNow,
   PACED_FRAME_BUDGET_MS,
   resolveDecodeTaskBudgetLimit,
 } from './decodeTaskBudget.js';
@@ -2113,6 +2114,32 @@ function noteLaneFault(state, lane, parked = false) {
     ? performance.now() : Date.now();
 }
 
+// Console warns are themselves presented-frame cost (allocation + devtools I/O
+// inside the pass they measure) — under a persistent fault storm the unlatched
+// warn is the amplifier. Cap verbatim warns per lane per service epoch; the
+// stamped laneFaults counters keep full truth regardless.
+const LANE_WARN_BUDGET_PER_EPOCH = 8;
+function laneWarn(owner, lane, ...args) {
+  const state = owner && owner.state;
+  const render = state && state.render;
+  if (!render) { console.warn(...args); return; }
+  const epoch = serviceFaultEpoch(state);
+  const rollup = render.laneWarns || (render.laneWarns = {});
+  const row = rollup[lane]
+    || (rollup[lane] = { epoch: -1, warns: 0, suppressed: 0, summarized: false });
+  if (row.epoch !== epoch) {
+    row.epoch = epoch; row.warns = 0; row.suppressed = 0; row.summarized = false;
+  }
+  row.warns += 1;
+  if (row.warns <= LANE_WARN_BUDGET_PER_EPOCH) { console.warn(...args); return; }
+  row.suppressed += 1;
+  if (!row.summarized) {
+    row.summarized = true;
+    console.warn(`[render] '${lane}' faulted ${row.warns} times this epoch;`
+      + ' suppressing further lane warns until the epoch flips');
+  }
+}
+
 // One syncEntityViews row faulted mid-pass: quarantine so it can't re-throw
 // every pass — but a transient one-off fault used to freeze a visible mesh at
 // its last pose for the whole epoch. The structured stamp carries the bounded
@@ -2131,7 +2158,7 @@ function notePresentationRowFault(owner, mesh, entityId, err) {
   userData.sfRowFaultedEpoch = stamp;
   const parked = stamp.faults >= PRESENTATION_ROW_FAULT_MAX;
   noteLaneFault(owner.state, 'entityViewRow', parked);
-  console.warn(parked
+  laneWarn(owner, 'entityViewRow', parked
     ? '[render] entity-view row faulted repeatedly; quarantined for this epoch'
     : '[render] entity-view row faulted; retrying after cooldown', entityId, err);
 }
@@ -3070,8 +3097,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   // entities + field rocks directly — the roster result is telemetry, not an
   // input — so it drives standalone under the same slice cadence, then parks
   // for the enter on a second fault.
-  const arrivalLiveEpoch = owner.state && owner.state.world && owner.state.world.enterSerial != null
-    ? owner.state.world.enterSerial : null;
+  const arrivalLiveEpoch = serviceFaultEpoch(owner.state);
   // The reserve iter rides the roster's enter-scoped snapshot — a parked iter
   // surviving a serial flip would stamp the departed world's tallies.
   if (owner._arrivalReserveIter && owner._arrivalReserveEpoch !== arrivalLiveEpoch) {
@@ -3657,6 +3683,8 @@ function driveHoldExemptDegrade(owner, state, sliceMs) {
       closeCookStepsIter(owner._holdExemptDegradeIter);
       owner._holdExemptDegradeIter = null;
       owner._holdExemptDegradeFaults = (owner._holdExemptDegradeFaults | 0) + 1;
+      noteLaneFault(state, 'holdExemptDegrade',
+        (owner._holdExemptDegradeFaults | 0) >= 3);
       console.warn('[render] hold-exempt degrade drive failed', err);
       return 0;
     }
@@ -24426,7 +24454,8 @@ export const render = {
       // through the residency pump would re-throw every frame while the
       // queue stays non-empty. Report the rows it provably drained instead.
       try { iterator.return?.(); } catch (_) { /* already torn */ }
-      console.warn('[render] mesh build queue drain faulted mid-walk', drainError);
+      laneWarn(this, 'meshBuildDrain',
+        '[render] mesh build queue drain faulted mid-walk', drainError);
       return Math.max(0, this._drainBuildSeen | 0);
     }
   },
@@ -25364,14 +25393,18 @@ export const render = {
   // (runtimeWitness bytes), nothing compares wrapper identity. One stable object mutated
   // in place keeps the per-frame pack path allocation-free.
   _publishSnapshotFenceStats(packed) {
-    const renderState = this.state && this.state.render;
-    const fence = this._snapshotFence;
-    if (!renderState || !fence) return;
-    const info = renderState.snapshotFence
-      || (renderState.snapshotFence = { sequence: 0, packed: 0, bytes: 0 });
-    info.sequence = fence.sequence;
-    info.packed = packed;
-    info.bytes = fence.lastBytesPacked;
+    // Stats are advisory — a mirror write fault must never kill a presented
+    // pass (the belt lives inside the method so every call site is covered).
+    tryPresentedCall(this, 'fence-stats', () => {
+      const renderState = this.state && this.state.render;
+      const fence = this._snapshotFence;
+      if (!renderState || !fence) return;
+      const info = renderState.snapshotFence
+        || (renderState.snapshotFence = { sequence: 0, packed: 0, bytes: 0 });
+      info.sequence = fence.sequence;
+      info.packed = packed;
+      info.bytes = fence.lastBytesPacked;
+    });
   },
 
   _applyPresentationPose(slot, mesh, alpha, currentOnly = false) {
@@ -27097,6 +27130,8 @@ export const render = {
                 this._fencePackFaultSince = typeof performance !== 'undefined' && typeof performance.now === 'function'
                   ? performance.now() : Date.now();
               }
+              noteLaneFault(this.state, 'fencePack',
+                (this._fencePackFaults | 0) >= 3);
               console.warn('[render] presentation fence pack drive failed; re-minting next frame', packError);
               break;
             }
@@ -27163,12 +27198,16 @@ export const render = {
     // M2: observe frameOriginSeq before any global→local projection this frame.
     // On change, reproject cached local meshes/camera/VFX by delta (entities stay galactic-global).
     if (this._frameMembrane) {
-      const rebase = this._frameMembrane.sync(this.state);
-      if (rebase.changed) this._applyFrameOriginRebase(rebase.dx, rebase.dz);
+      tryPresentedCall(this, 'frame-membrane', () => {
+        const rebase = this._frameMembrane.sync(this.state);
+        if (rebase.changed) this._applyFrameOriginRebase(rebase.dx, rebase.dz);
+      });
     }
     // Dynamic resolution: measure real frame time and nudge the internal render scale to hold a smooth
     // framerate on weak/software GPUs (adaptiveQuality.js). Cheap; only resizes targets on a change.
-    if (this._adaptive) this._adaptive.update(frameDt);
+    if (this._adaptive) {
+      tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt));
+    }
     // Existing neighbour-sector entities do not emit a spawn event when the player simply flies
     // toward them. The low-frequency poll keeps the same runway/hysteresis while avoiding the full
     // event-recovery scan and redundant presentation rebinding during ordinary settled flight.
@@ -29021,7 +29060,9 @@ export const render = {
           closeCookStepsIter(memo.pendingIter);
           memo.pendingIter = null;
           memo.superseded = (memo.superseded | 0) + 1;
-          console.warn('[render] shadow light-census drive faulted; serving last signature', censusError);
+          noteLaneFault(this.state, 'shadowCensus');
+          laneWarn(this, 'shadowCensus',
+            '[render] shadow light-census drive faulted; serving last signature', censusError);
           break;
         }
         if (step.done) break;
@@ -29042,15 +29083,18 @@ export const render = {
           ? performance.now() : Date.now()) - startedAt);
     }
     if (memo.sig == null) {
-      // Eval-harness envs lack the Steps twin — the sync walk is the fallback.
-      // A persistent sync-side fault would otherwise retry the whole O(scene)
-      // walk on EVERY census call of the epoch (several per presented pass):
-      // park after 3 tries, keyed to the epoch so a fresh census re-arms it.
+      // Eval-harness envs lack the Steps twin — the sync walk is the fallback,
+      // and only theirs: inside a real presented frame (paceEpochNow() >= 0)
+      // the stepped mint's whole point is avoiding this atomic O(scene) walk,
+      // so the first consult after each scene swap serves null (unsigned — the
+      // memo's conservative direction, same as a parked sig) until the paced
+      // mint completes instead of paying the walk the pacing exists to avoid.
       const sigEpochNow = shadowCensusEpoch();
       const sigParked = memo.sigFaultEpoch === sigEpochNow && (memo.sigFaults | 0) >= 3;
       // At most one whole-scene sync traverse per presented pass — under a
       // persistent census fault ~15 consult sites would each retry it.
       if (!sigParked && memo.sigFallbackSeq !== this._viewSyncSeq
+          && paceEpochNow() < 0
           && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS) {
         memo.sigFallbackSeq = this._viewSyncSeq;
         const sigStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -29066,9 +29110,11 @@ export const render = {
           if (memo.sigFaultEpoch !== sigEpochNow) memo.sigFaults = 0;
           memo.sigFaultEpoch = sigEpochNow;
           memo.sigFaults = (memo.sigFaults | 0) + 1;
+          noteLaneFault(this.state, 'shadowCensus');
           // A double fault serves null (every caller treats an unsigned frame
           // conservatively) rather than aborting the presented call.
-          console.warn('[render] shadow light-census signature walk faulted', sigError);
+          laneWarn(this, 'shadowCensus',
+            '[render] shadow light-census signature walk faulted', sigError);
         }
         const sigElapsed = (typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now()) - sigStart;
@@ -29598,7 +29644,8 @@ export const render = {
         }
         this._depthStageArmFaults = (this._depthStageArmFaults | 0) + 1;
         noteLaneFault(this.state, 'depthStageArm', (this._depthStageArmFaults | 0) >= 3);
-        console.warn('[render] depth-stage arm faulted; queued roots re-arm', armErr);
+        laneWarn(this, 'depthStageArm',
+          '[render] depth-stage arm faulted; queued roots re-arm', armErr);
       } finally {
         // Requeue whatever the restore loop never reached — a throw mid-slice
         // can't orphan withheld members (the slice already dropped their pending
@@ -31096,7 +31143,8 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
       };
     } catch (mintError) {
       notePolicyRootFault(owner, root, mintError);
-      console.warn('[render] shadow policy steps mint failed; root stays dirty for the next eval', mintError);
+      laneWarn(owner, 'shadowPolicyRoot',
+        '[render] shadow policy steps mint failed; root stays dirty for the next eval', mintError);
       return null;
     }
     parkedMap.set(root, slot);
@@ -31111,7 +31159,8 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
       // walk while clearing the root's dirty latch.
       parkedMap.delete(root);
       notePolicyRootFault(owner, root, driveError);
-      console.warn('[render] shadow policy steps drive failed; root stays dirty for the next eval', driveError);
+      laneWarn(owner, 'shadowPolicyRoot',
+        '[render] shadow policy steps drive failed; root stays dirty for the next eval', driveError);
       return null;
     }
     if (step.done) {

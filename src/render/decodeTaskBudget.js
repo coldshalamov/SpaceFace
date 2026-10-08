@@ -62,7 +62,7 @@ let pacePumpArmed = false;
 let pacePumpFiredAt = 0;
 const PACE_EPOCH_STALE_MS = 250;
 
-function paceEpochNow() {
+export function paceEpochNow() {
   // Only a real browser frame loop keys the epoch — headless/test hosts that stub
   // globalThis.requestAnimationFrame (often microtask-driven) would either hang the
   // pump's self-re-arm chain or freeze the epoch and livelock paced drains. No
