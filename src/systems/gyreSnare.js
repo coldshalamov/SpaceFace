@@ -111,6 +111,7 @@ function freshRuntime() {
     members: [],           // bounded absorb records for the clump lumps VFX
     absorbDir: { x: 0, z: 0 }, // newest meal's approach dir — UNBOUNDED channel (the
                              // ledger caps at 28; a frozen gulp dir past that is stale)
+    absorbRadius: 0,       // newest meal's collider radius — the swallow kick grades by meal size
     // Launch bookkeeping.
     launchLeft: 0,         // ticks of the launch impulse burst still owed
     launchWindup: 0,       // ticks of the pre-burst coil (anticipation) still owed
@@ -225,7 +226,7 @@ export const gyreSnare = {
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
     rt.members.length = 0;
-    rt.absorbDir.x = 0; rt.absorbDir.z = 0;
+    rt.absorbDir.x = 0; rt.absorbDir.z = 0; rt.absorbRadius = 0;
     rt.launchLeft = 0;
     rt.launchWindup = 0;
     rt.launchCarry = 0;
@@ -743,7 +744,7 @@ export const gyreSnare = {
       // gated on a real pull: a body at the wedge's dead lip isn't being dragged,
       // so it must not fake a glow.
       if (pullK > 0.05 && this._spotScratch.length < D.basinSpotMax * 4) {
-        this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e), k: pullK });
+        this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e), k: pullK, abs: absorbable });
       }
       // Loot in tow: non-absorbable dynamics the beam drags but never eats — the HUD
       // can answer "why won't it snag?" with TOWING N instead of bare SEARCHING.
@@ -865,10 +866,12 @@ export const gyreSnare = {
     const orbitR = Math.max(D.orbitRadiusMin, rt.clumpRadius * D.orbitRadiusScale)
       + Math.sin(t * D.orbitLiftRate + rt.orbitSeed) * D.orbitLiftRad;
     // Ponderous heavy: revolve rate falls off past orbitRatePonderR — a capped
-    // 60 wu moon lumbers at ~0.2 rad/s instead of whipping tangentially faster
+    // 60 wu moon lumbers at ~0.3 rad/s instead of whipping tangentially faster
     // than a pebble (mass-invariant rate made the biggest ball read lightest).
+    // The 0.3 floor keeps the capped moon visibly circling — ~0.2 rad/s was an
+    // ~31 s orbit, a ball that reads frozen at the fantasy's climax.
     const orbitRateEff = D.orbitRate
-      * Math.min(1, D.orbitRatePonderR / Math.max(1, rt.clumpRadius));
+      * Math.max(0.3, Math.min(1, D.orbitRatePonderR / Math.max(1, rt.clumpRadius)));
     const angle = rt.orbitSeed + rt.orbitDir * t * orbitRateEff
       + Math.sin(t * D.orbitWobbleRate + rt.orbitSeed) * D.orbitWobbleRad;
     const tx = maw.x + Math.cos(angle) * orbitR;
@@ -939,7 +942,11 @@ export const gyreSnare = {
   /** The clump's own gravity well: it widens with the payload but stays bounded —
    * a capped katamari out-reaches the beam's basin deliberately, never ~2× past it. */
   _suckRadius(rt) {
-    return Math.min(D.basinRadius * 1.5, rt.clumpRadius * (1 + D.suckBandMassGain) + D.suckBandWidth);
+    // The floor band shrinks on a fresh snag: suckBandWidth 88 alone already
+    // out-reaches basinRadius 86, so the "appetite widens with mass" arc had no
+    // headroom at the small end — min(88, 40 + r) keeps a pebble's reach honest.
+    return Math.min(D.basinRadius * 1.5,
+      rt.clumpRadius * (1 + D.suckBandMassGain) + Math.min(D.suckBandWidth, D.suckBandFloor + rt.clumpRadius));
   },
 
   /** Drag absorbables onto the clump and merge the ones that touch. */
@@ -1060,6 +1067,7 @@ export const gyreSnare = {
     // The gulp direction rides its own unbounded channel — the member ledger caps
     // out and would freeze the dip on the 28th meal while absorbs keep landing.
     rt.absorbDir.x = nx; rt.absorbDir.z = nz;
+    rt.absorbRadius = er; // meal size — the gulp kicks scale with what was swallowed
     if (rt.members.length < D.maxAbsorbRecords) {
       rt.members.push({ type: e.type, mass: em, radius: er, nx, nz });
     }
@@ -1267,7 +1275,7 @@ export const gyreSnare = {
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
     rt.members.length = 0;
-    rt.absorbDir.x = 0; rt.absorbDir.z = 0;
+    rt.absorbDir.x = 0; rt.absorbDir.z = 0; rt.absorbRadius = 0;
     rt.launchWindup = 0;
     rt.launchCarry = 0;   // consumed by the burst — the launch ledger dies with its phase
     rt.launchFwd = 0;
@@ -1481,7 +1489,7 @@ export const gyreSnare = {
       ballTtlS: 0,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, ballGrave: false,
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
-      liveBalls: 0, absorbDir: { x: 0, z: 0 }, balls: null,
+      liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
     });
     if (pub.basinSpots === null) pub.basinSpots = [];
     pub.basinSpots.length = 0;
@@ -1565,10 +1573,11 @@ export const gyreSnare = {
           ? rt.ballMembers[rt.ballMembers.length - 1] : null;
         pub.absorbDir.x = lm ? finite(lm.nx) : 0;
         pub.absorbDir.z = lm ? finite(lm.nz) : 0;
+        pub.absorbR = lm ? finite(lm.radius) : 0;
       } else {
         pub.members = null;
         pub.clumpMass = 0; pub.clumpRadius = 0; pub.absorbs = 0;
-        pub.absorbDir.x = 0; pub.absorbDir.z = 0;
+        pub.absorbDir.x = 0; pub.absorbDir.z = 0; pub.absorbR = 0;
       }
       return pub;
     }
@@ -1637,6 +1646,7 @@ export const gyreSnare = {
     // ledger caps out the dip must keep updating with every meal, not freeze.
     pub.absorbDir.x = finite(rt.absorbDir.x);
     pub.absorbDir.z = finite(rt.absorbDir.z);
+    pub.absorbR = finite(rt.absorbRadius);
     // The capacitor's dying gasp warns the hands/ears ~3 s out — a pad-first player
     // gets no `·Ns` pill read, so the forced bowl must not arrive unattributed.
     // Latched per hold like strain; _drop/_finishLaunch re-arm it for the next lash.

@@ -114,7 +114,10 @@ varying vec2 vUv;
 void main() {
   float r = length(vUv);
   float core = smoothstep(1.0, 0.0, r);
-  float ring = smoothstep(0.06, 0.0, abs(r - (0.55 + 0.18 * sin(uTime * 5.0 * uCalm))));
+  // The +0.9 phase seats the reduced-motion static ring mid-breathe (r≈0.69)
+  // instead of pinning it at sin(0)=0.55 — the frozen silhouette sits at the
+  // oscillation's visual center, not its smallest radius.
+  float ring = smoothstep(0.06, 0.0, abs(r - (0.55 + 0.18 * sin(uTime * 5.0 * uCalm + 0.9))));
   gl_FragColor = vec4(uCol, uAlpha * (core * core * 0.5 + ring * 0.35));
 }
 `;
@@ -726,7 +729,11 @@ export class GyreSnarePresentation {
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
       if (absorbsNow > this._absorbSeen) {
-        this._discKick = 1; this._clumpKick = 1; this._moteKick = 1;
+        // The gulp grades by meal size — audio pitch + pad strength already scale,
+        // and a wreck swallowing into the ball should land visibly harder than a
+        // pebble. ~0.9 on a 4 wu rock, saturating at 1.5 from ~13 wu up.
+        const mealK = Math.min(1.5, 0.6 + finite(mirror.absorbR, 4) * 0.07);
+        this._discKick = mealK; this._clumpKick = mealK; this._moteKick = mealK;
         // The swallow ripples up the WHOLE glass, not just the mouth: a floor bump
         // on the shared pulse so each meal visibly travels the cone's surface.
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.2);
@@ -926,6 +933,9 @@ export class GyreSnarePresentation {
     // faint flat brighten — "increases gravity" lands on the rock, not just the
     // funnel motes. Sim caps the ledger at the pool size.
     const spots = Array.isArray(mirror.basinSpots) ? mirror.basinSpots : null;
+    // The hottest glow is reserved for the strongest ABSORBABLE — a courtesy-tugged
+    // pickup topping the k-sort would otherwise fake "about to be grabbed".
+    const hotIdx = spots ? spots.findIndex((s) => s && s.abs) : -1;
     for (let i = 0; i < this._basinGlows.length; i++) {
       const g = this._basinGlows[i];
       const s = spots && i < spots.length ? spots[i] : null;
@@ -941,10 +951,11 @@ export class GyreSnarePresentation {
       // takes ~150 ms to project — glows must not outrun the drawn rim.
       g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * wakeEase * (this._fuseDim || 1);
       g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
-      // basinSpots[0] is the strongest pull — the rock about to cross snagRadius.
-      // It burns hottest + brightens a step past its k so "THIS one is about to be
-      // grabbed" reads out of the uniform field of glowing candidates.
-      if (i === 0) {
+      // The strongest ABSORBABLE puller burns hottest — the rock about to cross
+      // snagRadius. A courtesy-tugged pickup/mine/projectile can top the k sort
+      // but can never be caught; upgrading it would promise a grab that can't
+      // happen (plain k-lerp for everyone when nothing edible is inside).
+      if (i === hotIdx) {
         g.material.color.lerp(this._colHot, 0.4);
         g.material.opacity = Math.min(0.3, g.material.opacity * 1.6);
       }
