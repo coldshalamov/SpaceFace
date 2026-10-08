@@ -611,6 +611,26 @@ export class GyreSnarePresentation {
 
   _clearLumps() {
     for (const l of this._lumps) { l.used = false; l.mesh.visible = false; }
+    // Contact sparks are clump children too — a cleared ledger resets them, or a
+    // stale-t glint ghosts back at its old seat on the next hold.
+    for (const g of this._glints) { g.t = 0; g.mesh.visible = false; }
+  }
+
+  // Contact glints decay wherever the clump still draws — the live beam block
+  // AND the grave/tear-follow path both feed this, so a spark caught mid-fade
+  // by a drop or tear finishes its falloff instead of freezing on the skin.
+  _decayGlints(sdt, flashCalm) {
+    for (const g2 of this._glints) {
+      if (g2.t <= 0) continue;
+      g2.t *= Math.exp(-sdt * 10);
+      if (g2.t < 0.02) { g2.t = 0; g2.mesh.visible = false; continue; }
+      if (g2.t > 0.5 && g2.a0 != null) {
+        const la = g2.a0 - (this._clumpSpin - g2.spin0);
+        g2.mesh.position.set(Math.cos(la) * g2.r, 0.35, Math.sin(la) * g2.r);
+      }
+      g2.mesh.material.opacity = g2.t * 0.5 * flashCalm;
+      g2.mesh.visible = true;
+    }
   }
 
   // Grave scatter: instead of the k² deflate, each lump flings out along its own
@@ -713,7 +733,7 @@ export class GyreSnarePresentation {
     // early-returning here froze the ring at t≈0.03 as a faint glow stuck at the grave.
     // The close-ramp owns the quiet window too: latching _quiet on the first dead frame
     // strangled the ramp after ~1 tick, leaving a ghost cone + frozen clump on screen.
-    if (!live && this._quiet && !this._closing && this._deathT <= 0 && !this._bursts.some((b) => b.t < 1)) return;
+    if (!live && this._quiet && !this._closing && this._deathT <= 0 && !this._bursts.some((b) => b.t < 1) && this._tearFade == null) return;
     if (!live) { this._quiet = true; }
     else this._quiet = false;
 
@@ -928,17 +948,7 @@ export class GyreSnarePresentation {
       // Contact glints burn ~100 ms to half-brightness and die out over ~400 ms
       // (exp(-10·dt) from 1 to the 0.02 cutoff) — fast enough that a sustained
       // feed strobes along the rim instead of smearing into one glow.
-      for (const g2 of this._glints) {
-        if (g2.t <= 0) continue;
-        g2.t *= Math.exp(-sdt * 10);
-        if (g2.t < 0.02) { g2.t = 0; g2.mesh.visible = false; continue; }
-        if (g2.t > 0.5 && g2.a0 != null) {
-          const la = g2.a0 - (this._clumpSpin - g2.spin0);
-          g2.mesh.position.set(Math.cos(la) * g2.r, 0.35, Math.sin(la) * g2.r);
-        }
-        g2.mesh.material.opacity = g2.t * 0.5 * flashCalm;
-        g2.mesh.visible = true;
-      }
+      this._decayGlints(sdt, flashCalm);
       // The mouth rides the same ignition ramp + dying-cap dim as the glass — a ring
       // that pops at full alpha a frame early or stays bright under a dying fuse
       // contradicts the telegraph the cone is making.
@@ -1209,6 +1219,10 @@ export class GyreSnarePresentation {
     }
 
     if (cx == null) {
+      // Sparks keep burning through the close the same way they did in the beam —
+      // a glint caught mid-fade by a drop/tear finishes instead of freezing on
+      // the riding rubble (its world-pinned seat still holds via a0/spin0).
+      this._decayGlints(sdt, flashCalm);
       // A thrown ball's rubble shrinks INTO its grave over ~0.25 s (the k² language of
       // the close-ramp) instead of teleporting out under the blooming ring.
       // Adoption retirements (ballGrave === false: the body went to another lane
@@ -1700,6 +1714,7 @@ export class GyreSnarePresentation {
     this._secVeil.geometry.dispose(); this._secVeilMat.dispose();
     for (const m of this._secLumps) m.geometry.dispose(); // lump MATERIALS stay shared via _lumpMats
     this._halo.geometry.dispose(); this._haloMat.dispose();
+    this._basinHaloMat.dispose(); // shares haloGeo (disposed on the line above)
     this._veil.geometry.dispose(); this._veilMat.dispose();
     this._trail.geometry.dispose(); this._trailMat.dispose();
     // _trail2 shares _trail's geometry (already disposed) — only its cloned material is its own.
