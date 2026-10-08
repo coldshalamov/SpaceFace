@@ -5,7 +5,7 @@
 export const DISTRESS_CALL_RECIPE = 'sfx_wanted_alert';
 export const MINE_DETONATION_RECIPE = 'sfx_explosion_small';
 export const WARDED_SHOT_RECIPE = 'sfx.shieldHit';
-export const MINING_NOISE_RECIPE = 'sfx_ui_alert';
+export const MINING_NOISE_RECIPE = 'sfx_wanted_alert';
 export const MINE_ARMED_RECIPE = 'sfx_vector_mine';
 export const MINE_ARMED_ADMIT_TICKS = 30;
 
@@ -73,8 +73,8 @@ export function wardedShotCue(payload) {
 }
 
 /**
- * Mining noise just crossed into "they can hear you". One darker alert than a
- * mayday (same recipe, lower rate) and a duck so the warning sits over the beam.
+ * Mining noise just crossed into "they can hear you". Same alert as a mayday,
+ * pitched down, and a duck so the warning sits over the beam.
  * Below-threshold payloads stay silent — the sim only emits the crossing.
  */
 export function miningNoiseDangerCue(payload) {
