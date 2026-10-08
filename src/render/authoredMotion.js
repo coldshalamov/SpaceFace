@@ -1,3 +1,4 @@
+import { dedupWarn } from '../core/warnDedup.js';
 import { isLatchActor, createLatchNineVisualDriver } from './latchNineVisuals.js';
 import { isTallyThreeAssessor, createTallyThreeVisualDriver } from './tallyThreeVisuals.js';
 import { isRedKiteCourier, createRedKiteVisualDriver } from './redKiteVisuals.js';
@@ -149,6 +150,15 @@ export function createAuthoredClock({ simNow, wallNow } = {}) {
  * ship rebuild must not leak entity-keyed controller registrations).
  */
 export function attachAuthoredMotionDriver(root, entity, controllers) {
+  const steps = attachAuthoredMotionDriverSteps(root, entity, controllers);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Steps twin: each driver construction pays an O(subtree) named-node traverse —
+// yields between them pace the attach across the composed-build's own budget.
+export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   const entityId = entity && entity.id;
   const live = (controllers || []).filter(Boolean);
   const workfleetRole=ceresWorkfleetRole(entity);
@@ -165,15 +175,25 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   const palletJack=isPalletJackEntity(entity),mothlight=isMothlightTender(entity)||isMothlightLamp(entity);
   if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight)) return null;
   const tallyDriver=tally?createTallyThreeVisualDriver(root,entity):null;
+  yield;
   const redKiteDriver=redKite?createRedKiteVisualDriver(root,entity):null;
+  yield;
   const sableDriver=sable?createSableVennVisualDriver(root,entity):null;
+  yield;
   const ilexDriver=ilex?createIlexArkVisualDriver(root,entity):null;
+  yield;
   const kilnbackDriver=kilnback?createKilnbackVisualDriver(root,entity):null;
+  yield;
   const scissorwakeDriver=scissorwake?createScissorwakeVisualDriver(root,entity):null;
+  yield;
   const towlineDriver=towline?createTowlineTableVisualDriver(root,entity):null;
+  yield;
   const borrowedVoiceDriver=borrowedVoice?createBorrowedVoiceVisualDriver(root,entity):null;
+  yield;
   const palletJackDriver=palletJack?createPalletJackVisualDriver(root,entity):null;
+  yield;
   const mothlightDriver=mothlight?createMothlightVisualDriver(root,entity):null;
+  yield;
   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
   const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):latch?createLatchNineVisualDriver(root,entity):null;
   const priorDriveUpdate=root.userData.updateDriveState;
@@ -194,8 +214,16 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   let registered = false;
   let retired = false;
   const activate = (liveEntity = entity) => {
-    if (registered || retired) return false;
-    if (propulsion && !propulsion.activate(liveEntity)) return false;
+    if (registered || retired) {
+      // A retired controller's decline is permanent — the deferred-activate
+      // walk surfaces it as a lane fault rather than silently never running.
+      if (retired) root.userData.__authoredMotionDeclined = true;
+      return false;
+    }
+    if (propulsion && !propulsion.activate(liveEntity)) {
+      root.userData.__authoredMotionDeclined = true;
+      return false;
+    }
     registered = true;
     registry.set(entityId, new Set(live));
     for (const key of [liveEntity?.data?.siteId, liveEntity?.data?.siteBeacon]) {
@@ -214,17 +242,24 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   const detach = function detachAuthoredMotionDriver() {
     retired = true;
     if (root.userData.updateCeresPhysicalState === updatePhysical) delete root.userData.updateCeresPhysicalState;
-    propulsion?.dispose();
-    tallyDriver?.dispose();
-    redKiteDriver?.dispose();
-    ilexDriver?.dispose();
-    kilnbackDriver?.dispose();
-    scissorwakeDriver?.dispose();
-    towlineDriver?.dispose();
-    borrowedVoiceDriver?.dispose();
-    palletJackDriver?.dispose();
-    mothlightDriver?.dispose();
-    sableDriver?.dispose();
+    // Per-driver fencing: one throwing driver must not skip the remaining
+    // disposes or the unregister pass below — controllers would stay
+    // registered for a dead entity forever.
+    const detachDriver = (driver) => {
+      try { driver?.dispose(); }
+      catch (error) { dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error); }
+    };
+    detachDriver(propulsion);
+    detachDriver(tallyDriver);
+    detachDriver(redKiteDriver);
+    detachDriver(ilexDriver);
+    detachDriver(kilnbackDriver);
+    detachDriver(scissorwakeDriver);
+    detachDriver(towlineDriver);
+    detachDriver(borrowedVoiceDriver);
+    detachDriver(palletJackDriver);
+    detachDriver(mothlightDriver);
+    detachDriver(sableDriver);
     if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
       if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
       else delete root.userData.updateDriveState;

@@ -25569,7 +25569,13 @@ export const render = {
         let motionActivateVisited = 0;
         while (motionActivateStack.length > 0) {
           const node = motionActivateStack.pop();
-          node.userData?.activateAuthoredMotionRegistration?.(e);
+          const activated = node.userData?.activateAuthoredMotionRegistration?.(e);
+          // A permanently-declined activate (retired controller, propulsion
+          // veto) means the motion silently never runs — count it so the
+          // class is observable in laneFaults.
+          if (activated === false && node.userData?.__authoredMotionDeclined === true) {
+            noteLaneFault(this.state, 'authoredMotion');
+          }
           const kids = node.children;
           for (let i = kids.length - 1; i >= 0; i--) motionActivateStack.push(kids[i]);
           if ((++motionActivateVisited % 128) === 0) await yieldToBrowser();
@@ -32142,40 +32148,66 @@ function disposeObjectNode(c) {
   // owns the preparedAuthoredRoots registration for that detached tree. Firing the installed
   // disposer here unregisters those roots; skipping it leaves every context root — composed
   // root, planNodes, renderPackageInstances — pinned by the scene for the session.
+  // Every hook is individually fenced — a deterministic thrower used to abort
+  // the remaining hooks and propagate through the traverse, leaking the whole
+  // subtree suffix (registration pins, residency holds, motion controllers).
+  // Registration/residency-bearing hooks warn through stormWarn so the leak
+  // class stays observable; per-node resource disposes stay silent (a bad
+  // resource is per-node noise, not a registration leak).
   const disposePrepared = c.userData && c.userData.__disposePreparedAuthoredBoundary;
-  if (typeof disposePrepared === 'function') disposePrepared();
+  if (typeof disposePrepared === 'function') {
+    try { disposePrepared(); }
+    catch (error) { stormWarn('teardown:preparedBoundary', '[render] prepared-boundary dispose failed', error); }
+  }
   const disposePresentation = c.userData && c.userData.disposeWorldSitePresentation;
-  if (typeof disposePresentation === 'function') disposePresentation();
+  if (typeof disposePresentation === 'function') {
+    try { disposePresentation(); }
+    catch (error) { stormWarn('teardown:sitePresentation', '[render] site presentation dispose failed', error); }
+  }
   const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
-  if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
+  if (typeof releaseResidency === 'function') {
+    try { releaseResidency('render-boundary-disposed'); }
+    catch (error) { stormWarn('teardown:residency', '[render] residency release failed', error); }
+  }
   // Whole-ship LOD boundaries retain demoted-level roots detached for instant swap-back, so
   // this traversal never reaches them. The boundary's hook re-attaches each stale retained
   // root into the dying tree; the children loop then applies the identical teardown grammar.
   const disposeLodRetained = c.userData && c.userData.disposeWholeShipLodRetained;
-  if (typeof disposeLodRetained === 'function') disposeLodRetained();
+  if (typeof disposeLodRetained === 'function') {
+    try { disposeLodRetained(); }
+    catch (error) { stormWarn('teardown:lodRetained', '[render] LOD retained dispose failed', error); }
+  }
   // Authored-motion controllers register per entity id; releasing them here keeps a torn-down
   // boundary from holding pivots (and events) for a ship that no longer exists.
   const detachMotion = c.userData && c.userData.detachAuthoredMotion;
-  if (typeof detachMotion === 'function') detachMotion();
+  if (typeof detachMotion === 'function') {
+    try { detachMotion(); }
+    catch (error) { stormWarn('teardown:authoredMotion', '[render] authored-motion detach failed', error); }
+  }
   // Instance-pool slots hold `slot.owner -> c`; THREE's `removed` event only reaches the
   // outermost detached root, so owner nodes nested under this tree never drain their pool
   // slots from the listener. Draining here releases the slot and lets the chunk retire.
-  releaseOwnerInstances(c);
-  if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function'
-      && !isBorrowedAsteroidInstanceResource(c)) c.dispose();
+  try { releaseOwnerInstances(c); }
+  catch (error) { stormWarn('teardown:ownerInstances', '[render] owner-instances release failed', error); }
+  try {
+    if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function'
+        && !isBorrowedAsteroidInstanceResource(c)) c.dispose();
+  } catch { /* per-node dispose — teardown continues */ }
   const shared = !!(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo
     || c.userData.spacefaceSharedAsset || c.userData.borrowedGeometryMaterial))
     || isBorrowedAsteroidInstanceResource(c);
   if (!c.isBatchedMesh && c.geometry && !shared) {
     const geoShared = c.geometry.userData && c.geometry.userData.spacefaceSharedAsset;
-    if (!geoShared && typeof c.geometry.dispose === 'function') c.geometry.dispose();
+    if (!geoShared && typeof c.geometry.dispose === 'function') {
+      try { c.geometry.dispose(); } catch { /* per-node dispose — teardown continues */ }
+    }
   }
   if (c.material && !shared) {
     const mm = Array.isArray(c.material) ? c.material : [c.material];
     for (const material of mm) {
       if (!material || typeof material.dispose !== 'function') continue;
       if (material.userData && material.userData.spacefaceSharedAsset) continue;
-      material.dispose();
+      try { material.dispose(); } catch { /* per-node dispose — teardown continues */ }
     }
   }
   return heldLight;

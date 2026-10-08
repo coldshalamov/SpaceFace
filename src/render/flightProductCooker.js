@@ -24,6 +24,15 @@ function nodeMetadata(node, tags, cameraKind) {
 }
 
 export function cookFlightProduct(root, cameraKind = 'chase', options = {}) {
+  const steps = cookFlightProductSteps(root, cameraKind, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Steps twin: the tag-collect traverse used to pay one atomic O(subtree) walk
+// inside the composed-build tail; the stack form yields at stride boundaries.
+export function* cookFlightProductSteps(root, cameraKind = 'chase', options = {}) {
   const normalizedCamera = supportedFlightProductCamera(cameraKind) ? cameraKind : 'chase';
   // Offline builds mutate the source root. The playable runtime passes `runtime: true` so a
   // dynamically composed boundary keeps its authored picture and merely records which tagged
@@ -35,18 +44,25 @@ export function cookFlightProduct(root, cameraKind = 'chase', options = {}) {
   }
   const drop = [];
   const metadata = [];
-  root.traverse((node) => {
-    if (!node || node === root) return;
-    const tags = normalizeFlightProductTags(node.userData && (
-      node.userData.flightProductTags || node.userData.spacefaceFlightProductTags
-      || node.userData.spacefaceTags
-    ));
-    if (tags.length === 0) return;
-    if (selectFlightProductNodes([{ id: node.name, tags }], normalizedCamera).length === 0) {
-      metadata.push(nodeMetadata(node, tags, normalizedCamera));
-      drop.push(node);
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const node = stack.pop();
+    if ((++visited % 128) === 0) yield;
+    if (node && node !== root) {
+      const tags = normalizeFlightProductTags(node.userData && (
+        node.userData.flightProductTags || node.userData.spacefaceFlightProductTags
+        || node.userData.spacefaceTags
+      ));
+      if (tags.length !== 0
+          && selectFlightProductNodes([{ id: node.name, tags }], normalizedCamera).length === 0) {
+        metadata.push(nodeMetadata(node, tags, normalizedCamera));
+        drop.push(node);
+      }
     }
-  });
+    const kids = node && node.children || [];
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
+  }
   if (mutate) {
     for (let i = 0; i < drop.length; i++) {
       const node = drop[i];

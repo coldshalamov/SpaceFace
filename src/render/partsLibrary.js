@@ -12,7 +12,8 @@ import { isBorrowedVoiceRing, isBorrowedVoiceRecorder } from '../data/borrowedVo
 import { isPalletJackEntity, PALLET_JACK_RADIUS } from '../data/palletJackBody.js';
 import { isMothlightTender, isMothlightLamp, MOTHLIGHT_RADIUS } from '../data/mothlightBody.js';
 import { recordCeresWorkfleetAuthoredSource, recordLatchAuthoredSource } from '../core/machineryPresentation.js';
-import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
+import { dedupWarn } from '../core/warnDedup.js';
+import { installCeresCradleLayoutGuard, installCeresCradleLayoutGuardSteps } from './ceresCradleLayoutVisuals.js';
 import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform, ceresShipbreakCatalogCollision } from './ceresShipbreakVisuals.js';
 // GLTFKit: authored ship-part composition over the synchronous procedural visual boundary.
@@ -40,7 +41,7 @@ import { buildMachineProp } from './machineVisuals.js'; // Verge-Layer machine s
 import { dropWedgedAuthoredTasks, invalidateFailedAuthoredAssets, loadAuthoredPart, peekSettledAuthoredRecords } from './assetLoader.js';
 import { detachBoundaryResolvingMarker, installBoundaryResolvingMarker, packagedPropSpec } from './visualOverrides.js';
 import { getAssetResidency } from './assetResidency.js';
-import { attachAuthoredMotionDriver, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
+import { attachAuthoredMotionDriver, attachAuthoredMotionDriverSteps, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
 import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { invalidateShadowCasterPolicy } from './shadowCasterPolicy.js';
@@ -108,7 +109,7 @@ import {
   MATERIAL_ABI_VERSION,
   createFlightRenderPackageCache,
 } from './flightRenderPackage.js';
-import { cookFlightProduct } from './flightProductCooker.js';
+import { cookFlightProduct, cookFlightProductSteps } from './flightProductCooker.js';
 import {
   FLIGHT_READY_ROLE,
   PLACE_PACKAGE_LAYER,
@@ -3308,6 +3309,14 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     releaseBoundaryResidency(renderer, boundary, 'capsule-build-aborted', options.admissionEpoch);
     return false;
   }
+  // Post-build stale re-gate (same window the place/ship paths close): a
+  // resolved prepared root arriving after the boundary re-epoched would
+  // register onto the live run's ledger and leak its parked tree.
+  if (staleAuthoredRunVerdict(boundary, options)) {
+    disposeDetachedAuthoredCargoCapsule(authored.root);
+    releaseBoundaryResidency(renderer, boundary, 'capsule-build-stale', options.admissionEpoch);
+    return false;
+  }
   registerPreparedAuthoredAdmission(scene, boundary, authored);
   let authoredDisposed = false;
   const disposePreparedCargoCapsule = () => {
@@ -3514,7 +3523,8 @@ function disposeDetachedAuthoredCargoCapsule(root) {
   // failed tree must release them the same way the boundary teardown path does. Fenced like
   // the other detached teardown hooks — a throwing hook must not veto the dispose below.
   if (typeof root.userData?.detachAuthoredMotion === 'function') {
-    try { root.userData.detachAuthoredMotion(); } catch { /* best-effort — teardown continues */ }
+    try { root.userData.detachAuthoredMotion(); }
+    catch (error) { dedupWarn('teardown:authoredMotion', '[partsLibrary] authored-motion detach failed', error); }
   }
   // Authored compositions use cloned batch geometry plus materials marked by the shared-resource
   // policy. Reuse the established detached-place disposer so only owner-local GPU resources
@@ -3574,7 +3584,7 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
     label: 'CargoCapsule',
   }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
   yield;
-  staticBatches.flush();
+  yield* staticBatches.flushSteps();
   yield;
   reconcileMaplessHullMaterialAliases(palette);
   yield* canonicalizeMaplessHullMaterials(root, palette);
@@ -3586,7 +3596,7 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
   if (isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity))
     root.userData.borrowedVoiceAuthoredSource = { assetId: record.assetId, file: record.url };
   if (isMothlightLamp(entity)) root.userData.mothlightAuthoredSource = {assetId:record.assetId,file:record.url};
-  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
+  yield* attachAuthoredMotionDriverSteps(root, entity, bindings.authoredMotions);
 
   const center = Array.isArray(record.bounds?.center) ? record.bounds.center : [0, 0, 0];
   const sourceOrigin = isIlexVaultEntity(entity) || isKilnbackCask(entity) || isTowlineCleanupEntity(entity)
@@ -4216,6 +4226,20 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       'place-build-unavailable', null,
     );
   }
+  // Post-build stale re-gate: the async build returned a prepared root while a
+  // newer admission owns the boundary — stamping visualBounds or registering
+  // the prepared admission would leak the parked tree and stomp the live run's
+  // fields. Dispose only this run's authored root; the residency release is
+  // epoch-scoped so a live run's pins stay.
+  if (staleAuthoredRunVerdict(boundary, options)) {
+    try { authored.root.userData?.ceresCradleLayoutGuard?.dispose(); } catch { /* best-effort */ }
+    if (!queuePacedDetachedTeardown(authored.root, detachedFallbackTeardownThenClearSteps(authored.root))) {
+      disposeDetachedPlaceFallback(authored.root);
+      authored.root.clear();
+    }
+    releaseBoundaryResidency(renderer, boundary, 'place-build-stale', options.admissionEpoch);
+    return false;
+  }
   // The pre-compose stamp covers only the base record — re-stamp from the composed root's
   // measured envelope so the compile-window grading sees the body's true drawn reach
   // (base + overlay + extensions), not the under-covering record estimate.
@@ -4320,6 +4344,7 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       setActive,
       commitEntity,
       options,
+      installedPreparedDisposer || disposePreparedPlace,
     );
   };
   if (options.overlapAuthoredPipelineCompile === true) {
@@ -4402,6 +4427,7 @@ function failAuthoredPlaceAdmission(
 
 async function commitAuthoredPlaceBoundary(
   boundary, fallbackRoot, authored, setActive, admissionEntity, options = {},
+  disposePrepared = null,
 ) {
   // A validated place record is the sole presentation authority. The hidden substrate never appears
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
@@ -4430,6 +4456,21 @@ async function commitAuthoredPlaceBoundary(
     commitLegStarted = monotonicNow();
   }
   freezeStaticTransformRootMarked(authored.root);
+  // Post-yield stale re-gate: the freeze legs above span presented frames —
+  // a re-admission (epoch flip), stall-abort, owner death, or boundary detach
+  // landing mid-freeze must not graft this run's root over the live epoch's
+  // boundary. Mirrors the caller's pre-commit gate + the ship commit's
+  // post-compose gate; this run disposes only its own prepared tree.
+  if (!boundary.parent
+      || (options.admissionEpoch != null && boundary.userData.admissionEpoch != null
+          && boundary.userData.admissionEpoch !== options.admissionEpoch)
+      || (typeof options.isAbortedStalledAdmission === 'function' && options.isAbortedStalledAdmission())
+      || (options.asyncAdmission && options.asyncAdmission.signal && options.asyncAdmission.signal.aborted === true)
+      || (admissionEntity && admissionEntity.alive === false)) {
+    if (disposePrepared) await disposePrepared();
+    else unregisterPreparedAuthoredAdmission(authored);
+    return false;
+  }
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
   // The swap mutated the tree under no park key — a withheld/parked verdict
@@ -4851,7 +4892,7 @@ function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options 
       dynamicNodes: 0,
     };
   }
-  staticBatches.flush();
+  yield* staticBatches.flushSteps();
   yield;
   reconcileMaplessHullMaterialAliases(palette);
   yield* canonicalizeMaplessHullMaterials(root, palette);
@@ -4872,8 +4913,8 @@ function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, options 
   if(isTallyThreeAssessor(entity))root.userData.tallyThreeAuthoredSource={assetId:record.assetId,file:record.url};
   // Places carrying a sealed motion bank (e.g. the rigged cargo pod) animate off the same
   // entity-keyed driver surface as ships.
-  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
-  installCeresCradleLayoutGuard(root, options.layoutEntity || entity, ownerBoundary);
+  yield* attachAuthoredMotionDriverSteps(root, entity, bindings.authoredMotions);
+  yield* installCeresCradleLayoutGuardSteps(root, options.layoutEntity || entity, ownerBoundary);
   if (isCeresWorkfleetPlace(entity)) {
     root.userData.ceresWorkfleetAuthoredSource = { assetId: record.assetId, file: record.url };
   }
@@ -8989,6 +9030,15 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       releaseBoundaryResidency(renderer, boundary, 'authored-composition-unavailable', options.admissionEpoch);
       return false;
     }
+    // Post-build stale re-gate: a composed root resolving after the boundary
+    // re-epoched must never reach the prepared registry — registering it
+    // leaks the parked tree under the live admission's epoch.
+    if (staleAuthoredRunVerdict(boundary, options)) {
+      try { await disposePreparedShipBoundaryResources(boundary, authored, options.admissionEpoch); }
+      catch { /* best-effort — the stale run's own cleanup continues */ }
+      releaseBoundaryResidency(renderer, boundary, 'ship-compose-stale', options.admissionEpoch);
+      return false;
+    }
     registerPreparedAuthoredAdmission(scene, boundary, authored);
     installedPreparedDisposer = options.deferBoundaryPublication === true
       ? installPreparedBoundaryDisposer(boundary, () => (
@@ -10793,7 +10843,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   }
 
   yield;
-  staticBatches.flush();
+  yield* staticBatches.flushSteps();
   reconcileMaplessHullMaterialAliases(palette);
   yield* canonicalizeMaplessHullMaterials(root, palette);
 
@@ -10831,7 +10881,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   root.userData.updateLod('lod0');
   // ANI-00: mount the authored-motion driver beside the damage/drive closures the renderer
   // already calls per frame. Detachment rides the disposeObject userData-callback grammar.
-  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
+  yield* attachAuthoredMotionDriverSteps(root, entity, bindings.authoredMotions);
 
   // GR-5: authored compositions need the same persistent shield bubble as procedural ships so
   // syncEntityViews can toggle it from e.shield. Geometry shared via shipKit; material per-ship.
@@ -10859,8 +10909,15 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   ].filter(Boolean));
   const ownerLocalObjects = new Set();
   const renderPackageInstances = [];
+  let ownerCollectVisited = 0;
   for (const fallbackRoot of ownerLocalFallbackRoots.filter(Boolean)) {
-    fallbackRoot.traverse((object) => {
+    // Stepped stack walk — the tail's fallback/root collects used to each pay
+    // one atomic traverse inside the commit leg.
+    const ownerStack = [fallbackRoot];
+    while (ownerStack.length) {
+      const object = ownerStack.pop();
+      if ((++ownerCollectVisited % 128) === 0) yield;
+      if (!object) continue;
       if (typeof object.dispose === 'function') ownerLocalObjects.add(object);
       const geometry = object.geometry;
       if (geometry && geometry.userData?.spacefaceSharedFallback !== true) {
@@ -10874,9 +10931,15 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
           ownerLocalMaterials.add(material);
         }
       }
-    });
+      const kids = object.children || EMPTY_ARRAY;
+      for (let i = kids.length - 1; i >= 0; i--) ownerStack.push(kids[i]);
+    }
   }
-  root.traverse((object) => {
+  const rootCollectStack = [root];
+  while (rootCollectStack.length) {
+    const object = rootCollectStack.pop();
+    if ((++ownerCollectVisited % 128) === 0) yield;
+    if (!object) continue;
     const channelMaterials = object.material
       ? (Array.isArray(object.material) ? object.material : [object.material]) : EMPTY_ARRAY;
     for (const material of channelMaterials) {
@@ -10888,7 +10951,9 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     }
     const instance = object.userData?.renderPackageInstance;
     if (instance && typeof instance.dispose === 'function') renderPackageInstances.push(instance);
-  });
+    const kids = object.children || EMPTY_ARRAY;
+    for (let i = kids.length - 1; i >= 0; i--) rootCollectStack.push(kids[i]);
+  }
 
   root.userData.renderContract = {
     version: 1,
@@ -10927,7 +10992,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   root.userData.wholeShip = wholeShip;
   // Runtime composition is not the offline cooker: preserve the authored root and carry the
   // supported-camera omission metadata until a flat cooked artifact is selected.
-  cookFlightProduct(root, 'chase', { runtime: true });
+  yield* cookFlightProductSteps(root, 'chase', { runtime: true });
   const result = {
     root,
     authoredParts: authoredPartList,
@@ -10941,7 +11006,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     renderPackageInstances,
   };
   if (canCacheFlightRootTemplate(result)) {
-    storeFlightRootTemplate(templateKey, createFlightRootTemplateEntry({
+    storeFlightRootTemplate(templateKey, yield* createFlightRootTemplateEntrySteps({
       root,
       bindings,
       authoredHullLevels,
@@ -11282,9 +11347,29 @@ function createFlightRootTemplateEntry({
   authoredParts,
   authoredSlots,
 }) {
-  const packageRecipes = collectFlightPackageRecipes(root);
-  const templateRoot = createFlightTemplateRoot(root);
-  stripFlightPackageTemplateSubtrees(templateRoot, packageRecipes);
+  const steps = createFlightRootTemplateEntrySteps({
+    root, bindings, authoredHullLevels, wholeShip, loadoutFingerprint, authoredParts, authoredSlots,
+  });
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Steps twin — recipe collect, template sanitize, and package-subtree strip
+// each yield at stride boundaries; the userData swap+clone+restore unit stays
+// atomic (a yield mid-swap would present the source tree's projected userData).
+function* createFlightRootTemplateEntrySteps({
+  root,
+  bindings,
+  authoredHullLevels,
+  wholeShip,
+  loadoutFingerprint,
+  authoredParts,
+  authoredSlots,
+}) {
+  const packageRecipes = yield* collectFlightPackageRecipesSteps(root);
+  const templateRoot = yield* createFlightTemplateRootSteps(root);
+  yield* stripFlightPackageTemplateSubtreesSteps(templateRoot, packageRecipes);
   return {
     root: templateRoot,
     hullPath: objectPathFromRoot(root, root.userData && root.userData.hull),
@@ -11307,6 +11392,13 @@ function createFlightRootTemplateEntry({
 }
 
 function createFlightTemplateRoot(sourceRoot) {
+  const steps = createFlightTemplateRootSteps(sourceRoot);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+function* createFlightTemplateRootSteps(sourceRoot) {
   if (!sourceRoot || typeof sourceRoot.clone !== 'function') return null;
   // The source tree keeps its real userData; only the clone reads the projected copy, and callers
   // such as createFlightRootTemplateEntry read source userData.hull right after this returns.
@@ -11325,7 +11417,12 @@ function createFlightTemplateRoot(sourceRoot) {
   }
   const geometries = new Map();
   const materials = new Map();
-  templateRoot.traverse((object) => {
+  const sanitizeStack = [templateRoot];
+  let sanitizeVisited = 0;
+  while (sanitizeStack.length) {
+    const object = sanitizeStack.pop();
+    if ((++sanitizeVisited % 128) === 0) yield;
+    if (!object) continue;
     object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
     object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
     object.userData = sanitizeFlightTemplateUserData(object.userData);
@@ -11355,7 +11452,9 @@ function createFlightTemplateRoot(sourceRoot) {
       }
     }
     if (object.material) object.material = cloneFlightTemplateMaterials(object.material, materials);
-  });
+    const kids = object.children || EMPTY_ARRAY;
+    for (let i = kids.length - 1; i >= 0; i--) sanitizeStack.push(kids[i]);
+  }
   clearFlightTemplateDynamicUserData(templateRoot);
   return templateRoot;
 }
@@ -11459,11 +11558,26 @@ function flightTemplateCloneUserData(userData) {
 }
 
 function collectFlightPackageRecipes(root) {
+  const steps = collectFlightPackageRecipesSteps(root);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Steps twin — one atomic O(subtree) collect per template mint paced at
+// stride boundaries; per-recipe subtree walks stay atomic per package.
+function* collectFlightPackageRecipesSteps(root) {
   const recipes = [];
   if (!root?.traverse) return recipes;
-  root.traverse((object) => {
-    const recipe = object.userData?.spacefaceFlightPackageRecipe;
-    if (!object.userData?.renderPackageInstance || !recipe) return;
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if ((++visited % 128) === 0) yield;
+    const kids = object && object.children || EMPTY_ARRAY;
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
+    const recipe = object && object.userData && object.userData.spacefaceFlightPackageRecipe;
+    if (!object || !object.userData?.renderPackageInstance || !recipe) continue;
     const objectPaths = [];
     object.traverse((child) => {
       const sourcePath = objectPathFromRoot(root, child);
@@ -11476,11 +11590,17 @@ function collectFlightPackageRecipes(root) {
       parentPath: objectPathFromRoot(root, object.parent),
       objectPaths,
     });
-  });
+  }
   return recipes;
 }
 
 function stripFlightPackageTemplateSubtrees(root, recipes) {
+  const steps = stripFlightPackageTemplateSubtreesSteps(root, recipes);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+}
+
+function* stripFlightPackageTemplateSubtreesSteps(root, recipes) {
   const detached = [];
   for (const recipe of recipes || EMPTY_ARRAY) {
     const partRoot = findFlightTemplateObject(root, recipe.sourcePath);
@@ -11497,17 +11617,28 @@ function stripFlightPackageTemplateSubtrees(root, recipes) {
   // still used by the retained template graph (a source GLB may legally share geometry).
   const retainedGeometries = new Set();
   const retainedMaterials = new Set();
-  root.traverse((object) => {
+  const retainedStack = [root];
+  let visited = 0;
+  while (retainedStack.length) {
+    const object = retainedStack.pop();
+    if ((++visited % 128) === 0) yield;
+    if (!object) continue;
     if (object.geometry) retainedGeometries.add(object.geometry);
     const materials = object.material
       ? (Array.isArray(object.material) ? object.material : [object.material])
       : EMPTY_ARRAY;
     for (const material of materials) if (material) retainedMaterials.add(material);
-  });
+    const kids = object.children || EMPTY_ARRAY;
+    for (let i = kids.length - 1; i >= 0; i--) retainedStack.push(kids[i]);
+  }
   const disposedGeometries = new Set();
   const disposedMaterials = new Set();
   for (const detachedRoot of detached) {
-    detachedRoot.traverse((object) => {
+    const detachedStack = [detachedRoot];
+    while (detachedStack.length) {
+      const object = detachedStack.pop();
+      if ((++visited % 128) === 0) yield;
+      if (!object) continue;
       const geometry = object.geometry;
       if (geometry && !retainedGeometries.has(geometry) && !disposedGeometries.has(geometry)) {
         disposedGeometries.add(geometry);
@@ -11521,7 +11652,9 @@ function stripFlightPackageTemplateSubtrees(root, recipes) {
         disposedMaterials.add(material);
         try { material.dispose?.(); } catch (_) { /* cache construction remains fail-closed */ }
       }
-    });
+      const kids = object.children || EMPTY_ARRAY;
+      for (let i = kids.length - 1; i >= 0; i--) detachedStack.push(kids[i]);
+    }
     detachedRoot.clear?.();
   }
 }
@@ -11813,7 +11946,7 @@ function* instantiateFlightRootTemplateSteps(
   synchronizeSecondaryDrives(primaryDrive, bindings);
   installAuthoredLod(root, bindings, safetyCore, new Set(entry.authoredHullLevels || EMPTY_ARRAY), entry.wholeShip === true);
   root.userData.updateLod('lod0');
-  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
+  yield* attachAuthoredMotionDriverSteps(root, entity, bindings.authoredMotions);
   if (entry.producerManifest) {
     stampOpeningSubmissionPackage(root, entry.producerManifest, {
       replace: true,
@@ -11821,7 +11954,7 @@ function* instantiateFlightRootTemplateSteps(
       assetId,
     });
   }
-  cookFlightProduct(root, 'chase', { runtime: true });
+  yield* cookFlightProductSteps(root, 'chase', { runtime: true });
 
   const releaseFlightTemplate = retainFlightRootTemplate(entry);
   if (!releaseFlightTemplate) return null;
@@ -13059,6 +13192,11 @@ function createStaticBatchCollector(parent, bindings, options = {}) {
       if (record && record.url) bucket.urls.add(record.url);
     },
     flush() {
+      const steps = this.flushSteps();
+      let step = steps.next();
+      while (!step.done) step = steps.next();
+    },
+    *flushSteps() {
       const groups = new Map();
       for (const bucket of buckets.values()) {
         const key = staticBatchGroupKey(bucket.tags);
@@ -13069,7 +13207,10 @@ function createStaticBatchCollector(parent, bindings, options = {}) {
         }
         group.push(bucket);
       }
-      for (const group of groups.values()) flushStaticBatchGroup(parent, bindings, group, options);
+      for (const group of groups.values()) {
+        yield* flushStaticBatchGroupSteps(parent, bindings, group, options);
+        yield;
+      }
       buckets.clear();
     },
   };
@@ -13102,11 +13243,21 @@ function staticBatchLeafCacheKey(entry, tags) {
 }
 
 function flushStaticBatch(parent, bindings, bucket, options = {}) {
+  const steps = flushStaticBatchSteps(parent, bindings, bucket, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+}
+
+// Steps twin — a cold bucket pays a clone+applyMatrix4 per entry; yields pace
+// the leaf loop under the build's own budget.
+function* flushStaticBatchSteps(parent, bindings, bucket, options = {}) {
   const material = resolveCanonicalHullMaterial(bucket.material);
-  const merged = buildStaticBatchGeometry(bucket, options);
+  const merged = yield* buildStaticBatchGeometrySteps(bucket, options);
   if (!merged) {
     const tier1Geometry = tier1CausalCounters();
+    let visited = 0;
     for (const entry of bucket.entries) {
+      if ((++visited % 64) === 0) yield;
       // The transform-bound leaf is byte-identical across same-class boundaries; share the
       // cached clone instead of re-uploading the same buffers at every live compose.
       const leafKey = staticBatchLeafCacheKey(entry, bucket.tags);
@@ -13130,9 +13281,15 @@ function flushStaticBatch(parent, bindings, bucket, options = {}) {
 }
 
 function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
+  const steps = flushStaticBatchGroupSteps(parent, bindings, buckets, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+}
+
+function* flushStaticBatchGroupSteps(parent, bindings, buckets, options = {}) {
   if (!buckets || buckets.length === 0) return;
   if (buckets.length === 1) {
-    flushStaticBatch(parent, bindings, buckets[0], options);
+    yield* flushStaticBatchSteps(parent, bindings, buckets[0], options);
     return;
   }
 
@@ -13159,7 +13316,7 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
   const urls = new Set();
   let partCount = 0;
   for (const bucket of buckets) {
-    const geometry = buildStaticBatchGeometry(bucket, options);
+    const geometry = yield* buildStaticBatchGeometrySteps(bucket, options);
     if (!geometry) {
       for (const pending of geometries) {
         if (pending && typeof pending.dispose === 'function'
@@ -13167,7 +13324,7 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
           pending.dispose();
         }
       }
-      for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
+      for (const fallback of buckets) yield* flushStaticBatchSteps(parent, bindings, fallback, options);
       return;
     }
     geometries.push(geometry);
@@ -13175,6 +13332,7 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     partCount += bucket.entries.length;
     for (const url of bucket.urls) urls.add(url);
   }
+  yield;
 
   const tier1Geometry = tier1CausalCounters();
   const normalized = normalizeStaticBatchGeometries(geometries, options);
@@ -13191,7 +13349,7 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
     }
   }
   if (!merged) {
-    for (const fallback of buckets) flushStaticBatch(parent, bindings, fallback, options);
+    for (const fallback of buckets) yield* flushStaticBatchSteps(parent, bindings, fallback, options);
     return;
   }
   rememberStaticBatchGeometry(groupCacheKey, merged);
@@ -13199,11 +13357,23 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
 }
 
 function buildStaticBatchGeometry(bucket, options = {}) {
+  const steps = buildStaticBatchGeometrySteps(bucket, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Steps twin — the cold-miss path clones+transforms every entry and merges
+// whole buckets atomically; per-entry yields pace a fat bucket's upload prep.
+function* buildStaticBatchGeometrySteps(bucket, options = {}) {
   const cacheKey = staticBatchGeometryCacheKey(bucket);
   const cached = takeCachedStaticBatchGeometry(cacheKey);
   if (cached) return cached;
   const tier1Geometry = tier1CausalCounters();
-  const geometries = normalizeStaticBatchGeometries(bucket.entries.map((entry) => {
+  const cloned = [];
+  let visited = 0;
+  for (const entry of bucket.entries) {
+    if ((++visited % 64) === 0) yield;
     const geometry = entry.primitive.geometry.clone();
     if (tier1Geometry) {
       tier1Geometry.countGeometryConstructed(1, 'static-batch-clone');
@@ -13212,8 +13382,9 @@ function buildStaticBatchGeometry(bucket, options = {}) {
     promoteStaticPositionToFloat(geometry);
     geometry.applyMatrix4(entry.primitive.matrix);
     geometry.applyMatrix4(entry.partMatrix);
-    return geometry;
-  }), options);
+    cloned.push(geometry);
+  }
+  const geometries = normalizeStaticBatchGeometries(cloned, options);
   if (tier1Geometry) tier1Geometry.countGeometryNormalization(geometries.length, 'static-batch');
   const merged = canMergeStaticBatchGeometries(geometries) ? mergeGeometries(geometries, false) : null;
   if (tier1Geometry && merged) tier1Geometry.countGeometryMerge(geometries.length, 'static-batch');
@@ -16786,15 +16957,18 @@ export function* disposeDetachedObjectSteps(root) {
   // whole tree).
   const releaseStandIn = root && root.userData && root.userData.admissionStandInRelease;
   if (typeof releaseStandIn === 'function') {
-    try { releaseStandIn(); } catch { /* best-effort */ }
+    try { releaseStandIn(); }
+    catch (error) { dedupWarn('teardown:standInRelease', '[partsLibrary] admission stand-in release failed', error); }
   }
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') {
-    try { disposePresentation(); } catch { /* best-effort */ }
+    try { disposePresentation(); }
+    catch (error) { dedupWarn('teardown:sitePresentation', '[partsLibrary] site presentation dispose failed', error); }
   }
   const detachMotion = root && root.userData && root.userData.detachAuthoredMotion;
   if (typeof detachMotion === 'function') {
-    try { detachMotion(); } catch { /* best-effort */ }
+    try { detachMotion(); }
+    catch (error) { dedupWarn('teardown:authoredMotion', '[partsLibrary] authored-motion detach failed', error); }
   }
   const stack = [root];
   let visited = 0;
@@ -16821,13 +16995,18 @@ export function* disposeDetachedObjectSteps(root) {
 function disposeDetachedPlaceFallback(root) {
   // Root hooks are fenced individually — a throwing hook must not veto the
   // subtree teardown (a retry mint would re-throw at the same hook and leak
-  // the whole tree).
-  try { root?.userData?.ceresCradleLayoutGuard?.dispose(); } catch { /* best-effort */ }
+  // the whole tree). Registration/presentation/motion hooks warn through
+  // dedupWarn so the leak class stays observable; per-node disposes stay
+  // silent (per-node noise, not a registration leak).
+  try { root?.userData?.ceresCradleLayoutGuard?.dispose(); }
+  catch (error) { dedupWarn('teardown:cradleGuard', '[partsLibrary] cradle layout guard dispose failed', error); }
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') {
-    try { disposePresentation(); } catch { /* best-effort */ }
+    try { disposePresentation(); }
+    catch (error) { dedupWarn('teardown:sitePresentation', '[partsLibrary] site presentation dispose failed', error); }
   }
-  try { root?.userData?.detachAuthoredMotion?.(); } catch { /* best-effort */ }
+  try { root?.userData?.detachAuthoredMotion?.(); }
+  catch (error) { dedupWarn('teardown:authoredMotion', '[partsLibrary] authored-motion detach failed', error); }
   const geometries = new Set();
   const materials = new Set();
   root.traverse((object) => {
@@ -16837,23 +17016,30 @@ function disposeDetachedPlaceFallback(root) {
   });
   for (const geometry of geometries) {
     if (geometry.userData && geometry.userData.spacefaceSharedFallback) continue;
-    if (typeof geometry.dispose === 'function') geometry.dispose();
+    if (typeof geometry.dispose === 'function') {
+      try { geometry.dispose(); } catch { /* per-node dispose — teardown continues */ }
+    }
   }
   for (const material of materials) {
     if (material.userData && material.userData.spacefaceSharedAsset) continue;
-    if (typeof material.dispose === 'function') material.dispose();
+    if (typeof material.dispose === 'function') {
+      try { material.dispose(); } catch { /* per-node dispose — teardown continues */ }
+    }
   }
 }
 
 // Stepped twin — collect and dispose phases each yield at stride boundaries;
 // the dedup sets live in generator scope so a suspended walk keeps them.
 function* disposeDetachedPlaceFallbackSteps(root) {
-  try { root?.userData?.ceresCradleLayoutGuard?.dispose(); } catch { /* best-effort */ }
+  try { root?.userData?.ceresCradleLayoutGuard?.dispose(); }
+  catch (error) { dedupWarn('teardown:cradleGuard', '[partsLibrary] cradle layout guard dispose failed', error); }
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') {
-    try { disposePresentation(); } catch { /* best-effort */ }
+    try { disposePresentation(); }
+    catch (error) { dedupWarn('teardown:sitePresentation', '[partsLibrary] site presentation dispose failed', error); }
   }
-  try { root?.userData?.detachAuthoredMotion?.(); } catch { /* best-effort */ }
+  try { root?.userData?.detachAuthoredMotion?.(); }
+  catch (error) { dedupWarn('teardown:authoredMotion', '[partsLibrary] authored-motion detach failed', error); }
   const geometries = new Set();
   const materials = new Set();
   const stack = [root];
@@ -16872,12 +17058,16 @@ function* disposeDetachedPlaceFallbackSteps(root) {
   for (const geometry of geometries) {
     if ((++disposed % 128) === 0) yield;
     if (geometry.userData && geometry.userData.spacefaceSharedFallback) continue;
-    if (typeof geometry.dispose === 'function') geometry.dispose();
+    if (typeof geometry.dispose === 'function') {
+      try { geometry.dispose(); } catch { /* per-node dispose — teardown continues */ }
+    }
   }
   for (const material of materials) {
     if ((++disposed % 128) === 0) yield;
     if (material.userData && material.userData.spacefaceSharedAsset) continue;
-    if (typeof material.dispose === 'function') material.dispose();
+    if (typeof material.dispose === 'function') {
+      try { material.dispose(); } catch { /* per-node dispose — teardown continues */ }
+    }
   }
 }
 
