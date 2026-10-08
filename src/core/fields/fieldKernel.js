@@ -20,6 +20,7 @@ import {
   FIELD_MAX_ACCEL,
   fieldVolumeOf,
 } from '../../data/fields.js';
+import { normalizeKilnbackThermalRecipe } from '../../data/kilnback.js';
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -47,6 +48,7 @@ export function normalizeField(spec = {}) {
   let dx = finite(dir.x, needsDir ? 1 : 0);
   let dz = finite(dir.z, 0);
   const dlen = Math.hypot(dx, dz);
+  const thermal = normalizeKilnbackThermalRecipe(spec.thermal);
   if (dlen > 1e-6) { dx /= dlen; dz /= dlen; } else { dx = 1; dz = 0; }
   return {
     id: String(spec.id != null ? spec.id : `field_${kind}`),
@@ -87,6 +89,7 @@ export function normalizeField(spec = {}) {
       x: finite(spec.frame && spec.frame.x),
       z: finite(spec.frame && spec.frame.z),
     },
+    ...(thermal ? { thermal } : {}),
   };
 }
 
