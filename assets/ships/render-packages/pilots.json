@@ -1036,6 +1036,225 @@
       "sceneRoot": true
     },
     {
+      "key": "borrowed-voice-a",
+      "assetId": "sf.render.borrowed-voice-a",
+      "runtimeAssetId": "SF_PROP_BORROWED_VOICE_A",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_borrowed_voice_a",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_a.glb",
+      "releaseSha256": "266dae4b89f939682796dfb6f62adaa13b4dd3a4f4735ecc2820c41a8c9136ab",
+      "releaseBytes": 398776,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_RECEIVER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-a",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-a/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-a-lod1",
+      "assetId": "sf.render.borrowed-voice-a-lod1",
+      "runtimeAssetId": "SF_PROP_BORROWED_VOICE_A",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_borrowed_voice_a_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_a_lod1.glb",
+      "releaseSha256": "eb90c9abe308b520b9f7c619c46e6be73474f1c5966ed774ac3ac3ea431c3c07",
+      "releaseBytes": 356256,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_RECEIVER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-a-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-a-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-a-lod2",
+      "assetId": "sf.render.borrowed-voice-a-lod2",
+      "runtimeAssetId": "SF_PROP_BORROWED_VOICE_A",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_borrowed_voice_a_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_a_lod2.glb",
+      "releaseSha256": "ab1d37c096050cec43ae95da00802b88a339b78a2ff3ede448808687b4547280",
+      "releaseBytes": 340420,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_RECEIVER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-a-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-a-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-b",
+      "assetId": "sf.render.borrowed-voice-b",
+      "runtimeAssetId": "SF_PROP_BORROWED_VOICE_B",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_borrowed_voice_b",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_b.glb",
+      "releaseSha256": "fed9550e53dd71de358bc015d92d8d59be81fa8b5857905cbf113abf82d30225",
+      "releaseBytes": 381784,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_RECEIVER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-b",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-b/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-b-lod1",
+      "assetId": "sf.render.borrowed-voice-b-lod1",
+      "runtimeAssetId": "SF_PROP_BORROWED_VOICE_B",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_borrowed_voice_b_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_b_lod1.glb",
+      "releaseSha256": "25eacc2e79068f1dc023d4d51a476b105ecd5696ff2bdab4695a2644cc5e971e",
+      "releaseBytes": 347968,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_RECEIVER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-b-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-b-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-b-lod2",
+      "assetId": "sf.render.borrowed-voice-b-lod2",
+      "runtimeAssetId": "SF_PROP_BORROWED_VOICE_B",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_borrowed_voice_b_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_b_lod2.glb",
+      "releaseSha256": "29d09926aeae3d02a473cb07712d8b3b4411d0805c3febba224cdead0bc7d3a1",
+      "releaseBytes": 334676,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_RECEIVER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-b-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-b-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-c",
+      "assetId": "sf.render.borrowed-voice-c",
+      "runtimeAssetId": "SF_PROP_BORROWED_VOICE_C",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_borrowed_voice_c",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_c.glb",
+      "releaseSha256": "d4e15c0ba33d4b26b3108fb19c3c2399fcf195e86dbd5c2c04f837f739521e17",
+      "releaseBytes": 379996,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_RECEIVER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-c",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-c/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-c-lod1",
+      "assetId": "sf.render.borrowed-voice-c-lod1",
+      "runtimeAssetId": "SF_PROP_BORROWED_VOICE_C",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_borrowed_voice_c_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_c_lod1.glb",
+      "releaseSha256": "794bef3435de94bdf337b979023bfb7760d341be72bb12de787053d943824a1d",
+      "releaseBytes": 348212,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_RECEIVER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-c-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-c-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-c-lod2",
+      "assetId": "sf.render.borrowed-voice-c-lod2",
+      "runtimeAssetId": "SF_PROP_BORROWED_VOICE_C",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_borrowed_voice_c_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_c_lod2.glb",
+      "releaseSha256": "f7d74f1c5d86ec3828df379db7fa6875b08bf4352230ecd3df0b64eb44612a33",
+      "releaseBytes": 335308,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_RECEIVER"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-c-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-c-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-ring",
+      "assetId": "sf.render.borrowed-voice-ring",
+      "runtimeAssetId": "SF_PLACE_BORROWED_VOICE_RING",
+      "kind": "prop",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_borrowed_voice_ring",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_ring.glb",
+      "releaseSha256": "e111ca3e69580a903062c98a71ffd20c28afefcc2937407b4e780fd087b209ae",
+      "releaseBytes": 676988,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_FAN_1",
+        "MOTION_BORROWED_VOICE_FAN_2",
+        "MOTION_BORROWED_VOICE_FAN_3",
+        "MOTION_BORROWED_VOICE_FAN_4",
+        "MOTION_BORROWED_VOICE_FAN_5",
+        "MOTION_BORROWED_VOICE_FAN_6"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-ring",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-ring/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-ring-lod1",
+      "assetId": "sf.render.borrowed-voice-ring-lod1",
+      "runtimeAssetId": "SF_PLACE_BORROWED_VOICE_RING",
+      "kind": "prop",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_borrowed_voice_ring_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_ring_lod1.glb",
+      "releaseSha256": "be956f517f7f54347f88665cf7d22c194d03c0f7d4c64bfa6d1aec98dc739e57",
+      "releaseBytes": 503700,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_FAN_1",
+        "MOTION_BORROWED_VOICE_FAN_2",
+        "MOTION_BORROWED_VOICE_FAN_3",
+        "MOTION_BORROWED_VOICE_FAN_4",
+        "MOTION_BORROWED_VOICE_FAN_5",
+        "MOTION_BORROWED_VOICE_FAN_6"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-ring-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-ring-lod1/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "borrowed-voice-ring-lod2",
+      "assetId": "sf.render.borrowed-voice-ring-lod2",
+      "runtimeAssetId": "SF_PLACE_BORROWED_VOICE_RING",
+      "kind": "prop",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_borrowed_voice_ring_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/borrowed_voice_ring_lod2.glb",
+      "releaseSha256": "ca7017c87e76e149034c0daf67b5a6776b665b899fd7c9fc049853308e607c40",
+      "releaseBytes": 439232,
+      "dynamicNameIncludes": [
+        "MOTION_BORROWED_VOICE_FAN_1",
+        "MOTION_BORROWED_VOICE_FAN_2",
+        "MOTION_BORROWED_VOICE_FAN_3",
+        "MOTION_BORROWED_VOICE_FAN_4",
+        "MOTION_BORROWED_VOICE_FAN_5",
+        "MOTION_BORROWED_VOICE_FAN_6"
+      ],
+      "outputDir": "assets/ships/release/render-packages/borrowed-voice-ring-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/borrowed-voice-ring-lod2/render-package.json",
+      "sceneRoot": true
+    },
+    {
       "key": "breakaway-fork",
       "assetId": "sf.render.breakaway-fork",
       "runtimeAssetId": "SF_PLACE_BREAKAWAY_FORK",

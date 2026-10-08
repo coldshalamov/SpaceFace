@@ -42,6 +42,8 @@ import { ilexArkPrompt } from '../ui/ilexArkPrompt.js';
 import { kilnback } from '../systems/kilnback.js';
 import { towlineTable } from '../systems/towlineTable.js';
 import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
+import { borrowedVoice } from '../systems/borrowedVoice.js';
+import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
@@ -482,6 +484,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['kilnback', kilnback],
     ['towlineTable', towlineTable],
     ['towlineTablePrompt', towlineTablePrompt],
+    ['borrowedVoice', borrowedVoice],
+    ['borrowedVoicePrompt', borrowedVoicePrompt],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],

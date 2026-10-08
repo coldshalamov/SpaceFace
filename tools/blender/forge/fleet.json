@@ -1104,6 +1104,38 @@
       "part_id": "wholeship_towline_debris",
       "npc_root": "SF_PROP_TOWLINE_DEBRIS_ROOT",
       "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "borrowed_voice_ring": {
+      "layout": "npc",
+      "file": "borrowed_voice_ring",
+      "asset_id": "SF_PLACE_BORROWED_VOICE_RING",
+      "part_id": "wholeship_borrowed_voice_ring",
+      "npc_root": "SF_PLACE_BORROWED_VOICE_RING_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "borrowed_voice_a": {
+      "layout": "npc",
+      "file": "borrowed_voice_a",
+      "asset_id": "SF_PROP_BORROWED_VOICE_A",
+      "part_id": "wholeship_borrowed_voice_a",
+      "npc_root": "SF_PROP_BORROWED_VOICE_A_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "borrowed_voice_b": {
+      "layout": "npc",
+      "file": "borrowed_voice_b",
+      "asset_id": "SF_PROP_BORROWED_VOICE_B",
+      "part_id": "wholeship_borrowed_voice_b",
+      "npc_root": "SF_PROP_BORROWED_VOICE_B_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "borrowed_voice_c": {
+      "layout": "npc",
+      "file": "borrowed_voice_c",
+      "asset_id": "SF_PROP_BORROWED_VOICE_C",
+      "part_id": "wholeship_borrowed_voice_c",
+      "npc_root": "SF_PROP_BORROWED_VOICE_C_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
     }
   }
 }

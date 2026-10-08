@@ -55,6 +55,7 @@ Current save version: `14`
 - `ilexArk`
 - `kilnback`
 - `towlineTable`
+- `borrowedVoice`
 - `lossLedger`
 - `provenance`
 - `factionPresence`
@@ -142,6 +143,7 @@ Current save version: `14`
 | `$.automation.traders` | array | length 0 |
 | `$.bandRadio` | object | {} |
 | `$.bombs` | object | {} |
+| `$.borrowedVoice` | null | null |
 | `$.bracket` | object | {} |
 | `$.capitalBoss` | null | null |
 | `$.careerLadders` | object | {} |

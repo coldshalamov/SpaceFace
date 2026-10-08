@@ -8,6 +8,7 @@ import { isKilnbackEntity, isKilnbackCask } from './kilnbackVisuals.js';
 import { KILNBACK_RADIUS } from '../data/kilnbackBody.js';
 import { isScissorwakeEntity, SCISSORWAKE_RADIUS } from '../data/scissorwakeBody.js';
 import { isTowlineCrewEntity, isTowlineCleanupEntity, towlineCrewRadius } from '../data/towlineTableBodies.js';
+import { isBorrowedVoiceRing, isBorrowedVoiceRecorder } from '../data/borrowedVoiceBody.js';
 import { recordCeresWorkfleetAuthoredSource, recordLatchAuthoredSource } from '../core/machineryPresentation.js';
 import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
 import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
@@ -196,6 +197,8 @@ function authoredPayloadIsRiggedPod(entity) {
   return entity?.data?.payloadType === 'jettisoned_cargo';
 }
 export function authoredPayloadFileForEntity(entity) {
+  if (isBorrowedVoiceRing(entity)) return 'wholeships/borrowed_voice_ring.glb';
+  if (isBorrowedVoiceRecorder(entity)) return `wholeships/borrowed_voice_${entity.data.borrowedVoiceRecorderId}.glb`;
   if (isKilnbackCask(entity)) return 'wholeships/kilnback_cask.glb';
   if (isTowlineCleanupEntity(entity)) return 'wholeships/towline_debris.glb';
   if (isIlexVaultEntity(entity)) return 'wholeships/ilex_vault.glb';
@@ -203,11 +206,14 @@ export function authoredPayloadFileForEntity(entity) {
   return authoredPayloadIsSpindle(entity) ? AUTHORED_SP07_PAYLOAD_FILE : AUTHORED_CARGO_CAPSULE_FILE;
 }
 export function authoredPayloadSlotForEntity(entity) {
+  // The ring is an inert wreck carrying one exact Forge hull, never a dockable station.
+  if (isBorrowedVoiceRing(entity)) return 'hull';
   return (authoredPayloadIsSpindle(entity) || authoredPayloadIsRiggedPod(entity)) ? 'place' : 'pod';
 }
 // Draw-time fit: the spindle is authored 1:1 in WU (scale 1 always); the capsule keeps
 // the longest-axis fit. Exported for the PQ-195.00 render-selector contract test.
 export function authoredPayloadDrawScale(entity, targetRadius, authoredEnvelope) {
+  if (isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity)) return 1;
   if (isKilnbackCask(entity) || isTowlineCleanupEntity(entity)) return 1;
   if (isIlexVaultEntity(entity)) return 1;
   if (authoredPayloadIsSpindle(entity)) return 1;
@@ -3079,8 +3085,8 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   boundary.name = `${entity.data.payloadStableId || entity.id || 'cargo_capsule'}_AuthoredPayloadBoundary`;
   fallbackRoot.visible = false;
   boundary.add(fallbackRoot);
-  boundary.userData.kind = 'payload';
-  boundary.userData.interactionKind = 'payload';
+  boundary.userData.kind = entity.type;
+  boundary.userData.interactionKind = entity.type;
   boundary.userData.authoredPayloadAssetId = entity.data.authoredPayloadAssetId;
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
@@ -3506,8 +3512,8 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   const palette = paletteFor(entity);
   const root = new THREE.Group();
   root.name = `GLTFKit_${entity.data.payloadStableId || 'cargo_capsule'}`;
-  root.userData.kind = 'payload';
-  root.userData.interactionKind = 'payload';
+  root.userData.kind = entity.type;
+  root.userData.interactionKind = entity.type;
   root.userData.authoredPayloadAssetId = entity.data.authoredPayloadAssetId;
   root.userData.assetId = record.assetId;
 
@@ -3535,10 +3541,13 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   root.userData.updateLod('lod0');
   // Payload bodies that carry a sealed motion bank (e.g. the rigged cargo pod) get the
   // same per-frame/per-event driver as ships, so mining events reach their bound pivots.
+  if (isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity))
+    root.userData.borrowedVoiceAuthoredSource = { assetId: record.assetId, file: record.url };
   attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
 
   const center = Array.isArray(record.bounds?.center) ? record.bounds.center : [0, 0, 0];
-  const sourceOrigin = isIlexVaultEntity(entity) || isKilnbackCask(entity) || isTowlineCleanupEntity(entity);
+  const sourceOrigin = isIlexVaultEntity(entity) || isKilnbackCask(entity) || isTowlineCleanupEntity(entity)
+    || isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity);
   root.position.set(
     sourceOrigin ? 0 : -(Number(center[0]) || 0) * scale,
     sourceOrigin ? 0 : -(Number(center[1]) || 0) * scale,

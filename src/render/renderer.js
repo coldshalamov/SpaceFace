@@ -5026,6 +5026,9 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
 function packagedDecodeFileForEntity(entity) {
   if (!entity || entity.alive === false) return null;
   try {
+    if (hasExplicitAuthoredPayloadPresentation(entity)) {
+      return { file: authoredPayloadFileForEntity(entity), slot: authoredPayloadSlotForEntity(entity) };
+    }
     if (entity.type === 'wreck') {
       const file = wreckPackagedFile(entity);
       return file ? { file, slot: 'place' } : null;

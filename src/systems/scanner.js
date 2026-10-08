@@ -4,6 +4,7 @@
 // plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
 // Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
 import { asteroidScanGlyph } from '../data/mining.js';
+import { borrowedVoiceScannerReading } from './borrowedVoice.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
 import { hash32 } from '../core/rng.js';
@@ -681,7 +682,8 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     // authored sourceId rather than a transient numeric entity id.
     if (entity.data && entity.data.poi) continue;
     if (entity.data && entity.data.requiresTriangulation) continue;
-    const kind = signalKindForEntity(entity);
+    const sourceReading = borrowedVoiceScannerReading(state, entity);
+    const kind = sourceReading?.kind || signalKindForEntity(entity);
     if (!kind) continue;
     const revealed = entity.data && entity.data.scanRevealed;
     const discovery = revealed && revealed.discovery;
@@ -697,6 +699,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       pos: entity.pos,
       range: profile.nearRadius,
       repeatableScannerSignal: entity.data && entity.data.repeatableScannerSignal === true,
+      ...(sourceReading ? { resolvedLabel: sourceReading.label, resolvedDetail: sourceReading.detail } : {}),
       ...(discovery ? { discovery } : {}),
       ...(discovery && discovery.trackable === false ? { trackable: false } : {}),
       ...(fileShipment ? {

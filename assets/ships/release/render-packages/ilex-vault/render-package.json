@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7ea41ef41199346e6cf410f22fe44cf811c2b23a70297b5bdedf6bfbc0c050ac",
+  "contentHash": "e19913b9dd51c135c5c3b59366a03982e4a974c8e5dfc77f5d64872c93da5a61",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -820,8 +820,8 @@
       "uri": "ilex_vault.glb"
     },
     "sourceManifest": {
-      "bytes": 253149,
-      "sha256": "1474bb0268e8ec1fa038df8f8af21a0d2be65d83b2c451800588b984a3757e31",
+      "bytes": 262710,
+      "sha256": "cc516c5edffc7341175108270c192496c69eb41650594b9aa7647a1fb8fa8b72",
       "uri": "pilots.json"
     }
   },
@@ -1138,7 +1138,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/ilex_vault.glb"
   },
-  "runtimeHash": "1f6c35f18277aaf9ca5363857fa365b75f2c164e8ac23cc02188eaafc3ba80cd",
+  "runtimeHash": "920b018882619d112b5129a9422ff6c5cb74435e69fc065057f088edc8b4c5a3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

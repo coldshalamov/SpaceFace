@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e48790020a53ad6cf1eacb642ec20ad67e9aa632e3911e4b237ddd1f587f5e7f",
+  "contentHash": "9720d0df22a39216a81afb38abec3737966fdad4f20e2a3f5f42d570c90f2c32",
   "dynamicGroups": [
     {
       "id": "sf.render.kestrel-lod1.mesh.lod1-hook-drive-core.dynamic",
@@ -4590,8 +4590,8 @@
       "uri": "kestrel_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 253149,
-      "sha256": "1474bb0268e8ec1fa038df8f8af21a0d2be65d83b2c451800588b984a3757e31",
+      "bytes": 262710,
+      "sha256": "cc516c5edffc7341175108270c192496c69eb41650594b9aa7647a1fb8fa8b72",
       "uri": "pilots.json"
     }
   },
@@ -7522,7 +7522,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel_lod1.glb"
   },
-  "runtimeHash": "64367bc28878e81dc39b681f52542ba4a5f6e54cbcaa15089c954ac3f2a6d0bb",
+  "runtimeHash": "9a405a9239ffd406a95f75ff13abf2bf4e3c03c93a03743fc81dff08efaff619",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

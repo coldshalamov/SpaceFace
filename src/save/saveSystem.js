@@ -657,6 +657,7 @@ export const save = {
       ['ilexArk', () => this._callSerialize('ilexArk')],
       ['kilnback', () => this._callSerialize('kilnback')],
       ['towlineTable', () => this._callSerialize('towlineTable')],
+      ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
@@ -818,6 +819,8 @@ export const save = {
     yield 'serialize:kilnback';
     data.towlineTable = this._callSerialize('towlineTable');
     yield 'serialize:towlineTable';
+    data.borrowedVoice = this._callSerialize('borrowedVoice');
+    yield 'serialize:borrowedVoice';
     yield 'serialize:enemyMind';
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     yield 'serialize:lossLedger';
@@ -4819,6 +4822,7 @@ export const save = {
       this._callDeserialize('ilexArk', data.ilexArk);
       this._callDeserialize('kilnback', data.kilnback);
       this._callDeserialize('towlineTable', data.towlineTable);
+      this._callDeserialize('borrowedVoice', data.borrowedVoice);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
 
@@ -4951,6 +4955,7 @@ export const save = {
       this.registry.get('ilexArk')?.afterContinue?.();
       this.registry.get('kilnback')?.afterContinue?.();
       this.registry.get('towlineTable')?.afterContinue?.();
+      this.registry.get('borrowedVoice')?.afterContinue?.();
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
       // selection). No entity ids inside — live bomb actors are transient and never persist.
       // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.

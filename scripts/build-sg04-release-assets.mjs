@@ -71,7 +71,8 @@ const packageJson = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8
 // External LOD siblings are separate releases: the runtime loads only the selected distance tier.
 // First-sector remasters must ship these alongside LOD0 or traffic silently remains full detail.
 const WHOLE_SHIP_FILES = [
-  ...['kilnback', 'kilnback_cask', 'scissorwake', 'towline_mara', 'towline_odo', 'towline_kit', 'towline_debris'].flatMap((family) => [
+  ...['kilnback', 'kilnback_cask', 'scissorwake', 'towline_mara', 'towline_odo', 'towline_kit', 'towline_debris',
+    'borrowed_voice_ring', 'borrowed_voice_a', 'borrowed_voice_b', 'borrowed_voice_c'].flatMap((family) => [
     `${family}.glb`, `${family}_lod1.glb`, `${family}_lod2.glb`,
   ]),
   'ilex_ark.glb', 'ilex_ark_lod1.glb', 'ilex_ark_lod2.glb',

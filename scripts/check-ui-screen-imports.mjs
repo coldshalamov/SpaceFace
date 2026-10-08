@@ -568,7 +568,7 @@ if (!gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';") || gameOver
     || !gameOverSrc.includes('ctx.telemetry')
     || !mainSrc.includes('ctx.telemetry = telemetry')
     || deathCauseLabel({ cause: 'environmental' }) !== 'Environmental hazard'
-    || deathSummary.cause !== 'Destroyed by Capital (Vael)'
+    || deathSummary.cause !== 'Destroyed by Capital (The Vael)'
     || deathSummary.lifespan !== '2m 5s') {
     console.log('FAIL gameOverScreen - run summary must show latest death cause and final sortie duration from telemetry');
     fail++;

@@ -1,5 +1,6 @@
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
+import { isBorrowedVoiceRing } from '../data/borrowedVoiceBody.js';
 import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
@@ -5951,6 +5952,9 @@ export function createVisualFactory() {
     build(e) {
       try {
         if (!e) return null;
+        if (isBorrowedVoiceRing(e)) {
+          const root = new THREE.Group(); root.name = 'BorrowedVoiceRingAuthoredPending'; return root;
+        }
         if (Number.isInteger(e.data?.veilNurseryRib)) return stampBuiltVisual(buildNurseryMineralRib(e));
         if (isLatchActor(e) || isTallyThreeAssessor(e)) {
           const root = new THREE.Group(); root.name = isLatchActor(e) ? 'LatchNineAuthoredPending' : 'TallyThreeAuthoredPending'; return root;
