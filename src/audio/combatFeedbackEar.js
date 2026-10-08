@@ -8,6 +8,8 @@ export const WARDED_SHOT_RECIPE = 'sfx.shieldHit';
 export const MINING_NOISE_RECIPE = 'sfx_wanted_alert';
 export const MINE_ARMED_RECIPE = 'sfx_vector_mine';
 export const MINE_ARMED_ADMIT_TICKS = 30;
+export const CLOAK_BURN_RECIPE = 'sfx_cloak_fade';
+export const CLOAK_BURN_ADMIT_TICKS = 45;
 
 export const DISTRESS_ADMIT_TICKS = 90;
 export const MINE_ADMIT_TICKS = 8;
@@ -156,5 +158,25 @@ export function mineArmedCue(payload) {
     gapTicks: MINE_ARMED_ADMIT_TICKS,
     critical: false,
     position: pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? { x: pos.x, z: pos.z } : null,
+  };
+}
+
+/**
+ * The player's own cloak, burned open by a scan. Same fade as going dark,
+ * slower, and only the player's burn — a pulse that lights an NPC stays quiet.
+ * Admission is long enough that one pulse cannot machine-gun the shimmer.
+ */
+export function cloakBurnCue(payload) {
+  if (!payload || payload.entityId == null) return null;
+  const x = Number(payload.x);
+  const z = Number(payload.z);
+  return {
+    recipeId: CLOAK_BURN_RECIPE,
+    gain: 0.55,
+    rate: 0.84,
+    key: `cloakBurn:${payload.entityId}`,
+    gapTicks: CLOAK_BURN_ADMIT_TICKS,
+    critical: false,
+    position: Number.isFinite(x) && Number.isFinite(z) ? { x, z } : null,
   };
 }

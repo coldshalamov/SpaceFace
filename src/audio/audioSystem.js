@@ -21,7 +21,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
-import { AFTERMATH_HUSH, admitAftermathHush, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
+import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -2411,6 +2411,19 @@ export const audio = {
     bus.on('asteroid:destroyed', (p) => this.play('sfx_asteroid_depleted', { position: p && p.pos, gain: 0.7 }));
     bus.on('cloak:faded', () => this.play(combatVerbRecipe('cloak:faded'), { gain: 0.32 }));
     bus.on('cloak:dropped', () => this.play(combatVerbRecipe('cloak:dropped'), { gain: 0.45 }));
+    // cloak:burned already toasts the player. The fade is that burn, pitched
+    // down, and only for the player's own cloak — a scan that lights an NPC
+    // must not chorus. Admission keeps one pulse from machine-gunning it.
+    // Burn does not also play cloak:dropped; dropping the cloak is a different act.
+    bus.on('cloak:burned', (p) => {
+      const playerId = this.state && this.state.playerId;
+      if (!p || playerId == null || p.entityId !== playerId) return;
+      playAdmittedEarCue(
+        this,
+        cloakBurnCue(p),
+        this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+      );
+    });
     // distress:call had emitters and zero listeners. The comms log only opens when the
     // player is inside the radius; the sting is the wanted-alert, not a menu click, once.
     bus.on('distress:call', (p) => playAdmittedEarCue(
