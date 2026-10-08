@@ -67,6 +67,7 @@ function roleOf(entry, entity) {
   if (data && typeof data.trafficRole === 'string' && data.trafficRole) return data.trafficRole;
   if (data && typeof data.role === 'string' && data.role) return data.role;
   if (payload && typeof payload.role === 'string' && payload.role) return payload.role;
+  if (payload && typeof payload.freightRole === 'string' && payload.freightRole) return payload.freightRole;
   return '';
 }
 
