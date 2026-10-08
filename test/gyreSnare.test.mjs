@@ -1388,8 +1388,13 @@ test('the ball watch list drops its oldest watch without stripping a live ball\'
     'the authored scale is restored — an unwatched orphan is benign, not a sleeper');
   assert.equal(a.data.gyrePrevImpactScale, undefined,
     'the scale stash is consumed by the disarm');
-  assert.equal(a.data.gyreLaunchMeta, undefined,
-    'no launch meta rides an unwatched ball');
+  // The serialized launch shadow RIDES THE MARK: the ball still carries gyreLaunched,
+  // so a save:loaded boundary re-watches it and re-stamps kill credit from this meta.
+  // Only adoption (_handBack) deletes it — that's the only path where "no lash
+  // credit rides it" is true. Shedding meta here would silently un-credit the
+  // evicted ball's post-load kills and collapse its re-adopted HUD mirror.
+  assert.equal(a.data.gyreLaunchMeta && a.data.gyreLaunchMeta.tag, 'gyre_launch',
+    'the launch meta rides the mark — post-load provenance re-stamps from it');
   assert.ok(Number.isFinite(a.data.despawnAt) && a.data.despawnAt > t.state.simTime,
     'its own deadline still retires it — no orphan');
   t.cleanup();
@@ -1605,12 +1610,13 @@ test('save:loaded with >8 live balls bounds the watch and adopts the freshest', 
   t.bus.emit('save:loaded', {});
   t.sim.step();
   assert.equal(t.sys._rt.ballIds.length, 8, 'the watch list stays bounded at 8');
-  // Overflow retires the earliest-tracked WATCHES and DISARMS the payloads — every
-  // slot is live+marked so no hand-back runs: immunity stays, but the credit shadow
-  // and any weapon scale shed with the watch (an unwatched orphan is benign).
+  // Overflow retires the earliest-tracked WATCHES and DISARMS the weapon payloads —
+  // every slot is live+marked so no hand-back runs: immunity stays, the credit
+  // shadow RIDES THE MARK (a later load re-stamps provenance from it), and only the
+  // sleeper scale sheds with the watch (an unwatched orphan is benign, not armed).
   assert.equal(balls[0].data.gyreLaunched, true, 'overflow ball keeps its mark');
-  assert.equal(balls[0].data.gyreLaunchMeta, undefined,
-    'the credit shadow sheds with the watch — a later load re-watches the mark only');
+  assert.equal(balls[0].data.gyreLaunchMeta && balls[0].data.gyreLaunchMeta.tag, 'gyre_launch',
+    'the credit shadow rides the mark — the next load re-stamps provenance from it');
   assert.equal(balls[0].data.despawnAt, keptDeadline,
     'the live launch deadline stands — the overflow retires the watch only');
   assert.equal(balls[0].data.gyrePrevDespawnAt, keptStash,
@@ -2148,7 +2154,8 @@ test('the 9th live ball evicts the oldest watch — disarmed but still marked', 
   assert.equal(t.sys._rt.ballIds.length, T.ballWatchMax, 'the watch list caps at 8');
   assert.ok(!t.sys._rt.ballIds.includes(balls[0].id), 'the oldest ball is the evictee');
   assert.equal(balls[0].data.gyreLaunched, true, 'the evictee keeps its launch mark');
-  assert.equal(balls[0].data.gyreLaunchMeta, undefined, 'the evictee sheds the launch meta');
+  assert.equal(balls[0].data.gyreLaunchMeta && balls[0].data.gyreLaunchMeta.tag, 'gyre_launch',
+    'the evictee keeps the serialized meta — post-load provenance re-stamps from it');
   assert.equal(balls[0].physicsBody.impactDamageScale, undefined,
     'the 8x sleeper scale is disarmed (no authored value to restore)');
   for (let n = 1; n < 9; n++) {

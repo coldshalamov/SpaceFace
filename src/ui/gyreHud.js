@@ -130,7 +130,10 @@ export const gyreHud = {
         // The launch beat lands first: BOWL survives ~0.8 s past the burst ticks before
         // the pill flips to BALL AWAY — the verb's biggest beat stays readable.
         if (now < this._bowlUntil) {
-          return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t`, cls: 'gyre-launched' };
+          // ballTxt rides the BOWL-hold window too — the countdown belongs on EVERY
+          // phase while a ball flies; a phase flip inside the 0.8s window shouldn't
+          // swallow the freshly-thrown ball's own ·Ns.
+          return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t${ballTxt}`, cls: 'gyre-launched' };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —

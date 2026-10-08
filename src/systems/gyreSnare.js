@@ -391,15 +391,19 @@ export const gyreSnare = {
     // resumed countdown would assassinate the adopter's body on the next sweep.
     this._restoreLifetime(ball, true);
     this._disarmBall(ball);
+    // The adopter owns the body now — no lash credit rides it. The meta delete lives
+    // HERE, not in _disarmBall: an evicted-but-still-marked ball keeps its serialized
+    // shadow so a save:loaded boundary can re-stamp provenance + republish ×N/radius.
+    delete ball.data.gyreLaunchMeta;
   },
 
   // Shed the weapon payload WITHOUT shedding the mark: an evicted-but-still-marked
   // ball keeps gyreLaunched (pull/snag/suck immunity + launch kill credit ride it to
-  // its own TTL) but nothing keeps the 8× sleeper impact scale or the launch meta —
-  // if a foreign owner strips its deadline while it's unwatched, the orphan is a
-  // benign immune body, not a permanently-armed collider.
+  // its own TTL) AND its serialized launch meta — the boundary sweep re-stamps
+  // provenance from it post-load. Only the 8× sleeper impact scale + its authored
+  // stash shed: if a foreign owner strips the deadline while it's unwatched, the
+  // orphan is a benign immune body, not a permanently-armed collider.
   _disarmBall(ball) {
-    delete ball.data.gyreLaunchMeta; // the adopter owns the body now — no lash credit rides it
     if (ball.physicsBody && ball.physicsBody !== false) {
       if (ball.data.gyrePrevImpactScale !== undefined) ball.physicsBody.impactDamageScale = ball.data.gyrePrevImpactScale;
       else delete ball.physicsBody.impactDamageScale;
@@ -1322,7 +1326,10 @@ export const gyreSnare = {
           });
           // unwatched ⇒ disarmed — same invariant the overflow/adoption paths keep:
           // the payload never outlives the watch, even when the body dies this step.
+          // The credit shadow sheds too: it rides the mark only while the ball can
+          // still ACT — a deadline-passed body's kills are already settled.
           this._disarmBall(e);
+          delete e.data.gyreLaunchMeta;
           if (rt.launchedId === rt.ballIds[i]) rt.launchedId = null;
           rt.ballIds.splice(i, 1);
           continue;
@@ -1331,6 +1338,14 @@ export const gyreSnare = {
           || e.data.despawnAt == null) {
           if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.data.despawnAt == null) {
             this._handBack(e);
+          } else if (e && e.alive !== false && e.data && e.data.gyreLaunched) {
+            // Live + marked + still-deadlined, spliced on a lane other than adoption
+            // (e.g. missing pos): unwatched ⇒ disarmed, same as every exit path.
+            this._disarmBall(e);
+          } else if (e && e.data) {
+            // Corpse walking the splice lane: the shadow can't ride a body that
+            // can't act — shed it so a dead mark can't re-stamp credit post-load.
+            delete e.data.gyreLaunchMeta;
           }
           if (rt.launchedId === rt.ballIds[i]) rt.launchedId = null;
           rt.ballIds.splice(i, 1);
@@ -1397,6 +1412,9 @@ export const gyreSnare = {
           // unwatched ⇒ disarmed — the non-primary quiet-TTL path keeps this invariant;
           // the primary's gets it too even though the body dies moments later.
           this._disarmBall(ball);
+          // The credit shadow sheds with the corpse: it rides the mark only while the
+          // ball can still act — a deadline-passed body's kills are already settled.
+          delete ball.data.gyreLaunchMeta;
           this._unwatchBall(rt.ballId);
           rt.ballId = null; rt.launchedId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
         }
@@ -1671,6 +1689,10 @@ export const gyreSnare = {
           // First coil tick: the pad rides a low rumble through the draw — the
           // slingshot pull-back is the feel-rich part, and silence undersold it.
           this.bus.emit(GYRE_EVENTS.windup, { tick: state.tick });
+          // A whisper of camera anticipation on the draw — the pull-back is felt,
+          // not only seen/heard. amount 0.01 is deliberately sub-perceptual: it
+          // leans the frame into the coil without moving the reticle.
+          this.bus.emit('camera:shake', { amount: 0.01 });
           // The draw gets a thin rising shimmer too — felt on the pad and seen in
           // the maw, it was the one beat of the throw with no voice at all.
           this.bus.emit('audio:cue', {

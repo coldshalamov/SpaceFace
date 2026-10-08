@@ -703,6 +703,9 @@ export class GyreSnarePresentation {
       const absorbsNow = finite(mirror.absorbs, 0);
       if (absorbsNow > this._absorbSeen) {
         this._discKick = 1; this._clumpKick = 1; this._moteKick = 1;
+        // The swallow ripples up the WHOLE glass, not just the mouth: a floor bump
+        // on the shared pulse so each meal visibly travels the cone's surface.
+        this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.2);
         // The gulp lands on the side the mass actually hit — the member ledger's
         // approach direction (world frame) biases the funnel's aim while the kick lasts.
         this._gulpDirX = finite(mirror.absorbDir && mirror.absorbDir.x);
@@ -777,7 +780,9 @@ export class GyreSnarePresentation {
       this._spiralMat.uniforms.uSwirl.value = finite(mirror.swirlBlend, 1);
       // Dying-cap honesty reaches the funnel too — motes thin with the glass's own
       // fuse telegraph instead of inhaling full-bright on a lash <8 s from dry.
-      this._spiralMat.uniforms.uFade.value = spent * fuseDim;
+      // flashCalm rides here too — the mote gulp can brighten ~3.4x at the rim,
+      // the vocabulary's third-brightest flash; reduced-flash can't skip it.
+      this._spiralMat.uniforms.uFade.value = spent * fuseDim * flashCalm;
     } else {
       // Close-ramp: every close (release, strain break, post-launch) eases the glass
       // down over ~0.25 s instead of popping — the collapse is part of the payoff.
