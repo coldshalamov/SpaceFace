@@ -4944,6 +4944,25 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "place_tally_three",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_tally_three.glb",
+      "release": "assets/ships/release/parts/places/place_tally_three.glb",
+      "sourceSha256": "b0dfd8a8ea542221e9ea755b3768162f3bdb5f10fe71e4d184d0fb22728c705c",
+      "releaseSha256": "84572b9c39b347cc2c373837e881c3340a15219bc2972f7d368172e266c8e943",
+      "sourceBytes": 1836148,
+      "releaseBytes": 631644,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 120,
+      "contractNodeCount": 38,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

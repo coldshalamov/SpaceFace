@@ -1,4 +1,5 @@
 import { isLatchActor } from './latchNineVisuals.js';
+import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
 import { isCeresWorkfleetPlace } from './ceresWorkfleetVisuals.js';
 import { isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Bespoke visual overrides for hero assets plus the authored-asset boundary.
@@ -75,7 +76,7 @@ function requiresProductionWholeShip(entity) {
 
 function isWorldPlaceProp(entity) {
   if (!entity || !entity.data) return false;
-  if (isLatchActor(entity) || hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
+  if (isLatchActor(entity) || isTallyThreeAssessor(entity) || hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
   if (entity.type !== 'fx') return false;
   return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
 }
@@ -1381,6 +1382,7 @@ export function installVisualOverrides(factory, options = {}) {
     const directShip = directAuthoredMount
       && authoredShips
       && entity && entity.type === 'ship'
+      && !isWorldPlaceProp(entity)
       && !(entity.data && entity.data.precompileProbe === true)
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
@@ -1474,7 +1476,7 @@ export function installVisualOverrides(factory, options = {}) {
     if (!visual) visual = fallbackBuild(entity);
     visual = attachPackagedScenarioProp(visual, entity, options);
     assertReleaseHeroVisual(entity, visual, releaseMode);
-    if (!visual || !entity || entity.type !== 'ship') return visual;
+    if (!visual || !entity || entity.type !== 'ship' || isTallyThreeAssessor(entity)) return visual;
     configureTransparentSinglePassSurfaces(visual);
     if (!authoredShips) return visual;
 

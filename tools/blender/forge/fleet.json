@@ -1001,6 +1001,21 @@
       "part_id": "latch-nine",
       "new_place": true,
       "note": "Latch Nine: reconstructed editable physical signal tender; source-reviewed, shipping Look review pending"
+    },
+    "tally_three": {
+      "layout": "place",
+      "file": "place_tally_three",
+      "source": "tally_three.py",
+      "asset_id": "SF_PLACE_TALLY_3",
+      "part_id": "tally-three",
+      "new_place": true,
+      "dynamicNameIncludes": [
+        "MOTION_TALLY_ARM_LEFT",
+        "MOTION_TALLY_ARM_RIGHT",
+        "MOTION_TALLY_STAMP",
+        "MOTION_TALLY_SCAN"
+      ],
+      "note": "Distinct claim assessor; source origin fit, examination and accepted-receipt instrument motion."
     }
   }
 }

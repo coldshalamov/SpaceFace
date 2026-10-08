@@ -1605,7 +1605,9 @@ export const scanner = {
     }
     const now = Number(state.simTime) || 0;
     const requestId = `contact-hail:${availability.kind}:${String(availability.targetId)}:${state.tick | 0}:${Math.round(now * 1000)}`;
-    const offer = createContactHailOffer(
+    const offer = availability.kind==='tally_three'
+      ?this.registry.get('tallyThree')?.offer(availability,requestId,now+CONTACT_HAIL_REQUEST_TTL_S)
+      :createContactHailOffer(
       state,
       availability,
       requestId,
@@ -1636,6 +1638,11 @@ export const scanner = {
       return false;
     }
     const target = availability.entity;
+    if(availability.kind==='tally_three'){
+      const response=this.registry.get('tallyThree')?.choose(active,String(payload.choice||'').toLowerCase());
+      if(!response)return false;
+      this._contactHail=null;this.bus.emit('contactHail:response',cloneContactHailPayload(response));return true;
+    }
     const ai = target && target.data && target.data.ai || {};
     const wanted = isPlayerWanted(state);
     const choice = String(payload.choice || '').toLowerCase();

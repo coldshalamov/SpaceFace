@@ -56,6 +56,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // on state.signalInvestigation — both must clear before the fresh run's clock restarts.
   'scanner',
   'latchNine', 'scissorwake',
+  'tallyThree', 'lastShift', 'lastShiftPrompt',
   // Bark receipts/suppression are keyed per entity id and per run; a fresh run must not
   // inherit the previous run's said-latches on recycled ids.
   'barkDirector',

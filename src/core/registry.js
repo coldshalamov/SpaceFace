@@ -31,6 +31,9 @@ import { dockingCorridor } from '../systems/dockingCorridor.js'; // PQ-008: trut
 import { scanReveal } from '../systems/scanReveal.js';
 import { latchNine } from '../systems/latchNine.js';
 import { scissorwake } from '../systems/scissorwake.js';
+import { tallyThree } from '../systems/tallyThree.js';
+import { lastShift } from '../systems/lastShift.js';
+import { lastShiftPrompt } from '../ui/lastShiftPrompt.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
@@ -460,6 +463,9 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['environmentalMachinery', environmentalMachinery],
     ['latchNine', latchNine],
     ['scissorwake', scissorwake],
+    ['tallyThree', tallyThree],
+    ['lastShift', lastShift],
+    ['lastShiftPrompt', lastShiftPrompt],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],

@@ -651,6 +651,7 @@ export const save = {
       ['fields', () => this._callSerialize('fields')],
       ['latchNine', () => this._callSerialize('latchNine')],
       ['scissorwake', () => this._callSerialize('scissorwake')],
+      ['lastShift', () => this._callSerialize('lastShift')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
@@ -800,6 +801,8 @@ export const save = {
     yield 'serialize:latchNine';
     data.scissorwake = this._callSerialize('scissorwake');
     yield 'serialize:scissorwake';
+    data.lastShift = this._callSerialize('lastShift');
+    yield 'serialize:lastShift';
     yield 'serialize:enemyMind';
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     yield 'serialize:lossLedger';
@@ -4795,6 +4798,7 @@ export const save = {
       this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
       this._callDeserialize('latchNine', data.latchNine);
       this._callDeserialize('scissorwake', data.scissorwake);
+      this._callDeserialize('lastShift', data.lastShift);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
 
@@ -4922,6 +4926,7 @@ export const save = {
 
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
       this._restoreCombat(data.combat, entityIdRemap);
+      this.registry.get('lastShift')?.afterContinue?.();
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
       // selection). No entity ids inside — live bomb actors are transient and never persist.
       // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.

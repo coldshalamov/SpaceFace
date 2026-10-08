@@ -9505,6 +9505,36 @@
           10.205106735229492
         ]
       }
+    },
+    {
+      "id": "place_tally_three",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_tally_three.glb",
+      "tris": 16242,
+      "bytes": 1836148,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "bounds": {
+        "min": [
+          -10.681609,
+          -1.41,
+          -5.630055
+        ],
+        "max": [
+          11.175684,
+          4.21171,
+          5.117123
+        ]
+      },
+      "note": "Tally-3 claim assessor: authored origin at one metre per WU. Arms, scan aperture and receipt press are noncolliding presentation instruments; pressure spine owns native contact."
     }
   ],
   "runtimeSlots": {
@@ -9643,7 +9673,8 @@
       "places/place_ceres_section_cradle.glb",
       "places/place_ceres_breaker_cutter_head.glb",
       "places/place_latch_nine.glb",
-      "places/place_pip_spanner.glb"
+      "places/place_pip_spanner.glb",
+      "places/place_tally_three.glb"
     ]
   }
 }

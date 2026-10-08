@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e8ff598057b05be1cae7b5c4a389f0862b07024d35e78e5025da432abbfb0912",
+  "contentHash": "5ee5e74ad82b58c5e9f8e0319849c1aa6db03bfff551890a1d9ef09d96fab9d0",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-rig-quiet.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -4664,8 +4664,8 @@
       "uri": "ashline_rig_quiet.glb"
     },
     "sourceManifest": {
-      "bytes": 227467,
-      "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c",
+      "bytes": 228237,
+      "sha256": "1b69c49c46221b1db63f9802a590b029dab2580b07d02e256102f6026b2a4503",
       "uri": "pilots.json"
     }
   },
@@ -6804,7 +6804,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_rig_quiet.glb"
   },
-  "runtimeHash": "a91afe529f780d0b254743abb7f1fb5d778d3b57e1deddf40fa1b083106e0dda",
+  "runtimeHash": "8cc006661f2bcf9f3f3582102e403532296b338565872e23d42a9764e367c35e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

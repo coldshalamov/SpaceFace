@@ -1,4 +1,6 @@
 import { isLatchActor,LATCH_PLACE_FILE,latchPlaceTransform,latchNineCatalogRow } from './latchNineVisuals.js';
+import { isTallyThreeAssessor, TALLY_THREE_PLACE_FILE } from './tallyThreeVisuals.js';
+import { tallyThreePlaceTransform } from '../data/tallyThreeBody.js';
 import { recordCeresWorkfleetAuthoredSource, recordLatchAuthoredSource } from '../core/machineryPresentation.js';
 import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
 import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
@@ -2888,9 +2890,9 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   };
   // ANI-00: authored rigid-part motion follows the same forwarding grammar as damage/LOD —
   // the renderer calls this on the boundary; the live authored root owns the controller set.
-  boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y) => {
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y, state) => {
     const fn = active && active.userData && active.userData.updateAuthoredMotion;
-    if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
+    if (typeof fn === 'function') fn(liveEntity, simNow, a11y, state);
   };
   if (ceresWorkfleetRole(entity)) {
     boundary.userData.updateCeresPhysicalState = (liveEntity, a11y) =>
@@ -3714,9 +3716,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.updateLod = (level) => {
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
   };
-  boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y) => {
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y, state) => {
     const fn = activeRoot?.userData?.updateAuthoredMotion;
-    if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
+    if (typeof fn === 'function') fn(liveEntity, simNow, a11y, state);
   };
   const trigger = firstRenderable(fallbackRoot);
   let armed = true;
@@ -3802,7 +3804,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
 function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
   const geologySkin = hasExplicitAuthoredGeologyPresentation(entity);
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity
-      || (entity.type !== 'fx' && !geologySkin && !isCeresShipbreakSection(entity) && !isCeresWorkfleetPlace(entity) && !isLatchActor(entity)) || !placeFile) return fallbackRoot;
+      || (entity.type !== 'fx' && !geologySkin && !isCeresShipbreakSection(entity) && !isCeresWorkfleetPlace(entity) && !isLatchActor(entity) && !isTallyThreeAssessor(entity)) || !placeFile) return fallbackRoot;
   const releaseMode = isReleaseAssetMode(options);
   setPresentationAdmission(entity, PRESENTATION_ADMISSION.pending);
 
@@ -3884,9 +3886,9 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.updateLod = (level) => {
     if (typeof activeRoot?.userData?.updateLod === 'function') activeRoot.userData.updateLod(level);
   };
-  boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y) => {
+  boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y, state) => {
     const fn = activeRoot?.userData?.updateAuthoredMotion;
-    if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
+    if (typeof fn === 'function') fn(liveEntity, simNow, a11y, state);
   };
   if (ceresWorkfleetRole(entity)) {
     boundary.userData.updateCeresPhysicalState = (liveEntity, a11y) =>
@@ -4566,7 +4568,7 @@ function stampPendingCommittedVisualBounds(boundary, stampedBounds, authoredCent
 // visualRadius footprint — applying the census ratio there blew the Wreck Cathedral out to ~30x
 // authored (D54).
 export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, censusScale }) {
-  const physical = latchPlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data);
+  const physical = latchPlaceTransform(data) || tallyThreePlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data);
   if (physical) return physical.scale;
   const radius = Number(targetRadius);
   const envelope = Math.max(1e-6, Number(authoredEnvelope) || 1e-6);
@@ -4706,7 +4708,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
   normalizePlacePropBindings(bindings);
-  centerAuthoredPlaceRoot(root, record, scale, latchPlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data));
+  centerAuthoredPlaceRoot(root, record, scale, latchPlaceTransform(data) || tallyThreePlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data));
   // Stations key on the placeFile stem recorded on the boundary (e.g. place_station_trade_hub),
   // not the GLB's internal assetId.
   installAuthoredApproachYaw(root, entity, ownerBoundary?.userData?.placeId || placeId);
@@ -4717,6 +4719,7 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) 
   installAuthoredLod(root, bindings, null, authoredLevels(record), true);
   root.userData.updateLod('lod0');
   if(isLatchActor(entity))root.userData.latchNineAuthoredSource={assetId:record.assetId,file:record.url};
+  if(isTallyThreeAssessor(entity))root.userData.tallyThreeAuthoredSource={assetId:record.assetId,file:record.url};
   // Places carrying a sealed motion bank (e.g. the rigged cargo pod) animate off the same
   // entity-keyed driver surface as ships.
   attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
@@ -5647,6 +5650,7 @@ function warnUnresolvedStationPlaceId(entity, id, rescue) {
 
 function placeFileForEntity(entity) {
   if(isLatchActor(entity))return LATCH_PLACE_FILE;
+  if(isTallyThreeAssessor(entity))return TALLY_THREE_PLACE_FILE;
   const data = entity && entity.data || {};
   if (isCeresWorkfleetPlace(entity)) return ceresWorkfleetPlaceFile(entity);
   if (isCeresShipbreakSection(entity)) return CERES_SHIPBREAK_FILES[data.placeId];
