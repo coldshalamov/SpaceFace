@@ -348,15 +348,17 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   const drain = (n = 15) => { for (let i = 0; i < n; i++) { state.tick += 1; gp.tick(1 / 60, state); } };
   drain();
   assert.ok(gp.haptics.strong < 0.4, `idle baseline is quiet (strong=${gp.haptics.strong})`);
-  const pulseAt = (ev, want) => {
-    bus.emit(ev, { coreId: 9 });
+  const pulseAt = (ev, want, payload) => {
+    bus.emit(ev, payload || { coreId: 9 });
     state.tick += 1; gp.tick(1 / 60, state);
     assert.ok(gp.haptics.strong >= want, `${ev} pulses strong>=${want} (got ${gp.haptics.strong})`);
     drain();
   };
   pulseAt('gyre:snagged', 0.70);
   pulseAt('gyre:full', 0.65);
-  pulseAt('gyre:thrown', 0.90);
+  // The throw crack mass-lerps: a capped moon lands the authored 0.90, a bare
+  // payload reads as a pebble (0.55) — grading pinned in fb-haptic-verbs.
+  pulseAt('gyre:thrown', 0.90, { coreId: 9, mass: 2400 });
   pulseAt('gyre:absorbTick', 0.30);
 
   // Meal size lerps the absorb thump: mass 160 → t=1 → strong 0.30 + 0.25·1 = 0.55 —

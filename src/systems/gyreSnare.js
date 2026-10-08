@@ -1322,7 +1322,14 @@ export const gyreSnare = {
           && e.data.despawnAt != null && Number.isFinite(state && state.simTime)
           && state.simTime >= e.data.despawnAt && rt.ballIds[i] !== rt.ballId) {
           if (this.bus) {
-            this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: e.pos.x, z: e.pos.z } });
+            const bdf = Math.min(1, entityMass(e) / D.maxClumpMass);
+            this.bus.emit('audio:cue', {
+              id: 'gyre_snare_ball_death',
+              // Mass-graded like the launch voice — a pebble's shatter cracks
+              // bright, a capped moon's bowls out low and heavy.
+              gain: 0.45 + 0.3 * bdf, rate: 1.1 - 0.35 * bdf,
+              position: { x: e.pos.x, z: e.pos.z },
+            });
             this.bus.emit(GYRE_EVENTS.ballGrave, { id: e.id, tick: state && state.tick });
           }
           // Ring for the HUD mirror too: a retired non-primary ball still deserves a
@@ -1379,8 +1386,12 @@ export const gyreSnare = {
         if (ball && ball.data && ball.data.despawnAt != null
           && Number.isFinite(state && state.simTime) && state.simTime >= ball.data.despawnAt
           && this.bus) {
+          const bdf = Math.min(1, entityMass(ball) / D.maxClumpMass);
           this.bus.emit('audio:cue', {
-            id: 'gyre_snare_ball_death', gain: 0.6,
+            id: 'gyre_snare_ball_death',
+            // Mass-graded like the launch voice — a pebble's shatter cracks
+            // bright, a capped moon's bowls out low and heavy.
+            gain: 0.45 + 0.3 * bdf, rate: 1.1 - 0.35 * bdf,
             // Sing at the live position — pub.ballPos is last tick's publish, up to
             // ~9 wu stale at launchSpeed 520.
             position: ball.pos ? { x: ball.pos.x, z: ball.pos.z } : { x: pub.ballPos.x, z: pub.ballPos.z },
@@ -1419,7 +1430,12 @@ export const gyreSnare = {
         if (ball.data.despawnAt != null && Number.isFinite(state.simTime)
           && state.simTime >= ball.data.despawnAt) {
           if (this.bus) {
-            this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: ball.pos.x, z: ball.pos.z } });
+            const bdf = Math.min(1, entityMass(ball) / D.maxClumpMass);
+            this.bus.emit('audio:cue', {
+              id: 'gyre_snare_ball_death',
+              gain: 0.45 + 0.3 * bdf, rate: 1.1 - 0.35 * bdf,
+              position: { x: ball.pos.x, z: ball.pos.z },
+            });
             this.bus.emit(GYRE_EVENTS.ballGrave, { id: ball.id, tick: state && state.tick });
           }
           // The retire itself is a sim mutation — on a bus-less host it must still
@@ -1609,7 +1625,11 @@ export const gyreSnare = {
     // The capacitor's dying gasp warns the hands/ears ~3 s out — a pad-first player
     // gets no `·Ns` pill read, so the forced bowl must not arrive unattributed.
     // Latched per hold like strain; _drop/_finishLaunch re-arm it for the next lash.
-    if (rt.phase === PHASE.HOLD && !rt.fuseCueLatched && pub.fuseS > 0 && pub.fuseS < D.fuseLowWarnS) {
+    // BEAM warns too — a dying capacitor force-closes the lash there the same
+    // way (cap_dry), and a pad-first player deserves the countdown in the hands
+    // before the lash fires itself, not just a HUD ·Ns they never saw coming.
+    if ((rt.phase === PHASE.HOLD || rt.phase === PHASE.BEAM)
+      && !rt.fuseCueLatched && pub.fuseS > 0 && pub.fuseS < D.fuseLowWarnS) {
       rt.fuseCueLatched = true;
       if (this.bus) {
         this.bus.emit('audio:cue', { id: 'gyre_snare_fuse_low', gain: 0.45 });
@@ -1725,8 +1745,12 @@ export const gyreSnare = {
         // silhouette, where the bow nearly vanishes. Scale with the payload so a big
         // moon still visibly rocks back before the burst.
         const pullWu = Math.max(D.launchWindupPullWu, rt.clumpRadius * 0.4);
-        const wx = maw.x - rt.launchDir.x * pullWu;
-        const wz = maw.z - rt.launchDir.z * pullWu;
+        // Anchor on the FROZEN launch frame the renderer draws (player.pos +
+        // launchDir·mawDist), not the live maw — a hard yaw during the ~100 ms
+        // coil would drag the clump laterally off the drawn glass axis right
+        // before the throw, and the burst fires along launchDir regardless.
+        const wx = player.pos.x + rt.launchDir.x * (D.mawDist - pullWu);
+        const wz = player.pos.z + rt.launchDir.z * (D.mawDist - pullWu);
         const shipVx = finite(player.vel && player.vel.x);
         const shipVz = finite(player.vel && player.vel.z);
         let ax = (wx - core.pos.x) * D.launchWindupSpringK
@@ -1774,6 +1798,9 @@ export const gyreSnare = {
               id: core.id,
               tick: state && state.tick,
               speed: rt.launchSpeedEff + Math.max(0, rt.launchFwd),
+              // Mass too — the pad grades its crack off this, not speed (a capped
+              // moon throws SLOWER; speed-lerping would invert the intent).
+              mass: rt.ballMass,
             });
             this.bus.emit('camera:shake', {
               amount: 0.3 + 0.25 * Math.min(1, rt.ballMass / D.maxClumpMass),

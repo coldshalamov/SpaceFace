@@ -857,7 +857,14 @@ export function createGamepad(ctx) {
       const base = HAPTIC_VERB_PULSES['gyre:windup'];
       startPulse({ strong: base.strong + 0.3 * t, weak: base.weak + 0.15 * t, ms: base.ms + 50 * t }, 'gyre:windup');
     });
-    bus.on('gyre:thrown', () => startPulse(HAPTIC_VERB_PULSES['gyre:thrown'], 'gyre:thrown'));
+    bus.on('gyre:thrown', (payload) => {
+      // The throw crack grades by payload like snagged/windup — but on MASS, not
+      // speed (a capped moon throws slower; speed-lerping would invert intent).
+      // Pebble -> 0.55 crack, capped moon -> the full 0.90 + a longer tail.
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
+      const base = HAPTIC_VERB_PULSES['gyre:thrown'];
+      startPulse({ strong: base.strong - 0.35 + 0.35 * t, weak: base.weak - 0.2 + 0.2 * t, ms: base.ms + 60 * t }, 'gyre:thrown');
+    });
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
     bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
     bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));

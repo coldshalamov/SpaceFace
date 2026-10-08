@@ -254,7 +254,9 @@ test('gyre vocabulary routes through the pulse table — torn/dropped/droppedEmp
     ['gyre:beamOn', {}, 'gyre:beamOn'],
     ['gyre:snagged', {}, 'gyre:snagged'],
     ['gyre:windup', {}, 'gyre:windup'],
-    ['gyre:thrown', {}, 'gyre:thrown'],
+    // thrown mass-lerps like the rest — at capped mass it lands the authored
+    // full crack (the table value); the pebble end is asserted below.
+    ['gyre:thrown', { mass: 2400 }, 'gyre:thrown'],
     ['gyre:full', {}, 'gyre:full'],
     ['gyre:fuseLow', {}, 'gyre:fuseLow'],
     ['gyre:ballGrave', {}, 'gyre:ballGrave'],
@@ -285,6 +287,15 @@ test('gyre vocabulary routes through the pulse table — torn/dropped/droppedEmp
   step(gp, state);
   assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, base.strong + 0.25, 'wreck lerp tops out');
   assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, base.weak + 0.1, 'wreck lerp weak channel');
+
+  // gyre:thrown pebble end: mass 0 throws lighter than the authored crack —
+  // a capped moon (asserted in the loop above) lands the full table value.
+  const tb = HAPTIC_VERB_PULSES['gyre:thrown'];
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:thrown', { mass: 0 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, tb.strong - 0.35, 'pebble throw cracks lighter');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, tb.weak - 0.2, 'pebble throw weak channel');
 
   // Boundary/quiet drops are context resets — silence, and the live pulse is untouched.
   const last = gp._lastVerbPulse;

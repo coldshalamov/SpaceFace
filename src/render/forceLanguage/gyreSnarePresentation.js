@@ -1153,15 +1153,21 @@ export class GyreSnarePresentation {
         // The whole group tumbles like the primary's rubble — levitating debris,
         // not a rigid wheel — and each lump drifts on its own index-seeded axes
         // so the rubble doesn't rotate as one body (frozen under reduced-motion).
-        this._secGroup.rotation.y += sdt * 2.6 * calm;
+        // The group's tumble grades by THIS ball's speed like the primary's — a
+        // ricochet-stalled secondary barely spins; a clean bowl keeps pace.
+        const sbv = Math.hypot(finite(sb.vx), finite(sb.vz));
+        this._secGroup.rotation.y += sdt * 2.6 * Math.max(0.15, Math.min(1, sbv / (GYRE_SNARE.launchSpeed || 520))) * calm;
         for (let i = 0; i < this._secLumps.length; i++) {
           if (!this._secLumps[i].visible) continue;
           const lm = this._secLumps[i];
           lm.rotation.y += sdt * (0.35 + i * 0.17) * calm;
           lm.rotation.x += sdt * (0.21 + i * 0.11) * calm;
           if (lm.userData.baseY !== undefined) {
+            // Per-lump bob rate like the primary's (golden-ratio spread) — the
+            // overlay rubble shouldn't bob in lockstep on a 6-lump read either.
             lm.position.y = lm.userData.baseY
-              + Math.sin(this.time * 2.2 + i * 1.7) * (lm.userData.bobAmp || 0) * calm;
+              + Math.sin(this.time * (1.9 + ((i * 0.61803398875) % 1) * 0.8) + i * 1.7)
+                * (lm.userData.bobAmp || 0) * calm;
           }
         }
         this._secGroup.visible = true;
