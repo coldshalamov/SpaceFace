@@ -1045,6 +1045,12 @@ export const gyreSnare = {
         const mass = entityMass(e);
         let ax = (dx / dist) * pull;
         let az = (dz / dist) * pull;
+        // The last stretch corkscrews, not ray-shoots: the funnel's own swirl
+        // language and the basin's mawSwirlAccel both promise a spiral-in, so the
+        // radial pull gets a tangential share keyed to the eased stir — a meal
+        // visibly whips around the katamari once on the way in.
+        ax += (-dz / dist) * pull * D.suckSwirlFrac * rt.swirlBlend;
+        az += (dx / dist) * pull * D.suckSwirlFrac * rt.swirlBlend;
         // Gentle frame damping so incoming mass settles onto the ball instead of orbiting it.
         ax -= (finite(e.vel && e.vel.x) - shipVx) * D.suckDamping;
         az -= (finite(e.vel && e.vel.z) - shipVz) * D.suckDamping;

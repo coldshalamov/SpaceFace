@@ -217,6 +217,10 @@ function jitterGeometry(geo, amt, seed) {
 export class GyreSnarePresentation {
   constructor(scene, { toLocal = null } = {}) {
     this.scene = scene;
+    // toLocal is REQUIRED — the only producer supplies one (vfx falls back to
+    // _toLocalXZ). Asserting crashes a helper-less/test host uniformly at
+    // construction instead of whichever element happens to draw first.
+    if (typeof toLocal !== 'function') throw new Error('GyreSnarePresentation requires a toLocal projector');
     this.toLocal = toLocal;
     this.disposed = false;
     this.time = 0;

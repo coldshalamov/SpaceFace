@@ -3083,8 +3083,8 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.18, sustain: 0.35, release: 1.4 },
     filterType: 'bandpass', filterFreq: 720, filterQ: 0.9,
   },
-  // Windup: the ~120 ms coil's voice — a thin rising glass draw for the slingshot's
-  // pull-back, shorter and reedier than the strain rise so the two never collide.
+  // Windup: the ~100 ms coil's voice (launchWindupTicks=6 @60Hz) — a thin rising glass
+  // draw for the slingshot's pull-back, shorter and reedier than the strain rise.
   {
     id: 'sfx_gyre_windup',
     category: 'weapon',
