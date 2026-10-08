@@ -30,6 +30,7 @@
 
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
+import { bombPrimeLine, statusPayoffLine } from '../data/statusPayoffs.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { onFrame } from './orrery/motion.js';
 
@@ -674,15 +675,17 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:lineContractCompleted', (p) => onLineContract(p)));
     unsubs.push(bus.on('stunt:bridge', (p) => onBridgeTick(p)));
     // Silent seams: the event itself had no subscriber that a pilot could see or hear.
-    const onHandlineSense = (eventName) => (payload) => {
-      if (destroyed) return;
-      if (!calloutScope(getState())) return;
-      const line = handlineSenseLine(eventName, payload);
+    const speak = (line) => {
       if (!line) return;
       addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
       spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
       sr.textContent = spoken;
       wake();
+    };
+    const onHandlineSense = (eventName) => (payload) => {
+      if (destroyed) return;
+      if (!calloutScope(getState())) return;
+      speak(handlineSenseLine(eventName, payload));
     };
     unsubs.push(bus.on('massline:releaseWindow', onHandlineSense('massline:releaseWindow')));
     unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
@@ -692,6 +695,19 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('tether:reelPump', onHandlineSense('tether:reelPump')));
     unsubs.push(bus.on('tether:whipImpact', onHandlineSense('tether:whipImpact')));
     unsubs.push(bus.on('massline:sweepImpact', onHandlineSense('massline:sweepImpact')));
+    // SFQ-B033 — the status the player is wearing, and a bomb they primed, say the payoff.
+    unsubs.push(bus.on('combat:statusApplied', (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || !payload || payload.targetId !== st.playerId) return;
+      speak(statusPayoffLine(payload.statusId));
+    }));
+    unsubs.push(bus.on('bombs:primed', (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || !payload || payload.ownerId !== st.playerId) return;
+      speak(bombPrimeLine(payload));
+    }));
     // SWARM-03 — the physics cause tag, on the lane that already names tricks.
     unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }
