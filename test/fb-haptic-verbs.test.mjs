@@ -227,6 +227,23 @@ test('FB-005: off yields an inert frame and resets the motors; low halves them',
   assert.equal(gp.haptics.enabled, false, 'the legacy kill-switch still wins');
 });
 
+test('the gyre strain channel hums continuously under a held clump', () => {
+  // A near-tear excursion is felt the WHOLE time, not only at the 120 ms
+  // boundary pulse — the 'line'-load precedent for ongoing tension.
+  const straining = computeHapticFrame({ gyreStrain: 0.6, haptics: 'full' });
+  assert.equal(straining.gyre, 0.6);
+  assert.ok(straining.weak >= 0.3, 'strain rides the weak motor');
+  assert.ok(straining.strong >= 0.2, 'strain reaches the strong motor');
+
+  const idle = computeHapticFrame({ gyreStrain: 0, haptics: 'full' });
+  assert.equal(idle.gyre, 0);
+  assert.equal(idle.weak, 0, 'no held clump → no hum');
+
+  const off = computeHapticFrame({ gyreStrain: 1, haptics: 'off' });
+  assert.equal(off.gyre, 0, 'off swallows the channel like every other');
+  assert.equal(off.weak, 0);
+});
+
 test('FB-005: the haptics level survives profile normalization; corrupt values repair', () => {
   const state = createGameState(5005);
   save.init({ state, bus: createBus(), helpers: {}, registry: { get: () => null } });

@@ -59,7 +59,7 @@ export function enhanceMobileTouch(touch, ctx = {}, {
       frame = NEUTRAL();
       legacyClear();
       if (host?._holdToggleLatches) {
-        for (const verb of ['boost','brake','bulletTime','massline','reelIn','reelOut']) host._holdToggleLatches[verb] = false;
+        for (const verb of ['boost','brake','bulletTime','massline','reelIn','reelOut','gyreSnare']) host._holdToggleLatches[verb] = false;
       }
     } else if (role === 'fire') {
       frame.actions.fire = false; touch._btnHeld.fire = false;

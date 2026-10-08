@@ -1226,7 +1226,7 @@ export const gyreSnare = {
   /** Release: bowl the clump along the nose. */
   _launch(state, player) {
     const rt = this._rt;
-    const core = rt.coreId != null ? state.entities.get(rt.coreId) : null;
+    const core = rt.coreId != null && state.entities ? state.entities.get(rt.coreId) : null;
     if (!player || !core || core.alive === false || !core.pos) {
       this._drop(!player ? 'player_lost' : 'launch_without_core');
       return;
@@ -1880,7 +1880,7 @@ export const gyreSnare = {
     const nose = this._noseDir(player, this._noseObj || (this._noseObj = { x: 1, z: 0 }));
 
     if (rt.phase === PHASE.LAUNCH) {
-      const core = rt.launchedId != null ? state.entities.get(rt.launchedId) : null;
+      const core = rt.launchedId != null && state.entities ? state.entities.get(rt.launchedId) : null;
       // The coil+burst takes ~11 ticks — the same protected-content contract HOLD
       // and the launch edge enforce must hold HERE too: a pin landing mid-throw
       // means the ball is a mission owner's body now, not our projectile. Hand it
