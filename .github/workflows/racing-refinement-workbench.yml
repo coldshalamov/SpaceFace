@@ -1,0 +1,50 @@
+name: Racing refinement workbench
+on:
+  push:
+    branches: [feat/racing-steer-mode]
+    paths: [.github/workflows/racing-refinement-workbench.yml, scripts/racing-refinement.patch]
+permissions:
+  contents: read
+jobs:
+  source:
+    if: github.repository == 'coldshalamov/SpaceFace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/assets/
+            !/artifacts/
+            !/.devshots/
+            !/node_modules/
+            !/design/
+            /design/**/*.md
+      - name: Export code-only review snapshot
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, subprocess, zipfile
+          paths = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
+          prefixes = ('src/', 'test/', 'scripts/', 'styles/', 'docs/', 'design/', '.github/')
+          roots = {'package.json', 'package-lock.json', 'AGENTS.md', 'ARCHITECTURE.md', 'build_map.md', 'build_map_done.md', 'index.html', 'server.js'}
+          exts = {'.js', '.mjs', '.cjs', '.json', '.md', '.yml', '.yaml', '.css', '.html', '.ts'}
+          count = 0
+          with zipfile.ZipFile('/tmp/spaceface-racing-source.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+              for name in paths:
+                  p = pathlib.Path(name)
+                  if (name in roots or name.startswith(prefixes)) and p.suffix in exts and p.is_file():
+                      if p.stat().st_size <= 8_000_000:
+                          archive.write(p, name)
+                          count += 1
+              archive.writestr('REVIEW_SNAPSHOT.json', json.dumps({'head': subprocess.check_output(['git','rev-parse','HEAD']).decode().strip(), 'files': count}))
+          print(f'Exported {count} source/document files; model binaries and player data excluded.')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spaceface-racing-source
+          path: /tmp/spaceface-racing-source.zip
+          retention-days: 1
