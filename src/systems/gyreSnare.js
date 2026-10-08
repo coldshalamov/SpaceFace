@@ -134,6 +134,7 @@ function freshRuntime() {
     totalAbsorbed: 0,      // absorbs ever merged into this clump — NOT bounded by the VFX ledger
     lastAbsorbCueS: -1e9,  // simTime of the last absorb tick — gates the glass-tick cue rate
     strainCueLatched: false, // gyre_snare_strain fires once per strain excursion
+    strainCueNextTick: 0,    // the sustain retrigger — a held excursion keeps a voice
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
     basinCatchLatched: false, // the first basin catch ticks once per empty->net edge
     orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
@@ -268,7 +269,8 @@ export const gyreSnare = {
     // Cue/haptic gates reset on EVERY drop: simTime restarts at 0 on a fresh run (a stale
     // stamp would silence the absorb tick for the old run's whole length), and a fresh
     // clump's first strain excursion should re-arm the latch instead of inheriting it hot.
-    rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; rt.fullCueLatched = false;
+    rt.lastAbsorbCueS = -1e9; rt.strainCueLatched = false; rt.strainCueNextTick = 0;
+    rt.fullCueLatched = false;
     rt.fuseCueLatched = false;
     rt.basinCatchLatched = false;
     rt.tornTrack = null; // any new drop ends a previous torn body's follow
@@ -1126,10 +1128,14 @@ export const gyreSnare = {
     // and a heavier ball shrugs more since Δv = impulse/mass). The hold spring
     // recovers it in ~half a second — a rock, never a displacement.
     if (dist > 1e-4) {
+      // Mass-proportional impulse alone shrugs to nothing at the fantasy's
+      // climax (40 t into 2400 t ≈ 0.05 wu/s) — a Δv floor keeps big meals
+      // felt on big balls without touching the pebble branch.
+      const knock = Math.max(em * D.absorbKnockPerMass, entityMass(core) * D.absorbKnockFloor);
       queuePhysicsImpulse(core,
-        { x: (dx / dist) * em * D.absorbKnockPerMass,
+        { x: (dx / dist) * knock,
           y: 0,
-          z: (dz / dist) * em * D.absorbKnockPerMass },
+          z: (dz / dist) * knock },
         this._evidence(state.tick));
     }
     if (rt.members.length < D.maxAbsorbRecords) {
@@ -1785,20 +1791,31 @@ export const gyreSnare = {
       }
     }
     // Strain gets its own voice on the same hysteresis the HUD uses: the glass tension
-    // rises the tick the clump strains, and latches quiet again once it reels back in.
-    if (rt.phase === PHASE.HOLD && !rt.strainCueLatched && pub.strain01 > 0.4) {
-      rt.strainCueLatched = true;
-      if (this.bus) this.bus.emit('audio:cue', { id: 'gyre_snare_strain', gain: 0.7 });
-      // Strain reaches the hands too — one warning pulse on the latch edge, not a rumble
-      // the whole excursion (the sustained voice + HUD carry that).
-      // The warn latch shares its name with the terminal drop reason 'strained'
-      // (deliberate — one word for the tear at both scopes); gyre:dropped carries
-      // it on payload.reason, not the event name, so the channels don't collide.
-      if (this.bus) this.bus.emit(GYRE_EVENTS.strained, {
-        id: (this.state && this.state.playerId) || null,
-        playerId: (this.state && this.state.playerId) || null,
-        tick: state && state.tick,
-      });
+    // rises the tick the clump strains, then a softer shimmer sustains every ~0.5 s
+    // while the excursion holds — a hard drag can sit in the warn band for seconds
+    // and the one-shot rise can't be the whole voice. Latches quiet under 0.25.
+    if (rt.phase === PHASE.HOLD && pub.strain01 > 0.4) {
+      const tk = state && state.tick;
+      if (!rt.strainCueLatched) {
+        rt.strainCueLatched = true;
+        rt.strainCueNextTick = (Number.isFinite(tk) ? tk : 0) + Math.ceil(0.5 * TICKS_PER_S);
+        if (this.bus) this.bus.emit('audio:cue', { id: 'gyre_snare_strain', gain: 0.7 });
+        // Strain reaches the hands too — one warning pulse on the latch edge, not a rumble
+        // the whole excursion (the sustained voice + HUD carry that).
+        // The warn latch shares its name with the terminal drop reason 'strained'
+        // (deliberate — one word for the tear at both scopes); gyre:dropped carries
+        // it on payload.reason, not the event name, so the channels don't collide.
+        if (this.bus) this.bus.emit(GYRE_EVENTS.strained, {
+          id: (this.state && this.state.playerId) || null,
+          playerId: (this.state && this.state.playerId) || null,
+          tick: state && state.tick,
+        });
+      } else if (Number.isFinite(tk) && tk >= rt.strainCueNextTick) {
+        rt.strainCueNextTick = tk + Math.ceil(0.5 * TICKS_PER_S);
+        if (this.bus) this.bus.emit('audio:cue', {
+          id: 'gyre_snare_strain', gain: 0.3 + 0.3 * pub.strain01, rate: 0.9,
+        });
+      }
     } else if (pub.strain01 < 0.25) {
       rt.strainCueLatched = false;
     }

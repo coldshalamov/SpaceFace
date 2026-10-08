@@ -118,12 +118,14 @@ export const GYRE_SNARE = Object.freeze({
   absorbKnockPerMass: 3,     // wu/s per t of meal — the katamari flinch: impulse on the core
                            // along the meal's approach at merge, so a wreck rocks the tether
                            // (Δv = em·3/coreMass — a heavier ball shrugs more)
+  absorbKnockFloor: 0.15,    // wu/s — Δv floor under the meal-mass knock: a wreck merging into a
+                           // capped clump still rocks the tether instead of dying to 0.05
   absorbCueMinGapS: 0.08,    // s — min gap between absorb glass ticks so a dense belt feed
                            // doesn't stack identical cues into noise (events stay per-body)
   maxClumpRadius: 60,        // wu — volumetric union clamps here; mass keeps growing regardless
   maxClumpMass: 2400,        // t — mass cap (a hard ceiling so a ball can't out-scale a capital)
   maxAbsorbRecords: 28,      // member ledger bound for the VFX lumps
-  basinSpotMax: 8,         // published pull-glow positions per tick (bodies actually being dragged)
+  basinSpotMax: 8,           // published pull-glow positions per tick (bodies actually being dragged)
   // ── Launch ────────────────────────────────────────────────────────────────────────
   launchSpeed: 520,          // wu/s — release Δv floor along the nose before the mass penalty; the bowl visibly outruns a boosting player (~1.9x boost)
   launchMassPenalty: 0.22,   // fraction of launchSpeed a capped clump sheds — heavy reads heavy

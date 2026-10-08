@@ -732,10 +732,10 @@ export class GyreSnarePresentation {
       const massFrac = Math.min(1, finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1)));
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
-      // A thrown lash is SPENT glass: during launch no pull lane runs, so the cone
-      // dims ~28% (still the follow-through, just not a live gravity zone) — the
-      // tense floor keeps it visibly taut without implying it can still grab.
-      const spent = phase === 'launching' ? 0.72 : 1;
+      // A thrown lash is SPENT glass: during the burst no pull lane runs, so the
+      // cone dims ~28% — but the ~100 ms COIL stays full-bright and taut (its own
+      // tension language), and the spent dim lands only as the sling releases.
+      const spent = phase === 'launching' && finite(mirror.launchWindup01) <= 0 ? 0.72 : 1;
       this._lastSpent = spent; // the close-ramp's mote pace reads the last live spend
       this._coneMat.uniforms.uAlpha.value = (tense ? 0.62 : 0.42) * spent * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
@@ -788,7 +788,7 @@ export class GyreSnarePresentation {
         for (const g2 of this._glints) if (g2.t < gs.t) gs = g2;
         const gr = Math.max(2, this._clumpRadius * 0.9);
         gs.mesh.position.set(Math.cos(this._gulpLocalA) * gr, 0.35, Math.sin(this._gulpLocalA) * gr);
-        gs.mesh.scale.setScalar(1.6 + this._clumpRadius * 0.06);
+        gs.mesh.scale.setScalar(2 + this._clumpRadius * 0.18);
         gs.t = 1;
       }
       if (absorbsNow < this._absorbSeen) this._absorbSeen = 0; // new clump ledger
