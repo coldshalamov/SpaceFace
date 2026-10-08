@@ -760,6 +760,8 @@ test('a violently flung core breaks the hold at the strain distance (no launch)'
   assert.ok(!t.events.some((e) => e.name === 'gyre:launched'), 'strain break never launches');
   assert.equal(t.state.gyreSnare.dropReason, 'strained',
     'the mirror publishes the tear so the close can read it');
+  assert.ok(t.events.some((e) => e.name === 'toast' && /torn free/.test(e.p.text)),
+    'the loudest involuntary loss narrates like its siblings (cap_dry, adoption)');
   t.cleanup();
 });
 

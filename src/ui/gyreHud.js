@@ -161,14 +161,25 @@ export const gyreHud = {
       }
       // No primary, but secondaries are still streaking (one retires before the rest) —
       // the pill shouldn't go dark while balls fly. balls[] is ttlS-sorted: [0] dies first.
-      const bs = g && g.balls; // kept for clarity in the off-branch
+      const bs = g && g.balls;
       if (bs && bs.length) {
         const warnS = GYRE_SNARE.ballTtlWarnS;
         const sTxt = bs[0].ttlS > 0 && bs[0].ttlS < warnS
           // floors like the primary countdown — never overstates the flight left
           ? ` · ${Math.min(warnS - 1, Math.max(1, Math.floor(bs[0].ttlS || 0)))}s`
           : '';
-        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sTxt}`, cls: 'gyre-ball' };
+        // A flying pile is still a live kill instrument — total payload mass plus
+        // the STRONGEST striker's yield keeps the "growth → weapon" arc legible
+        // for secondaries too (primary and BOWL rows already carry DMG×).
+        let sMass = 0, sMassMax = 0;
+        for (const b of bs) {
+          const bm = Number.isFinite(b.mass) ? b.mass : 0;
+          sMass += bm; if (bm > sMassMax) sMassMax = bm;
+        }
+        const sDmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
+          GYRE_SNARE.launchImpactScaleBase + sMassMax / GYRE_SNARE.launchImpactScalePerMass).toFixed(1);
+        const sMassTxt = sMass > 0 ? ` · ${Math.round(sMass)}t · DMG×${sDmg}` : '';
+        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}`, cls: 'gyre-ball' };
       }
       return { text: '', cls: '' };
     }

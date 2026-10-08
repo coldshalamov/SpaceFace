@@ -370,6 +370,10 @@ export const gyreSnare = {
           this.bus.emit('camera:shake', {
             amount: 0.15 + 0.1 * Math.min(1, droppedMass / D.maxClumpMass),
           });
+          // Text channel parity with the file's own convention — cap_dry toasts
+          // 'drained — clump away', adoption 'clump reclaimed'; the tear is the
+          // LOUDEST involuntary loss and shouldn't be the one with no words.
+          this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare — clump torn free', ttl: 1.6 });
         }
       }
     }

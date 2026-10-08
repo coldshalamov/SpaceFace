@@ -768,12 +768,12 @@ export class GyreSnarePresentation {
       this._maw.scale.setScalar(endR * iris * (1 + 0.12 * this._discKick + 0.16 * windup)); // uniform — the torus circle spans local X and Y
       this._disc.position.set(drawLen + 1.5 - coilBack, 0, 0);
       this._disc.scale.setScalar(endR * 0.96 * iris * (1 + 0.12 * this._discKick + 0.10 * windup));
-      // holdLag stretch: while the ship drags the clump off its orbit slot the mouth
-      // leans a few wu toward the displaced hold point — the stretch reads in the
-      // glass, not only in the thin grip-spoke. Same beam-local offset the funnel
-      // aims at (already smoothed — no snap on snag).
-      const lagLean = Math.max(-11, Math.min(11, (this._leanZ || 0) * 0.12))
-        * Math.sqrt(Math.min(1, finite(mirror.holdLag01)));
+      // Maw lean: the mouth seats ON the orbiting mass — _leanZ is the clump's
+      // beam-local offset (pre-dip, meal-side excluded), already computed for the
+      // funnel's uAim. Gating it on holdLag01 hid the whole lean on a healthy
+      // orbit: a capped clump circling ±72 wu read dead-center. Now it rides the
+      // seat offset itself — drag still exaggerates it since lag adds to the offset.
+      const lagLean = Math.max(-11, Math.min(11, (this._leanZ || 0) * 0.10));
       this._maw.position.z += lagLean;
       this._disc.position.z += lagLean;
       // The coil also raises the cone's pulse floor — the glass visibly tenses while it
