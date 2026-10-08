@@ -658,6 +658,8 @@ export const world = {
     // against live sites teach the taxonomy ladder.
     bus.on('sectorsim:impulse', (p) => handleAlienEcologyEvent(this, 'sectorsim:impulse', p));
     bus.on('scan:completed', (p) => handleAlienEcologyEvent(this, 'scan:completed', p));
+    bus.on('scan:pulse', (p) => handleAlienEcologyEvent(this, 'scan:pulse', p));
+    bus.on('combat:fire', (p) => handleAlienEcologyEvent(this, 'combat:fire', p));
     // AE-124/125/138/139 + AE-167: lures, dock purge, custody outcomes, and cradle capture.
     bus.on('alienEcology:lureDropped', (p) => handleAlienEcologyEvent(this, 'alienEcology:lureDropped', p));
     bus.on('dock:docked', (p) => handleAlienEcologyEvent(this, 'dock:docked', p));

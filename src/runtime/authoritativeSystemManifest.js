@@ -49,7 +49,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
-  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod',
+  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'lossInvestigation', 'salvageActions', 'survivorPod',
   'recoveryEncounter', 'factions', 'sectorSim', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
@@ -86,7 +86,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // re-runs inside tacticalAI on both full-decision and cached ticks, so a score-owned capital
   // can never double-fire through stock intent.
   'nemesis', 'nemesisEncounter', 'capitalBossEncounters', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
-  'beacons', 'travelLanes', 'flightSlot', 'cruise', 'redKite', 'aiPorts', 'tumbleStates',
+  'beacons', 'travelLanes', 'flightSlot', 'cruise', 'redKite', 'ilexArk', 'aiPorts', 'tumbleStates',
   // Bombs and emergent primitives read the shared chargeDetonate edge before impulseCharges consumes it.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
@@ -158,6 +158,7 @@ export const SLOT_SYSTEM_IDS = Object.freeze(['aiSlot', 'flightSlot']);
 export const SYSTEM_CAPABILITIES = Object.freeze({
   lastShiftPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   redKitePrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
+  ilexArkPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   core: Object.freeze({ nodeSafe: true, phase: 'core', capability: 'core' }),
   aiSlot: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'ai', slot: true }),
   flightSlot: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'flight', slot: true }),
@@ -332,7 +333,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Input and control owners — per-tick player intent and assists.
   'input', 'autoTargetAssist', 'bulletTime', 'cloak', 'actions',
   // Flight + physics authorities: single writers of position/velocity.
-  'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite',
+  'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk',
   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.
   'nemesis', 'nemesisEncounter',
   // Capital score publishes orders the tactical slot reads the same tick.

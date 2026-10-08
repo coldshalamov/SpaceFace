@@ -25,6 +25,7 @@ import {
   worldSiteManifestById,
 } from '../../src/data/worldSiteManifests.js';
 import { CINDER_SLUICE_SITE_ID } from '../../src/data/environmentalMachinery.js';
+import { CERES_SHIPBREAK_SITE_ID } from '../../src/data/ceresShipbreak.js';
 import { forEachDressingRow } from '../../src/world/dressingTable.js';
 import { asteroidSites } from '../../src/systems/asteroidSites.js';
 import { trafficRoleMixForSector } from '../../src/systems/traffic.js';
@@ -33,6 +34,7 @@ import {
   createWorldSiteRecord,
   planWorldSiteMaterialization,
 } from '../../src/systems/worldSiteKernel.js';
+import { syncWorldSiteMaterialization } from '../../src/systems/worldSiteRuntime.js';
 import {
   buildSystemModel,
   resolveCourseTarget,
@@ -150,9 +152,13 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // 329→260 colliders; the remaining solids are the legit dressing targets. Prior digest was
 // 1e245a850b53c10a7de1cda7ce4caf7cf97685e39f5e1b39e30529c4b15e68a6.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  '4c32450ba7bc770510084e0c0b15bf3534659fc91a81edd2fcab9d20fa969d8b';
+  'f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333';
 
-const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
+// PR221 preserves static site anatomy under its canonical owner: the Cathedral's fourteen
+// wrecks stay live instead of losing fixed/compound geometry on the generic far shelf. Ceres
+// also gains Second Measure and RU-7's work-yard POIs; the seeded patrol moves into live range.
+// The seed47 one-tick core is 52 entities / 23 solids / 291 primitives, with no geometry moved.
+const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID, CERES_SHIPBREAK_SITE_ID]);
 // 2026-10-03 (solid-dressing lane, D161 adjudication): dressing structures the player can see
 // now take fixed measured-skin bodies — the census collider equals the drawn model, sized from
 // modelTruthCensus. Pieces under the craft-scale floor (frag scraps, small pins) stay ghosts.
@@ -167,7 +173,9 @@ const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
     entities: 4,
     byType: Object.freeze({ fx: 4 }),
     collidable: 3,
-    colliders: 58,
+    // Second Measure adds a wreck-field anchor. The same isolated aftermath RNG now selects
+    // a different ordinary field (pre-PR221 sectors alone restore the old 58 primitives).
+    colliders: 38,
   }),
   // PQ-143.02: the Long Berth yard tug is an authored physical wreck (0c6f0ea1a). It used to
   // leave this census whenever the far-actor shelf took it; D141 (09132834b) deliberately
@@ -877,19 +885,21 @@ function censusLiveEntities(entities) {
 }
 
 function censusPlannedWorldSite(manifest) {
-  const plan = planWorldSiteMaterialization(
-    manifest,
-    createWorldSiteRecord(manifest, { tick: 0 }),
-  );
-  const collidable = plan.entities.filter((entity) => (
-    entity.collides === true || entity.bodyType === 'solid'
-  ));
-  return {
-    entities: plan.entities.length,
-    byType: countTypes(plan.entities),
-    collidable: collidable.length,
-    colliders: collidable.length,
-  };
+  // A plan's `payload` is an abstract operation result: structural payloads materialize as
+  // finite collidable wreck sections, including their authored compound boxes. Project with
+  // the existing runtime owner, rather than duplicating its body/type rules in this checker.
+  const sim = createSimulation({ seed: 47, systems: [] });
+  try {
+    const result = syncWorldSiteMaterialization({
+      state: sim.state,
+      helpers: sim.helpers,
+      manifest,
+      record: createWorldSiteRecord(manifest, { tick: 0 }),
+    });
+    return censusLiveEntities(result.entities);
+  } finally {
+    sim.dispose();
+  }
 }
 
 function countTypes(entities) {
@@ -1059,6 +1069,16 @@ function validateAdditiveWorldSites(value, failures) {
   };
   if (stableStringify(cinder?.planned) !== stableStringify(expectedCinder)) {
     failures.push(`additiveWorldSites.${CINDER_SLUICE_SITE_ID}:contract-drift`);
+  }
+  const secondMeasure = sites.find((site) => site?.siteId === CERES_SHIPBREAK_SITE_ID);
+  const expectedSecondMeasure = {
+    entities: 12,
+    byType: { fx: 1, wreck: 11 },
+    collidable: 8,
+    colliders: 16,
+  };
+  if (stableStringify(secondMeasure?.planned) !== stableStringify(expectedSecondMeasure)) {
+    failures.push(`additiveWorldSites.${CERES_SHIPBREAK_SITE_ID}:contract-drift`);
   }
 }
 

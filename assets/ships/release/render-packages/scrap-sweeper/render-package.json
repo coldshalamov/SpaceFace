@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2d3c1a8464115003a37dbf3d167bb4ac94a4a9915e455f73b49e30ed8ed9be65",
+  "contentHash": "e0a62935a08d3bc73feb0c140bd748cd4892ec836f9c41d28b19cec928a96c8e",
   "dynamicGroups": [
     {
       "id": "sf.render.scrap-sweeper.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -5328,8 +5328,8 @@
       "uri": "scrap_sweeper.glb"
     },
     "sourceManifest": {
-      "bytes": 233013,
-      "sha256": "d6494120852205f84844c9e2afda112b18a480a4e84edd3df88c04a37381558c",
+      "bytes": 237468,
+      "sha256": "f81482b5db5fb8bc80a607c9567b9ad00b30b25338d4719e7335e0df7f5c11d3",
       "uri": "pilots.json"
     }
   },
@@ -7732,7 +7732,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/scrap_sweeper.glb"
   },
-  "runtimeHash": "5dd4a035472bc7c4a27e94463d748055c688bc458c1c99ec7a837407415ad3ab",
+  "runtimeHash": "397096077c0d5d66471acc3bb34465796ebc800a221ed319427789e650edc846",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

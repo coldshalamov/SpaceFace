@@ -49,6 +49,8 @@ import { commodityIsBiohazard } from '../data/commodities.js';
 import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
+import { VEIL_NURSERY_ID, materializeNurseryDressing, tickVeilNursery,
+  handleVeilNurseryEvent, applyNurseryDrive } from '../world/veilRayNursery.js';
 
 const TWO_PI = Math.PI * 2;
 
@@ -120,13 +122,15 @@ export function setRevelation(state, tier) {
 }
 
 // ── Materialization (called from world._spawnDressing tail) ─────────────────────────────────
-export function materializeAlienEcology(world, sector, active) {
+export function materializeAlienEcology(world, sector, active, onlySites = null) {
   const state = world && world.state;
-  const sites = alienSitesForSector(sector && sector.id);
+  const sites = onlySites || alienSitesForSector(sector && sector.id);
   if (!sites.length || !world.helpers) return;
   const epoch = 0;
   for (const site of sites) {
+    if (effectiveRevelation(state) < (site.requiresRevelation || 0)) continue;
     const rec = siteRecord(state, site.siteId);
+    if (site.nursery) materializeNurseryDressing(world, site, active);
     const rng = world.helpers.mulberry32(
       world.helpers.hash32(state.meta && state.meta.seed || 1, sector.id, epoch, 'alien-ecology', site.siteId));
 
@@ -187,6 +191,8 @@ export function materializeAlienEcology(world, sector, active) {
     const cast = planFaunaCast(site, rng);
     for (const member of cast) {
       if (rec.deadFauna[member.faunaKey]) continue;
+      if (site.nursery && state.entityList.some(e => e.alive !== false
+        && e.data?.ecology?.faunaKey === member.faunaKey)) continue;
       const species = faunaSpeciesById(member.speciesId);
       if (!species) continue;
       const pos = world._toGlobal({ x: site.center.x + member.dx, z: site.center.z + member.dz }, sector.id);
@@ -201,6 +207,8 @@ export function materializeAlienEcology(world, sector, active) {
       // AE-162: a disguised species (black sail) reads as debris on the board until a
       // completed close scan flips it broadside.
       const disguised = !!species.disguise;
+      const budget = site.nursery ? world.helpers.spawnBudget : null;
+      if (site.nursery && (!budget || budget.request(1, member.faunaKey) !== 1)) continue;
       const ent = world.helpers.spawnEntity({
         type: 'fauna',
         pos,
@@ -249,6 +257,13 @@ export function materializeAlienEcology(world, sector, active) {
           },
         },
       });
+      if (site.nursery) {
+        if (!ent || !budget.bindEntity(ent.id, member.faunaKey)) {
+          if (ent) world.helpers.removeEntity?.(ent.id);
+          budget.release(member.faunaKey);
+          continue;
+        }
+      }
       if (ent) active.dressing.push({ id: ent.id, placeId: null, pos: ent.pos, paletteClass: 'alien' });
     }
 
@@ -378,6 +393,7 @@ function emitEcologyOffer(world, site, sector) {
 export function handleAlienEcologyEvent(world, type, payload) {
   const state = world && world.state;
   if (!state || !payload) return;
+  handleVeilNurseryEvent(world, ALIEN_SITES[VEIL_NURSERY_ID], type, payload);
   const siteId = payload.siteId || 'cinder_nursery';
   const site = ALIEN_SITES[siteId];
   const rec = site ? siteRecord(state, siteId) : null;
@@ -733,6 +749,14 @@ export function tickAlienEcology(world, dt) {
   const sites = alienSitesForSector(sectorId);
   if (!sites.length) return;
   const player = state.playerId != null ? state.entities.get(state.playerId) : null;
+  const nursery = ALIEN_SITES[VEIL_NURSERY_ID];
+  const active = state.world.activeSector;
+  if (sectorId === nursery.sectorId && effectiveRevelation(state) >= nursery.requiresRevelation
+      && active && (state.tick | 0) % 60 === 0) {
+    // Reveal can advance while the player is already here. Retry only this bounded
+    // satellite; stable dressing keys and deadFauna preserve identity on re-entry.
+    materializeAlienEcology(world, { id: sectorId }, active, [nursery]);
+  }
 
   // ── AE-076 ship exposure: hull biofilm accrues with point contamination, throttled by
   // fitted filters (mods.bioFilterMult), decaying in clean space. Logistics pressure.
@@ -986,6 +1010,7 @@ export function tickAlienEcology(world, dt) {
   });
 
   for (const site of sites) {
+    if (effectiveRevelation(state) < (site.requiresRevelation || 0)) continue;
     const rec = siteRecord(state, site.siteId);
     const siteGlobal = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
     const coherent = rec.relaySevered !== true && rec.state !== 'severed';
@@ -1013,6 +1038,7 @@ export function tickAlienEcology(world, dt) {
           for (const e of fauna) {
             const eco = e.data.ecology;
             if (eco.siteId !== site.siteId) continue;
+            if (eco.aggregate) continue;
             const species = eco.speciesId && faunaSpeciesById(eco.speciesId);
             if (species && species.dormant && eco.driveState === 'dormant') continue;
             eco.driveState = 'investigate';
@@ -1114,9 +1140,11 @@ export function tickAlienEcology(world, dt) {
     // whole tick — so it is hoisted out of the per-fauna call (each call otherwise rebuilds
     // the fitted-module-def array per fauna).
     const stealthM = stealthMult(state);
+    if (site.nursery) tickVeilNursery(world, site, rec, fauna, player, dt);
     for (const e of fauna) {
       const eco = e.data.ecology;
       if (eco.siteId !== site.siteId) continue;
+      if (eco.aggregate) continue;
       tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, sectorId,
         predatorAlive, weatherSlow, stealthM, fauna);
     }
@@ -1218,7 +1246,8 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   const playerSpeed = player && player.vel ? Math.sqrt(player.vel.x * player.vel.x + player.vel.z * player.vel.z) : 0;
   const sens = species.stimuli || {};
   stim.heat = clampStim(stim.heat, (sens.heat || 0) * stealthM * (playerSpeed > 40 && playerD < alertR * 1.4 ? 1 : 0) * dt);
-  stim.scan = clampStim(stim.scan, (sens.scan || 0) * stealthM * (playerD < (species.alertR * stealthM * 0.5) ? 1 : 0) * dt);
+  // Nursery illumination is an actual scanner pulse, never passive proximity.
+  stim.scan = clampStim(stim.scan, (sens.scan || 0) * stealthM * (!site.nursery && playerD < (species.alertR * stealthM * 0.5) ? 1 : 0) * dt);
   stim.mass = clampStim(stim.mass, (sens.mass || 0) * stealthM * (playerD < alertR ? 1 : 0) * dt);
 
   // Furnace Maw heat rule: shadow at range until the target is heat-saturated, then charge.
@@ -1293,6 +1322,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   // species panics instantly; unrelated species flip after the propagation delay. Applied
   // after stimulus resolution so the panic cascade outranks curiosity/defend overrides.
   const wave = rec.fleeWave;
+  if (site.nursery) applyNurseryDrive(eco, rec);
   if (wave && now < wave.until && !species.dormant
       && eco.driveState !== 'captured' && eco.driveState !== 'feed') {
     if (now >= wave.delayUntil || eco.speciesId === wave.speciesId) {
@@ -1624,6 +1654,8 @@ export function deserializeAlienEcologyState(state, data) {
         bloomAt: Number.isFinite(rec.bloomAt) ? rec.bloomAt : -1,
         beats: rec.beats && typeof rec.beats === 'object' ? { ...rec.beats } : {},
         deadFauna: rec.deadFauna && typeof rec.deadFauna === 'object' ? { ...rec.deadFauna } : {},
+        ...(siteId === VEIL_NURSERY_ID && rec.nursery && typeof rec.nursery === 'object'
+          ? { nursery: JSON.parse(JSON.stringify(rec.nursery)) } : {}),
         siteC: Number.isFinite(rec.siteC) ? rec.siteC : 0,
         signals: [], // transient buffer — never persisted
         scanRevealed: !!rec.scanRevealed,

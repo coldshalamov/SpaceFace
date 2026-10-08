@@ -1032,6 +1032,22 @@
       "part_id": "wholeship_sable_patchwork",
       "npc_root": "SF_SHIP_SABLE_PATCHWORK_ROOT",
       "note": "Original Sable Venn workshop: three pressure pontoons with two physical bridges and actual longitudinal gaps; captive tools, warm-window office and finite articulated trial/purchase gestures."
+    },
+    "ilex_ark": {
+      "layout": "npc",
+      "file": "ilex_ark",
+      "asset_id": "SF_SHIP_ILEX_ARK",
+      "part_id": "wholeship_ilex_ark",
+      "npc_root": "SF_SHIP_ILEX_ARK_ROOT",
+      "note": "Captain Ilex: original pressure ark with six source-aligned removable conservatories and native mass custody."
+    },
+    "ilex_vault": {
+      "layout": "npc",
+      "file": "ilex_vault",
+      "asset_id": "SF_PROP_ILEX_VAULT",
+      "part_id": "wholeship_ilex_vault",
+      "npc_root": "SF_PROP_ILEX_VAULT_ROOT",
+      "note": "Original recoverable botanical vault: same geometry as each attached Ilex conservatory, source scale1 and canonical payload admission."
     }
   }
 }

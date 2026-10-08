@@ -2800,6 +2800,43 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const shift = cx - (ink.left + ink.right) / 2;
       if (Math.abs(shift) >= 1) { const r = rack.getBoundingClientRect(); placeFixed(rack, r.left + shift, r.top); }
     }
+    clearVerbsOfCallouts(rack, sr);
+  }
+  function clearVerbsOfCallouts(rack, sr) {
+    const labels = [...stageEl.querySelectorAll('.orr-sw-node.orr-hull__label'), ...el.querySelectorAll('.sx-sw__stats')]
+      .map((n) => n.getBoundingClientRect())
+      .filter((b) => b.width > 0 && b.height > 0);
+    const reach = Math.max(sr.right, el.getBoundingClientRect().right - 8);
+    if (!labels.length) return;
+    const hits = (r) => labels.filter((b) => b.left < r.right + 6 && b.right > r.left - 6
+      && b.top < r.bottom + 4 && b.bottom > r.top - 4);
+    const r = rack.getBoundingClientRect();
+    const blocking = hits(r);
+    if (!blocking.length) return;
+    const below = Math.max(...blocking.map((b) => b.bottom)) + 8;
+    if (below + r.height <= sr.bottom - 2
+      && !hits({ left: r.left, right: r.right, top: below, bottom: below + r.height }).length) {
+      placeFixed(rack, r.left, below);
+      return;
+    }
+    const mid = (r.left + r.right) / 2;
+    const left = blocking.filter((b) => (b.left + b.right) / 2 < mid);
+    const right = blocking.filter((b) => (b.left + b.right) / 2 >= mid);
+    if (left.length && right.length) return;
+    const seatBeside = (w) => {
+      const x = left.length
+        ? Math.max(...left.map((b) => b.right)) + 12
+        : Math.min(...right.map((b) => b.left)) - 12 - w;
+      if (x < sr.left + 4 || x + w > reach - 4) return null;
+      return hits({ left: x, right: x + w, top: r.top, bottom: r.bottom }).length ? null : x;
+    };
+    let x = seatBeside(r.width);
+    if (x == null) {
+      rack.style.setProperty('column-gap', '8px', 'important');
+      x = seatBeside(rack.getBoundingClientRect().width);
+      if (x == null) { rack.style.removeProperty('column-gap'); return; }
+    }
+    placeFixed(rack, x, r.top);
   }
   // the stage's scale on screen (the station scales its whole layout to fit a large screen)
   function stageScale() {

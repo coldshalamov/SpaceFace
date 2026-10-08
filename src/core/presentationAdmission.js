@@ -48,7 +48,8 @@ export function hasExplicitAuthoredGeologyPresentation(entity) {
 export function hasExplicitAuthoredPayloadPresentation(entity) {
   if (!entity || entity.alive === false || entity.type !== 'payload') return false;
   const assetId = entity.data?.authoredPayloadAssetId;
-  return assetId === 'pod_cargo_container' || assetId === 'place_breakaway_sp07';
+  return assetId === 'pod_cargo_container' || assetId === 'place_breakaway_sp07'
+    || (assetId === 'SF_PROP_ILEX_VAULT' && entity.data?.persistenceOwner === 'ilexArk');
 }
 
 export function entityRequiresAuthoredPresentation(entity) {
@@ -126,7 +127,10 @@ export function presentationAllowsPlayerFacingAction(entity, state) {
 /**
  * Targeting must not sit on empty air. A required hull whose authored identity is still pending
  * stays off the lock until that same complete body publishes. Headless sim and contacts that never
- * entered the authored path remain lockable.
+ * entered the authored path remain lockable. A terminal 'unavailable' verdict is not empty air by
+ * itself: when the renderer reports the ship's procedural fallback stayed drawn
+ * (`presentationFallbackVisible`), that fallback is the ship on the glass and lockable. An
+ * authored-only hull publishes nothing on failure, so it keeps the lock refused.
  */
 export function presentationAllowsTargetLock(entity, state) {
   if (!entity || entity.alive === false) return false;
@@ -137,5 +141,8 @@ export function presentationAllowsTargetLock(entity, state) {
   if (entity.type !== 'ship') return true;
   const admission = entity.presentationAdmission;
   if (admission == null) return true;
+  if (admission === PRESENTATION_ADMISSION.unavailable) {
+    return entity.presentationFallbackVisible === true;
+  }
   return admission === PRESENTATION_ADMISSION.ready;
 }

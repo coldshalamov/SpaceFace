@@ -56,10 +56,10 @@ const CREST = [[256, 6], [288, 52], [256, 44], [224, 52]];
 // ---- palettes ---------------------------------------------------------------------------------------
 const defsFull = `
   <linearGradient id="g-plate" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-    <stop offset="0" stop-color="#202126"/><stop offset=".55" stop-color="#101114"/><stop offset="1" stop-color="#060607"/>
+    <stop offset="0" stop-color="#2B2D35"/><stop offset=".55" stop-color="#15161B"/><stop offset="1" stop-color="#060607"/>
   </linearGradient>
   <linearGradient id="g-rim" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-    <stop offset="0" stop-color="#8A8F99"/><stop offset=".4" stop-color="#34363C"/><stop offset="1" stop-color="#17181B"/>
+    <stop offset="0" stop-color="#A6ACB8"/><stop offset=".4" stop-color="#3C3E45"/><stop offset="1" stop-color="#17181B"/>
   </linearGradient>
   <linearGradient id="g-lit" x1="90" y1="40" x2="250" y2="470" gradientUnits="userSpaceOnUse">
     <stop offset="0" stop-color="#E9EBEF"/><stop offset=".45" stop-color="#A9AEB8"/><stop offset="1" stop-color="#5D626C"/>
@@ -145,7 +145,7 @@ function tile(inner, scale = 0.8, bar = true) {
   return `
   <path d="${chamfer(4)}" fill="url(#g-plate)"/>
   <path d="${chamfer(4)}" fill="url(#g-heat)"/>
-  <path d="${chamfer(7, 76, 32)}" fill="none" stroke="url(#g-rim)" stroke-width="3" stroke-linejoin="miter"/>
+  <path d="${chamfer(7, 76, 32)}" fill="none" stroke="url(#g-rim)" stroke-width="12" stroke-linejoin="miter"/>
   ${bar ? '<path d="M436 480L480 436" stroke="#FF5A14" stroke-width="6" stroke-linecap="butt"/>' : ''}
   <g transform="translate(${t.toFixed(1)} ${(t + 6).toFixed(1)}) scale(${scale})">${inner}</g>`;
 }
@@ -155,20 +155,25 @@ export const MASTERS = {
   'spaceface-emblem-small.svg': wrap('SpaceFace emblem (small optical master)', emblemSmall(), defsFull),
   'spaceface-emblem-mono.svg': wrap('SpaceFace emblem (one colour)', emblemMono('#000000')),
   'spaceface-emblem-reverse.svg': wrap('SpaceFace emblem (reverse)', emblemMono('#EFE9DD')),
-  'spaceface-launcher.svg': wrap('SpaceFace launcher icon', tile(emblemFull(), 0.8), defsFull),
-  'spaceface-favicon.svg': wrap('SpaceFace favicon', tile(emblemSmall(), 0.86, false), defsFull),
+  'spaceface-launcher.svg': wrap('SpaceFace launcher icon', tile(emblemFull(), 0.92), defsFull),
+  'spaceface-favicon.svg': wrap('SpaceFace favicon', tile(emblemSmall(), 0.94, false), defsFull),
 };
 
 // ---- rasterize + containers -------------------------------------------------------------------------
-const PNG_SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256, 512, 1024];
-const ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256];
+const PNG_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256, 512, 1024];
+const ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256];
 
 async function raster(svg, size) {
   // Render large then downsample so the hairlines/miters resample with Lanczos instead of librsvg's nearest AA.
   const f = size <= 64 ? 8 : size <= 256 ? 4 : 2;
   const px = size * f;
   const big = await sharp(Buffer.from(svg), { density: (72 * px) / 512 }).resize(px, px).png().toBuffer();
-  return sharp(big).resize(size, size, { kernel: 'lanczos3' }).png({ compressionLevel: 9 }).toBuffer();
+  // Taskbar frames get a light unsharp pass: Windows resamples whichever ICO frame is nearest the
+  // DPI-wanted size, and the resample smears low-contrast edges on a dark taskbar.
+  const small = size <= 64;
+  let pipe = sharp(big).resize(size, size, { kernel: 'lanczos3' });
+  if (small) pipe = pipe.sharpen({ sigma: 0.8, m1: 0.4, m2: 0.7 });
+  return pipe.png({ compressionLevel: 9 }).toBuffer();
 }
 
 function buildIco(frames) {

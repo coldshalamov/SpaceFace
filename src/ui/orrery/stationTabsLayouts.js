@@ -1075,11 +1075,13 @@ ${T} .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge)::after, ${T} .sx-ct__rows .s
 ${T} .sx-ct-dispatch__label { display:none !important; }
 /* one rail from RISK to READINESS, ticks on one pitch; sublines inline in ink-dim; one value column */
 ${T} .orr-ct-scales { margin-bottom:0 !important; }
-${T} .sx-dossier__terms { margin-top:0 !important; padding-top:2px !important; }
-${T} .sx-dossier__terms > li { grid-template-columns:92px minmax(0, 1fr) !important; column-gap:12px !important; padding:9px 0 !important; }
+${T} .sx-dossier__terms { margin-top:0 !important; padding-top:2px !important; display:grid !important; grid-template-columns:minmax(92px, max-content) minmax(0, 1fr); column-gap:14px; }
+${T} .sx-dossier__terms > li { grid-column:1 / -1; grid-template-columns:subgrid !important; column-gap:14px !important; padding:9px 0 !important; }
 ${T} .sx-dossier__terms .sx-term__v { flex-direction:row !important; align-items:baseline !important; gap:10px !important; flex-wrap:wrap; }
 ${T} .sx-dossier__terms .sx-term__sub { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-dossier__terms > li::before { top:50% !important; margin-top:-.5px; }
+${T} .sx-dossier > .sx-dossier__foot { position:sticky !important; bottom:0; z-index:2; padding:14px 0 6px !important; background:linear-gradient(0deg, rgb(0 0 0 / .9) calc(100% - 14px), rgb(0 0 0 / 0)) !important;
+  -webkit-mask-image:linear-gradient(90deg, #000 55%, transparent); mask-image:linear-gradient(90deg, #000 55%, transparent); }
 /* the jump reading hangs under the ring's foot with its own room */
 ${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:-14px !important; }
 /* the dispatch facts at a size the decision needs */

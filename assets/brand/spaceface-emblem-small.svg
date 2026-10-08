@@ -2,10 +2,10 @@
   <title id="sf-title">SpaceFace emblem (small optical master)</title>
   <defs>
   <linearGradient id="g-plate" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-    <stop offset="0" stop-color="#202126"/><stop offset=".55" stop-color="#101114"/><stop offset="1" stop-color="#060607"/>
+    <stop offset="0" stop-color="#2B2D35"/><stop offset=".55" stop-color="#15161B"/><stop offset="1" stop-color="#060607"/>
   </linearGradient>
   <linearGradient id="g-rim" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-    <stop offset="0" stop-color="#8A8F99"/><stop offset=".4" stop-color="#34363C"/><stop offset="1" stop-color="#17181B"/>
+    <stop offset="0" stop-color="#A6ACB8"/><stop offset=".4" stop-color="#3C3E45"/><stop offset="1" stop-color="#17181B"/>
   </linearGradient>
   <linearGradient id="g-lit" x1="90" y1="40" x2="250" y2="470" gradientUnits="userSpaceOnUse">
     <stop offset="0" stop-color="#E9EBEF"/><stop offset=".45" stop-color="#A9AEB8"/><stop offset="1" stop-color="#5D626C"/>

@@ -50,6 +50,9 @@ Current save version: `14`
 - `latchNine`
 - `scissorwake`
 - `lastShift`
+- `redKite`
+- `sableVenn`
+- `ilexArk`
 - `lossLedger`
 - `provenance`
 - `factionPresence`
@@ -225,6 +228,7 @@ Current save version: `14`
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
+| `$.ilexArk` | null | null |
 | `$.lastShift` | null | null |
 | `$.latchNine` | null | null |
 | `$.lawSecurity` | object | {} |
@@ -345,9 +349,11 @@ Current save version: `14`
 | `$.provenance` | object | {} |
 | `$.ravel` | object | {} |
 | `$.recoveryEncounters` | object | {} |
+| `$.redKite` | null | null |
 | `$.regionalEcology` | object | {} |
 | `$.rubric` | object | {} |
 | `$.ruckus` | object | {} |
+| `$.sableVenn` | null | null |
 | `$.salvage` | object | {} |
 | `$.scenario` | object | {} |
 | `$.scenario.active` | null | null |

@@ -42,6 +42,7 @@
 //
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import { RED_KITE, validRedKiteReceipt } from '../data/redKite.js';
+import { validIlexOutcome } from '../data/ilexArk.js';
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES, DOCK_SETTLED_TYPES,
   CONTRACT_DESK_SERVICES, hasContractsDesk,
@@ -8116,6 +8117,27 @@ export const missions = {
     this.bus.emit('toast', { text: `First relay filed — ${journal.creditedCr} cr. Later runs record your time without another payment.`, kind: 'good', ttl: 5 });
     return { ok: true, duplicate: false, ...journal };
   },
+  // SF20-04: physical custody supplies the immutable arrived bitmap; this ordinary mission
+  // journal reserves its sole reward before any credit callback can recursively file it again.
+  settleIlexArk(receiptId) {
+    const receipt = this.registry?.get('ilexArk')?.outcomeReceipt?.(receiptId);
+    if (!validIlexOutcome(receipt)) return { ok: false, reason: 'outcome_receipt_invalid' };
+    const prior = this.state.missions.ilexArkReward;
+    if (prior) return { ok: true, duplicate: true, ...prior };
+    const economy = this.registry?.get('economy');
+    if (!economy || typeof economy.grantCredits !== 'function') return { ok: false, reason: 'credit_owner_pending' };
+    const before = Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.round(Number(this.state.player.credits) || 0)));
+    const journal = { receiptId: receipt.id, deliveredVaultIds: [...receipt.deliveredVaultIds],
+      creditedCr: Math.min(receipt.rewardCr, Number.MAX_SAFE_INTEGER - before), at: this.state.simTime || 0 };
+    this.state.missions.ilexArkReward = journal;
+    economy.grantCredits(receipt.rewardCr, 'mission:ilex-seed-ark');
+    this._logCompletion('ilex_seed_ark', journal.creditedCr, receipt.deliveredVaultIds.length > 0);
+    this.bus.emit('mission:completed', { missionId: 'ilex:seed-ark:v1', type: 'ilex_seed_ark', source: 'ilexArk',
+      sourceReceiptId: receipt.id, factionId: null, repMult: 0, rewardCr: journal.creditedCr,
+      deliveredVaultIds: [...receipt.deliveredVaultIds] });
+    this.bus.emit('toast', { text: `Seed Ark filed — ${journal.deliveredVaultIds.length}/6 vaults · ${journal.creditedCr} cr.`, kind: 'info', ttl: 5 });
+    return { ok: true, duplicate: false, ...journal };
+  },
   _completeMission(m, index) {
     const state = this.state;
     if (m.status !== 'active') return;
@@ -11493,6 +11515,7 @@ export const missions = {
     state.missions.completedLog = [];
     state.missions.receipts = [];
     delete state.missions.redKiteFirstReward;
+    delete state.missions.ilexArkReward;
     delete state.missions.setPieceSettlements;
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
@@ -11563,6 +11586,7 @@ export const missions = {
       story: this.state.story,
     };
     if (m.redKiteFirstReward) serialized.redKiteFirstReward = { ...m.redKiteFirstReward };
+    if (m.ilexArkReward) serialized.ilexArkReward = { ...m.ilexArkReward, deliveredVaultIds: [...m.ilexArkReward.deliveredVaultIds] };
     if (m.starterJobStep && Object.keys(m.starterJobStep).length) {
       serialized.starterJobStep = { ...m.starterJobStep };
     }
@@ -11604,6 +11628,15 @@ export const missions = {
       && Number.isInteger(relay.creditedCr) && relay.creditedCr >= 0 && relay.creditedCr <= RED_KITE.firstRewardCr
       && Number.isFinite(relay.at) && relay.at >= 0) state.missions.redKiteFirstReward = { ...relay };
     else delete state.missions.redKiteFirstReward;
+    const arkReward = data.ilexArkReward;
+    if (arkReward && arkReward.receiptId === 'ilex:seed-ark:v1:outcome'
+      && Array.isArray(arkReward.deliveredVaultIds) && arkReward.deliveredVaultIds.length <= 6
+      && new Set(arkReward.deliveredVaultIds).size === arkReward.deliveredVaultIds.length
+      && arkReward.deliveredVaultIds.every(id => /^vault_[1-6]$/.test(id))
+      && Number.isInteger(arkReward.creditedCr) && arkReward.creditedCr >= 0 && arkReward.creditedCr <= 3000
+      && Number.isFinite(arkReward.at) && arkReward.at >= 0) {
+      state.missions.ilexArkReward = { ...arkReward, deliveredVaultIds: [...arkReward.deliveredVaultIds] };
+    } else delete state.missions.ilexArkReward;
     const setPieceSettlements = normalizeSetPieceSettlements(data.setPieceSettlements, state.missions.receipts);
     if (Object.keys(setPieceSettlements).length) state.missions.setPieceSettlements = setPieceSettlements;
     else delete state.missions.setPieceSettlements;

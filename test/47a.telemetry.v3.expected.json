@@ -46,17 +46,17 @@
   "phase0ObservedTraceCounts": {
     "audio:cue": 5,
     "camera:shake": 3,
-    "combat:damage": 9,
+    "combat:damage": 8,
     "combat:fire": 17,
     "economy:tick": 2,
     "presentation:audioCue": 4,
     "presentation:cameraCue": 3,
     "presentation:caption": 4,
-    "presentation:cue": 13,
-    "presentation:cueApplied": 13,
+    "presentation:cue": 12,
+    "presentation:cueApplied": 12,
     "presentation:uiCue": 4,
     "presentation:vfxCue": 4,
-    "projectile:hit": 9,
+    "projectile:hit": 8,
     "scenario:actorBindings": 1,
     "scenario:beatEntered": 1,
     "scenario:dialogueLine": 1,
@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "5aea9bd9e60631d191ed9e976ff377946fdd070483685299c8e47f9b4c0a89da",
+    "authoritativeHash": "89a84d7a332c5f7576edba4fc99c0b1ea8aee9985dbd99f0f385543a5ef426ee",
     "authoritativeHashByReloadAt": {
-      "60": "5aea9bd9e60631d191ed9e976ff377946fdd070483685299c8e47f9b4c0a89da",
-      "600": "5aea9bd9e60631d191ed9e976ff377946fdd070483685299c8e47f9b4c0a89da"
+      "60": "914bca87e33eecb847ad470e611b4f49de407f147f2e80a326abd32a8f96580c",
+      "600": "89a84d7a332c5f7576edba4fc99c0b1ea8aee9985dbd99f0f385543a5ef426ee"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -234,6 +234,13 @@
     "2026-10-03 polish pass: authoritativeHash is the CANONICAL reload-run hash (save canonicalizes the Rapier world once), not the organic never-saved hash — organic layouts are not reproducible (rapier#910); do not re-pin from a plain --hash run.",
     "(cont.) The canonical hash depends on the save tick: reload-60 -> 0d85fa3f, reload-600 -> f4a62175. Pin by reload point via authoritativeHashByReloadAt; the top-level field is the reload-600 gate value.",
     "2026-10-03 correction: 0d85fa3f is the reload-60 hash, not stale — the canonical hash is a function of the save tick, so the envelope pins per reload point via authoritativeHashByReloadAt.",
-    "D162 repin (2026-10): cheap-goods cycle-amplitude floor now delivers its authored chart-movement guarantee, so seeded market cycles and economy-driven traffic drift legitimately. Sim/reload equivalence unchanged."
+    "D162 repin (2026-10): cheap-goods cycle-amplitude floor now delivers its authored chart-movement guarantee, so seeded market cycles and economy-driven traffic drift legitimately. Sim/reload equivalence unchanged.",
+    "2026-10-08 deliberate MOTION_CHANGED re-pin after PR236 (9aeaf7db7), PR225 flight hardening (899956cf8), and PR221 native contact geometry/continuation (000d3c099). Prior hash: 5aea9bd9e60631d191ed9e976ff377946fdd070483685299c8e47f9b4c0a89da.",
+    "b4bbdc103 reproduces the prior hash. Overriding only flightV3, orbitAssist, propulsionKernel, physics and sg02DynamicBodyOwner from that source reproduces it exactly on the current tree. Historical source loads in memory; no alternate checkout/assets.",
+    "Three pre-PR236 flight owners restore the old trajectory and 9hits/13cues. Two native owners account for the remaining 117 snapshot differences in entity/physics/aim. Economy, story, missions, input tape and scenario contract are unchanged.",
+    "Accepted cause: PR236 uses hull-yaw vectoring fractions 0.60/0.57/0.375 at rest/cruise/boost, preserving earned speed. PR221 adds scale-safe planar native contact geometry and authoritative continuation. Motion change is intentional gameplay.",
+    "Seed47 tick720/reload600 player pos: (3000.139160,305.283264) -> (3002.222900,472.500519); vel: (253.950912,-4.964766) -> (249.409088,24.369547). Same 17shots yield 8hits/damage, 12cue/applied events (prior9/13); final yaw0.107885.",
+    "All other observed event counts are unchanged. The actual Massline attaches at tick4 and breaks at128; boost starts121/stops181. This is the curated legacy47a V3 scenario, not a production-manifest claim.",
+    "Reload600 matches save-canonicalized uninterrupted motion. Reload60 has its separately measured 914bca87 pin: canonical native solver state depends on save point. Acceptance bounds and required event families remain unchanged."
   ]
 }
