@@ -1,4 +1,4 @@
-// Site production math — pure functions, no state mutation, no Three.js, no DOM.
+// Site production math — deterministic helpers over owner-provided records, no Three.js, no DOM.
 // Owned by src/systems/asteroidSites.js; unit-tested directly in test/asteroid-sites.test.mjs.
 //
 // The sacred primitive (design/ASTEROID_SITES_BRIEF.md §1): a machine on a hollow cell reads its
@@ -60,9 +60,9 @@ export function contactKind(tile) {
 export function machineCapability(def, profile, mode) {
   const cap = {
     outputsPerMin: {},
-    powerGen: Math.max(0, def.power || 0),
-    powerDraw: Math.max(0, -(def.power || 0)),
-    usesGeology: !!def.usesGeology,
+    powerGen: Math.max(0, def?.power || 0),
+    powerDraw: Math.max(0, -(def?.power || 0)),
+    usesGeology: !!def?.usesGeology,
     geologyLive: false,
   };
   if (!def) return cap;
@@ -100,7 +100,9 @@ export function stepContinuousRecipe({
 }) {
   const recipe = SITE_RECIPE_BY_ID.get(recipeId);
   const result = { moved: 0, produced: {}, consumed: {}, status: 'idle', limit: null };
-  if (!recipe || !(dtMin > 0)) return result;
+  if (!recipe || !Number.isFinite(dtMin) || !(dtMin > 0)
+    || !(recipe.inputRatePerMin > 0)) return result;
+  powerRatio = clamp01(powerRatio);
   const inputs = Object.entries(recipe.inputs).sort(([a], [b]) => (a < b ? -1 : 1));
   const [outputId, outputPerBatch] = Object.entries(recipe.output)[0];
   const inputPerBatch = inputs.reduce((s, [, qty]) => s + qty, 0);
@@ -120,14 +122,22 @@ export function stepContinuousRecipe({
     const byInput = avail / perBatch;
     if (byInput < batches) { batches = byInput; limit = `input:${goodId}`; }
   }
-  // Output room.
-  const room = roomFor(outputId);
-  const byRoom = room / outputPerBatch;
+  // A fractional carry is PAID output, not free capacity. Reconcile against the space
+  // available now: another machine may have filled the lane since this carry accrued.
+  // Keep carries sub-unit so existing saves and normalizeSiteMachines stay compatible.
+  const previousCarry = carry[outputId] == null ? 0 : Number(carry[outputId]);
+  if (!Number.isFinite(previousCarry) || previousCarry < 0 || previousCarry >= 1) {
+    result.status = 'stalled';
+    result.limit = 'invalid-carry';
+    return result;
+  }
+  const room = positiveRoom(roomFor(outputId));
+  const byRoom = Math.max(0, room - previousCarry) / outputPerBatch;
   if (byRoom < batches) { batches = byRoom; limit = 'export'; }
   // Lane throughput (units moved = inputs consumed + outputs produced).
   const unitsPerBatch = inputPerBatch + outputPerBatch;
   if (throughputBudget != null) {
-    const byLane = Math.max(0, throughputBudget) / unitsPerBatch;
+    const byLane = positiveRoom(throughputBudget) / unitsPerBatch;
     if (byLane < batches) { batches = byLane; limit = 'lane'; }
   }
 
@@ -144,11 +154,11 @@ export function stepContinuousRecipe({
     result.moved += take;
   }
   // Whole units land in the store; the fractional remainder carries on the machine.
-  const producedRaw = batches * outputPerBatch + (Number(carry[outputId]) || 0);
+  const producedRaw = batches * outputPerBatch + previousCarry;
   const whole = Math.floor(producedRaw + 1e-9);
   carry[outputId] = Math.max(0, producedRaw - whole);
   if (whole > 0) store[outputId] = (Number(store[outputId]) || 0) + whole;
-  result.produced[outputId] = producedRaw - (Number(carry[outputId]) || 0);
+  result.produced[outputId] = whole;
   result.moved += batches * outputPerBatch;
   result.status = limit ? (limit.startsWith('input') ? 'starved' : (limit === 'power' ? 'throttled' : 'limited')) : 'running';
   result.limit = limit;
@@ -165,20 +175,34 @@ export function stepFabricator({
 }) {
   const recipe = SITE_RECIPE_BY_ID.get(recipeId);
   const result = { completed: null, started: false, moved: 0, status: 'idle', limit: null, progress: 0 };
-  if (!recipe) return result;
+  if (!recipe || !(recipe.buildS > 0) || !Number.isFinite(dtS) || !(dtS > 0)) return result;
+  powerRatio = clamp01(powerRatio);
 
   // Finish/advance the running job first.
   if (machine.job && machine.job.recipeId === recipeId) {
+    if (!Number.isFinite(machine.job.progressS) || machine.job.progressS < 0) {
+      result.status = 'stalled';
+      result.limit = 'invalid-progress';
+      return result;
+    }
     if (powerRatio <= 0) {
       result.status = 'no-power';
       result.limit = 'power';
       result.progress = machine.job.progressS / recipe.buildS;
       return result;
     }
-    machine.job.progressS += dtS * clamp01(powerRatio);
+    machine.job.progressS = Math.min(recipe.buildS, machine.job.progressS + dtS * powerRatio);
     result.progress = Math.min(1, machine.job.progressS / recipe.buildS);
     if (machine.job.progressS + 1e-9 >= recipe.buildS) {
       const [outputId, qty] = Object.entries(recipe.output)[0];
+      // A batch owns its committed inputs, NOT a permanent reservation in a shared lane.
+      // Hold the completed job until its whole output fits, including after save/Continue.
+      // No extra inputs, lost output, duplicate completion, or growing progress counter.
+      if (outputId !== 'pod' && positiveRoom(roomFor(outputId)) < qty) {
+        result.status = 'backlogged';
+        result.limit = 'export';
+        return result;
+      }
       if (outputId !== 'pod') {
         store[outputId] = (Number(store[outputId]) || 0) + qty;
         result.moved += qty;
@@ -213,7 +237,7 @@ export function stepFabricator({
     }
   }
   const [outputId] = Object.entries(recipe.output)[0];
-  if (outputId !== 'pod' && roomFor(outputId) < recipe.output[outputId]) {
+  if (outputId !== 'pod' && positiveRoom(roomFor(outputId)) < recipe.output[outputId]) {
     result.status = 'backlogged';
     result.limit = 'export';
     return result;
@@ -226,6 +250,12 @@ export function stepFabricator({
   result.started = true;
   result.status = 'building';
   return result;
+}
+
+// Infinity explicitly means unbounded; NaN/negative space must fail closed.
+function positiveRoom(value) {
+  const n = Number(value);
+  return n === Infinity ? Infinity : (Number.isFinite(n) ? Math.max(0, n) : 0);
 }
 
 export function clamp01(v) {
