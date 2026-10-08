@@ -497,7 +497,7 @@ export class GyreSnarePresentation {
     return mat;
   }
 
-  _addLump(member, i) {
+  _addLump(member, i, instant = false) {
     let slot = null;
     for (const l of this._lumps) if (!l.used) { slot = l; break; }
     if (!slot) {
@@ -519,7 +519,9 @@ export class GyreSnarePresentation {
     slot.spawnT = this.time;         // grow-in: lumps swell in over ~150 ms, not pop
     // The body the lump replaces vanished THIS tick — seed at nearly half scale so
     // the eye tracks the meal continuously instead of the mesh popping out first.
-    slot.spawnScale = 0.45;
+    // A ledger rebuild isn't a meal: `instant` restores full scale so the same
+    // ball doesn't visibly re-bloom in place.
+    slot.spawnScale = instant ? 1 : 0.45;
     const m = slot.mesh;
     m.material = this._lumpMaterial(member.type);
     // Katamari compaction: the member ledger caps at MAX_LUMPS but the ball keeps
@@ -596,7 +598,7 @@ export class GyreSnarePresentation {
 
   // Shared streak painter — one flat quad trailing a flying ball along its travel.
   // spec {x,z,dx,dz,r,ttl01,mass,alpha,wind} or null → the slot hides.
-  // ttl01 drives the last-~1.1 s expiry fade so the ribbon telegraphs the grave;
+  // ttl01 drives the last-~2.3 s expiry fade so the ribbon telegraphs the grave;
   // wind gathers the streak during the coil; massFade reads the throw at range.
   _drawTrail(mesh, mat, spec, flashCalm) {
     if (!spec) {
@@ -614,7 +616,7 @@ export class GyreSnarePresentation {
     const ttl01 = Math.max(0, Math.min(1, finite(spec.ttl01, 1)));
     const massFade = 0.65 + 0.5 * Math.min(1, finite(spec.mass) / GYRE_SNARE.maxClumpMass);
     mat.uniforms.uAlpha.value = spec.alpha * massFade * flashCalm
-      * (1 - (spec.wind || 0)) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.12));
+      * (1 - (spec.wind || 0)) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.25));
     mesh.visible = true;
   }
 
@@ -901,6 +903,14 @@ export class GyreSnarePresentation {
         this._coneMat.uniforms.uPulse.value *= Math.exp(-sdt * 9);
         this._coneMat.uniforms.uStrain.value *= Math.exp(-sdt * 9); // warn dies with the ramp
         this._coneMat.uniforms.uTremble.value *= Math.exp(-sdt * 9); // tremble dies with the ramp
+        // The mouth's warn tint rides the same decay — a polite release that ended
+        // warm shouldn't freeze an amber ring while the glass neutralizes. A tear
+        // keeps it: the slipped ball's mouth stays hot through the snap.
+        if (!this._closeTear) {
+          const sDecay = this._coneMat.uniforms.uStrain.value;
+          this._mawMat.color.copy(this._colHot).lerp(this._colWarn, sDecay * 0.6);
+          this._discMat.uniforms.uCol.value.copy(this._colMaw).lerp(this._colWarn, sDecay * 0.6);
+        }
         // flashCalm rides every close-ramp alpha too — a reduced-flash user shouldn't
         // get a brighter 250 ms tail than those elements ever show while live.
         this._bodyMat.opacity = 0.1 * kk * flashCalm;
@@ -1189,11 +1199,13 @@ export class GyreSnarePresentation {
       const capFade = Math.max(0, 1 - finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1)));
       if (phase === 'holding' && capFade > 0.03) {
         // Drawn reach must track the sim's suck annulus exactly — band + mass gain,
-        // clamped at 1.5× the basin like _suckRadius so the halo never advertises more.
+        // floor-banded like _suckRadius and clamped at 1.5× the basin, so the halo
+        // never advertises more (or less, on a fresh snag) than the real pull.
         const suckR = Math.min(
           finite(GYRE_SNARE.basinRadius, 86) * 1.5,
           this._clumpRadius * (1 + finite(GYRE_SNARE.suckBandMassGain, 0.5))
-            + finite(GYRE_SNARE.suckBandWidth, 88));
+            + Math.min(finite(GYRE_SNARE.suckBandWidth, 88),
+              finite(GYRE_SNARE.suckBandFloor, 50) + this._clumpRadius));
         this._halo.position.set(p.x, 0.42, p.z);
         this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
         this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6);
@@ -1212,7 +1224,7 @@ export class GyreSnarePresentation {
       for (const l of this._lumps) if (l.used) have++;
       for (let i = have; i < want; i++) this._addLump(members[i], i);
       // If the sim restarted the ledger (new core), rebuild.
-      if (want < have) { this._clearLumps(); for (let i = 0; i < want; i++) this._addLump(members[i], i); }
+      if (want < have) { this._clearLumps(); for (let i = 0; i < want; i++) this._addLump(members[i], i, true); }
       // Grow-in: a fresh lump swells 0.45→1× over ~150 ms — katamari stick lands visibly.
       for (const l of this._lumps) {
         if (!l.used) continue;
@@ -1261,7 +1273,10 @@ export class GyreSnarePresentation {
       const sbm = sb && Array.isArray(sb.members) ? sb.members : null;
       if (sb && Number.isFinite(sb.x) && this.toLocal) {
         const lp = this.toLocal(sb.x, sb.z, this._ballPt);
-        this._secGroup.position.set(lp.x, 0.6, lp.z);
+        // Same loose-rubble drift as the primary clump — secondaries bob on the
+        // group's own orbit-seeded phase, not flat at 0.6 like a HUD overlay.
+        this._secGroup.position.set(lp.x,
+          0.6 + Math.sin(this.time * 0.7 + (finite(sb.id) % 7)) * 0.3 * calm, lp.z);
         const ballR = Math.max(2.5, finite(sb.r, 8));
         this._secVeil.scale.setScalar(ballR * 1.22);
         this._secVeilMat.opacity = 0.07 * flashCalm;
