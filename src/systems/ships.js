@@ -1141,6 +1141,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let masslineHeadId = null;
   let swingDrive = false;
   let towFlail = false;
+  let phaseBlink = false;
   // Hull burst: ONE per hull. The higher rank wins, ties break by kind name, so a hand-edited fit
   // with two burst modules is deterministic instead of slot-ordered.
   let hullBurstKind = null;
@@ -1239,6 +1240,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     // the hull actually has (same slot-compat gate the countermeasure kinds use below).
     if (occupiesCompatibleSlot && mods.swingDrive) swingDrive = true;
     if (occupiesCompatibleSlot && mods.towFlail) towFlail = true;
+    if (occupiesCompatibleSlot && mods.phaseBlink) phaseBlink = true;
     if (occupiesCompatibleSlot && typeof mods.hullBurst === 'string' && mods.hullBurst) {
       const rank = Number.isFinite(mods.hullBurstRank) && mods.hullBurstRank > 0 ? Math.trunc(mods.hullBurstRank) : 1;
       if (rank > hullBurstRank || (rank === hullBurstRank && mods.hullBurst < hullBurstKind)) {
@@ -1389,7 +1391,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     massLoadFactor: propulsion.massLoadFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, magnetRange,
-    lootMagnetRange, swingDrive, towFlail, hullBurstKind, hullBurstRank,
+    lootMagnetRange, swingDrive, towFlail, phaseBlink, hullBurstKind, hullBurstRank,
     weaponRangePct,
     weaponDmgPct,
     weaponHeatDissipPct,

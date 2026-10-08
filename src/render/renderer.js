@@ -281,6 +281,7 @@ import { globalProjectileMotion } from './projectileMotionPresentation.js';
 import { globalOrdnanceMotion } from './ordnanceMotionPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
 import { createCrucibleGhostPresentation } from './crucibleGhost.js';
+import { createPhaseBlinkPresentation } from './phaseBlinkPresentation.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
@@ -9330,11 +9331,13 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   if (disposeGpu) {
     try { owner._livingHullPresentation?.dispose?.(); } catch (_) { /* best effort */ }
     try { owner._crucibleGhostPresentation?.dispose?.(); } catch (_) { /* best effort */ }
+    try { owner._phaseBlinkPresentation?.dispose?.(); } catch (_) { /* best effort */ }
   } else {
     // Detach only: the controller's meshes/materials belong to the lost context and must not emit
     // dispose events through a context that may later be restored or replaced.
     try { owner._livingHullPresentation?.detach?.(); } catch (_) { /* best effort */ }
     try { owner._crucibleGhostPresentation?.detach?.(); } catch (_) { /* best effort */ }
+    try { owner._phaseBlinkPresentation?.detach?.(); } catch (_) { /* best effort */ }
   }
   disposeRendererMeshRoots(owner, scene, disposeGpu);
   disposeContactShadowPool(owner._contactShadowPool, scene, disposeGpu);
@@ -9491,6 +9494,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._asteroidInstancePool = null;
   owner._livingHullPresentation = null;
   owner._crucibleGhostPresentation = null;
+  owner._phaseBlinkPresentation = null;
   owner._assetResidency = null;
   owner._sectorBoundaryPreparations = null;
   owner._incomingSectorPrewarm = null;
@@ -9851,6 +9855,8 @@ export const render = {
     this._livingHullPresentation = createLivingHullPresentation();
     if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.dispose();
     this._crucibleGhostPresentation = createCrucibleGhostPresentation();
+    if (this._phaseBlinkPresentation) this._phaseBlinkPresentation.dispose();
+    this._phaseBlinkPresentation = createPhaseBlinkPresentation();
     // Hero-asset registry (spec §17.3): wraps the factory's build() so the bespoke player Kestrel is
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
     // back to the original procedural builder, so non-Kestrel entities are completely unaffected.
@@ -10288,6 +10294,7 @@ export const render = {
       };
     }
     if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.attach(scene);
+    if (this._phaseBlinkPresentation) this._phaseBlinkPresentation.attach(scene, this.bus);
     // The nozzle-cooldown PointLight is part of the scene's visible light COUNT, which three bakes
     // into every material's program key. Mounting it lazily on first slipstream activity raised the
     // count 8→9 mid-flight and relinked every lit material inside bloomScene (~10.7 s brick).
@@ -25704,6 +25711,21 @@ export const render = {
       }
       if (isPlayer && entity && this._crucibleGhostPresentation) {
         this._crucibleGhostPresentation.sync(this.state, mesh);
+      }
+      if (isPlayer && entity && this._phaseBlinkPresentation) {
+        this._phaseBlinkPresentation.sync(
+          this.state,
+          mesh,
+          (pos, out) => {
+            if (this._frameMembrane && typeof this._frameMembrane.toLocal === 'function') {
+              return this._frameMembrane.toLocal(pos, out);
+            }
+            out.x = pos.x;
+            out.z = pos.z;
+            return out;
+          },
+          this._presentationFrameDt,
+        );
       }
       if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
           && userData.updateWorldSitePresentation) {

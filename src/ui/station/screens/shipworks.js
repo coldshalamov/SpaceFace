@@ -3780,6 +3780,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (def.mods && def.mods.countermeasure) return 'Defensive countermeasure';
     if (def.mods && (def.mods.tetherSpoolMult || def.mods.tetherReelRateMult)) return 'Massline handling system';
     if (def.mods && def.mods.swingDrive) return 'Dash swings around a taut line';
+    if (def.mods && def.mods.phaseBlink) return 'Hold Shift, release to step into the shadow';
     return 'Utility support system';
   }
 

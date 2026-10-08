@@ -493,6 +493,15 @@ const SHIPPED_MODULES = [
     energyDraw: 2, mods: { swingDrive: true },
   },
   {
+    // VEIL STEP — the rogue's boost. While this is fitted, Shift is not a thruster.
+    // Hold it and a shadow of the hull sits ahead; release and the ship is there,
+    // paid from the same boost meter. Helios keeps one on the rack with no research
+    // stop so a starter bay can fit it the hour it is bought.
+    id: 'mod_veil_step', name: 'Veil Step', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 9800,
+    shopOffers: { station_helios: { price: 4200 } },
+    energyDraw: 1, mods: { phaseBlink: true },
+  },
+  {
     // LOOT MAGNET — reach without the line. Debris shards and jettisoned pods inside the ring are
     // drawn to the hull (bounded attraction through physics authority), so salvage is a fly-by
     // instead of a latch-per-piece. Consumed via derived.lootMagnetRange by systems/lootShards.js.
@@ -889,6 +898,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_winch_hd: 'Reels a line in faster, and you can swing from farther away.',
   mod_swing_drive_m: 'A dash on a taut line swings you around the anchor instead of off it.',
   mod_swing_drive_s: 'The same swing-around dash, in the small bay a starter hull can fit.',
+  mod_veil_step: 'Hold Shift and a shadow of the ship sits ahead. Release, and you are there. The thruster boost is gone while this is fitted.',
   mod_loot_magnet_s: 'Debris and pods drift into the hull as you fly past.',
   mod_mass_flail_rig_m: 'While you tow something heavier than you, a bump hits with the load\'s mass.',
   mod_massline_spool_m: 'A longer line, so you can swing off things much farther away.',

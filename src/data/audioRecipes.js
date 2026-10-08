@@ -1126,6 +1126,48 @@ export const RECIPES = [
     pitchRange: [1.0, 1.5],
   },
 
+  // Veil Step — a low rip and a short blip, not the thruster whoosh.
+  {
+    id: 'sfx_phase_rift_body',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 78,
+    freqSweep: [96, 34],
+    sweepTimeS: 0.32,
+    gainEnvelope: { attack: 0.006, sustain: 0.08, release: 0.36 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 0.7,
+    subBass: { startFreq: 58, endFreq: 26, dur: 0.34, gain: 0.95 },
+    distortionAmount: 0.18, distortionCurve: 'tanh',
+  },
+  {
+    id: 'sfx_phase_rift_blip',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 740,
+    freqSweep: [880, 210],
+    sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.6,
+  },
+  {
+    id: 'sfx_phase_rift_air',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.26 },
+    filterType: 'bandpass', filterFreq: 380, filterQ: 1.5,
+  },
+  {
+    id: 'sfx_phase_rift',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_phase_rift_body', 'sfx_phase_rift_blip', 'sfx_phase_rift_air'],
+    gainMult: 1.05,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.38 },
+  },
+
   // --- Countermeasures (P1-7): chaff = bright metallic burst; ECM = descending electronic whine ---
   {
     id: 'sfx_cm_chaff',

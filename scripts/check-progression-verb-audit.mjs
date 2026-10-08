@@ -69,6 +69,7 @@ const VERB_MOD_KEYS = Object.freeze({
   microJumpBlink: ['micro-jump blink (usesPerEncounter)', 'systems/uniqueLootAbilities.js fittedVerbSpec', { file: 'src/systems/uniqueLootAbilities.js', symbol: 'microJumpBlink' }],
   reactiveMissileKnockback: ['reactive missile knockback (usesPerEncounter)', 'systems/uniqueLootAbilities.js fittedVerbSpec', { file: 'src/systems/uniqueLootAbilities.js', symbol: 'reactiveMissileKnockback' }],
   swingDrive: ['pendulum dash through a taut line', 'systems/flightV3.js + ships.js fold (landed)', { file: 'src/systems/flightV3.js', symbol: 'swingDrive' }],
+  phaseBlink: ['Shift throws a shadow hull and the release steps into it', 'systems/phaseBlink.js + ships.js fold (landed)', { file: 'src/systems/phaseBlink.js', symbol: 'phaseBlink' }],
   lootMagnetRange: ['pull loot shards into magnet range', 'systems/lootShards.js + ships.js fold (landed)', { file: 'src/systems/lootShards.js', symbol: 'lootMagnetRange' }],
   towFlail: ['towed mass becomes flail damage', 'systems/collisionConsequences.js + ships.js fold (landed)', { file: 'src/systems/collisionConsequences.js', symbol: 'towFlail' }],
   hullBurst: ['front-wedge hurl riding every boost (Gravity Bumper)', 'systems/hullBurst.js + ships.js fold (landed)', { file: 'src/systems/hullBurst.js', symbol: 'hullBurstKind' }],
