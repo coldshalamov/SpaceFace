@@ -113,14 +113,14 @@ export const gyreHud = {
         && Number.isFinite(g.balls[0].ttlS) ? g.balls[0].ttlS : 0;
       ballTxt += ` · +${extraBalls} ball${extraBalls > 1 ? 's' : ''}`;
       if (soonest > 0 && soonest < GYRE_SNARE.ballTtlWarnS) {
-        ballTxt += ` ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(soonest)))}s`;
+        ballTxt += ` ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.floor(soonest)))}s`;
       }
     }
     // Fuse speaks during BEAM too — a lashing <8 s from dry shouldn't announce itself
     // only through the after-the-fact dry toast.
     const fuseS = g.fuseS || 0;
     const fuseTxt = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
-      ? ` · ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.ceil(fuseS)))}s` : '';
+      ? ` · ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.floor(fuseS)))}s` : '';
     const tow = g.towCount || 0;
     const heavy = g.tooHeavyCount || 0;
     const handlingTxt = (tow > 0 ? ` · TOWING ×${tow}` : '')
@@ -154,7 +154,7 @@ export const gyreHud = {
       const bs = g && g.balls;
       if (bs && bs.length) {
         const warnS = GYRE_SNARE.ballTtlWarnS;
-        const n = Math.ceil((bs[0].ttlS || 0));
+        const n = Math.floor(bs[0].ttlS || 0); // floors like the primary countdown — never overstates the flight left
         const sTxt = bs[0].ttlS > 0 && bs[0].ttlS < warnS ? ` · ${Math.min(warnS - 1, Math.max(1, n))}s` : '';
         return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sTxt}`, cls: 'gyre-ball' };
       }

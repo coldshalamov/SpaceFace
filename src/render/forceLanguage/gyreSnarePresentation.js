@@ -233,6 +233,7 @@ export class GyreSnarePresentation {
     this._closeT = 0;
     this._closeSpan = 0.25;  // ramp seconds — a strain break snaps down in ~120 ms instead
     this._closeK = 0;        // last k*k of the ramp — the clump group shrinks on it
+    this._closeTear = false; // 'strained' close: the freed clump whips away — lumps clear instantly, no k² evaporation
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
     this._moteKick = 0;      // absorb gulp: the mote spiral's own clock surges for a beat
     this._gulpDirX = 0;      // newest member's approach dir (world frame) — the funnel
@@ -713,7 +714,7 @@ export class GyreSnarePresentation {
       this._coneMat.uniforms.uAlpha.value = (tense ? 0.62 : 0.42) * spent * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
       // for the cone to occlude background glow and read as a surface, not a hologram.
-      this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * fuseDim * (tense ? 1.2 : 0.8);
+      this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * fuseDim * spent * (tense ? 1.2 : 0.8);
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
       // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
       // Single canonical writer: the decayed carry maxes against the strain
@@ -853,6 +854,7 @@ export class GyreSnarePresentation {
         // the sim publishes the drop reason so the close reads it. Every other close
         // (release, post-launch, boundary) keeps the ~250 ms ease.
         this._closeSpan = mirror.dropReason === 'strained' ? 0.12 : 0.25;
+        this._closeTear = mirror.dropReason === 'strained';
         if (mirror.dropReason === 'strained') {
           this._fireBurst(finite(mirror.corePos.x), finite(mirror.corePos.z),
             Math.max(6, finite(mirror.clumpRadius, 8) * 1.4), flashCalm);
@@ -879,7 +881,7 @@ export class GyreSnarePresentation {
         this._discMat.uniforms.uAlpha.value = 0.55 * kk * flashCalm;
         this._closeK = kk; // the clump block below shrinks the freed ball on the same ramp
         this._spiral.visible = true; // static scatter under reduced-motion too
-        if (k <= 0) { this._closing = false; this._beam.visible = false; this._spiral.visible = false; }
+        if (k <= 0) { this._closing = false; this._closeTear = false; this._beam.visible = false; this._spiral.visible = false; }
       } else if (this._beam.visible) {
         this._beam.visible = false;
         this._spiral.visible = false; // spiral now stays visible through closing — hide it on the rare non-ramp off
@@ -982,6 +984,12 @@ export class GyreSnarePresentation {
         this._clump.scale.setScalar(Math.max(0.001, k * k));
         this._clump.visible = this._deathT > 0;
         if (this._deathT <= 0) this._clearLumps();
+      } else if (this._closing && this._closeTear) {
+        // Tear: the grown core whips off on its parting snap — shrinking its
+        // lumps away over the 120 ms ramp reads as partial evaporation. The
+        // glass still eases; the rubble just isn't the thing that got freed.
+        this._clump.visible = false;
+        this._clearLumps();
       } else if (this._closing && this._clump.visible && this._closeK > 0) {
         this._clump.scale.setScalar(Math.max(0.001, this._closeK));
       } else {

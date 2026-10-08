@@ -1781,9 +1781,9 @@ export const gyreSnare = {
           // slingshot pull-back is the feel-rich part, and silence undersold it.
           this.bus.emit(GYRE_EVENTS.windup, { id: core.id, mass: rt.ballMass, tick: state.tick });
           // A whisper of camera anticipation on the draw — the pull-back is felt,
-          // not only seen/heard. amount 0.01 is deliberately sub-perceptual: it
-          // leans the frame into the coil without moving the reticle.
-          this.bus.emit('camera:shake', { amount: 0.01 });
+          // not only seen/heard. 0.025 is the smallest amount that still reads:
+          // it leans the frame into the coil without moving the reticle.
+          this.bus.emit('camera:shake', { amount: 0.025 });
           // The draw gets a thin rising shimmer too — felt on the pad and seen in
           // the maw, it was the one beat of the throw with no voice at all.
           // The draw grades by payload like the launch it precedes — a capped
