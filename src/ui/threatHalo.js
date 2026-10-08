@@ -1019,8 +1019,12 @@ export function createThreatHalo(root, busOrOpts) {
     for (let i = 0; i < HOSTILE_LIMIT; i++) {
       clearSlotTelegraph(hostileSlots[i]);
       setDisplay(hostileSlots[i], false);
+      hostileSlots[i]._sfShownAt = 0;
     }
-    for (let i = 0; i < MISSILE_LIMIT; i++) setDisplay(missileSlots[i], false);
+    for (let i = 0; i < MISSILE_LIMIT; i++) {
+      setDisplay(missileSlots[i], false);
+      missileSlots[i]._sfShownAt = 0;
+    }
     setDisplay(layer, false);
   }
 
@@ -1189,16 +1193,23 @@ export function createThreatHalo(root, busOrOpts) {
       const cue = cueForIds(entity.id, null);
       const telegraphed = !!cue;
       if (!projected) continue;
+      // Behind the camera the perspective divide mirrors both axes; un-mirror around the
+      // viewport centre so an edge mark crossed during a hard turn names the side the contact
+      // actually sits on instead of teleporting to the opposite edge.
+      const frameW = viewportW || 1280;
+      const frameH = viewportH || 720;
+      const sx = projected.behind === true ? frameW - projected.x : projected.x;
+      const sy = projected.behind === true ? frameH - projected.y : projected.y;
       // G4: an in-frame attacker gets no edge mark, even when it is telegraphing.
       // One mark per shooter, never one per projectile.
       const marker = offscreenShooterMarker({
         alive: entity.alive !== false,
         canShoot: hostileCanShoot(entity),
         onScreen: projected.onScreen === true,
-        screenX: projected.x,
-        screenY: projected.y,
-        frameWidth: viewportW || 1280,
-        frameHeight: viewportH || 720,
+        screenX: sx,
+        screenY: sy,
+        frameWidth: frameW,
+        frameHeight: frameH,
       });
       if (!marker) continue;
       rememberTetherCut(entity, cue);
@@ -1217,7 +1228,7 @@ export function createThreatHalo(root, busOrOpts) {
       const token = occRule ? occRule.silhouetteToken : 'token_silhouette_standard';
       const faction = entity.factionId || (entity.data && entity.data.factionId) || null;
       pushHostileCandidate(
-        projected.x, projected.y, tier,
+        sx, sy, tier,
         telegraphed ? 1 : 0, closingBucketOf(closing), Math.floor(dist / DIST_BAND_WU),
         opacity, role, token, faction, entity.id,
       );
@@ -1246,10 +1257,13 @@ export function createThreatHalo(root, busOrOpts) {
       const projected = worldToScreen(projectionWorld, projectionScreen);
       if (!projected || projected.onScreen) continue;
 
+      // Same behind-camera un-mirror as the hostile arcs (see collectHostiles).
+      const sx = projected.behind === true ? (viewportW || 1280) - projected.x : projected.x;
+      const sy = projected.behind === true ? (viewportH || 720) - projected.y : projected.y;
       const dx = entity.pos.x - player.pos.x;
       const dz = entity.pos.z - player.pos.z;
       const dist = Math.hypot(dx, dz);
-      pushMissileCandidate(projected.x, projected.y, dist);
+      pushMissileCandidate(sx, sy, dist);
     }
 
     sortMissileCandidates();
@@ -1303,16 +1317,29 @@ export function createThreatHalo(root, busOrOpts) {
     }
   }
 
+  // Solver-failure grace: a reserved rect sweeping through an arc's only viable band made the
+  // placement solver fail for a frame and the slot strobe off. A recently-shown slot holds its
+  // last placement through a short window; only a sustained failure retires it.
+  const SLOT_GRACE_MS = 250;
+  function slotInGrace(slot) {
+    return !!slot._sfShownAt && performance.now() - slot._sfShownAt < SLOT_GRACE_MS;
+  }
+
   function applySlots(cmState) {
     let shown = 0;
 
     for (let i = 0; i < HOSTILE_LIMIT; i++) {
       const slot = hostileSlots[i];
       if (i >= hostileCount || !resolvePlacement(hostileX[i], hostileY[i], false)) {
+        if (slotInGrace(slot)) {
+          shown++;
+          continue;
+        }
         clearSlotTelegraph(slot);
         setDisplay(slot, false);
         continue;
       }
+      slot._sfShownAt = performance.now();
       setDisplay(slot, true, 'block');
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
@@ -1348,9 +1375,14 @@ export function createThreatHalo(root, busOrOpts) {
     for (let i = 0; i < MISSILE_LIMIT; i++) {
       const slot = missileSlots[i];
       if (i >= missileCount || !resolvePlacement(missileX[i], missileY[i], true, !!cmState)) {
+        if (slotInGrace(slot)) {
+          shown++;
+          continue;
+        }
         setDisplay(slot, false);
         continue;
       }
+      slot._sfShownAt = performance.now();
       setDisplay(slot, true, 'block');
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
