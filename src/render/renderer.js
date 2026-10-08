@@ -613,6 +613,7 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
         step = iterator.next();
       } catch (driveError) {
         closeCookStepsIter(iterator);
+        noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'depthPipelineDrive');
         console.warn('[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
         const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
           () => compileShadowDepthPipelines(depthOpts),
@@ -1077,8 +1078,18 @@ export function* collectOpeningShadowCasterRootCandidatesSteps(meshes, entities,
     ? options.alreadyIncluded.filter(Boolean) : []);
   if (!camera || !meshes || typeof meshes[Symbol.iterator] !== 'function') return candidates;
   let censusVisited = 0;
+  // Row-granular yields alone under-pace: each visited row pays a
+  // whole-subtree collectOpeningSubmissionLeaves traverse, so one 32-row
+  // stride can still blow the frame wallet — a fat stride yields early on
+  // wall clock too. Visit order and output stay identical.
+  const censusNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  let censusStrideAt = censusNow();
   for (const [id, root] of meshes) {
-    if ((++censusVisited % 32) === 0) yield;
+    if ((++censusVisited % 32) === 0 || censusNow() - censusStrideAt >= 2) {
+      censusStrideAt = censusNow();
+      yield;
+    }
     if (!root || alreadyIncluded.has(root) || root.visible === false
         || (playerId != null && id === playerId)) continue;
     if (scene && root.parent !== scene) continue;
@@ -2460,6 +2471,8 @@ function driveProtectedFirstFlightDrain(owner) {
       owner._protectedFirstFlightFaultEpoch = drainEpoch;
       owner._protectedFirstFlightFaultRetries = (owner._protectedFirstFlightFaultRetries | 0) + 1;
       owner._protectedFirstFlightRetryAt = drainClockNow() + 1000;
+      noteLaneFault(owner.state, 'protectedFirstFlightDrain',
+        (owner._protectedFirstFlightFaultRetries | 0) >= 3);
       console.warn('[render] protected first-flight drain faulted; parked until the next enter', err);
       break;
     }
@@ -2546,6 +2559,7 @@ function settleRebuildBridges(owner) {
       // settles next pass; past that the row drops like a released one rather
       // than throwing into every presented frame.
       slot.faults = (slot.faults | 0) + 1;
+      noteLaneFault(state, 'rebuildBridge');
       console.warn('[render] rebuild bridge settle failed for one row', bridgeError);
       bridges.delete(id);
       if (slot.faults < 2) bridges.set(id, slot);
@@ -2689,8 +2703,12 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // (census + grading + keepResidentSet release) inside one DOM-stalling task. It mints
     // only after the reattach sweep ran to completion, so dead-id meshes the
     // sweep could still move are never released by the first reconcile leg.
+    // Same bounded in-epoch retry as the flight reconcile lane — a transient
+    // fault used to park the keep-gpu reconcile for the whole enter.
+    const keepGpuReconcileParked = owner._reconcileFaultEpoch === serviceFaultEpoch(st)
+      && ((owner._reconcileFaultRetries | 0) >= 3 || now() < (owner._reconcileRetryAt || 0));
     if (owner._meshReconcileDirty && !owner._reconcileIter && !owner._residentReattachIter
-        && owner._reconcileFaultEpoch !== serviceFaultEpoch(st)) {
+        && !keepGpuReconcileParked) {
       if (typeof owner._reconcileMeshesSteps === 'function') {
         owner._reconcileIter = owner._reconcileMeshesSteps({ keepResidentSet: true });
         owner._reconcileKeepGpu = true;
@@ -2723,7 +2741,12 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           // twin exists for, so an inline drain re-stalls the very window it
           // rescues. Re-mint the same iterator and let the drive below pace
           // it across shell ticks at an escalated slice.
+          // The mint consults the forced wallet above — charge its spend there
+          // too so consult→debit stays symmetric like the sibling forced lanes.
+          const reconcileMintStart = now();
           owner._reconcileIter = owner._reconcileMeshesSteps({ keepResidentSet: true });
+          const reconcileMintElapsed = now() - reconcileMintStart;
+          if (reconcileMintElapsed > 0) noteForcedFrameSpend(reconcileMintElapsed);
           owner._reconcileKeepGpu = true;
           owner._reconcileDegraded = true;
           owner._reconcileEpoch = st.world && st.world.enterSerial != null
@@ -2737,6 +2760,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           try { owner.reconcileMeshes({ keepResidentSet: true }); }
           catch (err) {
             owner._meshReconcileDirty = true;
+            noteLaneFault(st, 'residencyReconcile', true);
             console.warn('[render] keep-gpu reconcile degrade failed', err);
           }
           const twinElapsed = now() - twinStart;
@@ -2764,7 +2788,13 @@ export function serviceRenderMeshResidency(owner, frameDt) {
             // into every service tick of the keep-gpu window.
             abandonReconcile(owner);
             owner._meshReconcileDirty = true;
-            owner._reconcileFaultEpoch = serviceFaultEpoch(st);
+            const reconcileFaultEpoch = serviceFaultEpoch(st);
+            if (owner._reconcileFaultEpoch !== reconcileFaultEpoch) owner._reconcileFaultRetries = 0;
+            owner._reconcileFaultEpoch = reconcileFaultEpoch;
+            owner._reconcileFaultRetries = (owner._reconcileFaultRetries | 0) + 1;
+            owner._reconcileRetryAt = now() + 1000;
+            noteLaneFault(st, 'residencyReconcile',
+              (owner._reconcileFaultRetries | 0) >= 3);
             console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
             break;
           }
@@ -3075,6 +3105,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           // tail owns the asteroid capacity reserve — flag a reserve-only pass
           // so one transient fault can't strand it for the whole sector.
           owner._arrivalReservePending = true;
+          noteLaneFault(owner.state, 'arrivalRoster');
           console.warn('[render] arrival roster drive failed; flagging the capacity reserve', err);
           break;
         }
@@ -3675,29 +3706,36 @@ function driveHoldExemptDegrade(owner, state, sliceMs) {
     owner._holdExemptDegradeIter = holdExemptDegradeWalk(owner, state, evaluator);
   }
   let enqueued = 0;
-  for (;;) {
-    let step;
-    try {
-      step = owner._holdExemptDegradeIter.next();
-    } catch (err) {
-      closeCookStepsIter(owner._holdExemptDegradeIter);
-      owner._holdExemptDegradeIter = null;
-      owner._holdExemptDegradeFaults = (owner._holdExemptDegradeFaults | 0) + 1;
-      noteLaneFault(state, 'holdExemptDegrade',
-        (owner._holdExemptDegradeFaults | 0) >= 3);
-      console.warn('[render] hold-exempt degrade drive failed', err);
-      return 0;
+  // The degrade drive reads its own clock and consults the paced wallet, but
+  // its exits used to skip the debit the caller's tail applies — the caller's
+  // early-return into this lane then left the slice's spend unrecorded.
+  try {
+    for (;;) {
+      let step;
+      try {
+        step = owner._holdExemptDegradeIter.next();
+      } catch (err) {
+        closeCookStepsIter(owner._holdExemptDegradeIter);
+        owner._holdExemptDegradeIter = null;
+        owner._holdExemptDegradeFaults = (owner._holdExemptDegradeFaults | 0) + 1;
+        noteLaneFault(state, 'holdExemptDegrade',
+          (owner._holdExemptDegradeFaults | 0) >= 3);
+        console.warn('[render] hold-exempt degrade drive failed', err);
+        return 0;
+      }
+      if (step.done) {
+        enqueued = step.value || 0;
+        // Keep the iter slot clear so the next beat re-mints over the freshest
+        // entity list — mid-hold arrivals keep landing instead of one epoch-old
+        // snapshot serving the whole hold.
+        owner._holdExemptDegradeIter = null;
+        break;
+      }
+      if (clock() - started >= sliceMs
+          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }
-    if (step.done) {
-      enqueued = step.value || 0;
-      // Keep the iter slot clear so the next beat re-mints over the freshest
-      // entity list — mid-hold arrivals keep landing instead of one epoch-old
-      // snapshot serving the whole hold.
-      owner._holdExemptDegradeIter = null;
-      break;
-    }
-    if (clock() - started >= sliceMs
-        || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+  } finally {
+    notePacedFrameSpend(clock() - started);
   }
   return enqueued;
 }
@@ -3816,7 +3854,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       } catch (err) {
         abandonHoldExemptCollect(owner);
         owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+        noteLaneFault(state, 'holdExemptStepped', true);
         console.warn('[render] hold-exempt warm refill failed; parked until the next enter', err);
+        notePacedFrameSpend(now() - started);
         return 0;
       }
       if (!warmDone) {
@@ -3851,7 +3891,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
           // the next beat read done and committed the partial out as if complete.
           abandonHoldExemptCollect(owner);
           owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+          noteLaneFault(state, 'holdExemptStepped', true);
           console.warn('[render] hold-exempt collect drive failed; parked until the next enter', err);
+          notePacedFrameSpend(now() - started);
           return 0;
         }
         if (step.done) { done = true; break; }
@@ -3925,7 +3967,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         // generator parked on the owner to be misread as done next beat.
         abandonHoldExemptCommit(owner);
         owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+        noteLaneFault(state, 'holdExemptStepped', true);
         console.warn('[render] hold-exempt enqueue drive failed; parked until the next enter', err);
+        notePacedFrameSpend(now() - started);
         return 0;
       }
       commitSteps += 1;
@@ -3944,7 +3988,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       } catch (err) {
         abandonHoldExemptCommit(owner);
         owner._holdExemptFaultEpoch = serviceFaultEpoch(state);
+        noteLaneFault(state, 'holdExemptStepped', true);
         console.warn('[render] hold-exempt decode-kick drive failed; parked until the next enter', err);
+        notePacedFrameSpend(now() - started);
         return 0;
       }
       commitSteps += 1;
@@ -10385,7 +10431,7 @@ export const render = {
                 captureObjectHome,
                 restoreObjectHome,
                 lightingScene: scene,
-                lightSigFor: () => this._shadowCensusForFrame(),
+                lightSigFor: () => this._depthCollectLightSig(scene),
                 stagingName: 'SF_ContextRestoreShadowDepth',
               }, yieldToBrowser);
               await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
@@ -10607,6 +10653,7 @@ export const render = {
                   censusStep = censusIter.next();
                 } catch (driveError) {
                   closeCookStepsIter(censusIter);
+                  noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'poolCompileCensus');
                   console.warn('[render] pool compile census drive failed; running the sync twin', driveError);
                   poolCompileRoots = runCookSyncTwin('pool compile census',
                     () => collectInstancePoolCompileRoots(liveScene), []);
@@ -10652,7 +10699,7 @@ export const render = {
                 captureObjectHome,
                 restoreObjectHome,
                 lightingScene: this.scene,
-                lightSigFor: () => this._shadowCensusForFrame(),
+                lightSigFor: () => this._depthCollectLightSig(this.scene),
                 stagingName: 'SF_RockReskinShadowDepth',
               }, yieldToBrowser);
             }
@@ -10865,6 +10912,7 @@ export const render = {
               lightStep = lightBudgetIter.next();
             } catch (driveError) {
               closeCookStepsIter(lightBudgetIter);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps');
               console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
               runCookSyncTwin('light-budget', () =>
                 syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
@@ -10901,6 +10949,7 @@ export const render = {
             leafStep = leavesIter.next();
           } catch (driveError) {
             closeCookStepsIter(leavesIter);
+            noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'openingLeafCensus');
             console.warn('[render] opening leaf census drive failed; running the sync twin', driveError);
             leaves = runCookSyncTwin('opening leaf census',
               () => collectOpeningSubmissionLeaves(scene, { includeOffscreen: true }), []);
@@ -10923,6 +10972,7 @@ export const render = {
             rootStep = firstFlightRootsIter.next();
           } catch (driveError) {
             closeCookStepsIter(firstFlightRootsIter);
+            noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'firstFlightRootCensus');
             console.warn('[render] first-flight root census drive failed; running the sync twin', driveError);
             for (const root of runCookSyncTwin('first-flight root census',
                 () => collectFirstFlightEffectRoots(scene), [])) addExtraVfx(root);
@@ -11556,6 +11606,7 @@ export const render = {
             envBindStep = envBindIter.next();
           } catch (driveError) {
             closeCookStepsIter(envBindIter);
+            noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'envBindSteps');
             console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
             runCookSyncTwin('env-bind', () => bindEnvironmentToStandardMaterials(subject, envMap));
             break;
@@ -11614,6 +11665,7 @@ export const render = {
               step = it.next();
             } catch (driveError) {
               closeCookStepsIter(it);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'drawableCensus');
               console.warn('[render] drawable census drive failed; running the sync twin', driveError);
               drawables = runCookSyncTwin('drawable census',
                 () => drawableHideSession(targetScene).drawables, []);
@@ -11654,6 +11706,7 @@ export const render = {
           step = it.next();
         } catch (driveError) {
           closeCookStepsIter(it);
+          noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'startupTextureCollect');
           console.warn('[render] startup-texture collect drive failed; running the sync twin', driveError);
           return runCookSyncTwin('startup-texture collect',
             () => detachedSubjectUploadsPending(subjects), []);
@@ -11741,6 +11794,7 @@ export const render = {
               parkedEntry && parkedEntry.depthNodeScale
                 ? { depthNodeScale: parkedEntry.depthNodeScale } : null);
           } catch (error) {
+            noteLaneFault(this.state, 'flightDepthAdmission');
             console.warn('[render] flight shadow-depth admission failed', error);
           }
         }
@@ -12671,7 +12725,7 @@ export const render = {
       captureObjectHome,
       restoreObjectHome,
       lightingScene: scene,
-      lightSigFor: () => this._shadowCensusForFrame(),
+      lightSigFor: () => this._depthCollectLightSig(scene),
       stagingName: 'SF_OpeningShadowPipelineAdmission',
     }, yieldToBrowser);
     const compileOpeningSubmissionPlan = async (plan) => {
@@ -12690,6 +12744,7 @@ export const render = {
             lightStep = lightBudgetIter.next();
           } catch (driveError) {
             closeCookStepsIter(lightBudgetIter);
+            noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps');
             console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
             runCookSyncTwin('light-budget', () =>
               syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
@@ -13260,6 +13315,7 @@ export const render = {
           enqueueStep = openingEnqueueIter.next();
         } catch (driveError) {
           closeCookStepsIter(openingEnqueueIter);
+          noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue');
           console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
           runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
             openingEntities,
@@ -13505,6 +13561,7 @@ export const render = {
               censusStep = censusIter.next();
             } catch (driveError) {
               closeCookStepsIter(censusIter);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'firstFlightCensus');
               console.warn('[render] first-flight census drive failed; running the sync twin', driveError);
               firstFlightEntities = runCookSyncTwin('first-flight census',
                 () => collectFirstFlightCookEntities(state), firstFlightEntities);
@@ -13645,6 +13702,7 @@ export const render = {
                 enqueueStep = promotedEnqueueIter.next();
               } catch (driveError) {
                 closeCookStepsIter(promotedEnqueueIter);
+                noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue');
                 console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
                 runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
                   promotedRocks,
@@ -13712,6 +13770,7 @@ export const render = {
               warmStep = warmIterator.next();
             } catch (driveError) {
               closeCookStepsIter(warmIterator);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'warmLedgerRefill');
               console.warn('[render] warm ledger refill drive failed; running the sync twin', driveError);
               runCookSyncTwin('warm ledger refill', () => warmNearbyLedgerRows(state));
               break;
@@ -13739,6 +13798,7 @@ export const render = {
               step = collectIterator.next();
             } catch (driveError) {
               closeCookStepsIter(collectIterator);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'presentationCollect');
               console.warn('[render] presentation collect drive failed; running the sync twin', driveError);
               runCookSyncTwin('presentation collect',
                 () => collectMeshPresentationEntities(state, presentation));
@@ -13874,6 +13934,7 @@ export const render = {
           enqueueStep = leftoverEnqueueIter.next();
         } catch (driveError) {
           closeCookStepsIter(leftoverEnqueueIter);
+          noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue');
           console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
           runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
             firstFlightEntities,
@@ -14331,6 +14392,7 @@ export const render = {
                   censusStep = sealCensusIter.next();
                 } catch (driveError) {
                   closeCookStepsIter(sealCensusIter);
+                  noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'poolSealCensus');
                   console.warn('[render] pool seal census drive failed; running the sync twin', driveError);
                   sealCensus = runCookSyncTwin('pool seal census',
                     () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: null });
@@ -14351,6 +14413,7 @@ export const render = {
                   poolRootsStep = poolRootsIt.next();
                 } catch (driveError) {
                   closeCookStepsIter(poolRootsIt);
+                  noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'poolRootsCensus');
                   console.warn('[render] pool roots census drive failed; running the sync twin', driveError);
                   sealCensus = runCookSyncTwin('pool roots census',
                     () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: null });
@@ -14510,7 +14573,7 @@ export const render = {
                 captureObjectHome,
                 restoreObjectHome,
                 lightingScene: scene,
-                lightSigFor: () => this._shadowCensusForFrame(),
+                lightSigFor: () => this._depthCollectLightSig(scene),
                 stagingName: 'SF_SurvivalPoolSealShadowDepth',
               }, sealPace);
               if (cookStale()) return cookSuperseded;
@@ -14907,7 +14970,7 @@ export const render = {
               captureObjectHome,
               restoreObjectHome,
               lightingScene: scene,
-              lightSigFor: () => this._shadowCensusForFrame(),
+              lightSigFor: () => this._depthCollectLightSig(scene),
               stagingName: 'SF_SurvivalPostSettleShadowDepth',
               // This sweep exists to feed the probe's named-staged/key diff
               // surface — keep its diagnostic sets collecting.
@@ -15001,6 +15064,7 @@ export const render = {
               settledReceiptStep = settledReceiptIter.next();
             } catch (driveError) {
               closeCookStepsIter(settledReceiptIter);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'settledReceiptDrive');
               console.warn('[render] settled receipt drive failed; running the sync twin', driveError);
               state.render.openingSubmissionReceipt = runCookSyncTwin('settled receipt',
                 () => createOpeningSubmissionReceipt(renderer, settledPlan, {
@@ -15143,6 +15207,7 @@ export const render = {
           rootsStep = firstFlightRootsIter.next();
         } catch (driveError) {
           closeCookStepsIter(firstFlightRootsIter);
+          noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'firstFlightRoots');
           console.warn('[render] first-flight roots drive failed; running the sync twin', driveError);
           firstFlightRoots = runCookSyncTwin('first-flight roots',
             () => collectFirstFlightEffectRoots(scene), []);
@@ -15172,6 +15237,7 @@ export const render = {
               envStep = envBindIter.next();
             } catch (driveError) {
               closeCookStepsIter(envBindIter);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'envBindSteps');
               console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
               runCookSyncTwin('env-bind', () => envBindSync(root));
               return 'drive-settled';
@@ -15197,6 +15263,7 @@ export const render = {
             lightStep = lightBudgetIter.next();
           } catch (driveError) {
             closeCookStepsIter(lightBudgetIter);
+            noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps');
             console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
             runCookSyncTwin('light-budget', () =>
               syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
@@ -15228,6 +15295,7 @@ export const render = {
               // stepped reveal — the sync mint re-reveals the whole scene so
               // the compile tail still sees every drawable.
               closeCookStepsIter(revealMint);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'steppedRevealMint');
               console.warn('[render] stepped reveal mint failed; running the sync twin', err);
               restoreReveal = runCookSyncTwin('reveal mint',
                 () => revealSubjectForCompile(scene), () => {});
@@ -15404,6 +15472,7 @@ export const render = {
               censusStep = cookCensusIter.next();
             } catch (driveError) {
               closeCookStepsIter(cookCensusIter);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'cookCensus');
               console.warn('[render] cook census drive failed; running the sync twin', driveError);
               const censusValue = runCookSyncTwin('cook census',
                 () => collectInstancePoolCompileRootsAndSubjects(scene), null);
@@ -15491,6 +15560,7 @@ export const render = {
                 lateStep = lateIt.next();
               } catch (driveError) {
                 closeCookStepsIter(lateIt);
+                noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lateAdmittedCensus');
                 console.warn('[render] late-admitted census drive failed; running the sync twin', driveError);
                 lateAdmittedCohort = runCookSyncTwin('late-admitted census',
                   () => collectLateAdmittedCompileRoots(this._meshes, openingSubjects), []);
@@ -16084,6 +16154,7 @@ export const render = {
             censusStep = poolCensusIter.next();
           } catch (driveError) {
             closeCookStepsIter(poolCensusIter);
+            noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'poolCensus');
             console.warn('[render] pool census drive failed; running the sync twin', driveError);
             poolCensus = runCookSyncTwin('pool census',
               () => collectInstancePoolCompileRootsAndSubjects(scene), { roots: [], subjects: [] });
@@ -16298,7 +16369,7 @@ export const render = {
               captureObjectHome,
               restoreObjectHome,
               lightingScene: scene,
-              lightSigFor: () => this._shadowCensusForFrame(),
+              lightSigFor: () => this._depthCollectLightSig(scene),
               stagingName: 'SF_CookRockPoolShadowDepth',
             }, rockPoolYield);
             if (rockPools && typeof rockPools === 'object') rockPools.depth = depthResult;
@@ -16446,6 +16517,7 @@ export const render = {
               envStep = jumpEnvBindIter.next();
             } catch (driveError) {
               closeCookStepsIter(jumpEnvBindIter);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'envBindSteps');
               console.warn('[render] env-bind steps drive failed; running the sync twin', driveError);
               runCookSyncTwin('env-bind', () =>
                 bindEnvironmentToStandardMaterials(scene, scene.environment));
@@ -16713,6 +16785,7 @@ export const render = {
               censusStep = firstFlightEntitiesIter.next();
             } catch (driveError) {
               closeCookStepsIter(firstFlightEntitiesIter);
+              noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'firstFlightCensus');
               console.warn('[render] first-flight census drive failed; running the sync twin', driveError);
               firstFlightEntities = runCookSyncTwin('first-flight census',
                 () => collectFirstFlightCookEntities(state), []);
@@ -16760,6 +16833,7 @@ export const render = {
                 warmStep = warmIterator.next();
               } catch (driveError) {
                 closeCookStepsIter(warmIterator);
+                noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'warmLedgerRefill');
                 console.warn('[render] warm ledger refill drive failed; running the sync twin', driveError);
                 runCookSyncTwin('warm ledger refill', () => warmNearbyLedgerRows(state));
                 break;
@@ -16792,6 +16866,7 @@ export const render = {
                 step = collectIterator.next();
               } catch (driveError) {
                 collectDone = true;
+                noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'presentationCollect');
                 console.warn('[render] presentation collect drive failed; running the sync twin', driveError);
                 runCookSyncTwin('presentation collect',
                   () => collectMeshPresentationEntities(state, presentation));
@@ -16896,6 +16971,7 @@ export const render = {
             enqueueStep = providerEnqueueIter.next();
           } catch (driveError) {
             closeCookStepsIter(providerEnqueueIter);
+            noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'meshBuildEnqueue');
             console.warn('[render] mesh-build enqueue drive failed; running the sync twin', driveError);
             runCookSyncTwin('mesh-build enqueue', () => enqueueMissingMeshBuilds(
               firstFlightEntities,
@@ -17089,6 +17165,7 @@ export const render = {
             lightStep = lightBudgetIter.next();
           } catch (driveError) {
             closeCookStepsIter(lightBudgetIter);
+            noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'lightBudgetSteps');
             console.warn('[render] light-budget steps drive failed; running the sync twin', driveError);
             runCookSyncTwin('light-budget', () =>
               syncVisiblePointLightBudget(scene, state.settings && state.settings.video));
@@ -17397,7 +17474,7 @@ export const render = {
       // The epoch-keyed memo serves the identical sig — a mutation re-mints once
       // (vs every drift retry paying a whole-scene traverse) and same-epoch calls
       // all share the one census.
-      const freshDepthLightSig = () => this._shadowCensusForFrame();
+      const freshDepthLightSig = () => this._depthCollectLightSig(scene);
       // The ceremony's censuses ride the stepped twin under the shared paced
       // clock — the reparent/render/restore window stays atomic inside one
       // next(), so a presented frame only ever pays the two bounded GL submits
@@ -23542,13 +23619,23 @@ export const render = {
     // a row flipping invisible→visible mid-walk would otherwise be skipped by
     // both passes and stay unbound).
     const visitedMeshes = new Set();
+    // Each fresh bind pays stampCanonicalSurfaceProgramKeys +
+    // entityVisualCullRadius subtree walks — a 256-row stride of first-time
+    // binds is hundreds of subtree visits inside one step. Yield a fat
+    // stride early on wall clock; visit order unchanged.
+    const rebindNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now());
+    let rebindStrideAt = rebindNow();
     for (const visiblePass of [true, false]) {
       for (const [id, mesh] of this._meshes) {
         if (visiblePass === true) {
           if (!(mesh && mesh.visible === true)) continue;
           visitedMeshes.add(mesh);
         } else if (visitedMeshes.has(mesh)) continue;
-        if ((++visited % 256) === 0) yield;
+        if ((++visited % 256) === 0 || rebindNow() - rebindStrideAt >= 2) {
+          rebindStrideAt = rebindNow();
+          yield;
+        }
         const entity = resolveWorldPresentationEntity(this.state, id);
         // Same eligibility predicates the push loop applies — a parked walk
         // must never bind a row the feed's skip verdict rejected (a doomed
@@ -23556,6 +23643,16 @@ export const render = {
         // re-admitted, and bindMesh clears the doom).
         if (entity && entity.alive !== false && entity._noMesh !== true
           && !(entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity))) {
+          // Same row-status conjunction the spawned leg applies — the entity-side
+          // checks alone would re-bind a doomed/not-live row whose mesh survived
+          // (bindMesh clears the doom bit → a ghost pop-in until the resident
+          // sweep re-dooms it). Rows with no presentation slot keep binding.
+          const world = this._presentationWorld;
+          const handle = world && typeof world.handleForEntityId === 'function'
+            ? world.handleForEntityId(id, this._presentationHandleScratch) : null;
+          if (handle && handle.slot != null
+            && (world.alive[handle.slot] !== 1
+              || (world.doomed && world.doomed[handle.slot] === 1))) continue;
           this._bindPresentationMesh(entity, mesh);
           bound += 1;
         }
@@ -23582,8 +23679,16 @@ export const render = {
     if (!spawnedSlots || spawnedSlots.length <= 0) return;
     const world = this._presentationWorld;
     let visited = 0;
+    // Same stride-cost bound as the rebind leg — a spawn burst of fresh binds
+    // pays per-row subtree walks, so a fat stride yields early on wall clock.
+    const spawnedNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now());
+    let spawnedStrideAt = spawnedNow();
     for (let index = 0; index < spawnedSlots.length; index++) {
-      if ((++visited % 256) === 0) yield;
+      if ((++visited % 256) === 0 || spawnedNow() - spawnedStrideAt >= 2) {
+        spawnedStrideAt = spawnedNow();
+        yield;
+      }
       const slot = spawnedSlots[index];
       // Same eligibility conjunction the rebind leg applies — a resumed leg must
       // never bind a row the feed's skip verdict rejected (bindMesh clears the
@@ -24454,6 +24559,7 @@ export const render = {
       // through the residency pump would re-throw every frame while the
       // queue stays non-empty. Report the rows it provably drained instead.
       try { iterator.return?.(); } catch (_) { /* already torn */ }
+      noteLaneFault(this.state, 'meshBuildDrain');
       laneWarn(this, 'meshBuildDrain',
         '[render] mesh build queue drain faulted mid-walk', drainError);
       return Math.max(0, this._drainBuildSeen | 0);
@@ -24523,8 +24629,12 @@ export const render = {
         this.state && this.state.render && this.state.render.lastPresentDtMs,
         this._meshBuildLateSkips,
       );
-      this._meshBuildLateSkips = gate.skippedCount;
-      if (!gate.start) {
+      // The starvation floor still consults the forced wallet — a spent frame
+      // defers the forced start (keeping the late streak armed) instead of
+      // running the one build un-metered like every other forced lane.
+      const lateStartAllowed = !gate.start || forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+      if (lateStartAllowed) this._meshBuildLateSkips = gate.skippedCount;
+      if (!lateStartAllowed) {
         if (!(yield* driveHoist(this))) return 0;
         deadlineGlassOnly = true;
       }
@@ -24629,8 +24739,10 @@ export const render = {
             this.state && this.state.render && this.state.render.lastPresentDtMs,
             this._meshBuildLateSkips,
           );
-          this._meshBuildLateSkips = resumedGate.skippedCount;
-          deadlineGlassOnly = !resumedGate.start;
+          const resumedStartAllowed = !resumedGate.start
+            || forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+          if (resumedStartAllowed) this._meshBuildLateSkips = resumedGate.skippedCount;
+          deadlineGlassOnly = !resumedStartAllowed;
         }
       }
       const peek = resolveWorldPresentationEntity(
@@ -25544,6 +25656,12 @@ export const render = {
     queryOptions.origin = this._frameMembrane.origin;
     queryOptions.playerId = this.state.playerId;
     const query = this._presentationQueries.query(queryOptions);
+    // The whole preamble above (sequence mint, budgets, a11y, lamp bus, room
+    // update, bounds, living counters, visibility-present, cast radius, player
+    // local, the query mint) is one step in the opening publish — park here so
+    // the paced driver can split the query from the row sweeps. The sync
+    // driver just iterates through — identical ordering either way.
+    yield;
     let transformed = 0;
     let fullSynced = 0;
     let slipstreamSeen = false;
@@ -26627,8 +26745,17 @@ export const render = {
     )).map((candidate) => candidate.root));
     const pending = new Set();
     let upgradeVisited = 0;
+    // Same stride-cost bound as the shadow-caster census: each row can pay a
+    // subtree bounds walk + an upgrade mint, so a fat 64-row stride yields
+    // early on wall clock instead of blowing the paced step.
+    const upgradeNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now());
+    let upgradeStrideAt = upgradeNow();
     for (const [id, root] of this._meshes) {
-      if (++upgradeVisited % 64 === 0) yield;
+      if (++upgradeVisited % 64 === 0 || upgradeNow() - upgradeStrideAt >= 2) {
+        upgradeStrideAt = upgradeNow();
+        yield;
+      }
       const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
       if (!entity || entity.alive === false || entity._noMesh) continue;
       if (!openingEntityRootIntersectsCamera(root, entity, camera, this.scene)
@@ -26715,6 +26842,14 @@ export const render = {
       // re-mint once (every leg is idempotent across the 8-pass envelope), then
       // degrade to the sync twin — degraded-but-alive over dead boot.
       const drivePublishFirstPicture = async () => {
+        // Degrade memo per service epoch: a persistently sick publish leg used
+        // to re-pay the stepped prefix + the atomic sync twin on every one of
+        // the ≤8 settle passes. Once the twin has answered for this epoch,
+        // later passes reuse its verdict instead of re-driving.
+        if (this._openingPublishDegradeEpoch === serviceFaultEpoch(this.state)
+            && this._openingPublishDegradeVerdict !== undefined) {
+          return this._openingPublishDegradeVerdict;
+        }
         for (let attempt = 0; attempt < 2; attempt += 1) {
           const iter = this._publishOpeningFirstPictureSteps();
           for (;;) {
@@ -26723,13 +26858,19 @@ export const render = {
               publishStep = iter.next();
             } catch (publishError) {
               closeCookStepsIter(iter);
+              noteLaneFault(this.state, 'openingFirstPicture', attempt > 0);
               if (attempt === 0) {
-                console.warn('[boot] opening first-picture publish step faulted; re-minting', publishError);
+                laneWarn(this, 'openingPublish',
+                  '[boot] opening first-picture publish step faulted; re-minting', publishError);
                 break;
               }
-              console.warn('[boot] opening first-picture publish step faulted twice; degrading to sync twin', publishError);
-              return runCookSyncTwin('opening-first-picture-publish',
+              laneWarn(this, 'openingPublish',
+                '[boot] opening first-picture publish step faulted twice; degrading to sync twin', publishError);
+              const degradedVerdict = runCookSyncTwin('opening-first-picture-publish',
                 () => this._publishOpeningFirstPicture(), true);
+              this._openingPublishDegradeEpoch = serviceFaultEpoch(this.state);
+              this._openingPublishDegradeVerdict = degradedVerdict;
+              return degradedVerdict;
             }
             if (publishStep.done) return publishStep.value;
             await yieldToBrowser();
@@ -28431,6 +28572,17 @@ export const render = {
     // dirtySeq release would otherwise mint a private ≤32768-node wallet per
     // root and stack 8×32k atomic visits inside one pass.
     let parkedReleaseScaled = false;
+    // A null lightSig stamp is the unsigned direction, not a verdict — the
+    // entry minted before the stepped census mint landed, so the drift clause
+    // below can never fire for it. Re-consult the memo each eval: once a real
+    // signature exists the entry re-keys and drift-compares normally.
+    if (parkedEntry && parkedEntry.lightSig == null) {
+      const liveParkedSig = this._shadowCensusForFrame();
+      if (liveParkedSig != null) {
+        parkedEntry.lightSig = liveParkedSig;
+        parkedEntry.lightSigEpoch = shadowCensusEpoch();
+      }
+    }
     if (scopedSync) {
       // Keep the park: only a whole-root collect may release it.
     } else if (parkedEntry && dirtySeq > parkedEntry.seq) parkedRelease = true;
@@ -29017,9 +29169,24 @@ export const render = {
         memo.pendingIter = null;
         memo.superseded = (memo.superseded | 0) + 1;
       }
+      if (memo.stormEpoch === epoch) {
+        // Bounded storm re-arm: a pinned epoch otherwise serves unsigned for
+        // the rest of the sector — every flag consult withholding capable
+        // casters plus the per-consult collect traverses the unsigned window
+        // amplifies. One mint retry per ~1 s while pinned; a fresh supersede
+        // storm re-keys the pin via the superseded cap.
+        const stormNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now();
+        if (stormNow >= (memo.stormRetryAt || 0)) {
+          memo.stormEpoch = -1;
+          memo.superseded = 0;
+        }
+      }
       if (memo.stormEpoch !== epoch) {
         if ((memo.superseded | 0) >= 4) {
           memo.stormEpoch = epoch;
+          memo.stormRetryAt = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now() : Date.now()) + 1000;
         } else {
           memo.pendingIter = typeof lightCensusSignatureSteps === 'function'
             ? lightCensusSignatureSteps(scene) : null;
@@ -29122,6 +29289,35 @@ export const render = {
       }
     }
     return memo.sig;
+  },
+
+  // lightSig consults inside the unsigned window used to pay a synchronous
+  // whole-scene lightCensusSignature traverse PER CALL — the chunked collect
+  // sites, the arm's per-root loop and the retry legs each minted their own
+  // (N traverses inside one presented pass), and the null override defeated
+  // the ceremony's held-session reuse. Mint once per syncEntityViews pass and
+  // share: the sig is a live-scene string, so the shared mint is fresher than
+  // the memo's stepped walk while it pends, and a real override lets a staging
+  // session survive across drives. A spent forced wallet serves null — the
+  // callee's own paced mint takes over exactly as before.
+  _depthCollectLightSig(scene) {
+    const memoSig = this._shadowCensusForFrame();
+    if (memoSig) return memoSig;
+    const cache = this._depthCollectSigCache || (this._depthCollectSigCache = {
+      seq: -1, sig: null,
+    });
+    if (cache.seq === this._viewSyncSeq) return cache.sig;
+    if (!scene || paceEpochNow() >= 0
+        || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS) return null;
+    const mintStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now();
+    const sig = typeof lightCensusSignature === 'function' ? lightCensusSignature(scene) : null;
+    const mintElapsed = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now()) - mintStart;
+    if (mintElapsed > 0) noteForcedFrameSpend(mintElapsed);
+    cache.seq = this._viewSyncSeq;
+    cache.sig = sig;
+    return sig;
   },
 
   _queueShadowDepthStage(root, lodLevel = null, entity = null, preserved = null) {
@@ -29270,7 +29466,7 @@ export const render = {
           // mutations bump shadowCensusEpoch, so the memo's freshness envelope
           // is identical to a fresh mint while repeat arm fires under one census
           // share a single scene traverse. The held session keys on the sig.
-          lightSig = this._shadowCensusForFrame();
+          lightSig = this._depthCollectLightSig(scene);
           // Pair the epoch beside the mint: a census mutation landing between
           // here and the drive's first call must trip censusStale — minting the
           // epoch inside the drive would miss the gap and stage under a sig the
@@ -29435,7 +29631,7 @@ export const render = {
               lightingScene: scene,
               lightSigOverride: lightSig,
               lightSigEpoch: armSigEpoch,
-              lightSigFor: () => this._shadowCensusForFrame(),
+              lightSigFor: () => this._depthCollectLightSig(scene),
               stagingName: 'SF_ShadowPromoteDepthAdmission',
             }, yieldToBrowser).then((value) => {
               legResult = value;
@@ -31065,6 +31261,7 @@ function drainSceneEnvRebindQueue(owner) {
       // otherwise rethrow into every presented frame forever — drop it like
       // a done head so the rest of the service tail survives.
       try { head.iter.return?.(); } catch (_) { /* already torn */ }
+      noteLaneFault(owner.state, 'envRebindWalk');
       console.warn('[render] env rebind walk failed; dropping the entry', driveError);
       queue.shift();
       if (head.disposeTarget) { try { head.disposeTarget.dispose(); } catch (_) {} }
