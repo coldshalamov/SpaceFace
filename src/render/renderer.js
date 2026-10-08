@@ -123,6 +123,7 @@ import {
   OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID,
   PART_LIBRARY_CONTRACT,
   REGULAR_HULL_FILES,
+  queuePacedDetachedTeardown,
 } from './partsLibrary.js';
 import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
 import { ACE_MEMORY_META_KEYS, capitalBossWingRosterRows, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
@@ -25578,7 +25579,12 @@ export const render = {
       this._meshesVersion += 1;
       if (old) {
         old.removeFromParent();
-        disposeRendererObject(old, `replaced appearance ${id}`);
+        // The retiring hull's whole-subtree teardown rides the paced queue —
+        // a fat replacement's commit leg no longer pays traverse+dispose
+        // atomically inside the presented beat that swapped it.
+        if (!queuePacedDetachedTeardown(old, disposeObjectSteps(old))) {
+          disposeRendererObject(old, `replaced appearance ${id}`);
+        }
         noteShadowMeshRemoved(this, old);
       }
       noteShadowMeshAdded(this, m);
@@ -29660,7 +29666,17 @@ export const render = {
   // callee's own paced mint takes over exactly as before.
   _depthCollectLightSig(scene) {
     const memoSig = this._shadowCensusForFrame();
-    if (memoSig) return memoSig;
+    // The memo deliberately serves its previous signature while the stepped
+    // re-mint pends — the conservative direction for mark VERDICTS (a mark
+    // minted under the older census is still honest evidence). An arm that
+    // PINNED the stale sig, though, labels every mark it mints dead the
+    // moment the pending walk lands the new one — the stage + held-session
+    // ceremony then re-runs once per census drift. Serve the memo only while
+    // its epoch is live; a lagging memo falls through to the fresh-mint path
+    // (or null inside a presented frame → an unsigned arm, which is
+    // first-class and cheaper than staging under a sig already dead).
+    if (memoSig && this._shadowCensusMemo
+        && this._shadowCensusMemo.epoch === shadowCensusEpoch()) return memoSig;
     const cache = this._depthCollectSigCache || (this._depthCollectSigCache = {
       seq: -1, sig: null, epoch: -1,
     });
@@ -30040,7 +30056,13 @@ export const render = {
               for (const mesh of cache.meshes) {
                 if (!casterDepthMarkCurrent(mesh, markSig, camera)) still.push(mesh);
               }
-              cache.meshes = still;
+              // The tracked set stays the full collect: marks minted under a
+              // census sig that flips go stale together, and a mesh dropped
+              // here would be invisible to the next consult — never
+              // re-collected, drawing castShadow under the new light set with
+              // variants only staged under the old. Shrinking to `still`
+              // saved O(set) compares per consult; the re-prove is the cheap
+              // part of this cache, the stranded caster was not.
               cache.epoch = armSigEpoch;
               if (still.length > 0) unstagedByRoot.set(sliceRoots[collected], still);
               for (const mesh of still) unstaged.push(mesh);
@@ -30308,11 +30330,27 @@ export const render = {
       // inside the next presented shadow refresh, the cold link this prevents.
       let leftoverByRoot = null;
       if (unstagedByRoot) {
+        // Same dual-sig rule as the verdict above: marks minted mid-leg under
+        // either the arm's pinned sig or the census sig that landed since
+        // both prove staged. Comparing under only one reads honestly-staged
+        // meshes as leftovers and requeues roots whose marks are live.
         const leftoverSig = lightSig != null ? lightSig : this._shadowCensusForFrame();
+        const leftoverLiveSig = this._shadowCensusForFrame();
+        const leftoverSigs = leftoverSig != null ? [leftoverSig] : [];
+        if (leftoverLiveSig != null && leftoverLiveSig !== leftoverSig) {
+          leftoverSigs.push(leftoverLiveSig);
+        }
         for (const [root, meshes] of unstagedByRoot) {
           let set = null;
           for (const mesh of meshes) {
-            if (casterDepthMarkCurrent(mesh, leftoverSig, camera)) continue;
+            let leftoverMarked = false;
+            for (const sig of leftoverSigs) {
+              if (casterDepthMarkCurrent(mesh, sig, camera)) {
+                leftoverMarked = true;
+                break;
+              }
+            }
+            if (leftoverMarked) continue;
             (set || (set = [])).push(mesh);
           }
           if (set) (leftoverByRoot || (leftoverByRoot = new Map())).set(root, set);

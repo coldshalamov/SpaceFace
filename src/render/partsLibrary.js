@@ -11939,7 +11939,13 @@ function findFlightTemplateObject(root, path) {
   if (!root || !Array.isArray(path)) return null;
   const marker = path.join('/');
   const found = flightTemplateObjectIndex(root).get(marker) || null;
-  return found || objectAtRootPath(root, path);
+  // Index entries outlive the object's own detach — package strips remove
+  // subtrees through this same lookup and reparents leave stale rows behind
+  // (interior nodes of a stripped subtree keep their .parent, so a bare
+  // parent check is not enough). Only a hit still reachable from root is
+  // real; a corpse must not shadow whatever the path resolves to now.
+  if (found && objectPathFromRoot(root, found) != null) return found;
+  return objectAtRootPath(root, path);
 }
 
 function cloneFlightTemplateMetadata(value, seen = new Map()) {
