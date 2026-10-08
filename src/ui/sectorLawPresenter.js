@@ -122,6 +122,33 @@ export function firstLawOptionLine(payload, state) {
   return ' Leave the station ring and hold fire — patrol stands down. Keep firing and they arrive armed.';
 }
 
+/**
+ * Why a collision kill is or is not the pilot's. Only collision causes — a gun kill
+ * already has its own receipt. Returns null when this event is not that question.
+ */
+export function collisionResponsibilityLine(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const cause = payload.cause;
+  if (cause !== 'terrain_collision' && cause !== 'ship_collision') return null;
+  if (payload.playerCaused !== true) return 'Not your collision. You are not responsible.';
+  if (payload.outcome === 'lawful') return 'Your throw hit a hostile. Law clears it.';
+  if (payload.outcome === 'unwitnessed') {
+    return payload.sustainedAssault === true
+      ? 'You kept at them, but nobody saw the collision. No charge yet.'
+      : 'Your throw. Nobody saw it, so there is no charge.';
+  }
+  if (payload.outcome === 'charged_unstable') {
+    return 'The collision is yours, but law could not file a stable record.';
+  }
+  if (payload.sustainedAssault === true || payload.kind === 'unlawful_kill') {
+    return 'You kept hitting them. This collision is the attack, not an accident.';
+  }
+  if (payload.outcome === 'charged' || payload.kind === 'reckless_kill') {
+    return 'One thrown contact. Charged reckless, not a continued attack.';
+  }
+  return null;
+}
+
 export function authorityIncidentReadout(payload, state, simTime = state && state.simTime || 0) {
   if (!payload || !payload.id) return null;
   // A player may only be presented as an enforcement target when the incident's canonical cause
@@ -281,7 +308,10 @@ export function createSectorLawPresenter(ctx) {
     text(els.headline, receiptText);
     text(els.meta, receipt.stationId ? stationName(state, receipt.stationId).toUpperCase() : 'OUTSIDE PROTECTED JURISDICTION');
     text(els.detail, receipt.cause === 'player_attack' ? 'Cause: player fired first.'
-      : receipt.cause === 'customs_scan' ? 'Manifest read acknowledged.' : 'Incident closed.');
+      : receipt.cause === 'customs_scan' ? 'Manifest read acknowledged.'
+      : receipt.cause === 'terrain_collision' ? 'Cause: the body hit terrain.'
+      : receipt.cause === 'ship_collision' ? 'Cause: hull on hull.'
+      : 'Incident closed.');
     root.setAttribute('aria-label', `${receiptText}. ${els.detail.textContent}`);
     root.hidden = false;
     return true;
@@ -332,6 +362,15 @@ export function createSectorLawPresenter(ctx) {
   subscribe('law:dispatchStarted', renderIncident);
   subscribe('law:incidentResolved', renderIncident);
   subscribe('law:incidentReceipt', showDirectReceipt);
+  subscribe('law:killedAdjudicated', (payload) => {
+    const line = collisionResponsibilityLine(payload);
+    if (!line) return false;
+    return showDirectReceipt({
+      outcome: 'collision_responsibility',
+      text: line,
+      cause: payload.cause,
+    });
+  });
   subscribe('drill:start', hide);
   subscribe('drill:end', hide);
   subscribe('pirateParley:demand', () => { if (active && active.mode === 'entry') hide(); });
