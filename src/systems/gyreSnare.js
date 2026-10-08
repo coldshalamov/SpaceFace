@@ -37,6 +37,7 @@ import { queryAsteroidField, promoteAsteroidFieldRock } from '../world/asteroidF
 import { GYRE_SNARE, GYRE_EVENTS, GYRE_ABSORBABLE_TYPES } from '../data/gyreSnare.js';
 
 const D = GYRE_SNARE;
+const TICKS_PER_S = 60; // sim tick -> simTime ratio shared by the provenance hold windows
 const PHASE = Object.freeze({ OFF: 'off', BEAM: 'beaming', HOLD: 'holding', LAUNCH: 'launching' });
 const ABSORBABLE = new Set(GYRE_ABSORBABLE_TYPES);
 // Types the beam's gravity never touches at all (the pull pass is for loose world mass).
@@ -299,11 +300,15 @@ export const gyreSnare = {
         const snapV = Math.max(D.tearSnapWuS, droppedRate * droppedOrbitR * D.tearSnapOrbitFrac);
         queuePhysicsImpulse(torn,
           { x: ix * m * snapV, y: 0, z: iz * m * snapV },
-          this._evidence(st.tick));
+          this._evidence(st.tick | 0));
       }
     }
     if (this.bus && !wasOff) {
-      this.bus.emit(GYRE_EVENTS.beamOff, { phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick });
+      this.bus.emit(GYRE_EVENTS.beamOff, {
+        id: (this.state && this.state.playerId) || null,
+        playerId: (this.state && this.state.playerId) || null,
+        phase: droppedPhase, reason: String(reason || 'dropped'), tick: this.state && this.state.tick,
+      });
       this.bus.emit(GYRE_EVENTS.dropped, {
         // `id` rides beside coreId: the {id:…} event convention so a future
         // consumer doesn't need to know which key a given event chose.
@@ -460,7 +465,7 @@ export const gyreSnare = {
             // holdUntilSim is the ball's despawnAt — ~½ s tighter than a live launch's
             // launchProvenanceHoldS window. Deliberate: a dead ball can't kill, so the
             // flight bound is the honest outer envelope for the re-stamped hold.
-            holdImpulseProvenance(e, (this.state.tick | 0) + Math.round(rem * 60), this.state.tick | 0);
+            holdImpulseProvenance(e, (this.state.tick | 0) + Math.round(rem * TICKS_PER_S), this.state.tick | 0);
           }
         }
         // Re-adopt the flying ball into the HUD/clump mirror: a destroy()->init() cycle
@@ -1247,7 +1252,7 @@ export const gyreSnare = {
       appliedTick: state.tick | 0,
       magnitude: rt.clumpMass * rt.launchSpeedEff,
     });
-    holdImpulseProvenance(core, (state.tick | 0) + Math.round(D.launchProvenanceHoldS * 60), state.tick | 0);
+    holdImpulseProvenance(core, (state.tick | 0) + Math.round(D.launchProvenanceHoldS * TICKS_PER_S), state.tick | 0);
     // Serializable shadow of the WeakMap record: a save:loaded ball keeps despawnAt +
     // weapon scale but loses its entity-keyed provenance — the boundary sweep re-stamps
     // kill credit from this meta. holdUntilSim rides despawnAt, the flight's outer bound.
