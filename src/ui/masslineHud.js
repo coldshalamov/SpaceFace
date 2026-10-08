@@ -75,6 +75,7 @@ export function releaseVerdictCopy(rating) {
   if (!rating || typeof rating !== 'object') return '';
   // A failure snap is not a grade. Ordinary release keeps the crest/swing copy below.
   if (rating.broke === true) return 'LINE BROKE';
+  if (rating.severed === true) return 'LINE CUT';
   const grade = VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
   // FB-006 — a release that ends a ride grades the ride: how much of the anchor's speed the
   // pilot kept at the cut. The ride cause names the specific lesson before the generic swing.
@@ -296,12 +297,33 @@ export function latchCouplingRead(player, target) {
 // a lost target stay off this set so they cannot wear LINE BROKE.
 export const LINE_BREAK_REASONS = Object.freeze([
   'threshold', 'overload', 'snap', 'physics_break', 'integrity',
-  'catastrophic-overload', 'sustained-overload',
+  'integrity-failure', 'catastrophic-overload', 'sustained-overload',
 ]);
 const LINE_BREAK_REASON_SET = new Set(LINE_BREAK_REASONS);
 
 export function isLineBreakReason(reason) {
   return LINE_BREAK_REASON_SET.has(reason);
+}
+
+// A hostile blade or specialist cut is not an overload and not a grade.
+// Same three reasons presentationOrchestrator treats as tether.break.severed.
+export const LINE_SEVER_REASONS = Object.freeze([
+  'ace_cut', 'specialist_cut', 'monofilament_sweep',
+]);
+const LINE_SEVER_REASON_SET = new Set(LINE_SEVER_REASONS);
+
+export function isLineSeverReason(reason) {
+  return LINE_SEVER_REASON_SET.has(reason);
+}
+
+/** The player's own line: they own it, they are the load, or they control it.
+ *  A sever's actorId is the cutter, not the line, so it does not count. */
+export function lineBreakInvolvesPlayer(state, payload) {
+  if (!state || !payload || state.playerId == null) return false;
+  const pid = state.playerId;
+  if (payload.ownerId === pid || payload.controllerId === pid || payload.targetId === pid) return true;
+  if (isLineSeverReason(payload.reason)) return false;
+  return payload.actorId === pid;
 }
 
 // INF-014 — line-load warning with hysteresis. Strain is the solver-owned break ratio the
@@ -859,6 +881,10 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = verdict ? verdict.technique : null;
   fields[index++] = verdict ? verdict.targetId : null;
   fields[index++] = verdict ? (verdict.releasedAtApex === true) : false;
+  // LINE BROKE and LINE CUT share a null grade. Without these two bits a hostile
+  // cut lands on the same target in the same time bucket and the glass keeps BROKE.
+  fields[index++] = verdict ? (verdict.broke === true) : false;
+  fields[index++] = verdict ? (verdict.severed === true) : false;
   fields[index++] = verdict ? Math.max(0, Math.ceil((finite(verdict.untilSimTime) - finite(state.simTime)) * 4)) : 0;
   fields[index++] = selected.status;
   fields[index++] = selected.reason;
@@ -1102,24 +1128,44 @@ export const masslineHud = {
       // SFQ-B023 — overload snap names itself. A deliberate cut emits tether:broken
       // with reason tether_cut and must keep the release grade, not LINE BROKE.
       ctx.bus.on('tether:broken', (p) => {
-        if (!this.state || !p || !isLineBreakReason(p.reason)) return;
-        const now = finite(this.state.simTime);
-        const target = p.targetId != null && this.state.entities
-          && typeof this.state.entities.get === 'function'
-          ? this.state.entities.get(p.targetId) : null;
-        this.state.masslineReleaseVerdict = {
-          broke: true,
-          classification: null,
-          technique: null,
-          releasedAtApex: false,
-          ride: null,
-          targetId: p.targetId != null ? p.targetId : null,
-          atX: Number.isFinite(target && target.pos && target.pos.x) ? target.pos.x : null,
-          atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
-          untilSimTime: now + MASSLINE_VERDICT_PILL_S,
-        };
+        if (!this.state || !p || !lineBreakInvolvesPlayer(this.state, p)) return;
+        if (isLineBreakReason(p.reason)) this._assignLineFailure(p, 'broke');
+        else if (isLineSeverReason(p.reason)) this._assignLineFailure(p, 'severed');
+      });
+      // The twin bridle the player is holding is not always one of its endpoints.
+      // An involuntary end still belongs on their glass; a deliberate cut does not.
+      ctx.bus.on('massline:bridleEnded', (p) => {
+        if (!this.state || !p) return;
+        if (isLineBreakReason(p.reason) || p.reason === 'line_broken') {
+          this._assignLineFailure(p, 'broke');
+        } else if (isLineSeverReason(p.reason)) {
+          this._assignLineFailure(p, 'severed');
+        }
       });
     }
+  },
+
+  _assignLineFailure(payload, kind) {
+    const state = this.state;
+    if (!state) return;
+    const now = finite(state.simTime);
+    const targetId = payload.targetId != null ? payload.targetId
+      : (payload.sourceId != null ? payload.sourceId : null);
+    const target = targetId != null && state.entities
+      && typeof state.entities.get === 'function'
+      ? state.entities.get(targetId) : null;
+    state.masslineReleaseVerdict = {
+      broke: kind === 'broke',
+      severed: kind === 'severed',
+      classification: null,
+      technique: null,
+      releasedAtApex: false,
+      ride: null,
+      targetId,
+      atX: Number.isFinite(target && target.pos && target.pos.x) ? target.pos.x : null,
+      atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
+      untilSimTime: now + MASSLINE_VERDICT_PILL_S,
+    };
   },
 
   destroy() {
@@ -1190,7 +1236,11 @@ export const masslineHud = {
     }
     // CV-THROW-1: a fresh release verdict owns the slot while it lives — the grade lands at
     // the body that was let go, which is where the pilot's eye already is.
-    if (state.masslineReleaseVerdict && state.player && state.player.tether && state.player.tether.active) {
+    // A grade while the line is up is stale (re-latch). A failure can land in the
+    // same tick the mirror still says active — that pill is the snap, keep it.
+    // tether:latched clears a failure once a new line is actually up.
+    if (state.masslineReleaseVerdict && state.player && state.player.tether && state.player.tether.active
+        && state.masslineReleaseVerdict.broke !== true && state.masslineReleaseVerdict.severed !== true) {
       state.masslineReleaseVerdict = null;
     }
     const verdict = state.masslineReleaseVerdict;
@@ -1413,11 +1463,11 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
-    const broke = verdict.broke === true;
-    const grade = broke
+    const failed = verdict.broke === true || verdict.severed === true;
+    const grade = failed
       ? 'break'
       : (VERDICT_GRADE_COPY[verdict.classification] ? verdict.classification : 'messy');
-    const earned = !broke && (grade === 'razor' || grade === 'clean');
+    const earned = !failed && (grade === 'razor' || grade === 'clean');
     const text = releaseVerdictCopy(verdict);
     const captionWidth = estimateCaptionWidth(text);
     const placed = placeBracketWords(
