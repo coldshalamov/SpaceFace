@@ -674,6 +674,7 @@ export const save = {
       ['kilnback', () => this._callSerialize('kilnback')],
       ['mothlight', () => this._callSerialize('mothlight')],
       ['palletJack', () => this._callSerialize('palletJack')],
+      ['secondRinse', () => this._callSerialize('secondRinse')],
       ['towlineTable', () => this._callSerialize('towlineTable')],
       ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
@@ -839,6 +840,8 @@ export const save = {
     yield 'serialize:mothlight';
     data.palletJack = this._callSerialize('palletJack');
     yield 'serialize:palletJack';
+    data.secondRinse = this._callSerialize('secondRinse');
+    yield 'serialize:secondRinse';
     data.towlineTable = this._callSerialize('towlineTable');
     yield 'serialize:towlineTable';
     data.borrowedVoice = this._callSerialize('borrowedVoice');
@@ -4886,6 +4889,8 @@ export const save = {
       yield 'mothlight-restored';
       this._callDeserialize('palletJack', data.palletJack);
       yield 'pallet-jack-restored';
+      this._callDeserialize('secondRinse', data.secondRinse);
+      yield 'second-rinse-restored';
       this._callDeserialize('towlineTable', data.towlineTable);
       yield 'towline-table-restored';
       this._callDeserialize('borrowedVoice', data.borrowedVoice);
@@ -5022,6 +5027,7 @@ export const save = {
       this.registry.get('kilnback')?.afterContinue?.();
       this.registry.get('mothlight')?.afterContinue?.();
       this.registry.get('palletJack')?.afterContinue?.();
+      this.registry.get('secondRinse')?.afterContinue?.();
       this.registry.get('towlineTable')?.afterContinue?.();
       this.registry.get('borrowedVoice')?.afterContinue?.();
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,

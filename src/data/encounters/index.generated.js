@@ -86,6 +86,7 @@ import * as encounter082 from './368-scissorwake.js';
 import * as encounter083 from './369-kilnback.js';
 import * as encounter084 from './370-mothlight.js';
 import * as encounter085 from './371-pallet-jack.js';
+import * as encounter086 from './372-second-rinse.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -173,5 +174,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter083,
   encounter084,
   encounter085,
+  encounter086,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

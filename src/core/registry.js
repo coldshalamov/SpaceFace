@@ -44,6 +44,7 @@ import { mothlight } from '../systems/mothlight.js';
 import { mothlightPrompt } from '../ui/mothlightPrompt.js';
 import { palletJack } from '../systems/palletJack.js';
 import { palletJackPrompt } from '../ui/palletJackPrompt.js';
+import { secondRinse } from '../systems/secondRinse.js';
 import { towlineTable } from '../systems/towlineTable.js';
 import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
@@ -490,6 +491,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['mothlightPrompt', mothlightPrompt],
     ['palletJack', palletJack],
     ['palletJackPrompt', palletJackPrompt],
+    ['secondRinse', secondRinse],
     ['towlineTable', towlineTable],
     ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],

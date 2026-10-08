@@ -16,6 +16,7 @@ import { isPalletJackEntity } from '../data/palletJackBody.js';
 import { isMothlightTender, isMothlightLamp } from '../data/mothlightBody.js';
 import { createPalletJackVisualDriver } from './palletJackVisuals.js';
 import { createMothlightVisualDriver } from './mothlightVisuals.js';
+import { createSecondRinseVisualDriver, isSecondRinse } from './secondRinseVisuals.js';
 import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
 // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
 //
@@ -173,14 +174,15 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   const towline=isTowlineCrewEntity(entity);
   const borrowedVoice=isBorrowedVoiceRing(entity)||isBorrowedVoiceRecorder(entity);
   const palletJack=isPalletJackEntity(entity),mothlight=isMothlightTender(entity)||isMothlightLamp(entity);
-  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight)) return null;
+  const hasp=isSecondRinse(entity);
+  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight && !hasp)) return null;
   // Abandon bank: a suspended attach (generator .return() mid-yield) used to
   // leak every driver already constructed — the detach closure does not exist
   // yet, so nothing owns their disposes. A normal completion transfers the
   // bank to detach below; an abandoned run disposes it in the finally.
   let tallyDriver=null,redKiteDriver=null,sableDriver=null,ilexDriver=null,kilnbackDriver=null,
     scissorwakeDriver=null,towlineDriver=null,borrowedVoiceDriver=null,palletJackDriver=null,
-    mothlightDriver=null,propulsion=null;
+    mothlightDriver=null,propulsion=null,haspDriver=null;
   const driverBank=[];
   const bankDriver=(flag,create)=>{
     const driver=flag?create(root,entity):null;
@@ -212,6 +214,8 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   palletJackDriver=bankDriver(palletJack,createPalletJackVisualDriver);
   yield;
   mothlightDriver=bankDriver(mothlight,createMothlightVisualDriver);
+  yield;
+  haspDriver=bankDriver(hasp,createSecondRinseVisualDriver);
   yield;
   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
   propulsion=bankDriver(workfleet||latch,workfleet?createCeresWorkfleetPropulsionDriver:createLatchNineVisualDriver);
@@ -281,6 +285,7 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     detachDriver(borrowedVoiceDriver);
     detachDriver(palletJackDriver);
     detachDriver(mothlightDriver);
+    detachDriver(haspDriver);
     detachDriver(sableDriver);
     if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
       if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
@@ -348,6 +353,7 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     borrowedVoiceDriver?.update(liveEntity, simNow, a11y, state);
     palletJackDriver?.update(liveEntity, simNow, a11y, state);
     mothlightDriver?.update(liveEntity, simNow, a11y, state);
+    haspDriver?.update(liveEntity, simNow, a11y, state);
     scissorwakeDriver?.update(liveEntity, simNow, a11y, state);
     towlineDriver?.update(liveEntity, simNow, a11y, state);
     sableDriver?.update(liveEntity, simNow, a11y, state);
