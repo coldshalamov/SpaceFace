@@ -274,6 +274,9 @@ function applySameSectorPlayerRelocation(state, entryPoint) {
 // ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
 const DEFAULT_WORLD_RADIUS = 4000;
 const EMPTY_ONE_OFF_PARTS = []; // no-cluster one-offs iterate this (no allocation per spawn)
+// Sealed cache payoffs (_spawnCachePayoffs): fixed sector-local offset from the opened cache
+// marker, sized like the Kettle strongbox's authored offset so the pod reads beside the cache.
+const CACHE_PAYOFF_OFFSET = Object.freeze({ x: 26, z: -18 });
 const BASE_FUEL = 4;            // fuel units per lightyear
 // FB-111 — a wedged hull gets a paid door, not a silent reload. Thrust held, the ship
 // producing no displacement and no speed for STUCK_OFFER_S ⇒ one tow offer per wedge
@@ -3187,6 +3190,7 @@ export const world = {
     }
     this._spawnHeliosRopeCache(sector, active);
     this._spawnKettleLinePayoff(sector, active);
+    this._spawnCachePayoffs(sector, active);
     this._spawnFactionBerths(sector, active);
   },
 
@@ -3323,6 +3327,65 @@ export const world = {
     const sector = worldBag && worldBag.sectors && worldBag.sectors[KETTLE_LINE.sectorId];
     if (!active || !sector || worldBag.currentSectorId !== KETTLE_LINE.sectorId) return false;
     this._spawnKettleLinePayoff(sector, active);
+    return true;
+  },
+
+  // Sealed cache payoffs (src/data/sectors.js, src/data/frontierRegions/north.js): a plain
+  // unowned cache may carry a frozen `contents` lot. Investigating the cache pops that lot as
+  // a real anchored pod beside the marker — the same ropeable, splittable treatment as the
+  // Kettle Line strongbox above — and this residency tail respawns the lot on re-entry from
+  // the per-POI investigated record. `active.cachePayoffIds` is the spawn-slot guard, exactly
+  // the kettle payoff's idiom, so an already-spawned pod is never duplicated. No rng: the
+  // fixed offset keeps every opened pod clear of its marker body.
+  _spawnCachePayoffs(sector, active) {
+    if (!sector || !active || !Array.isArray(sector.pois)) return;
+    // Data-only harnesses drive _spawnWorldOneOffs without a world bag; a sealed site
+    // simply has nothing to spawn there.
+    if (!this.state || !this.state.world || !this.state.world.discovery) return;
+    const disc = this._discoveryFor(sector.id);
+    for (const poi of sector.pois) {
+      const contents = poi && poi.contents;
+      if (!contents || !contents.commodityId || !(contents.amount > 0)) continue;
+      const rec = disc.pois && disc.pois[poi.id];
+      if (!rec || !rec.investigated) continue;
+      if (!active.cachePayoffIds) active.cachePayoffIds = {};
+      const priorId = active.cachePayoffIds[poi.id];
+      const prior = priorId != null && this.state.entities && this.state.entities.get
+        ? this.state.entities.get(priorId)
+        : null;
+      if (prior) continue;
+      const row = (active.pois || []).find((entry) => entry && entry.poiId === poi.id);
+      if (!row || !row.pos) continue;
+      const pos = { x: row.pos.x + CACHE_PAYOFF_OFFSET.x, z: row.pos.z + CACHE_PAYOFF_OFFSET.z };
+      const pod = spawnJettisonedCargoPod(this.state, {
+        commodityId: contents.commodityId,
+        amount: contents.amount,
+        pos,
+        vel: { x: 0, z: 0 },
+        radius: 8,
+        ownerId: poi.id,
+        originId: poi.id,
+        factionId: poi.factionId || sector.factionId || 'faction_scn',
+      }, this.helpers);
+      if (!pod) continue;
+      pod.data.placeId = 'place_cargo_pod_standard';
+      pod.data.name = `${poi.name || poi.id} — opened`;
+      pod.data.cachePayoff = true;
+      pod.data.anchored = true;
+      pod.data.packagedPropFile = 'places/place_cargo_pod_standard.glb';
+      pod.data.packagedPropSlot = 'place';
+      pod.flags = Object.assign({}, pod.flags, { persistent: false });
+      this._stampHomeSector(pod, sector.id);
+      active.cachePayoffIds[poi.id] = pod.id;
+    }
+  },
+
+  _onCachePayoffsSignalInvestigated(payload) {
+    const worldBag = this.state && this.state.world;
+    const active = worldBag && worldBag.activeSector;
+    const sector = worldBag && worldBag.sectors && worldBag.sectors[payload.sectorId];
+    if (!active || !sector || worldBag.currentSectorId !== payload.sectorId) return false;
+    this._spawnCachePayoffs(sector, active);
     return true;
   },
 
@@ -6292,6 +6355,7 @@ export const world = {
     this._onVestaOreCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._onPallasHiddenCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._onKettleLineSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onCachePayoffsSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
     return true;
   },

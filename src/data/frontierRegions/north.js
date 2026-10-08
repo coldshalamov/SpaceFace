@@ -140,7 +140,15 @@ export const NORTH_SECTORS = Object.freeze([
     ]),
     pois: Object.freeze([
       Object.freeze({ id: 'poi_rhea_slag', type: 'derelict', name: 'Slag Hauler Hulk' }),
-      Object.freeze({ id: 'poi_rhea_claim', type: 'cache', name: 'Burned Survey Cache', hidden: true }),
+      // Sealed-cache payoff rows: world.js _spawnCachePayoffs pops `contents` as a real
+      // anchored cargo pod once the cache is investigated.
+      Object.freeze({
+        id: 'poi_rhea_claim',
+        type: 'cache',
+        name: 'Burned Survey Cache',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_ore_goldium', amount: 2 }),
+      }),
     ]),
   }),
 
@@ -247,9 +255,22 @@ export const NORTH_SECTORS = Object.freeze([
       }),
     ]),
     pois: Object.freeze([
-      Object.freeze({ id: 'poi_eris_drop', type: 'cache', name: 'Quiet Drop Point', hidden: true }),
+      Object.freeze({
+        id: 'poi_eris_drop',
+        type: 'cache',
+        name: 'Quiet Drop Point',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_salvage_electronics', amount: 3 }),
+      }),
       Object.freeze({ id: 'poi_eris_wreck', type: 'wreck', name: 'Toll-Runner Wreck' }),
-      Object.freeze({ id: 'poi_eris_dead_drop', type: 'cache', name: 'Margin Dead Drop', hidden: true, factionId: 'faction_quiet' }),
+      Object.freeze({
+        id: 'poi_eris_dead_drop',
+        type: 'cache',
+        name: 'Margin Dead Drop',
+        hidden: true,
+        factionId: 'faction_quiet',
+        contents: Object.freeze({ commodityId: 'cmdty_art', amount: 1 }),
+      }),
       Object.freeze({
         id: 'poi_eris_metronome',
         type: 'anomaly',
@@ -330,7 +351,14 @@ export const NORTH_SECTORS = Object.freeze([
           body: 'Sixty crystal fragments hold a sphere around the Echo Shrine without visible support. Active scans isolate one remembered note of the Vael schism at a time.',
         }),
       }),
-      Object.freeze({ id: 'poi_phoebe_vault', type: 'cache', name: 'Silent Vault', hidden: true }),
+      // The Silent Vault: one unit of the exotic its sealing was meant to protect.
+      Object.freeze({
+        id: 'poi_phoebe_vault',
+        type: 'cache',
+        name: 'Silent Vault',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_exotic_xenium', amount: 1 }),
+      }),
     ]),
   }),
 ]);
