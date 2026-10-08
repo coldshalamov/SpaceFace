@@ -9366,16 +9366,25 @@ function installPreparedBoundaryPublisher(boundary, publish) {
   // prepared content under B's epoch grafts a stale root over the live one.
   const installedEpoch = boundary && boundary.userData
     ? boundary.userData.admissionEpoch : undefined;
-  boundary.userData.__publishPreparedAuthoredBoundary = () => {
+  const installed = () => {
     if (published) return true;
     if (boundary && boundary.userData
-        && boundary.userData.admissionEpoch !== installedEpoch) return false;
+        && boundary.userData.admissionEpoch !== installedEpoch) {
+      // Same self-clear as the disposer twin: a stale-era slot kept armed would
+      // refuse every later consult AND retain its commit closure — clear only
+      // when the slot is still this install so the live run's re-arm survives.
+      if (boundary.userData.__publishPreparedAuthoredBoundary === installed) {
+        delete boundary.userData.__publishPreparedAuthoredBoundary;
+      }
+      return false;
+    }
     const result = publish();
     if (result === false) return false;
     published = true;
     delete boundary.userData.__publishPreparedAuthoredBoundary;
     return true;
   };
+  boundary.userData.__publishPreparedAuthoredBoundary = installed;
 }
 
 /**
