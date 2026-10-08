@@ -312,8 +312,9 @@ function routeNextText(mapAction) {
 
 function slotLabel(id) {
   if (!id) return '';
-  if (id === 'quick' || id === 'autosave' || id === 'auto') return id.charAt(0).toUpperCase() + id.slice(1);
-  return 'Slot ' + id;
+  if (id === 'quick') return 'the quick slot';
+  if (id === 'autosave' || id === 'auto') return 'autosave';
+  return 'slot ' + id;
 }
 
 function fmtSavedAt(value) {
@@ -328,7 +329,7 @@ function fmtSavedAt(value) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-function saveLine(state) {
+export function saveLine(state) {
   // A Crucible run is ephemeral by contract and saving is refused for it (PQ-133 ruling 2).
   // Telling the player to press F5 here would be instructing them to attempt the one thing the
   // save system now blocks.

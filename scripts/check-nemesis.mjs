@@ -151,7 +151,10 @@ test('missing/negative pacing, insufficient budget and blocked placement fail cl
   for (const options of [{ approve: false }, { approve: null }, { budgetCap: 1 }, { blockPlacement: true }]) {
     const t = boot(options); t.advance(200); assert.equal(t.state.nemesis.active, null);
     assert.equal(t.state.entities.size, 1); assert.equal(t.allocations.size, 0);
-    assert.ok(events(t, 'nemesis:encounterRejected').length);
+    // A pacing refusal is asked before the warning, so it never announces an arrival that cannot
+    // happen; missing pacing and the host's own budget/placement refusals still leave a receipt.
+    if (options.approve === false) assert.equal(events(t, 'nemesis:announced').length, 0);
+    else assert.ok(events(t, 'nemesis:encounterRejected').length);
   }
 });
 test('partial spawn failure rolls back every created hull and the budget', () => {

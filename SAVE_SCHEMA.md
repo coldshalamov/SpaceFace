@@ -50,6 +50,12 @@ Current save version: `14`
 - `latchNine`
 - `scissorwake`
 - `lastShift`
+- `redKite`
+- `sableVenn`
+- `ilexArk`
+- `kilnback`
+- `towlineTable`
+- `borrowedVoice`
 - `lossLedger`
 - `provenance`
 - `factionPresence`
@@ -137,6 +143,7 @@ Current save version: `14`
 | `$.automation.traders` | array | length 0 |
 | `$.bandRadio` | object | {} |
 | `$.bombs` | object | {} |
+| `$.borrowedVoice` | null | null |
 | `$.bracket` | object | {} |
 | `$.capitalBoss` | null | null |
 | `$.careerLadders` | object | {} |
@@ -225,6 +232,8 @@ Current save version: `14`
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
+| `$.ilexArk` | null | null |
+| `$.kilnback` | null | null |
 | `$.lastShift` | null | null |
 | `$.latchNine` | null | null |
 | `$.lawSecurity` | object | {} |
@@ -345,9 +354,11 @@ Current save version: `14`
 | `$.provenance` | object | {} |
 | `$.ravel` | object | {} |
 | `$.recoveryEncounters` | object | {} |
+| `$.redKite` | null | null |
 | `$.regionalEcology` | object | {} |
 | `$.rubric` | object | {} |
 | `$.ruckus` | object | {} |
+| `$.sableVenn` | null | null |
 | `$.salvage` | object | {} |
 | `$.scenario` | object | {} |
 | `$.scenario.active` | null | null |
@@ -457,6 +468,7 @@ Current save version: `14`
 | `$.stunts` | null | null |
 | `$.survivorPod` | object | {} |
 | `$.tensionDirector` | null | null |
+| `$.towlineTable` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |
 | `$.uiScreenMemory.bags` | object | {} |

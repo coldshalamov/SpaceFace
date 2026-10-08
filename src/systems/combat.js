@@ -4,6 +4,9 @@
 import { WEAPONS } from '../data/weapons.js';
 import { KillCause, KillSurface } from '../combat/killCausality.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
+import { kilnbackPhysicalBody } from '../data/kilnbackBody.js';
+import { kilnbackFlightModel } from '../data/kilnback.js';
+import { scissorwakePhysicalBody } from '../data/scissorwakeBody.js';
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
 import { makeShipEntitySpec, fittingsFromWeapons } from './ships.js';
@@ -411,6 +414,20 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     }
   }
   spec.factionId = factionId;
+  if (def.id === 'kilnback' || def.id === 'scissorwake') {
+    const body = def.id === 'kilnback' ? kilnbackPhysicalBody() : scissorwakePhysicalBody();
+    spec.physicsBody = body; spec.mass = body.mass; spec.radius = body.radius;
+    spec.visualRadius = body.radius;
+    spec.data.authoredAssetId = def.id === 'kilnback' ? 'SF_SHIP_KILNBACK' : 'SF_SHIP_SCISSORWAKE';
+    if (def.id === 'kilnback') spec.data.persistenceOwner = 'kilnback';
+    if (def.id === 'kilnback') {
+      spec.flightModel = kilnbackFlightModel(body, spec.flightModel);
+      if (spec.data.derived) spec.data.derived.flightModel = kilnbackFlightModel(body, spec.data.derived.flightModel);
+    }
+    for (const model of [spec.flightModel, spec.data.derived?.flightModel]) {
+      if (model) { model.mass = body.mass; model.inertia = body.inertiaY; }
+    }
+  }
   return spec;
 }
 

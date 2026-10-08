@@ -3088,6 +3088,10 @@ function stationNameById(state, stationId) {
 
 const COMMODITY_NAME_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c.name]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+export function commodityMapLabel(commodityId) {
+  const id = String(commodityId || '');
+  return String(COMMODITY_NAME_BY_ID.get(id) || id.replace(/^cmdty_/, '').replace(/_/g, ' ')).toUpperCase();
+}
 const REGIONAL_ECONOMY_PROFILE_BY_SECTOR = new Map(
   REGIONAL_ECONOMY_PROFILES.map((profile) => [profile && profile.sectorId, profile]),
 );
@@ -5598,7 +5602,7 @@ _stepAnimation(now) {
           const tint = memoryTint(marketData.ageS);
           html += `
             <div class="gm-ins-section">
-              <div class="gm-ins-title">Best Known Sell (${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()})</div>
+              <div class="gm-ins-title">Best Known Sell (${escapeMapHtml(commodityMapLabel(this._selectedCommodity))})</div>
               <div class="gm-ins-row">
                 <span>Station</span>
                 <span class="gm-ins-row-val">${escapeMapHtml(marketData.stationName)}</span>
@@ -5689,7 +5693,7 @@ _stepAnimation(now) {
               <div class="gm-ins-title">Market Memory</div>
               <div class="gm-ins-row">
                 <span>Commodity</span>
-                <span class="gm-ins-row-val">${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()}</span>
+                <span class="gm-ins-row-val">${escapeMapHtml(commodityMapLabel(this._selectedCommodity))}</span>
               </div>
               <div class="gm-ins-row">
                 <span>Buy / Sell</span>
@@ -5980,7 +5984,7 @@ _stepAnimation(now) {
         });
 
     const offers = bestKnownSellOffers(state, this._selectedCommodity, 3);
-    const commodityLabel = String(this._selectedCommodity || '').replace('cmdty_', '').replace(/_/g, ' ').toUpperCase();
+    const commodityLabel = commodityMapLabel(this._selectedCommodity);
     const feedStale = offers.length > 0 && offers.every((offer) => Number(offer.ageS) >= AGE_HOLLOW_S);
     const offersHtml = feedStale
       ? dataStateHtml('error', {

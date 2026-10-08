@@ -34,6 +34,10 @@ import { tallyThree } from '../systems/tallyThree.js';
 import { lastShift } from '../systems/lastShift.js';
 import { redKite } from '../systems/redKite.js';
 import { sableVenn } from '../systems/sableVenn.js';
+import { ilexArk } from '../systems/ilexArk.js';
+import { kilnback } from '../systems/kilnback.js';
+import { towlineTable } from '../systems/towlineTable.js';
+import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
@@ -270,6 +274,10 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['lastShift', lastShift],
     ['redKite', redKite],
     ['sableVenn', sableVenn],
+    ['ilexArk', ilexArk],
+    ['kilnback', kilnback],
+    ['towlineTable', towlineTable],
+    ['borrowedVoice', borrowedVoice],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],

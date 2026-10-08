@@ -3,7 +3,7 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, AMMO_BATCH } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -86,7 +86,7 @@ export function runFactionPresenceDockAction(bus, state, stationId, serviceId) {
   return { ok: true, targetTab: row.targetTab || null };
 }
 
-export const AMMO_BATCH = 100;         // munitions per ammo purchase
+export { AMMO_BATCH };                    // munitions per ammo purchase — owned by economy now
 const MUNITIONS = COMMODITIES.find((c) => c.id === 'cmdty_munitions') || { volPerU: 1 };
 
 const FUEL_WARN_FRAC = 0.45;
@@ -388,6 +388,17 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'hull_wash') {
+    // Same berth contract as the pump and the weld: the wash runs at a repair berth.
+    if (!stationOffersService(state, 'repair')) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'This berth has no repair yard — the wash runs where hulls are welded',
+        buttonLabel: 'Wash Hull',
+        disabled: true,
+        disabledReason: 'no repair yard here — the wash runs at a repair berth',
+        chips: [{ text: 'no yard', kind: 'bad' }],
+      };
+    }
     const index = Math.max(0, Math.floor(Number(p.activeShipIndex) || 0));
     const owned = Array.isArray(p.ownedShips) ? p.ownedShips[index] : null;
     const now = Number(state && state.simTime) || 0;

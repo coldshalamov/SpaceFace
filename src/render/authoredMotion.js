@@ -2,6 +2,15 @@ import { isLatchActor, createLatchNineVisualDriver } from './latchNineVisuals.js
 import { isTallyThreeAssessor, createTallyThreeVisualDriver } from './tallyThreeVisuals.js';
 import { isRedKiteCourier, createRedKiteVisualDriver } from './redKiteVisuals.js';
 import { isSableVennWorkshop, createSableVennVisualDriver } from './sableVennVisuals.js';
+import { isIlexArkEntity } from '../data/ilexArkBody.js';
+import { createIlexArkVisualDriver } from './ilexArkVisuals.js';
+import { isKilnbackEntity, createKilnbackVisualDriver } from './kilnbackVisuals.js';
+import { isScissorwakeEntity } from '../data/scissorwakeBody.js';
+import { createScissorwakeVisualDriver } from './scissorwakeVisuals.js';
+import { isTowlineCrewEntity } from '../data/towlineTableBodies.js';
+import { createTowlineTableVisualDriver } from './towlineTableVisuals.js';
+import { isBorrowedVoiceRing, isBorrowedVoiceRecorder } from '../data/borrowedVoiceBody.js';
+import { createBorrowedVoiceVisualDriver } from './borrowedVoiceVisuals.js';
 import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
 // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
 //
@@ -144,10 +153,20 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   const tally=isTallyThreeAssessor(entity);
   const redKite=isRedKiteCourier(entity);
   const sable=isSableVennWorkshop(entity);
-  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable)) return null;
+  const ilex=isIlexArkEntity(entity);
+  const kilnback=isKilnbackEntity(entity);
+  const scissorwake=isScissorwakeEntity(entity);
+  const towline=isTowlineCrewEntity(entity);
+  const borrowedVoice=isBorrowedVoiceRing(entity)||isBorrowedVoiceRecorder(entity);
+  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice)) return null;
   const tallyDriver=tally?createTallyThreeVisualDriver(root,entity):null;
   const redKiteDriver=redKite?createRedKiteVisualDriver(root,entity):null;
   const sableDriver=sable?createSableVennVisualDriver(root,entity):null;
+  const ilexDriver=ilex?createIlexArkVisualDriver(root,entity):null;
+  const kilnbackDriver=kilnback?createKilnbackVisualDriver(root,entity):null;
+  const scissorwakeDriver=scissorwake?createScissorwakeVisualDriver(root,entity):null;
+  const towlineDriver=towline?createTowlineTableVisualDriver(root,entity):null;
+  const borrowedVoiceDriver=borrowedVoice?createBorrowedVoiceVisualDriver(root,entity):null;
   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
   const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):latch?createLatchNineVisualDriver(root,entity):null;
   const priorDriveUpdate=root.userData.updateDriveState;
@@ -191,6 +210,11 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     propulsion?.dispose();
     tallyDriver?.dispose();
     redKiteDriver?.dispose();
+    ilexDriver?.dispose();
+    kilnbackDriver?.dispose();
+    scissorwakeDriver?.dispose();
+    towlineDriver?.dispose();
+    borrowedVoiceDriver?.dispose();
     sableDriver?.dispose();
     if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
       if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
@@ -245,6 +269,11 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     updatePhysical?.(liveEntity, a11y);
     tallyDriver?.update(liveEntity, simNow, a11y, state);
     redKiteDriver?.update(liveEntity, simNow, a11y, state);
+    ilexDriver?.update(liveEntity, simNow, a11y, state);
+    kilnbackDriver?.update(liveEntity, simNow, a11y, state);
+    borrowedVoiceDriver?.update(liveEntity, simNow, a11y, state);
+    scissorwakeDriver?.update(liveEntity, simNow, a11y, state);
+    towlineDriver?.update(liveEntity, simNow, a11y, state);
     sableDriver?.update(liveEntity, simNow, a11y, state);
 
   };

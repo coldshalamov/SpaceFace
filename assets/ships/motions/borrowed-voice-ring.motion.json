@@ -1,0 +1,289 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "borrowed_voice_ring_controls",
+  "sourceAssetId": "SF_PLACE_BORROWED_VOICE_RING",
+  "sourceGlbSha256": "2bb35cb8e1fd917841551dd2c276cb4c326231cf53c50a5cdb9ecc58b8ca49cf",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "borrowed_voice_fan_1",
+      "node": "MOTION_BORROWED_VOICE_FAN_1",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          14.119415283203125,
+          1.7100000381469727,
+          9.103960990905762
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "borrowed_voice_fan_2",
+      "node": "MOTION_BORROWED_VOICE_FAN_2",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          14.639918327331543,
+          1.7100000381469727,
+          -8.240921974182129
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "borrowed_voice_fan_3",
+      "node": "MOTION_BORROWED_VOICE_FAN_3",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          9.384510040283203,
+          1.7100000381469727,
+          -13.934524536132812
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "borrowed_voice_fan_4",
+      "node": "MOTION_BORROWED_VOICE_FAN_4",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          3.052297830581665,
+          1.7100000381469727,
+          -16.520395278930664
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "borrowed_voice_fan_5",
+      "node": "MOTION_BORROWED_VOICE_FAN_5",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -7.648889541625977,
+          1.7100000381469727,
+          -14.957756996154785
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "borrowed_voice_fan_6",
+      "node": "MOTION_BORROWED_VOICE_FAN_6",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -14.957756996154785,
+          1.7100000381469727,
+          -7.648889541625977
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "borrowed_voice_fan_1",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "borrowed_voice_fan_2",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "borrowed_voice_fan_3",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "borrowed_voice_fan_4",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "borrowed_voice_fan_5",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "borrowed_voice_fan_6",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

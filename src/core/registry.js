@@ -37,6 +37,13 @@ import { lastShiftPrompt } from '../ui/lastShiftPrompt.js';
 import { redKite } from '../systems/redKite.js';
 import { redKitePrompt } from '../ui/redKitePrompt.js';
 import { sableVenn } from '../systems/sableVenn.js';
+import { ilexArk } from '../systems/ilexArk.js';
+import { ilexArkPrompt } from '../ui/ilexArkPrompt.js';
+import { kilnback } from '../systems/kilnback.js';
+import { towlineTable } from '../systems/towlineTable.js';
+import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
+import { borrowedVoice } from '../systems/borrowedVoice.js';
+import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
@@ -472,6 +479,13 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['redKite', redKite],
     ['redKitePrompt', redKitePrompt],
     ['sableVenn', sableVenn],
+    ['ilexArk', ilexArk],
+    ['ilexArkPrompt', ilexArkPrompt],
+    ['kilnback', kilnback],
+    ['towlineTable', towlineTable],
+    ['towlineTablePrompt', towlineTablePrompt],
+    ['borrowedVoice', borrowedVoice],
+    ['borrowedVoicePrompt', borrowedVoicePrompt],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],

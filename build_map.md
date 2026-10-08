@@ -263,7 +263,7 @@ procedure:
 | "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
 | "finish the game", "what's next for release", "the professional bar", "batch the work into lanes" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) — take the first lane whose files are free and own that area to its bar |
-| "do the next N tasks", "next 10", countable parallel work, `--next` reports queue drained | **§1C** — the numbered board; take the N lowest OPEN rows whose paths are free, one row per agent |
+| "do the next N tasks", "next 10", countable parallel work, `--next` reports queue drained | **§1C** — the numbered board; take the N lowest OPEN rows whose paths are free, one row per agent. When only §M ADMIT rows remain, they count like any other row |
 | "swarm mode should be more fun" | §16 — the arcade-expansion revision is §16.4 (board rows 263–273); the survival engine stays `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
 | "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
@@ -458,9 +458,15 @@ An empty script result is this board. It is not permission to switch to
 `INFERENCE_IDEAS.md`. The inference catalog is the small wiring inside a seam you already
 claimed, and it is the whole job only when the owner said INFERENCE.
 
-**"Do 10 tasks" means 10 open rows inside seams you claimed.** A row is already a chunk: a
-planbank batch, a next-wave build, or a fable batch. Do not split it into captions, and do
-not count a catalog line as one of the ten.
+**This map is the whole build plan.** Every plan about building this game — the SFQ pack, the
+Fable bank, the Swarm phases, the depth roll-up, the vm-drop outbox — is *on* this board: either
+as a row below, or as an admitted remainder owned by the **§M admission rows**. There is no plan
+that lives outside this file. When the counted rows drain, the work is not done — §M is the
+work: admitting the next slice of reservoir scope into real numbered rows.
+
+**"Do 10 tasks" means 10 open rows inside seams you claimed** — and the §M admission rows count.
+A row is already a chunk: a planbank batch, a next-wave build, a fable batch, or one admission
+slice. Do not split it into captions, and do not count a catalog line as one of the ten.
 
 ### Seams — what is free, and what another agent has
 
@@ -474,7 +480,8 @@ name means it is in flight — take a different seam. `done` means its rows are 
 3. Do the seam's still-OPEN rows in the order listed, up to the count you were given
    (ten, unless the owner named another number). Skip a row whose status is no longer OPEN.
 4. If the seam runs out before your count, claim another `free` seam whose files do not
-   overlap the one you have.
+   overlap the one you have. When every seam reads `done`, the **§M reservoir-admission rows**
+   are the remaining plan — take one like any other row.
 5. When you stop, set the cell back to `free` if any of its rows are still OPEN, or `done`
    if none are. Delete a detail row only in the commit that finishes it.
 6. If two agents edit the same files, keep both changes and merge them. Do not revert the
@@ -509,9 +516,10 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | input | done (devin-oct2-batch) | gamepad, input, settings behavior | 196, 237, 260, 262 |
 | ui-sim | done (devin-sweep-oct2) | sim halves of screens and the map; no visual redesign | 197, 246, 276, 277 |
 | physics | done (devin-oct2-batch) | physics clocks, manifest | 258 |
-| accept | done (devin-sweep-oct2) | judge work that is already built | 60, 63, 64 |
+| accept | free | judge work that is already built; quiet-host session produce/land | 60, 63, 64, 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | 30 |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | 223 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 289, 290, 291 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -535,7 +543,8 @@ How to finish a row:
 
 Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-drop package batch ·
 **BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·
-**LANE** open-ended area ownership (detail in `FINISH_LANES.md`).
+**LANE** open-ended area ownership (detail in `FINISH_LANES.md`) ·
+**ADMIT** turn admitted-but-undecomposed reservoir scope into real rows (§M).
 
 ### Handoff — thirty landed rows, do not retake (2026-09-29)
 
@@ -697,11 +706,11 @@ ship stills (all REVISE — awaiting new remote candidates).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 67 | L-MACHINE | Own THE MACHINE's development half — boot, hitches, admission, residency. Rows 2, 4–16, 19–34 are its counted surface. | LANE | OPEN — stale-adoptable |
-| 68 | L-HAND | Own THE HAND — flight, tether, fields, verbs, input. Rows 37–38, 42 are its counted surface. | LANE | OPEN — stale-adoptable |
-| 69 | L-FIGHTWORLD | Own THE FIGHT + THE WORLD — swarm, arenas, sectors, NPC jobs, law, consequences. Rows 1, 43–55 are its counted surface. [First-fight cohesion](design/program/world-depth-2026-10-02/COHESION.md#first-fight) extends existing PQ-140 route acceptance: expose and transfer distinct physical choices; preserve shipped tactical variety and the approved Swarm expansion. [World expansion target](design/program/world-depth-2026-10-02/README.md): complete a selected inhabited/physical slice with genuinely missing assets; Anvil Stormshift is the worked first candidate, not a second queue | LANE | OPEN — stale-adoptable |
+| 67 | L-MACHINE | Own THE MACHINE's development half — boot, hitches, admission, residency. Rows 2, 4–16, 19–34 are its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): demo-route machine slices BM-16..18 only; disjoint from codex render/snapshotFence + sweep-oct3 soak paths |
+| 68 | L-HAND | Own THE HAND — flight, tether, fields, verbs, input. Rows 37–38, 42 are its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): hand safe slices BM-19..20 only (no input.js/flightV3/physics/tetherGameplay/maneuver) |
+| 69 | L-FIGHTWORLD | Own THE FIGHT + THE WORLD — swarm, arenas, sectors, NPC jobs, law, consequences. Rows 1, 43–55 are its counted surface. [First-fight cohesion](design/program/world-depth-2026-10-02/COHESION.md#first-fight) extends existing PQ-140 route acceptance: expose and transfer distinct physical choices; preserve shipped tactical variety and the approved Swarm expansion. [World expansion target](design/program/world-depth-2026-10-02/README.md): complete a selected inhabited/physical slice with genuinely missing assets; Anvil Stormshift is the worked first candidate, not a second queue | LANE | OPEN — writer muse-polish-oct7 (sitting 1): fightworld demo-route units BM-08..15; disjoint from demo-oct7 D-rows/optic/dead-seams + codex crucible/gyre paths |
 | 70 | L-LONGGAME | Own THE LONG GAME — progression, economy depth, story spine, persistent ship identity. Counted surface: rows 278–283 (§L). | LANE | OPEN — writer lonngame-oct4 (sitting 1) |
-| 71 | L-EAR | Own THE EAR — audio identity and feedback. Row 41 is its counted surface. | LANE | OPEN — no writer ever |
+| 71 | L-EAR | Own THE EAR — audio identity and feedback. Row 41 is its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): ear units BM-01..07 + audio INF rotates; row-41 surface + demo-route audio identity |
 | — | L-PICTURE | THE PICTURE — Forge backlog GFX-1, 3–14 | LANE | CLAIMED devin-graphics (live) |
 | — | L-INSTRUMENT | THE INSTRUMENT — all UI | LANE | CLAIMED ORRERY — do not take |
 | — | L-RELEASE | THE RELEASE — demo path, packaging, store | LANE | PARKED pre-release (owner) |
@@ -779,7 +788,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 157 | PB-LANE-ORRERY | SF-128, 239, 247–250, 252–255, 267, 299 — pure-UI packets (sim halves already dispatched as rows 147–149) | PB | PARKED ORRERY lane |
 | 158 | PB-LANE-WORLD | SF-078–084, 086, 087, 090, 287, 298 — npcJobs/traffic/pocket-data packets held by the boards-3x3 claim | PB | DONE 2026-10-04 devin-packets-oct4 — boards-3x3 claim was stale-adoptable; all 12 packets landed (5 implemented: 078/080/081/082/087; 7 equivalence-pinned: 079/083/084/086/090/287/298) + defect fixes 17ab64ac3, 78c1845b5 |
 
-Not on the board: **deferred review/capture ceremonies** (retired by owner 2026-09-10 — `PQ-018/.019/.020/.045` H1+review pairs, `PQ-191`, `PQ-167.01`), **vm-drop HOLDs** and the REVISE chase stills, **remote in-flight jobs** (`bloom-cost`, `hold-prefetch-inbound`, `a-list-convergence` — the remote machine owns them), **never-foldered VM jobs** (`residency-budget`, `jump-arrival-spread`, steady-state CPU/GPU, `long-soak-witness`, `moonshot-assessment`, `npc-kit-stills` — remote owns; VM_LANES.md is their door), and **ORRERY-claimed queue units** (`PQ-180.03`, `PQ-181`, `PQ-182`, `PQ-185`, `PQ-187`, `PQ-194`, `PQ-025` calib, `PQ-040` native). The Depth roll-up and Alpha M-rows in `02_REMAINING_WORK.md` are admitted scope not yet decomposed into dispatchable leaves — the owning lane's first sitting turns them into board rows.
+Not on the board as countable rows: **deferred review/capture ceremonies** (retired by owner 2026-09-10 — `PQ-018/.019/.020/.045` H1+review pairs, `PQ-191`, `PQ-167.01`), **vm-drop HOLDs** and the REVISE chase stills, **remote in-flight jobs** (`bloom-cost`, `hold-prefetch-inbound`, `a-list-convergence` — the remote machine owns them), **never-foldered VM jobs** (`residency-budget`, `jump-arrival-spread`, steady-state CPU/GPU, `long-soak-witness`, `moonshot-assessment`, `npc-kit-stills` — remote owns; VM_LANES.md is their door), and **ORRERY-claimed queue units** (`PQ-180.03`, `PQ-181`, `PQ-182`, `PQ-185`, `PQ-187`, `PQ-194`, `PQ-025` calib, `PQ-040` native). The Depth roll-up and Alpha M-rows in `02_REMAINING_WORK.md` are admitted scope — their path onto this board is §M row 291.
 
 ### H. Next Wave 300 — directed build and INFERENCE work (2026-09-28)
 
@@ -787,7 +796,7 @@ This user-requested wave supplies pre-decided outcomes, not permission for a wea
 
 **One live board.** BUILD status is in this table; small-task status is in `design/program/INFERENCE_IDEAS.md`. The packet files and JSON are specifications, not a second mutable queue. `OPEN` means a named task may be taken after exact-path checks, not that it is free of all concurrent work. `WAITING <id>` means an actual missing capability; an equivalent verified implementation can satisfy it. Open dependent rows in the landing that supplies the capability. Do not infer DONE from a deleted row.
 
-**Do not dry-fire.** An empty legacy `program-dispatch` result means claim a free seam in §1C. It does not authorize brainstorming, and it does not switch the sitting to the inference catalog. `node scripts/board-chunks.mjs` lists the free seams. `next-wave-read.mjs` is advisory detail for a row you already took; `--kind inference` is only for an owner-said INFERENCE sitting. Inspect `NOW.md` and current dirty hunks before claiming. NXB/NXI IDs are not PQ IDs and must not be passed to legacy `program-dispatch --id`.
+**Do not dry-fire.** An empty legacy `program-dispatch` result means claim a free seam in §1C — and when the seams are done, the §M admission rows. It does not authorize brainstorming, and it does not switch the sitting to the inference catalog. `node scripts/board-chunks.mjs` lists the free seams. `next-wave-read.mjs` is advisory detail for a row you already took; `--kind inference` is only for an owner-said INFERENCE sitting. Inspect `NOW.md` and current dirty hunks before claiming. NXB/NXI IDs are not PQ IDs and must not be passed to legacy `program-dispatch --id`.
 
 **Reuse rather than duplicate.** Read the prior SF/PQ/PB owner named in each packet. Implement equivalent work once, then retire/match the duplicate row to its actual result. Existing SF packet bodies are under `design/planbank/SpaceFace_Planbank_300/plans/<domain>/` (not `packets/<domain>/`). Do not re-admit shipped slices or copy active PR #170/#174 work. Necessary functional UI follows ORRERY; no second redesign. Release-prep work remains parked.
 
@@ -851,8 +860,9 @@ links, topological order clean). Entry: [`START_HERE.md`](./design/finish-expans
 
 Same law as section H, plus this pack's own admission rules:
 
-- **Reservoir, not a second queue.** Statuses live on this board and in `INFERENCE_IDEAS.md`; the
-  pack's JSON/CSV are candidate inventories. `SFQ-` IDs never go to `program-dispatch --id`.
+- **This pack is on the board.** Statuses live on this board and in `INFERENCE_IDEAS.md`; the
+  pack's JSON/CSV are candidate inventories, worked through the §M admission rows — never run
+  as a detached queue. `SFQ-` IDs never go to `program-dispatch --id`.
 - **Map by outcome before building** ([admission + crosswalk](./design/finish-expansion-2026-09/integration/01_ADMISSION_AND_CROSSWALK.md)):
   already-true → close with the native owner's evidence; residual → extend the native packet;
   genuinely new → take it through a row here; conflicting → park in-pack as history.
@@ -900,10 +910,11 @@ plus [`INDEX`](./design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/INDEX.md) �
 existence, ID continuation, symbol grounding, and near-duplicate freedom against the SF-300,
 next-wave and finish-expansion banks — **PASS, zero flags** (re-run by the landing agent).
 
-Same law as sections H and I: the bank is a reservoir, statuses live on this board and in
+Same law as sections H and I: the bank is on the board — statuses live on this board and in
 `INFERENCE_IDEAS.md`; map by outcome against prior owners before building (114 of 142 packets cite
 their landed neighbours); cross-source dedupe through
-[`TASK_SOURCE_CROSSWALK.md`](./design/program/TASK_SOURCE_CROSSWALK.md). The bank's signature
+[`TASK_SOURCE_CROSSWALK.md`](./design/program/TASK_SOURCE_CROSSWALK.md). Its uncovered remainder
+is §M row 290. The bank's signature
 finding: the game's signature verb and long game are full of dead seams — events computed and
 emitted that no eye, ear, or pad ever receives — so its first batches are wire-the-truth packets,
 not new systems.
@@ -990,7 +1001,32 @@ shipped, so their J1/J6 and P04 residuals moved to §K rows 276/277; §K rows re
 
 ### L. THE LONG GAME — first decomposition (lane L-LONGGAME sitting 1, 2026-10-04)
 
-Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row. The first six rows are landed; the table is empty until the next decomposition.
+Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row. The first six rows are landed; the lane's next decomposition is its own continuing work.
+
+### M. The rest of the plan — reservoirs that are this board
+
+Owner ruling, 2026-10-08: **there is no plan about building this game that is not part of this
+map.** The task banks below are admitted scope. A bank is not run like a queue — every candidate
+is outcome-mapped against landed work before it becomes a row (already-true → close with evidence;
+residual → extend the native owner; genuinely new → its own row; conflicting → park with a
+sentence) — but the un-admitted remainder is *remaining plan*, and turning it into rows is the
+**ADMIT** work below. An ADMIT row's done-when: every candidate in its named scope dispositioned
+on this board — closed with evidence, routed to a lane, or minted as a numbered row.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 285 | ADMIT-SFQ-B | Finish & Expansion build reservoir (`design/finish-expansion-2026-09/catalog/`): ~230 of 240 candidates unadmitted across 24 programs. Take the next `dependency_graph` level, outcome-map each candidate, mint its rows or close it with evidence | ADMIT | OPEN — serial, one DAG level per sitting; programs 13–17 reconcile against merged PR-170 reality |
+| 286 | ADMIT-SFQ-I | 96 SFQ-I inference candidates → `INFERENCE_IDEAS.md`, one at a time once the named dependency actually lands and the gap is real | ADMIT | OPEN — gated per candidate |
+| 287 | ADMIT-SFQ-M | 36 mission briefs → mission rows | ADMIT | OPEN |
+| 288 | ADMIT-SFQ-ART | 36 model-family briefs → rows; routes to L-PICTURE write sets | ADMIT | OPEN |
+| 289 | ADMIT-SFQ-FX | 32 VFX/audio briefs → rows; routes to L-PICTURE / L-EAR | ADMIT | OPEN |
+| 290 | ADMIT-FABLE | 15 Fable packets never referenced on the board (FB-006/007/009/010/012/013/014/084/085/086/087/102/103/106/107) plus ORRERY-routed leftovers (FB-028, FB-055, FB-110, FB-130, FB-112, FB-011, FB-008) → rows or lane routing | ADMIT | OPEN — ORRERY pieces route to L-INSTRUMENT |
+| 291 | ADMIT-DEPTH | `02_REMAINING_WORK.md` Depth roll-up + Alpha M-rows: admitted scope never decomposed → dispatchable leaves | ADMIT | OPEN |
+
+Already-rowed parked work is the rest of the remainder and stays visible where it is: rows 155
+(Charon Bloom opt-in), 156 (graphics packets), 157 (ORRERY packets), 36 (chase stills awaiting
+remote candidates), 270–273 (Swarm phases C–F on the owner's phase order), 284 (the quiet-host
+session), and the §F lanes. A PARKED row's gate is named on the row; it is still on this map.
 
 ## 2. Product north star
 

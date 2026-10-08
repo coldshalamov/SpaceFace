@@ -47,6 +47,7 @@ import {
   syncOrbitRuntime,
 } from './orbitNodeRuntime.js';
 import { planNpcFieldDeploy, npcFieldRole } from '../ai/npcFieldDeploy.js';
+import { applyThermalFields, normalizeThermalRecipe, thermalPointCooled } from '../core/fields/thermalFields.js';
 
 const EMITTER_TYPE = 'fieldEmitter';
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
@@ -516,7 +517,10 @@ export const fields = {
     const rt=ensureRuntime(this.state);
     // orbit_node fields are pure functions of (host, simTime, index) — they respawn on the
     // first orbit rescan; persisting them would restore orphaned frozen repulsors.
-    return {revision:1,fields:this._kernel.list().filter(f=>f.tag!=='external'&&f.tag!==ORBIT_NODE_TYPE).slice(0,32).map(f=>({...f,
+    const durable = this._kernel.list().filter(f=>f.tag!=='external'&&f.tag!==ORBIT_NODE_TYPE);
+    // Finite source attacks must not disappear behind an unrelated mature deploy ledger.
+    const ordered = [...durable.filter(f=>f.thermal), ...durable.filter(f=>!f.thermal)];
+    return {revision:1,fields:ordered.slice(0,32).map(f=>({...f,
       durationS:Number.isFinite(f.durationS)?f.durationS:null,expireAt:Number.isFinite(f.expireAt)?f.expireAt:null})),
       deployed:rt.deployed,anchored:rt.anchored,npcFields:rt.npcFields,hitches:rt.hitches,cooldowns:rt.cooldowns};
   },
@@ -547,6 +551,9 @@ export const fields = {
       const sourceId=mapped(f.sourceId),ownerId=mapped(f.ownerId);
       if(sourceId!=null&&!this.state.entities.get(sourceId))continue;
       if(f.expireAt!=null&&f.expireAt<=nowOf(this.state))continue;
+      const thermalOwner=this.state.entities.get(ownerId);
+      if(f.thermal&&thermalOwner?.data?.kilnbackKey===f.thermal.sourceKey)
+        f.thermal.ownerLife=thermalOwner.occupantGeneration;
       const record=this._kernel.register({...f,sourceId,ownerId,durationS:f.durationS??Infinity});
       if(f.expireAt!=null)record.expireAt=f.expireAt;
       const d=raw.deployed?.[f.id];
@@ -1616,6 +1623,31 @@ export const fields = {
     return this._kernel.register({ ...spec, tag: 'environmental', durationS: Infinity });
   },
 
+  // Finite zero-force recipes share expiry, persistence and field geometry. Damage stays in SG-03.
+  registerThermal(spec) {
+    const thermal = normalizeThermalRecipe(spec?.thermal);
+    if (!this._kernel || !thermal || !Number.isFinite(spec.durationS) || spec.durationS <= 0
+      || spec.durationS > 4 || !Number.isFinite(spec.radius) || spec.radius <= 0 || spec.radius > 160) return null;
+    if (this._kernel.has(spec.id)) return this._kernel.get(spec.id);
+    if (this._kernel.list().filter(f => f.thermal).length >= 16) return null;
+    const record = this._kernel.register({ ...spec, thermal, strength: 0, damping: 0,
+      lockStrength: 0, tag: 'thermal', sourceId: null, createdAt: nowOf(this.state), maxAffected: 32 });
+    this.bus.emit('fields:thermalCreated', { fieldId: record.id, kind: thermal.kind,
+      sourceKey: thermal.sourceKey, center: { ...record.center }, dir: { ...record.dir },
+      radius: record.radius, halfAngleRad: record.halfAngleRad, expireAt: record.expireAt });
+    return record;
+  },
+  thermalPointCooled(point) { return !!this._kernel && thermalPointCooled(this._kernel.list(), point); },
+  thermalFieldsForSource(sourceKey, ownerLife = null) {
+    const now = nowOf(this.state);
+    return (this._kernel?.list() || []).filter(f => f.thermal?.sourceKey === sourceKey
+      && (ownerLife == null || f.thermal.ownerLife === ownerLife)
+      && f.createdAt <= now && f.expireAt > now).slice(0, 16).map(f => ({
+        id: f.id, kind: f.thermal.kind, ownerLife: f.thermal.ownerLife,
+        center: { ...f.center }, dir: { ...f.dir }, radius: f.radius,
+        halfAngleRad: f.halfAngleRad, createdAt: f.createdAt, expireAt: f.expireAt }));
+  },
+
   unregisterExternal(id) {
     return this._kernel ? this._kernel.unregister(id) : false;
   },
@@ -1775,6 +1807,10 @@ export const fields = {
     const fieldsList = this._kernel.list();
     // INF-042: the lifecycle runs before sampling, so force, predictor, and records agree.
     applyFieldLifecycle(fieldsList, now);
+    if (fieldsList.some(f => f.thermal)) applyThermalFields({ state, fields: fieldsList,
+      kernel: this._combatKernel, dt, bus: this.bus, candidatesFor: field => {
+        this._collectFieldCandidates(field, state, this._queryOut); return this._queryOut;
+      } });
     if (fieldsList.length === 0 || dt <= 0) {
       if (fieldsList.length === 0) {
         this._pinWatch.length = 0;
@@ -1798,6 +1834,7 @@ export const fields = {
     // only tugs colliding hulls is a toy for ships, not a pile-maker.
     for (let i = 0; i < fieldsList.length; i++) {
       const field = fieldsList[i];
+      if (field.thermal) continue;
       this._collectFieldCandidates(field, state, this._queryOut);
       if (typeof queryRadius === 'function') queries++;
       let fieldAffected = 0;
@@ -2238,7 +2275,7 @@ export const fields = {
       // PQ-013: external authored profiles (the planet's attraction) stay in the SNAPSHOT (the
       // predictor must see the bend) but out of the deploy-tool presentation records — the planet
       // carries its own visual language (bands/sheath), never an Intake funnel or a HUD chip.
-      if (f.tag === 'external' || f.tag === ORBIT_NODE_TYPE) continue;
+      if (f.tag === 'external' || f.tag === ORBIT_NODE_TYPE || f.thermal) continue;
       let rec = active[n];
       if (!rec) rec = active[n] = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
       n++;

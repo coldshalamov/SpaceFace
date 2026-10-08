@@ -1,0 +1,1050 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.towline-debris-lod1.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.6499999761581421,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentNodeId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.6499999761581421,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-debris-lod1.anchor.socket-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentNodeId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.towline-debris-lod1",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f2cd93f6f90b4fd1689c4e03b1968054d9cac826b73961673297eac736202ffc",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.6500229835510254,
+          0.6500229239463806,
+          -0.19999992847442627
+        ],
+        "min": [
+          2.3499770164489746,
+          -0.6500229239463806,
+          -3.5999999046325684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "634722bc12ca2c807ae4de6f0337dc031fa4c1c0f41892dbfee6e0d6994ff45c",
+      "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-bent-tip.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_TOWLINE_DEBRIS_BENT-TIP",
+      "nodeId": "sf.render.towline-debris-lod1.node.collision-towline-debris-bent-tip",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          3,
+          0.6500442624092102,
+          3.6500442028045654
+        ],
+        "min": [
+          -3,
+          -0.6500442624092102,
+          2.3499557971954346
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0bc1af2fb8b2563508ccc6cd4258b5c75800c03d6032e060e60a2f49d05b801d",
+      "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-lower.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_TOWLINE_DEBRIS_LOWER",
+      "nodeId": "sf.render.towline-debris-lod1.node.collision-towline-debris-lower",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.2501602172851562,
+          0.6498610973358154,
+          3.5
+        ],
+        "min": [
+          -3.7498397827148438,
+          -0.6498610973358154,
+          -3.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "936500d8b662131d05477871b093393e98b9984f9ee89344c67b5b6578e19e9b",
+      "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-spine.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_TOWLINE_DEBRIS_SPINE",
+      "nodeId": "sf.render.towline-debris-lod1.node.collision-towline-debris-spine",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          3,
+          0.6500442624092102,
+          -2.3499557971954346
+        ],
+        "min": [
+          -3,
+          -0.6500442624092102,
+          -3.6500442028045654
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "206e9aff8e77255f05afb915de62fe9a27e6c5b38c54df2e94ea520ef3433e33",
+      "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-upper.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_TOWLINE_DEBRIS_UPPER",
+      "nodeId": "sf.render.towline-debris-lod1.node.collision-towline-debris-upper",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          3.644406318664551,
+          0.6443650126457214,
+          3.6437737941741943
+        ],
+        "min": [
+          -3.7432453632354736,
+          -0.6443650126457214,
+          -3.6437737941741943
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f6ff8b0ce01ba60a777d4feef194d755eea43acdf224ff13a4085c6f9b0c2d1a",
+      "id": "sf.render.towline-debris-lod1.node.lod1-hull.primitive.0",
+      "indexCount": 1278,
+      "indexed": true,
+      "materialHash": "2af0d97cf17839916f23d0a9eb855c84bf2eacb4faba2f2d7d3f7c4f923044f5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.towline-debris-lod1.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 466
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0962207317352295,
+          0.7561648488044739,
+          2.576113700866699
+        ],
+        "min": [
+          -2.996220588684082,
+          0.6838352680206299,
+          -2.576113700866699
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "74caf2abad786693caab1530979e8636b767ab97fd58bd59b6a4c0b8b573bc16",
+      "id": "sf.render.towline-debris-lod1.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "d7a05d855847234bf2b143b195780b9965ca1bf22bd4cb09fa196ab723b0847f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.towline-debris-lod1.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    }
+  ],
+  "hlods": [],
+  "kind": "prop",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "2af0d97cf17839916f23d0a9eb855c84bf2eacb4faba2f2d7d3f7c4f923044f5",
+      "id": "material:2af0d97cf17839916f23d0a9",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d7a05d855847234bf2b143b195780b9965ca1bf22bd4cb09fa196ab723b0847f",
+      "id": "material:d7a05d855847234bf2b143b1",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-bent-tip",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_TOWLINE_DEBRIS_BENT-TIP",
+      "nodeName": "COLLISION_TOWLINE_DEBRIS_BENT-TIP",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-debris-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-lower",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_TOWLINE_DEBRIS_LOWER",
+      "nodeName": "COLLISION_TOWLINE_DEBRIS_LOWER",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-debris-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-spine",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_TOWLINE_DEBRIS_SPINE",
+      "nodeName": "COLLISION_TOWLINE_DEBRIS_SPINE",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-debris-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-upper",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_TOWLINE_DEBRIS_UPPER",
+      "nodeName": "COLLISION_TOWLINE_DEBRIS_UPPER",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-debris-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-debris-lod1.node.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-debris-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-debris-lod1.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-debris-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PROP_TOWLINE_DEBRIS_ROOT",
+      "nodeName": "SF_PROP_TOWLINE_DEBRIS_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-debris-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-debris-lod1.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.6499999761581421,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-debris-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.6499999761581421,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-debris-lod1.node.socket-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Massline",
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-debris-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "0caa0fac3811784f38bc516a30725b5a6a0d2bfbb040973b3fe55ad80dba263d"
+    },
+    "sourceGlb": {
+      "bytes": 326524,
+      "sha256": "406125f6cb54078ddd1b976550817e3b61873dcfd06356cce5197666195fee8b",
+      "uri": "towline_debris_lod1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 262710,
+      "sha256": "cc516c5edffc7341175108270c192496c69eb41650594b9aa7647a1fb8fa8b72",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 352060,
+    "sha256": "6c031ae3533968526baa029b4f6453a21ce2163684565725dad79a5f4730306d",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.04990839958190918,
+        0.053060293197631836,
+        0
+      ],
+      "max": [
+        3.6500229835510254,
+        0.7561648488044739,
+        3.6500442028045654
+      ],
+      "min": [
+        -3.7498397827148438,
+        -0.6500442624092102,
+        -3.6500442028045654
+      ],
+      "size": [
+        7.399862766265869,
+        1.406209111213684,
+        7.300088405609131
+      ]
+    },
+    "hidden": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.6499999761581421,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 8,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.towline-debris-lod1.anchor.socket-camera-focus",
+              "sf.render.towline-debris-lod1.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Massline",
+        "planIndex": 9,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Massline",
+            "recordIds": [
+              "sf.render.towline-debris-lod1.anchor.socket-massline",
+              "sf.render.towline-debris-lod1.node.socket-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 1,
+      "mechanical": 5
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 10,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "pod",
+    "url": "assets/ships/release/parts/wholeships/towline_debris_lod1.glb"
+  },
+  "runtimeHash": "3b9612e446f37588764254b6cd3654b613b22d3f89198e37ca4dadf5f7ce480d",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.6500229835510254,
+          0.7561648488044739,
+          3.6500442028045654
+        ],
+        "min": [
+          -3.7498397827148438,
+          -0.6500442624092102,
+          -3.6500442028045654
+        ]
+      },
+      "id": "sf.render.towline-debris-lod1.body",
+      "nodeIds": [
+        "sf.render.towline-debris-lod1.node.collision-towline-debris-bent-tip",
+        "sf.render.towline-debris-lod1.node.collision-towline-debris-lower",
+        "sf.render.towline-debris-lod1.node.collision-towline-debris-spine",
+        "sf.render.towline-debris-lod1.node.collision-towline-debris-upper",
+        "sf.render.towline-debris-lod1.node.lod1-hull",
+        "sf.render.towline-debris-lod1.node.lod1-mechanicaldark",
+        "sf.render.towline-debris-lod1.node.sf-prop-towline-debris-root",
+        "sf.render.towline-debris-lod1.node.socket-camera-focus",
+        "sf.render.towline-debris-lod1.node.socket-massline"
+      ]
+    }
+  ]
+}

@@ -654,6 +654,10 @@ export const save = {
       ['lastShift', () => this._callSerialize('lastShift')],
       ['redKite', () => this._callSerialize('redKite')],
       ['sableVenn', () => this._callSerialize('sableVenn')],
+      ['ilexArk', () => this._callSerialize('ilexArk')],
+      ['kilnback', () => this._callSerialize('kilnback')],
+      ['towlineTable', () => this._callSerialize('towlineTable')],
+      ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
@@ -809,6 +813,14 @@ export const save = {
     yield 'serialize:redKite';
     data.sableVenn = this._callSerialize('sableVenn');
     yield 'serialize:sableVenn';
+    data.ilexArk = this._callSerialize('ilexArk');
+    yield 'serialize:ilexArk';
+    data.kilnback = this._callSerialize('kilnback');
+    yield 'serialize:kilnback';
+    data.towlineTable = this._callSerialize('towlineTable');
+    yield 'serialize:towlineTable';
+    data.borrowedVoice = this._callSerialize('borrowedVoice');
+    yield 'serialize:borrowedVoice';
     yield 'serialize:enemyMind';
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
     yield 'serialize:lossLedger';
@@ -4807,6 +4819,10 @@ export const save = {
       this._callDeserialize('lastShift', data.lastShift);
       this._callDeserialize('redKite', data.redKite);
       this._callDeserialize('sableVenn', data.sableVenn);
+      this._callDeserialize('ilexArk', data.ilexArk);
+      this._callDeserialize('kilnback', data.kilnback);
+      this._callDeserialize('towlineTable', data.towlineTable);
+      this._callDeserialize('borrowedVoice', data.borrowedVoice);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
 
@@ -4936,6 +4952,10 @@ export const save = {
       this._restoreCombat(data.combat, entityIdRemap);
       this.registry.get('lastShift')?.afterContinue?.();
       this.registry.get('redKite')?.afterContinue?.();
+      this.registry.get('ilexArk')?.afterContinue?.();
+      this.registry.get('kilnback')?.afterContinue?.();
+      this.registry.get('towlineTable')?.afterContinue?.();
+      this.registry.get('borrowedVoice')?.afterContinue?.();
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
       // selection). No entity ids inside — live bomb actors are transient and never persist.
       // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.

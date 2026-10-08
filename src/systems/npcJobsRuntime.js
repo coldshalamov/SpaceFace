@@ -1,4 +1,5 @@
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
+import { isTowlineCleanupTarget } from '../data/towlineTable.js';
 // npcJobsRuntime — the thin runtime adapter that drives the PURE npcJobs kernel into the live game.
 // PQ-014 / SF-15 / W06 integration ("natural NPC miner/hauler/patrol jobs").
 //
@@ -3233,7 +3234,12 @@ export const npcJobsRuntime = {
     if (entry.job.phase === NPC_JOB_PHASE.FLEE) return { granted: false, reason: 'under_threat' };
     const target = targetEntityId != null && entities ? entities.get(targetEntityId) : null;
     // Same towability gate the tug's own job uses: a real loose cargo body, never scenery.
-    if (!isTowableCargoTarget(target)) return { granted: false, reason: 'not_towable' };
+    if (!isTowableCargoTarget(target) && !isTowlineCleanupTarget(state, target)) return { granted: false, reason: 'not_towable' };
+    // Reserve the original at lease admission, before a later tick creates its physical line.
+    // Two available workers cannot both promise the same load while still approaching it.
+    if (Object.values(this._byId()).some(other => other !== entry && other?.towAssist?.targetId === targetEntityId)) {
+      return { granted: false, reason: 'target_already_hired' };
+    }
     if (!destPos || !Number.isFinite(destPos.x) || !Number.isFinite(destPos.z)) {
       return { granted: false, reason: 'no_destination' };
     }

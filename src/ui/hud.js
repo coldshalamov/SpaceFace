@@ -393,6 +393,13 @@ export function steadyClosingMarker(prev, rawText, nowMs) {
   return { text: rawText, holdUntil: nowMs + CLOSING_MARKER_HOLD_MS, changed: true };
 }
 
+const BRAKE_MODE_WORDS = Object.freeze({ 'direct-counterthrust': 'brake', 'flip-and-burn': 'flip & burn' });
+
+export function brakeModeWords(mode) {
+  const key = String(mode || '');
+  return BRAKE_MODE_WORDS[key] || key.replace(/-/g, ' ');
+}
+
 // INF-086: compact live handling consequence, pure over a ships derived-stats object.
 // Returns null at/under design mass (full thrust — including a full-volume load of
 // feathers), else the thrust penalty the mass law applies to the flown accelerations.
@@ -2128,9 +2135,9 @@ export function createHud(ctx, alerts) {
     // projected stop point, fastest stop mode, and stop time/distance.
     if (sp > 0.5) {
       const brake = estimateBrakingSolution(p, resolvePropulsionProfile(p, state));
-      lines.push(`Best stop: ${brake.bestMode.replace('-', ' ')}`);
-      lines.push(`Direct: ${brake.directDistance.toFixed(0)} wu / ${brake.directTimeS.toFixed(1)} s`);
-      lines.push(`Flip-and-burn: ${brake.flipBurnDistance.toFixed(0)} wu / ${brake.flipBurnTimeS.toFixed(1)} s`);
+      lines.push(`Best stop: ${brakeModeWords(brake.bestMode)}`);
+      lines.push(`Brake: ${brake.directDistance.toFixed(0)} wu / ${brake.directTimeS.toFixed(1)} s`);
+      lines.push(`Flip & burn: ${brake.flipBurnDistance.toFixed(0)} wu / ${brake.flipBurnTimeS.toFixed(1)} s`);
     }
     return lines.join('\n');
   }
@@ -5384,7 +5391,7 @@ export function createHud(ctx, alerts) {
         setText(vt.arcLabel, cue.overshoot
           ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' WU / ARRIVAL ' + Math.round(cue.distance) + ' WU'
           : 'STOP ' + Math.round(cue.stopDistance) + ' WU · ARRIVAL ' + Math.round(cue.distance)
-            + ' WU · ' + String(cue.bestMode).replace('-', ' ').toUpperCase());
+            + ' WU · ' + brakeModeWords(cue.bestMode).toUpperCase());
       }
     } else if (showBrakeStop) {
       const span = Math.max(brakeStop.stopDistance, 1) * 1.1;

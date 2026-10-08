@@ -484,7 +484,7 @@ function budgetGauge(wallet, price) {
   top.textContent = `WALLET ${w} CR`;
   root.appendChild(top);
   const under = svgNode('text', { x: x0, y: y + 26, class: 'orr-armory-budget__read' });
-  under.textContent = left >= 0 ? `costs ${p} \u00b7 leaves ${left}` : `short ${-left} cr`;
+  under.textContent = left >= 0 ? `COSTS ${p} CR \u00b7 LEAVES ${left} CR` : `SHORT ${-left} CR`;
   if (left < 0) under.setAttribute('class', 'orr-armory-budget__read is-short');
   root.appendChild(under);
   return root;

@@ -24,6 +24,7 @@
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
 import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
+import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
@@ -168,6 +169,7 @@ export const ECONOMY_PRICE_TUNING = Object.freeze({
 const FUEL_UNIT_CR = 6;            // cr per fuel unit
 const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
+export const AMMO_BATCH = 100;     // munitions per ammo purchase — the dock verb's default fill
 const HULL_WASH_CR = 75;           // cosmetic berth service; history survives the wash
 // PQ-155.03 sink: a Pitborn yard buys out a claimed salvage right at a premium over a medium
 // kill's chip line (2 chips × 60–120 cr). Rights stay scarce by mint, not by a cheap sink.
@@ -2977,6 +2979,26 @@ export const economy = {
     return {ok:true,qty,quoteCr:Math.max(0,Math.floor(price*qty))};
   },
 
+  // A finite first planting from physically accepted original vaults, after its growth delay.
+  // The existing market stock authority owns the product; seeds never become player cargo.
+  applyIlexSeedHarvest(receiptId) {
+    const receipt = this.registryGet('ilexArk')?.outcomeReceipt?.(receiptId);
+    if (!validIlexOutcome(receipt)) return { ok: false, reason: 'unaccepted_seed_custody' };
+    if (this.state.simTime < receipt.harvestAt) return { ok: false, reason: 'planting_pending' };
+    const intents = ensureCommittedIntents(this.state), key = `${receipt.id}:first-harvest`, prior = intents[key];
+    if (prior) return { ok: true, duplicate: true, ...prior.result };
+    const market = this.state.economy.markets[ILEX_ARK.stationId] || this.ensureMarket(ILEX_ARK.stationId);
+    if (!market?.cmdty_food) return { ok: false, reason: 'greenhouse_receiver_pending' };
+    const qty = receipt.deliveredVaultIds.length * ILEX_ARK.provisionsPerVault;
+    const result = { receiptId: key, stationId: ILEX_ARK.stationId, commodityId: 'cmdty_food', qty,
+      deliveredVaultIds: [...receipt.deliveredVaultIds], at: this.state.simTime };
+    intents[key] = { receipt: { ...receipt, deliveredVaultIds: [...receipt.deliveredVaultIds] }, result };
+    if (qty) this.applyStockPressure(ILEX_ARK.stationId, 'cmdty_food', 'sell', qty);
+    this.bus.emit('ilexArk:harvested', { ...result, deliveredVaultIds: [...result.deliveredVaultIds] });
+    this.bus.emit('toast', { text: qty ? `Ceres greenhouse — first planting yielded ${qty}u Provisions from ${receipt.deliveredVaultIds.length}/6 seed lines.`
+      : 'Ceres greenhouse — no seed lines arrived. No planting or Provisions were created.', kind: 'info', ttl: 6 });
+    return { ok: true, duplicate: false, ...result };
+  },
   settleTallyThreeDelivery(receipt) {
     const source=tallyThreeSource(this.state),canonical=source?.delivery;
     if(!canonical||JSON.stringify(canonical)!==JSON.stringify(receipt)
@@ -3350,7 +3372,11 @@ export const economy = {
       const units = Math.max(0, Math.min(want, fuel.max - fuel.current));
       const fuelUnit = serviceUnitCr(state, FUEL_UNIT_CR);
       const cost = round(units * fuelUnit);
-      if (units <= 0) return;
+      if (units <= 0) {
+        // The tank is already full — the same word the repair bench gives an intact hull.
+        this.bus.emit('toast', { text: 'Tank already full', kind: 'info', ttl: 2 });
+        return;
+      }
       const credits = normalizeCredits(state.player.credits);
       const realUnits = credits < cost ? Math.max(0, Math.min(units, Math.floor(credits / fuelUnit))) : units;
       if (realUnits <= 0) {
@@ -3485,8 +3511,13 @@ export const economy = {
       });
       this.bus.emit('toast', { text: `Hull washed (${HULL_WASH_CR} cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'ammo') {
-      const units = Math.max(0, Math.floor(p.amount || 0));
-      if (units <= 0) return;
+      // A missing amount means "a batch, hold and wallet permitting" — the same default
+      // semantics the refuel and repair verbs carry. An explicit 0 is an answer: nothing asked.
+      const units = Math.max(0, Math.floor(p.amount != null ? p.amount : AMMO_BATCH));
+      if (units <= 0) {
+        this.bus.emit('toast', { text: 'No munitions requested', kind: 'info', ttl: 2 });
+        return;
+      }
       const cost = round(units * AMMO_UNIT_CR);
       if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for munitions', kind: 'error', ttl: 2 }); return; }
       // ammo is tracked as a cargo commodity (cmdty_munitions) so it integrates with the hold.
@@ -3517,7 +3548,11 @@ export const economy = {
         return;
       }
       const want = p.amount != null ? Math.min(held, Math.max(0, Math.floor(Number(p.amount)))) : held;
-      if (want <= 0) return;
+      if (want <= 0) {
+        // An explicit zero is an answer: the player asked to redeem nothing.
+        this.bus.emit('toast', { text: 'No rights asked for', kind: 'info', ttl: 2 });
+        return;
+      }
       player.salvageRights = held - want;
       const payout = round(want * SALVAGE_RIGHT_CR);
       this.grantCredits(payout, 'service:redeem_rights');

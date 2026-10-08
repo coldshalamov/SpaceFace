@@ -11,6 +11,7 @@ import {
 import { AIInspectionEndpoint } from '../ai/inspection.js';
 import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
+import { kilnbackDecision } from '../ai/kilnback.js';
 import {
   ManeuverKind,
   NORMALIZED_THRUSTER_REQUEST_FLAG,
@@ -370,7 +371,9 @@ export function createTacticalAISystem({
         ? entities.get(id)
         : null;
       if (entity && entityNeedsAiThink(entity, state) === false) continue;
-      maneuverPort.request(retickManeuverRequest(request, tick));
+      const current = entity?.data?.kilnback
+        ? kilnbackDecision({ entityId: id, maneuver: request }, state).maneuver : request;
+      maneuverPort.request(retickManeuverRequest(current, tick));
     }
   }
 
@@ -473,7 +476,9 @@ export function createTacticalAISystem({
       }
       lastDecisionTick = tick;
       lastManeuverRequests.length = 0;
-      for (const decision of result.decisions || []) {
+      for (const sourceDecision of result.decisions || []) {
+        const decision = kilnbackDecision(sourceDecision, state);
+        if (decision !== sourceDecision && decision.maneuver) liveStack.ports.maneuver.request(decision.maneuver);
         const entity = state && state.entities && decision && decision.entityId != null
           && typeof state.entities.get === 'function'
           ? state.entities.get(decision.entityId)
@@ -610,7 +615,7 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
     const expectedEntity = entityRefs && typeof entityRefs.get === 'function' ? entityRefs.get(id) : null;
     if (expectedEntity && entity !== expectedEntity) continue;
     if (entity && entityNeedsAiThink(entity, state) === false) continue;
-    applyMindAwareFiringIntent(decision, state);
+    applyMindAwareFiringIntent(kilnbackDecision(decision, state), state);
     applyNemesisFireGate(entity, state);
   }
   return decisions.length;
