@@ -13,6 +13,15 @@ import {
 } from './hudLayout.js';
 import { GYRE_SNARE } from '../data/gyreSnare.js';
 
+// DMG× telegraph: the stamped scale clamps at launchImpactScaleMax, which a
+// ~576 t clump already pegs — the yield arc would flat-line for the last ~75%
+// of the mass range and a capped moon would read the same "8.0" as a pebble.
+// Say the ceiling honestly once a katamari hits it.
+function dmgText(mass) {
+  const s = GYRE_SNARE.launchImpactScaleBase + mass / GYRE_SNARE.launchImpactScalePerMass;
+  return s >= GYRE_SNARE.launchImpactScaleMax ? 'MAX' : s.toFixed(1);
+}
+
 export const GYRE_HUD_CSS = `
 .sf-gyre-pill {
   position: absolute; left: 50%; bottom: ${FIELD_LANE_BASE}px; transform: translateX(-50%);
@@ -30,7 +39,7 @@ export const GYRE_HUD_CSS = `
   pointer-events: none; white-space: nowrap;
   transition: transform .18s ease-out;
 }
-.sf-gyre-pill.gyre-eat { transform: scale(1.1); } /* a meal just landed — the counter gulps */
+.sf-gyre-pill.gyre-eat { transform: translateX(-50%) scale(1.1); } /* a meal just landed — the counter gulps (keep the seat's translate) */
 .sf-gyre-pill.gyre-holding { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-search { color: var(--dp-lamp-dim, #8a6b3a); } /* beam live, nothing gripped yet */
 .sf-gyre-pill.gyre-heavy { color: var(--dp-lamp, #f2b950); text-shadow: var(--dp-emit-lamp, none); } /* a body it can never eat — warm like held, not hot */
@@ -158,8 +167,7 @@ export const gyreHud = {
           // swallow the freshly-thrown ball's own ·Ns.
           // The payoff beat keeps the destructive-yield telegraph too — HOLD and
           // BALL AWAY both carry DMG×; BOWL shouldn't drop the arc's climax.
-          const bowlDmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
-            GYRE_SNARE.launchImpactScaleBase + (this._bowlMass || 0) / GYRE_SNARE.launchImpactScalePerMass).toFixed(1);
+          const bowlDmg = dmgText(this._bowlMass || 0);
           return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t · DMG×${bowlDmg}${ballTxt}`, cls: 'gyre-launched' };
         }
         const mass = Math.round(g.ballMass || 0);
@@ -170,9 +178,8 @@ export const gyreHud = {
         // primary's ·Ns countdown plus any secondaries still flying (· +N balls Ns).
         // DMG× names the destructive yield while it flies — the "growth → weapon"
         // arc stays legible instead of revealing itself only on impact.
-        const dmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
-          GYRE_SNARE.launchImpactScaleBase + (g.ballMass || 0) / GYRE_SNARE.launchImpactScalePerMass);
-        const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t · DMG×${dmg.toFixed(1)}` : `GYRE — BALL AWAY · ${mass}t · DMG×${dmg.toFixed(1)}`) : 'GYRE — BALL AWAY';
+        const dmg = dmgText(g.ballMass || 0);
+        const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t · DMG×${dmg}` : `GYRE — BALL AWAY · ${mass}t · DMG×${dmg}`) : 'GYRE — BALL AWAY';
         return { text: label + ballTxt, cls: 'gyre-ball' };
       }
       // No primary, but secondaries are still streaking (one retires before the rest) —
@@ -192,8 +199,7 @@ export const gyreHud = {
           const bm = Number.isFinite(b.mass) ? b.mass : 0;
           sMass += bm; if (bm > sMassMax) sMassMax = bm;
         }
-        const sDmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
-          GYRE_SNARE.launchImpactScaleBase + sMassMax / GYRE_SNARE.launchImpactScalePerMass).toFixed(1);
+        const sDmg = dmgText(sMassMax);
         const sMassTxt = sMass > 0 ? ` · ${Math.round(sMass)}t · DMG×${sDmg}` : '';
         return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}`, cls: 'gyre-ball' };
       }
@@ -217,8 +223,7 @@ export const gyreHud = {
       const bowlN = this._bowlN != null ? this._bowlN : (g.absorbs || 0) + 1;
       // Same DMG× the HOLD/AWAY reads carry — the throw's yield telegraph
       // doesn't drop for the payoff's own beat.
-      const bowlDmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
-        GYRE_SNARE.launchImpactScaleBase + bowlMass / GYRE_SNARE.launchImpactScalePerMass).toFixed(1);
+      const bowlDmg = dmgText(bowlMass);
       return { text: `GYRE — BOWL ×${bowlN} · ${bowlMass}t · DMG×${bowlDmg}${ballTxt}`, cls: 'gyre-launched' };
     }
     if (g.phase === 'holding') {
@@ -234,8 +239,7 @@ export const gyreHud = {
       // The katamari's destructive yield is telegraphed while it grows — DMG× tracks
       // the same launch-impact formula the throw will stamp, so "bigger = hits harder"
       // is a visible arc, not a surprise on impact.
-      const dmg = ` · DMG×${Math.min(GYRE_SNARE.launchImpactScaleMax,
-        GYRE_SNARE.launchImpactScaleBase + (g.clumpMass || 0) / GYRE_SNARE.launchImpactScalePerMass).toFixed(1)}`;
+      const dmg = ` · DMG×${dmgText(g.clumpMass || 0)}`;
       // Mass-scaled cap drain makes the fuse legible BEFORE the dry auto-bowl: under ~8 s
       // of burn the readout appends the countdown and the top fuse bar drains with it.
       const fuse = fuseS;

@@ -148,6 +148,7 @@ function freshRuntime() {
     strainCueNextTick: 0,    // the sustain retrigger — a held excursion keeps a voice
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
     basinCatchLatched: false, // the first basin catch ticks once per empty->net edge
+    catchTickPeak: 0,         // escalation ratchet — quieter count-graded ticks fire on each new shown +N peak
     orbitSeed: 0,          // per-CORE orbit phase (stable id hash) — different cores get different start angles, any id type
     orbitDir: 1,           // ±1 — revolution direction from the same hash, so successive clumps don't all circle one way
     swirlBlend: 1,         // eased stir sign — chases orbitDir over ~0.5 s (dt·4 across a range of 2) so a snag can't flip the funnel's spiral mid-feed
@@ -288,6 +289,7 @@ export const gyreSnare = {
     rt.fullCueLatched = false;
     rt.fuseCueLatched = false;
     rt.basinCatchLatched = false;
+    rt.catchTickPeak = 0;   // the escalation ratchet dies with the beam ledger
     rt.tornTrack = null; // any new drop ends a previous torn body's follow
     // dropped = a live beam/hold released without launch; coreId is null when the beam
     // closed empty (no clump ever snagged) — AND during LAUNCH: the ball is already
@@ -1519,8 +1521,9 @@ export const gyreSnare = {
     rt.lastAbsorbCueS = -1e9;
     rt.strainCueLatched = false;
     rt.fullCueLatched = false;
-    rt.basinCatchLatched = false; // drop/finishLaunch reset symmetry — _publish clears
-    // it on every non-BEAM tick anyway, but the latch belongs to the beam ledger
+    rt.basinCatchLatched = false;
+    rt.catchTickPeak = 0;         // drop/finishLaunch reset symmetry — the ratchet
+    // dies with the funnel: _publish's latch clear covers non-BEAM ticks anyway
     rt.launchedId = null;
     // ballId/ballMass deliberately survive: the clump visual keeps riding the thrown mass until it
     // despawns, and the HUD's "ball live" dot reads the same flag.
@@ -1876,11 +1879,28 @@ export const gyreSnare = {
       const caught = rt.phase === PHASE.BEAM && rt.basinCount > 0;
       if (caught && !rt.basinCatchLatched) {
         rt.basinCatchLatched = true;
+        rt.catchTickPeak = rt.basinCount;
         this.bus.emit('audio:cue', {
           id: 'gyre_snare_catch', gain: 0.3, rate: 1.35,
           position: { x: maw.x, z: maw.z },
         });
       } else if (!caught) rt.basinCatchLatched = false;
+      // The appetite has a voice while it builds: the shown +N (basin fold +
+      // annulus arrivals during HOLD) used to climb eyes-only. A quieter
+      // count-graded re-tick on each new peak lets the funnel stack be heard
+      // stacking — the ratchet keys on the SHOWN count so merges (which pull
+      // a body out of it) never double-narrate over the absorb's own voice.
+      const shownN = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
+      if ((rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && shownN > rt.catchTickPeak) {
+        rt.catchTickPeak = shownN;
+        const n = Math.min(6, shownN);
+        this.bus.emit('audio:cue', {
+          id: 'gyre_snare_catch',
+          gain: 0.16 + 0.03 * n,
+          rate: 1.3 + 0.05 * n,
+          position: { x: maw.x, z: maw.z },
+        });
+      }
     }
     pub.coneLen = Math.hypot(maw.x - pub.nose.x, maw.z - pub.nose.z);
     // The drawn rim may over-cover the basin (short apex on a capital hull widens the

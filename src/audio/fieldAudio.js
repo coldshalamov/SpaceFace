@@ -116,6 +116,13 @@ export function collectFieldLoopSpecs(state, out = []) {
     // beat the visuals tense hardest for. It crests into the crack instead.
     const windup = Number.isFinite(gyre.launchWindup01)
       ? Math.min(1, Math.max(0, gyre.launchWindup01)) : 0;
+    // The countdown joins the voice too: the hum thins inside the same fuseWarnVisS
+    // window the HUD ·Ns/bar and the glass's fuseDim already telegraph — the file's
+    // own countdown-in-the-voice contract (see the ball rumble's pTtlWarn sag below).
+    // A pad-and-ears player feels the fuse dying instead of only seeing it.
+    const fuseS = Number.isFinite(gyre.fuseS) ? gyre.fuseS : 0;
+    const fuseTerm = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
+      ? 0.55 + 0.45 * (fuseS / GYRE_SNARE.fuseWarnVisS) : 1;
     const pos = gyre.maw && Number.isFinite(gyre.maw.x) ? gyre.maw : null;
     if (pos) {
       out.push({
@@ -129,7 +136,7 @@ export function collectFieldLoopSpecs(state, out = []) {
         // so a 90° turn would leave the hum in the wrong ear. A nose-mounted lash hums
         // centered on the hull — honest, and it dies with the player like any track.
         trackId: state.playerId,
-        envelope: Math.min(1, 0.35 + 0.65 * strain + 0.22 * massFrac + 0.25 * windup),
+        envelope: Math.min(1, 0.35 + 0.65 * strain + 0.22 * massFrac + 0.25 * windup) * fuseTerm,
         phase: 'active',
         position: pos,
       });
