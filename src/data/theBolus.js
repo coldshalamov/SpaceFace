@@ -48,6 +48,8 @@ export const BOLUS_LATCHES = Object.freeze({
   frenum: Object.freeze({ seconds: 1, until: 'bolus:frenumUntil', dur: 12, toast: 'The mouth only points. It does not snatch.' }),
   comb: Object.freeze({ seconds: 1.5, until: 'bolus:acidQuietUntil', dur: 8, toast: 'The trench stops biting. It does not stop watching.' }),
   pleat: Object.freeze({ seconds: 0.5, until: 'bolus:pleatUntil', dur: 9, event: 'pleat', toast: 'The pleat coughs you up-tract.' }),
+  scale: Object.freeze({ seconds: 1.5, flag: 'bolus:haulerRead', toast: 'A hauler. It is not done digesting.' }),
+  pearl: Object.freeze({ seconds: 2.5, flag: 'bolus:pearl', cargo: 'cmdty_medical', qty: 1, toast: 'A clean hull. The pearl opens.' }),
 });
 
 const LABELS = Object.freeze({
@@ -83,6 +85,10 @@ const LABELS = Object.freeze({
   bolus_uvula: 'Road Uvula',
   bolus_crook: 'Louse Crook',
   bolus_pleat: 'Tract Pleat',
+  bolus_lip: 'Cough Lip',
+  bolus_scale: 'Hull Scale',
+  bolus_pearl: 'Gall Pearl',
+  bolus_mote: 'Lumen Mote',
 });
 
 export function bolusLabel(speciesId) {
@@ -246,6 +252,18 @@ export function planBolusLayout(seed) {
   out.push(body('uvula', 'bolus_uvula', -40, 880, { key: 'bolus_uvula' }));
   out.push(body('crook', 'bolus_crook', 480, -1680, { key: 'bolus_crook' }));
   out.push(body('pleat', 'bolus_pleat', -240, 1280, { key: 'bolus_pleat', mass: 2800 }));
+  out.push(body('lantern', 'bolus_lantern', -180, -2460, { key: 'bolus_lantern_mouth_0', radius: 14 }));
+  out.push(body('lantern', 'bolus_lantern', 0, -2500, { key: 'bolus_lantern_mouth_1', radius: 16 }));
+  out.push(body('lantern', 'bolus_lantern', 160, -2420, { key: 'bolus_lantern_mouth_2', radius: 14 }));
+  out.push(body('lip', 'bolus_lip', 2100, 1000, { key: 'bolus_lip', radius: 26, mass: 2600 }));
+  out.push(body('scale', 'bolus_scale', -140, -540, { key: 'bolus_scale', radius: 18 }));
+  out.push(body('pearl', 'bolus_pearl', -700, 1400, { key: 'bolus_pearl', radius: 16 }));
+  const motes = [[260, -200], [480, 80], [360, 420], [620, -480]];
+  for (let i = 0; i < motes.length; i++) {
+    out.push(body('mote', 'bolus_mote', motes[i][0], motes[i][1], {
+      key: `bolus_mote_${i}`, dynamic: true, mass: 15, radius: 5,
+    }));
+  }
   return out;
 }
 

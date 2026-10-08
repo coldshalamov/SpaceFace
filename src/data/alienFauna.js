@@ -525,6 +525,10 @@ export const FAUNA_SPECIES = Object.freeze({
   bolus_uvula: bolusFauna('bolus_uvula', 'Road Uvula', 22, 0, 'sessile', 'While the line is held, it walks you back to the wall.'),
   bolus_crook: bolusFauna('bolus_crook', 'Louse Crook', 22, 0, 'sessile', 'Lice nearby freeze while the line is held.'),
   bolus_pleat: bolusFauna('bolus_pleat', 'Tract Pleat', 22, 0, 'sessile', 'One cough up-tract, then it needs a rest.'),
+  bolus_lip: bolusFauna('bolus_lip', 'Cough Lip', 26, 0, 'sessile', 'The last honest hold before Ashfall.'),
+  bolus_scale: bolusFauna('bolus_scale', 'Hull Scale', 18, 0, 'sessile', 'A plate on the hauler. It names the wreck and nothing else.'),
+  bolus_pearl: bolusFauna('bolus_pearl', 'Gall Pearl', 16, 0, 'sessile', 'Opens for a clean hull. Stays shut if you are filmed.'),
+  bolus_mote: bolusFauna('bolus_mote', 'Lumen Mote', 5, 14, 'drifter', 'Flees the nose light. Mills in the trench.'),
 });
 
 export function faunaSpeciesById(id) {

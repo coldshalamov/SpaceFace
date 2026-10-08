@@ -31,8 +31,16 @@ import {
   bolusThreadZ,
   bolusToothSlips,
 } from '../data/bolusPlay.js';
+import {
+  BOLUS_LORE,
+  bolusAcidScale,
+  bolusFilmBeat,
+  bolusHeldSwing,
+  bolusPearlOpens,
+  bolusValveCount,
+} from '../data/bolusLore.js';
 
-const DRIVEN = new Set(['louse', 'drum', 'fingerling', 'floater', 'mite', 'glove']);
+const DRIVEN = new Set(['louse', 'drum', 'fingerling', 'floater', 'mite', 'glove', 'mote']);
 const LOOSE = new Set(['drum', 'rib', 'bezoar', 'cyst']);
 const SMALL = new Set(['louse', 'mite', 'fingerling']);
 const CROOK_AT = { x: 480, z: -1680 };
@@ -200,6 +208,14 @@ export function tickBolus(world, dt) {
     flags['bolus:inVolume'] = true;
     flags['bolus:baleenTolled'] = false;
     flags['bolus:coughPaid'] = false;
+    if (flags['bolus:chartLine'] !== true) {
+      flags['bolus:chartLine'] = true;
+      toast(world, BOLUS_LORE.chart);
+    }
+    if (flags['bolus:stitchesHailed'] !== true && bolusValveCount(flags) > 0) {
+      flags['bolus:stitchesHailed'] = true;
+      toast(world, BOLUS_LORE.stitches);
+    }
   }
   const taut = tautTargetIds(state);
   const speed = speedOf(player);
@@ -209,6 +225,7 @@ export function tickBolus(world, dt) {
   const tetherPhase = state.player && state.player.tether ? state.player.tether.phase : null;
   const wasFast = (Number(flags['bolus:fastFor']) || 0) >= F.drumChaseDelay;
 
+  const exposureBefore = ae.exposure || 0;
   if (!bolusInBerth(lx, lz)) ae.exposure = Math.min(1, (ae.exposure || 0) + F.exposurePerSec * step);
   if (boosting || speed >= F.fast) flags['bolus:fastFor'] = (Number(flags['bolus:fastFor']) || 0) + step;
   else {
@@ -231,6 +248,9 @@ export function tickBolus(world, dt) {
   let valveHeld = false;
   let fingerlingHeld = false;
   let schoolFlee = false;
+  let swingHeld = false;
+  let ringHeld = false;
+  let lipHeldLoaded = false;
 
   const list = state.entityList || [];
   for (let i = 0; i < list.length; i++) {
@@ -247,6 +267,19 @@ export function tickBolus(world, dt) {
       flags['bolus:swingUntil'] = simTime + P.swingSeconds;
     }
     tag.held = heldLine;
+    const ex = ent.pos.x - origin.x;
+    const ez = ent.pos.z - origin.z;
+    if (heldLine && bolusHeldSwing(tag.role)) swingHeld = true;
+    if (heldLine && tag.role === 'ring') ringHeld = true;
+    if (heldLine && tag.role === 'lip' && tetherPhase === 'loaded') lipHeldLoaded = true;
+    if (heldLine && tag.role === 'knob' && flags['bolus:wallHolds'] !== true) {
+      flags['bolus:wallHolds'] = true;
+      toast(world, BOLUS_LORE.wall);
+    }
+    if (heldLine && tag.role === 'knob' && Number(flags['bolus:hushUntil']) > simTime && flags['bolus:chartReread'] !== true) {
+      flags['bolus:chartReread'] = true;
+      toast(world, BOLUS_LORE.chart);
+    }
     if (!heldLine) {
       tag.hold = 0;
       tag.spent = false;
@@ -256,12 +289,26 @@ export function tickBolus(world, dt) {
         tag.spent = true;
         flags['bolus:peristalsisUntil'] = simTime + 12;
       }
-      if (!tag.spent && tag.role !== 'tendon') {
+      const pearlRefuses = tag.role === 'pearl' && !tag.spent
+        && flags['bolus:pearl'] !== true && !bolusPearlOpens(ae.exposure);
+      if (pearlRefuses) {
+        if (tag.told !== true) {
+          tag.told = true;
+          toast(world, BOLUS_LORE.pearlShut);
+        }
+      } else if (!tag.spent && tag.role !== 'tendon') {
         const committed = commitBolusLatch(flags, tag.role, tag.key, tag.hold, simTime);
         if (committed) {
           tag.spent = true;
           if (committed.cargo) addCargo(state, committed.cargo, committed.qty);
-          if (committed.exposure) ae.exposure = Math.min(1, (ae.exposure || 0) + committed.exposure);
+          if (committed.exposure) {
+            ae.exposure = Math.min(1, (ae.exposure || 0) + committed.exposure);
+            if (tag.role === 'nerve' && bolusIrisOpen(simTime) && flags['bolus:breathSample'] !== true) {
+              ae.exposure = Math.max(0, (ae.exposure || 0) - committed.exposure * 0.5);
+              flags['bolus:breathSample'] = true;
+              toast(world, BOLUS_LORE.breath);
+            }
+          }
           if (committed.toast) toast(world, committed.toast);
           cue(world, latchCue(tag.role, committed.event));
           if (committed.event === 'suture') {
@@ -277,11 +324,30 @@ export function tickBolus(world, dt) {
             }
           }
           if (committed.event === 'pleat') pleat = true;
+          if (committed.event === 'suture' && bolusValveCount(flags) >= 3 && flags['bolus:stitchedQuiet'] !== true) {
+            flags['bolus:stitchedQuiet'] = true;
+            toast(world, BOLUS_LORE.shy);
+          }
+          if (tag.role === 'bezoar' && bolusInCone(lx, lz, rot, ex, ez)) {
+            const hushLeft = Number(flags['bolus:hushUntil']) || 0;
+            flags['bolus:hushUntil'] = Math.max(hushLeft, simTime + BOLUS_LORE.gritFlash);
+            if (flags['bolus:gritFlashTold'] !== true) {
+              flags['bolus:gritFlashTold'] = true;
+              toast(world, BOLUS_LORE.grit);
+            }
+          }
         }
       }
     }
     if (heldLine && tag.role === 'tooth') {
-      if (flags['bolus:toothHeld'] !== true && !(Number(flags['bolus:toothYankUntil']) > simTime)) toothRising = true;
+      if (Number(flags['bolus:acidQuietUntil']) > simTime) {
+        if (flags['bolus:combTooth'] !== true) {
+          flags['bolus:combTooth'] = true;
+          toast(world, BOLUS_LORE.comb);
+        }
+      } else if (flags['bolus:toothHeld'] !== true && !(Number(flags['bolus:toothYankUntil']) > simTime)) {
+        toothRising = true;
+      }
     }
     if (heldLine && tag.role === 'uvula') {
       uvulaHeld = true;
@@ -290,8 +356,6 @@ export function tickBolus(world, dt) {
     if (heldLine && tag.role === 'crook' && tag.hold >= 0.4) crookHeld = true;
     if (heldLine && (tag.role === 'valve' || tag.role === 'suture')) valveHeld = true;
     if (heldLine && tag.role === 'fingerling') fingerlingHeld = true;
-    const ex = ent.pos.x - origin.x;
-    const ez = ent.pos.z - origin.z;
     if (tag.role === 'fingerling' && boosting && Math.hypot(ex - lx, ez - lz) < P.schoolNear) schoolFlee = true;
     if (tag.role === 'lantern' && Math.hypot(ex - lx, ez - lz) < P.gallRadius) {
       flags['bolus:gallUntil'] = simTime + P.gallSeconds;
@@ -351,6 +415,10 @@ export function tickBolus(world, dt) {
     else {
       ix = sour ? F.toothXSour : F.toothX;
       xKicked = true;
+      if (flags['bolus:toothLied'] !== true) {
+        flags['bolus:toothLied'] = true;
+        toast(world, BOLUS_LORE.tooth);
+      }
       cue(world, BOLUS_CUE.tooth);
     }
   } else if (!bolusIrisOpen(simTime) && !(Number(flags['bolus:hushUntil']) > simTime)
@@ -360,6 +428,10 @@ export function tickBolus(world, dt) {
     zKicked = true;
     flags['bolus:irisBumpUntil'] = simTime + F.irisQuiet;
     flags['bolus:irisKickUntil'] = simTime + F.irisKick;
+    if (flags['bolus:irisSeen'] !== true) {
+      flags['bolus:irisSeen'] = true;
+      toast(world, BOLUS_LORE.iris);
+    }
     cue(world, BOLUS_CUE.iris);
   } else if (pleat) {
     iz = F.pleatZ;
@@ -426,10 +498,14 @@ export function tickBolus(world, dt) {
   const quiet = Number(flags['bolus:acidQuietUntil']) > simTime;
   const strip = lx >= BOLUS_ACID_X0 && lx <= BOLUS_ACID_X1;
   if (strip && !quiet && !galling) {
-    hurt(player, F.acidDps * step);
+    if (!swingHeld) hurt(player, F.acidDps * bolusAcidScale(flags) * step);
     if (flags['bolus:inAcid'] !== true) {
       flags['bolus:inAcid'] = true;
       cue(world, BOLUS_CUE.acid);
+    }
+    if (flags['bolus:acidTold'] !== true) {
+      flags['bolus:acidTold'] = true;
+      toast(world, BOLUS_LORE.acid);
     }
   } else flags['bolus:inAcid'] = false;
   if (miteHit) {
@@ -437,6 +513,30 @@ export function tickBolus(world, dt) {
     flags['bolus:miteFleeUntil'] = simTime + P.miteFleeSeconds;
     ae.exposure = Math.min(1, (ae.exposure || 0) + 0.04);
     toast(world, 'Something thin is on the line.');
+  }
+
+  if (lipHeldLoaded && strip && !quiet && !galling && flags['bolus:lipHonest'] !== true) {
+    flags['bolus:lipHonest'] = true;
+    toast(world, BOLUS_LORE.lip);
+  }
+  if (Number(flags['bolus:hushUntil']) > simTime
+      && Math.abs(lz - F.irisAt) < F.irisHalfWidth && Math.abs(lx) < F.irisSkirt
+      && flags['bolus:hushWalk'] !== true) {
+    flags['bolus:hushWalk'] = true;
+    toast(world, BOLUS_LORE.hush);
+  }
+  if (ringHeld) {
+    ae.exposure = exposureBefore;
+    if (flags['bolus:ringTold'] !== true) {
+      flags['bolus:ringTold'] = true;
+      toast(world, BOLUS_LORE.ring);
+    }
+  }
+  const filmBeat = bolusFilmBeat(ae.exposure);
+  const filmPrev = Number(flags['bolus:filmBeat']) || 0;
+  if (filmBeat > filmPrev) {
+    for (let b = filmPrev + 1; b <= filmBeat; b++) toast(world, BOLUS_LORE.film[b - 1]);
+    flags['bolus:filmBeat'] = filmBeat;
   }
 
   flags['bolus:toothHeld'] = false;
@@ -482,6 +582,10 @@ function steerFauna(row, ctx) {
     } else if (Number(ctx.flags['bolus:drumSlideUntil']) > ctx.simTime) {
       return;
     } else if (Number(ctx.flags['bolus:fastFor']) >= F.drumChaseDelay) {
+      if (ctx.flags['bolus:drumHeard'] !== true) {
+        ctx.flags['bolus:drumHeard'] = true;
+        toast(ctx.world, BOLUS_LORE.drum);
+      }
       const dx = ctx.lx - ex;
       const dz = ctx.lz - ez;
       const dist = Math.hypot(dx, dz) || 1;
@@ -524,10 +628,26 @@ function steerFauna(row, ctx) {
     }
   } else if (tag.role === 'glove') {
     drive(ent, (tag.anchorX - ex) * 0.6, (tag.anchorZ - ez) * 0.6);
+  } else if (tag.role === 'mote') {
+    if (inCone) {
+      const dx = ex - ctx.lx;
+      const dz = ez - ctx.lz;
+      const dist = Math.hypot(dx, dz) || 1;
+      drive(ent, (dx / dist) * 22, (dz / dist) * 22);
+    } else {
+      const phase = (tag.phase || 0) + ctx.simTime * 0.9;
+      drive(ent, Math.cos(phase) * 8, Math.sin(phase) * 6);
+    }
   }
 
   if (SMALL.has(tag.role) && (inCone || crookFreeze)) drive(ent, 0, 0);
   const frozen = SMALL.has(tag.role) && (inCone || crookFreeze);
-  if (frozen && tag.frozen !== true) cue(ctx.world, BOLUS_CUE.freeze);
+  if (frozen && tag.frozen !== true) {
+    cue(ctx.world, BOLUS_CUE.freeze);
+    if (ctx.flags['bolus:lightPins'] !== true) {
+      ctx.flags['bolus:lightPins'] = true;
+      toast(ctx.world, BOLUS_LORE.light);
+    }
+  }
   tag.frozen = frozen;
 }

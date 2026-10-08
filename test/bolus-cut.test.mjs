@@ -455,7 +455,7 @@ test('the cut keeps the doc 16 room', () => {
   assert.equal(F.acidDps, 2);
   assert.equal(BOLUS_PALETTE.fogDensity, 0.0022);
   assert.equal(BOLUS_PALETTE.fog, 0x14060a);
-  assert.equal(planBolusLayout(1).length, 89);
+  assert.equal(planBolusLayout(1).length, 99);
   const bolus = SECTORS.find((sector) => sector.id === BOLUS_SECTOR_ID);
   assert.equal(bolus.interiorHost, true);
   for (const id of ['bolus_latch', 'bolus_freeze', 'bolus_iris', 'bolus_crest']) {

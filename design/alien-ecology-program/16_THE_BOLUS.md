@@ -357,3 +357,47 @@ Reviewers treat catalog 1–36 plus B1–B12 as the ship set. Hold and cut stay 
 
 
 Implementation review judges this ship set and whether the code does it cleanly. A missing ship row is a defect. A Hold or Cut row is not a defect. "Flesh out the other 50" means the Hold list stays written, specific, and unbuilt. It does not mean those systems land in this pass.
+
+## Play pass — thirty beats (what the research said was fun)
+
+Space games stay fun when the pilot is small and the dark has rules. Outer Wilds makes knowledge the only souvenir. FTL makes the ship's own rules the story. Roadside Picnic and S.T.A.L.K.E.R. teach a zone with the tool you already carry — here that tool is the Massline plus the nose light. Alien: Isolation telegraphs. Subnautica uses light as a path. A toy, not a score. Omission does the talking. No new grapple, no camera punch, no face, no second fungus, no new commodity, no oxygen clock.
+
+This pass does not retune the force table. Crests, the tooth yank, the iris bump, the baleen shove, and the drum pin stay as tested. The new work is laws you can learn, and a few bodies that make those laws visible.
+
+1. First entry says the chart line once. Concord's name, not a lecture.
+2. Coming back with a stitch already in says the stitches held.
+3. The first taut knob says the wall holds.
+4. The first step into the trench says it is wet. Damage is unchanged.
+5. The first closed iris says it is shut and that it breathes.
+6. The first tooth yank says not every anchor is a friend.
+7. The first time the cone pins a louse, mite, or fingerling, the light is named.
+8. The first time a drum commits to a chase, you are told it heard the burn. The cone still pins it. That test stays.
+9. Exposure 0.25: a film on the glass.
+10. Exposure 0.50: the film has a pulse.
+11. Exposure 0.75: you will carry this out. No new meter.
+12. Walking the iris slab during a hush says you walked a closed mouth.
+13. While the comb has quieted the trench, the tooth does not yank. One line. The tooth still lies after the quiet ends.
+14. Three sutures halve acid. One line. The trench goes shy. It does not stop.
+15. Sampling the nerve while the iris is open sheds half that sample's exposure. One line.
+16. Cracking a bezoar inside the cone flashes a three-second hush if you do not already have a longer one. One line.
+17. A taut swing anchor pauses acid: knob, tendril, valve, suture, ring, lip. Letting go is how the trench eats.
+18. A taut stitch-ring pauses exposure gain. One line. The berth rule is untouched.
+19. The pearl pays one medical only if exposure is under 0.30. If you are filmed, it refuses and does not spend itself.
+20. The scale on the hauler, held a second and a half, names the wreck. No cargo. The rib is still the throw.
+21. Three lanterns mark the Charon mouth so the way in is a light, not a guess.
+22. A cough lip near the Ashfall gate is a real swing anchor. No speed bonus.
+23. Four lumen motes flee the cone and mill in the dark. They do not attack and they are not pinned like lice.
+24. The pearl is a body at the far end of the wall road.
+25. The scale is a body on the hauler.
+26. Letting go of the lip counts as a swing, so the cilia do not grab you for the same window as a knob.
+27. Letting go of the ring counts as a swing for that same window.
+28. `bolusFilmBeat` is pure.
+29. `bolusAcidScale` is pure.
+30. `bolusPearlOpens` is pure.
+31. The first loaded hold on the cough lip, while the trench is armed, says the lip only holds still for a hand that isn't lying. No extra impulse. An overload cable does not get the line.
+32. While a hush is up, the first taut knob repeats the chart line once. A reread, not a second lesson.
+
+A rising trench and a warm wall that grips were refused. Both retune the force table. The pearl still reads exposure, not a second frost bit.
+
+Still refused: a boss, a face, a second line, a camera hit, an oxygen clock, wall gravity, a new commodity, a rival pilot, a migrating mouth.
+

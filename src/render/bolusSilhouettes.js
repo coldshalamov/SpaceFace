@@ -374,6 +374,42 @@ function buildPleat() {
   };
 }
 
+function buildLip() {
+  return {
+    parts: [
+      strap('lip_rim', 0xd8c8b0, 1.8, 0.06, 0.12),
+      quad('lip_fold', [-0.7, 0.05, -0.05], [0.75, 0.08, -0.02], [0.55, -0.22, 0.18], [-0.6, -0.2, 0.14], TISSUE),
+    ],
+  };
+}
+
+function buildScale() {
+  return {
+    parts: [
+      quad('scale_plate', [-0.15, 0.55, 0], [0.9, 0.35, 0.08], [0.7, -0.45, 0.2], [-0.25, -0.15, 0.05], 0x6a5848),
+      strap('scale_root', TISSUE, 0.7, 0.05, -0.35),
+    ],
+  };
+}
+
+function buildPearl() {
+  return {
+    parts: [
+      quad('pearl_core', [-0.12, 0.45, -0.08], [0.18, 0.4, -0.04], [0.1, -0.5, 0.12], [-0.16, -0.42, 0.06], PALE),
+      strap('pearl_seat', TISSUE, 0.9, 0.05, -0.55),
+    ],
+  };
+}
+
+function buildMote() {
+  return {
+    parts: [
+      strap('mote_sliver', 0xc4b59a, 0.7, 0.03, 0),
+      tri('mote_spark', [0.28, 0.02, 0], [0.42, 0.08, 0.04], [0.36, -0.06, 0.02], TISSUE),
+    ],
+  };
+}
+
 const BUILDERS = {
   bolus_knob: buildKnob,
   bolus_tendon: buildTendon,
@@ -407,6 +443,10 @@ const BUILDERS = {
   bolus_uvula: buildUvula,
   bolus_crook: buildCrook,
   bolus_pleat: buildPleat,
+  bolus_lip: buildLip,
+  bolus_scale: buildScale,
+  bolus_pearl: buildPearl,
+  bolus_mote: buildMote,
 };
 
 const FREEZE = new Set(['bolus_louse', 'bolus_fingerling', 'bolus_mite']);

@@ -103,7 +103,8 @@ export function bolusToothSlips(phase) {
 }
 
 export function bolusIsSwingRole(role) {
-  return role === 'knob' || role === 'tendril' || role === 'valve' || role === 'suture';
+  return role === 'knob' || role === 'tendril' || role === 'valve' || role === 'suture'
+    || role === 'ring' || role === 'lip';
 }
 
 export function bolusSwingBlocksCilia(until, simTime) {
