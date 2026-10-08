@@ -601,7 +601,9 @@ export class GyreSnarePresentation {
   // ttl01 drives the last-~2.3 s expiry fade so the ribbon telegraphs the grave;
   // wind gathers the streak during the coil; massFade reads the throw at range.
   _drawTrail(mesh, mat, spec, flashCalm) {
-    if (!spec) {
+    // Below ~5 wu/s the ball has no heading left — a stalled ricochet dragging a
+    // 6 wu streak on a frozen launchDir reads as a directional lie, so hide it.
+    if (!spec || spec.vl < 5) {
       if (mesh.visible) mesh.visible = false;
       return;
     }
@@ -708,8 +710,8 @@ export class GyreSnarePresentation {
       // leans a few wu toward the displaced hold point — the stretch reads in the
       // glass, not only in the thin grip-spoke. Same beam-local offset the funnel
       // aims at (already smoothed — no snap on snag).
-      const lagLean = Math.max(-6, Math.min(6, (this._leanZ || 0) * 0.12))
-        * Math.min(1, finite(mirror.holdLag01));
+      const lagLean = Math.max(-11, Math.min(11, (this._leanZ || 0) * 0.12))
+        * Math.sqrt(Math.min(1, finite(mirror.holdLag01)));
       this._maw.position.z += lagLean;
       this._disc.position.z += lagLean;
       // The coil also raises the cone's pulse floor — the glass visibly tenses while it

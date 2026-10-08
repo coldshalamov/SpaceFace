@@ -173,7 +173,7 @@ export const GYRE_SNARE = Object.freeze({
     maw: '#cfeaff',
     lump: '#e8f4ff',
     lumpGlow: '#9fc4e0',
-    warn: '#ffe9c8',         // strain warn wash — the 'about to tear' chromatic read (rim is too close to glass to carry it)
+    warn: '#ffb070',         // strain warn wash — a SATURATED amber: over the white-hot rim a pale wash reads as glow, not 'about to tear'
   }),
 });
 

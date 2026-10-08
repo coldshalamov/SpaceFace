@@ -491,7 +491,7 @@ export function computeHapticFrame(input = {}) {
   if (level === 'off') {
     return {
       enabled: false, haptics: 'off',
-      momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0, pulse: null,
+      momentum: 0, line: 0, slam: 0, boost: 0, gyre: 0, weak: 0, strong: 0, pulse: null,
     };
   }
   const motor = level === 'low' ? 0.5 : 1;
@@ -499,11 +499,14 @@ export function computeHapticFrame(input = {}) {
   const line = input.lineActive && input.lineLoad > 0 ? clamp01(input.lineLoad) : 0;
   const boost = input.boost ? clamp01(HAPTIC_BOOST_FLOOR + (1 - HAPTIC_BOOST_FLOOR) * momentum) : 0;
   const slam = clamp01(input.slam);
+  // Gyre strain: a CONTINUOUS channel under the held clump — "about to tear" is
+  // felt for the whole excursion, not only the 120 ms pulse at the boundary.
+  const gyre = input.gyreStrain > 0 ? clamp01(input.gyreStrain) : 0;
   const pulse = input.pulse && (clamp01(input.pulse.strong) > 0 || clamp01(input.pulse.weak) > 0)
     ? { strong: clamp01(input.pulse.strong), weak: clamp01(input.pulse.weak) }
     : null;
-  const strong = Math.max(line, slam, boost * 0.5, pulse ? pulse.strong : 0);
-  const weak = Math.max(boost, slam * 0.8, line * 0.5, pulse ? pulse.weak : 0);
+  const strong = Math.max(line, slam, boost * 0.5, gyre * 0.4, pulse ? pulse.strong : 0);
+  const weak = Math.max(boost, slam * 0.8, line * 0.5, gyre * 0.55, pulse ? pulse.weak : 0);
   return {
     enabled: true,
     haptics: level,
@@ -511,6 +514,7 @@ export function computeHapticFrame(input = {}) {
     line: round4(line),
     slam: round4(slam),
     boost: round4(boost),
+    gyre: round4(gyre),
     pulse,
     weak: round4(clamp01(weak * motor)),
     strong: round4(clamp01(strong * motor)),
@@ -1278,12 +1282,19 @@ export function createGamepad(ctx) {
         ? Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0)
         : 0;
       const tether = live && live.player && live.player.tether;
+      // The gyre mirror's HOLD channels: strain dominates, with a mass floor so a
+      // capped clump drags audibly even before the lash nears slipping.
+      const gyre = live && live.gyreSnare;
       const frame = computeHapticFrame({
         momentum: speed,
         lineActive: !!(tether && tether.active),
         lineLoad: tether ? tether.load : 0,
         boost: !!(this.actions.boost && this.actions.boost.held),
         slam,
+        gyreStrain: gyre && gyre.phase === 'holding'
+          ? Math.max(clamp01(Number(gyre.strain01) || 0),
+            clamp01((Number(gyre.clumpMass) || 0) / Math.max(1, Number(gyre.maxClumpMass) || 1)) * 0.35)
+          : 0,
         pulse,
         haptics: level,
       });
