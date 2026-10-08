@@ -41,6 +41,20 @@ export function formatSpeedFigure(value) {
   return '999G+';
 }
 
+/** Earned speed the governor deliberately does not spend, in world units per second.
+ *  Zero at or under the governed reference. The 100% mark stays the reference. */
+export function overspeedBand(speed, governed) {
+  if (!Number.isFinite(speed) || !Number.isFinite(governed) || !(governed > 0)) return 0;
+  return Math.max(0, speed - governed);
+}
+
+/** How much of the rail the second-color band covers. One extra governed-speed of
+ *  earned speed fills it. The governed fill itself never moves past 100%. */
+export function overspeedBandScale(overspeed, reference) {
+  if (!(overspeed > 0) || !(reference > 0)) return 0;
+  return Math.min(1, Math.round((overspeed / reference) * RESOLUTION) / RESOLUTION);
+}
+
 /** Pure model for consumers/tests. The frame writer below uses scalar caches, not this allocation. */
 export function velocityRailModel(value, reference) {
   const available = Number.isFinite(value);
@@ -51,6 +65,7 @@ export function velocityRailModel(value, reference) {
     available, speed, hasReference,
     fraction: Math.round(fraction * RESOLUTION) / RESOLUTION,
     aboveReference: available && hasReference && Math.round(speed) > Math.round(reference),
+    overspeed: hasReference ? overspeedBand(speed, reference) : 0,
   };
 }
 
@@ -71,6 +86,7 @@ export function speedGaugeMarkup() {
     '<span class="sf-speed__unit" aria-hidden="true">WU/S</span>' +
     '<div class="sf-speed__track" aria-hidden="true">' +
       '<span class="sf-speed__bed"></span><span class="sf-speed__fill"></span>' +
+      '<span class="sf-speed__over"></span>' +
       '<svg class="sf-speed__ticks" viewBox="0 0 256 5" preserveAspectRatio="none" focusable="false"><path d="M64 0V5M128 0V5M192 0V5" stroke="currentColor" stroke-width="2"/></svg>' +
       '<span class="sf-speed__cursor"><svg viewBox="0 0 8 16" focusable="false"><path d="M0 0H8L4 5ZM3 7H5V16H3Z"/></svg></span>' +
       '<svg class="sf-speed__runout" viewBox="0 0 8 11" focusable="false"><path d="M1 1L6 5.5L1 10" fill="none" stroke="currentColor" stroke-width="2"/></svg>' +
@@ -100,9 +116,10 @@ function parts(el) {
     reference: el.querySelector('.sf-speed__reference b'),
     extent: el.querySelector('.sf-speed__extent'),
     fill: el.querySelector('.sf-speed__fill'),
+    over: el.querySelector('.sf-speed__over'),
     cursor: el.querySelector('.sf-speed__cursor'),
     value: undefined, referenceValue: undefined, sourceText: undefined,
-    reading: undefined, hasReference: undefined,
+    reading: undefined, hasReference: undefined, overScale: undefined,
   };
   el.addEventListener?.('focus', refreshTooltipOnFocus);
   CACHE.set(el, p);
@@ -174,14 +191,27 @@ export function setKitGauge(el, value, reference) {
   attr(el, 'data-available', available);
   attr(el, 'data-over-reference', aboveReference);
   attr(el, 'data-has-reference', hasReference);
+  const earned = hasReference ? Math.round(overspeedBand(speed, reference)) : 0;
+  attr(el, 'data-overspeed', earned);
+  // The second band is the earned surplus. It paints on the 10 Hz reading, not on
+  // every analog sample, and it grows from the governed mark inward. The fill
+  // above stays clamped at that mark.
+  if (p.over) {
+    const scale = overspeedBandScale(earned, reference);
+    if (p.overScale !== scale) {
+      p.overScale = scale;
+      p.over.style.transform = `scaleX(${scale})`;
+    }
+  }
   // A physical speed may exceed REF. Keep meter bounds valid and the exact (unabbreviated) value
   // available to assistive technology. No live region: this is a reading, not an alert stream.
   if (available) {
     attr(el, 'role', 'meter'); attr(el, 'aria-label', 'Speed'); attr(el, 'aria-valuemin', 0);
     attr(el, 'aria-valuenow', reading);
     attr(el, 'aria-valuemax', Math.max(1, reading, referenceReading));
+    const earnedWords = earned > 0 ? `; ${earned} earned past the governed mark` : '';
     attr(el, 'aria-valuetext', `${reading} world units per second; ` + (hasReference
-      ? `reference ${Math.round(reference)}${aboveReference ? '; above reference, not a speed limit' : ''}`
+      ? `reference ${Math.round(reference)}${aboveReference ? '; above reference, not a speed limit' : ''}${earnedWords}`
       : 'reference unavailable'));
   } else {
     attr(el, 'role', 'group'); attr(el, 'aria-label', 'Speed unavailable');

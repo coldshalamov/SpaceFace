@@ -30,6 +30,7 @@ import {
 } from './inspector.js';
 import { createBuildPalette, PALETTE_ITEMS, CORE_ID } from './buildPalette.js';
 import { SITE_BALANCE, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID } from '../../data/sites.js';
+import { industryReadoutFromState } from '../screens/industryReadout.js';
 
 // PQ-130.06 — the cursor lens (law §6.4) landed and the context bay is gone (law §10). Timings
 // here are law: the card appears after LENS_DELAY_S of hover while driving, instantly in build
@@ -359,6 +360,14 @@ export const asteroidScreen = {
     claimChip.style.display = 'none';
     hudEls.claim = claimChip;
 
+    // FB-055: the same industrial sentence the automation panel prints. One crest
+    // chip, inside the 40px band — not a second board.
+    const industryChip = document.createElement('span');
+    industryChip.className = 'aw-chip';
+    industryChip.dataset.chip = 'industry';
+    industryChip.textContent = industryReadoutFromState(state).crest;
+    hudEls.industry = industryChip;
+
     // Claim-survey assay chip (PQ-024): volatile cold-state progress beside the claim it threatens;
     // committed/producing read from the durable record.
     const assayChip = document.createElement('span');
@@ -437,7 +446,7 @@ export const asteroidScreen = {
     drawerLabel.textContent = 'Log';
     drawerBtn.appendChild(drawerLabel);
 
-    crest.append(nameEl, claimChip, assayChip, alertEl, crestRight);
+    crest.append(nameEl, claimChip, assayChip, industryChip, alertEl, crestRight);
     wrap.appendChild(crest);
 
     // ---------- the board (law §4): sovereign stage + rig cluster ----------
@@ -590,6 +599,15 @@ export const asteroidScreen = {
       lastLaneOv = s && s.overlays ? s.overlays.lane : null;
       lastMachineCount = s && s.machines ? s.machines.length : 0;
       projDirty = false;
+      if (hudEls.industry) {
+        const view = projection ? {
+          siteName: s && s.name,
+          exportRatePerMin: projection.exportRatePerMin,
+          machines: projection.machines,
+          lanes: projection.lanes,
+        } : null;
+        hudEls.industry.textContent = industryReadoutFromState(state, view ? [view] : []).crest;
+      }
     }
 
     // Consume projDirty first (a tick can mutate rates/progress without replacing identity),

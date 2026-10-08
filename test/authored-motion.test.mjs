@@ -19,6 +19,7 @@ import {
 } from '../src/contracts/motionBank.js';
 import {
   attachAuthoredMotionDriver,
+  attachAuthoredMotionDriverSteps,
   authoredMotionControllersFor,
   createAuthoredClock,
   installAuthoredMotionBus,
@@ -766,4 +767,31 @@ test('reserved clip names and translation slerp are rejected', () => {
   const slerpT = ambientBank({ events: {} });
   slerpT.clips[0].channels[0].interpolation = 'slerp';
   assert.throws(() => validateMotionBank(slerpT), /cannot slerp/);
+});
+
+
+test('abandoned stepped motion attach removes registration and root hooks at every yield', () => {
+  for (const deferred of [false, true]) {
+    for (let stopAt = 1; stopAt <= 13; stopAt++) {
+      const { root } = makePivotTree();
+      const id = `abandon-${deferred}-${stopAt}`;
+      const controller = bindAuthoredMotion(root, BANK);
+      const steps = attachAuthoredMotionDriverSteps(root, {
+        id, deferAuthoredMotionRegistration: deferred, data: { siteId: id },
+      }, [controller]);
+      let step;
+      for (let i = 0; i < stopAt; i++) {
+        step = steps.next();
+        if (step.done) break;
+      }
+      if (step.done) step.value?.();
+      else steps.return();
+      assert.equal(authoredMotionControllersFor(id).length, 0, `${id}: entity registration`);
+      assert.equal(authoredMotionControllersFor(`site:${id}`).length, 0, `${id}: site alias`);
+      for (const key of ['activateAuthoredMotionRegistration', 'authoredMotionControllers',
+        'authoredMotionPadSpec', 'updateAuthoredMotion', 'authoredMotionEvent', 'detachAuthoredMotion']) {
+        assert.equal(root.userData[key], undefined, `${id}: ${key}`);
+      }
+    }
+  }
 });

@@ -1377,13 +1377,13 @@ function createRadarFrame(size, center, radius) {
    "YOU HULL · RED HOSTILE · …" — was a memory test, not a key). */
 const RADAR_LEGEND_ITEMS = [
   { label: 'YOU', colour: TACTICAL_MAP_PALETTE.player, title: 'You are the lit hull at the centre of the dial.' },
-  { label: 'HOSTILE', colour: TACTICAL_MAP_PALETTE.hostile, title: 'Red — ships hostile to you. Always on the dial; the nearest one past the rim becomes an edge chevron.' },
+  { label: 'HOSTILE', colour: TACTICAL_MAP_PALETTE.hostile, semantic: 'hostile', title: 'Red — ships hostile to you. Always on the dial; the nearest one past the rim becomes an edge chevron.' },
   { label: 'STATION', colour: TACTICAL_MAP_PALETTE.station, title: 'Cyan hex — stations you can dock and trade at. Read sector-wide, even past the rim.' },
   { label: 'GATE', colour: TACTICAL_MAP_PALETTE.gate, title: 'Violet ring — jump gates. Read sector-wide, even past the rim.' },
-  { label: 'ALLY', colour: TACTICAL_MAP_PALETTE.friendly, title: 'Green — allied faction ships.' },
-  { label: 'HAULER', colour: TACTICAL_MAP_PALETTE.worker, title: 'Sage — industrial traffic: haulers, miners, tenders.' },
-  { label: 'PATROL', colour: TACTICAL_MAP_PALETTE.lawful, title: 'Steel-blue — lawful traffic: patrols, escorts, couriers.' },
-  { label: 'TRAFFIC', colour: TACTICAL_MAP_PALETTE.neutral, title: 'Blue-grey — other nearby traffic. Ordinary ships resolve only in the close band (half the dial radius); your target, mission contacts and capitals always show.' },
+  { label: 'ALLY', colour: TACTICAL_MAP_PALETTE.friendly, semantic: 'friendly', title: 'Green — allied faction ships.' },
+  { label: 'HAULER', colour: TACTICAL_MAP_PALETTE.worker, semantic: 'neutral', title: 'Sage — industrial traffic: haulers, miners, tenders.' },
+  { label: 'PATROL', colour: TACTICAL_MAP_PALETTE.lawful, semantic: 'neutral', title: 'Steel-blue — lawful traffic: patrols, escorts, couriers.' },
+  { label: 'TRAFFIC', colour: TACTICAL_MAP_PALETTE.neutral, semantic: 'neutral', title: 'Blue-grey — other nearby traffic. Ordinary ships resolve only in the close band (half the dial radius); your target, mission contacts and capitals always show.' },
 ];
 
 const PING_HIT_PX = 14;
@@ -1464,7 +1464,7 @@ export function createRadar(ctx) {
     if (frame) frame.dispose();
     frame = createRadarFrame(configuredSize, configuredCenter, configuredRadius);
     // Inside the dial, sized in percent of it, so the frame tracks the dial through every responsive
-    // size (188 / 172 / 132) and the expanded scope without a layout read.
+    // size (208 / 172 / 132) and the expanded scope without a layout read.
     const span = `${(((configuredSize + FRAME_PAD * 2) / configuredSize) * 100).toFixed(3)}%`;
     frame.el.style.cssText = `position:absolute;left:50%;top:50%;width:${span};height:${span};transform:translate(-50%,-50%);pointer-events:none;overflow:visible;z-index:1;`;
     dial.appendChild(frame.el);
@@ -1511,6 +1511,7 @@ export function createRadar(ctx) {
   const legendRow = document.createElement('span');
   legendRow.className = 'sf-radar-legend';
   legendRow.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:1px 12px;';
+  const legendDots = [];
   for (const item of RADAR_LEGEND_ITEMS) {
     const chip = document.createElement('span');
     chip.className = 'sf-radar-legend-item';
@@ -1521,6 +1522,18 @@ export function createRadar(ctx) {
     dot.style.cssText = `display:inline-block;width:7px;height:7px;border-radius:50%;flex:none;background:${item.colour};box-shadow:0 0 5px ${item.colour}59;`;
     chip.append(dot, document.createTextNode(item.label));
     legendRow.appendChild(chip);
+    legendDots.push({ dot, item });
+  }
+  // The dial remaps ship hues under a colorblind mode; the key follows on mode change so the two
+  // never disagree. Fixed-hue chips (YOU/STATION/GATE) match the dial in every mode — no remap.
+  let legendMode = 'none';
+  function refreshLegendDots(mode) {
+    legendMode = mode || 'none';
+    for (const { dot, item } of legendDots) {
+      const c = (legendMode !== 'none' && item.semantic) ? semanticColor(item.semantic, legendMode) : item.colour;
+      dot.style.background = c;
+      dot.style.boxShadow = `0 0 5px ${c}59`;
+    }
   }
   objectiveKey.append(objectiveReadout, legendRow);
   wrap.append(dial, objectiveKey);
@@ -1861,6 +1874,7 @@ export function createRadar(ctx) {
       && state.settings.accessibility
       && state.settings.accessibility.colorblindMode
     ) || 'none';
+    if (colorblindMode !== legendMode) refreshLegendDots(colorblindMode);
 
     drawHeatZone(g, heatZoneInCurrentSector(state), playerX, playerZ, radarScale, center, radius);
 

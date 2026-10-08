@@ -28,6 +28,7 @@ import {
 import { isLoadingHullUpgradeJob } from '../src/render/partsLibrary.js';
 import { FIRST_FLIGHT_PIPELINE_HOLD_S } from '../src/render/pipelineAutoFlushPolicy.js';
 import { createPipelineAdmissionTracker } from '../src/render/pipelineReadiness.js';
+import { FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from '../src/render/decodeTaskBudget.js';
 
 const flightOwner = (simTime, overrides = {}) => ({
   _firstFlightDeferredHold: true,
@@ -157,4 +158,27 @@ test('a synchronous resume scheduler under the hold does not recurse', () => {
   void tracker.compile({ name: 'held' });
   tracker.resumeAutoFlush();
   assert.ok(calls >= 1 && calls < 10, `synchronous scheduler must not recurse (calls=${calls})`);
+});
+
+test('a synchronous resume scheduler does not recurse when the forced wallet is spent', async () => {
+  // The hold poll stops once. The forced-wallet park did not: while spend stays over
+  // budget, an inline scheduler re-enters scheduleResumedBatch until the stack dies.
+  // An inline host also has no later frame, so the queued compile must flush.
+  noteForcedFrameSpend(FORCED_FRAME_BUDGET_MS);
+  let calls = 0;
+  const compiled = [];
+  let held = true;
+  const tracker = createPipelineAdmissionTracker((subjects) => {
+    compiled.push(...subjects);
+    return { compiled: subjects.length };
+  }, {
+    deferAutoFlush: () => held,
+    scheduleResume: (callback) => { calls += 1; held = false; callback(); },
+  });
+  const pending = tracker.compile({ name: 'forced' });
+  tracker.resumeAutoFlush();
+  assert.ok(calls >= 1 && calls < 10, `spent wallet must not recurse (calls=${calls})`);
+  await pending;
+  assert.equal(compiled.length, 1);
+  assert.equal(compiled[0] && compiled[0].name, 'forced');
 });

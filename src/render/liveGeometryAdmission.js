@@ -27,6 +27,14 @@ const newStatsResult = () => ({
 
 export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatch, yieldToMain, isActive, isUrgent, onReady, onError, priorityOf }) {
   const pending = [];
+  // Stats memo: the pending ids/types arrays are queue-membership data, so a
+  // per-frame stats() call can serve the last build until the queue mutates.
+  // pendingSeq bumps on every push/splice; the urgent count still scans live
+  // (isUrgent is dynamic and must stay exact) but allocates nothing.
+  let pendingSeq = 0;
+  let statsPendingSeq = -1;
+  const statsPendingIds = [];
+  const statsPendingTypes = [];
   const admissions = new WeakMap();
   // A thrown compile/upload used to stay latched in `admissions` forever — the
   // pending root could never re-enter the queue and stayed invisible. Retry a
@@ -99,7 +107,9 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
         bestSequence = entry.sequence;
       }
     }
-    return bestIndex < 0 ? null : pending.splice(bestIndex, 1)[0];
+    if (bestIndex < 0) return null;
+    pendingSeq++;
+    return pending.splice(bestIndex, 1)[0];
   };
 
   const runEntry = async (entry) => {
@@ -283,8 +293,10 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
         let batch = [first];
         const collectBatch = () => {
           for (let index = 0; index < pending.length;) {
-            if (entryUrgent(pending[index])) batch.push(pending.splice(index, 1)[0]);
-            else index++;
+            if (entryUrgent(pending[index])) {
+              pendingSeq++;
+              batch.push(pending.splice(index, 1)[0]);
+            } else index++;
           }
           return batch;
         };
@@ -369,6 +381,7 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
       enqueuedTotal++;
       let resolve;
       const completion = new Promise((res) => { resolve = res; });
+      pendingSeq++;
       pending.push({
         entity,
         root,
@@ -411,17 +424,21 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
       statsResult.pendingTypes = EMPTY_PENDING_LIST;
       statsResult.drainStage = drainStage;
       if (pending.length > 0) {
-        const ids = [];
-        const types = [];
         for (const entry of pending) {
           if (entryUrgent(entry)) statsResult.urgentQueued++;
-          if (ids.length < 24) {
-            ids.push(entry.entity && entry.entity.id);
-            types.push((entry.entity && entry.entity.type) || '?');
+        }
+        if (statsPendingSeq !== pendingSeq) {
+          statsPendingSeq = pendingSeq;
+          statsPendingIds.length = 0;
+          statsPendingTypes.length = 0;
+          for (const entry of pending) {
+            if (statsPendingIds.length >= 24) break;
+            statsPendingIds.push(entry.entity && entry.entity.id);
+            statsPendingTypes.push((entry.entity && entry.entity.type) || '?');
           }
         }
-        statsResult.pendingIds = ids;
-        statsResult.pendingTypes = types;
+        statsResult.pendingIds = statsPendingIds;
+        statsResult.pendingTypes = statsPendingTypes;
       }
       return statsResult;
     },

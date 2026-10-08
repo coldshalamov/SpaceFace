@@ -2,7 +2,7 @@
 /**
  * Named acceptance gate for Milestone 4 regional ecology.
  *
- * Proves: 24 unique fingerprints, ≥6 macro-families pairwise distinguishable,
+ * Proves: 25 unique fingerprints, ≥6 macro-families pairwise distinguishable,
  * validation, consumer seams (traffic/world/encounter/law), durable aftermath,
  * bounded state growth, and focused unit tests.
  */
@@ -64,10 +64,10 @@ function makeHarness(seed = 47) {
 }
 
 // ── Catalog coverage ──────────────────────────────────────────────────────────
-assert.equal(REGIONAL_ECOLOGY_PROFILES.length, 24, 'catalog must cover 24 regions');
+assert.equal(REGIONAL_ECOLOGY_PROFILES.length, 25, 'catalog must cover 25 regions');
 assert.equal(
   new Set(REGIONAL_ECOLOGY_PROFILES.map((p) => p.fingerprint)).size,
-  24,
+  25,
   'each region needs a unique fingerprint',
 );
 assert.deepEqual(
@@ -96,7 +96,11 @@ for (let i = 0; i < familyIds.length; i++) {
 // Anchored story-core identities (player-legible anchors).
 assert.equal(getRegionalEcologyProfile('sector_helios_prime').familyId, 'civic_core');
 assert.equal(getRegionalEcologyProfile('sector_ceres_belt').familyId, 'industrial_belt');
-assert.equal(getRegionalEcologyProfile('sector_tethys_junction').familyId, 'trade_corridor');
+// Tethys already carries an appended derelict (zone_tethys_split_station), so the
+// family resolver publishes salvage_frontier ahead of the trade lanes. The Bolus
+// is the anomaly throat: one deep zone plus the lumen, security under 0.22.
+assert.equal(getRegionalEcologyProfile('sector_tethys_junction').familyId, 'salvage_frontier');
+assert.equal(getRegionalEcologyProfile('sector_the_bolus').familyId, 'anomaly_research');
 assert.equal(getRegionalEcologyProfile('sector_sker_haven').familyId, 'outlaw_predation');
 assert.equal(getRegionalEcologyProfile('sector_veil_nebula').familyId, 'anomaly_research');
 
@@ -236,6 +240,6 @@ const familySummary = familyIds.map((id) => {
   return `${id}(${members.length})`;
 }).join(', ');
 
-console.log(`M4 regional ecology PASS — 24 unique fingerprints · ${byFamily.size} macro-families: ${familySummary}`);
+console.log(`M4 regional ecology PASS — 25 unique fingerprints · ${byFamily.size} macro-families: ${familySummary}`);
 console.log(`  min pairwise family distance total=${Math.min(...distances.map((d) => d.total)).toFixed(2)}`);
 console.log('  seams: traffic · world yield · encounter weights · law security · aftermath save/reload');

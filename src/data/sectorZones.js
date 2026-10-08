@@ -1,6 +1,7 @@
 // src/data/sectorZones.js — NAMED ZONES per sector (the "why does this exist here" layer).
 
 import { FRONTIER_ZONES } from './frontierRegions/index.js';
+import { BOLUS_ZONES } from './theBolus.js';
 import { appendAuthoredZones, ZONE_CERES_THROUGHLINE } from './authoredPlaces.js';
 import {
   userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
@@ -286,6 +287,7 @@ const CORE_SECTOR_ZONES = {
 const AUTHORED_SECTOR_ZONES = appendAuthoredZones({
   ...CORE_SECTOR_ZONES,
   ...FRONTIER_ZONES,
+  ...BOLUS_ZONES,
 });
 
 // ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────

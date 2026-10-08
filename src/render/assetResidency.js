@@ -296,7 +296,13 @@ export function createAssetResidencyRegistry(options = {}) {
     // Soft-lease admissions (package cache, decode cache, runtime-cache session pins) grow the
     // bounded soft set — a cache-warming decode that never takes a live owner is exactly how
     // soft residency grows without any release. Bound it at admission, not just at departure.
-    if (isSoftResidencyOwner(ownerMetadata)) enforceSoftResidencyBudgets();
+    // Same demand-flag contract release() runs: K retains in one commit
+    // continuation must not pay K x O(assets x owners) census inline — mark
+    // demand on a big world and let the paced sweep enforce.
+    if (isSoftResidencyOwner(ownerMetadata)) {
+      if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
+      else softBudgetPending = true;
+    }
     return true;
   }
 
@@ -384,7 +390,14 @@ export function createAssetResidencyRegistry(options = {}) {
       evictIfUnowned(entry, reason);
     }
     cleanupOwnerState(state);
-    if (released > 0 && !deferBudgets) enforceSoftResidencyBudgets();
+    // The census+sort is unconditional here otherwise: a mass boundary
+    // teardown drives this through the `boundary-removed` listener once per
+    // detach — K x O(assets) synchronously. Big worlds arm the paced flag
+    // instead (the sweep's release-detached drains clear and enforce it).
+    if (released > 0 && !deferBudgets) {
+      if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
+      else softBudgetPending = true;
+    }
     return released;
   }
 
@@ -405,8 +418,12 @@ export function createAssetResidencyRegistry(options = {}) {
       if (state.released || !owner || owner.isObject3D !== true) continue;
       if (!isDetached(owner)) continue;
       if (isClaimed && isClaimed(owner)) continue;
-      releaseOwner(owner, reason);
+      releaseOwner(owner, reason, true);
       released.push(owner);
+    }
+    if (released.length) {
+      softBudgetPending = false;
+      enforceSoftResidencyBudgets();
     }
     return Object.freeze(released);
   }
@@ -440,7 +457,10 @@ export function createAssetResidencyRegistry(options = {}) {
       releaseOwner(owner, reason, true);
       released.push(owner);
     }
-    if (released.length) yield* enforceSoftResidencyBudgetsSteps();
+    if (released.length || softBudgetPending) {
+      softBudgetPending = false;
+      yield* enforceSoftResidencyBudgetsSteps();
+    }
     return Object.freeze(released);
   }
 
@@ -468,7 +488,11 @@ export function createAssetResidencyRegistry(options = {}) {
     });
     evictIfUnowned(entry, reason);
     cleanupOwnerState(state);
-    enforceSoftResidencyBudgets();
+    // K releases in one drain used to pay K x O(assets) census+sort inline —
+    // mark demand and let the paced residency service run the stepped
+    // enforcement. Small worlds keep the inline path (the census is free).
+    if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
+    else softBudgetPending = true;
     return true;
   }
 
@@ -601,6 +625,11 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     return true;
   }
+
+  // Demand flag for the amortized release() path — set when the byte census is
+  // deferred to the paced service's stepped enforcement; cleared when it runs.
+  let softBudgetPending = false;
+  const SOFT_BUDGET_INLINE_MAX = 128;
 
   // Inline byte caps on soft residency, enforced at release and soft-retain time: the idle sweep
   // only reclaims entries older than its minAge gate, so a burst of departures or scopeless
@@ -955,6 +984,17 @@ export function createAssetResidencyRegistry(options = {}) {
     let bytes = 0;
     for (const unit of memoryUnits.values()) bytes += unit.bytes;
     return bytes;
+  }
+
+  // The budget governor only consumes three scalar totals — building two full
+  // diagnostics() tables inside enforceBudget minted ~2xN frozen rows plus
+  // their owner-metadata sets and sort exactly at the boundary crossing.
+  function budgetTotals() {
+    let cpuPackageBytes = 0;
+    for (const entry of assets.values()) cpuPackageBytes += entry.cpuPackageBytes;
+    let unaccountedResources = 0;
+    for (const resourceEntry of resources.values()) if (resourceEntry.unaccounted) unaccountedResources++;
+    return { cpuPackageBytes, gpuResidentBytes: totalGpuResidentBytes(), unaccountedResources };
   }
 
   function evictIfUnowned(entry, reason) {
@@ -1327,7 +1367,7 @@ export function createAssetResidencyRegistry(options = {}) {
   }
 
   function enforceBudget(kind = 'gpu') {
-    const before = diagnostics({ includeEvents: false });
+    const before = budgetTotals();
     const entries = [...assets.values()].map((entry) => governorEntry(entry, kind));
     const initialResidentBytes = kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes;
     const plan = governor.plan(entries, kind, { initialResidentBytes });
@@ -1354,7 +1394,7 @@ export function createAssetResidencyRegistry(options = {}) {
       if (!assets.has(String(key))) evicted.push(key);
     }
     const afterEntries = [...assets.values()].map((entry) => governorEntry(entry, kind));
-    const after = diagnostics({ includeEvents: false });
+    const after = budgetTotals();
     const beforeBytes = Number(kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes) || 0;
     const remainingBytes = Number(kind === 'cpu' ? after.cpuPackageBytes : after.gpuResidentBytes) || 0;
     const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
@@ -1427,19 +1467,28 @@ export function applySectorExitResidency(residency, sectorId, options = {}) {
   if (typeof residency.prepareSectorExit === 'function') {
     residency.prepareSectorExit(sectorId, options);
   }
-  const cacheCleanup = typeof residency.releaseUnreferencedCacheOwners === 'function'
-    ? residency.releaseUnreferencedCacheOwners(options.cacheCleanupReason || 'sector-exit-cache-only')
-    : null;
-  // World emits sector:exit before the caller releases its preview/instance owner. Queue one
-  // post-dispatch pass so that just-departed cache-only packages are reclaimed at the same boundary
-  // without making arbitrary owner release tear down a reusable package mid-frame.
-  if (typeof residency.releaseUnreferencedCacheOwners === 'function'
-    && typeof globalThis.queueMicrotask === 'function') {
-    globalThis.queueMicrotask(() => {
-      residency.releaseUnreferencedCacheOwners(
-        options.cacheCleanupReason ? `${options.cacheCleanupReason}:post-dispatch` : 'sector-exit-cache-only:post-dispatch',
-      );
-    });
+  const primaryReason = options.cacheCleanupReason || 'sector-exit-cache-only';
+  const postDispatchReason = options.cacheCleanupReason
+    ? `${options.cacheCleanupReason}:post-dispatch`
+    : 'sector-exit-cache-only:post-dispatch';
+  let cacheCleanup = null;
+  // A caller can take over cleanup driving (e.g. the renderer's paced residency
+  // poll) — the sync twin + microtask then never run inside the exit frame.
+  if (typeof options.driveCacheCleanup === 'function') {
+    options.driveCacheCleanup(primaryReason, postDispatchReason);
+  } else {
+    cacheCleanup = typeof residency.releaseUnreferencedCacheOwners === 'function'
+      ? residency.releaseUnreferencedCacheOwners(primaryReason)
+      : null;
+    // World emits sector:exit before the caller releases its preview/instance owner. Queue one
+    // post-dispatch pass so that just-departed cache-only packages are reclaimed at the same boundary
+    // without making arbitrary owner release tear down a reusable package mid-frame.
+    if (typeof residency.releaseUnreferencedCacheOwners === 'function'
+      && typeof globalThis.queueMicrotask === 'function') {
+      globalThis.queueMicrotask(() => {
+        residency.releaseUnreferencedCacheOwners(postDispatchReason);
+      });
+    }
   }
   if (typeof residency.enforceBudget === 'function') {
     const receipt = residency.enforceBudget(options.kind || 'gpu');

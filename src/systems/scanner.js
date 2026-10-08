@@ -2058,6 +2058,10 @@ export function isHostileToPlayer(e, playerTeam, state) {
   // passive hulls and team-2 civilians returned above, noncombat traffic roles and unarmed hulls
   // are filtered inside the check, and lawful hulls already answered through their own gate.
   if (factionAggro && aggroCombatCapable(e, ai, data, state)) return true;
+  // The Unclosed is hostile only while it has classified the hull (combat.targetId,
+  // already returned above). A scar, a quiet body, or a shed plate must not inherit
+  // lane-danger hostility just because Ashfall is a high tier.
+  if (data.foldAberrant) return false;
   const security = finiteNumber(ai && ai.sectorSecurity, currentSectorSecurity(state));
   const tier = finiteNumber(ai && ai.sectorTier, currentSectorTier(state));
   if ((security <= UNSAFE_PLAYER_SECURITY || tier >= 2) && playerIsInLaneDanger(state)) return true;
@@ -2073,6 +2077,17 @@ export function contactStateWord(e, playerTeam, state) {
   if (data.poiType === 'cache' || data.kind === 'cache') return 'CACHE';
   if (isWreckLike(e)) return 'DERELICT';
   if (e && e.data && e.data.echoOfPlayer === true) return 'ECHO';
+  // The Unclosed is not traffic. A quiet body is not a trader, and a classified
+  // one is the fold, not a generic hostile. Scars, plates, and corners keep their own word.
+  if (data.foldAberrant) {
+    const role = data.foldAberrant.role;
+    if (role === 'scar') return 'SCAR';
+    if (role === 'plate') return 'PLATE';
+    if (role === 'corner') return 'CORNER';
+    const classified = !!(data.combat && state && state.playerId != null
+      && data.combat.targetId === state.playerId);
+    return classified ? 'FOLD' : 'QUIET';
+  }
   const playerId = state && state.playerId;
   if (e.team === 0 && e.id !== playerId) return (e.data && e.data.isWingman) ? 'WINGMAN' : 'ALLY';
   const ai = data.ai;

@@ -4,6 +4,7 @@
 import { WEAPONS } from '../data/weapons.js';
 import { KillCause, KillSurface } from '../combat/killCausality.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import { kilnbackPhysicalBody } from '../data/kilnbackBody.js';
 import { kilnbackFlightModel } from '../data/kilnback.js';
 import { mothlightPhysicalBody } from '../data/mothlightBody.js';
@@ -240,7 +241,8 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     // shipped as a real body with no trail. Keep the safe fallback (a spawn that never throws,
     // so callers that reserved a slot still get a body) but make it loud and inspectable.
     def = ENEMY_TYPES[0];
-    console.warn(`[combat] makeEnemySpawnSpec: unknown enemyTypeId ${JSON.stringify(enemyTypeId)} — spawning fallback ${JSON.stringify(def.id)}`);
+    dedupWarn('combat/unknown-enemyTypeId',
+      '[combat] makeEnemySpawnSpec: unknown enemyTypeId — spawning fallback', enemyTypeId, def.id);
     opts = { ...opts, spawnFallbackFor: enemyTypeId };
   }
   level = level || (def.levelRange ? def.levelRange[0] : 1);

@@ -7,7 +7,7 @@ export function createChroniclerVoiceBridge({ bus, helpers = {} } = {}) {
     const accepted = !!(helpers.voice && typeof helpers.voice.say === 'function' && helpers.voice.say({
       id: `${channel}:${payload.sourceRef}`,
       channel, text: payload.text, kind: 'chronicler',
-      priority: 12, ttl: 5, source: 'chronicler', sourceRef: payload.sourceRef,
+      ttl: 5, source: 'chronicler', sourceRef: payload.sourceRef,
       storyId: payload.storyId, sectorId: payload.sectorId,
     }));
     // Acceptance means the arbiter accepted the offer, NOT that audio was actually heard.
@@ -15,7 +15,11 @@ export function createChroniclerVoiceBridge({ bus, helpers = {} } = {}) {
       storyId: payload.storyId, sourceRef: payload.sourceRef, channel,
     });
   }
-  off.push(bus.on('chronicler:radio', p => offer(p, 'band')));
+  // Radio used to offer on 'band', which is not a voice channel, so the memorial
+  // degraded toward info and the numbers-station carrier treated it as its own
+  // line. News is the chronicle's channel. The id is the source ref, so a repeat
+  // of the same story replaces the queued line instead of speaking twice.
+  off.push(bus.on('chronicler:radio', p => offer(p, 'news')));
   off.push(bus.on('chronicler:recall', p => offer(p, 'comms')));
   return { name: 'chroniclerVoiceBridge', destroy() { for (const fn of off.splice(0)) if (typeof fn === 'function') fn(); } };
 }

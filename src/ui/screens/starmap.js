@@ -219,7 +219,7 @@ const CSS = `
 }
 #sf-starmap .sm-kv b { color: var(--sf-paper); font-weight: 500; text-align: right; }
 #sf-starmap .sm-driver { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.35; margin: var(--sp-1) 0 var(--sp-2); }
-#sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.5; max-width: 52ch; }
+#sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.5; }
 #sf-starmap .sm-objective {
   border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
   border-radius: 4px; padding: var(--sp-2) var(--sp-3);

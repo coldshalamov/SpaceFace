@@ -14,10 +14,10 @@ import { SECTORS } from '../src/data/sectors.js';
 import { buildPostcard } from '../src/ui/sectorPostcard.js';
 import { createGameState } from '../src/core/gameState.js';
 
-test('FB-031: SECTOR_WAY_OF_LIFE authors 24 rows matching all live sectors', () => {
-  assert.equal(SECTOR_WAY_OF_LIFE.length, 24, 'Exactly 24 rows in SECTOR_WAY_OF_LIFE');
+test('FB-031: SECTOR_WAY_OF_LIFE authors 25 rows matching all live sectors', () => {
+  assert.equal(SECTOR_WAY_OF_LIFE.length, 25, 'Exactly 25 rows in SECTOR_WAY_OF_LIFE');
   const sectorIds = new Set(SECTORS.map((s) => s.id));
-  assert.equal(sectorIds.size, 24, '24 live sectors');
+  assert.equal(sectorIds.size, 25, '25 live sectors');
 
   for (const row of SECTOR_WAY_OF_LIFE) {
     assert.ok(sectorIds.has(row.id), `Row id ${row.id} must be a known live sector id`);

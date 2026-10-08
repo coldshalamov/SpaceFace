@@ -254,7 +254,13 @@ export const cloak = {
           CLOAK_SCAN_BURN_RADIUS,
         );
         if (this.bus) {
-          this.bus.emit('toast', { text: 'Cloak burned — your scan lit you up', kind: 'warn', ttl: 1.6 });
+          this.bus.emit('toast', {
+            text: 'Cloak burned — your scan lit you up',
+            kind: 'warn',
+            ttl: 1.6,
+            // The fade on cloak:burned owns this moment. A warn toast would also click.
+            audioOwnedByVerb: true,
+          });
         }
       }
       if (this.bus) {

@@ -416,7 +416,7 @@ test('physical Bastion commissioning owns B6 identity and Bastion consequences',
 });
 
 test('fifteen authored claim sites are distributed and reachable across the 24-region graph', () => {
-  assert.equal(SECTORS.length, 24, 'canonical galaxy still has 24 regions');
+  assert.equal(SECTORS.length, 25, 'canonical galaxy still has 25 regions');
   assert.equal(CLAIMABLE_BODY_SITES.length, 15, 'authored scarcity stays within the 12–16 target');
 
   const ids = new Set();

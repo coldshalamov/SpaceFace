@@ -42,7 +42,7 @@ function runNodeTest() {
 }
 
 function checkPureInvariants() {
-  assert.equal(SECTORS.length, 24, 'must cover 24 stable sectors');
+  assert.equal(SECTORS.length, 25, 'must cover 25 stable sectors');
   const graph = buildSectorGraph(SECTORS);
   const ownerBySector = Object.create(null);
   for (const s of SECTORS) ownerBySector[s.id] = s.factionId;
@@ -66,7 +66,7 @@ function checkPureInvariants() {
     baseDangerFor: (id) => dangerIndex(byId.get(id)),
   });
   assert.equal(a.digest, b.digest, 'seeded ordering must not depend on input order');
-  assert.equal(Object.keys(a.bySector).length, 24);
+  assert.equal(Object.keys(a.bySector).length, 25);
   assert.equal(filterNewEmbodimentIntents(a.intents, a.intents.map((i) => i.intentId)).length, 0);
   assert.equal(
     proposedRecordId(seed, 'sector_ceres_belt', 'convoy', 'k'),
@@ -185,7 +185,7 @@ n++;
 console.log('ok   m2-embodiment — unit suite');
 checkPureInvariants();
 n++;
-console.log('ok   m2-embodiment — pure invariants (24 sectors, digest, record ids)');
+console.log('ok   m2-embodiment — pure invariants (25 sectors, digest, record ids)');
 checkAdapterIdempotency();
 n++;
 console.log('ok   m2-embodiment — adapter continuous idempotency');

@@ -30,6 +30,7 @@ import { isLatchActor,latchNinePropulsionAwake,createLatchNinePlumeBatch } from 
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
+import { bolusCableStyle, applyBolusCableProfile } from './bolusCable.js';
 import { modelTruthPlumeSocketName, modelTruthTrailSocketName } from '../data/modelTruth.js';
 import { isCeresWorkfleetPropulsion, ceresWorkfleetPropulsionAwake, createCeresWorkfleetPlumeBatch } from './ceresWorkfleetVisuals.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
@@ -9850,6 +9851,8 @@ export const vfx = {
     const sourceEnt = live ? source : this._ent(cable.lastSourceId);
     const anchorEnt = live ? target : this._ent(cable.lastTargetId);
     if (!sourceEnt || !anchorEnt) { setTetherCableVisible(cable, false); return; }
+    const bolusStyle = live && !remote && anchorEnt.data?.bolus?.role === 'uvula'
+      ? bolusCableStyle(this.state) : null;
 
     // Ordinary line: player nose -> target surface. Remote heads: source surface -> target surface;
     // the player remains the controller but is never smuggled in as a physical third endpoint.
@@ -9920,7 +9923,7 @@ export const vfx = {
     if (Math.abs(tangential) > 4) cable.bowSide = tangential > 0 ? -1 : 1;
     // The bow flattens as the line works. Keyed off the smoothed load, not strainSmooth: against a
     // 10.5M breakTension the old term was a constant 1.0 and the bow never straightened.
-    const slackBow = Math.min(slack * 0.42, 24)
+    const slackBow = bolusStyle ? bolusStyle.sag * cable.bowSide : Math.min(slack * 0.42, 24)
       * Math.max(0.15, 1 - Math.min(1, Math.max(cable.loadSmooth, cable.strainSmooth)))
       * cable.bowSide;
 
@@ -9952,6 +9955,7 @@ export const vfx = {
     cable.reelGlow += (reelTarget - cable.reelGlow) * (1 - Math.exp(-(reelTarget > cable.reelGlow ? 11 : 6) * Math.max(0, dt || 0)));
     if (l < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, l / 0.55);
     else this._ctmp.lerpColors(this._tetherColorWarm, this._tetherColorHot, (l - 0.55) / 0.45);
+    if (bolusStyle && tether.phase !== 'overload') this._ctmp.setHex(bolusStyle.tint);
     // Winching lifts the line's heat, but it must not erase the tension colour: with the shader's
     // own reel term this used to triple-count and a fully-winched cable read as a plain white
     // noodle, losing the one channel that tells you how hard it is pulling.
@@ -10068,6 +10072,7 @@ export const vfx = {
     // and it does so purely in geometry - no burst, no light, no change to either event's timing.
     profileInput.parting = snapping;
     const profile = resolveMasslineCableProfile(profileInput, cable.profile);
+    applyBolusCableProfile(profile, bolusStyle);
 
     const curve = cable.curveFrame;
     curve.ax = ax; curve.az = az;

@@ -55,6 +55,12 @@ export const VELOCITY_RAIL_CSS = `
   box-shadow:0 0 8px var(--dp-lamp-bloom, rgb(242 185 80 / .34));
   transition:none;
 }
+/* Earned speed past the governed mark. Grows from that mark inward, in a second
+   colour, and never pushes the 100% fill. No transition: the rail does not chase. */
+.sf-speed .sf-speed__over {
+  position:absolute; inset:0; transform:scaleX(0); transform-origin:right center;
+  background:#0b3d36; pointer-events:none;
+}
 .sf-speed .sf-speed__ticks {
   position:absolute; inset:0; width:100%; height:100%; color:var(--dp-metal-4, #2f3542); pointer-events:none;
 }
@@ -119,6 +125,7 @@ html.sf-high-contrast .sf-kit-gauge.sf-speed, html.sf-high-contrast #hud .sf-kit
   background:#000; border:1px solid #eef7ff; box-shadow:none;
   --sv-muted:#eef7ff; --sv-track:#8fa7b8;
 }
+html.sf-high-contrast .sf-speed .sf-speed__over { background:#eef7ff; }
 @media (forced-colors:active) {
   .sf-kit-gauge.sf-speed, #hud .sf-kit-gauge.sf-speed,
   html.sf-high-contrast .sf-kit-gauge.sf-speed, html.sf-high-contrast #hud .sf-kit-gauge.sf-speed {
@@ -126,6 +133,7 @@ html.sf-high-contrast .sf-kit-gauge.sf-speed, html.sf-high-contrast #hud .sf-kit
     --sv-ink:CanvasText; --sv-muted:CanvasText; --sv-signal:Highlight; --sv-track:GrayText;
   }
   .sf-speed .sf-speed__ticks { color:Canvas; }
+  .sf-speed .sf-speed__over { background:Highlight; }
   .sf-speed.sf-stat--info .sf-tip { background:Canvas; color:CanvasText; border-color:CanvasText; }
 }
 `;

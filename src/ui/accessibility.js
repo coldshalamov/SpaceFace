@@ -199,6 +199,10 @@ export const ACCESSIBILITY_SETTINGS_SCHEMA = [
     label: 'Caption size', help: 'Changes caption text size without scaling the flight view.',
   },
   {
+    key: 'textScale', path: 'accessibility.textScale', type: 'slider', default: 1, status: 'EXISTS',
+    label: 'Text scale', help: 'Changes type size without moving layout. Independent of UI scale.',
+  },
+  {
     key: 'captionBackground', path: 'accessibility.captionBackground', type: 'toggle',
     default: true, status: 'EXISTS', label: 'Solid caption backing',
     help: 'Places captions on an opaque dark panel for consistent contrast.',
@@ -396,6 +400,7 @@ export function applyAccessibility(settings, target) {
   // Same `--ui-scale` property the Video/Access sliders write on live drag. Applying it here is
   // what makes a saved scale survive boot and Continue; it does not introduce a second scale var.
   applyUiScaleFromSettings(settings, root);
+  applyTextScaleFromSettings(settings, root);
   // FB-100: the HUD's own scale/opacity keys ride the same boot + settings:changed path so a
   // saved pair survives Continue exactly like --ui-scale.
   applyHudPresentationFromSettings(settings, root);
@@ -421,6 +426,22 @@ function applyUiScaleFromSettings(settings, fallbackRoot) {
   if (el && el.style && typeof el.style.setProperty === 'function') {
     el.style.setProperty('--ui-scale', String(uiScale));
   }
+}
+
+/** Type size only. Does not write --ui-scale and does not change the root font size. */
+export function applyTextScaleFromSettings(settings, fallbackRoot) {
+  const raw = settings && settings.accessibility ? Number(settings.accessibility.textScale) : NaN;
+  const scale = Number.isFinite(raw) ? Math.min(1.5, Math.max(0.85, raw)) : 1;
+  let el = null;
+  if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+    // Type tokens are declared at :root; their dependencies must resolve there
+    // so inherited, responsive and screen-specific sizes keep their own base.
+    el = document.documentElement || document.getElementById('ui-root');
+  }
+  if (!el) el = fallbackRoot;
+  if (!el || !el.style || typeof el.style.setProperty !== 'function') return scale;
+  el.style.setProperty('--sf-text-scale', String(scale));
+  return scale;
 }
 
 /** Resolve a semantic state ('hostile'|'shield'|'danger'|…) to its active color, honoring the current

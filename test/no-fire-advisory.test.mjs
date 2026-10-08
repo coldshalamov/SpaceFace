@@ -56,7 +56,7 @@ test('player fire inside the no-fire core speaks the authored line, once', () =>
   assert.equal(said.length, 1);
   assert.equal(said[0].text, NO_FIRE_BARK);
   assert.equal(said[0].kind, 'noFireZone');
-  assert.equal(said[0].channel, 'warn');
+  assert.equal(said[0].channel, 'alert');
   assert.equal(said[0].factionId, 'faction_concord');
   // sustained fire — including beam update ticks — stays silent
   bus.emit('combat:fire', { ownerId: 1 });

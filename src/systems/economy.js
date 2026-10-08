@@ -35,6 +35,7 @@ import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { SECTORS } from '../data/sectors.js';
+import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import { effectiveDangerTierFor } from './sectorSim.js';
@@ -1957,6 +1958,13 @@ export const economy = {
     const state = this.state;
     const markets = state.economy.markets;
     if (markets[stationId]) return markets[stationId];
+    // The Swallowed Rib is not part of the galactic price census. Building it
+    // from a Helios boot would take the shared economy stream and move every
+    // later station's cycle, including the 47-A golden. Prices exist once the
+    // player is actually in the throat.
+    if (stationId === BOLUS_STATION_ID && state.world?.currentSectorId !== BOLUS_SECTOR_ID) {
+      return null;
+    }
     const info = stationInfo(state, stationId);
     const type = stationTypeId || (info && info.type) || 'trade_hub';
     const sz = size || (info && info.size) || 'M';

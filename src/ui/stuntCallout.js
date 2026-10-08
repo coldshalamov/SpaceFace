@@ -94,6 +94,75 @@ function injectStyle(doc) {
 
 /* --- pure builders. Everything the layer says is decided here, DOM-free. --------------------- */
 
+/**
+ * Four event seams that were emitted and never subscribed by a player sense.
+ * Open release-window already speaks through audio:cue massline.solutionLock;
+ * the close did not. A ride, a cleared snag, and a throw named themselves
+ * nowhere this event could reach.
+ * Returns null when the edge should stay quiet.
+ */
+export function handlineSenseLine(eventName, payload) {
+  const p = payload || {};
+  if (eventName === 'massline:releaseWindow') {
+    if (p.open === true) return null;
+    return { key: 'window-shut', name: 'WINDOW CLOSED', detail: '' };
+  }
+  if (eventName === 'massline:rideStarted') {
+    const spd = Number.isFinite(p.anchorSpeed) ? Math.round(p.anchorSpeed) : null;
+    return { key: 'ride-started', name: 'RIDE', detail: spd == null ? '' : String(spd) };
+  }
+  if (eventName === 'tether:snagCleared') {
+    return { key: 'line-clear', name: 'LINE CLEAR', detail: '' };
+  }
+  if (eventName === 'massline:throw') {
+    const spd = Number.isFinite(p.payloadSpeed) ? Math.round(p.payloadSpeed) : null;
+    const id = p.releaseId != null ? String(p.releaseId) : 'throw';
+    return { key: `throw:${id}`, name: 'THROWN', detail: spd == null ? '' : String(spd) };
+  }
+  // The latch click and the capture picture do not say whether the snag was clean.
+  if (eventName === 'tether:snapCatch') {
+    const name = p.rating === 'clean' ? 'CLEAN SNAG'
+      : p.rating === 'good' ? 'GOOD SNAG'
+      : p.rating === 'rough' ? 'ROUGH SNAG'
+      : null;
+    if (!name) return null;
+    const kept = Number.isFinite(p.landTangentialSpeed) ? Math.round(p.landTangentialSpeed) : null;
+    return { key: 'snap-catch', name, detail: kept == null ? '' : String(kept) };
+  }
+  // A low or medium pump is the winch. Only the snap-risk stroke gets a word.
+  if (eventName === 'tether:reelPump') {
+    if (p.risk !== 'high') return null;
+    return { key: 'pump-hot', name: 'PUMP HOT', detail: '' };
+  }
+  return impactGradeLine(eventName, p);
+}
+
+/**
+ * A whip or a sweep already rates glance, solid, or crushing and then says
+ * only "impact". The callout names the grade. An unrated contact stays quiet.
+ * The number is the speed the receipt already carried.
+ */
+export function impactGradeLine(eventName, payload) {
+  const sweep = eventName === 'massline:sweepImpact';
+  const whip = eventName === 'tether:whipImpact';
+  if (!sweep && !whip) return null;
+  const p = payload || {};
+  const name = p.rating === 'crushing' ? (sweep ? 'CRUSHING SWEEP' : 'CRUSHING HIT')
+    : p.rating === 'solid' ? (sweep ? 'SOLID SWEEP' : 'SOLID HIT')
+    : p.rating === 'glance' ? (sweep ? 'GLANCE SWEEP' : 'GLANCE')
+    : null;
+  if (!name) return null;
+  const raw = sweep ? p.transverseSpeed : p.relSpeed;
+  const spd = Number.isFinite(raw) ? Math.round(raw) : null;
+  const id = p.victimId != null ? String(p.victimId) : 'hit';
+  const tick = p.tick != null ? String(p.tick) : '0';
+  return {
+    key: `${sweep ? 'sweep' : 'whip'}:${id}:${tick}`,
+    name,
+    detail: spd == null ? '' : String(spd),
+  };
+}
+
 function trickBaseName(trick) {
   if (trick && typeof trick.name === 'string' && trick.name) return trick.name;
   const def = trick && TRICK_DEFINITIONS[trick.trickId];
@@ -123,6 +192,20 @@ export function trickCalloutName(trick) {
   if (collateral > 1) parts.push(`Collateral ×${collateral}`);
   if (mods.closeShave === true && trick.trickId !== 'needle_thread') parts.push('Close Shave');
   return parts.join(' · ');
+}
+
+/**
+ * The momentum figure beside a named act. Not a score: available momentum first,
+ * then a raw momentum, then the useful delta-v the receipt already carried.
+ * Zero and missing stay blank so a nameless ordinary kill cannot grow a number.
+ */
+export function trickMomentumText(trick) {
+  const metrics = trick && trick.metrics;
+  if (!metrics || typeof metrics !== 'object') return '';
+  const raw = [metrics.availableMomentum, metrics.momentum, metrics.usefulDeltaV]
+    .find((n) => Number.isFinite(n) && n > 0);
+  if (raw == null) return '';
+  return String(Math.round(raw));
 }
 
 const clamp01 = (x) => Math.min(1, Math.max(0, Number(x) || 0));
@@ -173,6 +256,30 @@ export function comboReadout(combo, nowTick) {
 export function selfSlingCalloutText(bonusDv) {
   const whole = Math.round(Number(bonusDv) || 0);
   return `SELF-SLING +${whole}`;
+}
+
+/**
+ * FB-007 — the completed stroke's band, named the way a release is named.
+ * The number beside it is the peak speed the grader already measured.
+ * A missing or unknown band stays quiet. Zero speed stays blank.
+ */
+export function strokeGradeLine(stroke) {
+  if (!stroke || typeof stroke !== 'object') return null;
+  const name = stroke.band === 'razor' ? 'RAZOR STROKE'
+    : stroke.band === 'clean' ? 'CLEAN STROKE'
+    : stroke.band === 'good' ? 'GOOD STROKE'
+    : stroke.band === 'messy' ? 'MESSY STROKE'
+    : null;
+  if (!name) return null;
+  const spd = Number.isFinite(stroke.peakSpeed) && stroke.peakSpeed > 0
+    ? Math.round(stroke.peakSpeed) : null;
+  const dist = Number.isFinite(stroke.distanceWu) ? stroke.distanceWu : 0;
+  const time = Number.isFinite(stroke.timeOnPathS) ? stroke.timeOnPathS : 0;
+  return {
+    key: `stroke:${stroke.band}:${dist}:${time}`,
+    name,
+    detail: spd == null ? '' : String(spd),
+  };
 }
 
 /**
@@ -341,6 +448,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function addLine(key, nameText, ptsText, now, ttl, isBank) {
     const existing = key != null ? lineNodes.get(key) : null;
     if (existing) {
+      existing.name.textContent = nameText;
       existing.pts.textContent = ptsText;
       existing.until = now + ttl;
       return;
@@ -353,7 +461,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     node.appendChild(pts);
     lines.appendChild(node);
     const storedKey = key ?? `anon-${lineOrder + 1}`;
-    lineNodes.set(storedKey, { key: storedKey, node, pts, until: now + ttl, order: ++lineOrder });
+    lineNodes.set(storedKey, { key: storedKey, node, name, pts, until: now + ttl, order: ++lineOrder });
     pruneLines(now);
   }
 
@@ -368,8 +476,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     if (!name) return;
     const now = wallNow();
     const key = `ep:${trick.episodeId ?? trick.trickId}`;
-    addLine(key, name, '', now, CALLOUT_TTL_MS, false);
+    const mom = trickMomentumText(trick);
+    addLine(key, name, mom, now, CALLOUT_TTL_MS, false);
     spoken = trickSpokenText(trick);
+    if (mom) spoken = `${spoken}, ${mom}`;
     sr.textContent = spoken;
     wake();
   }
@@ -563,6 +673,25 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:salvageRightsClaimed', (p) => onSalvageRightsClaimed(p)));
     unsubs.push(bus.on('stunt:lineContractCompleted', (p) => onLineContract(p)));
     unsubs.push(bus.on('stunt:bridge', (p) => onBridgeTick(p)));
+    // Silent seams: the event itself had no subscriber that a pilot could see or hear.
+    const onHandlineSense = (eventName) => (payload) => {
+      if (destroyed) return;
+      if (!calloutScope(getState())) return;
+      const line = handlineSenseLine(eventName, payload);
+      if (!line) return;
+      addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
+      spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
+      sr.textContent = spoken;
+      wake();
+    };
+    unsubs.push(bus.on('massline:releaseWindow', onHandlineSense('massline:releaseWindow')));
+    unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
+    unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
+    unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
+    unsubs.push(bus.on('tether:snapCatch', onHandlineSense('tether:snapCatch')));
+    unsubs.push(bus.on('tether:reelPump', onHandlineSense('tether:reelPump')));
+    unsubs.push(bus.on('tether:whipImpact', onHandlineSense('tether:whipImpact')));
+    unsubs.push(bus.on('massline:sweepImpact', onHandlineSense('massline:sweepImpact')));
     // SWARM-03 — the physics cause tag, on the lane that already names tricks.
     unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }
@@ -571,6 +700,21 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     root,
     update,
     active: () => !destroyed && !root.hidden,
+    announceStroke(stroke) {
+      if (destroyed) return false;
+      if (!calloutScope(getState())) return false;
+      const line = strokeGradeLine(stroke);
+      if (!line) return false;
+      const now = calloutNow();
+      const seen = lineNodes.has(line.key);
+      addLine(line.key, line.name, line.detail, now, CALLOUT_TTL_MS, false);
+      if (!seen) {
+        spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
+        sr.textContent = spoken;
+      }
+      wake();
+      return true;
+    },
     destroy() {
       destroyed = true;
       if (frameOff) { frameOff(); frameOff = null; }
@@ -597,8 +741,16 @@ export function ensureStuntCallout(ctx) {
   liveCallout = createStuntCallout({
     state: ctx && ctx.state,
     bus: ctx && ctx.bus,
+    host: ctx && ctx.host,
+    doc: ctx && ctx.doc,
   });
   return liveCallout;
+}
+
+/** The massline HUD calls this the frame a completed stroke first lands. No live callout, no speech. */
+export function announceStrokeGrade(stroke) {
+  if (!liveCallout || typeof liveCallout.announceStroke !== 'function') return false;
+  return liveCallout.announceStroke(stroke);
 }
 
 /** Release the mount (results screen dispose). Dormant-after-menu sessions re-ensure on next door. */

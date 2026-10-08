@@ -159,6 +159,35 @@ test('context-loss disposal abandons old-context GPU resources while still clear
   assert.equal(owner._renderGraph, null);
 });
 
+test('hazards and Bolus roots retire before their renderer and abandon lost-context GPU objects', () => {
+  for (const contextLost of [false, true]) {
+    const order = [];
+    const { owner } = makeOwner(order, { contextLost });
+    const hazard = { traverse(fn) { fn({ userData: {}, geometry: disposable('hazard-geometry', order) }); } };
+    owner._hazardVisuals.push(hazard);
+    owner._bolusView = {
+      group: {
+        removeFromParent() { order.push('bolus-detach'); },
+        traverse(fn) { fn({ geometry: disposable('bolus-geometry', order) }); },
+      },
+    };
+    owner._marrowSpot = {
+      removeFromParent() { order.push('spot-detach'); },
+      target: { removeFromParent() { order.push('spot-target-detach'); } },
+      ...disposable('spot-dispose', order),
+    };
+    assert.equal(disposeRendererOwnedResources(owner), true);
+    for (const label of ['bolus-detach', 'spot-detach', 'spot-target-detach']) {
+      assert.ok(order.indexOf(label) >= 0 && order.indexOf(label) < order.indexOf('webgl-renderer'));
+    }
+    for (const label of ['hazard-geometry', 'bolus-geometry', 'spot-dispose']) {
+      assert.equal(order.filter((value) => value === label).length, contextLost ? 0 : 1);
+    }
+    assert.equal(owner._bolusView, null);
+    assert.equal(owner._marrowSpot, null);
+  }
+});
+
 test('a fresh renderer generation can be destroyed after the prior one without stale references', () => {
   const fields = [
     '_rendererLifecycle', '_rendererResourcesDisposed', '_contextRestoreReceipt', '_meshes',

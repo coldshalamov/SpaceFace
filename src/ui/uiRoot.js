@@ -31,6 +31,8 @@ import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 import { IS_DEV } from '../core/devMode.js';
 import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
+import { completeRacingLaunch, noteRacingNewGame } from './racingLaunch.js';
+import { mountRacingHud } from './racingHud.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -127,10 +129,12 @@ const SCREEN_MODULES = [
   // ACHIEVEMENTS (PQ-033.03): the local achievement ledger, reached from the title's fine line and
   // from Pause. Reads the same ledger the Steam mirror sends from.
   { path: './screens/achievements.js', load: () => import('./screens/achievements.js'), name: 'achievementsScreen' },
+  { path: './screens/statistics.js', load: () => import('./screens/statistics.js'), name: 'statisticsScreen' },
   { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
   { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
   // Wave B11 — Physics lab / Sandbox toy on front door.
   { path: './screens/sandbox.js', load: () => import('./screens/sandbox.js'), name: 'sandboxScreen' },
+  { path: './screens/raceBoard.js', load: () => import('./screens/raceBoard.js'), name: 'raceBoardScreen' },
 ];
 
 // Title / pause / death must win the first parse wave. Galaxy map, station, and shipworks
@@ -571,6 +575,24 @@ export const ui = {
     if (IS_DEV) {
       installSandboxGameStartedHook(this.bus, () => this.ctx);
     }
+    if (typeof this._racingArmOff === 'function') {
+      try { this._racingArmOff(); } catch (_) { /* previous init */ }
+    }
+    const offRacingNew = this.bus.on('game:new', (opts) => noteRacingNewGame(opts));
+    const offRacingArm = this.bus.on('game:started', () => {
+      const result = completeRacingLaunch(this.ctx);
+      if (result && result.ok !== true) {
+        // Later game:started listeners close the launch screens. Reopen the menu after
+        // that synchronous fan-out, unless another public transition already took over.
+        queueMicrotask(() => {
+          if (this.state.mode === 'menu') this._showMainMenuWhenReady?.();
+        });
+      }
+    });
+    this._racingArmOff = () => {
+      if (typeof offRacingNew === 'function') offRacingNew();
+      if (typeof offRacingArm === 'function') offRacingArm();
+    };
 
     // Register the administrative-blackout capture fence before any interactive comms/HUD module.
     // Document capture listeners on the same target run in registration order, so constructing the
@@ -651,6 +673,19 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
     this.bandHud = createBandHud(ctx);
+    if (this.racingHud && typeof this.racingHud.dispose === 'function') {
+      try { this.racingHud.dispose(); } catch (_) { /* remount */ }
+    }
+    this.racingHud = null;
+    try {
+      const uiRootEl = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
+      this.racingHud = mountRacingHud({
+        root: uiRootEl,
+        bus: this.bus,
+        state: this.state,
+        screens: this.screenManager,
+      });
+    } catch (e) { console.warn('[ui] racing tape mount failed', e); }
 
     this.worldObject = createWorldObjectInteraction(ctx, this.screenManager);
 
@@ -1639,6 +1674,7 @@ export const ui = {
         this._hudVisibleLast = hudVisible;
       }
       if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
+      if (this.racingHud && typeof this.racingHud.frame === 'function') this.racingHud.frame(st);
       // Authored capital warnings draw over the flight picture and hold still while the sim is
       // frozen; the mount clears its canvas outside flight so menus never inherit a stale warning.
       if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {

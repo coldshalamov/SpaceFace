@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Active continuation — 8 October 2026, 21:38 UTC
+## Active continuation — 8 October 2026, 21:42 UTC
 
 Branch: `dot/expansion-continuation-2026-10-08`, starting from current master
 `518c8d6fce7202f412d54995876c4ced0ddfd696`. Public clone, current source checkout,
@@ -35,11 +35,21 @@ preservation and the original quiet/runaway refusal. The unchanged Pallet owner 
 passes 9/9; independent focused review found no blocking source issue. These counts
 overlap review selections and are not a full-game total.
 
-Next: reconcile upstream `653ad4d142b98092383cfffc4273e986ce10df02`, which landed other
-PRs after this work started, and rerun the affected native tests on that composition.
-No direct six-path overlap was found in the upstream inventory, but world, encounter,
-save and engagement changes require composed verification. Browser playability remains
-unverified; its first attempt could not load Playwright, and dependency setup is active.
+Pallet source is published as `19e7cce66de95fbee58827b2d6de3af4c82afd4a`. Upstream
+`653ad4d142b98092383cfffc4273e986ce10df02` has now been composed without conflicts,
+preserving 140 intervening commits. The combined tree passes 22/22 route, owner and
+readiness cases, plus 2/2 measured native-body/source tests. This includes the full
+ordinary clamp and two cold Continue cycles on the new composition, not only the old base.
+
+Next gameplay unit: Mothlight's ordinary gun/Continue route, starting with
+`node --test --test-name-pattern="production director admits" test/mothlight.test.mjs`.
+Diagnose the real `enemy_mind_hold` condition without bypassing ordinary AI. The original
+scope remains open; preserve the reviewer ledger and the earlier remaining-concept list.
+
+Browser playability remains unverified. Playwright and exact locked dependencies are
+installed with manifests unchanged; its browser download failed with a truncated archive,
+and system Chromium launch reported a socket permission error. No security flags were
+disabled. This affects browser execution, not the verified native route or code delivery.
 No visual, target-device performance or whole-program completion is claimed.
 
 ## Source checkpoint for cloud work - 8 October 2026

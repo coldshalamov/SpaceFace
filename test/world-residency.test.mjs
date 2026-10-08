@@ -508,7 +508,7 @@ test('no Math.random / Date.now in world source; corridor constants exported', (
   const code = WORLD_SRC.replace(/\/\/.*$/gm, '');
   assert.equal(/Math\.random\s*\(/.test(code), false);
   assert.equal(/Date\.now\s*\(/.test(code), false);
-  assert.equal(CORRIDOR_SECTOR_IDS.length, 24);
+  assert.equal(CORRIDOR_SECTOR_IDS.length, 25);
   assert.deepEqual(CORRIDOR_SECTOR_IDS.slice(0, 3), [HELIOS, CERES, TETHYS]);
 });
 
@@ -568,7 +568,7 @@ test('newGame rebuilds the mutable canonical 24-sector world table after state r
   const { state, world } = bootWorld(39);
   state.world.sectors = {};
   world.newGame();
-  assert.equal(Object.keys(state.world.sectors).length, 24);
+  assert.equal(Object.keys(state.world.sectors).length, 25);
   assert.deepEqual(Object.keys(state.world.sectors), SECTORS.map((sector) => sector.id));
   for (const sector of SECTORS) {
     assert.equal(state.world.sectors[sector.id].owner, sector.factionId);

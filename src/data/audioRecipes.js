@@ -15,6 +15,7 @@ import { RAVEL_AUDIO_RECIPES } from './ravel.js';
 import { SOLSTICE_AUDIO_RECIPES } from './solstice.js';
 import { RUBRIC_AUDIO_RECIPES } from './rubric.js';
 import { RUCKUS_AUDIO_RECIPES } from './ruckus.js';
+import { BOLUS_AUDIO_RECIPES } from './bolusAudio.js';
 
 export const RECIPES = [
   ...MORROW_AUDIO_RECIPES,
@@ -24,6 +25,7 @@ export const RECIPES = [
   ...SOLSTICE_AUDIO_RECIPES,
   ...RUBRIC_AUDIO_RECIPES,
   ...RUCKUS_AUDIO_RECIPES,
+  ...BOLUS_AUDIO_RECIPES,
   // --- Engine SFX ---
   {
     id: 'sfx_engine_idle',
@@ -2672,6 +2674,7 @@ export const RECIPES = [
     ['sector_eris_margin', 'fringe'], ['sector_phoebe_echo', 'anomaly'], ['sector_nereid_shoal', 'fringe'],
     ['sector_proteus_well', 'fringe'], ['sector_triton_wake', 'anomaly'], ['sector_eunomia_gulf', 'fringe'],
     ['sector_sedna_dark', 'anomaly'], ['sector_dione_lane', 'core'],
+    ['sector_the_bolus', 'anomaly'],
   ].map(([sectorId, paletteClass]) => {
     let h = 0x811c9dc5;
     for (let i = 0; i < sectorId.length; i++) h = Math.imul(h ^ sectorId.charCodeAt(i), 0x01000193) >>> 0;
@@ -3776,6 +3779,7 @@ export const SAMPLE_BINDINGS = {
   sfx_arrival_eunomia_gulf: { id: 'arrival_eunomia_gulf', share: 0.55 },
   sfx_arrival_sedna_dark: { id: 'arrival_sedna_dark', share: 0.58 },
   sfx_arrival_dione_lane: { id: 'arrival_dione_lane', share: 0.58 },
+  sfx_arrival_the_bolus: { id: 'arrival_the_bolus', share: 0.58 },
 };
 
 // WF-13 — sector arrival identity table. The presentation adapter reads this when the
@@ -3809,6 +3813,7 @@ export const SECTOR_ARRIVAL_CUES = Object.freeze({
   sector_eunomia_gulf: 'sfx_arrival_eunomia_gulf',
   sector_sedna_dark: 'sfx_arrival_sedna_dark',
   sector_dione_lane: 'sfx_arrival_dione_lane',
+  sector_the_bolus: 'sfx_arrival_the_bolus',
 });
 
 // PQ-158.01 — the impact ladder: material (hull/rock/station) x force (light/medium/heavy).

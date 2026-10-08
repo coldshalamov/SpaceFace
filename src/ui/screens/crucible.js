@@ -105,6 +105,8 @@ import {
   buyCrucibleHangarTrack,
   crucibleSwarmDepthView,
   setCruciblePerkLoadout,
+  kitBalanceBoard,
+  overconfidenceStreak,
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
@@ -135,6 +137,7 @@ import { STUNT_RULE_REVISIONS, stuntAssistProfile } from '../../combat/stuntRunR
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
 import { el, settle, stamp, cue } from '../kit/index.js';
+import { renderResultsSheet, resultsSheetModel, recordedKitId } from './resultsSheet.js';
 import { capPins, platePins, panePins, channelPins, rowPins }
   from '../kit/computedMaterial.js';
 
@@ -2827,6 +2830,28 @@ function pairRows(pairs, hook, valueClassFor) {
   return list;
 }
 
+/** Kit board + streak, both already settled by survivalRecords. A records miss is empty. */
+function crucibleSheetReadings() {
+  let history = [];
+  try {
+    const meta = loadCrucibleMeta();
+    history = meta && Array.isArray(meta.history) ? meta.history : [];
+  } catch {
+    history = [];
+  }
+  const cells = [];
+  for (const row of history) {
+    const kit = recordedKitId(row);
+    if (typeof kit !== 'string' || !kit) continue;
+    cells.push({ kit, seed: row.seed, score: row.score });
+  }
+  let board = null;
+  let streak = 0;
+  try { board = kitBalanceBoard(cells); } catch { board = null; }
+  try { streak = overconfidenceStreak(history); } catch { streak = 0; }
+  return { board, streak };
+}
+
 function renderStory(band, result) {
   const lines = storySentences(result);
   if (!lines.length) {
@@ -3259,6 +3284,21 @@ export const crucibleResultsScreen = {
     const bestLine = normalizeBestLine({ ...(result?.bestLine || ctx?.state?.stunts?.combo?.bestLine),
       seed: result?.seed, recordRules: result?.recordRules });
     if (bestLine) story.appendChild(renderBestLineReview(bestLine));
+
+    // FB-028: the sheet prints the sim's stunt rows, the kit board, and the streak.
+    // It does not score them. A sheet failure must never take the plate down.
+    if (result) {
+      try {
+        const readings = crucibleSheetReadings();
+        ledger.appendChild(renderResultsSheet(resultsSheetModel({
+          result,
+          kitBoard: readings.board,
+          overconfidenceStreak: readings.streak,
+        })));
+      } catch {
+        // The story and the ledger already stand.
+      }
+    }
 
     // PQ-160.02: the run as a code, its ghost as a block. Sharing must never take the plate down.
     try {

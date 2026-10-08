@@ -49,6 +49,7 @@ import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossa
 import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
 import { buildNurseryMineralRib } from './veilRayNurseryVisuals.js';
 import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
+import { buildFoldAberrantVisual, buildFoldPayloadVisual } from './foldAberrantVisual.js';
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
@@ -83,6 +84,7 @@ import {
   carryAdmittedOnceStamp,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
+  queuePacedDetachedTeardown,
   releaseBoundaryResidency,
   residencyOptionsForBoundary,
   staleAuthoredRunVerdict,
@@ -4133,8 +4135,35 @@ export function* deadenPackagedHulkSteps(group, options = {}) {
 // A detached packaged group the admission run still owns: its primitives were minted fresh for
 // this mount, so geometry and material instances die with it. Shared-asset geometries keep
 // their pool pin; texture maps ride the packaged cache and are left alone.
+function* disposeDetachedPackagedGroupSteps(group) {
+  const stack = [group];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+}
+
 function disposeDetachedPackagedGroup(group) {
   if (!group || typeof group.traverse !== 'function') return;
+  // The mid-commit abort legs (orphan/pipeline-fail/stale-run) used to tear the
+  // packaged subtree down atomically inside the commit continuation — the same
+  // presented-beat class the place/commit disposes already pace on the shared
+  // queue. Sync path stays as the no-queue fallback.
+  if (queuePacedDetachedTeardown(group, disposeDetachedPackagedGroupSteps(group))) return;
   group.traverse((object) => {
     if (!object) return;
     if (object.geometry && typeof object.geometry.dispose === 'function'
@@ -5971,8 +6000,8 @@ export function createVisualFactory() {
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
-          case 'drone': return stampBuiltVisual(e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
-          case 'payload': return stampBuiltVisual(buildPayload(e));
+          case 'drone': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldAberrantVisual(e) : e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
+          case 'payload': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldPayloadVisual(e) : buildPayload(e));
           case 'mine': return stampBuiltVisual(buildMine(e));
           case 'vectormine': return stampBuiltVisual(buildVectorMine(e));
           case 'charge': return stampBuiltVisual(buildImpulseCharge(e));
