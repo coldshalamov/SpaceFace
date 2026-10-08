@@ -41,4 +41,7 @@ test('seed 4242: a cloak burn fades once and is not the drop', () => {
   assert.match(src, /bus\.on\('cloak:burned'/);
   assert.match(src, /p\.entityId !== playerId/);
   assert.match(src, /cloakBurnCue\(p\)/);
+
+  const cloak = readFileSync(new URL('../src/systems/cloak.js', import.meta.url), 'utf8');
+  assert.match(cloak, /Cloak burned — your scan lit you up[\s\S]{0,280}audioOwnedByVerb: true/);
 });
