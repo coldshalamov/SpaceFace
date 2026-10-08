@@ -1,5 +1,5 @@
 import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
-import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
+import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 import { reportBootWork } from '../core/bootWork.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
@@ -434,7 +434,12 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         return;
       }
       skippedResumeForLatePresent = false;
+      // The consult above makes this a forced lane — debit the dispatch head's
+      // measured spend on the shared forced wallet it just checked (the link
+      // work itself is serialized through pumpLinks and debits its own legs).
+      const resumeStartedAt = ledgerNow();
       observePipelineAdmission(flushResumedBatch());
+      noteForcedFrameSpend(Math.min(ledgerNow() - resumeStartedAt, FORCED_FRAME_BUDGET_MS));
     });
     ranSynchronously = false;
   }

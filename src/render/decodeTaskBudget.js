@@ -365,13 +365,20 @@ function drainGltfCompileQueue() {
     : () => Date.now();
   // Another paced slicer already ate the frame's JS budget — yield this frame rather than
   // stack a second slice on top. The aging cap keeps a busy visible/deadline stream from
-  // starving ambient compile tails indefinitely.
-  if (pacedFrameSpend() >= GLTF_COMPILE_FRAME_MS && gltfCompileFramesSkipped < GLTF_COMPILE_MAX_SKIPPED_FRAMES) {
-    gltfCompileFramesSkipped += 1;
+  // starving ambient compile tails indefinitely. A cap-fired run is "forced" work: the
+  // shared forced wallet bounds the summed spend of every cap-fired lane that can trip on
+  // the same presented frame — over-budget it defers one more frame (counter held at cap
+  // so it still forces on the next).
+  const pacedSpent = pacedFrameSpend() >= GLTF_COMPILE_FRAME_MS;
+  if (pacedSpent
+      && (gltfCompileFramesSkipped < GLTF_COMPILE_MAX_SKIPPED_FRAMES
+        || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+    gltfCompileFramesSkipped = Math.min(gltfCompileFramesSkipped + 1, GLTF_COMPILE_MAX_SKIPPED_FRAMES);
     armFrameDrain(drainGltfCompileQueue);
     return;
   }
   gltfCompileFramesSkipped = 0;
+  const forcedRun = pacedSpent;
   const start = now();
   let ran = 0;
   while (ran === 0 || now() - start < GLTF_COMPILE_FRAME_MS) {
@@ -383,7 +390,9 @@ function drainGltfCompileQueue() {
     ran += 1;
     try { task.resolve(task.fn()); } catch (error) { task.reject(error); }
   }
-  notePacedFrameSpend(now() - start);
+  const elapsed = now() - start;
+  notePacedFrameSpend(elapsed);
+  if (forcedRun) noteForcedFrameSpend(elapsed);
   const pending = gltfCompilePending.visible.length
     || gltfCompilePending.deadline.length
     || gltfCompilePending.ambient.length;

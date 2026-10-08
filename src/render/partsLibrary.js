@@ -6599,14 +6599,23 @@ function driveOpeningPublicationResume(render, queue) {
     // The resumed commit tails tolerate deferral (they already waited on the
     // publication release), so an already-spent frame defers the whole arm —
     // bounded by the same skip-aging contract the depth-stage arm keeps, so a
-    // permanently-busy frame stream can't starve the drain either.
-    if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
-        && (render._openingPublicationResumeSkips | 0) < OPENING_PUBLICATION_RESUME_MAX_SKIPS) {
-      render._openingPublicationResumeSkips = (render._openingPublicationResumeSkips | 0) + 1;
+    // permanently-busy frame stream can't starve the drain either. A
+    // cap-fired run is forced work: it consults the shared forced wallet
+    // first so every cap-fired lane that trips on the same presented frame
+    // still sums inside the bound (counter held at cap so it forces next
+    // frame), and debits its measured spend on the forced ledger.
+    const resumeSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+    if (resumeSpent
+        && ((render._openingPublicationResumeSkips | 0) < OPENING_PUBLICATION_RESUME_MAX_SKIPS
+          || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+      render._openingPublicationResumeSkips = Math.min(
+        (render._openingPublicationResumeSkips | 0) + 1, OPENING_PUBLICATION_RESUME_MAX_SKIPS);
       driveOpeningPublicationResume(render, queue);
       return;
     }
     render._openingPublicationResumeSkips = 0;
+    const resumeForced = resumeSpent;
+    const resumeStarted = monotonicNow();
     const entrySpend = pacedFrameSpend();
     const batchLimit = Math.min(
       OPENING_PUBLICATION_RESUME_MAX_BATCH,
@@ -6661,6 +6670,7 @@ function driveOpeningPublicationResume(render, queue) {
         }
       }
     }
+    if (resumeForced) noteForcedFrameSpend(Math.min(monotonicNow() - resumeStarted, FORCED_FRAME_BUDGET_MS));
     if (queue.length > 0) driveOpeningPublicationResume(render, queue);
     else render._openingPublicationResumeQueue = null;
   }, { idleBoundMs: 48 });
@@ -9147,11 +9157,19 @@ function scheduleRetainedDisposeDrain() {
     retainedDisposeDrainScheduled = false;
     const started = monotonicNow();
     let ranLeg = false;
+    let forcedRan = false;
     while (retainedDisposeQueue.length) {
-      if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS && retainedDisposeLedgerSkips < 2) {
-        retainedDisposeLedgerSkips += 1;
+      // A skip-cap-fired leg is forced work: consult the shared forced wallet
+      // so every cap-fired lane tripping on the same presented frame still
+      // sums inside the bound (counter held at cap so the lane forces next
+      // drain), and debit the measured drive on the forced ledger below.
+      const legSpent = pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
+      if (legSpent
+          && (retainedDisposeLedgerSkips < 2 || forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS)) {
+        retainedDisposeLedgerSkips = Math.min(retainedDisposeLedgerSkips + 1, 2);
         break;
       }
+      if (legSpent) forcedRan = true;
       const head = retainedDisposeQueue[0];
       if (!head.iter) {
         try { head.iter = disposeDetachedObjectSteps(head.root); }
@@ -9172,7 +9190,9 @@ function scheduleRetainedDisposeDrain() {
       if (monotonicNow() - started >= 4) break;
     }
     if (ranLeg) retainedDisposeLedgerSkips = 0;
-    notePacedFrameSpend(monotonicNow() - started);
+    const drainElapsed = monotonicNow() - started;
+    notePacedFrameSpend(drainElapsed);
+    if (forcedRan) noteForcedFrameSpend(drainElapsed);
     if (retainedDisposeQueue.length) scheduleRetainedDisposeDrain();
   }, 0);
 }

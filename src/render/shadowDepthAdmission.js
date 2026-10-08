@@ -176,6 +176,35 @@ function materialCanCastShadow(material) {
   return true;
 }
 
+/**
+ * Can a withheld member still mint (or regain) a current depth mark under the
+ * given root? A member that is detached without an unbind — its ancestor walk
+ * never reaches the withheld root — or structurally signature-incapable (not
+ * a drawable kind, a never-cast userData marker, or no castable material: the
+ * same verdicts collectPotentialShadowCastSubjects applies) can never mint
+ * one, so a withheld-set member prune drops it rather than letting a corpse
+ * veto a rescue/restore for the whole root. A live-but-unmarked member is NOT
+ * dead — it must still veto. A member that regains capability re-joins
+ * through the next subtree collect's union-add.
+ */
+export function withheldDepthCasterProvablyDead(mesh, root) {
+  if (!mesh) return true;
+  const drawable = mesh.isMesh === true
+    || mesh.isSkinnedMesh === true
+    || mesh.isInstancedMesh === true;
+  if (!drawable) return true;
+  const ud = mesh.userData || {};
+  if (ud.spacefaceNoShadow === true
+    || ud.sharedContactShadow === true
+    || ud.authoredReadableFallbackLayer === true) return true;
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  if (!materials.some(materialCanCastShadow)) return true;
+  for (let p = mesh; p; p = p.parent) {
+    if (p === root) return false;
+  }
+  return true;
+}
+
 // Exported for the settings OFF→ON path: a flag-only whole-scene enumeration
 // that skips the signature-string mints + staged-set probes
 // collectUnstagedShadowCasters pays per caster — the arm's per-slice recollect

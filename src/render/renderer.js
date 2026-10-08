@@ -371,6 +371,7 @@ import {
   noteShadowCensusLightMutation,
   shadowCensusEpoch,
   isUnstagedCollectOverCover,
+  withheldDepthCasterProvablyDead,
 } from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { preloadRockFamilyLibrary } from './rockFamilyLibrary.js';
@@ -1991,17 +1992,23 @@ export function* reattachResidentGpuMeshesSteps(owner) {
   const reattachNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
   let reattachStrideAt = reattachNow();
-  // Iterate a snapshot: a key deleted-then-re-added mid-yield (despawn →
-  // respawn, another bind lane) would re-visit the row under live-map
-  // semantics and pay _bindPresentationMesh / world.bindMesh / lanes.reserve
-  // twice; a mid-yield delete reads as a stale row and falls through to the
-  // deferred rekey guards, which already re-check the live map.
-  for (const [id, mesh] of Array.from(owner._meshes)) {
+  // Iterate the live map: a key deleted-then-re-added mid-yield (despawn →
+  // respawn, another bind lane) lands at the end and would re-visit the row
+  // under its new id — the per-mint stamp on the mesh dedups that revisit,
+  // while a genuinely different mesh (fresh respawn build) still scans
+  // normally. A mid-yield delete falls through to the deferred rekey guards,
+  // which already re-check the live map. Copying the map per mint paid an
+  // O(N) alloc before the first row processed — during a sector cohort mints
+  // that alone out-weighed the walk.
+  const reattachMint = (owner._residentReattachMint = (owner._residentReattachMint | 0) + 1);
+  for (const [id, mesh] of owner._meshes) {
     if ((++scanned % 64) === 0 || reattachNow() - reattachStrideAt >= 2) {
       reattachStrideAt = reattachNow();
       yield;
     }
-    if (!mesh) continue;
+    if (!mesh
+        || (mesh.userData && mesh.userData.sfResidentReattachMint === reattachMint)) continue;
+    if (mesh.userData) mesh.userData.sfResidentReattachMint = reattachMint;
     const stamped = mesh.userData ? mesh.userData.sfStableEntityKey : undefined;
     const entity = resolveWorldPresentationEntity(state, id);
     if (entity && entity.alive !== false) {
@@ -25454,7 +25461,21 @@ export const render = {
         else this._meshes.delete(id);
         throw error;
       }
-      m.traverse((node) => node.userData?.activateAuthoredMotionRegistration?.(e));
+      // Authored-motion activation walks the whole committed subtree per
+      // commit — traverse() can't early-exit and has no slice budget, so a
+      // squadron spawn burst stacks O(subtree) walks frame-adjacent. Explicit
+      // stack, same preorder, browser-yield every 128 nodes.
+      {
+        const motionActivateStack = [m];
+        let motionActivateVisited = 0;
+        while (motionActivateStack.length > 0) {
+          const node = motionActivateStack.pop();
+          node.userData?.activateAuthoredMotionRegistration?.(e);
+          const kids = node.children;
+          for (let i = kids.length - 1; i >= 0; i--) motionActivateStack.push(kids[i]);
+          if ((++motionActivateVisited % 128) === 0) await yieldToBrowser();
+        }
+      }
       m.visible = old ? old.visible : true;
       record.committed = true;
       this._meshesVersion += 1;
@@ -29731,11 +29752,25 @@ export const render = {
                 const rescueCamera = this.cam && this.cam.obj;
                 let rescueAllCurrent = true;
                 for (const rescueMesh of rescueWithheld) {
+                  // A member that can never mint a current mark under this
+                  // root — detached without an unbind, or structurally
+                  // signature-incapable — vetoes the rescue for the whole
+                  // sector-enter epoch otherwise: every eval re-checks the
+                  // corpse, and the arm's deny verdict can't land either
+                  // (legSet never contains it). Prune it; the next subtree
+                  // collect union-adds it back if it regains capability. A
+                  // live-but-unmarked member still vetoes — only the
+                  // provably-dead leave the set.
+                  if (withheldDepthCasterProvablyDead(rescueMesh, root)) {
+                    rescueWithheld.delete(rescueMesh);
+                    continue;
+                  }
                   if (!casterDepthMarkCurrent(rescueMesh, rescueSig, rescueCamera)) {
                     rescueAllCurrent = false;
                     break;
                   }
                 }
+                if (rescueWithheld.size === 0) this._withheldDepthCasters.delete(root);
                 if (!rescueAllCurrent) continue;
               }
             }
@@ -29893,18 +29928,23 @@ export const render = {
               continue;
             }
             // A root requeued after a completed collect carries its unstaged
-            // set keyed by the root's dirtySeq and the census epoch — a same-
-            // generation re-collect only re-proves each mesh's mark (cheap)
-            // instead of re-walking the whole subtree per arm.
+            // set keyed by the root's dirtySeq — a same-generation re-collect
+            // only re-proves each mesh's mark (cheap) instead of re-walking
+            // the whole subtree per arm. The census epoch is deliberately NOT
+            // part of the key: the mesh *set* is stale only when the subtree
+            // changed (dirtySeq covers that), and the sig-sensitive part is
+            // each mesh's mark — which the consult below re-proves under the
+            // live arm sig regardless. Keying epoch as well threw away every
+            // valid collect on any light churn and paid the full O(subtree)
+            // re-walk for roots that never moved.
             const cache = entry && entry.unstagedCache;
-            if (cache
-                && cache.seq === shadowCasterPolicyDirtySeq(sliceRoots[collected])
-                && cache.epoch === armSigEpoch) {
+            if (cache && cache.seq === shadowCasterPolicyDirtySeq(sliceRoots[collected])) {
               const still = [];
               for (const mesh of cache.meshes) {
                 if (!casterDepthMarkCurrent(mesh, markSig, camera)) still.push(mesh);
               }
               cache.meshes = still;
+              cache.epoch = armSigEpoch;
               if (still.length > 0) unstagedByRoot.set(sliceRoots[collected], still);
               for (const mesh of still) unstaged.push(mesh);
               collected += 1;
@@ -30064,29 +30104,47 @@ export const render = {
               // literal null) — denying on that compare parked every root the
               // leg successfully staged. Roots stay queued for the next arm.
               const verdictSig = lightSig != null ? lightSig : this._shadowCensusForFrame();
-              // The deny verdict is only sound when the compare sig is the one
-              // the leg's marks actually keyed under. Two drift shapes break
-              // that: (a) the live census flipped mid-leg — the drive re-mints
-              // via lightSigFor, marks land under the new sig while the arm's
-              // pinned lightSig names the old; (b) the arm was unsigned and
-              // this consult serves the previous epoch's memo sig while the
-              // stepped re-mint pends. Either reads every staged caster
-              // unmarked and deny-parks honest roots — skip the verdict like
-              // an aborted leg and leave the roots queued (the safe direction).
+              // The deny verdict is only sound when the compare sig is one the
+              // leg's marks actually keyed under. Two drift shapes break a
+              // single pinned compare: (a) the live census flipped mid-leg —
+              // the drive re-mints via lightSigFor, marks land under the new
+              // sig while the arm's pinned lightSig names the old; (b) the arm
+              // was unsigned and this consult serves the previous epoch's memo
+              // sig while the stepped re-mint pends. Rather than skipping the
+              // verdict on epoch inequality (a position-only move bumps the
+              // epoch without touching the sig — under per-frame light churn
+              // the skip is a silent no-op that can defer a stage/deny verdict
+              // indefinitely and counts nothing), compare each mesh against
+              // BOTH witnessed sigs — the arm's pinned sig and the live memo's.
+              // Marks under either prove staged; a mesh unmarked under both is
+              // undrawable under either census, so the verdict stays sound
+              // under any drift.
+              const verdictLiveSig = this._shadowCensusForFrame();
+              const verdictSigs = verdictSig != null ? [verdictSig] : [];
+              if (verdictLiveSig != null && verdictLiveSig !== verdictSig) {
+                verdictSigs.push(verdictLiveSig);
+              }
               const verdictLiveEpoch = shadowCensusEpoch();
-              const verdictStale = verdictLiveEpoch !== armSigEpoch
+              const verdictStale = verdictSigs.length === 0
                 || (lightSig == null
                   && !!this._shadowCensusMemo
                   && this._shadowCensusMemo.epoch !== verdictLiveEpoch);
-              if (legDriveFailed !== true && legAborted !== true && legSet && verdictSig != null && !verdictStale) {
+              if (legDriveFailed !== true && legAborted !== true && legSet && !verdictStale) {
                 const entryByRoot = new Map(slice);
                 for (const [deferRoot, deferMeshes] of unstagedByRoot) {
                   let allUnmarked = deferMeshes.length > 0;
                   for (const mesh of deferMeshes) {
-                    if (!legSet.has(mesh) || casterDepthMarkCurrent(mesh, verdictSig, camera)) {
+                    if (!legSet.has(mesh)) {
                       allUnmarked = false;
                       break;
                     }
+                    for (const sig of verdictSigs) {
+                      if (casterDepthMarkCurrent(mesh, sig, camera)) {
+                        allUnmarked = false;
+                        break;
+                      }
+                    }
+                    if (!allUnmarked) break;
                   }
                   if (!allUnmarked || !deferRoot || !deferRoot.parent) continue;
                   const entry = entryByRoot.get(deferRoot) || {};
