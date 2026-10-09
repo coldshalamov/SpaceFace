@@ -522,7 +522,7 @@ export const gyreSnare = {
       ball.physicsBody.revision = (Number.isFinite(rev) ? Math.max(0, Math.trunc(rev)) : 0) + 1;
     }
     delete ball.data.gyrePrevImpactScale;
-    if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(ball);
+    if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') this.helpers.markEntityVisualChanged(ball);
   },
 
   _sweepBoundaryResidue() {
@@ -555,7 +555,12 @@ export const gyreSnare = {
         // kills go unattributed. Re-stamp from the serialized meta; the ball's despawnAt
         // is the honest outer bound for the hold (a dead ball can't kill anyway).
         const meta = e.data.gyreLaunchMeta;
-        if (meta && this.state) {
+        // Skip a ball whose deadline a foreign adopter already stripped before
+        // the save: it is guaranteed to hit the hand-back lane (which clears
+        // provenance) on the very next tick, so stamping would only open a
+        // one-tick window where a foreign-owned body carries restored lash
+        // credit — collisionConsequences updates before this system.
+        if (meta && this.state && e.data.despawnAt != null) {
           const rec = recordImpulseProvenance(e, {
             actorId: meta.actorId, weaponId: meta.weaponId, tag: meta.tag,
             appliedTick: this.state.tick | 0, magnitude: meta.magnitude,
@@ -1023,7 +1028,7 @@ export const gyreSnare = {
     // the declared data.* namespace — stashed and restored symmetrically on both
     // the drop and the future-only hand-back so the sweep's own contract resumes.
     best.ttl = Infinity;
-    if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(best);
+    if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') this.helpers.markEntityVisualChanged(best);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.snagged, {
         id: best.id, coreId: best.id, type: best.type, mass: rt.clumpMass, radius: rt.clumpRadius,
@@ -1408,7 +1413,7 @@ export const gyreSnare = {
     // that owner's current deadlines instead of restoring the pre-snag stash over them.
     delete core.data.gyreCore;
     this._restoreLifetime(core, true);
-    if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(core);
+    if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') this.helpers.markEntityVisualChanged(core);
     // Involuntary losses narrate themselves (cap_dry/strained/drained all toast or
     // voice) — the quietest path in the file shouldn't be the one where someone
     // else's cargo simply de-rezzes mid-hold.
@@ -1520,7 +1525,7 @@ export const gyreSnare = {
     // forever. AFTER the marks: the overflow scan prefers an unmarked slot, and a
     // freshly-pushed pre-mark ball would read as one and evict itself.
     this._trackBall(core.id);
-    if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(core);
+    if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') this.helpers.markEntityVisualChanged(core);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.launched, {
         id: core.id, coreId: core.id, mass: rt.clumpMass, radius: rt.clumpRadius,
