@@ -45,7 +45,7 @@ export const runtime = Object.freeze({
     });
     live.phase = 'offer';
     d.say(live, 'alert',
-      'COMMS INTERCEPT: …a repeating triple-pulse on no registered band. It is not a beacon. Beacons ask. This one counts.',
+      'COMMS INTERCEPT: triple-pulse, unregistered. Not a beacon. This one counts.',
       null, { literal: true, primary: true });
     d.offerChoices(live, ['listen', 'ignore'], 'ignore', live.deadlineAt);
   },
@@ -64,7 +64,7 @@ export const runtime = Object.freeze({
           storyPropKind: 'counting_relay_2',
         });
         d.say(live, 'info',
-          'RELAY: "…forty-one. Forty-two." The pulse is a count. The second carrier is louder — same voice, farther out. It has been repeating for years.',
+          'RELAY: "…forty-one. Forty-two." A count. Second carrier, same voice, farther out.',
           null, { literal: true });
         live.offerConsumed = false;
         d.offerChoices(live, ['listen', 'ignore'], 'ignore', live.deadlineAt);
@@ -80,7 +80,7 @@ export const runtime = Object.freeze({
           storyPropKind: 'counting_relay_cache',
         });
         d.say(live, 'info',
-          'RELAY: "…forty-three." Then, for the first time in years, the count stops. "Hello? The mail is still aboard. Somebody should have it."',
+          'RELAY: "…forty-three." The count stops. "The mail is still aboard."',
           null, { literal: true });
         live.offerConsumed = false;
         d.offerChoices(live, ['take_the_mail', 'leave_it', 'ignore'], 'ignore', live.deadlineAt);
@@ -103,7 +103,7 @@ export const runtime = Object.freeze({
         line: 'IT COUNTED US. WE CAME BACK.', where: 'hull', author: 'the forty-third',
       });
       d.say(live, 'bark',
-        'RELAY: "Forty-three." The count closes like a book. Somewhere a machine stops waiting.',
+        'RELAY: "Forty-three." The count closes. A machine stops waiting.',
         null, { literal: true });
       return d.resolve(live, 'mail_taken', { speak: true });
     }
@@ -113,7 +113,7 @@ export const runtime = Object.freeze({
         line: 'STILL COUNTING. LET IT.', where: 'hull', author: 'unknown',
       });
       d.say(live, 'bark',
-        'You leave the dead their mail. Behind you, faint and patient: "…forty-three. Forty-four."',
+        'You leave their mail. Behind you, patient: "…forty-three. Forty-four."',
         null, { literal: true });
       return d.resolve(live, 'left_with_the_count', { speak: true });
     }
@@ -145,7 +145,7 @@ export default defineEncounter(trigger, {
   factionId: null,
   context: 'ambient',
   title: 'THE COUNTING RELAY',
-  primaryLine: 'COMMS INTERCEPT: a repeating triple-pulse on no registered band. It is not a beacon. Beacons ask. This one counts.',
+  primaryLine: 'COMMS INTERCEPT: triple-pulse, unregistered. Not a beacon. This one counts.',
   choices: [
     { id: 'listen', label: 'Listen to the cycle', playerLine: 'Say the number again.' },
     { id: 'take_the_mail', label: 'Take the convoy mail', playerLine: 'Forty-three came back.' },

@@ -10,6 +10,7 @@ import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegi
 import { applyClaimableBodySites } from './claimableBodies.js';
 import { KETTLE_LINE_POIS } from './kettleLine.js';
 import { VESPER } from './vesper.js';
+import { RUUD } from './ruud.js';
 import { SOLSTICE } from './solstice.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
@@ -117,6 +118,9 @@ const CORE_SECTORS = [
         type: 'cache',
         scannerSignalKind: 'cache',
         name: 'Bonded Cold Locker',
+        // Sealed-cache payoff (world.js _spawnCachePayoffs): investigating pops this lot as a
+        // real anchored cargo pod — the plate's "untouched specimen compartment", payable.
+        contents: { commodityId: 'cmdty_ore_silverium', amount: 3 },
         discoveryPlate: {
           title: 'Bonded Cold Locker',
           body: 'A pressurized ore-sample locker anchored to the starter seam bedrock. Heavy Concord inspection seals from the initial Helios survey remain intact over an untouched specimen compartment.',
@@ -177,7 +181,7 @@ const CORE_SECTORS = [
     hazards: [ { type: 'dense_asteroid', center: { x: 600, z: -400 }, radius: 700, intensity: 0.5 } ],
     pois: [
       { id: 'poi_driller', type: 'derelict', name: 'Abandoned Driller' },
-      { id: 'poi_survey',  type: 'cache',    name: 'Survey Cache' },
+      { id: 'poi_survey',  type: 'cache',    name: 'Survey Cache', contents: { commodityId: 'cmdty_ore_copper', amount: 4 } },
       {
         id: 'poi_ceres_throughline',
         type: 'beacon',
@@ -347,6 +351,10 @@ const CORE_SECTORS = [
         },
       },
       { id: 'poi_vesta_red_cable_yard', type: 'anomaly', name: 'Red Cable Yard', pos: { x: -1400, z: -900 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      { id: 'poi_ruud_fin3', type: 'anomaly', name: 'HOOK-LEFT · Fin-3',
+        pos: { x: RUUD.fin.x, z: RUUD.fin.z }, runtimeOwner: 'ruud', scannerSignalKind: 'anomaly',
+        dressingExclusionRadius: RUUD.dressingExclusion,
+        chartNote: 'A living suit on radiator fin Fin-3. The cab stamped the rotation complete. The hook did not move.' },
     ],
   },
   {
@@ -514,7 +522,7 @@ const CORE_SECTORS = [
       { id: 'poi_bounty', type: 'wreck', name: 'Bounty Wrecks',
         requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
         manualInvestigation: true, recoveryEncounter: true },
-      { id: 'poi_stash',  type: 'cache', name: 'Stash Cache', hidden: true },
+      { id: 'poi_stash',  type: 'cache', name: 'Stash Cache', hidden: true, contents: { commodityId: 'cmdty_stolen_goods', amount: 2 } },
       // PQ-153.02 hero landmark (depth program C13d, lore `landmark_c13d_skerris_throne`).
       // Anchors zone_sker_haven (Skerris Deep) ON the approach to the Bazaar: (300,-550) sits on
       // the charted Pallas gate (2274,-3411) -> Sker Bazaar (-540,680) chord, threading the gap

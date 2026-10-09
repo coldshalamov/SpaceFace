@@ -213,7 +213,15 @@ export function registerWorldBeats(on, state) {
   on('site:courierDelivered', (payload) => {
     clearCourierLoss(state, payload || {});
     const id = payload && (payload.courierId || payload.siteId || payload.id || 'courier');
-    return publish(cite('The courier delivered.', 'courier_delivered', `site:courierDelivered:${id}`));
+    // Name the sale when the payload can prove it: buyer, units, credits. A bare ping (fixture or
+    // old caller) keeps the anonymous line rather than inventing numbers.
+    const units = payload && Number(payload.units) > 0 ? Math.round(Number(payload.units)) : 0;
+    const credited = payload && Number(payload.creditedCr) > 0 ? Math.round(Number(payload.creditedCr)) : 0;
+    const buyer = payload && payload.stationId ? displayNameFor('station', payload.stationId) : null;
+    const line = buyer && units
+      ? `${units}u delivered to ${buyer}${credited ? ` — ${credited} cr banked` : ''}.`
+      : 'The courier delivered.';
+    return publish(cite(line, 'courier_delivered', `site:courierDelivered:${id}`));
   });
   on('site:laneSpilled', (payload) => publish(cite(
     'A lane spilled its load.',

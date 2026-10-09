@@ -255,6 +255,7 @@ export function createTacticalAISystem({
       seed: seed == null ? (state && state.meta && state.meta.seed) || 1 : seed,
       ports,
       config: runtimeConfig,
+      shapeBehavior: (behavior, entityId) => palletJackDecision(behavior, state, entityId),
     });
     bindHullResolver(stack);
     inspection = new AIInspectionEndpoint(stack);
@@ -374,8 +375,7 @@ export function createTacticalAISystem({
       if (entity && entityNeedsAiThink(entity, state) === false) continue;
       const sourceCurrent = entity?.data?.kilnback
         ? kilnbackDecision({ entityId: id, maneuver: request }, state).maneuver : request;
-      const current = palletJackDecision({ entityId: id, maneuver: sourceCurrent }, state).maneuver;
-      maneuverPort.request(retickManeuverRequest(current, tick));
+      maneuverPort.request(retickManeuverRequest(sourceCurrent, tick));
     }
   }
 
@@ -479,7 +479,7 @@ export function createTacticalAISystem({
       lastDecisionTick = tick;
       lastManeuverRequests.length = 0;
       for (const sourceDecision of result.decisions || []) {
-        const decision = palletJackDecision(kilnbackDecision(sourceDecision, state), state);
+        const decision = kilnbackDecision(sourceDecision, state);
         if (decision !== sourceDecision && decision.maneuver) liveStack.ports.maneuver.request(decision.maneuver);
         const entity = state && state.entities && decision && decision.entityId != null
           && typeof state.entities.get === 'function'

@@ -25,12 +25,31 @@ export function mothlightFlightModel(body, base = {}) {
 }
 
 const owners = new WeakMap();
+const gunCadences = new WeakSet();
 export function registerMothlightOwner(state, owner) { if (owner) owners.set(state, owner); else owners.delete(state); }
 // All ordinary NPCs retain the weapons owner's authorization. A Mothlight source can only
 // expose its one already-authenticated action; this predicate spends no cap or weapon state.
 export function mothlightAllowsFire(state, entity) {
   if (entity?.data?.lootTableId !== MOTHLIGHT.enemyId) return true;
   return owners.get(state)?.allowsFire(entity) === true;
+}
+// Only the registered live owner can publish this sensor-facing warning clock.
+export function mothlightGunCadence(state, entity) {
+  const cadence = owners.get(state)?.gunCadence(entity) || null;
+  if (cadence) gunCadences.add(cadence);
+  return cadence;
+}
+export function validMothlightGunCadence(c, self, tick) {
+  return !!c && gunCadences.has(c) && c.ownerId === self?.id && c.ownerLife === self?.occupantGeneration
+    && Number.isSafeInteger(c.ownerLife) && c.ownerLife > 0
+    && Number.isSafeInteger(tick) && Number.isSafeInteger(c.sampledTick)
+    && c.sampledTick <= tick && tick - c.sampledTick <= 18
+    && phases.has(c.phase) && Number.isSafeInteger(c.phaseStartTick)
+    && c.phaseStartTick >= 0 && c.phaseStartTick <= c.sampledTick
+    && (c.phase !== 'true_charge' ? c.nextAttackTick === null
+      : Number.isSafeInteger(c.nextAttackTick) && c.nextAttackTick >= c.phaseStartTick + MOTHLIGHT.chargeTicks
+        && c.nextAttackTick <= c.phaseStartTick + MOTHLIGHT.chargeTicks + 11
+        && c.sampledTick <= c.nextAttackTick && Number.isSafeInteger(c.targetLife) && c.targetLife > 0);
 }
 export function mothlightScannerReading(state, entity) { return owners.get(state)?.scannerReading(entity) || null; }
 export function freshMothlightActor(key, tick = 0) {

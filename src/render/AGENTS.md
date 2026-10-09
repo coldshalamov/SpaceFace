@@ -26,6 +26,16 @@ release manifest, and the appropriate `partsLibrary.js` map. Failure modes:
   ray ahead of solids (renderer `cameraRoofAt` answers any column). Never inside a solid is the
   invariant; tune `GLIDE_TUNING`, witness with `scripts/probe-camera-clearance.mjs`.
 - `bloom.js` — selective; tune from representative captures, not a universal cap.
+- `vfx.update` runs between `prepareFrame` and `drawPreparedFrame` (`renderUpdatePhase.js`). A header
+  that says the pool runs after draw is wrong.
+- `snapshotEntity` hashes `entity.data`. A cosmetic latch on an entity is a sim write. Presentation
+  flags belong on `state.presentation` or `state.render`.
+- Weapon bolts, shield contacts, and force-language pools do not apply damage and do not call
+  `Math.random`. Cosmetic `Math.random` stays inside `vfx.js` / `feel.js` speed lines.
+- Thruster axis is −ax. Contrail is world-space and age-clocked. Do not retune it from the plume module.
+- `post/spaceRenderGraph.js` is opt-in. The default present is `bloom.js`.
+- Nested hazard notes: `combat/`, `ships/`, `vfx/`, `forceLanguage/`. Parent note is enough for
+  `characters/`, `energy/`, `post/`, `thruster/`, and `weapons/`.
 
 No per-frame allocations in render loops. Coordinate before editing a currently owned
 release/lock/output.

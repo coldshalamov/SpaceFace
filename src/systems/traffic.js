@@ -260,6 +260,9 @@ const CLAIM_CONVOY_MAX_LIVE = 4;              // concurrent manifested claim con
 const CLAIM_CONVOY_DEPART_CLEARANCE_WU = 160; // spawn offset from the claim pad along the route
 const CIVILIAN_DISTRESS_RADIUS_WU = 1800;
 const CIVILIAN_DISTRESS_COOLDOWN_S = 3;
+// Rescue link-up: a cutter stands by a live caller only while its mayday is recent. Past this
+// quiet bound the hull is presumed safe and the cutter stands down instead of escorting forever.
+const RESCUE_CALLER_STANDDOWN_S = 75;
 const AMBUSH_LOADED_HAULER_COMMODITY_ID = 'cmdty_ore_iron';
 const AMBUSH_LOADED_HAULER_QTY = 16;
 const HAULER_SPILL_VEL_FRACTION = 0.45;
@@ -1622,6 +1625,9 @@ export const traffic = {
     this.bus.on('npcjobs:load', (p) => this._onNpcJobLoad(p || {}));
     this.bus.on('npcjobs:unload', (p) => this._onNpcJobUnload(p || {}));
     this.bus.on('npcjobs:hold', (p) => this._onNpcJobHold(p || {}));
+    // A held worker's route-hold mayday must reach the rescue fleet even when no shot was ever
+    // fired: reshape it into the standard lastDistressCall and the ordinary dispatch path answers.
+    this.bus.on('npcjobs:distress', (p) => this._onNpcJobDistress(p || {}));
     // HELP is an explicit player hail intent. Traffic reserves the finite opportunity for the
     // answering seam miner; physical WORK below remains the sole rich-load/depletion writer.
     this.bus.on('contactHail:response', (p) => this._onContactHailResponse(p || {}));
@@ -5824,6 +5830,49 @@ export const traffic = {
     return payload;
   },
 
+  /**
+   * Route-hold mayday (npcJobsRuntime._holdForRouteThreat): a worker parked in a hot lane cries
+   * for help on a bounded cadence. No combat fire may ever land, so traffic's violence
+   * broadcasts never fire for it. Reshape that cry into the exact lastDistressCall shape
+   * _broadcastCivilianDistress produces (cause 'route_hold') so the nearest rescue craft
+   * dispatches through the ordinary _findNearbyRescueTarget path and _stepRescue can track the
+   * caller live. Stamps the caller's lastDistressSimT like a real broadcast, which is the
+   * freshness signal the rescue stand-down bound reads.
+   */
+  _onNpcJobDistress(p) {
+    const state = this.state;
+    if (!state || !state.traffic) return null;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const caller = p.hullId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(p.hullId)
+      : null;
+    const data = caller ? (caller.data || (caller.data = {})) : null;
+    const pos = caller && caller.pos
+      ? { x: caller.pos.x, z: caller.pos.z }
+      : (p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)
+        ? { x: p.pos.x, z: p.pos.z }
+        : null);
+    if (!pos) return null;
+    if (data) data.lastDistressSimT = now;
+    const payload = {
+      callerId: caller ? caller.id : (p.hullId != null ? p.hullId : null),
+      callerRole: (data && (data.trafficRole || data.role)) || p.kind || 'civilian',
+      callerName: (data && data.trafficLabel) || (caller && caller.name) || 'Civilian Craft',
+      pos,
+      threatId: p.threatId != null ? p.threatId : null,
+      cause: 'route_hold',
+      radius: CIVILIAN_DISTRESS_RADIUS_WU,
+      routedToPlayer: false,
+      recipients: [],
+      simTime: now,
+    };
+    state.traffic.lastDistressCall = payload;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('distress:call', payload);
+    }
+    return payload;
+  },
+
   _civilianHaulerRole(entity, rec) {
     const role = (rec && rec.role)
       || (entity && entity.data && (entity.data.trafficRole || entity.data.jobKind || entity.data.role))
@@ -6607,10 +6656,31 @@ export const traffic = {
     } else if (rec.rescueTargetType === 'distress' && rec.rescueTargetPos) {
       const call = state.traffic && state.traffic.lastDistressCall;
       const age = (state.simTime || 0) - (call ? call.simTime : 0);
-      if (call && age < 45) {
+      // Live-caller mayday: the snapshot goes stale the moment the caller moves. While the
+      // caller hull still lives and its mayday is recent, chase the hull. Its death hands the
+      // scene to the pod scan (Phase 3 priority 1) and the existing aftermath; a mayday that
+      // has gone quiet past the stand-down bound ends the escort instead of holding it forever.
+      const caller = rec.rescueCallerId != null && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(rec.rescueCallerId)
+        : null;
+      const lastMaydayT = caller && caller.data && Number.isFinite(caller.data.lastDistressSimT)
+        ? caller.data.lastDistressSimT
+        : (call ? call.simTime : -Infinity);
+      if (caller && caller.alive !== false && caller.pos) {
+        if ((state.simTime || 0) - lastMaydayT > RESCUE_CALLER_STANDDOWN_S) {
+          rec.rescueTargetPos = null;
+          rec.rescueCallerId = null;
+          rec.rescueOnSceneSimT = null;
+          rec.rescueTargetType = null;
+        } else {
+          targetObj = { kind: 'distress', pos: caller.pos, callerEnt: caller };
+        }
+      } else if (!caller && call && age < 45) {
         targetObj = { kind: 'distress', pos: rec.rescueTargetPos };
       } else {
         rec.rescueTargetPos = null;
+        rec.rescueCallerId = null;
+        rec.rescueOnSceneSimT = null;
         rec.rescueTargetType = null;
       }
     } else if (rec.rescueTargetType === 'disabled' && rec.rescueTargetId != null) {
@@ -6633,6 +6703,8 @@ export const traffic = {
           rec.rescueTargetId = found.entity.id;
         } else if (found.kind === 'distress') {
           rec.rescueTargetPos = found.pos;
+          rec.rescueCallerId = found.callerId != null ? found.callerId : null;
+          rec.rescueOnSceneSimT = null; // fresh link-up episode: one on-scene call is owed
         } else if (found.kind === 'disabled') {
           rec.rescueTargetId = found.entity.id;
         }
@@ -6659,6 +6731,42 @@ export const traffic = {
       }
 
       if (targetObj.kind === 'distress') {
+        // Live caller: link up and hold station with the hull instead of circling the snapshot
+        // point it called from. One throttled on-scene call per link-up; the latch holds until
+        // the caller dies (pod scan takes over), nearby violence (the flee path wins), or the
+        // stand-down bound in Phase 2.
+        let callerEnt = targetObj.callerEnt || null;
+        if (!callerEnt && rec.rescueCallerId != null && state.entities && typeof state.entities.get === 'function') {
+          const live = state.entities.get(rec.rescueCallerId);
+          if (live && live.alive !== false && live.pos) callerEnt = live;
+        }
+        if (callerEnt) {
+          const cdx = callerEnt.pos.x - e.pos.x;
+          const cdz = callerEnt.pos.z - e.pos.z;
+          const cdist = Math.hypot(cdx, cdz);
+          const caim = Math.atan2(cdz, cdx);
+          if (cdist < 80) {
+            rec.civilianReaction = 'standing_by_caller';
+            setIntent(e, 0, 0, false, true, null, caim);
+            if (e.data && e.data.intent) e.data.intent.brake = true;
+            if (rec.rescueOnSceneSimT == null) {
+              rec.rescueOnSceneSimT = state.simTime || 0;
+              if (this.bus && typeof this.bus.emit === 'function') {
+                this.bus.emit('comms:message', {
+                  sender: (e.data && e.data.trafficLabel) || 'Rescue Craft',
+                  channel: 'distress',
+                  text: `On scene, ${(callerEnt.data && callerEnt.data.trafficLabel) || callerEnt.name || 'Civilian Craft'} — hang together.`,
+                  callerId: callerEnt.id,
+                  pos: { x: callerEnt.pos.x, z: callerEnt.pos.z },
+                });
+              }
+            }
+          } else {
+            rec.civilianReaction = 'responding_distress';
+            setIntent(e, 0, 1, false, false, null, caim);
+          }
+          return true;
+        }
         rec.civilianReaction = 'responding_distress';
         if (dist < 80) {
           // Reached distress scene — check if any pods appeared
@@ -6667,10 +6775,14 @@ export const traffic = {
             rec.rescueTargetType = 'pod';
             rec.rescueTargetId = nearbyPod.entity.id;
             rec.rescueTargetPos = null;
+            rec.rescueCallerId = null;
+            rec.rescueOnSceneSimT = null;
           } else {
             // Scene cleared
             rec.rescueTargetType = null;
             rec.rescueTargetPos = null;
+            rec.rescueCallerId = null;
+            rec.rescueOnSceneSimT = null;
             rec.civilianReaction = null;
             return false;
           }

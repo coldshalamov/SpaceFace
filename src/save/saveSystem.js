@@ -664,6 +664,7 @@ export const save = {
       ['solstice', () => this._callSerialize('solstice') || {}],
       ['rubric', () => this._callSerialize('rubric') || {}],
       ['ruckus', () => this._callSerialize('ruckus') || {}],
+      ['ruud', () => this._callSerialize('ruud') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
@@ -697,6 +698,7 @@ export const save = {
       ['kilnback', () => this._callSerialize('kilnback')],
       ['mothlight', () => this._callSerialize('mothlight')],
       ['palletJack', () => this._callSerialize('palletJack')],
+      ['secondRinse', () => this._callSerialize('secondRinse')],
       ['towlineTable', () => this._callSerialize('towlineTable')],
       ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
@@ -780,6 +782,7 @@ export const save = {
     data.solstice = this._callSerialize('solstice') || {};
     data.rubric = this._callSerialize('rubric') || {};
     data.ruckus = this._callSerialize('ruckus') || {};
+    data.ruud = this._callSerialize('ruud') || {};
     data.salvage = this._callSerialize('salvage') || {};
     yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
@@ -862,6 +865,8 @@ export const save = {
     yield 'serialize:mothlight';
     data.palletJack = this._callSerialize('palletJack');
     yield 'serialize:palletJack';
+    data.secondRinse = this._callSerialize('secondRinse');
+    yield 'serialize:secondRinse';
     data.towlineTable = this._callSerialize('towlineTable');
     yield 'serialize:towlineTable';
     data.borrowedVoice = this._callSerialize('borrowedVoice');
@@ -4885,6 +4890,8 @@ export const save = {
       yield 'rubric-restored';
       this._callDeserialize('ruckus', data.ruckus);
       yield 'ruckus-restored';
+      this._callDeserialize('ruud', data.ruud);
+      yield 'ruud-restored';
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
@@ -4931,6 +4938,8 @@ export const save = {
       yield 'mothlight-restored';
       this._callDeserialize('palletJack', data.palletJack);
       yield 'pallet-jack-restored';
+      this._callDeserialize('secondRinse', data.secondRinse);
+      yield 'second-rinse-restored';
       this._callDeserialize('towlineTable', data.towlineTable);
       yield 'towline-table-restored';
       this._callDeserialize('borrowedVoice', data.borrowedVoice);
@@ -5077,6 +5086,8 @@ export const save = {
       yield 'after-continue-mothlight';
       this.registry.get('palletJack')?.afterContinue?.();
       yield 'after-continue-palletJack';
+      this.registry.get('secondRinse')?.afterContinue?.();
+      yield 'after-continue-secondRinse';
       this.registry.get('towlineTable')?.afterContinue?.();
       yield 'after-continue-towlineTable';
       this.registry.get('borrowedVoice')?.afterContinue?.();

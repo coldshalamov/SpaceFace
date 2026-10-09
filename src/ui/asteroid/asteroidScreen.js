@@ -159,7 +159,7 @@ export function transferRefusalText(res) {
 }
 
 /**
- * The Site drawer's whole model, INCLUDING the four operator verbs bound to their owner APIs.
+ * The Site drawer's whole model, INCLUDING the operator verbs bound to their owner APIs.
  *
  * The context bay carried these four affordances and was deleted by law §10; the PQ-130.06 receipt
  * recorded that the owner APIs survived untouched and that this drawer is where they re-bind. They
@@ -205,16 +205,21 @@ export function siteDrawerModel({
   };
 
   const fleet = (projection && projection.fleet) || (site && site.fleet) || null;
+  const dest = (projection && projection.courier) || null;
   const courier = {
     podsReady: fleet ? Math.floor(fleet.podsReady) : 0,
     podTarget: fleet ? fleet.podTarget : 0,
     launches: fleet ? fleet.launches : 0,
     delivered: fleet ? fleet.delivered : 0,
     lost: fleet ? fleet.lost : 0,
+    destinationId: dest ? dest.destinationId : null,
+    stations: (dest && Array.isArray(dest.stations) ? dest.stations : [])
+      .map((st) => ({ id: st.id, name: st.name })),
     inFlight: (fleet && Array.isArray(fleet.inFlight) ? fleet.inFlight : []).map((pod) => ({
       etaS: Math.max(0, Math.round((Number(pod.arriveT) || 0) - (Number(now) || 0))),
       units: Math.round(Object.values(pod.cargo || {}).reduce((a, b) => a + (Number(b) || 0), 0)),
       lost: !!pod.lost,
+      dest: pod.stationName || null,
     })),
   };
 
@@ -292,6 +297,16 @@ export function siteDrawerModel({
         reason: site ? null : NO_SITE_REASON,
         apply: (target) => call(
           () => siteSys.setPodTarget(site.id, target), { ok: false, reason: 'no-site' },
+        ),
+      },
+      podDestination: {
+        owner: 'setPodDestination',
+        stations: courier.stations,
+        value: courier.destinationId,
+        disabled: !site || !courier.stations.length,
+        reason: !site ? NO_SITE_REASON : (courier.stations.length ? null : 'This sector lists no station to sell to.'),
+        apply: (stationId) => call(
+          () => siteSys.setPodDestination(site.id, stationId), { ok: false, reason: 'no-site' },
         ),
       },
       machineMode: {
@@ -1204,7 +1219,7 @@ export const asteroidScreen = {
     }
 
     // ---------- Site: production totals, courier log, the four operator verbs ----------
-    const siteUi = { built: false, model: null, exportBtns: new Map(), exportSig: null, modeBtns: [] };
+    const siteUi = { built: false, model: null, exportBtns: new Map(), exportSig: null, modeBtns: [], destBtns: [] };
     let transferQty = 5;
 
     function siteBlock(host, title) {
@@ -1325,6 +1340,11 @@ export const asteroidScreen = {
       siteUi.modeChips = verbRow(mode);
       siteUi.modeReason = siteReason(mode);
 
+      // verb 5 — siteSys.setPodDestination
+      const destBlock = siteBlock(grid, 'Pod destination');
+      siteUi.destChips = verbRow(destBlock);
+      siteUi.destReason = siteReason(destBlock);
+
       // verb 4 — siteSys.transferGoods
       const xfer = siteBlock(grid, 'Rover transfer');
       const pickRow = verbRow(xfer);
@@ -1426,6 +1446,20 @@ export const asteroidScreen = {
       refreshDrawer();
     }
 
+    function applyPodDestination(stationId) {
+      const verb = siteUi.model && siteUi.model.verbs.podDestination;
+      if (!verb || verb.disabled) return;
+      const row = verb.stations.find((s) => s.id === stationId);
+      if (!row) return;
+      const res = verb.apply(stationId);
+      if (res && res.ok && res.reason !== 'no-change') {
+        projDirty = true;
+        pushLedgerLine('info', `Pods re-addressed to ${row.name}.`);
+        announce(`Pods re-addressed to ${row.name}.`);
+      }
+      refreshDrawer();
+    }
+
     function runTransfer(dir) {
       const verb = siteUi.model && siteUi.model.verbs.transfer;
       if (!verb || verb.disabled) return;
@@ -1484,7 +1518,9 @@ export const asteroidScreen = {
         dot.className = `aw-dot ${pod.lost ? 'coral' : 'sky'}`;
         dot.setAttribute('aria-hidden', 'true');
         const text = document.createElement('span');
-        text.textContent = `${unitText(pod.units)} in flight`;
+        text.textContent = pod.dest
+          ? `${unitText(pod.units)} to ${pod.dest}`
+          : `${unitText(pod.units)} in flight`;
         const eta = document.createElement('span');
         eta.className = 'aw-ledger-clock';
         eta.textContent = drawerClock(pod.etaS);
@@ -1553,6 +1589,33 @@ export const asteroidScreen = {
         chip.setAttribute('aria-pressed', String(on));
       }
       setDisabledWith(siteUi.modeReason, [siteUi.modeSelect, ...siteUi.modeBtns], modeVerb.reason);
+
+      // verb 5 — pod destination (one chip per station; the lit chip is where pods sell)
+      const destVerb = model.verbs.podDestination;
+      const destSig = destVerb.stations.map((s) => s.id).join(',');
+      if (siteUi.destSig !== destSig) {
+        siteUi.destSig = destSig;
+        siteUi.destChips.textContent = '';
+        siteUi.destBtns = [];
+        for (const st of destVerb.stations) {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'aw-verb-chip fh-key fh-key--legend';
+          chip.dataset.station = st.id;
+          chip.textContent = st.name;
+          chip.addEventListener('click', () => applyPodDestination(st.id));
+          siteUi.destChips.appendChild(chip);
+          siteUi.destBtns.push(chip);
+        }
+      }
+      // null means the auto lane — the sector's first station — so that chip reads as lit too.
+      const destOn = destVerb.value || (destVerb.stations.length ? destVerb.stations[0].id : null);
+      for (const chip of siteUi.destBtns) {
+        const on = chip.dataset.station === destOn;
+        chip.classList.toggle('on', on);
+        chip.setAttribute('aria-pressed', String(on));
+      }
+      setDisabledWith(siteUi.destReason, siteUi.destBtns, destVerb.reason);
 
       // verb 4 — rover transfer
       const xferVerb = model.verbs.transfer;

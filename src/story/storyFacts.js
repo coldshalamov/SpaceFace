@@ -93,7 +93,10 @@ export function recordCareerDecision(story, kind, payload, simTime, beat) {
     };
     const idx = facts.findIndex((row) => row.id === id);
     if (idx >= 0) facts[idx] = fact;
-    else facts.push(fact);
+    else {
+      facts.push(fact);
+      if (facts.length > FACT_CAP) facts.splice(0, facts.length - FACT_CAP);
+    }
     return fact;
   }
   if (kind === 'offered') {

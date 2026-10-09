@@ -44,6 +44,7 @@ import { mothlight } from '../systems/mothlight.js';
 import { mothlightPrompt } from '../ui/mothlightPrompt.js';
 import { palletJack } from '../systems/palletJack.js';
 import { palletJackPrompt } from '../ui/palletJackPrompt.js';
+import { secondRinse } from '../systems/secondRinse.js';
 import { towlineTable } from '../systems/towlineTable.js';
 import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
@@ -163,6 +164,7 @@ import { ravel } from '../systems/ravel.js';
 import { solstice } from '../systems/solstice.js';
 import { rubric } from '../systems/rubric.js';
 import { ruckus } from '../systems/ruckus.js';
+import { ruud } from '../systems/ruud.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -490,6 +492,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['mothlightPrompt', mothlightPrompt],
     ['palletJack', palletJack],
     ['palletJackPrompt', palletJackPrompt],
+    ['secondRinse', secondRinse],
     ['towlineTable', towlineTable],
     ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],
@@ -561,6 +564,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['solstice', solstice],
     ['rubric', rubric],
     ['ruckus', ruckus],
+    ['ruud', ruud],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

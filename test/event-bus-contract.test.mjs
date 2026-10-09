@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createBus, SECTOR_ENTER_LISTENER_BUDGET, SECTOR_ENTER_DRAIN_BUDGET } from '../src/core/eventBus.js';
+import { createBus, busFaultSummary, SECTOR_ENTER_LISTENER_BUDGET, SECTOR_ENTER_DRAIN_BUDGET } from '../src/core/eventBus.js';
 
 test('duplicate on() of the same listener delivers once and a single off() removes it', () => {
   const bus = createBus();
@@ -41,6 +41,62 @@ test('one listener fault never starves the rest of the dispatch', () => {
   bus.on('e', () => seen.push('after-fault'));
   assert.doesNotThrow(() => bus.emit('e'));
   assert.deepEqual(seen, ['after-fault']);
+});
+
+test('unprintable thrown values and a broken logger cannot interrupt event delivery', () => {
+  const bus = createBus();
+  const seen = [];
+  const failures = [Object.create(null), { get message() { throw new Error('message getter'); } },
+    { toString() { throw new Error('string conversion'); } }];
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    for (const [index, value] of failures.entries()) {
+      const event = `unprintable-fault:${index}`;
+      bus.on(event, () => { throw value; });
+      bus.on(event, () => seen.push(index));
+      assert.doesNotThrow(() => bus.emit(event));
+      assert.equal(busFaultSummary(512).find(row => row.event === event)?.lastErrorHead,
+        '(unprintable thrown value)');
+    }
+    console.error = () => { throw new Error('logger unavailable'); };
+    bus.on('logger-fault', () => { throw new Error('listener failed'); });
+    bus.on('logger-fault', () => seen.push('logger'));
+    assert.doesNotThrow(() => bus.emit('logger-fault'));
+  } finally { console.error = originalError; }
+  assert.deepEqual(seen, [0, 1, 2, 'logger']);
+});
+
+test('fault history stays bounded and a continuing evicted listener reappears', () => {
+  const bus = createBus();
+  const error = new Error('shared throwing listener');
+  const listener = () => { throw error; };
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    bus.on('continuing-fault', listener);
+    for (let i = 0; i < 20; i++) bus.emit('continuing-fault');
+    // One long-lived function can serve many short-lived event names. Removing only
+    // the summary row must not leave every old row in its private lookup forever.
+    for (let i = 0; i < 520; i++) {
+      const event = `fault-history-churn:${i}`;
+      const off = bus.on(event, listener);
+      bus.emit(event);
+      off();
+    }
+    assert.equal(busFaultSummary(1000).length, 512);
+    assert.equal(busFaultSummary(1000).some(row => row.event === 'continuing-fault'), false);
+    bus.emit('continuing-fault');
+    const resumed = busFaultSummary(1000).find(row => row.event === 'continuing-fault');
+    assert.ok(resumed, 'a currently throwing listener must remain diagnosable after history churn');
+    assert.equal(resumed.lastErrorHead, error.message);
+    assert.equal(busFaultSummary(1000).length, 512);
+    const retained = busFaultSummary(1000).find(row => row.event === 'fault-history-churn:519');
+    bus.on('fault-history-churn:519', listener);
+    bus.emit('fault-history-churn:519');
+    assert.equal(busFaultSummary(1000).find(row => row.event === retained.event).faults, retained.faults + 1,
+      're-registration preserves a retained listener row and its fault count');
+  } finally { console.error = originalError; }
 });
 
 test('a burst of bad payloads never suppresses the next valid event or another bus', () => {

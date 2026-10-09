@@ -64,6 +64,7 @@ test('an authored whole-ship composition paints no procedural hull textures', ()
     distinctRoots: true,
     sharedGeometry: true,
     distinctMaterials: true,
+    sharedBakeAliased: true,
     reboundHooks: true,
     geometryDisposedOnce: true,
   }, 'the composition itself must still build, instance and dispose correctly');

@@ -476,16 +476,32 @@ function translateWord(locale, word) {
   return restoreShape(raw, hit[locale]);
 }
 
+function isWordChar(ch) {
+  return !!ch && /[A-Za-zÀ-ÿ0-9]/.test(ch);
+}
+
 function machineTranslatePart(locale, part) {
   let text = part;
   for (const phrase of PHRASE_LIST) {
     if (phrase.length < 4) continue;
-    const index = text.toLowerCase().indexOf(phrase.toLowerCase());
-    if (index < 0) continue;
-    const found = text.slice(index, index + phrase.length);
-    const repl = lookupMap(PHRASES, phrase, locale);
-    if (repl == null) continue;
-    text = text.slice(0, index) + restoreShape(found, repl) + text.slice(index + phrase.length);
+    const needle = phrase.toLowerCase();
+    let from = 0;
+    while (from <= text.length - needle.length) {
+      const index = text.toLowerCase().indexOf(needle, from);
+      if (index < 0) break;
+      const before = index > 0 ? text[index - 1] : '';
+      const after = text[index + phrase.length] || '';
+      if (isWordChar(before) || isWordChar(after)) {
+        from = index + 1;
+        continue;
+      }
+      const found = text.slice(index, index + phrase.length);
+      const repl = lookupMap(PHRASES, phrase, locale);
+      if (repl == null) break;
+      const shaped = restoreShape(found, repl);
+      text = text.slice(0, index) + shaped + text.slice(index + phrase.length);
+      from = index + shaped.length;
+    }
   }
   return text.replace(/[A-Za-zÀ-ÿ']+/g, (word) => translateWord(locale, word));
 }

@@ -80,6 +80,18 @@ test('the ring caps at the newest six receipts', () => {
   assert.equal(history[5].reason, 'mission_failed:type_7');
 });
 
+test('a full six-deed ring survives save and load', () => {
+  const first = boot({ simTime: 1 });
+  for (let i = 0; i < 6; i++) deed(first.state, first.bus, 2, `deed_${i}`, 10 + i);
+  const saved = first.sys.serialize();
+  const next = boot();
+  next.sys.deserialize(saved);
+  const history = next.state.factions[FAC].history;
+  assert.equal(history.length, 6);
+  assert.equal(history[0].reason, 'deed_0');
+  assert.equal(history[5].reason, 'deed_5');
+});
+
 test('factionHistoryLines reads the deeds back, newest first, labeled with real state', () => {
   const { state, bus } = boot();
   deed(state, bus, 20, 'rescue_faction_distress', 60);

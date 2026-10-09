@@ -62,6 +62,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'kilnback',
   'mothlight', 'mothlightPrompt',
   'palletJack', 'palletJackPrompt',
+  'secondRinse',
   'towlineTable', 'towlineTablePrompt',
   'borrowedVoice', 'borrowedVoicePrompt',
   // Bark receipts/suppression are keyed per entity id and per run; a fresh run must not

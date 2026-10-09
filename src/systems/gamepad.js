@@ -1,3 +1,13 @@
+import {
+  WORLD_FEEL_SEAM_IDS,
+  admitWorldFeelSeam,
+  createWorldFeelBook,
+  worldFeelRelevant,
+  copySweptHullFeel,
+  worldFeelHaptic,
+  worldFeelTick,
+} from '../audio/worldFeelSeams.js';
+
 // Gamepad polling layer (goal P1-12).
 //
 // Polls navigator.getGamepads() once per tick and exposes normalized, deadzoned axes plus
@@ -846,6 +856,18 @@ export function createGamepad(ctx) {
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
     bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
     bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));
+    // Worldfeel seams: a developed rock, a grazing face, a volatile stage. Own admit book so a
+    // held beam cannot turn the pad into a buzz. The pulse still shares the one-live-pulse gate.
+    const worldFeelBook = createWorldFeelBook(bus);
+    for (const eventName of WORLD_FEEL_SEAM_IDS) {
+      bus.on(eventName, (payload) => {
+        const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;
+        if (!worldFeelRelevant(state, eventName, snap)) return;
+        if (!admitWorldFeelSeam(worldFeelBook, eventName, snap, worldFeelTick(state))) return;
+        const spec = worldFeelHaptic(eventName, snap);
+        if (spec) startPulse(spec, eventName);
+      });
+    }
     bus.on('gyre:absorbTick', (payload) => {
       // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the
       // drop thud — lerped on min(1, mass/80) so katamari escalation is felt, not just seen.

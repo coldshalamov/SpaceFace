@@ -235,6 +235,41 @@ export function formatLoadoutApplyReason(applyResult, { dockLabel = 'Dock to ref
   return { ok: false, reason, text };
 }
 
+const RACK_REJECTION_SPEECH = Object.freeze({
+  rack_not_docked: 'Dock to prepare the bomb rack',
+  rack_credits: 'Not enough credits for the rack on this build',
+  rack_no_stock: 'That bomb is not in stock',
+  rack_empty_rack: 'The rack on this build is empty',
+  rack_no_rack_owner: 'This hull has no bomb rack',
+  rack_commit_failed: 'Rack preparation failed — build not applied',
+});
+
+/** The sentence a refused build says on its own control. Rack reasons are specific; the rest reuse the apply labels. */
+export function loadoutRejectionSpeech(reason) {
+  const key = typeof reason === 'string' ? reason : '';
+  return RACK_REJECTION_SPEECH[key] || APPLY_REASON_LABELS[key] || 'Cannot apply this build';
+}
+
+/**
+ * Put that sentence on the preset button: why, invalid, subtitle, label, and focus.
+ * Focus belongs here — the player is in Shipworks, not on the helm.
+ * A second paint of the same reason does not steal focus again.
+ */
+export function applyPresetRejection(button, reason, { focus = true } = {}) {
+  const speech = loadoutRejectionSpeech(reason);
+  if (!button) return speech;
+  const key = typeof reason === 'string' ? reason : '';
+  const prior = button.getAttribute('data-preset-rejection');
+  button.setAttribute('data-why', speech);
+  button.setAttribute('aria-invalid', 'true');
+  button.setAttribute('aria-label', speech);
+  button.setAttribute('data-preset-rejection', key);
+  const sub = typeof button.querySelector === 'function' ? button.querySelector('.sx-sw-preset__sub') : null;
+  if (sub) sub.textContent = speech;
+  if (focus && prior !== key && typeof button.focus === 'function') button.focus();
+  return speech;
+}
+
 export function deriveLoadoutPresetLabel({ hullDefId, fittings = [], player = null } = {}) {
   const normalizedFittings = asPresetFittings(fittings);
   const { derived, subtitle, capabilityVerbs } = sharedLabelMeta(hullDefId, normalizedFittings, player);

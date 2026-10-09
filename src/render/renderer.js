@@ -1,3 +1,4 @@
+import { createContactShadowSelection, selectContactShadowsOnReceivers } from './contactShadowReceivers.js';
 import { isPhysicalMachinery, bindMachineryPresentation, machineryPresentationPlace, machineryRequestedPresentation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
 import { noteLaneFault, serviceFaultEpoch } from '../core/warnDedup.js';
 import { busFaultSummary } from '../core/eventBus.js';
@@ -7078,6 +7079,7 @@ export function createContactShadowPool(scene, options = {}) {
     scene,
     capacity: 0,
     mesh: null,
+    receiverSelection: createContactShadowSelection(),
     records: new Map(),
     seen: new Set(),
     deferGrowth: options.deferGrowth === true,
@@ -7226,9 +7228,9 @@ function queueContactShadowGrowth(pool, demand) {
 
 export function syncContactShadowPool(pool, frameOrRecords, meshes) {
   if (!pool || !pool.mesh) return;
-  const records = frameOrRecords && Array.isArray(frameOrRecords.contactShadows)
-    ? frameOrRecords.contactShadows
-    : (Array.isArray(frameOrRecords) ? frameOrRecords : []);
+  const records = selectContactShadowsOnReceivers(
+    pool.receiverSelection ||= createContactShadowSelection(), frameOrRecords, meshes,
+  );
   // Synchronous growth uploads the new instance buffer inside the presented pass. During flight
   // the pool defers: demand beyond capacity queues a detached replacement that is uploaded
   // post-paint and activated atomically; this frame's overflow simply skips a shadow.
@@ -7256,25 +7258,24 @@ export function syncContactShadowPool(pool, frameOrRecords, meshes) {
     } else {
       ensureContactShadowCapacity(pool, count + 1);
     }
-    const radius = Number(mesh.userData.contactShadowRadius) || Math.max(16, (entity.radius || 28) * 1.4);
-    // Prefer mesh frame-local pose (authoritative for Three.js after syncEntityViews).
-    const x = Number.isFinite(mesh.position.x) ? mesh.position.x : 0;
-    const z = Number.isFinite(mesh.position.z) ? mesh.position.z : 0;
+    const radius = item.shadowRadius;
+    // The receiver selector returns world-space ink wholly supported by the deck.
+    const x = item.shadowX, y = item.shadowY, z = item.shadowZ;
     seen.add(entity.id);
     let prev = priorRecords.get(entity.id);
     if (!prev || prev.index !== count ||
-        Math.abs(prev.x - x) > 0.01 || Math.abs(prev.z - z) > 0.01 || Math.abs(prev.radius - radius) > 0.01) {
-      CONTACT_SHADOW_POS.set(x, -0.5, z);
+        Math.abs(prev.x - x) > 0.01 || Math.abs(prev.y - y) > 0.01 || Math.abs(prev.z - z) > 0.01 || Math.abs(prev.radius - radius) > 0.01) {
+      CONTACT_SHADOW_POS.set(x, y, z);
       CONTACT_SHADOW_SCALE.set(radius, radius, radius);
       CONTACT_SHADOW_MATRIX.compose(CONTACT_SHADOW_POS, CONTACT_SHADOW_QUAT, CONTACT_SHADOW_SCALE);
       assertDynamicBufferOwnerWritable(pool.dynamicBufferOwner);
       markDynamicBufferItems(pool.dynamicBufferOwner, CONTACT_SHADOW_MATRIX_BINDING, count);
       pool.mesh.setMatrixAt(count, CONTACT_SHADOW_MATRIX);
       if (!prev) {
-        prev = { index: count, x, z, radius };
+        prev = { index: count, x, y, z, radius };
         priorRecords.set(entity.id, prev);
       } else {
-        prev.index = count; prev.x = x; prev.z = z; prev.radius = radius;
+        prev.index = count; prev.x = x; prev.y = y; prev.z = z; prev.radius = radius;
       }
       dirty = true;
     }
@@ -30385,10 +30386,9 @@ export const render = {
           let collected = 0;
           let abortedPark = null;
           const deferredRoots = this._deferredDepthStageRoots;
-          // Flip-triggered bulk re-stage: a census flip re-queues the whole cohort,
-          // and N per-root subtree collects are N walks + N bookkeeping passes. One
-          // stepped DFS over the live scene attributes casters to every pending
-          // ancestor under the identical signature verdict — completed roots take
+          // Bulk re-stage visits only pending roots reachable from the live scene,
+          // pruning nested roots from the traversal while attributing their casters
+          // to every pending ancestor under the identical signature verdict. Completed roots take
           // their unstaged set wholesale; roots the walk never finished (shared
           // budget, deferred compile, a root outside the scene) fall through to the
           // ordinary per-root path untouched.

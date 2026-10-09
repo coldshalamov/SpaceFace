@@ -73,6 +73,8 @@ const VERDICT_CAUSE_COPY = Object.freeze({
 });
 export function releaseVerdictCopy(rating) {
   if (!rating || typeof rating !== 'object') return '';
+  // A failure snap is not a grade. Ordinary release keeps the crest/swing copy below.
+  if (rating.broke === true) return 'LINE BROKE';
   const grade = VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
   // FB-006 — a release that ends a ride grades the ride: how much of the anchor's speed the
   // pilot kept at the cut. The ride cause names the specific lesson before the generic swing.
@@ -87,7 +89,7 @@ export function releaseVerdictCopy(rating) {
 }
 // The verdict reuses the shared preview pill/mark — every renderer that takes the slot next
 // must clear these classes so a stale grade never leaks onto a denial or acquisition frame.
-const VERDICT_GRADE_CLASSES = Object.freeze(['razor', 'clean', 'good', 'messy']);
+const VERDICT_GRADE_CLASSES = Object.freeze(['razor', 'clean', 'good', 'messy', 'break']);
 function clearVerdictClasses(dom) {
   if (!dom) return;
   setClass(dom.previewEl, 'ml2-preview-verdict', false);
@@ -273,6 +275,35 @@ export function resolveMassInterpretation(playerMass, targetMass) {
   return { key: 'comparable', short: 'EVEN', title: 'Comparable mass — both bodies move' };
 }
 
+/** Mass the live solver couples: physics-body mass, else the authored entity mass. */
+export function couplingBodyMass(entity) {
+  const body = Number(entity && entity.physicsBody && entity.physicsBody.mass);
+  if (Number.isFinite(body) && body > 0) return body;
+  const mass = Number(entity && entity.mass);
+  return Number.isFinite(mass) && mass > 0 ? mass : NaN;
+}
+
+/**
+ * SFQ-B022 — throw, mutual swing, or self-sling, named from the two masses the
+ * constraint actually couples. Null when either mass is missing. Not a hull-class label.
+ */
+export function latchCouplingRead(player, target) {
+  return resolveMassInterpretation(couplingBodyMass(player), couplingBodyMass(target));
+}
+
+// SFQ-B023 — a cable failure is not a release grade. These reasons are the
+// authored overload/threshold snaps. A deliberate cut, an accepted handoff, and
+// a lost target stay off this set so they cannot wear LINE BROKE.
+export const LINE_BREAK_REASONS = Object.freeze([
+  'threshold', 'overload', 'snap', 'physics_break', 'integrity',
+  'catastrophic-overload', 'sustained-overload',
+]);
+const LINE_BREAK_REASON_SET = new Set(LINE_BREAK_REASONS);
+
+export function isLineBreakReason(reason) {
+  return LINE_BREAK_REASON_SET.has(reason);
+}
+
 // INF-014 — line-load warning with hysteresis. Strain is the solver-owned break ratio the
 // telemetry already mirrors (tether.strain); trend is strain per second. The warning turns on
 // at high load (or moderate load climbing fast) and stays until the line relaxes well below
@@ -374,10 +405,12 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview.ml2-verdict-clean { color:#a9e8d0; }
 #sf-ml2 .ml2-preview.ml2-verdict-good { color:var(--dp-ink, #e8e2d4); }
 #sf-ml2 .ml2-preview.ml2-verdict-messy { color:#ffd08a; border-style:dashed; }
+#sf-ml2 .ml2-preview.ml2-verdict-break { color:#ff8d7a; border-style:solid; }
 #sf-ml2 .ml2-preview-mark.ml2-verdict-razor { color:#85e9ca; }
 #sf-ml2 .ml2-preview-mark.ml2-verdict-clean { color:#a9e8d0; }
 #sf-ml2 .ml2-preview-mark.ml2-verdict-good { color:var(--dp-ink, #e8e2d4); }
 #sf-ml2 .ml2-preview-mark.ml2-verdict-messy { color:#ffd08a; }
+#sf-ml2 .ml2-preview-mark.ml2-verdict-break { color:#ff8d7a; }
 @keyframes ml2preview { 0%,100% { opacity:0.78; } 50% { opacity:1; } }
 /* §22 F1 — the release ghost: a thin predicted arc of the payload's own post-release path,
    drawn from the same solution the diamond reads. Cooler and thinner than the intercept mark —
@@ -1066,6 +1099,26 @@ export const masslineHud = {
           untilSimTime: now + MASSLINE_VERDICT_PILL_S,
         };
       });
+      // SFQ-B023 — overload snap names itself. A deliberate cut emits tether:broken
+      // with reason tether_cut and must keep the release grade, not LINE BROKE.
+      ctx.bus.on('tether:broken', (p) => {
+        if (!this.state || !p || !isLineBreakReason(p.reason)) return;
+        const now = finite(this.state.simTime);
+        const target = p.targetId != null && this.state.entities
+          && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(p.targetId) : null;
+        this.state.masslineReleaseVerdict = {
+          broke: true,
+          classification: null,
+          technique: null,
+          releasedAtApex: false,
+          ride: null,
+          targetId: p.targetId != null ? p.targetId : null,
+          atX: Number.isFinite(target && target.pos && target.pos.x) ? target.pos.x : null,
+          atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
+          untilSimTime: now + MASSLINE_VERDICT_PILL_S,
+        };
+      });
     }
   },
 
@@ -1360,8 +1413,11 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
-    const grade = VERDICT_GRADE_COPY[verdict.classification] ? verdict.classification : 'messy';
-    const earned = grade === 'razor' || grade === 'clean';
+    const broke = verdict.broke === true;
+    const grade = broke
+      ? 'break'
+      : (VERDICT_GRADE_COPY[verdict.classification] ? verdict.classification : 'messy');
+    const earned = !broke && (grade === 'razor' || grade === 'clean');
     const text = releaseVerdictCopy(verdict);
     const captionWidth = estimateCaptionWidth(text);
     const placed = placeBracketWords(
@@ -1397,7 +1453,7 @@ export const masslineHud = {
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, false);
     }
-    for (const g of ['razor', 'clean', 'good', 'messy']) {
+    for (const g of VERDICT_GRADE_CLASSES) {
       if (g !== grade) setClass(dom.previewEl, `ml2-verdict-${g}`, false);
     }
   },
@@ -1902,7 +1958,15 @@ export const masslineHud = {
     // alarm), so an endpoint that can never auto-break gets the load-only wording.
     const breakAlarm = !!(tether && tether.automaticBreakAllowed === true);
     const share = resolveTetherShareHud(state && state.player && state.player.remoteMassline);
-    const showStrain = (active && shown > 0.02) || !!share;
+    let coupling = null;
+    if (active && !share && tether && tether.targetId != null
+      && state.entities && typeof state.entities.get === 'function') {
+      coupling = latchCouplingRead(
+        state.entities.get(state.playerId),
+        state.entities.get(tether.targetId),
+      );
+    }
+    const showStrain = (active && (shown > 0.02 || !!coupling)) || !!share;
     setStyle(dom.strainPill, 'display', showStrain ? 'flex' : 'none');
     if (showStrain) {
       const bar = share && !(shown > 0.02)
@@ -1910,7 +1974,7 @@ export const masslineHud = {
         : shown;
       setStyle(dom.strainFill, 'transform', `scaleX(${clamp01(bar)})`);
       setClass(dom.strainPill, 'ml2-warn', warned && !share);
-      const label = share ? share.text : 'LINE';
+      const label = share ? share.text : (coupling ? coupling.short : 'LINE');
       if (dom.strainText && dom.strainText.textContent !== label) dom.strainText.textContent = label;
       setAttr(dom.strainPill, 'aria-label', share
         ? `Load split ${share.text}`
@@ -1918,7 +1982,9 @@ export const masslineHud = {
           ? (breakAlarm
             ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
             : `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn`)
-          : `Massline line load ${Math.round(clamp01(shown) * 100)} percent`);
+          : coupling
+            ? `${coupling.title}. Line load ${Math.round(clamp01(shown) * 100)} percent`
+            : `Massline line load ${Math.round(clamp01(shown) * 100)} percent`);
     } else if (prev && prev.warned) {
       setClass(dom.strainPill, 'ml2-warn', false);
       if (dom.strainText && dom.strainText.textContent !== 'LINE') dom.strainText.textContent = 'LINE';

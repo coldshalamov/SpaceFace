@@ -332,6 +332,9 @@ function normalizeSelf(value, entityId) {
   };
   // Keep a carried occupant token and an explicit alive flag. A missing flag stays missing
   // so an id-only sensor self is still the same body; inventing either field would retarget the wing.
+  // This frozen owner-issued sample carries runtime-only provenance. Copying it would lose
+  // that attestation; arbitrary frame/entity metadata remains untrusted at doctrine validation.
+  if (value.mothlightGunCadence) self.mothlightGunCadence = value.mothlightGunCadence;
   const generation = value.occupantGeneration;
   if (generation != null && generation !== '') self.occupantGeneration = generation;
   if (Object.prototype.hasOwnProperty.call(value, 'alive')) self.alive = value.alive;

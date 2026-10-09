@@ -15,7 +15,9 @@ import { RAVEL_AUDIO_RECIPES } from './ravel.js';
 import { SOLSTICE_AUDIO_RECIPES } from './solstice.js';
 import { RUBRIC_AUDIO_RECIPES } from './rubric.js';
 import { RUCKUS_AUDIO_RECIPES } from './ruckus.js';
+import { RUUD_AUDIO_RECIPES } from './ruud.js';
 import { BOLUS_AUDIO_RECIPES } from './bolusAudio.js';
+import { SECOND_RINSE_AUDIO_RECIPES } from './secondRinseAudio.js';
 
 export const RECIPES = [
   ...MORROW_AUDIO_RECIPES,
@@ -25,7 +27,9 @@ export const RECIPES = [
   ...SOLSTICE_AUDIO_RECIPES,
   ...RUBRIC_AUDIO_RECIPES,
   ...RUCKUS_AUDIO_RECIPES,
+  ...RUUD_AUDIO_RECIPES,
   ...BOLUS_AUDIO_RECIPES,
+  ...SECOND_RINSE_AUDIO_RECIPES,
   // --- Engine SFX ---
   {
     id: 'sfx_engine_idle',

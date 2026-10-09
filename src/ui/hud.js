@@ -2254,7 +2254,7 @@ export function createHud(ctx, alerts) {
   // ordnance. It reads the same sources as the chassis and rail (src/ui/orrery/hudAdapter.js); those
   // stay mounted and hidden (#hud[data-hud="orrery"]) until the live route is checked, because
   // their DOM contracts are pinned by tests and the slot-claim protocol still drives the rail.
-  const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null });
+  const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null, bus: ctx.bus });
   // The radar keeps its canvas (contacts, rocks, trails); ORRERY takes its frame (rim, range, Hand).
   if (orreryCluster && radar && typeof radar.setOrreryFrame === 'function') radar.setOrreryFrame(true);
   // ORRERY hides the leftstack chassis, but the tape's --on class re-shows it through the hidden

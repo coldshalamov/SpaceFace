@@ -30,6 +30,7 @@
 
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
+import { bombPrimeLine, statusPayoffLine } from '../data/statusPayoffs.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { onFrame } from './orrery/motion.js';
 
@@ -133,6 +134,19 @@ export function handlineSenseLine(eventName, payload) {
   if (eventName === 'tether:reelPump') {
     if (p.risk !== 'high') return null;
     return { key: 'pump-hot', name: 'PUMP HOT', detail: '' };
+  }
+  // Three seams that were emitted and never reached a player sense.
+  if (eventName === 'massline:bridleCut') {
+    return { key: 'bridle-cut', name: 'BRIDLE CUT', detail: '' };
+  }
+  if (eventName === 'well:fling') {
+    if (p.primed !== true) return null;
+    return { key: 'well-fling', name: 'FLING', detail: '' };
+  }
+  if (eventName === 'weapons:inertialShunt') {
+    const dv = Number.isFinite(p.targetDeltaV) ? Math.round(p.targetDeltaV) : null;
+    const id = p.targetId != null ? String(p.targetId) : 'shunt';
+    return { key: `shunt:${id}`, name: 'SHUNT', detail: dv == null ? '' : String(dv) };
   }
   return impactGradeLine(eventName, p);
 }
@@ -363,11 +377,12 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   injectStyle(doc);
 
   const root = mk(doc, 'div', 'sf-stuntcall');
-  root.setAttribute('aria-hidden', 'true');
   root.hidden = true;
   const lines = mk(doc, 'div', 'sf-stuntcall__lines');
+  lines.setAttribute('aria-hidden', 'true');
   root.appendChild(lines);
   const meter = mk(doc, 'div', 'sf-stuntcall__meter');
+  meter.setAttribute('aria-hidden', 'true');
   meter.hidden = true;
   const rowTop = mk(doc, 'div', 'sf-stuntcall__rowtop');
   const mult = mk(doc, 'span', 'sf-stuntcall__mult', '');
@@ -403,6 +418,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   let spoken = '';
   let frameOff = null;
   let destroyed = false;
+  const heardStatuses = new Map();
 
   const getState = () => state;
 
@@ -674,15 +690,24 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:lineContractCompleted', (p) => onLineContract(p)));
     unsubs.push(bus.on('stunt:bridge', (p) => onBridgeTick(p)));
     // Silent seams: the event itself had no subscriber that a pilot could see or hear.
-    const onHandlineSense = (eventName) => (payload) => {
-      if (destroyed) return;
-      if (!calloutScope(getState())) return;
-      const line = handlineSenseLine(eventName, payload);
+    const speak = (line) => {
       if (!line) return;
       addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
       spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
       sr.textContent = spoken;
       wake();
+    };
+    const onHandlineSense = (eventName) => (payload) => {
+      if (destroyed) return;
+      if (!calloutScope(getState())) return;
+      speak(handlineSenseLine(eventName, payload));
+    };
+    const onOwnedSense = (eventName, owns) => (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st)) return;
+      if (typeof owns === 'function' && !owns(st, payload || {})) return;
+      speak(handlineSenseLine(eventName, payload));
     };
     unsubs.push(bus.on('massline:releaseWindow', onHandlineSense('massline:releaseWindow')));
     unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
@@ -692,6 +717,41 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('tether:reelPump', onHandlineSense('tether:reelPump')));
     unsubs.push(bus.on('tether:whipImpact', onHandlineSense('tether:whipImpact')));
     unsubs.push(bus.on('massline:sweepImpact', onHandlineSense('massline:sweepImpact')));
+    unsubs.push(bus.on('massline:bridleCut', onHandlineSense('massline:bridleCut')));
+    unsubs.push(bus.on('well:fling', onOwnedSense('well:fling', (st, payload) =>
+      payload.targetId === st.playerId || payload.victimId === st.playerId)));
+    unsubs.push(bus.on('weapons:inertialShunt', onOwnedSense('weapons:inertialShunt', (st, payload) =>
+      payload.shunterId === st.playerId || payload.targetId === st.playerId)));
+    // SFQ-B033 — the status the player is wearing, and a bomb they primed, say the payoff.
+    unsubs.push(bus.on('combat:statusApplied', (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || !payload || payload.targetId !== st.playerId) return;
+      const previous = heardStatuses.get(payload.statusId);
+      const tick = Number(st.tick) || 0;
+      heardStatuses.set(payload.statusId, { stacks: payload.stacks || 1,
+        expiresTick: Number.isFinite(payload.expiresTick) ? payload.expiresTick : tick + 60 });
+      // A refreshed field status is still the same condition. Speak onset and
+      // increased severity; never hammer the reading floor once per damage tick.
+      if (previous && previous.expiresTick > tick && previous.stacks >= (payload.stacks || 1)) return;
+      speak(statusPayoffLine(payload.statusId));
+    }));
+    unsubs.push(bus.on('combat:statusExpired', (payload) => {
+      if (payload?.targetId === getState()?.playerId) heardStatuses.delete(payload.statusId);
+    }));
+    for (const event of ['game:newGame', 'save:loaded']) unsubs.push(bus.on(event, () => {
+      heardStatuses.clear();
+      for (const entry of lineNodes.values()) if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
+      lineNodes.clear();
+      sr.textContent = '';
+      root.hidden = true;
+    }));
+    unsubs.push(bus.on('bombs:primed', (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || !payload || payload.ownerId !== st.playerId) return;
+      speak(bombPrimeLine(payload));
+    }));
     // SWARM-03 — the physics cause tag, on the lane that already names tricks.
     unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }

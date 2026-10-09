@@ -37,8 +37,8 @@ export const MAX_QUEUED_SLICED_EMITS = 8;
 // changes, and the per-fault path is one map hop + a === scan instead of the
 // old `${label}|${event}|${token}` composite string mint per throw. Non-function
 // listeners (none today — defensive) hold a parallel keyed Map so WeakMap key
-// typing never breaks the fault path. busErrorIndex keeps every minted row
-// enumerable for faultSummary without giving up row identity.
+// typing never breaks the fault path. The bounded index owns retained rows;
+// eviction removes the listener lookup too, so a later fault is indexed anew.
 const BUS_ERROR_VERBATIM = 8;
 const BUS_ERROR_CAP = 256;
 const BUS_ERROR_INDEX_CAP = 512;
@@ -72,7 +72,19 @@ function rowsForBusListener(listener) {
 // and gameplay must not depend on a wall-clock cooldown or another bus's faults.
 function invokeBusListener(fn, payload, event, label) {
   try { fn(payload, event); }
-  catch (err) { noteBusHandlerError(event, err, label, fn); }
+  catch (err) {
+    try { noteBusHandlerError(event, err, label, fn); }
+    catch (_) { /* Diagnostics, including the logger, must never interrupt delivery. */ }
+  }
+}
+
+function busErrorHead(error) {
+  try {
+    const message = error?.message;
+    return (typeof message === 'string' ? message : String(error)).slice(0, 160);
+  } catch (_) {
+    return '(unprintable thrown value)';
+  }
 }
 
 function noteBusHandlerError(event, err, label, listener) {
@@ -90,14 +102,18 @@ function noteBusHandlerError(event, err, label, listener) {
   if (!entry) {
     if (busErrorIndex.size >= BUS_ERROR_INDEX_CAP) {
       const oldest = busErrorIndex.values().next();
-      if (!oldest.done) busErrorIndex.delete(oldest.value);
+      if (!oldest.done) {
+        const retired = oldest.value;
+        busErrorIndex.delete(retired);
+        retired.rows.splice(retired.rows.indexOf(retired), 1);
+      }
     }
-    entry = { label, event, logged: 0, suppressed: 0, faults: 0, lastWarnAt: -Infinity, lastErrorHead: null };
+    entry = { rows, label, event, logged: 0, suppressed: 0, faults: 0, lastWarnAt: -Infinity, lastErrorHead: null };
     rows.push(entry);
     busErrorIndex.add(entry);
   }
   entry.faults += 1;
-  entry.lastErrorHead = (err && typeof err.message === 'string' ? err.message : String(err)).slice(0, 160);
+  entry.lastErrorHead = busErrorHead(err);
   if (entry.logged < BUS_ERROR_VERBATIM) {
     entry.logged += 1;
     console.error(`[bus] ${label} for "${event}":`, err);

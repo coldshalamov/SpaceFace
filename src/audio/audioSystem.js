@@ -21,6 +21,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
+import { installWorldFeelSeams } from './worldFeelSeams.js';
 import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
@@ -665,6 +666,41 @@ export function resolveMachineWorkCycle(stateName) {
   return Object.freeze({
     play: false, phase: 'idle', recipeId: null, rate: 1, gain: 0, transfer: false, caption: null,
   });
+}
+
+/** Yard loop sits on the rock the site is built into. The status event has no position. */
+export function machineWorkPosition(state, payload) {
+  const given = payload && payload.pos;
+  if (given && Number.isFinite(given.x) && Number.isFinite(given.z)) {
+    return { x: given.x, z: given.z };
+  }
+  const sites = state && state.sites && state.sites.byId;
+  const site = sites && payload && payload.siteId != null ? sites[payload.siteId] : null;
+  const asteroidId = site && site.asteroidId;
+  const entities = state && state.entities;
+  const ent = asteroidId != null && entities && typeof entities.get === 'function'
+    ? entities.get(asteroidId)
+    : null;
+  const pos = ent && ent.alive !== false && ent.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  return { x: pos.x, z: pos.z };
+}
+
+/** A living relay is not a motor. Machinery keeps sfx_work_motor. */
+export function relayPulseCue(payload) {
+  const ids = payload && Array.isArray(payload.siteIds) ? payload.siteIds : null;
+  if (!ids || ids.length === 0) return null;
+  return { recipeId: 'sfx_anomaly_swell', caption: 'Relay pulse.', gain: 0.36 };
+}
+
+export function playRelayPulse(host, payload) {
+  const cue = relayPulseCue(payload);
+  if (!cue || !host || typeof host.play !== 'function') return null;
+  const played = host.play(cue.recipeId, { id: cue.recipeId, gain: cue.gain });
+  if (played && typeof host._emitPresentationCaption === 'function') {
+    host._emitPresentationCaption(cue.caption, { channel: 'cue' });
+  }
+  return played;
 }
 
 /** SF-233 — a swell is evidence, not a timer on the anomaly palette. */
@@ -2836,6 +2872,7 @@ export const audio = {
       if (starved && prev !== true) this._onMineCue('machineStarved', p); // once per transition
       this._syncMachineWork(p);
     });
+    bus.on('ecology:relayPulse', (p) => playRelayPulse(this, p));
 
     // UI namespaced cue events (DOM UI may emit these directly).
     // ui:confirm is the only ui:* semantic event with a producer (src/ui/input.js);
@@ -2866,6 +2903,7 @@ export const audio = {
     bindBombAudio(this, bus);
     bindFieldAudio(this, bus);
     installCombatVerbCueDispatch(this, bus);
+    installWorldFeelSeams(this, bus);
 
     // If a context already exists (hot reload), wire immediately.
     if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
@@ -5889,7 +5927,7 @@ export const audio = {
       this._endLoopVoice(current);
       delete rt.loops[key];
     }
-    const started = this._startLoopVoice(voice.recipeId, p.pos || null, voice.gain, { rate: voice.rate });
+    const started = this._startLoopVoice(voice.recipeId, machineWorkPosition(this.state, p), voice.gain, { rate: voice.rate });
     if (!started) return;
     rt.loops[key] = started;
   },
