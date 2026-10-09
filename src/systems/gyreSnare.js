@@ -668,6 +668,18 @@ export const gyreSnare = {
       ? wmeta.clumpRadius : entityRadius(best);
     rt.ballMembers = wmeta && Array.isArray(wmeta.members) ? wmeta.members : null;
     rt.ballAbsorbs = wmeta && Number.isFinite(wmeta.absorbs) ? wmeta.absorbs : 0;
+    // The promote tick must publish ONE ball's frame: launchedId/mass/radius/
+    // members already describe the survivor — re-seat its ttl + velocity too or
+    // the mirror splices the dead primary's countdown/heading onto the new ball
+    // for a tick. (ballPos stays last-seen on a grave tick — deliberate above.)
+    if (pub) {
+      pub.ballVx = finite(best.vel && best.vel.x);
+      pub.ballVz = finite(best.vel && best.vel.z);
+      pub.ballTtl01 = best.data.despawnAt != null && Number.isFinite(state.simTime)
+        ? Math.max(0, Math.min(1, (best.data.despawnAt - state.simTime) / D.ballTtlS)) : 1;
+      pub.ballTtlLeftS = best.data.despawnAt != null && Number.isFinite(state.simTime)
+        ? Math.max(0, best.data.despawnAt - state.simTime) : 0;
+    }
   },
 
   _unwatchBall(id) {
@@ -1806,8 +1818,9 @@ export const gyreSnare = {
         this._promoteNextBall(rt, state, pub);
         // Mirror hygiene parity: ballPos stays last-seen deliberately (the grave
         // ring blooms where it died) but velocity zeroes like ttl/radius — a dead
-        // ball has no heading to keep.
-        pub.ballVx = 0; pub.ballVz = 0;
+        // ball has no heading to keep. Only when nothing promoted: a survivor's
+        // own vx/vz/ttl were just re-seated inside _promoteNextBall.
+        if (rt.launchedId == null) { pub.ballVx = 0; pub.ballVz = 0; }
       } else {
         pub.ballPos.x = ball.pos.x; pub.ballPos.z = ball.pos.z;
         // Live velocity too — the primary ribbon steers by it like the secondaries
@@ -1852,7 +1865,9 @@ export const gyreSnare = {
           this._unwatchBall(rt.ballId);
           rt.ballId = null; rt.launchedId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
           this._promoteNextBall(rt, state, pub); // a younger flight inherits the primary lane
-          pub.ballVx = 0; pub.ballVz = 0; // dead balls keep no heading (see the dead-ball lane above)
+          // Same guard as the dead-ball lane above: zero only when nothing
+          // promoted — the survivor's own heading was re-seated inside the call.
+          if (rt.launchedId == null) { pub.ballVx = 0; pub.ballVz = 0; }
         }
       }
     }
@@ -2284,7 +2299,16 @@ export const gyreSnare = {
     const nose = this._noseDir(player, this._noseObj || (this._noseObj = { x: 1, z: 0 }));
 
     if (rt.phase === PHASE.LAUNCH) {
-      const core = rt.launchedId != null && state.entities ? state.entities.get(rt.launchedId) : null;
+      // The launch's target is launch-OWNED (rt.coreId), not promote-managed
+      // (rt.launchedId): if the throwing ball exits the watch ledger mid-coil
+      // via an ALIVE retire — a foreign adopter strips the mark/deadline →
+      // _promoteNextBall re-seats launchedId to a survivor — the survivor must
+      // NOT inherit the remaining coil spring / burst impulses / carry read /
+      // thrown beat / recoil along the dead ball's frozen axis. On divergence
+      // (promote or null) core is null → the else truncates → _finishLaunch
+      // ends the phase cleanly; the retire lane already shed what adoption took.
+      const core = rt.coreId != null && rt.launchedId === rt.coreId && state.entities
+        ? state.entities.get(rt.coreId) : null;
       // The coil+burst takes ~11 ticks — the same protected-content contract HOLD
       // and the launch edge enforce must hold HERE too: a pin landing mid-throw
       // means the ball is a mission owner's body now, not our projectile. Hand it

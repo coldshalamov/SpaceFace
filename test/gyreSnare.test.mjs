@@ -2875,6 +2875,116 @@ test('a dead primary still publishes its grave while a survivor promotes same-ti
   t.cleanup();
 });
 
+test('a mid-coil yaw cannot steer the throw — the launch frame froze at release', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  const dir = { x: t.sys._rt.launchDir.x, z: t.sys._rt.launchDir.z };
+  // Ship yaw is flight-owned, not physics-integrated (physics.js "e.rot is NOT
+  // integrated here for ships") — a hard +90° mid-coil is exactly the swing a
+  // live-maw read would steal the coil anchor and burst onto.
+  t.player.rot += Math.PI / 2;
+  t.sim.step();
+  assert.equal(t.sys._rt.launchDir.x, dir.x, 'the aim stays frozen through the yaw');
+  assert.equal(t.sys._rt.launchDir.z, dir.z);
+  for (let i = 0; i < 12; i++) t.sim.step(); // coil + burst finish
+  assert.equal(t.sys._rt.phase, 'off');
+  const v = Math.hypot(core.vel.x, core.vel.z);
+  const fwd = (core.vel.x * dir.x + core.vel.z * dir.z) / Math.max(1e-6, v);
+  assert.ok(fwd > 0.95,
+    `the burst fired along the frozen launchDir, not the yawed nose (alignment ${fwd.toFixed(3)})`);
+  assert.ok(v > T.launchSpeed * 0.5, 'the throw still lands at pace');
+  t.cleanup();
+});
+
+test('a survivor promoted mid-launch does NOT inherit the dead ball\'s coil or burst', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step(); // A flying — its own launch resolved
+  const b = rock(t.sim, T.mawDist + 2, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  assert.equal(t.sys._rt.phase, 'launching');
+  assert.equal(t.sys._rt.coreId, b.id, 'the launch owns B');
+  // A foreign adopter strips B's marks mid-coil: the sweep retires it as an
+  // ALIVE retire (no grave), hands it back, and _promoteNextBall re-seats
+  // launchedId to the survivor A. The next tick's launch lane must read the
+  // launch-OWNED ball (rt.coreId === rt.launchedId), not the promoted mirror —
+  // otherwise the coil/burst/recoil fire on A along B's frozen axis.
+  delete b.data.gyreLaunched;
+  delete b.data.despawnAt;
+  const aV0 = { x: a.vel.x, z: a.vel.z };
+  t.sim.step(); // the sweep retires B and promotes A inside the same publish
+  assert.equal(t.sys._rt.launchedId, a.id, 'the survivor took the mirror lane');
+  const thrown0 = t.events.filter((e) => e.name === 'gyre:thrown').length;
+  t.sim.step();
+  // The launch lane saw divergence → truncated → _finishLaunch: no burst
+  // impulse landed on A along B's axis, no thrown beat crowned the hand-back.
+  const aV1 = { x: a.vel.x, z: a.vel.z };
+  const dv = Math.hypot(aV1.x - aV0.x, aV1.z - aV0.z);
+  assert.ok(dv < 40, `A keeps flying its own launch (Δv ${dv.toFixed(1)} — no dead-axis shove)`);
+  assert.equal(t.events.filter((e) => e.name === 'gyre:thrown').length, thrown0,
+    'no thrown beat fires for a ball the launch no longer owns');
+  assert.equal(t.sys._rt.phase, 'off', 'the interrupted launch resolved instead of riding a survivor');
+  t.cleanup();
+});
+
+test('an already-adopted ball on watch overflow gets the full hand-back strip', async () => {
+  const t = await bootPhysics();
+  const rt = t.sys._rt;
+  const stamped = t.state.simTime + 4;
+  const balls = [];
+  for (let i = 0; i < 8; i++) {
+    const b = rock(t.sim, 400 + i * 50, 0, 6, 4);
+    b.data.gyreLaunched = true;
+    b.data.despawnAt = t.state.simTime + 4 + i;
+    b.data.gyreLaunchMeta = {
+      actorId: t.state.playerId, weaponId: 'wpn_gyre_snare', tag: 'gyre_launch',
+      magnitude: 120, holdUntilSim: stamped, clumpRadius: 6,
+    };
+    b.data.gyrePrevImpactScale = 0.2;       // authored scale stashed at launch
+    b.physicsBody.impactDamageScale = 8;    // the armed weapon payload
+    rt.ballIds.push(b.id);                  // watched as if launched in order
+    balls.push(b);
+  }
+  assert.equal(rt.ballIds.length, 8, 'the watch list starts at cap');
+  // The OLDEST watch was adopted mid-flight: the mark is gone but our stamped
+  // deadline + shadow ledger still ride — the evict scan picks the first
+  // dead/unmarked slot, so the victim is index 0 by construction.
+  const victim = balls[0];
+  delete victim.data.gyreLaunched;
+  victim.data.gyrePrevDespawnAt = t.state.simTime + 999; // a future authored stash
+  victim.data.gyrePrevTtl = 5;
+  // The ninth watch overflows the 8-cap: the adopted victim must take the
+  // _handBack lane (full strip), not the still-marked disarm-only lane — a
+  // disarm-only pass would leave the credit shadow + planted despawnAt on a
+  // body another owner now flies.
+  const fresh = rock(t.sim, 4000, 0, 6, 4);
+  fresh.data.gyreLaunched = true;
+  fresh.data.despawnAt = t.state.simTime + 60;
+  t.sys._trackBall(fresh.id);
+  assert.equal(rt.ballIds.length, 8, 'the watch list stays bounded at 8');
+  assert.ok(!rt.ballIds.includes(victim.id), 'the adopted victim is evicted');
+  assert.equal(victim.physicsBody.impactDamageScale, 0.2,
+    'the authored impact scale came back — the adopted body is no sleeper collider');
+  assert.equal(victim.data.gyrePrevImpactScale, undefined, 'the disarm ledger consumed');
+  assert.equal(victim.data.gyreLaunchMeta, undefined, 'the credit shadow sheds with the hand-back');
+  assert.equal(victim.data.gyrePrevTtl, undefined, 'the ttl stash consumed');
+  assert.equal(victim.data.despawnAt, t.state.simTime + 999,
+    'the authored deadline round-trips: our stamped flight TTL dropped, the stash restored');
+  // Marked siblings keep everything — only the adopted victim was evicted.
+  assert.equal(balls[1].data.gyreLaunched, true, 'a still-marked sibling keeps its mark');
+  assert.equal(balls[1].physicsBody.impactDamageScale, 8,
+    'and its armed payload — the evict lane never touched it');
+  t.cleanup();
+});
+
 test('the strain voice re-arms after a drop — a second clump strains with its own cue', async () => {
   const t = await bootPhysics();
   const a = rock(t.sim, T.mawDist, 0, 6, 4);
