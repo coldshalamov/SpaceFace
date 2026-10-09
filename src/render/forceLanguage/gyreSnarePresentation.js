@@ -253,6 +253,30 @@ void main() {
 }
 `;
 
+const VEIL_RIM_VERT = /* glsl */`
+varying vec3 vN;
+varying vec3 vV;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vN = normalize(normalMatrix * normal);
+  vV = normalize(-mv.xyz);
+  gl_Position = projectionMatrix * mv;
+}
+`;
+
+const VEIL_RIM_FRAG = /* glsl */`
+uniform vec3 uCol;
+uniform float uOp;
+varying vec3 vN;
+varying vec3 vV;
+void main() {
+  // Edge-bright / center-clear fresnel lobe — the same pow(1-ndv,k) language
+  // the cone's rim uses, so the ball's glass and the funnel read as one kit.
+  float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 3.0);
+  gl_FragColor = vec4(uCol, rim * uOp);
+}
+`;
+
 function jitterGeometry(geo, amt, seed) {
   const pos = geo.attributes.position;
   let s = seed | 0;
@@ -455,6 +479,24 @@ export class GyreSnarePresentation {
     });
     this._veil = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), this._veilMat);
     this._veil.visible = false;
+    // Fresnel rim shell just outside the flat tint pass: the ball is the star
+    // prop, and a uniform additive sheen sold neither "glassy" nor "bigger" as
+    // the clump grows — the cone it hangs from already carries the fresnel
+    // lobe. A child of _veil, so every visibility lane gates it for free;
+    // uOp syncs from _veilMat.opacity at draw time, so every decay/dim lane
+    // (deathT, adoptT, tearFade, fuseDim, warn shimmer) feeds it too.
+    this._veilRimMat = new THREE.ShaderMaterial({
+      vertexShader: VEIL_RIM_VERT, fragmentShader: VEIL_RIM_FRAG,
+      uniforms: { uCol: { value: new THREE.Color(glass) }, uOp: { value: 0 } },
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    this._veilRim = new THREE.Mesh(this._veil.geometry, this._veilRimMat);
+    this._veilRim.scale.setScalar(1.06);
+    this._veilRim.onBeforeRender = () => {
+      this._veilRimMat.uniforms.uOp.value = this._veilMat.opacity;
+      this._veilRimMat.uniforms.uCol.value.copy(this._veilMat.color); // strain's warn-lerp rides the rim too
+    };
+    this._veil.add(this._veilRim);
     this._clump.add(this._veil);
     scene.add(this._clump);
 
@@ -1593,6 +1635,12 @@ export class GyreSnarePresentation {
         // Rubble scatters on the grave, not a shrinking ball — the lumps fling
         // along their seat dirs while the group fades via the lumps' own shrink.
         this._scatterLumps(1 - k);
+        // The ball's glass deflates WITH its rubble — every sibling lane decays
+        // its alphas on the grave (secondary exp(-12), tear-close exp(-6));
+        // a full-opacity veil popping off with _clump.visible was the one lane
+        // that held its last-live brightness to the final frame.
+        this._veilMat.opacity *= Math.exp(-sdt * 6);
+        this._veil.visible = this._veilMat.opacity > 0.004;
         this._clump.visible = this._deathT > 0;
         if (this._deathT <= 0) this._clearLumps();
       } else if (this._adoptT > 0) {
@@ -2191,7 +2239,7 @@ export class GyreSnarePresentation {
     for (const m of this._secLumps) m.geometry.dispose(); // lump MATERIALS stay shared via _lumpMats
     this._halo.geometry.dispose(); this._haloMat.dispose();
     this._basinHaloMat.dispose(); // shares haloGeo (disposed on the line above)
-    this._veil.geometry.dispose(); this._veilMat.dispose();
+    this._veil.geometry.dispose(); this._veilMat.dispose(); this._veilRimMat.dispose();
     this._trail.geometry.dispose(); this._trailMat.dispose();
     // _trail2 shares _trail's geometry (already disposed) — only its cloned material is its own.
     this._trail2Mat.dispose();

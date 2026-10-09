@@ -2678,8 +2678,11 @@ export const gyreSnare = {
         if (this.bus && rt.launchWindup === (rt.launchWindupTotal || D.launchWindupTicks) - 1) {
           // A whisper of camera anticipation on the draw — the pull-back is felt,
           // not only seen/heard. 0.025 is the smallest amount that still reads:
-          // it leans the frame into the coil without moving the reticle.
-          this.bus.emit('camera:shake', { amount: 0.025 });
+          // it leans the frame into the coil without moving the reticle. The
+          // +0.02·massFrac tail grades the bow like every sibling launch beat
+          // (thrownBeat shake, windup voice, whoosh tail) — a capped moon's
+          // draw leans harder than a pebble's.
+          this.bus.emit('camera:shake', { amount: 0.025 + 0.02 * Math.min(1, rt.ballMass / D.maxClumpMass) });
         }
         if (this.bus) {
           // The draw CRESCENDOS: a shimmer per coil tick, gain + rate ramping
