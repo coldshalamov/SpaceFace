@@ -2578,3 +2578,22 @@ Wave 124 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 0/3.
 - W125 machinery regression sweep: all PASS (sector lane, restamp funnel, under-veil NG+, mirror deltas, shelved discovery).
 
 Wave 126 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 1/3.
+
+## Wave 127 (in progress — HEAD 745166697)
+
+### popin-admission — `saturated: false` (F1 landed `745166697`)
+
+- **popin F1 (S-effort/M, MECHANISM VERIFIED) — `syncFreezeCards` walked `entityList` every presented frame inside the bolus sector**: `bolusView.js` ran a no-early-break predicate scan per `tryPresentedCall('bolus-view')` — a hotter cadence than W126-F3's per-tick walk, and `entityList` is sim-wide so off-sector actors inflate N. Every `data.bolus` carrier claims the bolus sector canonically (`theBolus.js` mint path gates on `sector.id === BOLUS_SECTOR_ID` + `homeSectorId: sector.id`), so the pool rides `bySectorId.get(BOLUS_SECTOR_ID)` under the same index guard + `entityList` unready fallback as the landed W126-F3 conversion — including the caveat the lane proved identical: a restamped bolus entity would leave the bucket, and organs never re-home.
+- F2 informational: `watchtowerBucketsList` era-side-channel, `_ceresCausalActorPosition` activity-slot predicate, `collectOpticSpentIds` presence-rebuild, `entityById` defensive fallback, `sableVenn`/`tallyThree` cold helpers — all non-expressible or cold; no bespoke lane justified. W126 machinery: all concretely verified PASS. Lane-hunt (queues/iterators stranding rotations): `rotateSectorDeferred` seq-guards, `onAbandoned` repoints, fused forwards — verified clean.
+- Golden `0b33dde` bit-identical; bolus-render-lifetime 2/2 + bolus-light-census green.
+
+### boot-loading — `saturated: false` (F1+F2 landed `745166697`)
+
+- **boot F1 (S/L, MECHANISM VERIFIED) — dead `TextEncoder` pass on every non-keepalive push**: `pushSharedPlayerStore` encoded the whole body to measure UTF-8 bytes, but `byteLength` only feeds the keepalive budget — dead O(body) work on the boot delta push (multi-MB on divergent stores). One-line `keepalive === true` guard; identical verdict.
+- **boot F2 (S/L-M, MECHANISM VERIFIED) — last un-sliced O(store-bytes) leg in the boot reconcile**: `JSON.stringify({ keys: patch })` inside `pushSharedPlayerStore` ran in the caller's task while "Checking saves…" gates Continue. A `_restoreFrameYield()` before the push isolates it on its own task (~5–30ms on divergent remote, off the Continue path).
+- Golden `0b33dde` bit-identical; save-shared-continuation 4/4, e5-save-parity 1/1 green.
+- W126 machinery re-verified by the lane: roster pools `entityList` (F1), `sorterTargetsForSector`/`tickBolus` on buckets (F2/F3), mirror re-queue patch filter (boot F1), `applySharedStoreKeysChunked` 8-key yields (boot F2) — all PASS.
+
+### in-flight-hitches — lane pending (SWE-2 cap)
+
+Wave 127 streaks so far: lod CLOSED, popin 0/3, boot 0/3.

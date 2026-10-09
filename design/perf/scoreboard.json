@@ -497,6 +497,46 @@
         "boot-loading: saturated false (streak 0/3)",
         "in-flight-hitches: saturated true (streak 1/3 — first since W121)"
       ]
+    },
+    {
+      "wave": 127,
+      "head": "745166697",
+      "lanes": {
+        "popin-admission": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 1,
+          "landed": 1,
+          "commits": [
+            "745166697"
+          ],
+          "headline": "F1 (S-effort/M, MECHANISM VERIFIED): syncFreezeCards walked entityList every presented frame inside the bolus sector — pooled bySectorId.get(BOLUS_SECTOR_ID) under the index guard + entityList unready fallback, same shape as the landed W126-F3 conversion (organs always claim the bolus sector). F2 informational: remaining readers verified non-expressible or cold."
+        },
+        "boot-loading": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 2,
+          "landed": 2,
+          "commits": [
+            "745166697"
+          ],
+          "headline": "F1 (S/L, MECHANISM VERIFIED): dead TextEncoder pass on every non-keepalive push — encode guarded on keepalive===true (identical verdict). F2 (S/L-M, MECHANISM VERIFIED): last un-sliced O(store-bytes) leg — JSON.stringify({keys:patch}) in the caller task while Checking saves… gates Continue; a _restoreFrameYield() before the push isolates it on its own task."
+        },
+        "in-flight-hitches": {
+          "saturated": null,
+          "streak": 1,
+          "findings": null,
+          "landed": null,
+          "commits": [],
+          "headline": "lane pending — SWE-2 cap; inherits streak 1/3 from W126"
+        }
+      },
+      "verdicts": [
+        "lod-in-frame: CLOSED",
+        "popin-admission: saturated false (streak 0/3)",
+        "boot-loading: saturated false (streak 0/3)",
+        "in-flight-hitches: pending (streak 1/3 carried)"
+      ]
     }
   ],
   "laneStatus": {
