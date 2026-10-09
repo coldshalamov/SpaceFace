@@ -1122,6 +1122,10 @@ export class GyreSnarePresentation {
           grip: this._gripMat.opacity * calmA,
           halo: this._haloMat.opacity * calmA,
           basinHalo: this._basinHaloMat.opacity * calmA,
+          // The mote scatter too — kk≈1 on frame 0 stepped the funnel UP to full
+          // brightness off a spent/fuse-dimmed live value (the exact pop this
+          // seed map exists to kill).
+          motes: this._spiralMat.uniforms.uFade.value * calmA,
         };
         // A strain break is a TEAR, not a polite release: the glass snaps down in
         // ~120 ms (half the normal ramp) and a ring blooms where the core slipped —
@@ -1155,7 +1159,6 @@ export class GyreSnarePresentation {
         // pre-spend speed while the glass collapses would betray the spent read.
         if (calm !== 0) this._moteT += sdt * (this._lastSpent == null ? 1 : this._lastSpent);
         this._spiralMat.uniforms.uTime.value = this._moteT;
-        this._spiralMat.uniforms.uFade.value = kk; // the scatter fades on the same 250ms ramp as the glass
         this._coneMat.uniforms.uTime.value = this.time;
         this._coneMat.uniforms.uAlpha.value = (this._closeSeeds || { cone: 0.42 }).cone * kk * flashCalm;
         this._coneMat.uniforms.uPulse.value *= Math.exp(-sdt * 9);
@@ -1172,7 +1175,10 @@ export class GyreSnarePresentation {
         // flashCalm rides every close-ramp alpha too — a reduced-flash user shouldn't
         // get a brighter 250 ms tail than those elements ever show while live. The
         // seeds are the last live alphas (fallbacks keep the old flat ramp).
-        const sd = this._closeSeeds || { cone: 0.42, body: 0.1, maw: 0.55, disc: 0.55, grip: 0, halo: 0, basinHalo: 0 };
+        const sd = this._closeSeeds || { cone: 0.42, body: 0.1, maw: 0.55, disc: 0.55, grip: 0, halo: 0, basinHalo: 0, motes: 1 };
+        // The scatter fades on the same ramp as the glass — seeded from its last
+        // live uFade like every sibling instead of stepping to full brightness.
+        this._spiralMat.uniforms.uFade.value = sd.motes * kk * flashCalm;
         this._bodyMat.opacity = sd.body * kk * flashCalm;
         this._mawMat.opacity = sd.maw * kk * flashCalm;
         this._discMat.uniforms.uAlpha.value = sd.disc * kk * flashCalm;
