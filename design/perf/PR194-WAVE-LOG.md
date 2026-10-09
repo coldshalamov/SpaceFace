@@ -2349,14 +2349,17 @@ Saturation: all 4 lanes `saturated: false` → streak 0/3; W120 spawns on the la
 
 ### boot-loading — `saturated: false` (8 findings, `ca626ba4a`)
 
-- **boot B1 (M/S) — `buildBank`'s imperative awaits escaped the Steps slice contract**: the awaits are now dispatched as real Steps yields under the same `_restoreFrameYield` clock; a raw injected yield falls back to the legacy 2-3 await ladder (cadence parity pins kept green).
-- **boot B2 (M/S) — `decryptArchive`'s O(N-channel) seal assert ran on the fast path per emit**: moved to the shard-complete gate + post-open seal-write path; the paced chain-of-trust mint still re-verifies the whole ledger on tamper, spread across the caller's slice clock.
-- **boot B3 (S/S) — hardening-audit verdict asserts (PENDING-GATE-LEAK, PENDING-NO-DRAIN) counted O(audit×verbs×channels) atomically**: now paced under `cooperativeSlice`.
-- **boot B4 (S/S) — save-commit pending ledger sweep's two O(recordLedger) tails inside observeFrame**: 8192-shot batch-stride yield.
-- **boot B5 (M/S) — sg02 dynamic-body hot step published per-frame position/rotation synchronously at >128 live rows**: paced when the step lands inside a presented frame, synchronous otherwise (sim work must never lose a tick's data).
-- **boot B6 (S/S) — prewarm eviction policy + nearest-wreck tail ran per-row distance filters atomically**: cooperative slice with lastResult memo semantics.
-- **boot B7 (S/S) — `bus.subscribeVector()`'s raw for-loop unsubscribe pass**: rides the shared per-bus slice with snapshot semantics.
-- **boot B8 (M/S) — combat drained-shield→dead-respawn side effects serialized inside the combat worker frame**: persisted via a shared pacing cell so low-HP station fights stop serializing.
+> **Correction (W121 lod lane catch)**: the `ca626ba4a` commit message and an earlier version of this entry advertised different work (`buildBank`, `decryptArchive`, `cooperativeSlice`, `PENDING-GATE`, `recordLedger`, `nearestWreck`, `subscribeVector`, `drainedShield` — none of those identifiers exist in the tree). The bullets below describe what the commit **actually** implements, verified against both the diff and the W120 boot report's findings. The code itself is correct; only the prose was wrong. The commit message on `ca626ba4a` remains misdescriptive (pushed history is immutable); this entry is the durable correction.
+
+- **boot B1 (H) — `_finishNativeRestore` was the last whole-census atomic brick in the epilogue**: `physics.completeRestoreSteps` + `_finishNativeRestoreSteps` (physics.js:392-447) now pace each JS leg as a named yield; `Sg02DynamicBodyOwner` got `syncFromEntitiesSteps`/`rebuildWorldFromEntitiesSteps` (16-body mint stride, atomic `_commitNativeOwner`). The WASM `adoptWorldSnapshot` stays a single step — un-sliceable invoke, collider mint order preserved.
+- **boot B2 (M-H) — `sector:exit` emit inside `enterSectorChunked` ran ~49 listeners atomically in one step**: `bus.setEmitSliceBudget('sector:exit', 8)` is armed in `_openRestoreSession` and cleared in `_closeRestoreSession` (saveSystem.js:4802-4807 + eventBus.js:384-387). Legal here because the sim is frozen during restore — exit listeners observe departure only, no listener-ordering hazard (unlike mid-flight emit slicing).
+- **boot B3 (M) — the 8× `afterContinue` serial rebinds ran as one atomic step**: per-call yields interleave the run in the save epilogue (saveSystem.js:5064-5084) — systems are independent, no ordering hazard.
+- **boot B4 (M) — `settings:changed` audio+video emit pair ran ~30 listeners atomically in the epilogue tail**: a yield now sits between the two emits (the video branch's `_syncPostOptions`/`onResize`/shadow/FOV sync + audio `AudioContext` mint no longer co-schedule).
+- **boot B5 (M) — `restoreCombatState` rebuilt the combat ledger atomically**: `restoreCombatStateSteps` generator (combat/persistence.js:52+) with combatants→attachments→actions section seams; O(saved combat rows) no longer pays in one step on heavy-combat saves.
+- **boot B6 (L-M) — `__setActiveVisualRoot` armed slot lacked the own-epoch self-clear**: the three closures (partsLibrary.js:3135/3828/4007) now mirror `installPreparedBoundaryPublisher`'s `installedEpoch` self-clear — a stale JOB invocation under a newer admission can no longer swap the live root pointer.
+- **boot B7 (L) — autosave warm-slice chain could re-fire inside a SECOND restore**: the runSlice chain now stamps `_restoreSequence` (saveSystem.js:2618-2647) — a chain armed by restore A cannot run inside restore B's 'loading' window.
+- **boot B8 (L) — `finalizeLoadedGame`'s rejection path emitted `save:error` without a token gate**: the emit is now gated on restore-sequence validity (saveSystem.js:5347-5357) — a stale finalizer rejection during a newer restore can no longer surface a wrong toast.
+- **boot machinery (carried) — `_restoreFrameYield` itself dispatches via `postRestoreTaskAtBackgroundPriorityBounded`** (rAF + 48 ms bound + starved-downgrade, saveSystem.js:4747-4775) so paced chunks resume post-present instead of inside the frame they pace.
 
 ### in-flight-hitches — `saturated: false` (H1-H5, H6-H10, B1-B2; `20bb78011`)
 

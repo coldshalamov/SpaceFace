@@ -68,8 +68,8 @@
       "head": "20bb78011",
       "lanes": {
         "lod-in-frame": { "saturated": false, "findings": 4, "commits": ["ec2c91b93"], "headline": "Bolus rig light census churn (mass program relink at boundary), dead-serve witness, collect epoch stamp, census-flip bulk re-stage" },
-        "popin-admission": { "saturated": false, "findings": 6, "landed": 4, "commits": ["241b5be05"], "headline": "soft-budget evict storm suppression, enforceBudget Steps twin under sector:exit, pendingKeys memo" },
-        "boot-loading": { "saturated": false, "findings": 8, "commits": ["ca626ba4a"], "headline": "buildBank awaits fused into slice clock, O(channel) seal assert off fast path, sg02 publish pacing" },
+        "popin-admission": { "saturated": false, "findings": 6, "landed": 6, "commits": ["241b5be05"], "headline": "soft-budget evict storm suppression, enforceBudget Steps twin under sector:exit, pendingKeys memo, warmCoverage memo, evictIfUnowned O(1) consult" },
+        "boot-loading": { "saturated": false, "findings": 8, "commits": ["ca626ba4a"], "headline": "finishNativeRestore Steps twins (16-body stride), sector:exit emit slice-budget scoped to restore, restoreCombatStateSteps, restoreSequence staleness guards, armed-slot epoch self-clear; NOTE: ca626ba4a commit msg misdescribes the diff — corrected in PR194-WAVE-LOG.md W120" },
         "in-flight-hitches": { "saturated": false, "findings": 12, "commits": ["20bb78011"], "headline": "5 background-priority resume seams, ~25 dedup'd warn sites, bus fault index LRU+tombstone" }
       },
       "evidence": {
