@@ -199,7 +199,7 @@ export const gyreHud = {
           // The mass text names the same payload the DMG× does — _bowlMass is the
           // clumpMass ledger and can diverge from the frozen ball on an adopter edge.
           const bowlT = Math.round(g.ballMass != null ? g.ballMass : (this._bowlMass || 0));
-          return { text: `GYRE — BOWL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
+          return { text: `GYRE — BOWL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched', fuse: fuseS };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
@@ -211,7 +211,7 @@ export const gyreHud = {
         // arc stays legible instead of revealing itself only on impact.
         const dmg = dmgText(g.ballMass || 0);
         const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t · DMG×${dmg}` : `GYRE — BALL AWAY · ${mass}t · DMG×${dmg}`) : 'GYRE — BALL AWAY';
-        return { text: label + ballTxt, cls: 'gyre-ball' };
+        return { text: label + ballTxt, cls: 'gyre-ball', fuse: fuseS };
       }
       // No primary, but secondaries are still streaking (one retires before the rest) —
       // the pill shouldn't go dark while balls fly. balls[] is ttlS-sorted: [0] dies first.
@@ -232,7 +232,7 @@ export const gyreHud = {
         }
         const sDmg = dmgText(sMassMax);
         const sMassTxt = sMass > 0 ? ` · ${Math.round(sMass)}t · DMG×${sDmg}` : '';
-        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}`, cls: 'gyre-ball' };
+        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}`, cls: 'gyre-ball', fuse: fuseS };
       }
       return { text: '', cls: '' };
     }
@@ -259,7 +259,7 @@ export const gyreHud = {
       const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : bowlMass);
       // Mass text reads the frozen payload too — one row, one ball.
       const bowlT = Math.round(g.ballMass != null ? g.ballMass : bowlMass);
-      return { text: `GYRE — BOWL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
+      return { text: `GYRE — BOWL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched', fuse: fuseS };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;

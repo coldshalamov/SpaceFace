@@ -174,7 +174,9 @@ void main() {
   // then snaps off AT the rim — the swallow beat was invisible when it faded early.
   vGulp = smoothstep(0.82, 1.0, t) * (1.0 - wide);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
-  gl_PointSize = uSize * (280.0 / max(1.0, -mv.z));
+  // Near-side clamp: unclamped 280/-mv.z hands a camera within ~1 wu of the
+  // funnel ~950 px mote sprites filling the screen — cap the factor at 12.
+  gl_PointSize = uSize * min(280.0 / max(1.0, -mv.z), 12.0);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -1167,7 +1169,12 @@ export class GyreSnarePresentation {
         // of wu off the collapsing rim it's collapsing with.
         const bx = phase === 'launching' ? nL.x + dx * (drawLen - coilBack) : mL.x;
         const bz = phase === 'launching' ? nL.z + dz * (drawLen - coilBack) : mL.z;
-        this._basinHalo.position.set(bx, 0.42, bz);
+        // The well drifts a hair toward its load — a capped clump orbits ±72 wu
+        // with a 60 wu silhouette, so a fixed ring reads as one the ball ESCAPES
+        // instead of one it sits within. ~30% of the mouth's lean, half the cap:
+        // the ring stays the basin's edge, biased to the mass circling it.
+        const haloLean = Math.max(-9, Math.min(9, (this._leanZ || 0) * 0.06));
+        this._basinHalo.position.set(bx, 0.42, bz + haloLean);
         // Phase-staggered off the suck halo's identical 1.7 rad/s breathe —
         // both rings pulsing in lockstep read as one system; the rest of the
         // vocabulary staggers on golden-ratio phases.

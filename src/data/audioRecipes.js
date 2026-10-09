@@ -3141,8 +3141,9 @@ export const RECIPES = [
     subBass: { startFreq: 170, endFreq: 34, dur: 0.32, gain: 0.7 },
   },
   // Ball flight: a soft airy whoosh tailing the launch transient — the katamari mass reads
-  // at distance instead of going silent the moment it leaves the maw. Rides inside the
-  // launch layer so it needs no per-tick loop plumbing.
+  // at distance instead of going silent the moment it leaves the maw. Emits as its own
+  // gyre_snare_whoosh cue beside the launch stack so its playback rate (and therefore the
+  // tail's length + darkness) can grade by payload alone.
   {
     id: 'sfx_gyre_ball_whoosh',
     category: 'weapon',

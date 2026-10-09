@@ -174,7 +174,9 @@ export const GYRE_SNARE = Object.freeze({
                            // formations with ~4x the momentum of a mid one.
   launchProvenanceHoldS: 9.5, // kill-credit window covers the whole ballTtlS flight + a beat
   // ── Resource cost ─────────────────────────────────────────────────────────────────
-  capActivateMin: 10,        // cap needed to open the beam
+  capActivateMin: 15,        // cap needed to open the beam — ~2.3 s of burn at the
+                             // ~6.5/s drain, so a marginal wake doesn't narrate its
+                             // own instant dry-drop (10 gave only ~1.5 s)
   capDrainPerS: 6.5,         // cap/s while the beam is live (empty tank = auto-bowl)
   fuseLowWarnS: 3,           // s of burn left → the fuse-low warning fires (ears/hands, ~3 s out)
   fuseWarnVisS: 8,           // s — the visual telegraph window: HUD ·Ns + bar and the glass
