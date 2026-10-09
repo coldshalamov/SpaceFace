@@ -5,9 +5,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
+  missions,
   missionReceiptFor,
   missionRepDeltaFor,
 } from '../src/systems/missions.js';
+import { createGameState } from '../src/core/gameState.js';
+import { createBus } from '../src/core/eventBus.js';
 import { missionReceiptRows } from '../src/ui/screens/missionLog.js';
 
 const gameStateSrc = readFileSync(new URL('../src/core/gameState.js', import.meta.url), 'utf8');
@@ -51,12 +54,38 @@ assert.match(missionLogSrc, /CAREER TOTALS/,
   'Mission Log completed drawer must preserve aggregate career totals');
 
 function assertReceiptBeforeEvent(outcome) {
-  const receiptCall = `_recordMissionReceipt(m, '${outcome}'`;
-  const eventCall = `this.bus.emit('mission:${outcome}'`;
-  const receiptIndex = missionsSrc.indexOf(receiptCall);
-  const eventIndex = missionsSrc.indexOf(eventCall);
-  assert.ok(receiptIndex >= 0 && eventIndex >= 0 && receiptIndex < eventIndex,
+  const state = createGameState(47);
+  const bus = createBus();
+  const owner = Object.assign(Object.create(missions), { state, bus });
+  const mission = {
+    id: 'receipt_order_' + outcome,
+    type: 'bulk_trade',
+    title: 'Receipt order contract',
+    status: 'active',
+    reward_cr: 1200,
+    collateral_cr: 300,
+    params: {},
+  };
+  state.missions.active = [mission];
+  const snapshots = [];
+  // Exercise the actual synchronous observer seam used by autosave. Unrelated authored
+  // completion events elsewhere in the module do not establish this settlement's ordering.
+  bus.on('mission:' + outcome, (event) => {
+    if (event.missionId === mission.id) snapshots.push(owner.serialize().receipts);
+  });
+  const settle = {
+    completed: () => owner._completeMission(mission, 0),
+    failed: () => owner._failMission(mission, 0, 'abandoned'),
+    expired: () => owner._expireMission(mission, 0),
+  }[outcome];
+  settle();
+  assert.equal(snapshots.length, 1, outcome + ' must emit exactly one settlement event');
+  assert.ok(snapshots[0].some((receipt) => (
+    receipt.missionId === mission.id && receipt.outcome === outcome
+  )),
     outcome + ' receipt must be recorded before the synchronous mission event autosaves');
+  settle();
+  assert.equal(snapshots.length, 1, outcome + ' must not settle the same contract twice');
 }
 
 assertReceiptBeforeEvent('completed');
