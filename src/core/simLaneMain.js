@@ -38,6 +38,14 @@ import {
 } from '../../scripts/lib/simCommandChannel.mjs';
 import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
 import { createSimLaneJournal, createLaneSabJournalArena } from './simLaneJournal.js';
+import {
+  bindSabEnvelopeChannel,
+  decodeReplyFromSab,
+  sabEnvelopeAwaitReply,
+  sabEnvelopeDrain,
+  sabEnvelopePost,
+  SAB_ENV_KIND,
+} from '../../scripts/lib/simSabEnvelope.mjs';
 import { flattenEventPayload } from '../../scripts/lib/simEventBridge.mjs';
 import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
@@ -247,6 +255,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   const pending = new Map();            // seq -> { kind, resolve, reject }
   const pendingRpcs = new Map();        // rpc id -> { resolve, reject }
   let inFlight = null;                  // { seq, sentMs, steps }
+  let sabEnv = null;                    // armed SAB envelope channel (layout v2)
   let laneClosed = false;
   let laneClosedComplete = false;
   let laneError = null;
@@ -322,6 +331,60 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   function releaseFlight(msg, flight) {
     inFlightSteps = Math.max(0, inFlightSteps - (flight ? flight.steps : 0));
     inFlight = null;
+  }
+
+  // ---- SAB envelope reply pump (arena layout v2) ----------------------------------
+  // The worker parks on the cmd ring post-arm; its tickDone replies arrive as
+  // READY cells on the reply ring. The pump drains them into the same
+  // onChannelMessage path postMessage uses (seq-keyed pending resolution,
+  // releaseFlight, flushDirectives) and re-arms a non-blocking
+  // Atomics.waitAsync so replies land without waiting for the next frame's
+  // consume call. Where waitAsync is missing the pump degrades to the
+  // per-frame drain inside consumeLatestCompletedTick.
+  function drainSabRepliesNow() {
+    if (!sabEnv) return;
+    try {
+      sabEnvelopeDrain(sabEnv, 'reply', (msg, cell, bin) => {
+        onChannelMessage(decodeReplyFromSab(msg, bin, (slot, count) => journal.sabPackViewsFor(slot, count)));
+      });
+    } catch (error) {
+      failLane(`sim worker envelope reply drain failed: ${(error && error.message) || error}`,
+        error && error.stack ? String(error.stack) : null);
+    }
+  }
+
+  function pumpSabReplies() {
+    if (!sabEnv || laneClosed) return;
+    // `seen` is read BEFORE the drain — a reply landing mid-drain must make
+    // the waitAsync fall through to another drain pass, not sleep past it.
+    const seen = Atomics.load(sabEnv.header, 14 /* SAB_REPLY_SEQ_INDEX */);
+    drainSabRepliesNow();
+    if (laneClosed) return;
+    const next = sabEnvelopeAwaitReply(sabEnv, seen, LANE_STALL_MS);
+    if (next && typeof next.then === 'function') {
+      next.then(() => {
+        if (!laneClosed) pumpSabReplies();
+      });
+    }
+  }
+
+  // One post path for every directive: pre-arm (or SAB-off) directives ride
+  // postMessage; post-arm everything goes through the cmd ring so the two
+  // channels can never interleave directives. A cell that cannot take the
+  // payload (oversize / occupied) fails the lane — the same fail-closed
+  // contract the stall detector uses.
+  function postLaneDirective(msg) {
+    if (!sabEnv) { channel.post(msg); return; }
+    const kind = msg.kind === 'tick' ? SAB_ENV_KIND.TICK
+      : msg.kind === 'finalize' ? SAB_ENV_KIND.FINALIZE
+      : msg.kind === 'shutdown' ? SAB_ENV_KIND.SHUTDOWN
+      : SAB_ENV_KIND.OTHER;
+    try {
+      sabEnvelopePost(sabEnv, 'cmd', msg, kind);
+    } catch (error) {
+      failLane(`sim worker envelope post failed: ${(error && error.message) || error}`,
+        error && error.stack ? String(error.stack) : null);
+    }
   }
 
   // ---- envelope queue (descriptor → wire via the shared ring) --------------------
@@ -594,7 +657,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     postedSteps += msg.steps;
     inFlight = { seq, sentMs: nowMs(), steps: msg.steps };
     pending.set(seq, { kind: 'tick' });
-    channel.post(msg);
+    postLaneDirective(msg);
   }
 
   // ---- DOM surface -------------------------------------------------------------------------
@@ -805,6 +868,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       }
       let consumed = 0;
       let earliestJournalStart = 0;
+      drainSabRepliesNow(); // SAB-mode replies must surface even when waitAsync is absent
       while (completedCount > 0) {
         const rec = completedTicks[completedRead];
         if (consumed === 0) earliestJournalStart = rec.journalStart;
@@ -905,7 +969,13 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     pending.set(initSeq, { kind: 'init', resolve, reject });
   });
   channel.post(initPayload);
-  if (initPayload.sabArena) journal.attachSabArena(initPayload.sabArena);
+  if (initPayload.sabArena) {
+    journal.attachSabArena(initPayload.sabArena);
+    // Arm the envelope rings on the same arena — the worker binds the same
+    // layout after its own init and starts parking on the cmd ring.
+    sabEnv = bindSabEnvelopeChannel(initPayload.sabArena);
+    if (sabEnv) pumpSabReplies();
+  }
 
   function close() {
     if (laneClosed) return false;
@@ -919,7 +989,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       try { tracked.reject(new Error(laneError || 'sim lane closed')); } catch (_) {}
     }
     pendingRpcs.clear();
-    try { channel.post({ kind: 'shutdown', seq: nextToken() }); } catch (_) { /* dead channel */ }
+    try { postLaneDirective({ kind: 'shutdown', seq: nextToken() }); } catch (_) { /* dead channel */ }
     try { if (typeof channel.terminate === 'function') channel.terminate(); } catch (_) {}
     laneClosedComplete = true;
     return true;

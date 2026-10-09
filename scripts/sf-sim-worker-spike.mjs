@@ -41,7 +41,16 @@ import { Worker } from 'node:worker_threads';
 import { advanceFixedTimestep, LOOP_FIXED_DT, MAX_CATCHUP_STEPS } from '../src/core/simulationRunner.js';
 import {
   createSimHost, createSabJournalArena, sabFeatureAvailable, sabFreePackSlot,
+  sabSlotViewsFor, bindSabJournalArena,
 } from './lib/simWorkerHost.mjs';
+import {
+  bindSabEnvelopeChannel,
+  decodeReplyFromSab,
+  sabEnvelopeDrain,
+  sabEnvelopePost,
+  SAB_ENV_KIND,
+} from './lib/simSabEnvelope.mjs';
+import { SAB_V8_CODEC } from './lib/simSabV8Codec.mjs';
 
 import { createPresentationJournalRecord, PRESENTATION_JOURNAL_KINDS } from '../src/core/presentationJournal.js';
 import { createInputCommandHistory } from '../src/core/inputCommandSnapshot.js';
@@ -82,10 +91,10 @@ import {
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WORKER_PATH = resolve(ROOT, 'scripts/lib/wholeSimWorker.mjs');
-// Post-flip baseline — the S1-sim merge re-baselined the 47a golden again
-// (upstream sim changes on the merged base). Verified c1d040da on both the
-// worker and main lanes at 720 ticks, reload-at-600, repeat 2 — bit-identical.
-const GOLDEN_HASH = 'c1d040da2035854e3dc4fc85c42e413f0ba6de44bd7eec1a2a69d5319fd12c1b';
+// Post-flip baseline — the Stage-A master merge re-baselined the 47a golden
+// onto master's pin. Verified 0b33dde1 on the worker lane at 720 ticks,
+// reload-at-600 — bit-identical to master's expected hash.
+const GOLDEN_HASH = '0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1';
 const COMPLETED_TICK_RING_DEPTH = 8;
 // Stage 7 item A: the completed-tick reply channel gets a hard bound — resolved
 // replies carrying a completedTick count as outstanding until the present side
@@ -296,6 +305,40 @@ function createWorkerClient() {
   let seq = 0;
   const pending = new Map();
   let lastRecvNs = 0n;
+  let sabChannel = null;
+  let sabArena = null;
+  let dead = false;
+
+  // SAB envelope reply pump — mirrors simLaneMain's: waitAsync wakes on the
+  // worker's reply-cell notify, the drain resolves seq-keyed pending entries
+  // with byte-identical reply shapes (pack views re-bound over the arena or
+  // sliced out of the cell's binary tail).
+  const drainSabReplies = () => {
+    if (!sabChannel) return;
+    try {
+      sabEnvelopeDrain(sabChannel, 'reply', (msg, cell, bin) => {
+        const decoded = decodeReplyFromSab(msg, bin, (slot, count) => sabSlotViewsFor(sabArena, slot, count));
+        decoded._recvNs = process.hrtime.bigint();
+        lastRecvNs = decoded._recvNs;
+        const entry = pending.get(decoded.seq);
+        if (process.env.SPIKE_DEBUG) console.error(`[reply] seq=${decoded.seq} kind=${decoded.kind} pending=${!!entry}`);
+        if (entry) { pending.delete(decoded.seq); entry.resolve(decoded); }
+      });
+    } catch (err) {
+      for (const entry of pending.values()) entry.reject(err);
+      pending.clear();
+    }
+  };
+
+  const pumpSabReplies = () => {
+    if (!sabChannel || dead) return;
+    drainSabReplies();
+    // Harness poll: the awaiting loop idles between posts, so a per-turn drain
+    // observes replies at event-loop granularity (~µs) — the harness stand-in
+    // for production's once-per-frame journal consume. waitAsync would add a
+    // full task-dispatch hop (≈ postMessage latency) and hides the SAB floor.
+    setImmediate(pumpSabReplies);
+  };
   worker.on('message', (msg) => {
     lastRecvNs = process.hrtime.bigint();
     const entry = pending.get(msg.seq);
@@ -328,11 +371,34 @@ function createWorkerClient() {
     postNs: 0n,
     send(msg) {
       msg.seq = ++seq;
+      // Arm the envelope channel on the init directive's arena: the init
+      // itself still rides postMessage (the worker binds inside its own init
+      // dispatch — posting it through the ring would deadlock), everything
+      // after it writes through the cmd ring.
+      if (msg.sabArena && !sabChannel) {
+        // The wire descriptor carries only {sab, slotCount, recordCap} —
+        // bindSabJournalArena re-derives the header + slot views off it.
+        const bound = bindSabJournalArena(msg.sabArena);
+        sabChannel = bound ? bindSabEnvelopeChannel(bound, SAB_V8_CODEC) : null;
+        if (sabChannel) {
+          sabArena = bound;
+          pumpSabReplies();
+        }
+      }
       this.postNs = process.hrtime.bigint();
-      worker.postMessage(msg);
+      if (process.env.SPIKE_DEBUG) console.error(`[send] seq=${msg.seq} kind=${msg.kind} sab=${!!sabChannel}`);
+      if (sabChannel && msg.kind !== 'init') {
+        const kind = msg.kind === 'tick' ? SAB_ENV_KIND.TICK
+          : msg.kind === 'finalize' ? SAB_ENV_KIND.FINALIZE
+          : msg.kind === 'shutdown' ? SAB_ENV_KIND.SHUTDOWN
+          : SAB_ENV_KIND.OTHER;
+        sabEnvelopePost(sabChannel, 'cmd', msg, kind);
+      } else {
+        worker.postMessage(msg);
+      }
       return new Promise((resolveP, rejectP) => pending.set(msg.seq, { resolve: resolveP, reject: rejectP }));
     },
-    terminate() { return worker.terminate(); },
+    terminate() { dead = true; return worker.terminate(); },
   };
 }
 

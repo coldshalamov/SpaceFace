@@ -33,20 +33,40 @@ const KIND_BY_CODE = Object.freeze({
 // Mirror of createSabJournalArena in scripts/lib/simWorkerHost.mjs — the main
 // realm mints the arena and ships its descriptor on the init directive; the
 // worker binds it for journal packs. Same magic/layout/slot accounting.
-const SAB_LAYOUT_VERSION = 1;
+// Layout v2: [header][journal slots][cmd envelope ring][reply envelope ring]
+// — the envelope tail lives in scripts/lib/simSabEnvelope.mjs.
+const SAB_LAYOUT_VERSION = 2;
 const SAB_HEADER_BYTES = 64;
 const SAB_SLOT_BYTES_PER_RECORD = 18 * 8 + 1 + 2;
+
+// Mirror of sabArenaTotalBytes in scripts/lib/simSabEnvelope.mjs — kept local
+// per the main-side graph's no-host-import rule.
+const SAB_ENV_CMD_RING = 4;
+const SAB_ENV_REPLY_RING = 4;
+const SAB_ENV_HEAD_BYTES = 32;
+const SAB_ENV_CMD_PAYLOAD_BYTES = 256 * 1024;
+const SAB_ENV_REPLY_PAYLOAD_BYTES = 64 * 1024 + 640 * 1024;
+function sabEnvelopeTailBytes({ slotCount, recordCap }) {
+  const alignTo = (v, b) => Math.ceil(v / b) * b;
+  const journalEnd = SAB_HEADER_BYTES + slotCount * recordCap * SAB_SLOT_BYTES_PER_RECORD;
+  const cmdBase = alignTo(journalEnd, 8);
+  const cmdCellBytes = alignTo(SAB_ENV_HEAD_BYTES + SAB_ENV_CMD_PAYLOAD_BYTES, 8);
+  const replyBase = alignTo(cmdBase + SAB_ENV_CMD_RING * cmdCellBytes, 8);
+  const replyCellBytes = alignTo(SAB_ENV_HEAD_BYTES + SAB_ENV_REPLY_PAYLOAD_BYTES, 8);
+  const totalBytes = alignTo(replyBase + SAB_ENV_REPLY_RING * replyCellBytes, 8);
+  return totalBytes - journalEnd;
+}
 
 export function createLaneSabJournalArena({ slotCount = 8, recordCap = 4096 } = {}) {
   if (typeof SharedArrayBuffer !== 'function') return null;
   const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
-  const sab = new SharedArrayBuffer(SAB_HEADER_BYTES + slotCount * slotBytes);
+  const sab = new SharedArrayBuffer(SAB_HEADER_BYTES + slotCount * slotBytes + sabEnvelopeTailBytes({ slotCount, recordCap }));
   const header = new Int32Array(sab, 0, SAB_HEADER_INTS);
   header[0] = SAB_HEADER_MAGIC;
   header[1] = SAB_LAYOUT_VERSION;
   header[2] = slotCount;
   header[3] = recordCap;
-  return { sab, slotCount, recordCap, slotBytes };
+  return { sab, header, slotCount, recordCap, slotBytes };
 }
 
 export function createSimLaneJournal() {
@@ -61,6 +81,7 @@ export function createSimLaneJournal() {
   let ackHook = null;
   let rebuildHook = null;
   let sabHeader = null;
+  let sabSlots = null;
   const stats = { appliedPacks: 0, evictedPacks: 0, rebuildPacks: 0, releasedSabSlots: 0 };
 
   function releaseSegment(seg) {
@@ -205,12 +226,37 @@ export function createSimLaneJournal() {
     attachSabArena(desc) {
       if (!desc || typeof SharedArrayBuffer !== 'function' || !(desc.sab instanceof SharedArrayBuffer)) {
         sabHeader = null;
+        sabSlots = null;
         return false;
       }
       const header = new Int32Array(desc.sab, 0, SAB_HEADER_INTS);
-      if (header[0] !== SAB_HEADER_MAGIC || header[2] !== desc.slotCount || header[3] !== desc.recordCap) return false;
+      if (header[0] !== SAB_HEADER_MAGIC || header[1] !== SAB_LAYOUT_VERSION
+          || header[2] !== desc.slotCount || header[3] !== desc.recordCap) return false;
       sabHeader = header;
+      // Mirror of bindSabJournalArena's per-slot column views — needed to
+      // re-view pack descriptors that arrive through the reply envelope ring.
+      const slotBytes = desc.recordCap * SAB_SLOT_BYTES_PER_RECORD;
+      sabSlots = [];
+      for (let s = 0; s < desc.slotCount; s++) {
+        const base = SAB_HEADER_BYTES + s * slotBytes;
+        sabSlots.push({
+          scalars: new Float64Array(desc.sab, base, desc.recordCap * 18),
+          kinds: new Uint8Array(desc.sab, base + desc.recordCap * 18 * 8, desc.recordCap),
+          typeIndex: new Uint16Array(desc.sab, base + desc.recordCap * (18 * 8 + 1), desc.recordCap),
+        });
+      }
       return true;
+    },
+    // Column views for a SAB-descriptor pack (envelope reply decode). Mirror
+    // of sabSlotViewsFor in the host module.
+    sabPackViewsFor(sabSlot, count) {
+      if (!sabSlots || !Number.isSafeInteger(sabSlot) || sabSlot < 0 || sabSlot >= sabSlots.length) return null;
+      const v = sabSlots[sabSlot];
+      return {
+        scalars: v.scalars.subarray(0, count * 18),
+        kinds: v.kinds.subarray(0, count),
+        typeIndex: v.typeIndex.subarray(0, count),
+      };
     },
     onAck(cb) { ackHook = cb; },
     onRebuildRequest(cb) { rebuildHook = cb; },

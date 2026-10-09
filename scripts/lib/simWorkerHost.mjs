@@ -79,6 +79,7 @@ import { createGameState } from '../../src/core/gameState.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage } from './simRealm.mjs';
+import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
 import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/world/asteroidField.js';
 import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
 import { dropDressingRow, insertDressingRow } from '../../src/world/dressingTable.js';
@@ -160,7 +161,9 @@ export const SAB_SLOT_BUSY_BASE = 4;         // Int32 header slots [4..4+slotCou
 const SAB_HEADER_BYTES = 64;
 // Per slot: scalars f64x18/record, kinds u8/record, typeIndex u16/record.
 const SAB_SLOT_BYTES_PER_RECORD = 18 * 8 + 1 + 2;
-const SAB_LAYOUT_VERSION = 1;
+// Layout v2: [header][journal slots][cmd envelope ring][reply envelope ring]
+// — see scripts/lib/simSabEnvelope.mjs for the tail region.
+const SAB_LAYOUT_VERSION = 2;
 
 // SAB needs crossOriginIsolated in browsers (COOP/COEP — the dev server does
 // not send them today, so a renderer flip detects 'unavailable' and stays on
@@ -173,7 +176,7 @@ export function sabFeatureAvailable() {
 
 export function createSabJournalArena({ slotCount = 8, recordCap = 4096 } = {}) {
   const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
-  const sab = new SharedArrayBuffer(SAB_HEADER_BYTES + slotCount * slotBytes);
+  const sab = new SharedArrayBuffer(sabArenaTotalBytes({ slotCount, recordCap }));
   const header = new Int32Array(sab, 0, 16);
   header[0] = SAB_JOURNAL_MAGIC;
   header[1] = SAB_LAYOUT_VERSION;
@@ -202,6 +205,19 @@ export function bindSabJournalArena(desc) {
     });
   }
   return { sab, header, slotCount, recordCap, slots };
+}
+
+// Re-view a pack's columns over a journal slot — the main realm calls this
+// when a tickDone reply arrives with a SAB descriptor instead of arrays.
+export function sabSlotViewsFor(arena, sabSlot, count) {
+  if (!arena || !Number.isSafeInteger(sabSlot) || sabSlot < 0 || sabSlot >= arena.slotCount
+      || !(count > 0) || count > arena.recordCap) return null;
+  const v = arena.slots[sabSlot];
+  return {
+    scalars: v.scalars.subarray(0, count * 18),
+    kinds: v.kinds.subarray(0, count),
+    typeIndex: v.typeIndex.subarray(0, count),
+  };
 }
 
 // Claim a free slot and return count-length column views over it, or null.
