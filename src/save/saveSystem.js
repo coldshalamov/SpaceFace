@@ -386,17 +386,19 @@ export const save = {
         if (!spec || spec.sig === 'gen:' + _saveStoreGeneration) return;
         if (bumpKey === LS_PREFIX + spec.slot && typeof bumpValue === 'string' && bumpValue) {
           // The write to the armed slot's own key already holds the new bytes — re-arm
-          // directly from them instead of reading them back inside the writer's task.
-          this.speculateLoadPrepare(spec.slot, { sig: 'gen:' + _saveStoreGeneration, raw: bumpValue });
+          // directly from them instead of reading them back inside the writer's task. The
+          // re-arm dispatches immediately: a single targeted arm has no burst to collapse.
+          this.speculateLoadPrepare(spec.slot, { sig: 'gen:' + _saveStoreGeneration, raw: bumpValue, immediate: true });
           return;
         }
         // Any other write leaves the armed blob's bytes unknown to this handler — defer
         // the re-read + clone past the writer's task so a mid-dwell autosave doesn't fuse
-        // a multi-MB getItem into it.
+        // a multi-MB getItem into it. A real task hop, not a microtask: microtasks drain
+        // before the next paint, so the getItem would still land inside the writer's frame.
         const staleSlot = spec.slot;
-        Promise.resolve().then(() => {
+        setTimeout(() => {
           try { this.speculateLoadPrepare(staleSlot); } catch (err) { /* best-effort */ }
-        });
+        }, 0);
       } catch (err) { /* speculation is best-effort */ }
     };
     bus.on('settings:changed', (payload) => {
@@ -2506,11 +2508,13 @@ export const save = {
       if (typeof raw !== 'string' || !raw) return;
       const prior = this._speculativeContinuePrepare;
       if (prior && prior.sig === sig) return;
-      this._armSpeculativePrepare(slot, raw, sig);
+      // The index-publish arm has no pick burst to collapse — dispatch now so the warm
+      // runway starts with the menu beat instead of 200ms later.
+      this._armSpeculativePrepare(slot, raw, sig, { immediate: true });
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
   },
 
-  _armSpeculativePrepare(slot, raw, sig) {
+  _armSpeculativePrepare(slot, raw, sig, { immediate = false } = {}) {
     // A scrub's previous pick still has its dispatch parked — cancel it so only the
     // settle row ever pays the postMessage clone + worker parse.
     const priorArm = this._speculativeContinuePrepare;
@@ -2545,13 +2549,30 @@ export const save = {
           if (!prepared || prepared.ok !== true) return;
           installSaveStoreWriteTracking();
           if (spec.sig !== 'gen:' + _saveStoreGeneration) return;
+          // The arm was mode-gated at mint — a prepare that resolves after exit must not
+          // still fan the saved-sector visual warm into the next mode's window.
+          const state = this.state;
+          if (!(state && (state.mode === 'menu' || this._frozenTickBoundary()))) return;
           if (this.bus && this.bus.emit) this.bus.emit('save:envelopeSpecPrepared', { slot, data: prepared.data });
         } catch (err) { /* speculative warm is best-effort */ }
       });
       return spec.promise;
     };
-    spec._timer = (typeof setTimeout === 'function')
-      ? setTimeout(() => { try { spec.dispatch(); } catch (err) { /* best-effort */ } }, SPEC_ARM_DEBOUNCE_MS)
+    spec._timer = !immediate && (typeof setTimeout === 'function')
+      ? setTimeout(() => {
+        try {
+          if (this._speculativeContinuePrepare !== spec) return;
+          const state = this.state;
+          if (!(state && (state.mode === 'menu' || this._frozenTickBoundary()))) {
+            // The arm outlived its screen — drop it rather than mint a clone + worker
+            // parse nobody will consume inside the next mode's window.
+            this._speculativeContinuePrepare = null;
+            spec._timer = null;
+            return;
+          }
+          spec.dispatch();
+        } catch (err) { /* best-effort */ }
+      }, SPEC_ARM_DEBOUNCE_MS)
       : null;
     if (spec._timer == null) spec.dispatch();
   },
@@ -2585,8 +2606,18 @@ export const save = {
         ? provided.raw
         : ((typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null);
       if (typeof raw !== 'string' || !raw) return;
-      this._armSpeculativePrepare(slot, raw, sig);
+      this._armSpeculativePrepare(slot, raw, sig, { immediate: !!(provided && provided.immediate) });
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
+  },
+
+  // A screen going away takes its pick-armed speculation with it — the parked dispatch
+  // would otherwise mint a multi-MB clone + worker parse (and emit the visual warm)
+  // inside the next mode's window.
+  disarmSpeculativePrepare() {
+    const spec = this._speculativeContinuePrepare;
+    if (!spec) return;
+    if (spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
+    this._speculativeContinuePrepare = null;
   },
 
   // Metadata-read path for index scans: the full _prepareEnvelope validation chain (parse →
@@ -4756,6 +4787,9 @@ export const save = {
     // bytes it read are still on disk — a stale speculation prepares fresh like a miss.
     const spec = this._speculativeContinuePrepare;
     this._speculativeContinuePrepare = null;
+    // A consumed arm never dispatches again — a still-parked debounce would otherwise fire
+    // inside the load window and mint a clone + worker parse nobody consumes.
+    if (spec && spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
     // A same-generation spec already proves the disk bytes: every tracked writer bumps the
     // generation, so 'gen:' equality makes spec.raw identical to what getItem would return —
     // the multi-MB materialize + byte compare stay off the click path.
@@ -7317,6 +7351,13 @@ export const save = {
     const profile = this._profileBundleSection();
     if (!profile || typeof json !== 'string' || !json) return json;
     try {
+      // A serialized object root takes the profile key textually — profile lands last in
+      // both paths, so the splice emits the same bytes as parse+assign+stringify for the
+      // shapes the exporters produce, without an O(blob) roundtrip on the click task.
+      if (json.length > 2 && json.charCodeAt(0) === 0x7b && json.charCodeAt(json.length - 1) === 0x7d
+        && json.indexOf('"profile"') === -1) {
+        return json.slice(0, -1) + ',"profile":' + JSON.stringify(profile) + '}';
+      }
       const parsed = JSON.parse(json);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return json;
       parsed.profile = profile;
@@ -7415,6 +7456,11 @@ const CANONICAL_SAVE_RESTORE_ASYNC = save._restoreAsync;
 /** Return the UTF-8 size of a raw import string without coercing or parsing it. */
 export function saveImportByteLength(value) {
   if (typeof value !== 'string') return Infinity;
+  // UTF-16 units encode to 1-3 UTF-8 bytes (a surrogate pair spends two units on four), so
+  // length <= bytes <= 3*length always: length over the cap fails and 3*length inside it
+  // passes — the per-unit walk is only decisive inside the cap band.
+  if (value.length > SAVE_IMPORT_MAX_BYTES) return SAVE_IMPORT_MAX_BYTES + 1;
+  if (value.length * 3 <= SAVE_IMPORT_MAX_BYTES) return value.length;
   let bytes = 0;
   for (let i = 0; i < value.length; i++) {
     const code = value.charCodeAt(i);

@@ -783,26 +783,49 @@ function readSlotSaveData(ctx, slot) {
     return hit;
   }
   let raw = null;
-  let data = null;
   try {
-    if (typeof localStorage !== 'undefined') {
-      raw = localStorage.getItem(LS_PREFIX + slot);
-      data = unwrapSaveData(raw ? JSON.parse(raw) : null);
-    }
+    if (typeof localStorage !== 'undefined') raw = localStorage.getItem(LS_PREFIX + slot);
   } catch (e) {}
-  if (!data && sys && typeof sys.peekSlot === 'function') {
-    try {
-      const peeked = unwrapSaveData(sys.peekSlot(slot));
-      if (peeked) data = peeked;
-    } catch (e) {}
-  }
-  const entry = { sig, slot, raw, data };
+  // The multi-MB JSON.parse a data fill needs stays off the pick task — the stage chrome
+  // renders from the card meta now and the portrait lands when the fill settles (or the
+  // spec arm's worker-parsed envelope arrives first).
+  const entry = { sig, slot, raw, data: null };
   _slotDataMemo.delete(slot);
   _slotDataMemo.set(slot, entry);
   while (_slotDataMemo.size > _SLOT_DATA_MEMO_MAX) {
     _slotDataMemo.delete(_slotDataMemo.keys().next().value);
   }
   return entry;
+}
+
+// A pick burst only parses the row it settles on — same trailing-debounce idiom as the
+// spec arm's dispatch park.
+let _slotDataFillTimer = null;
+let _slotDataFillSlot = null;
+let _slotDataFillCtx = null;
+const _SLOT_DATA_FILL_MS = 180;
+
+function fillSlotData(ctx, slot) {
+  const entry = _slotDataMemo.get(slot);
+  if (!entry || entry.data || !entry.raw || entry.attempted) return;
+  entry.attempted = true;
+  let data = null;
+  try { data = unwrapSaveData(JSON.parse(entry.raw)); } catch (e) {}
+  entry.data = data;
+  if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
+}
+
+function scheduleSlotDataFill(ctx, slot) {
+  _slotDataFillCtx = ctx;
+  _slotDataFillSlot = slot;
+  if (_slotDataFillTimer != null) { clearTimeout(_slotDataFillTimer); _slotDataFillTimer = null; }
+  _slotDataFillTimer = (typeof setTimeout === 'function')
+    ? setTimeout(() => {
+      _slotDataFillTimer = null;
+      try { fillSlotData(_slotDataFillCtx, _slotDataFillSlot); } catch (e) { /* best-effort */ }
+    }, _SLOT_DATA_FILL_MS)
+    : null;
+  if (_slotDataFillTimer == null) fillSlotData(ctx, slot);
 }
 
 function shipDisplayName(ctx, defId) {
@@ -981,6 +1004,20 @@ export const saveLoadScreen = {
       const row = refs && refs.list && refs.list.querySelector('[data-id="' + note.focus + '"]');
       if (row && typeof row.focus === 'function') row.focus();
     });
+    // A speculative prepare that resolves carries the worker-parsed envelope — the picked
+    // row's portrait fills straight from it without a main-thread parse.
+    const unsubSpecPrepared = ctx.bus.on('save:envelopeSpecPrepared', (payload = {}) => {
+      try {
+        const slot = payload.slot;
+        const data = unwrapSaveData(payload.data);
+        if (typeof slot !== 'string' || !slot || !data) return;
+        const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+        const sig = sys && typeof sys.saveStoreSignature === 'function' ? sys.saveStoreSignature() : null;
+        const entry = _slotDataMemo.get(slot) || { sig, slot, raw: null, data: null };
+        if (!entry.data) { entry.data = data; entry.sig = sig; _slotDataMemo.set(slot, entry); }
+        if (refs && refs.selected === slot) this._renderStage(ctx);
+      } catch (e) { /* speculative fill is best-effort */ }
+    });
 
     // Foot: Export, Import (the hidden file input stays), Back.
     const foot = el('footer', orr ? 'k-foot' : 'k-foot of-pause');
@@ -1011,8 +1048,9 @@ export const saveLoadScreen = {
       caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
+      saveSys: ctx && ctx.registry && ctx.registry.get ? ctx.registry.get('save') : null,
       cancelHullRelease, unsubLoading, unsubStartFailed, unsubLoadFailed, unsubSynced, unsubValidated, unsubCompleted,
-      unsubRecovered, unsubBackup, unsubRecoveryFailed, unsubProfile,
+      unsubRecovered, unsubBackup, unsubRecoveryFailed, unsubProfile, unsubSpecPrepared,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -1179,6 +1217,9 @@ export const saveLoadScreen = {
     const occupied = isOccupied(meta);
     const saveAllowed = refs.saveAllowed;
     const saved = occupied ? readSlotSaveData(ctx, id) : null;
+    // A memo miss carries raw but no parsed data — the stage chrome renders now and the
+    // portrait's own parse lands on the settle timer (or the spec emit fills it first).
+    if (saved && !saved.data && saved.raw && !saved.attempted) scheduleSlotDataFill(ctx, id);
     const saveData = saved && saved.data;
     const currentSlot = ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot;
     const portrait = occupied
@@ -1605,6 +1646,13 @@ export const saveLoadScreen = {
   },
   onHide() {
     cue('close');
+    // A pick armed 150ms before exit must not keep its parked dispatch — drop the arm so
+    // the clone + worker parse + visual warm don't land inside the next screen's window.
+    try {
+      const sys = refs && refs.saveSys;
+      if (sys && typeof sys.disarmSpeculativePrepare === 'function') sys.disarmSpeculativePrepare();
+    } catch (e) {}
+    if (_slotDataFillTimer != null) { clearTimeout(_slotDataFillTimer); _slotDataFillTimer = null; }
     if (this.hull) this.hull.deactivate();
   },
   // Everything the render reads is either captured by this cheap signature (save allowed, current
@@ -1631,10 +1679,16 @@ export const saveLoadScreen = {
       try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
       try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
-      for (const key of ['unsubRecovered', 'unsubBackup', 'unsubRecoveryFailed', 'unsubProfile']) {
+      for (const key of ['unsubRecovered', 'unsubBackup', 'unsubRecoveryFailed', 'unsubProfile', 'unsubSpecPrepared']) {
         if (typeof refs[key] === 'function') refs[key]();
       }
+      try {
+        if (refs.saveSys && typeof refs.saveSys.disarmSpeculativePrepare === 'function') {
+          refs.saveSys.disarmSpeculativePrepare();
+        }
+      } catch (e) {}
     }
+    if (_slotDataFillTimer != null) { clearTimeout(_slotDataFillTimer); _slotDataFillTimer = null; }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (this._film) { this._film.dispose(); this._film = null; }
     refs = null;
