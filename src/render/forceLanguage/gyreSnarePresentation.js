@@ -776,9 +776,12 @@ export class GyreSnarePresentation {
     }
     // Hold-age for the ring bloom — the suck halo + grip spoke must not pop on
     // at full alpha the snag tick; they ramp in over ~0.2 s like every sibling
-    // element's enter ramp (wakeEase iris, lump grow-in, close seeds).
+    // element's enter ramp (wakeEase iris, lump grow-in, close seeds). The clock
+    // rides through LAUNCH: a sub-0.2 s hold releases with the bloom mid-ramp,
+    // and the coil is a wall-clock fade — the rings finish blooming on the taut
+    // beat instead of freezing at whatever fraction the flip caught them at.
     if (phase === 'holding' && this._lastPhase !== 'holding') this._holdT = 0;
-    if (phase === 'holding') this._holdT = (this._holdT || 0) + sdt;
+    if (phase === 'holding' || phase === 'launching') this._holdT = (this._holdT || 0) + sdt;
     this._lastPhase = phase;
 
     // ── beam ─────────────────────────────────────────────────────────────────
@@ -972,7 +975,7 @@ export class GyreSnarePresentation {
       // contradicts the telegraph the cone is making.
       // `spent` joins the lash's LAUNCH dim so the mouth fades with the glass it sits on
       // through the post-thrownBeat burst instead of glowing on a dead funnel.
-      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + massFrac * 0.08 + strainW * 0.3 + this._discKick * 0.35) * spent * flashCalm * fuseDim * wakeEase);
+      this._mawMat.opacity = Math.min(1, (0.4 + (tense ? 0.25 : 0) + massFrac * 0.08 + strainW * 0.3 + this._discKick * 0.35) * spent * flashCalm * fuseDim * wakeEase);
       // The tear happens AT the mouth — the chromatic warn the cone washes
       // rim-ward lands on its brightest element too, not just the glass skin:
       // ring + disc warm toward amber as the clump nears slipping.
@@ -992,7 +995,7 @@ export class GyreSnarePresentation {
       // anticipation owns that brighter read). BEAM-only: the coil borrows this
       // formula through 'launching', and a breathing idle shimmer through the
       // draw would fight the windup swell + spent dim.
-      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12 + (net === 0 && phase === 'beaming' ? 0.05 * Math.sin(this.time * 5.03) : 0)) + this._discKick * 0.5) * flashCalm * fuseDim * wakeEase;
+      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (tense ? 0.9 : 0.55 + net * 0.12 + (net === 0 && phase === 'beaming' ? 0.05 * Math.sin(this.time * 5.03) : 0)) + this._discKick * 0.5) * spent * flashCalm * fuseDim * wakeEase;
       // Reduced-motion keeps a STATIC mote scatter instead of hiding the funnel
       // outright — the frozen motes still read "matter is being pulled" where
       // visible=false left the cone with no suction signifier at all.
