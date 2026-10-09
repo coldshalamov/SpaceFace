@@ -5992,10 +5992,10 @@ function warmWantedTierDecode(owner) {
 function warmSeededModularPool(owner, sectorId, residencyRole, armKey = null) {
   const renderer = owner && owner.renderer;
   if (!renderer || !renderer.domElement) return;
-  const warmed = owner._modularPoolWarmSectors || (owner._modularPoolWarmSectors = new Set());
-  const key = `${sectorId || ''}\0${residencyRole || ''}\0${armKey == null ? '' : armKey}`;
-  if (warmed.has(key)) return;
-  warmed.add(key);
+  // No 'already posted' latch: the pool is closed (~43 files) and each loadAuthoredPart
+  // call dedupes on the shared task registry — a resident file costs a Map lookup and
+  // re-pins its soft lease, an evicted one re-decodes. A seen-once latch stranded the
+  // kit cold on demote/retract/pressure evictions between visits.
   const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
     || 'assets/ships/release/parts/';
   const slots = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.slots) || {};
@@ -6079,7 +6079,7 @@ function warmGateWingDecode(owner) {
 }
 
 /**
- * The three speculative-warm latches key on bare sector identity but the cohort
+ * The speculative-warm latches key on bare sector identity but the cohort
  * they armed for dies with the sector's FULL residency (extras strip on any
  * demotion). Drop the demoted sector's keys so a return visit re-arms the
  * bounded warms instead of suppressing them as "already warmed" — the second
@@ -6088,13 +6088,6 @@ function warmGateWingDecode(owner) {
 function clearSectorWarmLatchKeys(owner, sectorId) {
   const wanted = owner._wantedTierWarmSectors;
   if (wanted) wanted.delete(sectorId);
-  const modular = owner._modularPoolWarmSectors;
-  if (modular) {
-    const prefix = `${sectorId} `;
-    for (const key of modular) {
-      if (typeof key === 'string' && key.startsWith(prefix)) modular.delete(key);
-    }
-  }
   const gateWing = owner._gateWingWarmKeys;
   if (gateWing) {
     const prefix = `${sectorId}|`;
@@ -6810,17 +6803,14 @@ function updateRouteDeepSectorWarm(owner, state, census, releaseOwner) {
 
 // Queued world:spawnRequest rows flush inside a sector's enter sequence — their forced
 // enemyTypeId cohorts get no roster arm anywhere else, so the approach/deep warm polls the
-// corridor legs' queues and warms the hulls through the decode runway. Set-keyed dedupe:
-// a new row added to an already-seen queue re-warms the widened roster; file dedupe caps
-// the repeats the rest of the way.
+// corridor legs' queues and warms the hulls through the decode runway. The queue outlives
+// its ownerless warms — the rows stay resident through demote and save/load while the
+// soft-lease decodes evict under byte pressure — so the arm re-posts whenever the poll
+// finds a roster: file dedupe no-ops what still lives and re-pins the lease mid-approach.
 function warmQueuedSpawnRequestDecodes(owner, state, sectorId) {
   if (!sectorId) return;
   const roster = queuedSpawnRequestRoster(state.world, sectorId);
   if (!roster.length) return;
-  const seen = owner._spawnRequestWarmSeen || (owner._spawnRequestWarmSeen = new Set());
-  const key = `${sectorId}:${roster.map((row) => row.archetype).join(',')}`;
-  if (seen.has(key)) return;
-  seen.add(key);
   warmEnemyRosterDecode(owner, roster, 'spawn-request-decode-runway', sectorId);
 }
 
@@ -6839,9 +6829,9 @@ function warmPendingInterventionDecodes(owner, state, sectorId) {
     if (rec && rec.sectorId === sectorId) { pending = true; break; }
   }
   if (!pending) return;
-  const seen = owner._interventionWarmSeen || (owner._interventionWarmSeen = new Set());
-  if (seen.has(sectorId)) return;
-  seen.add(sectorId);
+  // The rows persist until intervention:resolved while the ownerless warms evict under
+  // pressure or on demote — no seen-latch here: re-post each poll and let file dedupe
+  // no-op what still lives (a once-fired latch stranded the cohort cold on re-entry).
   for (const stub of wreckVisualExemplarSpecs(`intervention-warm:${sectorId}:`)) {
     Promise.resolve(warmPackagedEntityDecode(owner, stub, null, false, sectorId)).catch(() => {});
   }
