@@ -98,7 +98,10 @@ void main() {
   float bands = mix(0.25, band * band2, uCalm);
   float rim = smoothstep(0.80, 1.0, vUv.y);
   float apex = smoothstep(0.20, 0.0, vUv.y);
-  float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + bands * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.22);
+  // The apex anchors the lash's origin a hair harder — against a bright nebula
+  // the additive cone can wash the nose end out, and nothing else marks where
+  // the beam emits from.
+  float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + bands * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.30);
   vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4, 0.0, 1.0));
   // Strain warning = a warm wash toward uColWarn, not the near-identical rim
   // white — 'about to tear' is chromatic, not just kinetic. Raw strain (not
@@ -771,6 +774,11 @@ export class GyreSnarePresentation {
       this._fireBurst(finite(mirror.corePos.x), finite(mirror.corePos.z),
         Math.max(6, finite(mirror.clumpRadius, 8) * 1.5), flashCalm);
     }
+    // Hold-age for the ring bloom — the suck halo + grip spoke must not pop on
+    // at full alpha the snag tick; they ramp in over ~0.2 s like every sibling
+    // element's enter ramp (wakeEase iris, lump grow-in, close seeds).
+    if (phase === 'holding' && this._lastPhase !== 'holding') this._holdT = 0;
+    if (phase === 'holding') this._holdT = (this._holdT || 0) + sdt;
     this._lastPhase = phase;
 
     // ── beam ─────────────────────────────────────────────────────────────────
@@ -1017,7 +1025,12 @@ export class GyreSnarePresentation {
       // ~24 wu aft of the maw reads as the suction losing its target.
       if ((holding || phase === 'launching') && mirror.corePos) {
         const cl = this.toLocal(finite(mirror.corePos.x), finite(mirror.corePos.z), this._corePt);
-        const ox = cl.x - mL.x, oz = cl.z - mL.z;
+        // During the coil the aim origin is the DRAWN mouth on the frozen
+        // launchDir frame — the glass, spoke, and basin ring all anchor there;
+        // the live maw would bend the funnel toward a mouth it isn't drawing.
+        const aimOx = phase === 'launching' ? nL.x + dx * (drawLen - coilBack) : mL.x;
+        const aimOz = phase === 'launching' ? nL.z + dz * (drawLen - coilBack) : mL.z;
+        const ox = cl.x - aimOx, oz = cl.z - aimOz;
         const inv = len > 0 ? 1 / len : 0;
         const bx = dx * inv, bz = dz * inv;
         aimT.set(ox * bx + oz * bz, 0, -ox * bz + oz * bx);
@@ -1297,7 +1310,9 @@ export class GyreSnarePresentation {
         g.material.color.lerp(this._colHot, 0.4);
         g.material.opacity = Math.min(0.3, g.material.opacity * 1.6);
       }
-      g.visible = true;
+      // Below ~2% the burst-collapse is invisible — same gate the basin halo uses,
+      // or the burst ticks draw up to 8 zero-alpha spots a frame.
+      g.visible = spotFade > 0.02;
     }
 
     if (cx == null) {
@@ -1427,9 +1442,12 @@ export class GyreSnarePresentation {
       // The thrown ball reads ARMED, not just a rock + ribbon: an ~0.7 s surge
       // off the thrownBeat latch brightens the veil and warms it toward rim-hot
       // (strain/clumpKick/fullGlow are all dead channels once it's flying).
+      // The hold-gated massFrac term keeps the veil densifying past the 60 wu
+      // radius cap — a half-fed moon reads heavier than a fresh snag on the
+      // payload itself, not just the pill (0 off HOLD: flying balls ride armed).
       this._launchKick *= Math.exp(-sdt * 4);
       const armed = Math.min(1, this._launchKick);
-      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow + armed * 0.1) * flashCalm;
+      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow + armed * 0.1 + massFrac * 0.04) * flashCalm;
       // Warn reaches the veil too — the ball is the object the player is actually
       // watching when strain climbs; cone/maw/disc already warm (strain * 0.6).
       this._veilMat.color.copy(this._colGlass).lerp(this._colWarn, clamp01(finite(mirror.strain01)) * 0.4)
@@ -1541,7 +1559,9 @@ export class GyreSnarePresentation {
         const strain = clamp01(finite(mirror.strain01));
         // Grip width flickers under strain — the spoke trembles with the held rubble.
         this._grip.scale.set(gd, 1, 2.2 * (1 + strain * 0.35 * Math.sin(this.time * 37) * calm) * (1 - wind * 0.45));
-        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2 + wind * 0.4) * flashCalm;
+        // Blooms in on the hold edge (~0.2 s) — a snag before ~150 ms was landing
+        // the ~0.34-alpha spoke in a single frame while every sibling ramps in.
+        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2 + wind * 0.4) * flashCalm * Math.min(1, (this._holdT || 0) / 0.2);
         this._grip.visible = true;
       } else if (!this._closing && this._grip.visible) {
         this._grip.visible = false;
@@ -1564,15 +1584,19 @@ export class GyreSnarePresentation {
         const suckR = finite(mirror.suckRadius, 0) || this._clumpRadius;
         this._halo.position.set(p.x, 0.42, p.z);
         this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
-        this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6) * suckFade;
+        // Same ~0.2 s hold-edge bloom as the spoke — the ~50-129 wu annulus was
+        // the only element that teleported onto a fresh snag at full alpha.
+        this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6) * suckFade * Math.min(1, (this._holdT || 0) / 0.2);
         this._halo.visible = true;
       } else if (!this._closing && this._halo.visible) {
         this._halo.visible = false;
       }
 
       // The shared lump materials glow hotter at cap — same saturated-payload tell
-      // as the veil pulse above, carried by every merged chunk.
-      const lumpGlow = fullGlow > 0 ? 0.4 + 0.12 * Math.sin(this.time * 3.4) * calm : 0.22;
+      // as the veil pulse above, carried by every merged chunk. Below FULL the
+      // floor still grades by mass: a 60 wu ball at 600 t and a capped moon were
+      // emissive-identical, so "it's still eating" read only on the pill.
+      const lumpGlow = fullGlow > 0 ? 0.4 + 0.12 * Math.sin(this.time * 3.4) * calm : 0.22 + 0.15 * massFrac * massFrac;
       // The ARMED read reaches the rubble too — the thrown ball's contents
       // flash with its shell for the same ~0.7 s launchKick window (lumpGlow
       // is hold-gated, so without this floor a flying katamari's chunks sat at
