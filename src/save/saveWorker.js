@@ -51,7 +51,28 @@ async function gunzipText(payload) {
   const bytes = base64ToBytes(payload);
   const stream = new Blob([bytes]).stream()
     .pipeThrough(new DecompressionStream('gzip'));
-  return await new Response(stream).text();
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  const parts = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > SAVE_WRITE_MAX_BYTES) {
+        try { await reader.cancel(); } catch { /* the size failure remains authoritative */ }
+        const error = new Error('Decoded save exceeds the import byte ceiling');
+        error.reason = 'import_too_large';
+        throw error;
+      }
+      parts.push(decoder.decode(value, { stream: true }));
+    }
+    parts.push(decoder.decode());
+    return parts.join('');
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export function saveGzipAvailable() {
@@ -91,7 +112,7 @@ export async function decodeSaveEnvelopeText(raw) {
     const text = await gunzipText(outer.payload);
     return outer.profile != null ? { ok: true, text, profile: outer.profile } : { ok: true, text };
   } catch (error) {
-    return { ok: false, reason: 'gz_decode_failed' };
+    return { ok: false, reason: error.reason || 'gz_decode_failed' };
   }
 }
 
@@ -428,7 +449,27 @@ function gzipText(json) {
 }
 function gunzipText(payload) {
   var stream = new Blob([base64ToBytes(payload)]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(stream).text();
+  var reader = stream.getReader();
+  var decoder = new TextDecoder();
+  var parts = [];
+  var totalBytes = 0;
+  function readNext() {
+    return reader.read().then(function (chunk) {
+      if (chunk.done) {
+        parts.push(decoder.decode());
+        return parts.join('');
+      }
+      totalBytes += chunk.value.byteLength;
+      if (totalBytes > SAVE_WRITE_MAX_BYTES) {
+        var error = new Error('Decoded save exceeds the import byte ceiling');
+        error.reason = 'import_too_large';
+        return reader.cancel().catch(function () {}).then(function () { throw error; });
+      }
+      parts.push(decoder.decode(chunk.value, { stream: true }));
+      return readNext();
+    });
+  }
+  return readNext().finally(function () { reader.releaseLock(); });
 }
 function isGzippedSaveText(raw) {
   return typeof raw === 'string' && raw.length >= 16 && raw.charCodeAt(0) === 123
@@ -454,8 +495,8 @@ function decodeSaveEnvelopeText(raw) {
   return gunzipText(outer.payload).then(function (text) {
     // FB-104 — profile side bags ride on the outer wrapper of a compressed export bundle.
     return outer.profile != null ? { ok: true, text: text, profile: outer.profile } : { ok: true, text: text };
-  }, function () {
-    return { ok: false, reason: 'gz_decode_failed' };
+  }, function (error) {
+    return { ok: false, reason: error.reason || 'gz_decode_failed' };
   });
 }
 // FB-093 — bounded, worker-side compressed encode: the import limit object applies pre-write;
