@@ -1050,8 +1050,9 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
 function createBrowserChannel() {
   const worker = new Worker(
     // Retail path resolves workers/wholeSimBrowserWorker.js against the document
-    // base (the bundle emits it as a separate self-contained program); dev keeps
-    // the raw-module ./wholeSimBrowserWorker.js sibling.
+    // base (the bundle emits it as a shared-chunk ESM program — same esbuild
+    // call as main so vendored deps dedupe); dev keeps the raw-module
+    // ./wholeSimBrowserWorker.js sibling.
     runtimeWorkerUrl('simLane', import.meta.url),
     { type: 'module' },
   );
