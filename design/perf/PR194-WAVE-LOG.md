@@ -2447,8 +2447,16 @@ Saturation: lod + hitches `saturated: true` (2 of 6 lanes this wave; streak 1/3 
 - Support edits: `_restorePreparedEnvelopeAsync` honors `_restore`/`_restoreAsync` test stubs via the canonical-seam pattern; scheduled-callback harnesses gained a macrotask pump (`drain`/`step`/`drainScheduled` — continuations re-arm on `setTimeout(0)` and a sync drive can't observe them); `fb-save-write-bound-gzip`'s `waitFor` turn limit 500→5000 — pre-existing flake reproduced on clean HEAD (the worker's stream decode occasionally needs more than 500 immediate turns).
 - Golden `0b33dde` bit-identical; 123 focused save tests green.
 
-### in-flight-hitches — auditing (`2fbabc0c`)
+### in-flight-hitches — `saturated: false` (F1+F3 landed `a7151dcaf`)
 
-### s1-spike mining — queued on SWE-2 cap
+### s1-spike mining — auditing (`de15ce60`)
+
+- **hitches F1 (S-M, MECHANISM_VERIFIED) — the self-owned audio rAF tick ran ~25 subsystem calls inside the presented frame's rAF task**: the last unbudgeted per-frame work in a presented frame; the body now dispatches through postTaskAtBackgroundPriorityBounded while the rAF tick keeps only the guard + re-arm. audio-lifecycle seam modernized to the async contract (same assertions after a macrotask flush).
+- **hitches F3 (S, MECHANISM_VERIFIED) — stormWarn kept the flat 1s heartbeat its laneWarn/warnDedup siblings shed**: ported the sibling contract verbatim — 1s→30s backing-off heartbeat + 60s quiet-gap heal (was ~N warns/s forever, no heal path).
+- **hitches F2 (adjudicated defer, MECHANISM_VERIFIED + fresh measure) — econTick O(stations×commodities) sweep**: measured 2.7ms p50 / 3.9ms p95 per 5s tick (34 stations × 1133 listings; the W4 ~19ms figure is stale). Every hot leg mutates authoritative sim state — RNG draw order (cycle advance/regime rolls), simTime-stamped chart points, market writes — so any frame split risks the golden hash for ~4ms/5s. Catch-up already capped at MAX_PERIODIC_STEPS=4. Deferred with evidence; revisit only if a bigger census makes it material.
+- **hitches F4 (tracked) — FFI span**: world.step + WASM calls inside the presented rAF task; durable fix is the S1 worker migration (this wave's mining lane); no cheap interim win.
+- Golden `0b33dde` bit-identical; ~100 focused tests green (doctrine-signature 15v16 count canon — identical on clean master).
+
+### s1-spike mining — auditing (`de15ce60`)
 
 Saturation: 1 of 4 reporting lanes (streak 2/3 by wave verdict).

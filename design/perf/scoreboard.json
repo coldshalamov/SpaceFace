@@ -246,7 +246,7 @@
   },
   {
    "wave": 122,
-   "head": "728302fe5",
+   "head": "a7151dcaf",
    "lanes": {
     "lod-in-frame": {
      "saturated": true,
@@ -274,18 +274,20 @@
      "headline": "plain-text import prepare routed through sliced async lane (O(1) sync rejects preserved — last unpaced O(save-size) click brick); autosave fallback whole-ledger prepares await async lanes w/ liveness re-checks + prepared-envelope FIFO memo; verify-before-index ordering unchanged"
     },
     "in-flight-hitches": {
-     "saturated": null,
-     "findings": null,
-     "landed": null,
-     "commits": [],
-     "headline": "auditing (2fbabc0c)"
+     "saturated": false,
+     "findings": 4,
+     "landed": 2,
+     "commits": [
+      "a7151dcaf"
+     ],
+     "headline": "audio frame body (~25 calls) dispatched via bounded background post — last unbudgeted presented-frame per-frame work; stormWarn ported the sibling 1s->30s backoff + 60s quiet-gap heal (was flat 1s forever, no heal); F2 econTick sweep MECHANISM_VERIFIED deferred w/ fresh measure 2.7ms p50/3.9ms p95 per 5s — all hot legs sim-authoritative (RNG order, simTime stamps) so any frame split risks golden hash; F4 FFI span tracked for S1 lane"
     },
     "s1-spike-mining": {
      "saturated": null,
      "findings": null,
      "landed": null,
      "commits": [],
-     "headline": "queued on SWE-2 cap"
+     "headline": "auditing (de15ce60)"
     }
    },
    "evidence": "all CPU-scope mechanism verification on this box; GPU/frame-time benefit hardware-unverified per environment declaration",
