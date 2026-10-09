@@ -1,8 +1,8 @@
 {
   "counts": {
     "green": 14,
-    "red": 198,
-    "rows": 212
+    "red": 201,
+    "rows": 215
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -35,7 +35,7 @@
           6.476548
         ]
       },
-      "bytes": 364244,
+      "bytes": 362052,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -468,7 +468,7 @@
           3.200029
         ]
       },
-      "bytes": 690552,
+      "bytes": 675604,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -687,7 +687,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 23188,
+      "triangles": 22620,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_lane_beacon.glb",
       "worldSize": [
@@ -719,7 +719,7 @@
           10.600486
         ]
       },
-      "bytes": 340492,
+      "bytes": 339472,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -1029,7 +1029,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 354,
+        "boundaryEdges": 362,
         "inwardFaceFraction": 0.2635,
         "silhouetteRadius": 5.317794,
         "sliceY": 0
@@ -1039,7 +1039,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 10304,
+      "triangles": 10264,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_lane_pin.glb",
       "worldSize": [
@@ -1071,7 +1071,7 @@
           2.615137
         ]
       },
-      "bytes": 575744,
+      "bytes": 577592,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -1423,8 +1423,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1710,
-        "inwardFaceFraction": 0.373,
+        "boundaryEdges": 1717,
+        "inwardFaceFraction": 0.37575,
         "silhouetteRadius": 0.75753,
         "sliceY": 0
       },
@@ -1442,7 +1442,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 24354,
+      "triangles": 24007,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_nav_buoy.glb",
       "worldSize": [
@@ -1474,7 +1474,7 @@
           5.693013
         ]
       },
-      "bytes": 440464,
+      "bytes": 440352,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -1791,7 +1791,7 @@
           62.004645
         ]
       },
-      "bytes": 1649376,
+      "bytes": 1638244,
       "collider": {
         "authoredClearVolumesPreserved": true,
         "compoundBoxesWU": [
@@ -2144,7 +2144,7 @@
       "reasons": [],
       "shell": {
         "boundaryEdges": 2380,
-        "inwardFaceFraction": 0.45475,
+        "inwardFaceFraction": 0.45225,
         "silhouetteRadius": 106.831362,
         "sliceY": 0
       },
@@ -2306,7 +2306,7 @@
       "source": "glb",
       "status": "green",
       "tasteBudget": null,
-      "triangles": 74516,
+      "triangles": 74464,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/wholeships/ceres_breaker.glb",
       "worldSize": [
@@ -2643,7 +2643,7 @@
           74.999181
         ]
       },
-      "bytes": 1029972,
+      "bytes": 1018780,
       "collider": {
         "authoredClearVolumesPreserved": true,
         "compoundBoxesWU": [
@@ -2946,7 +2946,7 @@
       "reasons": [],
       "shell": {
         "boundaryEdges": 72,
-        "inwardFaceFraction": 0.46875,
+        "inwardFaceFraction": 0.4685,
         "silhouetteRadius": 104.067424,
         "sliceY": 0
       },
@@ -3012,7 +3012,7 @@
           2.418214
         ]
       },
-      "bytes": 552484,
+      "bytes": 551092,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -3419,7 +3419,7 @@
       ],
       "shell": {
         "boundaryEdges": 947,
-        "inwardFaceFraction": 0.27525,
+        "inwardFaceFraction": 0.27675,
         "silhouetteRadius": 2.448873,
         "sliceY": 0
       },
@@ -3437,7 +3437,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 21910,
+      "triangles": 21828,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_mining_drone.glb",
       "worldSize": [
@@ -3469,7 +3469,7 @@
           1.082134
         ]
       },
-      "bytes": 18568,
+      "bytes": 18732,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -3806,7 +3806,7 @@
           6.894131
         ]
       },
-      "bytes": 896216,
+      "bytes": 889976,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -4244,8 +4244,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4727,
-        "inwardFaceFraction": 0.1415,
+        "boundaryEdges": 4769,
+        "inwardFaceFraction": 0.15875,
         "silhouetteRadius": 30.633391,
         "sliceY": 0
       },
@@ -4351,7 +4351,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 38474,
+      "triangles": 37680,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -4385,7 +4385,7 @@
           6.894131
         ]
       },
-      "bytes": 896216,
+      "bytes": 889976,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -4823,8 +4823,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4727,
-        "inwardFaceFraction": 0.1415,
+        "boundaryEdges": 4769,
+        "inwardFaceFraction": 0.15875,
         "silhouetteRadius": 23.425534,
         "sliceY": 0
       },
@@ -4930,7 +4930,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 38474,
+      "triangles": 37680,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -4964,7 +4964,7 @@
           11.02036
         ]
       },
-      "bytes": 849976,
+      "bytes": 831520,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -5394,8 +5394,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4756,
-        "inwardFaceFraction": 0.118,
+        "boundaryEdges": 4850,
+        "inwardFaceFraction": 0.11875,
         "silhouetteRadius": 17.416917,
         "sliceY": 0
       },
@@ -5501,7 +5501,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 32574,
+      "triangles": 30518,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -5535,7 +5535,7 @@
           6.894131
         ]
       },
-      "bytes": 896440,
+      "bytes": 890112,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -5973,8 +5973,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4727,
-        "inwardFaceFraction": 0.1415,
+        "boundaryEdges": 4769,
+        "inwardFaceFraction": 0.15875,
         "silhouetteRadius": 10.811785,
         "sliceY": 0
       },
@@ -6080,7 +6080,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 38474,
+      "triangles": 37680,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -6114,7 +6114,7 @@
           6.550297
         ]
       },
-      "bytes": 935596,
+      "bytes": 916180,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -6552,8 +6552,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4233,
-        "inwardFaceFraction": 0.1935,
+        "boundaryEdges": 4355,
+        "inwardFaceFraction": 0.2085,
         "silhouetteRadius": 16.985501,
         "sliceY": 0
       },
@@ -6659,7 +6659,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 37810,
+      "triangles": 35602,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -6693,7 +6693,7 @@
           8.8
         ]
       },
-      "bytes": 763136,
+      "bytes": 758908,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -7107,8 +7107,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1188,
-        "inwardFaceFraction": 0.23825,
+        "boundaryEdges": 1211,
+        "inwardFaceFraction": 0.24375,
         "silhouetteRadius": 19.60376,
         "sliceY": 0
       },
@@ -7222,7 +7222,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 23197,
+      "triangles": 22936,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -7256,7 +7256,7 @@
           16.1597
         ]
       },
-      "bytes": 799804,
+      "bytes": 660588,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -7665,8 +7665,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 632,
-        "inwardFaceFraction": 0.146,
+        "boundaryEdges": 3387,
+        "inwardFaceFraction": 0.33775,
         "silhouetteRadius": 10.495703,
         "sliceY": 0
       },
@@ -7772,7 +7772,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39784,
+      "triangles": 24688,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -7806,7 +7806,7 @@
           33.128057
         ]
       },
-      "bytes": 1116956,
+      "bytes": 1037260,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -8239,8 +8239,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1840,
-        "inwardFaceFraction": 0.30725,
+        "boundaryEdges": 3915,
+        "inwardFaceFraction": 0.397,
         "silhouetteRadius": 52.504529,
         "sliceY": 0
       },
@@ -8346,7 +8346,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 53340,
+      "triangles": 44537,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -8380,7 +8380,7 @@
           11.02036
         ]
       },
-      "bytes": 849976,
+      "bytes": 831520,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -8810,8 +8810,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4756,
-        "inwardFaceFraction": 0.118,
+        "boundaryEdges": 4850,
+        "inwardFaceFraction": 0.11875,
         "silhouetteRadius": 27.867068,
         "sliceY": 0
       },
@@ -8917,7 +8917,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 32574,
+      "triangles": 30518,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -8951,7 +8951,7 @@
           11.02036
         ]
       },
-      "bytes": 849976,
+      "bytes": 831520,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -9381,8 +9381,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4756,
-        "inwardFaceFraction": 0.118,
+        "boundaryEdges": 4850,
+        "inwardFaceFraction": 0.11875,
         "silhouetteRadius": 27.867068,
         "sliceY": 0
       },
@@ -9488,7 +9488,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 32574,
+      "triangles": 30518,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -9497,6 +9497,559 @@
         55.04,
         10.017678,
         27.420956
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0.175488,
+          1.630526,
+          0
+        ],
+        "max": [
+          13.321647,
+          4.53126,
+          3.914392
+        ],
+        "min": [
+          -12.970671,
+          -1.270208,
+          -3.914392
+        ],
+        "size": [
+          26.292317,
+          5.801468,
+          7.828783
+        ]
+      },
+      "bytes": 1265960,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:kilnback",
+        "kind": "proxy",
+        "outline": [
+          20.126977,
+          19.116088,
+          7.816642,
+          5.496843,
+          4.642907,
+          5.373303,
+          0,
+          6.041872,
+          6.73098,
+          8.559989,
+          19.263875,
+          20.100345,
+          20.100345,
+          19.263875,
+          8.559989,
+          6.73098,
+          6.042051,
+          0,
+          5.373303,
+          4.641955,
+          5.496039,
+          7.816077,
+          19.115592,
+          20.126977
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 2.415237,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1.504622,
+      "family": "enemy-hull",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:kilnback",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 23,
+        "proportions": {
+          "halfWidth": 0.26,
+          "height": 0.38,
+          "length": 1.72
+        },
+        "sizes": null
+      },
+      "id": "kilnback",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_beacon",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_rust",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": {
+        "halfWidth": 0.256073,
+        "height": 0.379522,
+        "length": 1.72
+      },
+      "meshHash": null,
+      "meshes": 71,
+      "nodes": 87,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.175488,
+        1.630526,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 2.415237,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 22,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.858978,
+            "bz": -0.113087,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.759834,
+            "bz": -0.314734,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.262726,
+            "bz": -0.201596,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.140196,
+            "bz": -0.182707,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.073923,
+            "bz": -0.178466,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.027932,
+            "bz": -0.212167,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.030494
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.097199,
+            "bz": -0.23466,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.172861,
+            "bz": -0.225277,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.288366,
+            "bz": -0.221271,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.765771,
+            "bz": -0.317193,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.85783,
+            "bz": -0.112935,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.85783,
+            "bz": 0.112935,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.765771,
+            "bz": 0.317193,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.288366,
+            "bz": 0.221271,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.172861,
+            "bz": 0.225277,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.097202,
+            "bz": 0.234667,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.027932,
+            "bz": 0.212167,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.030494
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.073907,
+            "bz": 0.178427,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.140175,
+            "bz": 0.18268,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.262706,
+            "bz": 0.201581,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.759814,
+            "bz": 0.314725,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.019565
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.858978,
+            "bz": 0.113087,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.019565
+          }
+        ],
+        "silhouetteRadius": 20.126977,
+        "toleranceWu": 2.415237
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 4580,
+        "inwardFaceFraction": 0.20575,
+        "silhouetteRadius": 20.126977,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            2.278198,
+            1.627247,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0.174998,
+            -1.220006,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -12.7,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            12.819997,
+            1.477247,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0.174998,
+            1.627247,
+            -2.346
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0.174998,
+            1.627247,
+            2.346
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -11.1,
+            1.6,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -13.070001,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -13.070001,
+            0,
+            -0.9775
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -13.070001,
+            0,
+            0.9775
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0.174998,
+            4.4745,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            12.919997,
+            1.627247,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 54868,
+      "unmeasuredHitVolumes": [
+        "subsystem_transport_clamp"
+      ],
+      "url": "assets/ships/release/parts/wholeships/yard_tug.glb",
+      "worldSize": [
+        39.56,
+        8.729017,
+        11.77936
       ]
     },
     {
@@ -9522,7 +10075,7 @@
           16.1597
         ]
       },
-      "bytes": 799804,
+      "bytes": 660588,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -9931,8 +10484,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 632,
-        "inwardFaceFraction": 0.146,
+        "boundaryEdges": 3387,
+        "inwardFaceFraction": 0.33775,
         "silhouetteRadius": 14.693985,
         "sliceY": 0
       },
@@ -10038,7 +10591,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39784,
+      "triangles": 24688,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -10072,7 +10625,7 @@
           6.150123
         ]
       },
-      "bytes": 949044,
+      "bytes": 940248,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -10501,8 +11054,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2565,
-        "inwardFaceFraction": 0.30975,
+        "boundaryEdges": 2564,
+        "inwardFaceFraction": 0.31075,
         "silhouetteRadius": 16.392788,
         "sliceY": 0
       },
@@ -10608,7 +11161,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 37724,
+      "triangles": 37267,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -10642,7 +11195,7 @@
           11.02036
         ]
       },
-      "bytes": 849976,
+      "bytes": 831520,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -11072,8 +11625,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4756,
-        "inwardFaceFraction": 0.118,
+        "boundaryEdges": 4850,
+        "inwardFaceFraction": 0.11875,
         "silhouetteRadius": 27.867068,
         "sliceY": 0
       },
@@ -11179,7 +11732,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 32574,
+      "triangles": 30518,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -11188,6 +11741,556 @@
         55.04,
         10.017678,
         27.420956
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0.089958,
+          0.425354,
+          0
+        ],
+        "max": [
+          10.900203,
+          1.750071,
+          8.07985
+        ],
+        "min": [
+          -10.720286,
+          -0.899364,
+          -8.07985
+        ],
+        "size": [
+          21.620489,
+          2.649436,
+          16.1597
+        ]
+      },
+      "bytes": 660588,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:mothlight",
+        "kind": "proxy",
+        "outline": [
+          12.267497,
+          15.130912,
+          16.793125,
+          7.610292,
+          7.751534,
+          6.52332,
+          6.760931,
+          7.480775,
+          8.542708,
+          9.308347,
+          12.377323,
+          13.874652,
+          13.874652,
+          12.377323,
+          9.308347,
+          8.542708,
+          7.480775,
+          6.760931,
+          6.52332,
+          7.751534,
+          7.610292,
+          16.793125,
+          15.130912,
+          12.267497
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 2.015175,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1.272867,
+      "family": "enemy-hull",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:mothlight",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 16,
+        "proportions": {
+          "halfWidth": 0.64,
+          "height": 0.21,
+          "length": 1.72
+        },
+        "sizes": null
+      },
+      "id": "mothlight",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {
+          "lod1": 0.152968,
+          "lod2": 2.444629
+        },
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_beacon",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": {
+        "halfWidth": 0.642786,
+        "height": 0.210774,
+        "length": 1.72
+      },
+      "meshHash": null,
+      "meshes": 23,
+      "nodes": 39,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.089958,
+        0.425354,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 2.015175,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.747766,
+            "bz": -0.098445,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.862148,
+            "bz": -0.357113,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.822763,
+            "bz": -0.631328,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.281944,
+            "bz": -0.367436,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.180615,
+            "bz": -0.436044,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.051585,
+            "bz": -0.391826,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.053523,
+            "bz": -0.40655,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.17414,
+            "bz": -0.42041,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.31742,
+            "bz": -0.41367,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.451634,
+            "bz": -0.346551,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.703149,
+            "bz": -0.291254,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.847354,
+            "bz": -0.111556,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.847354,
+            "bz": 0.111556,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.703149,
+            "bz": 0.291254,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.451634,
+            "bz": 0.346551,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.31742,
+            "bz": 0.41367,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.17414,
+            "bz": 0.42041,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.053523,
+            "bz": 0.40655,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.051585,
+            "bz": 0.391826,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.180615,
+            "bz": 0.436044,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.281944,
+            "bz": 0.367436,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.822763,
+            "bz": 0.631328,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.862148,
+            "bz": 0.357113,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.028125
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.747766,
+            "bz": 0.098445,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.028125
+          }
+        ],
+        "silhouetteRadius": 16.793125,
+        "toleranceWu": 2.015175
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 3387,
+        "inwardFaceFraction": 0.33775,
+        "silhouetteRadius": 16.793125,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            1.8196,
+            0.425,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0.09,
+            -0.85,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -9.5,
+            0.05,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            10.4,
+            0.275,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0.09,
+            0.425,
+            -4.847878
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0.09,
+            0.425,
+            4.847878
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -4.6664,
+            0.875,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -10.820001,
+            0.05,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -10.820001,
+            0.05,
+            -2.019949
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -10.820001,
+            0.05,
+            2.019949
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0.09,
+            1.7,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            10.5,
+            0.425,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 24688,
+      "unmeasuredHitVolumes": [
+        "subsystem_transport_clamp"
+      ],
+      "url": "assets/ships/release/parts/wholeships/wasp_production_v1.glb",
+      "worldSize": [
+        27.52,
+        3.372379,
+        20.569144
       ]
     },
     {
@@ -11213,7 +12316,7 @@
           9.528477
         ]
       },
-      "bytes": 1180204,
+      "bytes": 1178412,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -11675,7 +12778,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4751,
+        "boundaryEdges": 4746,
         "inwardFaceFraction": 0.1915,
         "silhouetteRadius": 15.70675,
         "sliceY": 0
@@ -11782,7 +12885,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 54220,
+      "triangles": 53835,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -11791,6 +12894,559 @@
         30.96,
         5.457601,
         10.095399
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          0.175488,
+          1.630526,
+          0
+        ],
+        "max": [
+          13.321647,
+          4.53126,
+          3.914392
+        ],
+        "min": [
+          -12.970671,
+          -1.270208,
+          -3.914392
+        ],
+        "size": [
+          26.292317,
+          5.801468,
+          7.828783
+        ]
+      },
+      "bytes": 1265960,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:pallet_jack",
+        "kind": "proxy",
+        "outline": [
+          17.501719,
+          16.622685,
+          6.79708,
+          4.779864,
+          4.03731,
+          4.672438,
+          0,
+          5.253802,
+          5.853026,
+          7.443469,
+          16.751196,
+          17.478561,
+          17.478561,
+          16.751196,
+          7.443469,
+          5.853026,
+          5.253958,
+          0,
+          4.672438,
+          4.036482,
+          4.779164,
+          6.796589,
+          16.622254,
+          17.501719
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 2.100206,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1.308367,
+      "family": "enemy-hull",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:pallet_jack",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 20,
+        "proportions": {
+          "halfWidth": 0.26,
+          "height": 0.38,
+          "length": 1.72
+        },
+        "sizes": null
+      },
+      "id": "pallet_jack",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": true,
+          "name": "Material_Canopy",
+          "role": "glass"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber_beacon",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan_rust",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": {
+        "halfWidth": 0.256073,
+        "height": 0.379522,
+        "length": 1.72
+      },
+      "meshHash": null,
+      "meshes": 71,
+      "nodes": 87,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.175488,
+        1.630526,
+        0
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 2.100206,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 22,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.857685,
+            "bz": -0.112916,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.758629,
+            "bz": -0.314234,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.261691,
+            "bz": -0.200802,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.139402,
+            "bz": -0.181673,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.073424,
+            "bz": -0.177261,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.028145,
+            "bz": -0.213783,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.030494
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.0967,
+            "bz": -0.233455,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.172067,
+            "bz": -0.224242,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.287332,
+            "bz": -0.220477,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.764566,
+            "bz": -0.316693,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.856537,
+            "bz": -0.112765,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.856537,
+            "bz": 0.112765,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.764566,
+            "bz": 0.316693,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.287332,
+            "bz": 0.220477,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.172067,
+            "bz": 0.224242,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.096703,
+            "bz": 0.233462,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.028145,
+            "bz": 0.213783,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.030494
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.073408,
+            "bz": 0.177222,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.139381,
+            "bz": 0.181645,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.261671,
+            "bz": 0.200787,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.758609,
+            "bz": 0.314226,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0225
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.857685,
+            "bz": 0.112916,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0225
+          }
+        ],
+        "silhouetteRadius": 17.501719,
+        "toleranceWu": 2.100206
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 4580,
+        "inwardFaceFraction": 0.20575,
+        "silhouetteRadius": 17.501719,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            2.278198,
+            1.627247,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cargo_Ventral",
+          "position": [
+            0.174998,
+            -1.220006,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -12.7,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Mining_Front",
+          "position": [
+            12.819997,
+            1.477247,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Port",
+          "position": [
+            0.174998,
+            1.627247,
+            -2.346
+          ]
+        },
+        {
+          "name": "SOCKET_RCS_Starboard",
+          "position": [
+            0.174998,
+            1.627247,
+            2.346
+          ]
+        },
+        {
+          "name": "SOCKET_Tether_Massline",
+          "position": [
+            -11.1,
+            1.6,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Main",
+          "position": [
+            -13.070001,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Port",
+          "position": [
+            -13.070001,
+            0,
+            -0.9775
+          ]
+        },
+        {
+          "name": "SOCKET_Trail_Starboard",
+          "position": [
+            -13.070001,
+            0,
+            0.9775
+          ]
+        },
+        {
+          "name": "SOCKET_Utility_Dorsal",
+          "position": [
+            0.174998,
+            4.4745,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Weapon_Front",
+          "position": [
+            12.919997,
+            1.627247,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 54868,
+      "unmeasuredHitVolumes": [
+        "subsystem_transport_clamp"
+      ],
+      "url": "assets/ships/release/parts/wholeships/yard_tug.glb",
+      "worldSize": [
+        34.4,
+        7.59045,
+        10.242922
       ]
     },
     {
@@ -11816,7 +13472,7 @@
           8.8
         ]
       },
-      "bytes": 763136,
+      "bytes": 758908,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -12230,8 +13886,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1188,
-        "inwardFaceFraction": 0.23825,
+        "boundaryEdges": 1211,
+        "inwardFaceFraction": 0.24375,
         "silhouetteRadius": 19.60376,
         "sliceY": 0
       },
@@ -12345,7 +14001,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 23197,
+      "triangles": 22936,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -12379,7 +14035,7 @@
           11.02036
         ]
       },
-      "bytes": 849976,
+      "bytes": 831520,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -12809,8 +14465,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4756,
-        "inwardFaceFraction": 0.118,
+        "boundaryEdges": 4850,
+        "inwardFaceFraction": 0.11875,
         "silhouetteRadius": 17.416917,
         "sliceY": 0
       },
@@ -12916,7 +14572,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 32574,
+      "triangles": 30518,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -12950,7 +14606,7 @@
           16.1597
         ]
       },
-      "bytes": 1189512,
+      "bytes": 1039096,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -13356,8 +15012,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4184,
-        "inwardFaceFraction": 0.146,
+        "boundaryEdges": 5038,
+        "inwardFaceFraction": 0.33775,
         "silhouetteRadius": 13.644421,
         "sliceY": 0
       },
@@ -13463,7 +15119,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 62310,
+      "triangles": 46708,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -13497,7 +15153,7 @@
           6.150123
         ]
       },
-      "bytes": 949044,
+      "bytes": 940248,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -13926,8 +15582,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2565,
-        "inwardFaceFraction": 0.30975,
+        "boundaryEdges": 2564,
+        "inwardFaceFraction": 0.31075,
         "silhouetteRadius": 16.392788,
         "sliceY": 0
       },
@@ -14033,7 +15689,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 37724,
+      "triangles": 37267,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -14067,7 +15723,7 @@
           6.550297
         ]
       },
-      "bytes": 935596,
+      "bytes": 916180,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -14505,8 +16161,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4233,
-        "inwardFaceFraction": 0.1935,
+        "boundaryEdges": 4355,
+        "inwardFaceFraction": 0.2085,
         "silhouetteRadius": 16.041862,
         "sliceY": 0
       },
@@ -14612,7 +16268,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 37810,
+      "triangles": 35602,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -14646,7 +16302,7 @@
           6.150123
         ]
       },
-      "bytes": 949044,
+      "bytes": 940248,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -15075,8 +16731,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2565,
-        "inwardFaceFraction": 0.30975,
+        "boundaryEdges": 2564,
+        "inwardFaceFraction": 0.31075,
         "silhouetteRadius": 16.392788,
         "sliceY": 0
       },
@@ -15182,7 +16838,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 37724,
+      "triangles": 37267,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -15216,7 +16872,7 @@
           11.02036
         ]
       },
-      "bytes": 850080,
+      "bytes": 831620,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -15646,8 +17302,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4756,
-        "inwardFaceFraction": 0.118,
+        "boundaryEdges": 4850,
+        "inwardFaceFraction": 0.11875,
         "silhouetteRadius": 18.287763,
         "sliceY": 0
       },
@@ -15753,7 +17409,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 32574,
+      "triangles": 30518,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -15787,7 +17443,7 @@
           6.894131
         ]
       },
-      "bytes": 896216,
+      "bytes": 889976,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -16225,8 +17881,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4727,
-        "inwardFaceFraction": 0.1415,
+        "boundaryEdges": 4769,
+        "inwardFaceFraction": 0.15875,
         "silhouetteRadius": 10.811785,
         "sliceY": 0
       },
@@ -16332,7 +17988,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 38474,
+      "triangles": 37680,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -16366,7 +18022,7 @@
           9.465342
         ]
       },
-      "bytes": 1343704,
+      "bytes": 1279856,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -16820,8 +18476,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 6479,
-        "inwardFaceFraction": 0.01975,
+        "boundaryEdges": 7868,
+        "inwardFaceFraction": 0.03725,
         "silhouetteRadius": 13.141692,
         "sliceY": 0
       },
@@ -16927,7 +18583,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 68886,
+      "triangles": 61390,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -16961,7 +18617,7 @@
           6.150123
         ]
       },
-      "bytes": 949092,
+      "bytes": 940300,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -17390,8 +19046,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2565,
-        "inwardFaceFraction": 0.30975,
+        "boundaryEdges": 2564,
+        "inwardFaceFraction": 0.31075,
         "silhouetteRadius": 16.392788,
         "sliceY": 0
       },
@@ -17497,7 +19153,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 37724,
+      "triangles": 37267,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -17531,7 +19187,7 @@
           9.528477
         ]
       },
-      "bytes": 1180308,
+      "bytes": 1178516,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -17993,7 +19649,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4742,
+        "boundaryEdges": 4738,
         "inwardFaceFraction": 0.1915,
         "silhouetteRadius": 15.70675,
         "sliceY": 0
@@ -18100,7 +19756,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 54220,
+      "triangles": 53835,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -18134,7 +19790,7 @@
           9.528477
         ]
       },
-      "bytes": 1180212,
+      "bytes": 1178400,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -18596,7 +20252,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4751,
+        "boundaryEdges": 4746,
         "inwardFaceFraction": 0.1915,
         "silhouetteRadius": 15.70675,
         "sliceY": 0
@@ -18703,7 +20359,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 54220,
+      "triangles": 53835,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -18737,7 +20393,7 @@
           9.528477
         ]
       },
-      "bytes": 1180272,
+      "bytes": 1178464,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -19199,7 +20855,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4751,
+        "boundaryEdges": 4746,
         "inwardFaceFraction": 0.1915,
         "silhouetteRadius": 15.70675,
         "sliceY": 0
@@ -19306,7 +20962,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 54220,
+      "triangles": 53835,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -19340,7 +20996,7 @@
           16.1597
         ]
       },
-      "bytes": 1189532,
+      "bytes": 1039148,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -19746,8 +21402,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4184,
-        "inwardFaceFraction": 0.146,
+        "boundaryEdges": 5038,
+        "inwardFaceFraction": 0.33775,
         "silhouetteRadius": 14.693992,
         "sliceY": 0
       },
@@ -19853,7 +21509,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 62310,
+      "triangles": 46708,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -19887,7 +21543,7 @@
           16.1597
         ]
       },
-      "bytes": 1189604,
+      "bytes": 1039112,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -20293,8 +21949,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4225,
-        "inwardFaceFraction": 0.146,
+        "boundaryEdges": 5079,
+        "inwardFaceFraction": 0.33775,
         "silhouetteRadius": 14.693992,
         "sliceY": 0
       },
@@ -20400,7 +22056,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 62310,
+      "triangles": 46707,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -20434,7 +22090,7 @@
           16.1597
         ]
       },
-      "bytes": 1189508,
+      "bytes": 1039108,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -20840,8 +22496,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4184,
-        "inwardFaceFraction": 0.146,
+        "boundaryEdges": 5038,
+        "inwardFaceFraction": 0.33775,
         "silhouetteRadius": 14.693992,
         "sliceY": 0
       },
@@ -20947,7 +22603,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 62310,
+      "triangles": 46708,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -20981,7 +22637,7 @@
           101.302132
         ]
       },
-      "bytes": 1965004,
+      "bytes": 1961876,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -21218,8 +22874,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 610,
-        "inwardFaceFraction": 0.42325,
+        "boundaryEdges": 616,
+        "inwardFaceFraction": 0.4235,
         "silhouetteRadius": 67.353565,
         "sliceY": 0
       },
@@ -21269,7 +22925,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 85442,
+      "triangles": 85210,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
       "worldSize": [
@@ -21301,7 +22957,7 @@
           13.652058
         ]
       },
-      "bytes": 879144,
+      "bytes": 861980,
       "collider": {
         "authoredClearVolumesPreserved": true,
         "compoundBoxesWU": [
@@ -21967,7 +23623,7 @@
       "source": "glb",
       "status": "green",
       "tasteBudget": null,
-      "triangles": 37060,
+      "triangles": 36340,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_latch_nine.glb",
       "worldSize": [
@@ -22440,7 +24096,7 @@
           6.142233
         ]
       },
-      "bytes": 443076,
+      "bytes": 441780,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -22797,7 +24453,7 @@
       ],
       "shell": {
         "boundaryEdges": 345,
-        "inwardFaceFraction": 0.2155,
+        "inwardFaceFraction": 0.216,
         "silhouetteRadius": 3.071282,
         "sliceY": 0
       },
@@ -22806,7 +24462,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 6604,
+      "triangles": 6580,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_ash_pin.glb",
       "worldSize": [
@@ -22838,7 +24494,7 @@
           73.004272
         ]
       },
-      "bytes": 614420,
+      "bytes": 614504,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -23236,7 +24892,7 @@
       ],
       "shell": {
         "boundaryEdges": 180,
-        "inwardFaceFraction": 0.40225,
+        "inwardFaceFraction": 0.40775,
         "silhouetteRadius": 53.809464,
         "sliceY": 0
       },
@@ -23270,7 +24926,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 11928,
+      "triangles": 11886,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_breakaway_fork.glb",
       "worldSize": [
@@ -23302,7 +24958,7 @@
           18.215514
         ]
       },
-      "bytes": 543700,
+      "bytes": 543564,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -24064,23 +25720,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "bd1d10a29b77a70fbfd157c312a66ad750930fa79d0d93bb07e7b070e4f2694a"
+              "sha256": "a42f308137fc83b3c378cd09891f1cb92c09889c896bc8108bc48e703f0f6b1a"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "af219c874732991d5428674b5d2cdeb1feff3b048d8944ff9fff38d17494eaa0"
+              "sha256": "c7d6997d79a237ebee73673dfb1a1d3f03c26376fee3f95474c9794595fe8458"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "ef65ec40febbf68c67da0d99b200003e788e35609b6d7d1d048a92c06ac5396e"
+              "sha256": "e4d650dfb4f93b4dcf2c012d88c5b10096f4a941f59ac76d790fbf6ce2c8aa7c"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c"
+              "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
-              "sha256": "58489573ab226ee4c5ff9b481dfe96bf26ff33f71c72d62d1ffaaaa20a7ff435"
+              "sha256": "a91dd67424a1bcc294087dcd99e47476dcee824bad241947b1b7a26bfe1af544"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -24616,23 +26272,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "bd1d10a29b77a70fbfd157c312a66ad750930fa79d0d93bb07e7b070e4f2694a"
+              "sha256": "a42f308137fc83b3c378cd09891f1cb92c09889c896bc8108bc48e703f0f6b1a"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "af219c874732991d5428674b5d2cdeb1feff3b048d8944ff9fff38d17494eaa0"
+              "sha256": "c7d6997d79a237ebee73673dfb1a1d3f03c26376fee3f95474c9794595fe8458"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "ef65ec40febbf68c67da0d99b200003e788e35609b6d7d1d048a92c06ac5396e"
+              "sha256": "e4d650dfb4f93b4dcf2c012d88c5b10096f4a941f59ac76d790fbf6ce2c8aa7c"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c"
+              "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
-              "sha256": "bdb3617660b11ed7a9465ba6a8bcfec9945ee86537ad25f4cf668b68f9d62e46"
+              "sha256": "3f54fd0c92aaf14ecb57335a93a4ddae176c5bc796d966031eb887c5de135594"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -25084,23 +26740,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "bd1d10a29b77a70fbfd157c312a66ad750930fa79d0d93bb07e7b070e4f2694a"
+              "sha256": "a42f308137fc83b3c378cd09891f1cb92c09889c896bc8108bc48e703f0f6b1a"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "af219c874732991d5428674b5d2cdeb1feff3b048d8944ff9fff38d17494eaa0"
+              "sha256": "c7d6997d79a237ebee73673dfb1a1d3f03c26376fee3f95474c9794595fe8458"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "ef65ec40febbf68c67da0d99b200003e788e35609b6d7d1d048a92c06ac5396e"
+              "sha256": "e4d650dfb4f93b4dcf2c012d88c5b10096f4a941f59ac76d790fbf6ce2c8aa7c"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c"
+              "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
-              "sha256": "b721739e90c1f2a58baaff764659b4efab372ba7ec19cb73def191fa45a4e4cb"
+              "sha256": "10906bc8d37f3f19bdd3080c0893fad0833570fec398276bcdb2029c6bfa02af"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -25588,23 +27244,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "bd1d10a29b77a70fbfd157c312a66ad750930fa79d0d93bb07e7b070e4f2694a"
+              "sha256": "a42f308137fc83b3c378cd09891f1cb92c09889c896bc8108bc48e703f0f6b1a"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "af219c874732991d5428674b5d2cdeb1feff3b048d8944ff9fff38d17494eaa0"
+              "sha256": "c7d6997d79a237ebee73673dfb1a1d3f03c26376fee3f95474c9794595fe8458"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "ef65ec40febbf68c67da0d99b200003e788e35609b6d7d1d048a92c06ac5396e"
+              "sha256": "e4d650dfb4f93b4dcf2c012d88c5b10096f4a941f59ac76d790fbf6ce2c8aa7c"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "01ef864d589828f987d310fb85f621000d6615efa7c9dc66d31380ff5611604c"
+              "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
-              "sha256": "09bb968c606c266d3a39cb36f99b86476d3141ce8afe73857d9fc080c2a9ad88"
+              "sha256": "5fa2711d1e6668b42f5b22d6133b0083cd53ffeba65de7dd2ca3e4fb705217f2"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -25803,7 +27459,7 @@
           3.617943
         ]
       },
-      "bytes": 239288,
+      "bytes": 239220,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -26151,7 +27807,7 @@
       ],
       "shell": {
         "boundaryEdges": 65,
-        "inwardFaceFraction": 0.1935,
+        "inwardFaceFraction": 0.1945,
         "silhouetteRadius": 2.756165,
         "sliceY": 0
       },
@@ -26160,7 +27816,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 4834,
+      "triangles": 4826,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_mark.glb",
       "worldSize": [
@@ -26192,7 +27848,7 @@
           22.117361
         ]
       },
-      "bytes": 833552,
+      "bytes": 820696,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -26563,7 +28219,7 @@
       ],
       "shell": {
         "boundaryEdges": 916,
-        "inwardFaceFraction": 0.4195,
+        "inwardFaceFraction": 0.43575,
         "silhouetteRadius": 49.112118,
         "sliceY": 0
       },
@@ -26629,7 +28285,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 33730,
+      "triangles": 32846,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_base.glb",
       "worldSize": [
@@ -26661,7 +28317,7 @@
           23.137047
         ]
       },
-      "bytes": 1052536,
+      "bytes": 1040640,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -26994,8 +28650,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 974,
-        "inwardFaceFraction": 0.4035,
+        "boundaryEdges": 980,
+        "inwardFaceFraction": 0.41825,
         "silhouetteRadius": 49.128343,
         "sliceY": 0
       },
@@ -27061,7 +28717,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 48416,
+      "triangles": 47415,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_bastion.glb",
       "worldSize": [
@@ -27093,7 +28749,7 @@
           17.519669
         ]
       },
-      "bytes": 1094540,
+      "bytes": 1081004,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -27426,7 +29082,7 @@
       ],
       "shell": {
         "boundaryEdges": 930,
-        "inwardFaceFraction": 0.4195,
+        "inwardFaceFraction": 0.42975,
         "silhouetteRadius": 49.204294,
         "sliceY": 0
       },
@@ -27492,7 +29148,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 45856,
+      "triangles": 44983,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_catcher.glb",
       "worldSize": [
@@ -27524,7 +29180,7 @@
           23.121053
         ]
       },
-      "bytes": 1120196,
+      "bytes": 1106128,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -27533,7 +29189,7 @@
         "outline": [
           48.359446,
           14.609163,
-          11.585777,
+          11.59236,
           8.204208,
           6.686612,
           6.126559,
@@ -27735,8 +29391,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.752745,
-            "bz": -0.577602,
+            "bx": -0.753181,
+            "bz": -0.577936,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.0375
@@ -27875,8 +29531,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1050,
-        "inwardFaceFraction": 0.41225,
+        "boundaryEdges": 1053,
+        "inwardFaceFraction": 0.4385,
         "silhouetteRadius": 49.867517,
         "sliceY": 0
       },
@@ -27942,7 +29598,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 50182,
+      "triangles": 48851,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_fence.glb",
       "worldSize": [
@@ -27974,7 +29630,7 @@
           22.088726
         ]
       },
-      "bytes": 1142984,
+      "bytes": 1137832,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -28353,8 +30009,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 954,
-        "inwardFaceFraction": 0.41475,
+        "boundaryEdges": 1009,
+        "inwardFaceFraction": 0.42225,
         "silhouetteRadius": 49.111743,
         "sliceY": 0
       },
@@ -28420,7 +30076,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 55690,
+      "triangles": 54765,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_refinery.glb",
       "worldSize": [
@@ -28452,7 +30108,7 @@
           21.874244
         ]
       },
-      "bytes": 1004408,
+      "bytes": 990676,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -28830,7 +30486,7 @@
       ],
       "shell": {
         "boundaryEdges": 1020,
-        "inwardFaceFraction": 0.423,
+        "inwardFaceFraction": 0.42775,
         "silhouetteRadius": 49.191854,
         "sliceY": 0
       },
@@ -28896,7 +30552,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 43346,
+      "triangles": 42446,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
       "worldSize": [
@@ -29324,7 +30980,7 @@
           6.600064
         ]
       },
-      "bytes": 27596,
+      "bytes": 28040,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -29705,7 +31361,7 @@
           12.937276
         ]
       },
-      "bytes": 38184,
+      "bytes": 38324,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -29980,7 +31636,7 @@
           16.602038
         ]
       },
-      "bytes": 559352,
+      "bytes": 559316,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -30315,7 +31971,7 @@
       ],
       "shell": {
         "boundaryEdges": 0,
-        "inwardFaceFraction": 0.2705,
+        "inwardFaceFraction": 0.272,
         "silhouetteRadius": 37.534543,
         "sliceY": 0
       },
@@ -30405,7 +32061,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 12232,
+      "triangles": 12226,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_conveyor_barge.glb",
       "worldSize": [
@@ -30808,7 +32464,7 @@
           7.150064
         ]
       },
-      "bytes": 29192,
+      "bytes": 28700,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -31123,7 +32779,7 @@
           3.4
         ]
       },
-      "bytes": 15252,
+      "bytes": 15412,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -31344,7 +33000,7 @@
           36.00183
         ]
       },
-      "bytes": 341144,
+      "bytes": 338232,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -31625,7 +33281,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 12276,
+      "triangles": 12266,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_dock_interior.glb",
       "worldSize": [
@@ -31657,7 +33313,7 @@
           16.001346
         ]
       },
-      "bytes": 429992,
+      "bytes": 426304,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -31912,7 +33568,7 @@
       ],
       "shell": {
         "boundaryEdges": 64,
-        "inwardFaceFraction": 0.354,
+        "inwardFaceFraction": 0.359,
         "silhouetteRadius": 11.278083,
         "sliceY": 0
       },
@@ -31938,7 +33594,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 11480,
+      "triangles": 11352,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_drill_platform.glb",
       "worldSize": [
@@ -31970,7 +33626,7 @@
           14.6
         ]
       },
-      "bytes": 22632,
+      "bytes": 22572,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -32325,7 +33981,7 @@
           9.000721
         ]
       },
-      "bytes": 408816,
+      "bytes": 408692,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -33920,7 +35576,7 @@
           13.15
         ]
       },
-      "bytes": 287852,
+      "bytes": 284036,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -34256,7 +35912,7 @@
       ],
       "shell": {
         "boundaryEdges": 64,
-        "inwardFaceFraction": 0.36575,
+        "inwardFaceFraction": 0.37125,
         "silhouetteRadius": 7.415819,
         "sliceY": 0
       },
@@ -34274,7 +35930,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 5920,
+      "triangles": 5808,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_improvised_dock.glb",
       "worldSize": [
@@ -34306,7 +35962,7 @@
           10.400781
         ]
       },
-      "bytes": 27948,
+      "bytes": 28076,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -34640,7 +36296,7 @@
           212.963898
         ]
       },
-      "bytes": 2790564,
+      "bytes": 2762772,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -35070,7 +36726,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 8007,
+        "boundaryEdges": 8030,
         "inwardFaceFraction": 0.478,
         "silhouetteRadius": 106.945924,
         "sliceY": 0
@@ -35097,7 +36753,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 118721,
+      "triangles": 117652,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_landmark_candle_fleet.glb",
       "worldSize": [
@@ -35129,7 +36785,7 @@
           180.17691
         ]
       },
-      "bytes": 2203068,
+      "bytes": 2198072,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -35138,7 +36794,7 @@
         "outline": [
           56.060166,
           56.904903,
-          71.980436,
+          71.975783,
           78.157828,
           91.911032,
           92.286036,
@@ -35157,7 +36813,7 @@
           92.286036,
           91.856267,
           78.157828,
-          71.980436,
+          71.975783,
           56.846998,
           56.060166
         ],
@@ -35356,8 +37012,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.632747,
-            "bz": -0.485524,
+            "bx": -0.632706,
+            "bz": -0.485493,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.005
@@ -35527,8 +37183,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.632747,
-            "bz": 0.485524,
+            "bx": -0.632706,
+            "bz": 0.485493,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.005
@@ -35559,8 +37215,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 8089,
-        "inwardFaceFraction": 0.3685,
+        "boundaryEdges": 8703,
+        "inwardFaceFraction": 0.3755,
         "silhouetteRadius": 92.286036,
         "sliceY": 0
       },
@@ -35586,7 +37242,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 96942,
+      "triangles": 95610,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_landmark_resonant_cathedral.glb",
       "worldSize": [
@@ -35618,7 +37274,7 @@
           189.884716
         ]
       },
-      "bytes": 2458972,
+      "bytes": 2455748,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -36064,8 +37720,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 28395,
-        "inwardFaceFraction": 0.356,
+        "boundaryEdges": 28464,
+        "inwardFaceFraction": 0.357,
         "silhouetteRadius": 111.769048,
         "sliceY": 0
       },
@@ -36091,7 +37747,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 108694,
+      "triangles": 108139,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_landmark_skerris_throne.glb",
       "worldSize": [
@@ -36981,7 +38637,7 @@
           6.3
         ]
       },
-      "bytes": 28892,
+      "bytes": 30100,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -37318,7 +38974,7 @@
           4.500072
         ]
       },
-      "bytes": 29008,
+      "bytes": 28352,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -38323,7 +39979,7 @@
           7.9
         ]
       },
-      "bytes": 31812,
+      "bytes": 31956,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -38631,7 +40287,7 @@
           3.250137
         ]
       },
-      "bytes": 22736,
+      "bytes": 23084,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -39064,7 +40720,7 @@
           3.250137
         ]
       },
-      "bytes": 25224,
+      "bytes": 25568,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -39480,7 +41136,7 @@
           6.44379
         ]
       },
-      "bytes": 1140316,
+      "bytes": 1116012,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -39509,7 +41165,7 @@
           2.814691,
           2.803811,
           4.792551,
-          9.204385,
+          9.206383,
           17.720777
         ],
         "overTolerance": false,
@@ -39887,8 +41543,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.693247,
-            "bz": 0.287152,
+            "bx": -0.693401,
+            "bz": 0.287216,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.0375
@@ -39910,8 +41566,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 5503,
-        "inwardFaceFraction": 0.22425,
+        "boundaryEdges": 5502,
+        "inwardFaceFraction": 0.2545,
         "silhouetteRadius": 17.720796,
         "sliceY": 0
       },
@@ -39937,7 +41593,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 65772,
+      "triangles": 62176,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_quiessence_freighter_a.glb",
       "worldSize": [
@@ -39969,7 +41625,7 @@
           9.52844
         ]
       },
-      "bytes": 956196,
+      "bytes": 954916,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -40423,7 +42079,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4373,
+        "boundaryEdges": 4365,
         "inwardFaceFraction": 0.1795,
         "silhouetteRadius": 14.814597,
         "sliceY": 0
@@ -40450,7 +42106,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 50748,
+      "triangles": 50399,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_quiessence_freighter_b.glb",
       "worldSize": [
@@ -40482,7 +42138,7 @@
           9.511053
         ]
       },
-      "bytes": 1037336,
+      "bytes": 997880,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -40944,8 +42600,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 8565,
-        "inwardFaceFraction": 0.26075,
+        "boundaryEdges": 8891,
+        "inwardFaceFraction": 0.30375,
         "silhouetteRadius": 21.866154,
         "sliceY": 0
       },
@@ -40971,7 +42627,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 57444,
+      "triangles": 53480,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_quiessence_freighter_c.glb",
       "worldSize": [
@@ -41756,7 +43412,7 @@
           3.600256
         ]
       },
-      "bytes": 22360,
+      "bytes": 22308,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -42049,7 +43705,7 @@
           6.550848
         ]
       },
-      "bytes": 325528,
+      "bytes": 326136,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -42453,7 +44109,7 @@
           4.16998
         ]
       },
-      "bytes": 704440,
+      "bytes": 699792,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -42751,8 +44407,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1060,
-        "inwardFaceFraction": 0.46575,
+        "boundaryEdges": 1104,
+        "inwardFaceFraction": 0.47075,
         "silhouetteRadius": 3.01919,
         "sliceY": 0
       },
@@ -42770,7 +44426,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 22020,
+      "triangles": 21768,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_sensor_mast.glb",
       "worldSize": [
@@ -42802,7 +44458,7 @@
           10.399463
         ]
       },
-      "bytes": 33896,
+      "bytes": 33968,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -43177,7 +44833,7 @@
           4.777294
         ]
       },
-      "bytes": 613436,
+      "bytes": 614228,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -43618,7 +45274,7 @@
           21.460001
         ]
       },
-      "bytes": 28224,
+      "bytes": 28424,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -43997,7 +45653,7 @@
           11.005426
         ]
       },
-      "bytes": 447088,
+      "bytes": 446836,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -44347,7 +46003,7 @@
           6.200049
         ]
       },
-      "bytes": 25948,
+      "bytes": 26516,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -44662,7 +46318,7 @@
           2.4
         ]
       },
-      "bytes": 17756,
+      "bytes": 17924,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -44997,7 +46653,7 @@
           4.595002
         ]
       },
-      "bytes": 361684,
+      "bytes": 356900,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -45208,7 +46864,7 @@
       ],
       "shell": {
         "boundaryEdges": 282,
-        "inwardFaceFraction": 0.4225,
+        "inwardFaceFraction": 0.4355,
         "silhouetteRadius": 10.821187,
         "sliceY": 0
       },
@@ -45234,7 +46890,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 9498,
+      "triangles": 9290,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_transfer_arm.glb",
       "worldSize": [
@@ -45266,7 +46922,7 @@
           22.6
         ]
       },
-      "bytes": 566060,
+      "bytes": 566152,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -45913,7 +47569,7 @@
           3.000609
         ]
       },
-      "bytes": 791868,
+      "bytes": 785080,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -46303,8 +47959,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 549,
-        "inwardFaceFraction": 0.4085,
+        "boundaryEdges": 555,
+        "inwardFaceFraction": 0.426,
         "silhouetteRadius": 2.112411,
         "sliceY": 0
       },
@@ -46322,7 +47978,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 25571,
+      "triangles": 25095,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_worklight_tower.glb",
       "worldSize": [
@@ -46354,7 +48010,7 @@
           106.427587
         ]
       },
-      "bytes": 784512,
+      "bytes": 783040,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -46965,7 +48621,7 @@
           115.573442
         ]
       },
-      "bytes": 1083804,
+      "bytes": 1077028,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -47264,8 +48920,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1662,
-        "inwardFaceFraction": 0.436,
+        "boundaryEdges": 1714,
+        "inwardFaceFraction": 0.4345,
         "silhouetteRadius": 83.957733,
         "sliceY": 15.698236
       },
@@ -47274,7 +48930,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39345,
+      "triangles": 38369,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb",
       "worldSize": [
@@ -47306,7 +48962,7 @@
           7.581519
         ]
       },
-      "bytes": 894364,
+      "bytes": 864100,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -47314,7 +48970,7 @@
         "kind": "proxy",
         "outline": [
           26.400418,
-          18.743343,
+          18.744537,
           14.063661,
           9.451161,
           8.383827,
@@ -47335,8 +48991,8 @@
           8.383827,
           9.451161,
           14.063661,
-          18.743343,
-          26.400418
+          18.744537,
+          26.400362
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -47372,7 +49028,7 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 0.003557,
+          "lod1": 0.002363,
           "lod2": 0.00393
         },
         "overTolerance": false,
@@ -47551,8 +49207,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.57106,
-            "bz": -0.236541,
+            "bx": -0.571097,
+            "bz": -0.236556,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.015
@@ -47740,8 +49396,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.57106,
-            "bz": 0.236541,
+            "bx": -0.571097,
+            "bz": 0.236556,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.015
@@ -47749,8 +49405,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.865876,
-            "bz": 0.113995,
+            "bx": -0.865874,
+            "bz": 0.113994,
             "id": "arm-23",
             "kind": "capsule",
             "r": 0.015
@@ -47763,7 +49419,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2078,
+        "boundaryEdges": 2234,
         "inwardFaceFraction": 0.2555,
         "silhouetteRadius": 26.400418,
         "sliceY": 0
@@ -47870,7 +49526,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39968,
+      "triangles": 37114,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -47904,7 +49560,7 @@
           8.600095
         ]
       },
-      "bytes": 824300,
+      "bytes": 808176,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -48337,7 +49993,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3986,
+        "boundaryEdges": 4187,
         "inwardFaceFraction": 0.2585,
         "silhouetteRadius": 19.971855,
         "sliceY": 0
@@ -48444,7 +50100,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 34806,
+      "triangles": 31327,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -48478,7 +50134,7 @@
           26.217253
         ]
       },
-      "bytes": 1160636,
+      "bytes": 1053468,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -48488,9 +50144,9 @@
           28.669859,
           28.712718,
           16.737955,
-          9.964399,
+          9.964337,
           9.033405,
-          7.15269,
+          7.150956,
           7.861847,
           8.182498,
           10.555762,
@@ -48701,8 +50357,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.185756,
-            "bz": -0.242082,
+            "bx": -0.185755,
+            "bz": -0.24208,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.014063
@@ -48719,8 +50375,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.02836,
-            "bz": -0.215413,
+            "bx": -0.028353,
+            "bz": -0.215359,
             "id": "arm-5",
             "kind": "capsule",
             "r": 0.014063
@@ -48895,8 +50551,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 906,
-        "inwardFaceFraction": 0.138,
+        "boundaryEdges": 2594,
+        "inwardFaceFraction": 0.19975,
         "silhouetteRadius": 28.712718,
         "sliceY": 0
       },
@@ -49002,7 +50658,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 59184,
+      "triangles": 48251,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -49036,7 +50692,7 @@
           7.112883
         ]
       },
-      "bytes": 836772,
+      "bytes": 767256,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -49493,8 +51149,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1908,
-        "inwardFaceFraction": 0.3285,
+        "boundaryEdges": 3294,
+        "inwardFaceFraction": 0.3505,
         "silhouetteRadius": 15.962213,
         "sliceY": 0
       },
@@ -49600,7 +51256,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39098,
+      "triangles": 30462,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -49634,7 +51290,7 @@
           7.828783
         ]
       },
-      "bytes": 1350816,
+      "bytes": 1265960,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -50046,8 +51702,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3689,
-        "inwardFaceFraction": 0.13325,
+        "boundaryEdges": 4580,
+        "inwardFaceFraction": 0.20575,
         "silhouetteRadius": 19.251891,
         "sliceY": 0
       },
@@ -50153,7 +51809,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 65520,
+      "triangles": 54868,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -50187,7 +51843,7 @@
           8.8
         ]
       },
-      "bytes": 582604,
+      "bytes": 579136,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -50605,8 +52261,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 784,
-        "inwardFaceFraction": 0.23825,
+        "boundaryEdges": 807,
+        "inwardFaceFraction": 0.24375,
         "silhouetteRadius": 17.427142,
         "sliceY": 0
       },
@@ -50720,7 +52376,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 16076,
+      "triangles": 15907,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -50754,7 +52410,7 @@
           6.781366
         ]
       },
-      "bytes": 921772,
+      "bytes": 905800,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -50784,7 +52440,7 @@
           9.419324,
           13.669532,
           15.946032,
-          21.06751
+          21.067565
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -51181,7 +52837,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.862041,
+            "bx": -0.862043,
             "bz": 0.11349,
             "id": "arm-23",
             "kind": "capsule",
@@ -51195,8 +52851,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1893,
-        "inwardFaceFraction": 0.12725,
+        "boundaryEdges": 1911,
+        "inwardFaceFraction": 0.13375,
         "silhouetteRadius": 21.283554,
         "sliceY": 0
       },
@@ -51302,7 +52958,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 44718,
+      "triangles": 42009,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -51336,7 +52992,7 @@
           13.260697
         ]
       },
-      "bytes": 919564,
+      "bytes": 916260,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -51559,7 +53215,7 @@
         "height": 0.426148,
         "length": 1.72
       },
-      "meshHash": "36de30b7db60ab1ea58698a66d48ddb3f2a0709dfce45b6caae915af441e955f",
+      "meshHash": "c418f72d88b2618672854fe26a5fbac15ad6194cf5f644489fbb8dc8a36f0301",
       "meshes": 40,
       "nodes": 68,
       "note": null,
@@ -51802,8 +53458,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2380,
-        "inwardFaceFraction": 0.17275,
+        "boundaryEdges": 2378,
+        "inwardFaceFraction": 0.17375,
         "silhouetteRadius": 12.517587,
         "sliceY": 0
       },
@@ -51885,7 +53541,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39518,
+      "triangles": 39206,
       "unmeasuredHitVolumes": [
         "subsystem_tether_spool",
         "subsystem_transport_clamp"
@@ -51920,7 +53576,7 @@
           33.128057
         ]
       },
-      "bytes": 1116956,
+      "bytes": 1037260,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -52353,8 +54009,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1840,
-        "inwardFaceFraction": 0.30725,
+        "boundaryEdges": 3915,
+        "inwardFaceFraction": 0.397,
         "silhouetteRadius": 39.378397,
         "sliceY": 0
       },
@@ -52460,7 +54116,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 53340,
+      "triangles": 44537,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -52494,7 +54150,7 @@
           6.924717
         ]
       },
-      "bytes": 713092,
+      "bytes": 709768,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -52502,7 +54158,7 @@
         "kind": "proxy",
         "outline": [
           15.683783,
-          12.075203,
+          12.074865,
           11.508714,
           8.720762,
           7.301584,
@@ -52723,8 +54379,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.609514,
-            "bz": -0.252469,
+            "bx": -0.609497,
+            "bz": -0.252462,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.025
@@ -52935,8 +54591,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1427,
-        "inwardFaceFraction": 0.3695,
+        "boundaryEdges": 1423,
+        "inwardFaceFraction": 0.38975,
         "silhouetteRadius": 15.683783,
         "sliceY": 0
       },
@@ -53042,7 +54698,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 26746,
+      "triangles": 26340,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -53076,7 +54732,7 @@
           6.263548
         ]
       },
-      "bytes": 717404,
+      "bytes": 711568,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -53596,7 +55252,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 27474,
+      "triangles": 26794,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -53630,7 +55286,7 @@
           7.541389
         ]
       },
-      "bytes": 796388,
+      "bytes": 780292,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -54047,8 +55703,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1257,
-        "inwardFaceFraction": 0.29425,
+        "boundaryEdges": 2785,
+        "inwardFaceFraction": 0.2785,
         "silhouetteRadius": 16.431809,
         "sliceY": 0
       },
@@ -54154,7 +55810,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 33120,
+      "triangles": 30727,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -54188,7 +55844,7 @@
           22.061022
         ]
       },
-      "bytes": 1161384,
+      "bytes": 882744,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -54613,8 +56269,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 331,
-        "inwardFaceFraction": 0.4205,
+        "boundaryEdges": 717,
+        "inwardFaceFraction": 0.432,
         "silhouetteRadius": 17.505325,
         "sliceY": 0
       },
@@ -54736,7 +56392,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 60570,
+      "triangles": 34185,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -54770,7 +56426,7 @@
           12.513488
         ]
       },
-      "bytes": 992716,
+      "bytes": 831068,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -54778,7 +56434,7 @@
         "kind": "proxy",
         "outline": [
           21.509534,
-          19.626884,
+          19.626854,
           12.700272,
           8.930258,
           6.183671,
@@ -54983,7 +56639,7 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.690312,
+            "bx": -0.690311,
             "bz": -0.285936,
             "id": "arm-1",
             "kind": "capsule",
@@ -55195,8 +56851,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2004,
-        "inwardFaceFraction": 0.12325,
+        "boundaryEdges": 4273,
+        "inwardFaceFraction": 0.339,
         "silhouetteRadius": 21.77049,
         "sliceY": 0
       },
@@ -55302,7 +56958,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 46694,
+      "triangles": 30670,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -55336,7 +56992,7 @@
           16.1597
         ]
       },
-      "bytes": 799804,
+      "bytes": 660588,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -55745,8 +57401,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 632,
-        "inwardFaceFraction": 0.146,
+        "boundaryEdges": 3387,
+        "inwardFaceFraction": 0.33775,
         "silhouetteRadius": 14.693985,
         "sliceY": 0
       },
@@ -55852,7 +57508,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39784,
+      "triangles": 24688,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -55886,7 +57542,7 @@
           3.400394
         ]
       },
-      "bytes": 17212,
+      "bytes": 17328,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -57021,7 +58677,7 @@
           7.300547
         ]
       },
-      "bytes": 913684,
+      "bytes": 912940,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -57834,7 +59490,7 @@
           7.6
         ]
       },
-      "bytes": 26408,
+      "bytes": 27036,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -58205,7 +59861,7 @@
           7.414253
         ]
       },
-      "bytes": 23748,
+      "bytes": 24132,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -58577,7 +60233,7 @@
           5.060018
         ]
       },
-      "bytes": 258892,
+      "bytes": 270044,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -61533,7 +63189,7 @@
           17.43596
         ]
       },
-      "bytes": 723336,
+      "bytes": 722204,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -61990,7 +63646,7 @@
           9.586474
         ]
       },
-      "bytes": 423668,
+      "bytes": 423164,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -62359,7 +64015,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "no-embedded-png",
-      "triangles": 12072,
+      "triangles": 12071,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_asteroid_rock_a.glb",
       "worldSize": [
@@ -62391,7 +64047,7 @@
           8.893869
         ]
       },
-      "bytes": 473136,
+      "bytes": 471200,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -62768,7 +64424,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 11608,
+      "triangles": 11588,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_asteroid_rock_b.glb",
       "worldSize": [
@@ -63209,7 +64865,7 @@
           19.196715
         ]
       },
-      "bytes": 423576,
+      "bytes": 422520,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -63618,7 +65274,7 @@
           9.494106
         ]
       },
-      "bytes": 391532,
+      "bytes": 390520,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -63907,7 +65563,7 @@
       ],
       "shell": {
         "boundaryEdges": 474,
-        "inwardFaceFraction": 0.3135,
+        "inwardFaceFraction": 0.3145,
         "silhouetteRadius": 8.243863,
         "sliceY": 0
       },
@@ -63925,7 +65581,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 9794,
+      "triangles": 9786,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_billboard.glb",
       "worldSize": [
@@ -63957,7 +65613,7 @@
           32.819509
         ]
       },
-      "bytes": 1988400,
+      "bytes": 1978528,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -64399,7 +66055,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 934,
+        "boundaryEdges": 937,
         "inwardFaceFraction": 0.42475,
         "silhouetteRadius": 76.894075,
         "sliceY": 0
@@ -64442,7 +66098,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 89400,
+      "triangles": 88997,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_blackmarket.glb",
       "worldSize": [
@@ -64474,7 +66130,7 @@
           50.401846
         ]
       },
-      "bytes": 1679372,
+      "bytes": 1661844,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -64908,8 +66564,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 6056,
-        "inwardFaceFraction": 0.338,
+        "boundaryEdges": 6163,
+        "inwardFaceFraction": 0.34975,
         "silhouetteRadius": 95.189587,
         "sliceY": 0
       },
@@ -64951,7 +66607,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 79927,
+      "triangles": 77558,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_fab.glb",
       "worldSize": [
@@ -64983,7 +66639,7 @@
           42.587891
         ]
       },
-      "bytes": 1667124,
+      "bytes": 1664076,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -64991,7 +66647,7 @@
         "kind": "proxy",
         "outline": [
           88.721055,
-          89.902954,
+          89.909747,
           82.776359,
           49.526284,
           47.542137,
@@ -65018,7 +66674,7 @@
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 10.789162,
+        "toleranceWu": 10.78917,
         "worstSize": "L"
       },
       "drawOffset": [
@@ -65062,7 +66718,7 @@
         "lod2": true,
         "outlineDeltaWu": {},
         "overTolerance": false,
-        "toleranceWu": 7.192775
+        "toleranceWu": 7.19278
       },
       "materials": [
         {
@@ -65200,7 +66856,7 @@
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 10.789162,
+        "cellWu": 10.78917,
         "gapWu": 0,
         "mouthBearingDeg": 82.5,
         "primitiveCount": 22,
@@ -65224,8 +66880,8 @@
           {
             "ax": -0.149866,
             "az": -0.062076,
-            "bx": -0.92083,
-            "bz": -0.38142,
+            "bx": -0.9209,
+            "bz": -0.381449,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.005
@@ -65402,16 +67058,16 @@
             "r": 0.005
           }
         ],
-        "silhouetteRadius": 89.909684,
-        "toleranceWu": 10.789162
+        "silhouetteRadius": 89.909747,
+        "toleranceWu": 10.78917
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 5543,
-        "inwardFaceFraction": 0.36025,
-        "silhouetteRadius": 89.909684,
+        "boundaryEdges": 5558,
+        "inwardFaceFraction": 0.367,
+        "silhouetteRadius": 89.909747,
         "sliceY": 0
       },
       "sockets": [
@@ -65452,7 +67108,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 81482,
+      "triangles": 81121,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_military.glb",
       "worldSize": [
@@ -65484,7 +67140,7 @@
           53.600979
         ]
       },
-      "bytes": 1515152,
+      "bytes": 1500948,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -65934,8 +67590,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 7519,
-        "inwardFaceFraction": 0.30925,
+        "boundaryEdges": 7855,
+        "inwardFaceFraction": 0.3255,
         "silhouetteRadius": 102.935827,
         "sliceY": 0
       },
@@ -65977,7 +67633,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 66938,
+      "triangles": 66071,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_mining.glb",
       "worldSize": [
@@ -66009,7 +67665,7 @@
           89.003735
         ]
       },
-      "bytes": 1936344,
+      "bytes": 1938044,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -66427,8 +68083,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 10014,
-        "inwardFaceFraction": 0.40225,
+        "boundaryEdges": 10078,
+        "inwardFaceFraction": 0.4075,
         "silhouetteRadius": 91.215739,
         "sliceY": 0
       },
@@ -66470,7 +68126,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 93958,
+      "triangles": 93399,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_refinery.glb",
       "worldSize": [
@@ -66502,7 +68158,7 @@
           75.199997
         ]
       },
-      "bytes": 2098528,
+      "bytes": 2104420,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -66921,7 +68577,7 @@
       ],
       "shell": {
         "boundaryEdges": 5758,
-        "inwardFaceFraction": 0.34575,
+        "inwardFaceFraction": 0.34275,
         "silhouetteRadius": 89.43057,
         "sliceY": 0
       },
@@ -66963,7 +68619,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 106018,
+      "triangles": 105617,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_research.glb",
       "worldSize": [
@@ -66995,37 +68651,37 @@
           111.305145
         ]
       },
-      "bytes": 3072696,
+      "bytes": 3065832,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_station_trade_hub",
         "kind": "proxy",
         "outline": [
-          11.392543,
-          11.713916,
-          12.165437,
+          11.432547,
+          11.71487,
+          12.166244,
           13.46952,
           14.66044,
           15.98818,
           17.751724,
           19.779874,
           21.15512,
-          22.588835,
+          22.590641,
           23.403418,
           23.758069,
-          23.696076,
-          23.323309,
-          22.590939,
-          20.884045,
-          19.414455,
-          17.750536,
+          23.745476,
+          23.326207,
+          22.591831,
+          20.890431,
+          19.420609,
+          17.754014,
           16.120218,
           14.273948,
-          13.259075,
+          13.471515,
           12.278364,
-          11.579016,
-          11.201838
+          11.715857,
+          11.433057
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -67222,37 +68878,28 @@
         "capped": false,
         "cellWu": 2.850968,
         "gapWu": 0,
-        "mouthBearingDeg": 172.5,
+        "mouthBearingDeg": 187.5,
         "primitiveCount": 22,
         "primitives": [
           {
             "id": "core",
             "kind": "circle",
-            "r": 0.05857,
+            "r": 0.058579,
             "x": 0,
             "z": 0
           },
           {
-            "ax": -0.054111,
-            "az": -0.022414,
-            "bx": -0.118194,
-            "bz": -0.048958,
-            "id": "arm-1",
-            "kind": "capsule",
-            "r": 0.005
-          },
-          {
-            "ax": -0.046466,
-            "az": -0.035655,
-            "bx": -0.105476,
-            "bz": -0.080934,
+            "ax": -0.046474,
+            "az": -0.035661,
+            "bx": -0.105483,
+            "bz": -0.08094,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.035655,
-            "az": -0.046466,
+            "ax": -0.035661,
+            "az": -0.046474,
             "bx": -0.089755,
             "bz": -0.116971,
             "id": "arm-3",
@@ -67260,8 +68907,8 @@
             "r": 0.005
           },
           {
-            "ax": -0.022414,
-            "az": -0.054111,
+            "ax": -0.022417,
+            "az": -0.05412,
             "bx": -0.061486,
             "bz": -0.148441,
             "id": "arm-4",
@@ -67269,8 +68916,8 @@
             "r": 0.005
           },
           {
-            "ax": -0.007645,
-            "az": -0.058069,
+            "ax": -0.007646,
+            "az": -0.058078,
             "bx": -0.022897,
             "bz": -0.173923,
             "id": "arm-5",
@@ -67278,8 +68925,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.007645,
-            "az": -0.058069,
+            "ax": 0.007646,
+            "az": -0.058078,
             "bx": 0.025455,
             "bz": -0.193351,
             "id": "arm-6",
@@ -67287,8 +68934,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.022414,
-            "az": -0.054111,
+            "ax": 0.022417,
+            "az": -0.05412,
             "bx": 0.083254,
             "bz": -0.200994,
             "id": "arm-7",
@@ -67296,8 +68943,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.035655,
-            "az": -0.046466,
+            "ax": 0.035661,
+            "az": -0.046474,
             "bx": 0.141741,
             "bz": -0.18472,
             "id": "arm-8",
@@ -67305,17 +68952,17 @@
             "r": 0.005
           },
           {
-            "ax": 0.046466,
-            "az": -0.035655,
-            "bx": 0.197358,
-            "bz": -0.151438,
+            "ax": 0.046474,
+            "az": -0.035661,
+            "bx": 0.197374,
+            "bz": -0.151451,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.054111,
-            "az": -0.022414,
+            "ax": 0.05412,
+            "az": -0.022417,
             "bx": 0.238191,
             "bz": -0.098662,
             "id": "arm-10",
@@ -67323,8 +68970,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.058069,
-            "az": -0.007645,
+            "ax": 0.058078,
+            "az": -0.007646,
             "bx": 0.259517,
             "bz": -0.034166,
             "id": "arm-11",
@@ -67332,62 +68979,62 @@
             "r": 0.005
           },
           {
-            "ax": 0.058069,
-            "az": 0.007645,
-            "bx": 0.258834,
-            "bz": 0.034076,
+            "ax": 0.058078,
+            "az": 0.007646,
+            "bx": 0.259378,
+            "bz": 0.034148,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.054111,
-            "az": 0.022414,
-            "bx": 0.237368,
-            "bz": 0.098321,
+            "ax": 0.05412,
+            "az": 0.022417,
+            "bx": 0.237398,
+            "bz": 0.098334,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.046466,
-            "az": 0.035655,
-            "bx": 0.197377,
-            "bz": 0.151453,
+            "ax": 0.046474,
+            "az": 0.035661,
+            "bx": 0.197385,
+            "bz": 0.151459,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.035655,
-            "az": 0.046466,
-            "bx": 0.139907,
-            "bz": 0.182331,
+            "ax": 0.035661,
+            "az": 0.046474,
+            "bx": 0.13995,
+            "bz": 0.182387,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.022414,
-            "az": 0.054111,
-            "bx": 0.081701,
-            "bz": 0.197243,
+            "ax": 0.022417,
+            "az": 0.05412,
+            "bx": 0.081727,
+            "bz": 0.197306,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.007645,
-            "az": 0.058069,
-            "bx": 0.025453,
-            "bz": 0.193338,
+            "ax": 0.007646,
+            "az": 0.058078,
+            "bx": 0.025458,
+            "bz": 0.193376,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.007645,
-            "az": 0.058069,
+            "ax": -0.007646,
+            "az": 0.058078,
             "bx": -0.023089,
             "bz": 0.175378,
             "id": "arm-18",
@@ -67395,8 +69042,8 @@
             "r": 0.005
           },
           {
-            "ax": -0.022414,
-            "az": 0.054111,
+            "ax": -0.022417,
+            "az": 0.05412,
             "bx": -0.059843,
             "bz": 0.144474,
             "id": "arm-19",
@@ -67404,20 +69051,29 @@
             "r": 0.005
           },
           {
-            "ax": -0.035655,
-            "az": 0.046466,
-            "bx": -0.088332,
-            "bz": 0.115116,
+            "ax": -0.035661,
+            "az": 0.046474,
+            "bx": -0.089769,
+            "bz": 0.116989,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.046466,
-            "az": 0.035655,
+            "ax": -0.046474,
+            "az": 0.035661,
             "bx": -0.106471,
             "bz": 0.081698,
             "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.005
+          },
+          {
+            "ax": -0.05412,
+            "az": 0.022417,
+            "bx": -0.118214,
+            "bz": 0.048966,
+            "id": "arm-22",
             "kind": "capsule",
             "r": 0.005
           }
@@ -67429,8 +69085,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 10116,
-        "inwardFaceFraction": 0.39575,
+        "boundaryEdges": 10239,
+        "inwardFaceFraction": 0.394,
         "silhouetteRadius": 23.758069,
         "sliceY": 0
       },
@@ -67464,7 +69120,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 133207,
+      "triangles": 131726,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_station_trade_hub.glb",
       "worldSize": [
@@ -67496,7 +69152,7 @@
           11.944374
         ]
       },
-      "bytes": 1275556,
+      "bytes": 1261944,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -67934,8 +69590,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 5137,
-        "inwardFaceFraction": 0.27875,
+        "boundaryEdges": 5149,
+        "inwardFaceFraction": 0.288,
         "silhouetteRadius": 12.780081,
         "sliceY": 0
       },
@@ -68041,7 +69697,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 64326,
+      "triangles": 62888,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -68075,7 +69731,7 @@
           8.021951
         ]
       },
-      "bytes": 744064,
+      "bytes": 706196,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -68433,8 +70089,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1908,
-        "inwardFaceFraction": 0.13825,
+        "boundaryEdges": 2160,
+        "inwardFaceFraction": 0.227,
         "silhouetteRadius": 12.685115,
         "sliceY": 0
       },
@@ -68540,7 +70196,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 29244,
+      "triangles": 24670,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -68574,7 +70230,7 @@
           5.44075
         ]
       },
-      "bytes": 992704,
+      "bytes": 904272,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -69004,8 +70660,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3398,
-        "inwardFaceFraction": 0.0905,
+        "boundaryEdges": 4066,
+        "inwardFaceFraction": 0.096,
         "silhouetteRadius": 12.175801,
         "sliceY": 0
       },
@@ -69111,7 +70767,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 43748,
+      "triangles": 35670,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -69145,7 +70801,7 @@
           18.519116
         ]
       },
-      "bytes": 824076,
+      "bytes": 825640,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -69709,7 +71365,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 35324,
+      "triangles": 35305,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -69743,7 +71399,7 @@
           9.528477
         ]
       },
-      "bytes": 1180204,
+      "bytes": 1178412,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -70205,7 +71861,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4751,
+        "boundaryEdges": 4746,
         "inwardFaceFraction": 0.1915,
         "silhouetteRadius": 12.216361,
         "sliceY": 0
@@ -70312,7 +71968,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 54220,
+      "triangles": 53835,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -70346,7 +72002,7 @@
           9.465342
         ]
       },
-      "bytes": 1343588,
+      "bytes": 1279740,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -70800,8 +72456,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 6479,
-        "inwardFaceFraction": 0.01975,
+        "boundaryEdges": 7868,
+        "inwardFaceFraction": 0.03725,
         "silhouetteRadius": 13.141692,
         "sliceY": 0
       },
@@ -70907,7 +72563,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 68886,
+      "triangles": 61390,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -70941,7 +72597,7 @@
           9.511418
         ]
       },
-      "bytes": 1307972,
+      "bytes": 1262772,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -71411,8 +73067,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 8389,
-        "inwardFaceFraction": 0.23975,
+        "boundaryEdges": 9735,
+        "inwardFaceFraction": 0.28975,
         "silhouetteRadius": 12.771751,
         "sliceY": 0
       },
@@ -71518,7 +73174,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 62648,
+      "triangles": 58071,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -71552,7 +73208,7 @@
           16.1597
         ]
       },
-      "bytes": 799804,
+      "bytes": 660588,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -71961,8 +73617,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 632,
-        "inwardFaceFraction": 0.146,
+        "boundaryEdges": 3387,
+        "inwardFaceFraction": 0.33775,
         "silhouetteRadius": 14.693985,
         "sliceY": 0
       },
@@ -72068,7 +73724,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39784,
+      "triangles": 24688,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -72102,7 +73758,7 @@
           5.179107
         ]
       },
-      "bytes": 915728,
+      "bytes": 914684,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -72538,7 +74194,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4529,
+        "boundaryEdges": 4541,
         "inwardFaceFraction": 0.246,
         "silhouetteRadius": 13.464172,
         "sliceY": 0
@@ -72645,7 +74301,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 38670,
+      "triangles": 38502,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -72679,7 +74335,7 @@
           7.905659
         ]
       },
-      "bytes": 1344316,
+      "bytes": 1344740,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -73125,8 +74781,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 6434,
-        "inwardFaceFraction": 0.31675,
+        "boundaryEdges": 6432,
+        "inwardFaceFraction": 0.3195,
         "silhouetteRadius": 12.718973,
         "sliceY": 0
       },
@@ -73232,7 +74888,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 68503,
+      "triangles": 68397,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -73266,7 +74922,7 @@
           7.14
         ]
       },
-      "bytes": 983044,
+      "bytes": 956608,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -73720,8 +75376,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 2237,
-        "inwardFaceFraction": 0.115,
+        "boundaryEdges": 2488,
+        "inwardFaceFraction": 0.11525,
         "silhouetteRadius": 12.32589,
         "sliceY": 0
       },
@@ -73827,7 +75483,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 37306,
+      "triangles": 33527,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -73861,7 +75517,7 @@
           5.529214
         ]
       },
-      "bytes": 934596,
+      "bytes": 915088,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -74291,8 +75947,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3750,
-        "inwardFaceFraction": 0.07225,
+        "boundaryEdges": 3926,
+        "inwardFaceFraction": 0.117,
         "silhouetteRadius": 12.775189,
         "sliceY": 0
       },
@@ -74398,7 +76054,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 40832,
+      "triangles": 37441,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -74432,7 +76088,7 @@
           7.112883
         ]
       },
-      "bytes": 836772,
+      "bytes": 767256,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -74889,8 +76545,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1908,
-        "inwardFaceFraction": 0.3285,
+        "boundaryEdges": 3294,
+        "inwardFaceFraction": 0.3505,
         "silhouetteRadius": 12.415054,
         "sliceY": 0
       },
@@ -74996,7 +76652,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 39098,
+      "triangles": 30462,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -75030,7 +76686,7 @@
           8.4
         ]
       },
-      "bytes": 1049532,
+      "bytes": 1016032,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -75452,8 +77108,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 5144,
-        "inwardFaceFraction": 0.21225,
+        "boundaryEdges": 5431,
+        "inwardFaceFraction": 0.333,
         "silhouetteRadius": 12.679014,
         "sliceY": 0
       },
@@ -75559,7 +77215,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 49866,
+      "triangles": 45373,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -75593,7 +77249,7 @@
           6.564195
         ]
       },
-      "bytes": 908908,
+      "bytes": 906212,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -76154,7 +77810,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 34101,
+      "triangles": 33861,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -76188,7 +77844,7 @@
           6.44379
         ]
       },
-      "bytes": 1379000,
+      "bytes": 1352920,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -76626,8 +78282,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 5121,
-        "inwardFaceFraction": 0.2215,
+        "boundaryEdges": 5142,
+        "inwardFaceFraction": 0.273,
         "silhouetteRadius": 12.122909,
         "sliceY": 0
       },
@@ -76733,7 +78389,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 70912,
+      "triangles": 66836,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -76767,7 +78423,7 @@
           9.928474
         ]
       },
-      "bytes": 1121284,
+      "bytes": 1118380,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -77213,8 +78869,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 4252,
-        "inwardFaceFraction": 0.29375,
+        "boundaryEdges": 4715,
+        "inwardFaceFraction": 0.30975,
         "silhouetteRadius": 12.544432,
         "sliceY": 0
       },
@@ -77320,7 +78976,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 52822,
+      "triangles": 52286,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -77354,7 +79010,7 @@
           7.828783
         ]
       },
-      "bytes": 1350816,
+      "bytes": 1265960,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -77784,8 +79440,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3689,
-        "inwardFaceFraction": 0.13325,
+        "boundaryEdges": 4580,
+        "inwardFaceFraction": 0.20575,
         "silhouetteRadius": 12.251203,
         "sliceY": 0
       },
@@ -77891,7 +79547,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 65520,
+      "triangles": 54868,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
@@ -77925,7 +79581,7 @@
           10.887971
         ]
       },
-      "bytes": 585056,
+      "bytes": 584780,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -78125,8 +79781,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 580,
-        "inwardFaceFraction": 0.263697,
+        "boundaryEdges": 588,
+        "inwardFaceFraction": 0.268369,
         "silhouetteRadius": 9.032456,
         "sliceY": 0
       },
@@ -78135,7 +79791,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 1953,
+      "triangles": 1919,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab_authored_down.glb",
       "worldSize": [
@@ -78167,7 +79823,7 @@
           14.963001
         ]
       },
-      "bytes": 311212,
+      "bytes": 331224,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -78582,7 +80238,7 @@
       ],
       "shell": {
         "boundaryEdges": 61,
-        "inwardFaceFraction": 0.33375,
+        "inwardFaceFraction": 0.33525,
         "silhouetteRadius": 8.905608,
         "sliceY": 0
       },
@@ -78600,7 +80256,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 5836,
+      "triangles": 5816,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_aft_cargo_module.glb",
       "worldSize": [
@@ -78632,7 +80288,7 @@
           15.628307
         ]
       },
-      "bytes": 211860,
+      "bytes": 211732,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -79023,7 +80679,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 4956,
+      "triangles": 4952,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb",
       "worldSize": [
@@ -79292,7 +80948,7 @@
           25
         ]
       },
-      "bytes": 327388,
+      "bytes": 330936,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -79653,7 +81309,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 310,
+        "boundaryEdges": 320,
         "inwardFaceFraction": 0.0185,
         "silhouetteRadius": 13.382633,
         "sliceY": 0
@@ -79680,7 +81336,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 9838,
+      "triangles": 9639,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_aft_engine_section.glb",
       "worldSize": [
@@ -79712,7 +81368,7 @@
           11.362502
         ]
       },
-      "bytes": 151276,
+      "bytes": 152904,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -80257,7 +81913,7 @@
           5.326818
         ]
       },
-      "bytes": 210192,
+      "bytes": 205960,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -80524,7 +82180,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 4848,
+      "triangles": 4808,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_aft_weapon_spar.glb",
       "worldSize": [
@@ -80556,7 +82212,7 @@
           12.928834
         ]
       },
-      "bytes": 220072,
+      "bytes": 218284,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -80863,7 +82519,7 @@
       ],
       "shell": {
         "boundaryEdges": 552,
-        "inwardFaceFraction": 0.4065,
+        "inwardFaceFraction": 0.407,
         "silhouetteRadius": 12.65059,
         "sliceY": 0
       },
@@ -80872,7 +82528,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 6804,
+      "triangles": 6558,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_armor_belt.glb",
       "worldSize": [
@@ -81296,7 +82952,7 @@
           17.999999
         ]
       },
-      "bytes": 198032,
+      "bytes": 196024,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -81640,7 +83296,7 @@
           27.118187
         ]
       },
-      "bytes": 1195264,
+      "bytes": 1203964,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -81848,7 +83504,7 @@
       ],
       "shell": {
         "boundaryEdges": 1800,
-        "inwardFaceFraction": 0.2155,
+        "inwardFaceFraction": 0.21625,
         "silhouetteRadius": 11.903384,
         "sliceY": 0
       },
@@ -81857,7 +83513,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 4888,
+      "triangles": 4884,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel_authored_down.glb",
       "worldSize": [
@@ -81889,7 +83545,7 @@
           15.980084
         ]
       },
-      "bytes": 223884,
+      "bytes": 219320,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -82208,8 +83864,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 389,
-        "inwardFaceFraction": 0.228986,
+        "boundaryEdges": 383,
+        "inwardFaceFraction": 0.235564,
         "silhouetteRadius": 8.018096,
         "sliceY": 0
       },
@@ -82218,7 +83874,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 3581,
+      "triangles": 3481,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_drive_bell.glb",
       "worldSize": [
@@ -82250,7 +83906,7 @@
           32.219118
         ]
       },
-      "bytes": 318664,
+      "bytes": 335660,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -82578,7 +84234,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 7140,
+      "triangles": 7124,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb",
       "worldSize": [
@@ -84306,7 +85962,7 @@
           49.053546
         ]
       },
-      "bytes": 410372,
+      "bytes": 409468,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -84712,8 +86368,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 425,
-        "inwardFaceFraction": 0.37825,
+        "boundaryEdges": 445,
+        "inwardFaceFraction": 0.38575,
         "silhouetteRadius": 39.112289,
         "sliceY": 0
       },
@@ -84739,7 +86395,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 14164,
+      "triangles": 14046,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_engine.glb",
       "worldSize": [
@@ -84771,7 +86427,7 @@
           53.052948
         ]
       },
-      "bytes": 478704,
+      "bytes": 470756,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -85143,8 +86799,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 558,
-        "inwardFaceFraction": 0.414,
+        "boundaryEdges": 562,
+        "inwardFaceFraction": 0.419,
         "silhouetteRadius": 46.701107,
         "sliceY": 0
       },
@@ -85186,7 +86842,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 17150,
+      "triangles": 17012,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward.glb",
       "worldSize": [
@@ -85218,7 +86874,7 @@
           53.052948
         ]
       },
-      "bytes": 483796,
+      "bytes": 475848,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -85598,7 +87254,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 560,
+        "boundaryEdges": 564,
         "inwardFaceFraction": 0.4225,
         "silhouetteRadius": 46.701107,
         "sliceY": 0
@@ -85641,7 +87297,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 17254,
+      "triangles": 17116,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward__fresh.glb",
       "worldSize": [
@@ -85673,7 +87329,7 @@
           52.96191
         ]
       },
-      "bytes": 449764,
+      "bytes": 441860,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -86018,8 +87674,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 715,
-        "inwardFaceFraction": 0.3545,
+        "boundaryEdges": 717,
+        "inwardFaceFraction": 0.35525,
         "silhouetteRadius": 46.758719,
         "sliceY": 0
       },
@@ -86061,7 +87717,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 9300,
+      "triangles": 9274,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward__stripped_heavy.glb",
       "worldSize": [
@@ -86093,7 +87749,7 @@
           7.304461
         ]
       },
-      "bytes": 201832,
+      "bytes": 198876,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -86389,7 +88045,7 @@
       ],
       "shell": {
         "boundaryEdges": 88,
-        "inwardFaceFraction": 0.2235,
+        "inwardFaceFraction": 0.225,
         "silhouetteRadius": 8.183086,
         "sliceY": 0
       },
@@ -86407,7 +88063,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 4220,
+      "triangles": 4180,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_turret.glb",
       "worldSize": [
@@ -86439,7 +88095,7 @@
           54.006287
         ]
       },
-      "bytes": 1516540,
+      "bytes": 1522212,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -86709,7 +88365,7 @@
       ],
       "shell": {
         "boundaryEdges": 6364,
-        "inwardFaceFraction": 0.128,
+        "inwardFaceFraction": 0.12975,
         "silhouetteRadius": 33.260535,
         "sliceY": 0
       },
@@ -86735,7 +88391,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 20499,
+      "triangles": 20493,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_boatbay_authored_down.glb",
       "worldSize": [
@@ -86767,7 +88423,7 @@
           68.107338
         ]
       },
-      "bytes": 1447032,
+      "bytes": 1447904,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -87037,7 +88693,7 @@
       ],
       "shell": {
         "boundaryEdges": 4052,
-        "inwardFaceFraction": 0.14625,
+        "inwardFaceFraction": 0.1465,
         "silhouetteRadius": 38.955501,
         "sliceY": 0
       },
@@ -87063,7 +88719,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 16878,
+      "triangles": 16594,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_bow_authored_down.glb",
       "worldSize": [
@@ -87095,7 +88751,7 @@
           80.990866
         ]
       },
-      "bytes": 349892,
+      "bytes": 355948,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -87387,8 +89043,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 16,
-        "inwardFaceFraction": 0.1775,
+        "boundaryEdges": 28,
+        "inwardFaceFraction": 0.1845,
         "silhouetteRadius": 50.162345,
         "sliceY": 0
       },
@@ -87422,7 +89078,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 8750,
+      "triangles": 8652,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum.glb",
       "worldSize": [
@@ -87454,7 +89110,7 @@
           80.990866
         ]
       },
-      "bytes": 350132,
+      "bytes": 356192,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -87746,8 +89402,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 16,
-        "inwardFaceFraction": 0.1775,
+        "boundaryEdges": 28,
+        "inwardFaceFraction": 0.1845,
         "silhouetteRadius": 50.162345,
         "sliceY": 0
       },
@@ -87781,7 +89437,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 8750,
+      "triangles": 8652,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__derelict.glb",
       "worldSize": [
@@ -87813,7 +89469,7 @@
           74.124678
         ]
       },
-      "bytes": 353280,
+      "bytes": 359472,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -88113,8 +89769,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 16,
-        "inwardFaceFraction": 0.1765,
+        "boundaryEdges": 29,
+        "inwardFaceFraction": 0.18425,
         "silhouetteRadius": 45.909718,
         "sliceY": 0
       },
@@ -88148,7 +89804,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 8790,
+      "triangles": 8689,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__fresh.glb",
       "worldSize": [
@@ -88180,7 +89836,7 @@
           31.905441
         ]
       },
-      "bytes": 816332,
+      "bytes": 851712,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -88536,8 +90192,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 541,
-        "inwardFaceFraction": 0.472,
+        "boundaryEdges": 590,
+        "inwardFaceFraction": 0.48625,
         "silhouetteRadius": 74.216886,
         "sliceY": 0
       },
@@ -88595,7 +90251,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 31746,
+      "triangles": 31236,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_mining_barge_authored_down.glb",
       "worldSize": [
@@ -88627,7 +90283,7 @@
           70.119453
         ]
       },
-      "bytes": 612720,
+      "bytes": 645464,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -89004,8 +90660,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 65,
-        "inwardFaceFraction": 0.37775,
+        "boundaryEdges": 77,
+        "inwardFaceFraction": 0.389,
         "silhouetteRadius": 93.370976,
         "sliceY": 0
       },
@@ -89047,7 +90703,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 15998,
+      "triangles": 15854,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow.glb",
       "worldSize": [
@@ -89079,7 +90735,7 @@
           70.119453
         ]
       },
-      "bytes": 613084,
+      "bytes": 645832,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -89456,8 +91112,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 65,
-        "inwardFaceFraction": 0.37775,
+        "boundaryEdges": 77,
+        "inwardFaceFraction": 0.389,
         "silhouetteRadius": 93.370976,
         "sliceY": 0
       },
@@ -89499,7 +91155,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 15998,
+      "triangles": 15854,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__derelict.glb",
       "worldSize": [
@@ -89531,7 +91187,7 @@
           70.119453
         ]
       },
-      "bytes": 616904,
+      "bytes": 649656,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -89916,8 +91572,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 65,
-        "inwardFaceFraction": 0.37375,
+        "boundaryEdges": 77,
+        "inwardFaceFraction": 0.38925,
         "silhouetteRadius": 93.370976,
         "sliceY": 0
       },
@@ -89959,7 +91615,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 16038,
+      "triangles": 15894,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__fresh.glb",
       "worldSize": [
@@ -89991,7 +91647,7 @@
           69.871719
         ]
       },
-      "bytes": 764668,
+      "bytes": 766916,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -90376,7 +92032,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1831,
+        "boundaryEdges": 1830,
         "inwardFaceFraction": 0.37725,
         "silhouetteRadius": 93.244012,
         "sliceY": 0
@@ -90419,7 +92075,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 9888,
+      "triangles": 9866,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__stripped.glb",
       "worldSize": [
@@ -90451,7 +92107,7 @@
           47.132276
         ]
       },
-      "bytes": 499324,
+      "bytes": 519296,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -90777,8 +92433,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 3753,
-        "inwardFaceFraction": 0.3225,
+        "boundaryEdges": 3759,
+        "inwardFaceFraction": 0.32625,
         "silhouetteRadius": 31.261377,
         "sliceY": 0
       },
@@ -90796,7 +92452,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 9648,
+      "triangles": 9582,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_hopper_authored_down.glb",
       "worldSize": [
@@ -90828,7 +92484,7 @@
           64.883125
         ]
       },
-      "bytes": 590244,
+      "bytes": 608336,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -91254,8 +92910,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 476,
-        "inwardFaceFraction": 0.267,
+        "boundaryEdges": 520,
+        "inwardFaceFraction": 0.268,
         "silhouetteRadius": 75.268809,
         "sliceY": 0
       },
@@ -91289,7 +92945,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 22360,
+      "triangles": 22010,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_stern.glb",
       "worldSize": [
@@ -91321,7 +92977,7 @@
           26.602068
         ]
       },
-      "bytes": 379632,
+      "bytes": 381984,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -91743,7 +93399,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 9355,
+      "triangles": 9354,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_ceres_bait_wreck.glb",
       "worldSize": [
@@ -92112,7 +93768,7 @@
           14.967865
         ]
       },
-      "bytes": 497984,
+      "bytes": 498712,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -92519,7 +94175,7 @@
       ],
       "shell": {
         "boundaryEdges": 493,
-        "inwardFaceFraction": 0.387,
+        "inwardFaceFraction": 0.39325,
         "silhouetteRadius": 27.783053,
         "sliceY": 0
       },
@@ -92545,7 +94201,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 15476,
+      "triangles": 15348,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_dead_hulk.glb",
       "worldSize": [
@@ -92577,7 +94233,7 @@
           11.099583
         ]
       },
-      "bytes": 310332,
+      "bytes": 310892,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -92981,67 +94637,67 @@
       "bounds": {
         "center": [
           16.002581,
-          37.914882,
-          -12.999469
+          37.914886,
+          -12.98573
         ],
         "max": [
           320.633533,
-          148.286752,
-          113.196056
+          148.286764,
+          113.223535
         ],
         "min": [
           -288.628371,
-          -72.456988,
+          -72.456992,
           -139.194994
         ],
         "size": [
           609.261904,
-          220.743741,
-          252.39105
+          220.743755,
+          252.418529
         ]
       },
-      "bytes": 7563264,
+      "bytes": 6973204,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_landmark_wreck_cathedral",
         "kind": "proxy",
         "outline": [
-          286.896794,
-          287.309913,
-          117.755397,
-          67.863135,
-          124.790369,
-          130.073166,
-          105.488691,
-          82.295532,
-          116.702412,
-          176.532576,
-          307.555598,
+          286.038161,
+          287.313586,
+          113.216784,
+          67.872852,
+          124.778029,
+          130.086494,
+          105.502428,
+          82.312211,
+          116.712204,
+          176.539488,
+          307.560928,
           0,
-          308.968474,
-          244.512363,
-          130.459361,
-          86.355457,
-          76.461267,
+          308.96618,
+          244.508573,
+          130.452449,
+          86.344766,
+          76.414794,
           0,
           0,
-          119.708198,
-          135.967389,
-          174.435993,
-          259.654101,
-          309.608209
+          119.695838,
+          135.942357,
+          174.42898,
+          259.650316,
+          309.619548
         ],
         "overTolerance": false,
         "stickWu": 0,
         "throatSealed": false,
-        "toleranceWu": 37.152985,
+        "toleranceWu": 37.154346,
         "worstSize": null
       },
       "drawOffset": [
         -16.002581,
         0,
-        12.999469
+        12.98573
       ],
       "drawScale": 1,
       "family": "wreck",
@@ -93063,7 +94719,7 @@
         "lod2": true,
         "outlineDeltaWu": {},
         "overTolerance": false,
-        "toleranceWu": 24.768657
+        "toleranceWu": 24.769564
       },
       "materials": [
         {
@@ -93139,13 +94795,13 @@
       "opening": null,
       "pivot": [
         16.002581,
-        37.914882,
-        -12.999469
+        37.914886,
+        -12.98573
       ],
       "proposedSkin": {
         "adopted": true,
         "capped": false,
-        "cellWu": 37.152985,
+        "cellWu": 37.154346,
         "gapWu": 0,
         "mouthBearingDeg": null,
         "primitiveCount": 21,
@@ -93153,8 +94809,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -23.687005,
-            "bz": -3.118453,
+            "bx": -23.616065,
+            "bz": -3.109114,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.0375
@@ -93162,8 +94818,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -22.104581,
-            "bz": -9.156017,
+            "bx": -22.104864,
+            "bz": -9.156134,
             "id": "arm-1",
             "kind": "capsule",
             "r": 0.0375
@@ -93171,8 +94827,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -7.771914,
-            "bz": -5.963599,
+            "bx": -7.471854,
+            "bz": -5.733355,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.0375
@@ -93180,8 +94836,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -3.432559,
-            "bz": -4.473398,
+            "bx": -3.433052,
+            "bz": -4.47404,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.0375
@@ -93189,8 +94845,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -3.973223,
-            "bz": -9.592208,
+            "bx": -3.972829,
+            "bz": -9.591258,
             "id": "arm-4",
             "kind": "capsule",
             "r": 0.0375
@@ -93198,26 +94854,26 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -1.232877,
-            "bz": -9.364627,
+            "bx": -1.233003,
+            "bz": -9.365585,
             "id": "arm-5",
             "kind": "capsule",
-            "r": 1.41483
+            "r": 1.414975
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 1.000371,
-            "bz": -7.59857,
+            "bx": 1.000501,
+            "bz": -7.599557,
             "id": "arm-6",
             "kind": "capsule",
-            "r": 1.14742
+            "r": 1.147569
           },
           {
             "ax": 0,
             "az": 0,
-            "bx": 2.61805,
-            "bz": -6.320532,
+            "bx": 2.618582,
+            "bz": -6.321816,
             "id": "arm-7",
             "kind": "capsule",
             "r": 0.0375
@@ -93225,8 +94881,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 5.910181,
-            "bz": -7.702298,
+            "bx": 5.910678,
+            "bz": -7.702945,
             "id": "arm-8",
             "kind": "capsule",
             "r": 0.0375
@@ -93234,8 +94890,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 11.657837,
-            "bz": -8.945373,
+            "bx": 11.658293,
+            "bz": -8.945723,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.0375
@@ -93243,8 +94899,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 23.663295,
-            "bz": -9.801658,
+            "bx": 23.663706,
+            "bz": -9.801828,
             "id": "arm-10",
             "kind": "capsule",
             "r": 0.0375
@@ -93252,8 +94908,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 25.510576,
-            "bz": 3.358531,
+            "bx": 25.510387,
+            "bz": 3.358506,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.0375
@@ -93261,8 +94917,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 18.809599,
-            "bz": 7.791191,
+            "bx": 18.809308,
+            "bz": 7.79107,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.0375
@@ -93270,8 +94926,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 8.611808,
-            "bz": 6.608073,
+            "bx": 8.611351,
+            "bz": 6.607722,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.0375
@@ -93279,8 +94935,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 4.370677,
-            "bz": 5.695977,
+            "bx": 4.370134,
+            "bz": 5.69527,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.0375
@@ -93288,8 +94944,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 2.431994,
-            "bz": 5.871352,
+            "bx": 2.430512,
+            "bz": 5.867774,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.0375
@@ -93297,8 +94953,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -3.811151,
-            "bz": 9.200932,
+            "bx": -3.810756,
+            "bz": 9.19998,
             "id": "arm-19",
             "kind": "capsule",
             "r": 0.0375
@@ -93306,8 +94962,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -6.887496,
-            "bz": 8.975959,
+            "bx": -6.886226,
+            "bz": 8.974304,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.0375
@@ -93315,8 +94971,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -11.519226,
-            "bz": 8.839013,
+            "bx": -11.518762,
+            "bz": 8.838657,
             "id": "arm-21",
             "kind": "capsule",
             "r": 0.0375
@@ -93324,8 +94980,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -19.975361,
-            "bz": 8.274065,
+            "bx": -19.97507,
+            "bz": 8.273945,
             "id": "arm-22",
             "kind": "capsule",
             "r": 0.0375
@@ -93333,23 +94989,23 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -22.261757,
-            "bz": 2.930816,
+            "bx": -22.262571,
+            "bz": 2.930923,
             "id": "arm-23",
             "kind": "capsule",
-            "r": 3.367665
+            "r": 3.367788
           }
         ],
-        "silhouetteRadius": 309.608209,
-        "toleranceWu": 37.152985
+        "silhouetteRadius": 309.619548,
+        "toleranceWu": 37.154346
       },
       "reasons": [
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 544,
-        "inwardFaceFraction": 0.452,
-        "silhouetteRadius": 309.608209,
+        "boundaryEdges": 559,
+        "inwardFaceFraction": 0.46625,
+        "silhouetteRadius": 309.619548,
         "sliceY": 0
       },
       "sockets": [
@@ -93382,13 +95038,13 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 253652,
+      "triangles": 187831,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
       "worldSize": [
         609.261904,
-        220.743741,
-        252.39105
+        220.743755,
+        252.418529
       ]
     }
   ],

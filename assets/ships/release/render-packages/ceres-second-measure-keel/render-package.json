@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3d1fe8fc62508368a34459e4b74c1e7f5b6fb549c60d224983433c6c84515e9a",
+  "contentHash": "d9994973e5982d6a61af76db6e359ce5b039a3ef57d2f4556b9750db68a585f8",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1530,8 +1530,8 @@
       "uri": "place_ceres_second_measure_keel.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
@@ -2265,7 +2265,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_second_measure_keel.glb"
   },
-  "runtimeHash": "ccda5ecba571c28dde9bebc0def2ac995fd9d3e7dadc4a05150cb1b2fde62db1",
+  "runtimeHash": "13cb97960cabcf06b01b62bbc40c610db228416b7125e4e3b456ec25cbefea34",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
