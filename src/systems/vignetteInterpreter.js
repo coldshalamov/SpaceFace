@@ -213,6 +213,11 @@ export function compileVignette(spec) {
         if (!byId.has(dest)) throw new Error(`compileVignette ${spec.id}: dangling choice ${dest}`);
       }
     }
+    // An offer whose timeout choice does not resolve can never leave the phase — the deadline
+    // would re-issue it every tick forever, wedging the live slot. Reject at compile time.
+    if (phase.verb === 'offer' && !(phase.onChoice && phase.onChoice[spec.timeoutChoice])) {
+      throw new Error(`compileVignette ${spec.id}: offer phase ${phase.id} missing timeout choice`);
+    }
   }
 
   return Object.freeze({

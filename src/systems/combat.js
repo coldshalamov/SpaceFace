@@ -731,7 +731,7 @@ export const combat = {
     };
     ctx.bus.on('game:started', clearPendingDefeat);
     ctx.bus.on('save:loaded', clearPendingDefeat);
-    ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state); });
+    ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state, this.bus); });
     ctx.bus.on('debug:invulnerable', (p) => { wakeQuiet(); setLabInvulnerable(this.state, p || {}); });
   },
 
@@ -1477,7 +1477,7 @@ function labPlayerEntity(state) {
   return state.entities.get(state.playerId) || null;
 }
 
-function refillLabPlayer(state) {
+function refillLabPlayer(state, bus) {
   const player = labPlayerEntity(state);
   if (!player) return;
   // Same pool restore as the live recovery path (restorePlayerAtRecoveryDock) — pools to full,
@@ -1486,7 +1486,8 @@ function refillLabPlayer(state) {
   if (Number.isFinite(player.armorMax)) player.armorHp = player.armorMax;
   if (Number.isFinite(player.shieldMax)) player.shield = player.shieldMax;
   if (Number.isFinite(player.capMax)) player.cap = player.capMax;
-  if (Number.isFinite(player.heat)) player.heat = 0;
+  // heat.js is the sole writer of player.heat — clear through its bus path, never directly.
+  if (Number.isFinite(player.heat) && bus) bus.emit('heat:clear', { reason: 'lab refill' });
 }
 
 function setLabInvulnerable(state, payload) {

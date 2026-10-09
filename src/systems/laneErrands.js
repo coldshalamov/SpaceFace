@@ -120,16 +120,13 @@ function nearPlayer(state, entity) {
   return dx * dx + dz * dz <= PLAYER_RANGE * PLAYER_RANGE;
 }
 
-function partnerOf(runtime, entry, entity, needKind) {
+function partnerOf(runtime, entry, entity) {
   const byId = runtime._byId();
   let best = null;
   let bestD = PARTNER_RANGE * PARTNER_RANGE;
   for (const otherId of Object.keys(byId)) {
     const other = byId[otherId];
     if (!other || other === entry || !other.job) continue;
-    if (needKind && other.job.kind !== needKind && entry.job.kind === other.job.kind) {
-      // any other working hull is enough when kinds match the errand's own list
-    }
     if (other.entityId == null) continue;
     const hull = runtime.state.entities && runtime.state.entities.get(other.entityId);
     if (!hull || hull.alive === false || !hull.pos) continue;
@@ -222,7 +219,6 @@ export function applyLaneErrandIntent(runtime, entry, entity, simT) {
     } catch { /* advisory */ }
   }
   const origin = errand.origin || entity.pos;
-  const t = Math.max(0, (errand.until - simT));
   const elapsed = Math.max(0, simT - (errand.started || simT));
   if (errand.motion === 'brake') {
     writeIntent(runtime, entity, 0, 0, entity.rot || 0, true);
@@ -267,5 +263,5 @@ export function applyLaneErrandIntent(runtime, entry, entity, simT) {
     aim,
     false,
   );
-  return t >= 0;
+  return true;
 }
