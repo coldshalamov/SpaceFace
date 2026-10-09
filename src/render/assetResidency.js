@@ -83,11 +83,21 @@ export function createAssetResidencyRegistry(options = {}) {
   // used to re-mint O(P) per cancel, O(K × P) per drain.
   const activePendingRefcounts = new Map();
   const activePendingKeys = new Set();
+  // Enforce-plan memo (W125 F2): every input to the budget census is funnelled —
+  // asset register/evict, owner-membership index/unindex, and the pending-request
+  // set (which also re-keys governorBlockedMembers). When none moved since the
+  // last plan and the byte ledgers are identical, the receipt is re-servable
+  // verbatim; an evicting call always mutates through a funnel, so a memoized
+  // plan can never skip live evictions.
+  let residencyMutationSeq = 0;
+  let pendingRequestSeq = 0;
+  let enforcePlanMemo = null;
   function notePendingRequestActivated(key) {
     const count = (activePendingRefcounts.get(key) || 0) + 1;
     activePendingRefcounts.set(key, count);
     if (count === 1) {
       activePendingKeys.add(key);
+      pendingRequestSeq += 1;
       // Going active disqualifies the entry from the soft-budget candidate
       // classes — re-key once per 0->1 transition, same for 1->0 below.
       const entry = assets.get(String(key));
@@ -100,6 +110,7 @@ export function createAssetResidencyRegistry(options = {}) {
     if (count <= 1) {
       activePendingRefcounts.delete(key);
       activePendingKeys.delete(key);
+      pendingRequestSeq += 1;
       const entry = assets.get(String(key));
       if (entry) { rekeySoftBudgetClass(entry); rekeyGovernorBlocked(entry); }
     } else {
@@ -154,6 +165,12 @@ export function createAssetResidencyRegistry(options = {}) {
   let abandonedResources = 0;
   let evictedAssets = 0;
   let cacheSweepCount = 0;
+  // Warm-mint coverage-gap ledger (W125): retains minted without metadata.sectorId
+  // never reach sectorOwnerIndex, so an asset pinned only by scopeless owners is
+  // invisible to the sector-exit warm mint and can evict+re-cross under pressure.
+  // Counted at retain() by role, split by whether the entry still carries
+  // sector-scoped owners (covered anyway) or is the entry's only owner (the gap).
+  const sectorlessOwnerRetains = { total: 0, onSectorIndexedEntries: 0, soleOwnerUnindexed: 0, byRole: new Map() };
   let diagnosticsEpoch = 0;
   let canonicalDiagnosticsCache = null;
   let canonicalDiagnosticsEpoch = -1;
@@ -293,6 +310,10 @@ export function createAssetResidencyRegistry(options = {}) {
       // Diagnostics row memo on the same version — the sync seam publishes
       // re-mint the row set only for entries whose owner set actually moved.
       diagRowMemo: null,
+      // Live count of sector-scoped owners (sum of row.total across every
+      // sectorOwnerIndex map this entry sits in). 0 = invisible to the
+      // sector-exit warm mint regardless of how many live owners pin it.
+      sectorOwnerRefs: 0,
     };
     const accountingOptions = {
       renderer: registration.renderer || accountingRenderer,
@@ -338,6 +359,7 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     entry.handle = Object.freeze({ key: exactKey, generation: entry.generation });
     assets.set(exactKey, entry);
+    residencyMutationSeq += 1;
     rekeyGovernorBlocked(entry);
     cpuPackageBytesTotal += entry.cpuPackageBytes;
     emit('asset-registered', {
@@ -385,6 +407,13 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     entry.owners.set(owner, ownerMetadata);
     noteOwnerMembershipIndexed(entry, ownerMetadata);
+    if (ownerMetadata.sectorId == null) {
+      sectorlessOwnerRetains.total += 1;
+      if (entry.sectorOwnerRefs > 0) sectorlessOwnerRetains.onSectorIndexedEntries += 1;
+      else if (entry.owners.size === 1) sectorlessOwnerRetains.soleOwnerUnindexed += 1;
+      const roleKey = String(ownerMetadata.role || '(none)');
+      sectorlessOwnerRetains.byRole.set(roleKey, (sectorlessOwnerRetains.byRole.get(roleKey) || 0) + 1);
+    }
     entry.lastWarmClaimAtMs = now();
     state.assets.add(entry);
     state.assetsVersion += 1;
@@ -682,6 +711,7 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     if (role === 'render-package-cache') entry.rpcOwnerCount += 1;
     entry.ownersVersion += 1;
+    residencyMutationSeq += 1;
     if (metadata.sectorId != null) {
       const sid = String(metadata.sectorId);
       let sectorMap = sectorOwnerIndex.get(sid);
@@ -695,6 +725,7 @@ export function createAssetResidencyRegistry(options = {}) {
         sectorMap.set(entry, row);
       }
       row.total += 1;
+      entry.sectorOwnerRefs += 1;
       if (metadata.role !== 'player') row.nonPlayer += 1;
     }
     rekeySoftBudgetClass(entry);
@@ -709,6 +740,7 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     if (role === 'render-package-cache') entry.rpcOwnerCount -= 1;
     entry.ownersVersion += 1;
+    residencyMutationSeq += 1;
     if (metadata.sectorId != null) {
       const sid = String(metadata.sectorId);
       const sectorMap = sectorOwnerIndex.get(sid);
@@ -716,6 +748,7 @@ export function createAssetResidencyRegistry(options = {}) {
         const row = sectorMap.get(entry);
         if (row) {
           row.total -= 1;
+          entry.sectorOwnerRefs -= 1;
           if (metadata.role !== 'player') row.nonPlayer -= 1;
           if (row.total <= 0) {
             sectorMap.delete(entry);
@@ -1587,6 +1620,7 @@ export function createAssetResidencyRegistry(options = {}) {
     entry.state = 'evicted';
     rekeySoftBudgetClass(entry);
     assets.delete(entry.key);
+    residencyMutationSeq += 1;
     governorBlockedMembers.delete(entry);
     cpuPackageBytesTotal -= entry.cpuPackageBytes;
     noteWarmCoverageEntryMutation(entry);
@@ -1814,36 +1848,43 @@ export function createAssetResidencyRegistry(options = {}) {
     const owner = previousSectorId != null
       ? Object.freeze({ type: 'asset-warm-sector', sectorId: previousSectorId, generation: assetGeneration })
       : null;
-    return (function* () {
+    const mintIterator = (function* () {
       try {
         if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
         yield;
         let retained = 0;
         let committed = false;
+        // appliedRotateSeq only advances past this seq via a newer applied rotate
+        // or the context repin — either way the queued mint is dead and its retain
+        // pass is wasted work. Bail to the marker-clearing finally; the inner
+        // committed guard releases any partial mint.
+        const superseded = () => appliedRotateSeq >= rotateSeq;
         try {
-          for (let i = 0; i < rows.length; i++) {
+          for (let i = 0; i < rows.length && !superseded(); i++) {
             if (retain(rows[i], owner, { role: 'warm-previous-sector', sectorId: previousSectorId })) retained++;
             if ((i & 255) === 255) yield;
           }
-          committed = true;
+          committed = !superseded();
         } finally {
           if (!committed && retained > 0) releaseOwner(owner, 'warm-sector-mint-abandoned');
         }
-        if (retained > 0) {
-          warmOwner = owner;
-          warmSectorId = previousSectorId;
-          yield* mintWarmCoverageSteps(owner);
-        } else {
-          warmOwner = null;
-          warmSectorId = null;
+        if (!superseded()) {
+          if (retained > 0) {
+            warmOwner = owner;
+            warmSectorId = previousSectorId;
+            yield* mintWarmCoverageSteps(owner);
+          } else {
+            warmOwner = null;
+            warmSectorId = null;
+          }
+          // A cheap-path or sync rotate that superseded this one already moved the
+          // pointer; repoint only while this is still the newest applied rotation.
+          if (rotateSeq > appliedRotateSeq) {
+            currentSectorId = exactNext;
+            appliedRotateSeq = rotateSeq;
+          }
+          emit('sector-rotated', { currentSectorId, warmSectorId });
         }
-        // A cheap-path or sync rotate that superseded this one already moved the
-        // pointer; repoint only while this is still the newest applied rotation.
-        if (rotateSeq > appliedRotateSeq) {
-          currentSectorId = exactNext;
-          appliedRotateSeq = rotateSeq;
-        }
-        emit('sector-rotated', { currentSectorId, warmSectorId });
         return true;
       } finally {
         // Drain-abandon (.return()) or supersede: drop the stale pending marker so
@@ -1851,6 +1892,18 @@ export function createAssetResidencyRegistry(options = {}) {
         if (hasPendingRotate && pendingSectorTarget === exactNext) hasPendingRotate = false;
       }
     })();
+    // A queued mint killed before its first .next() never enters the generator,
+    // so its finally (and the pending-marker cleanup) never runs. Chain abandon
+    // sites call this hook instead: finalize the rotation the requester already
+    // observed via effectiveCurrentSectorId() and drop the dead marker.
+    mintIterator.onAbandoned = () => {
+      if (hasPendingRotate && pendingSectorTarget === exactNext) hasPendingRotate = false;
+      if (rotateSeq > appliedRotateSeq) {
+        currentSectorId = exactNext;
+        appliedRotateSeq = rotateSeq;
+      }
+    };
+    return mintIterator;
   }
 
   function handleContextLost() {
@@ -2012,6 +2065,18 @@ export function createAssetResidencyRegistry(options = {}) {
       warmSectorId,
       contextLost,
       contextGeneration,
+      // W125 coverage-gap incidence: retains without metadata.sectorId, split by
+      // whether the entry is warm-mint-visible anyway (sectorOwnerRefs > 0) or
+      // invisible (sole owner, unindexed). byRole names the roles minting them.
+      sectorlessOwnerRetains: Object.freeze({
+        total: sectorlessOwnerRetains.total,
+        onSectorIndexedEntries: sectorlessOwnerRetains.onSectorIndexedEntries,
+        soleOwnerUnindexed: sectorlessOwnerRetains.soleOwnerUnindexed,
+        byRole: Object.freeze([...sectorlessOwnerRetains.byRole.entries()]
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+          .slice(0, 8)
+          .map(([role, count]) => Object.freeze({ role, count }))),
+      }),
       assets: Object.freeze(assetRows),
       eventHistorySize: events.length,
       events: Object.freeze(includeEvents ? events.slice() : []),
@@ -2143,6 +2208,22 @@ export function createAssetResidencyRegistry(options = {}) {
     // entries). The per-candidate re-check below still consults live requests through the
     // default governorEntry path, so a plan can never outrace a decode completing mid-call.
     const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
+    // Every census input is funnelled behind the two mutation seqs; identical
+    // seqs + byte ledgers + cap reproduce the last receipt verbatim, so a
+    // residency poll that changed nothing serves the frozen plan in O(1)
+    // instead of re-walking O(blocked). An evicting call mutates through a
+    // funnel, so a memoized plan can never skip live evictions.
+    const memo = enforcePlanMemo;
+    if (memo
+      && memo.kind === kind
+      && memo.residencyMutationSeq === residencyMutationSeq
+      && memo.pendingRequestSeq === pendingRequestSeq
+      && memo.cpuPackageBytes === before.cpuPackageBytes
+      && memo.gpuResidentBytes === before.gpuResidentBytes
+      && memo.unaccountedResources === before.unaccountedResources
+      && memo.governorCapBytes === governorCapBytes) {
+      return memo.receipt;
+    }
     const overBudgetKnown = initialResidentBytes > governorCapBytes;
     const activePendingKeys = activePendingKeySet();
     const entries = [];
@@ -2259,7 +2340,7 @@ export function createAssetResidencyRegistry(options = {}) {
     const budgetSatisfied = indeterminate
       ? false
       : Number.isFinite(budgetBytes) ? remainingBytes <= budgetBytes : true;
-    return Object.freeze({
+    const receipt = Object.freeze({
       ...plan,
       evicted: Object.freeze(evicted),
       evictedBytes,
@@ -2277,6 +2358,17 @@ export function createAssetResidencyRegistry(options = {}) {
       blockedBytesByRole: blocked.byRole,
       blockedBytesByReason: blocked.byReason,
     });
+    enforcePlanMemo = {
+      kind,
+      residencyMutationSeq,
+      pendingRequestSeq,
+      cpuPackageBytes: after.cpuPackageBytes,
+      gpuResidentBytes: after.gpuResidentBytes,
+      unaccountedResources: after.unaccountedResources,
+      governorCapBytes,
+      receipt,
+    };
+    return receipt;
   }
 
   // Stepped twin of enforceBudget: identical plan/evict/receipt semantics with the
@@ -2286,6 +2378,19 @@ export function createAssetResidencyRegistry(options = {}) {
     const before = budgetTotals();
     const initialResidentBytes = kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes;
     const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
+    // Same memo as the sync twin — the consult runs at first .next(), so a mint
+    // held across frames still re-validates the seqs at drive time.
+    const memo = enforcePlanMemo;
+    if (memo
+      && memo.kind === kind
+      && memo.residencyMutationSeq === residencyMutationSeq
+      && memo.pendingRequestSeq === pendingRequestSeq
+      && memo.cpuPackageBytes === before.cpuPackageBytes
+      && memo.gpuResidentBytes === before.gpuResidentBytes
+      && memo.unaccountedResources === before.unaccountedResources
+      && memo.governorCapBytes === governorCapBytes) {
+      return memo.receipt;
+    }
     const overBudgetKnown = initialResidentBytes > governorCapBytes;
     const activePendingKeys = activePendingKeySet();
     const entries = [];
@@ -2391,7 +2496,7 @@ export function createAssetResidencyRegistry(options = {}) {
     const budgetSatisfied = indeterminate
       ? false
       : Number.isFinite(budgetBytes) ? remainingBytes <= budgetBytes : true;
-    return Object.freeze({
+    const receipt = Object.freeze({
       ...plan,
       evicted: Object.freeze(evicted),
       evictedBytes,
@@ -2408,6 +2513,17 @@ export function createAssetResidencyRegistry(options = {}) {
       blockedBytesByRole: blocked.byRole,
       blockedBytesByReason: blocked.byReason,
     });
+    enforcePlanMemo = {
+      kind,
+      residencyMutationSeq,
+      pendingRequestSeq,
+      cpuPackageBytes: after.cpuPackageBytes,
+      gpuResidentBytes: after.gpuResidentBytes,
+      unaccountedResources: after.unaccountedResources,
+      governorCapBytes,
+      receipt,
+    };
+    return receipt;
   }
 
   return Object.freeze({

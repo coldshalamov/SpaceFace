@@ -659,6 +659,11 @@ function ensureEntityIndex(state) {
     // Parallel carrier count for byWorldRecordId: O(1) "exactly one carrier" answers — any
     // ambiguity (0, ≥2, or a missing count) keeps the entityList walk callers already run.
     byWorldRecordIdCount: new Map(),
+    // Canonical sector key -> Set<entity> under entitySectorIndexKey. Spawn literals
+    // index at append; post-append re-homes re-key through syncEntitySectorMembership.
+    // Entities with no sector stamp live in the null bucket — they are global,
+    // on-stage in every sector, and must stay in every sector-scoped roster.
+    bySectorId: new Map(),
     _indexedIds: new Set(),
     _sourceList: null,
     _sourceLength: -1,
@@ -735,6 +740,12 @@ function repairEntityIndex(index) {
     index.byWorldRecordIdCount = new Map();
     index.ready = false;
   }
+  // A missing sector lane means members were appended without it — the map alone
+  // is not coverage. Force the rebuild so bucket readers never serve a partial set.
+  if (!(index.bySectorId instanceof Map)) {
+    index.bySectorId = new Map();
+    index.ready = false;
+  }
   if (!(index._indexedIds instanceof Set)) {
     index._indexedIds = new Set();
     index.ready = false;
@@ -791,6 +802,7 @@ function clearEntityIndex(index) {
   index.capitalBossCast.clear();
   index.byWorldRecordId.clear();
   index.byWorldRecordIdCount.clear();
+  index.bySectorId.clear();
   index._indexedIds.clear();
   index.laneEpoch = (Number.isFinite(index.laneEpoch) ? index.laneEpoch : 0) + 1;
   index.laneVersions = Object.create(null);
@@ -919,6 +931,14 @@ function appendEntityIndex(index, e) {
     indexSlotMember(index.byActivityActorSlotId, activityActorSlotId, e);
     e._indexActivityActorSlotId = activityActorSlotId;
   }
+  // Sector claim — spawn literals land in their bucket here; post-append re-homes
+  // (traffic assignment, activity adoption, aftermath/materialize restamps) re-key
+  // through syncEntitySectorMembership. The stamp records the indexed key so removal
+  // vacates the same bucket a later re-stamp moved it out of. Appends count as sector-
+  // membership changes — the lane bumps here too or sector-scoped rosters serve stale.
+  e._indexSectorKey = entitySectorIndexKey(e);
+  indexSlotMember(index.bySectorId, e._indexSectorKey, e);
+  bumpLaneVersion(index, 'sectorMemberships');
 
   appendTypedLaneMembership(index, e);
   index.version++;
@@ -1065,6 +1085,11 @@ function removeEntityIndex(index, e) {
     unindexSlotMember(index.byActivityActorSlotId, e._indexActivityActorSlotId, e);
     e._indexActivityActorSlotId = undefined;
   }
+  if (e._indexSectorKey !== undefined) {
+    unindexSlotMember(index.bySectorId, e._indexSectorKey, e);
+    e._indexSectorKey = undefined;
+    bumpLaneVersion(index, 'sectorMemberships');
+  }
   // Vacated worldRecordId slots remap to the next live holder so map lookups answer the same
   // entity the entityList walk would have found (duplicate keepers exist for malformed rows).
   // Decrement the id the entity was COUNTED under — a post-spawn re-stamp can leave
@@ -1102,6 +1127,16 @@ function removeEntityIndex(index, e) {
 function bumpLaneVersion(index, lane) {
   const laneVersions = index.laneVersions;
   if (laneVersions) laneVersions[lane] = (laneVersions[lane] || 0) + 1;
+}
+
+// Canonical sector identity — first non-null of homeSectorId, data.homeSectorId,
+// data.sectorId (the same chain the scoped-despawn and kill-capture readers run).
+// The index does NOT apply a current-sector default: no stamp means the entity is
+// global and belongs in every sector-scoped roster via the null bucket.
+function entitySectorIndexKey(e) {
+  if (!e) return null;
+  const data = e.data;
+  return e.homeSectorId || (data && (data.homeSectorId || data.sectorId)) || null;
 }
 
 // Multi-member keyed maps (slotId -> Set<entity>) — the ceres activity predicates require
@@ -1281,6 +1316,27 @@ export function syncEntityActivitySlotMembership(index, e) {
   }
 }
 
+/**
+ * Post-spawn sector re-homes. e.homeSectorId / data.homeSectorId / data.sectorId arrive in
+ * spawn literals (append-covered) and in the post-append restamps — traffic lane assignment,
+ * activity-cast adoption, aftermath/materialize/record re-binds, mission targets, pallet-jack
+ * escape. The stamp records the indexed key so a re-stamp vacates the bucket it actually
+ * occupies — the same coverage contract the slot sync keeps. Effective changes bump the
+ * sectorMemberships lane so (laneVersion, sectorId)-latched caches stop serving pre-move
+ * membership, and sector-scoped roster builders read one bucket instead of entityList.
+ */
+export function syncEntitySectorMembership(index, e) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || !e) return;
+  repairEntityIndex(index);
+  if (e.id != null && !index._indexedIds.has(e.id)) return;
+  const key = entitySectorIndexKey(e);
+  if (e._indexSectorKey === key) return;
+  unindexSlotMember(index.bySectorId, e._indexSectorKey, e);
+  e._indexSectorKey = key;
+  indexSlotMember(index.bySectorId, key, e);
+  bumpLaneVersion(index, 'sectorMemberships');
+}
+
 // Radar split at append (excluded types, then asteroid vs everything else) — evaluated under
 // whatever type the caller needs so the type-flip sync can diff old vs new membership.
 function radarLaneForEntity(e) {
@@ -1408,6 +1464,11 @@ function removeEntitiesFromIndex(index, corpses) {
     if (e && e._indexActivityActorSlotId !== undefined) {
       unindexSlotMember(index.byActivityActorSlotId, e._indexActivityActorSlotId, e);
       e._indexActivityActorSlotId = undefined;
+    }
+    if (e && e._indexSectorKey !== undefined) {
+      unindexSlotMember(index.bySectorId, e._indexSectorKey, e);
+      e._indexSectorKey = undefined;
+      index.laneVersions.sectorMemberships = (index.laneVersions.sectorMemberships || 0) + 1;
     }
   }
   removeCorpsesFromIndexArray(index.mineables, removed);

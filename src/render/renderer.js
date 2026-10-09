@@ -3224,6 +3224,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         noteLaneFault(owner.state, 'sectorExitCleanup');
         laneWarn(owner.state, 'sectorExitCleanup', '[render] sector-exit cleanup iterator faulted; dropped', err);
         try { iterator.return?.(); } catch (_) { /* best effort */ }
+        try { iterator.onAbandoned?.(); } catch (_) { /* best effort */ }
         // A fault in the primary leg used to forfeit the never-started post-dispatch
         // leg with it — its cache-only rows then sat resident until the decay sweep's
         // age/byte gates. Re-mint just that leg once; a post-dispatch fault drops the
@@ -19361,6 +19362,9 @@ export const render = {
           // release has landed.
           driveCacheCleanup(primaryReason, postDispatchReason, warmMintIter) {
             try { self._sectorExitCleanupIter?.return?.(); } catch (_) { /* best effort */ }
+            // Queued-but-never-started warm mints skip the generator finally —
+            // the abandonment hook finalizes their rotate markers instead.
+            try { self._sectorExitCleanupIter?.onAbandoned?.(); } catch (_) { /* best effort */ }
             const residency = self._assetResidency;
             if (!residency || typeof residency.releaseUnreferencedCacheOwnersSteps !== 'function') {
               // Registries without a Steps twin keep the sync contract — drain
@@ -19418,6 +19422,14 @@ export const render = {
                 }
               } catch (err) { dropLeg(err, 'enforce'); }
             })();
+            // If this fused drive is abandoned before leg 0 delegates to the
+            // warm mint, the mint's own .return() never fires — forward the
+            // abandonment hook so its rotate markers still finalize.
+            if (warmMintIter && typeof warmMintIter.onAbandoned === 'function') {
+              self._sectorExitCleanupIter.onAbandoned = () => {
+                try { warmMintIter.onAbandoned(); } catch (_) { /* best effort */ }
+              };
+            }
           },
           deferBudgetEnforce: true,
           deferWarmMint: true,
@@ -19560,9 +19572,19 @@ export const render = {
         if (!mintIter) return;
         const self = this;
         const existing = self._sectorExitCleanupIter;
-        self._sectorExitCleanupIter = existing
-          ? (function* () { yield* existing; yield* mintIter; })()
-          : mintIter;
+        if (existing) {
+          const fused = (function* () { yield* existing; yield* mintIter; })();
+          // A .return() here only reaches the mint currently delegated to —
+          // cascade the abandonment hook so queued-never-started mints still
+          // finalize their rotate markers.
+          fused.onAbandoned = () => {
+            try { existing.onAbandoned?.(); } catch (_) { /* best effort */ }
+            try { mintIter.onAbandoned?.(); } catch (_) { /* best effort */ }
+          };
+          self._sectorExitCleanupIter = fused;
+        } else {
+          self._sectorExitCleanupIter = mintIter;
+        }
       };
       try {
       // A sector is a new admission context: renderer-latched build failures retry here even
@@ -19799,9 +19821,16 @@ export const render = {
           queueWarmMint: (mintIter) => {
             const self = this;
             const existing = self._sectorExitCleanupIter;
-            self._sectorExitCleanupIter = existing
-              ? (function* () { yield* existing; yield* mintIter; })()
-              : mintIter;
+            if (existing) {
+              const fused = (function* () { yield* existing; yield* mintIter; })();
+              fused.onAbandoned = () => {
+                try { existing.onAbandoned?.(); } catch (_) { /* best effort */ }
+                try { mintIter.onAbandoned?.(); } catch (_) { /* best effort */ }
+              };
+              self._sectorExitCleanupIter = fused;
+            } else {
+              self._sectorExitCleanupIter = mintIter;
+            }
           },
           isEntryActive: () => prewarm.active === true
             && state.world
@@ -23227,14 +23256,29 @@ export const render = {
   *_publishArrivalRosterSteps(exactSectorId, batchRows = 1024) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !exactSectorId) return null;
+    // Sector-membership lane: every indexed entity sits in exactly one bySectorId
+    // bucket — its canonical sector claim, or null when unstamped (global, on-stage
+    // in every sector). The roster for a sector is its bucket plus the global bucket:
+    // an O(members+globals) pool instead of an O(entityList) walk per enter. An
+    // unready or missing lane falls back to the whole list, exactly as before.
     const entities = Array.isArray(state.entityList) ? state.entityList : [];
+    const index = state.entityIndex;
+    let pool = entities;
+    if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+        && index.bySectorId instanceof Map) {
+      const members = index.bySectorId.get(exactSectorId);
+      const globals = index.bySectorId.get(null);
+      pool = [];
+      if (members) for (const e of members) pool.push(e);
+      if (globals) for (const e of globals) pool.push(e);
+    }
     const rosterOpts = {
       sectorId: exactSectorId,
       seed: state.seed,
       byteCeiling: GOVERNOR_RESIDENCY_BYTE_CEILING,
       presentOrigin: (state.render && state.render.presentCount) || 0,
     };
-    const roster = yield* buildArrivalRosterSteps(entities, rosterOpts, batchRows);
+    const roster = yield* buildArrivalRosterSteps(pool, rosterOpts, batchRows);
     const programKeys = roster.programKeys.slice();
     const seen = new Set(programKeys);
     const meshes = this._meshes;

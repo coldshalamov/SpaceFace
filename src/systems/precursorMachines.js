@@ -59,7 +59,9 @@ function grantProtocolSatisfiedUnique(world) {
 const TWO_PI = Math.PI * 2;
 
 /** Membership lanes for the sector machine cast — members are e.data.machine only. */
-const MACHINE_SCAN_LANES = ['machines'];
+// 'sectorMemberships' joins the latch: a post-append re-home used to leave the
+// (laneVersion, sectorId) pair unchanged, so the cache served pre-move membership.
+const MACHINE_SCAN_LANES = ['machines', 'sectorMemberships'];
 
 /** Membership lanes for the sorter-target cast — members are wreck|pickup only
  * ('debris' in the filter is a data-type no live entity spawns with). */
@@ -976,7 +978,15 @@ function machineScanForSector(state, sectorId) {
     machinesCache.version = machinesVersion == null ? -1 : machinesVersion;
     machinesCache.sectorId = sectorId;
     machinesCache.machines.length = 0;
-    for (const e of state.entityList) {
+    // The sector lane holds every indexed entity under its canonical claim — walking
+    // this sector's bucket is O(members) instead of the whole list. The per-member
+    // homeSectorId predicate is unchanged, so membership answers match the old walk.
+    const index = state.entityIndex;
+    const pool = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+        && index.bySectorId instanceof Map
+      ? index.bySectorId.get(sectorId)
+      : state.entityList;
+    if (pool) for (const e of pool) {
       if (!e || e.alive === false || !e.data || !e.data.machine) continue;
       if (e.homeSectorId !== sectorId) continue;
       machinesCache.machines.push(e);

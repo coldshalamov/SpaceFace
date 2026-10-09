@@ -59,7 +59,7 @@ import {
 import { hash32 } from '../core/rng.js';
 import { armLaneErrands, applyLaneErrandIntent } from './laneErrands.js';
 import { tickLivedVignettes } from './livedWorldDirector.js';
-import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
+import { syncEntityActivitySlotMembership, syncEntitySectorMembership } from '../core/coreSystem.js';
 import { takeNearWorkSlice, NEAR_WORK_TOKEN_BUDGET } from '../core/activityScheduler.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
@@ -2575,6 +2575,8 @@ export const npcJobsRuntime = {
       if (data.sectorId == null) data.sectorId = CERES_ACTIVITY_SECTOR_ID;
       if (data.homeSectorId == null) data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
       if (target.data && target.data.sectorId == null) target.data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+      syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
+      syncEntitySectorMembership(this.state && this.state.entityIndex, target);
       // This cutter works the existing wreck field. Keep its hold and work marks there; the
       // cathedral's immovable grave scenery is not a salvage destination for this occupation.
       pinOccupationalLatch(target);

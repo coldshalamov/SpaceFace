@@ -1,4 +1,4 @@
-import { refreshEntityPhysicsIndex } from '../core/coreSystem.js';
+import { refreshEntityPhysicsIndex, syncEntitySectorMembership } from '../core/coreSystem.js';
 import { refreshPhysicsPartition, requestActivityReclassify } from '../world/activityRuntime.js';
 import { discardWorldSiteStaticFarRows } from '../world/farActorTable.js';
 // PQ-017 — imported materialization helper. asteroidSites remains the sole registered owner.
@@ -498,6 +498,7 @@ function updateExisting(entity, entry, manifest, record, componentAdmitted, stat
   data.presentationOwnerWorldRecordId = `${manifest.worldObjectId}/root`;
   data.homeSectorId = manifest.sectorId;
   data.sectorId = manifest.sectorId;
+  syncEntitySectorMembership(state && state.entityIndex, entity);
   if (entry.type === 'fx') {
     data.placeId = entry.placeId;
     data.placeScale = entry.scale;

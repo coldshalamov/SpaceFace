@@ -3,6 +3,7 @@
 // projectile that actually reaches the rock — including one that has left the frame.
 
 import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
@@ -452,6 +453,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     ent.homeSectorId = rec.homeSectorId;
     if (ent.data) ent.data.homeSectorId = rec.homeSectorId;
   }
+  syncEntitySectorMembership(state && state.entityIndex, ent);
   if (ent.activity) ent.activity.lastExactT = simTime;
   rec.liveEntityId = ent.id;
   rec.promoteReason = String(reason || 'promote');

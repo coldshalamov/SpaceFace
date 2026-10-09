@@ -238,7 +238,7 @@ import {
 } from '../world/worldRecords.js';
 import { bumpCollidesFlipEpoch, entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable, isLivingWorldActor, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
-import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
+import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
@@ -9195,6 +9195,7 @@ export const missions = {
       ent.homeSectorId = sectorId;
       ent.data.homeSectorId = sectorId;
       if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
+      syncEntitySectorMembership(this.state && this.state.entityIndex, ent);
     }
     if (ent.data.worldRecordId || !sectorId) return;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
