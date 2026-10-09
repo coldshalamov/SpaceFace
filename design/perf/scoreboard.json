@@ -718,6 +718,42 @@
     "authored-entity-plan-budget awaits-exact-pipeline-admission pin — byte-identical on clean HEAD 766f6d954, canon",
     "asset-residency-refcounts headless real release-GLB traversal 120s — documented env-bound canon"
    ]
+  },
+  {
+   "wave": 133,
+   "head": "e83b71af1",
+   "lanes": {
+    "boot-loading": {
+     "saturated": false,
+     "streak": 0,
+     "findings": 2,
+     "landed": 2,
+     "commits": [
+      "e83b71af1"
+     ],
+     "headline": "F1 (M, 12-30ms/parse): settle fill consults coveringSpeculativePrepare and dispatches the worker arm instead of duplicating JSON.parse. F2 (L-M): lazy raw — memo mint drops the pick-task getItem; speculateLoadPrepare takes a raw thunk so pick emits/raw-less emits/re-picks never read the blob on the arming task; consume paths resolve spec.readRaw() (memoized)."
+    },
+    "popin-admission": {
+     "saturated": false,
+     "streak": 0,
+     "findings": 1,
+     "landed": 1,
+     "commits": [
+      "1ec5546d2"
+     ],
+     "headline": "F1 (M): reclaimWarm sector-blind — owner metadata now carries sectorIds union; sector index, corridor rank, ledger re-derive read the union; retain() unions on re-posts; consult unions resident row or in-flight request metadata; loader passes options.sectorId."
+    }
+   },
+   "integrity": {
+    "goldenSha256": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+    "bitIdentical": true
+   },
+   "ciAdjudication": [
+    "encounter-pending-decode-warm roster-source pin — reproduces on clean HEAD, canon",
+    "sector-prewarm-boundary-generation staged batch-geometry pin — reproduces on clean HEAD, canon",
+    "asset-residency-refcounts headless real release-GLB traversal 120s — env-bound canon (verified identical on clean HEAD this wave)",
+    "check-station-tabs PUT-abort, mission-handoff waitForFunction timeout, ui-budgets baseline:stale, borrowedSun/thimbleDoor reachability (upstream 11f12f596), retail-phone webkit page crash, Vercel rate-limit — documented canon/env"
+   ]
   }
  ],
  "laneStatus": {
