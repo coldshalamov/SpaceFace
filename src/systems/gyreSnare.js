@@ -491,8 +491,12 @@ export const gyreSnare = {
         // lifetime sweep, and clobbering a live launch deadline would cut a still-
         // flying overflow ball's flight short.
         const now = this.state && this.state.simTime;
+        // A non-finite now can't prove the stash is stale — treat unprovable
+        // as unfresh and skip the restore rather than writing a possibly-past
+        // deadline into a body we can't sweep honestly anyway.
         if (futureOnly && (e.data.despawnAt != null
-          || (Number.isFinite(now) && e.data.gyrePrevDespawnAt <= now))) {
+          || !Number.isFinite(now)
+          || e.data.gyrePrevDespawnAt <= now)) {
           delete e.data.gyrePrevDespawnAt;
         } else {
           e.data.despawnAt = e.data.gyrePrevDespawnAt;
@@ -2311,7 +2315,12 @@ export const gyreSnare = {
           if (d < dHot) { dHot = d; hx = s.x; hz = s.z; }
         }
         const band = D.snagRadius * 2.2;
-        if (dHot < band && dHot > D.snagRadius * 0.4 && rt.prevPreyD - dHot > 0.5 && rt.snagRiserT <= 0) {
+        // 'closing' literally: the prev ledger must be a real prior sample —
+        // Infinity (first observation, or just-left-the-band re-entry) is not
+        // a measured approach, so a body statically parked in the band must
+        // not chirp on its first sample.
+        if (dHot < band && dHot > D.snagRadius * 0.4
+          && Number.isFinite(rt.prevPreyD) && rt.prevPreyD - dHot > 0.5 && rt.snagRiserT <= 0) {
           rt.snagRiserT = 5;
           const k = 1 - clamp((dHot - D.snagRadius * 0.4) / (band - D.snagRadius * 0.4), 0, 1);
           this.bus.emit('audio:cue', {
