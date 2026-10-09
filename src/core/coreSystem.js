@@ -20,6 +20,14 @@ import { measuredSkinAllowedFor } from '../data/collisionProxyManifests.js';
 // restores the full clocks path. Different angle from held pose-rematch / sleeping-clocks /
 // compact-skip.
 let LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = true;
+// Corpse compaction rides a death latch (any membership-dirty corpse arms it);
+// this backstop bounds staleness for unmarked kills — a missed arm strands a
+// corpse ≤period ticks instead of leaking it, and quiet ticks skip the O(list) walk.
+const LIFETIME_CORPSE_SWEEP_PERIOD_TICKS = 64;
+// Rolling probe width: ~168 sites write alive=false without marking MEMBERSHIP, so a
+// bounded slice of the list is scanned each tick — an unmarked corpse is caught within
+// length/slice ticks, and the full collect walk only runs once a corpse provably exists.
+const LIFETIME_CORPSE_PROBE_SLICE = 128;
 export function setLifetimeSweepQuietClocksSkipForBench(enabled) {
   LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = enabled !== false;
 }
@@ -540,9 +548,11 @@ export const core = {
     if (player && player.alive && !this._presentationPausedForDock && isMovableEntity(player)) {
       this._publishPresentation?.('recordTransformIfChanged', player);
     }
+    let corpseSignal = false;
     for (let i = 0; i < dirty.length; i++) {
       const e = entities && typeof entities.get === 'function' ? entities.get(dirty[i]) : null;
-      if (!e || e.id === state.playerId || !e.alive) continue;
+      if (!e || e.id === state.playerId) continue;
+      if (!e.alive) { corpseSignal = true; continue; }
       if (!this._presentationPausedForDock && isMovableEntity(e)) {
         this._publishPresentation?.('recordTransformIfChanged', e);
       }
@@ -556,10 +566,27 @@ export const core = {
     // one ~30-bucket strip per corpse.
     const corpseIndices = this._lifetimeCorpseIndices || (this._lifetimeCorpseIndices = []);
     corpseIndices.length = 0;
-    for (let i = list.length - 1; i >= 0; i--) {
-      const e = list[i];
-      if (e && e.id === state.playerId) continue;
-      if (e && !e.alive) corpseIndices.push(i);
+    // Latch + rolling probe + backstop: canonical kills mark DIRTY.MEMBERSHIP (armed
+    // above); the probe catches unmarked alive=false writes within a bounded delay;
+    // the periodic unconditional pass bounds the worst case if a corpse slips both.
+    let corpseSweepDue = corpseSignal
+      || (LIFETIME_CORPSE_SWEEP_PERIOD_TICKS > 0 && (state.tick % LIFETIME_CORPSE_SWEEP_PERIOD_TICKS) === 0);
+    if (!corpseSweepDue && list.length > 0) {
+      let cursor = this._lifetimeCorpseProbeCursor | 0;
+      if (cursor >= list.length) cursor = 0;
+      const end = Math.min(list.length, cursor + LIFETIME_CORPSE_PROBE_SLICE);
+      for (let i = cursor; i < end; i++) {
+        const e = list[i];
+        if (e && !e.alive && e.id !== state.playerId) { corpseSweepDue = true; break; }
+      }
+      this._lifetimeCorpseProbeCursor = end >= list.length ? 0 : end;
+    }
+    if (corpseSweepDue) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        const e = list[i];
+        if (e && e.id === state.playerId) continue;
+        if (e && !e.alive) corpseIndices.push(i);
+      }
     }
     if (corpseIndices.length === 1) this._removeEntityAtIndex(corpseIndices[0], state);
     else if (corpseIndices.length > 1) this._removeEntitiesAtIndices(corpseIndices, state);
