@@ -422,6 +422,16 @@ export const gyreSnare = {
         const pub = this._ensurePub(st);
         pub.corePos.x = torn.pos.x; pub.corePos.z = torn.pos.z;
       }
+    } else if (!wasOff && reason === 'released' && emitId != null) {
+      // A polite release earns no whip — but the freed clump still drifts off on
+      // its last orbit velocity, so the rubble follows its live track for the
+      // same ~0.5 s window ('the lash let the ball go') instead of deflating at
+      // the maw while the real body plainly floats away. No snap, no tear dir.
+      const st = this.state;
+      const torn = st && st.entities ? st.entities.get(emitId) : null;
+      if (torn && torn.alive !== false && torn.pos) {
+        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S), dir: null };
+      }
     }
     if (this.bus && !wasOff) {
       this.bus.emit(GYRE_EVENTS.beamOff, {
@@ -2144,6 +2154,7 @@ export const gyreSnare = {
         pub.tornId = rt.tornTrack.id;
         pub.tornPos.x = torn.pos.x; pub.tornPos.z = torn.pos.z;
         if (rt.tornTrack.dir) { pub.tornDir.x = rt.tornTrack.dir.x; pub.tornDir.z = rt.tornTrack.dir.z; }
+        else { pub.tornDir.x = 0; pub.tornDir.z = 0; } // a dir-less track (polite release) must not leak a stale whip
       } else pub.tornId = null; // dead/expired read — _sweepBallWatch owns the rt clear
     } else pub.tornId = null;
     // The funnel's drawn spiral + the clump's float phase ride the same eased stir /

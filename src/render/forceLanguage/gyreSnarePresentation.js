@@ -294,6 +294,8 @@ export class GyreSnarePresentation {
     this._closeSeeds = null; // each element's last live alpha /flashCalm — the ramp starts continuous
     this._closeTear = false; // 'strained' close: the freed clump whips away — rubble rides its track
     this._tearFade = null;   // seconds left on the k² rubble fade once the torn track ends (no one-frame de-rez)
+    this._tearBurst = null;  // the tear's ring slot — chases tornPos while the track publishes
+    this._swirlMag = 0.9;    // last live tumble magnitude — the tear-follow keeps the dead ball's spin speed
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
     this._moteKick = 0;      // absorb gulp: the mote spiral's own clock surges for a beat
     this._gulpDirX = 0;      // newest member's approach dir (world frame) — the funnel
@@ -808,6 +810,7 @@ export class GyreSnarePresentation {
     // world (dir.x, dir.z).
     slot.mesh.rotation.z = dir ? Math.atan2(-dir.z, dir.x) : 0;
     slot.mesh.visible = true;
+    return slot;
   }
 
   // A pub.balls entry → trail spec for _drawTrail (dir from live velocity; a ball
@@ -867,7 +870,7 @@ export class GyreSnarePresentation {
     // early-returning here froze the ring at t≈0.03 as a faint glow stuck at the grave.
     // The close-ramp owns the quiet window too: latching _quiet on the first dead frame
     // strangled the ramp after ~1 tick, leaving a ghost cone + frozen clump on screen.
-    if (!live && this._quiet && !this._closing && this._deathT <= 0 && this._adoptT <= 0 && !this._bursts.some((b) => b.t < 1) && this._tearFade == null && this._secGraveT == null) return;
+    if (!live && this._quiet && !this._closing && this._deathT <= 0 && this._adoptT <= 0 && !this._bursts.some((b) => b.t < 1) && this._tearFade == null && this._secGraveT == null && (!mirror || mirror.tornId == null)) return;
     if (!live) { this._quiet = true; }
     else this._quiet = false;
 
@@ -882,6 +885,7 @@ export class GyreSnarePresentation {
       // secondary grave scatter resuming against a new ball, a stale warn veil
       // or strain shimmer bleeding into the next hold.
       this._holdT = 0; this._leanZ = 0; this._strainVis = 0; this._swirlDir = 1;
+      this._swirlMag = 0.9;
       this._secId = null; this._secGraveT = null; this._adoptT = 0;
       this._veilMat.opacity = 0; this._veilMat.color.copy(this._colGlass);
       this._veil.visible = false;
@@ -1352,7 +1356,7 @@ export class GyreSnarePresentation {
           // just applied — the same directed payoff the thrownBeat ring gets.
           const tdx = finite(mirror.tornDir && mirror.tornDir.x),
             tdz = finite(mirror.tornDir && mirror.tornDir.z);
-          this._fireBurst(finite(mirror.corePos.x), finite(mirror.corePos.z),
+          this._tearBurst = this._fireBurst(finite(mirror.corePos.x), finite(mirror.corePos.z),
             Math.max(6, finite(mirror.clumpRadius, 8) * 1.4), flashCalm,
             Math.hypot(tdx, tdz) > 0.01 ? { x: tdx, z: tdz } : null, 1.1);
         }
@@ -1439,7 +1443,14 @@ export class GyreSnarePresentation {
     }
     // The swirl's chirality for lump fly-ins: meals arrive spiralling the same
     // way the rubble tumbles, so their rim entry tilts along the group spin.
-    this._swirlDir = spinRate < 0 ? -1 : 1;
+    // Written only on the lanes that compute a SIGNED spinRate — on the
+    // close/tear lanes spinRate is the unsigned default and stamping _swirlDir
+    // here would flip the dead ball's tumble to +1 the very frame the whip
+    // tries to ride it. _swirlMag keeps its speed for the same lane.
+    if (cx != null) {
+      this._swirlDir = spinRate < 0 ? -1 : 1;
+      this._swirlMag = Math.abs(spinRate);
+    }
 
     // The flying ball's grave is tracked off ballPos only — a newly held core must
     // never poison where the OLD ball died (previously cx could be the held core).
@@ -1587,7 +1598,7 @@ export class GyreSnarePresentation {
         this._clump.scale.multiplyScalar(Math.exp(-sdt * 8));
         this._clump.visible = this._adoptT > 0;
         if (this._adoptT <= 0) { this._clearLumps(); this._clump.scale.setScalar(1); }
-      } else if (this._closeTear) {
+      } else if (this._closeTear || mirror.tornId != null || this._tearFade != null) {
         if (mirror.tornId != null) {
           // Tear follow: the freed core whips off on its parting snap and the rubble
           // RIDES it — the sim publishes the body's live pos for ~0.5 s (tornPos).
@@ -1595,10 +1606,11 @@ export class GyreSnarePresentation {
           // the grown body plainly still flies. Shrinks gently as it leaves.
           const p = this.toLocal(finite(mirror.tornPos.x), finite(mirror.tornPos.z), this._pt);
           this._clump.position.set(p.x, 0.6, p.z);
-          // Keep the live lane's chirality: spinRate is the unsigned default
-          // on this lane — _swirlDir still carries the dead ball's tumble
-          // direction, so a -1 ball doesn't reverse its rubble mid-whip.
-          this._clumpSpin += sdt * spinRate * this._swirlDir;
+          // Signed magnitude + chirality frozen at the whip — _swirlMag/_swirlDir
+          // are written only on the live lanes, so the rubble keeps the dead
+          // ball's own tumble instead of the unsigned default (+0.9 flips a -1
+          // ball mid-whip).
+          this._clumpSpin += sdt * this._swirlMag * this._swirlDir;
           this._clump.rotation.y = -this._clumpSpin;
           this._clump.scale.multiplyScalar(Math.exp(-sdt * 1.5));
           this._veilMat.opacity *= Math.exp(-sdt * 4);
@@ -1644,8 +1656,11 @@ export class GyreSnarePresentation {
         this._halo.visible = false;
         this._basinHalo.visible = false;
       }
+      // The tear/release follow owns the lump pool while it rides tornPos and
+      // through its _tearFade scatter — clearing under it left the whip bare.
       if (phase === 'off' && this._ballId == null && !this._closing
-        && this._deathT <= 0 && this._adoptT <= 0) this._clearLumps();
+        && this._deathT <= 0 && this._adoptT <= 0 && !this._closeTear
+        && mirror.tornId == null && this._tearFade == null) this._clearLumps();
     } else {
       this._deathT = 0; this._adoptT = 0;
       this._closeTear = false; // a re-beam mid-tear-follow hands the clump group to the new core
@@ -2113,7 +2128,8 @@ export class GyreSnarePresentation {
       // A live bowling ball keeps its frozen member ledger — the lumps ride the throw.
       // Only drop them when the mirror itself stopped tracking a ball (and no death
       // dissolve is still playing them out).
-      if (phase === 'off' && mirror.launchedId == null && this._deathT <= 0 && this._adoptT <= 0) this._clearLumps();
+      if (phase === 'off' && mirror.launchedId == null && this._deathT <= 0 && this._adoptT <= 0
+        && !this._closeTear && mirror.tornId == null && this._tearFade == null) this._clearLumps();
       this._phase = phase;
     }
 
@@ -2131,6 +2147,14 @@ export class GyreSnarePresentation {
       this._coneMat.uniforms.uPulse.value = 1;
     }
     this._launchSeq = finite(mirror.thrownTick);
+
+    // The tear ring chases the whipping body, not just the bloom spot — under
+    // contention (a live ball already owns the clump group) this moving ring
+    // is the only 'lash lost the ball' dressing the freed core gets.
+    if (mirror.tornId != null && mirror.tornPos && this._tearBurst && this._tearBurst.t < 1) {
+      const tp = this.toLocal(finite(mirror.tornPos.x), finite(mirror.tornPos.z), this._pt);
+      this._tearBurst.mesh.position.set(tp.x, 0.4, tp.z);
+    }
 
     // ── bursts ───────────────────────────────────────────────────────────────
     for (const b of this._bursts) {

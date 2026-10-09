@@ -3459,14 +3459,23 @@ test('a strain break publishes the torn core\'s last ~0.5 s — the close flies 
     `tornPos tracks the freed body's live pos (lag=${Math.hypot(t.state.gyreSnare.tornPos.x - body.pos.x, t.state.gyreSnare.tornPos.z - body.pos.z).toFixed(2)} wu)`);
   for (let i = 0; i < 40; i++) t.sim.step(); // ~0.67 s — past the ~0.5 s window
   assert.equal(t.state.gyreSnare.tornId, null, 'the follow releases after ~0.5 s');
-  // A polite release never publishes a track.
+  // A polite release publishes the same ~0.5 s track — the rubble rides the
+  // freed body's drift ('the lash let the ball go') — but earns no whip dir
+  // and no snap impulse (that stays pinned in the snap-velocity test below).
   const t2 = await bootPhysics();
   const body2 = rock(t2.sim, T.mawDist, 0, 6, 4);
   hold(t2);
   for (let i = 0; i < 8; i++) { t2.state.input.actions.gyreSnare = true; t2.sim.step(); }
   t2.sys._drop('released');
   t2.state.input.actions.gyreSnare = false; t2.sim.step();
-  assert.equal(t2.state.gyreSnare.tornId, null, 'a polite release publishes no torn track');
+  assert.equal(t2.state.gyreSnare.tornId, body2.id, 'a polite release publishes the freed core\'s track');
+  assert.equal(t2.state.gyreSnare.dropReason, 'released');
+  assert.ok(Math.hypot(t2.state.gyreSnare.tornDir.x, t2.state.gyreSnare.tornDir.z) < 1e-9,
+    'a polite release carries no whip direction');
+  assert.ok(Math.hypot(t2.state.gyreSnare.tornPos.x - body2.pos.x, t2.state.gyreSnare.tornPos.z - body2.pos.z) < 4,
+    'tornPos tracks the released body\'s live pos');
+  for (let i = 0; i < 40; i++) t2.sim.step();
+  assert.equal(t2.state.gyreSnare.tornId, null, 'the released follow also releases after ~0.5 s');
   t.cleanup(); t2.cleanup();
 });
 
