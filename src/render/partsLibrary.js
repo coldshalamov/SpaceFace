@@ -4443,7 +4443,7 @@ function failAuthoredPlaceAdmission(
     } else {
       publish();
     }
-    if (error) dedupWarn('partsLibrary.authored-geology-unavailable', '[partsLibrary] authored geology unavailable; retaining the matching procedural asteroid', error);
+    if (error) console.warn('[partsLibrary] authored geology unavailable; retaining the matching procedural asteroid', error);
     return false;
   }
 
@@ -4452,7 +4452,9 @@ function failAuthoredPlaceAdmission(
     ? 'none-pipeline-failed'
     : (reason.includes('build') ? 'none-build-failed' : 'none-load-failed');
   setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.unavailable);
-  if (error) dedupWarn('partsLibrary.authored-place-admission', '[partsLibrary] authored place admission failed; no substitute visual published', error);
+  // Verbatim per entity — the warn carries this asset's own detail (defId/
+  // assetRef); dedup'ing under a shared site key suppresses distinct failures.
+  if (error) console.warn('[partsLibrary] authored place admission failed; no substitute visual published', error);
   return false;
 }
 
@@ -9238,7 +9240,9 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
         : '[partsLibrary] authored admission aborted; owner left before publish',
       admissionFailureDetail);
     } else {
-      dedupWarn('partsLibrary.authored-composition',
+      // Verbatim per entity — distinct admissionFailureDetail per caller; the
+      // contract is that EVERY missing authored body names itself in the warn.
+      console.warn(
         '[partsLibrary] authored composition failed; no substitute visual published',
         admissionFailureDetail);
     }
@@ -14752,7 +14756,7 @@ function drivePoolAdmissionIfUnclaimed(admission, options) {
     if (admission && admission.cancelled === true) {
       try { console.info('[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
     } else {
-      try { dedupWarn('partsLibrary.pooled-chunk-admission', '[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
+      try { console.warn('[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
     }
   });
 }
