@@ -572,12 +572,26 @@ export const save = {
 
   _queueSharedStoreMirror(patch = null) {
     if (!sharedPlayerStoreAvailable()) return;
-    this._sharedStorePatch = this._sharedStorePatch || {};
-    if (patch && typeof patch === 'object') {
-      Object.assign(this._sharedStorePatch, patch);
-    } else {
-      Object.assign(this._sharedStorePatch, collectLocalSharedStoreKeys());
+    if (!patch || typeof patch !== 'object') {
+      // No delta supplied: the whole-corpus collect is megabyte-scale sync work, so it runs
+      // through the chunked generation-bracketed walk off this call and re-queues the
+      // materialized map when it resolves — identical end state, none of it in this task.
+      // Every in-tree writer (save/delete/evict) carries its own delta; this arm only fires
+      // for a writer the patch contract does not cover yet.
+      if (!this._sharedStoreCollectQueued) {
+        this._sharedStoreCollectQueued = true;
+        Promise.resolve()
+          .then(() => this._collectSharedStoreKeysChunked())
+          .then((keys) => {
+            this._sharedStoreCollectQueued = false;
+            this._queueSharedStoreMirror(keys || {});
+          })
+          .catch(() => { this._sharedStoreCollectQueued = false; });
+      }
+      return;
     }
+    this._sharedStorePatch = this._sharedStorePatch || {};
+    Object.assign(this._sharedStorePatch, patch);
     if (this._sharedStoreFlushTimer != null) return;
     const flush = () => {
       this._sharedStoreFlushTimer = null;
@@ -1516,23 +1530,19 @@ export const save = {
       samples.push({ phase: 'serialize', ms: nowMs() - t });
       const serializeMs = nowMs() - t;
 
-      // Envelope head — mirror serialize(): the data payload needs a stringify+hash
-      // pass for the checksum; the card stamp reads the index prior.
+      // Envelope head — the card stamp rides the descriptor so the encoded blob is
+      // byte-complete on either lane; the index read is O(index), not O(save).
       t = nowMs();
-      let envelope;
+      const descriptor = {
+        fmt: FMT,
+        version: CURRENT_VERSION,
+        savedAt: new Date().toISOString(),
+        playtimeS: Math.floor(state.meta.playtimeS || 0),
+        slot,
+      };
       try {
-        const dataJson = safeStringify(data);
-        envelope = {
-          fmt: FMT,
-          version: CURRENT_VERSION,
-          savedAt: new Date().toISOString(),
-          playtimeS: Math.floor(state.meta.playtimeS || 0),
-          slot,
-          checksum: fnv1a(dataJson),
-          data,
-        };
         const prior = this._readIndex()[slot] || {};
-        stampSlotCard(envelope, options, prior);
+        stampSlotCard(descriptor, options, prior);
       } catch (err) {
         const rr = abortReason();
         if (rr) return fail(rr);
@@ -1545,21 +1555,68 @@ export const save = {
       r = abortReason();
       if (r) return fail(r);
 
-      // Preflight bound-walk + envelope stringify — one bounded task (a JSON.stringify
-      // cannot slice further), exact same verdict/reasons as _writeSlot's json lane.
+      // Encode — the two O(save) passes (data stringify+checksum, envelope stringify) run
+      // inside the save worker when one exists. A named bound verdict comes back verbatim
+      // (the worker bounded the same envelope); an infra failure falls back to the sync
+      // twin below, which keeps the same two passes on their own bounded tasks.
       t = nowMs();
-      const bound = preflightSaveImport(envelope);
-      if (!bound.ok) {
-        return fail(bound.reason, { ok: false, reason: bound.reason, limit: bound.limit, actual: bound.actual, bytes: 0 });
-      }
+      let envelope = null;
       let json = null;
-      try { json = JSON.stringify(envelope); }
-      catch (err) { return fail('stringify_failed', { ok: false, reason: 'stringify_failed', bytes: 0 }); }
-      if (json.length > SAVE_WRITE_MAX_BYTES) {
-        return fail('save_size_limit', { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: json.length, bytes: 0 });
+      let workerRoundtripMs = 0;
+      let workerCpuMs = 0;
+      const encoded = await this._encodeEnvelopeViaWorker(descriptor, data);
+      workerRoundtripMs = nowMs() - t;
+      r = abortReason();
+      if (r) return fail(r);
+      if (encoded && encoded.ok) {
+        json = encoded.json;
+        workerCpuMs = encoded.workerCpuMs || 0;
+        envelope = { ...descriptor, checksum: encoded.checksum, data };
+        if (json.length > SAVE_WRITE_MAX_BYTES) {
+          return fail('save_size_limit', { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: json.length, bytes: 0 });
+        }
+      } else if (encoded && encoded.reason === 'superseded') {
+        return fail(abortReason() || 'superseded');
+      } else if (encoded && encoded.reason
+        && encoded.reason !== 'no_worker' && encoded.reason !== 'save_worker_failed'
+        && encoded.reason !== 'save_worker_timeout' && encoded.reason !== 'post_failed') {
+        return fail(encoded.reason, { ok: false, reason: encoded.reason, bytes: 0 });
       }
-      samples.push({ phase: 'stringify', ms: nowMs() - t });
-      const stringifyMs = nowMs() - t;
+
+      if (!envelope) {
+        // Workerless or a worker transport fault — the sync twin pays the same two passes
+        // on its own bounded tasks, identical verdicts to the pre-worker lane.
+        t = nowMs();
+        try {
+          const dataJson = safeStringify(data);
+          envelope = { ...descriptor, checksum: fnv1a(dataJson), data };
+        } catch (err) {
+          const rr = abortReason();
+          if (rr) return fail(rr);
+          console.error('[save] serialize failed', err);
+          return fail('serialize_failed');
+        }
+        samples.push({ phase: 'checksum', ms: nowMs() - t });
+
+        await hop();
+        r = abortReason();
+        if (r) return fail(r);
+
+        // Preflight bound-walk + envelope stringify — one bounded task (a JSON.stringify
+        // cannot slice further), exact same verdict/reasons as _writeSlot's json lane.
+        t = nowMs();
+        const bound = preflightSaveImport(envelope);
+        if (!bound.ok) {
+          return fail(bound.reason, { ok: false, reason: bound.reason, limit: bound.limit, actual: bound.actual, bytes: 0 });
+        }
+        try { json = JSON.stringify(envelope); }
+        catch (err) { return fail('stringify_failed', { ok: false, reason: 'stringify_failed', bytes: 0 }); }
+        if (json.length > SAVE_WRITE_MAX_BYTES) {
+          return fail('save_size_limit', { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: json.length, bytes: 0 });
+        }
+        samples.push({ phase: 'stringify', ms: nowMs() - t });
+      }
+      const stringifyMs = workerCpuMs || nowMs() - t;
 
       await hop();
       r = abortReason();
@@ -1601,6 +1658,7 @@ export const save = {
         stringifyMs: write.stringifyMs || stringifyMs,
         storageMs: write.storageMs,
         indexMs: write.indexMs,
+        workerRoundtripMs,
         bytes: write.bytes,
         ok: !!write.ok,
         failure: write.reason && write.verifyReason
@@ -1666,10 +1724,15 @@ export const save = {
       this._rememberPreparedEnvelope(previousRaw, previousPrepared);
     }
     let backupCreated = false;
+    // Tracks the recovery key's final disposition for the shared-store mirror patch: a rotated
+    // copy ships its bytes, a sacrificed one ships a tombstone, and an untouched key stays out
+    // of the patch entirely (its stale mirror entry remains consistent by construction).
+    let recoveryGone = false;
     if (previousPrepared && previousPrepared.ok) {
       try {
         localStorage.setItem(recoveryKey, previousRaw);
         backupCreated = true;
+        recoveryGone = false;
       }
       catch (err) {
         if (err && err.name === 'QuotaExceededError') {
@@ -1677,10 +1740,11 @@ export const save = {
           // copy is the cheapest thing to free. Sacrifice it and retry once — a lost backup
           // beats a lost save. If it still will not fit, proceed to the primary write: the
           // read-back verify + rollback below protects the previous primary either way.
-          try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep going */ }
+          try { localStorage.removeItem(recoveryKey); recoveryGone = true; } catch (_) { /* keep going */ }
           try {
             localStorage.setItem(recoveryKey, previousRaw);
             backupCreated = true;
+            recoveryGone = false;
           } catch (_) { /* recovery sacrificed; primary still owns the save */ }
         } else {
           return { ok: false, reason: 'backup_write_failed', bytes: json.length, stringifyMs, storageMs, indexMs };
@@ -1700,7 +1764,7 @@ export const save = {
         // pressure is from other slots' backups, so the ladder runs either way:
         //   1. this slot's recovery copy, 2. every sf.recovery.* backup,
         //   3. the autosave primary (rolling insurance; rewrites itself next trigger).
-        try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep retrying anyway */ }
+        try { localStorage.removeItem(recoveryKey); recoveryGone = true; } catch (_) { /* keep retrying anyway */ }
         let fitted = false;
         try {
           const t = nowMs();
@@ -1786,7 +1850,7 @@ export const save = {
       };
     }
     const t = nowMs();
-    this._updateIndex(slot, envelope, json,
+    const indexJson = this._updateIndex(slot, envelope, json,
       backupCreated && previousPrepared && previousPrepared.env
         ? { raw: previousRaw, env: previousPrepared.env } : null);
     indexMs = nowMs() - t;
@@ -1800,6 +1864,13 @@ export const save = {
         version: readSaveVersion(envelope.version).version,
       });
     }
+    // The shared-store mirror ships the delta this write just landed — the primary bytes, the
+    // recovery copy or its tombstone, and the index row — instead of re-collecting and
+    // re-uploading the whole save corpus at every save boundary.
+    const mirrorPatch = { [primaryKey]: json };
+    if (backupCreated && !recoveryGone) mirrorPatch[recoveryKey] = previousRaw;
+    else if (recoveryGone) mirrorPatch[recoveryKey] = null;
+    if (typeof indexJson === 'string') mirrorPatch[INDEX_KEY] = indexJson;
     return {
       ok: true,
       bytes: json.length,
@@ -1808,6 +1879,7 @@ export const save = {
       indexMs,
       backupCreated,
       backupSavedAt: backupCreated && previousPrepared.ok ? previousPrepared.env.savedAt || null : null,
+      mirrorPatch,
     };
   },
 
@@ -1906,7 +1978,7 @@ export const save = {
         });
       }
       this.bus.emit('save:completed', timing);
-      this._queueSharedStoreMirror();
+      this._queueSharedStoreMirror(write.mirrorPatch);
       return true;
     }
     this._emitSaveTimingError(timing);
@@ -2006,8 +2078,11 @@ export const save = {
         if (recoveryCard) card._recoveryCard = recoveryCard;
       }
       idx[slot] = card;
-      localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
+      const indexJson = JSON.stringify(idx);
+      localStorage.setItem(INDEX_KEY, indexJson);
+      return indexJson;
     } catch (err) { /* index is best-effort; never fail a save over it */ }
+    return null;
   },
 
   _readIndex() {
@@ -3239,6 +3314,128 @@ export const save = {
     return false;
   },
 
+  // One encode-part post: [key, value] tuples ride 'encode_part'; the sectioned bags and the
+  // chunked player payload ride their own types. Shared by the autosave posting loop and the
+  // paced-save encode rpc so both speak exactly one wire protocol.
+  _postSaveEncodeEntry(worker, id, entry) {
+    if (Array.isArray(entry)) {
+      const [key, value] = entry;
+      worker.postMessage({ id, type: 'encode_part', payload: { key, value } });
+      return;
+    }
+    if (entry.type === 'encode_player_begin') {
+      worker.postMessage({ id, type: entry.type, payload: entry.payload });
+      return;
+    }
+    if (entry.type === 'encode_bag_begin') {
+      worker.postMessage({
+        id,
+        type: 'encode_bag_begin',
+        payload: { key: entry.key, kind: entry.kind, length: entry.length },
+      });
+      return;
+    }
+    if (entry.type === 'encode_bag_part') {
+      worker.postMessage({
+        id,
+        type: 'encode_bag_part',
+        payload: { key: entry.key, start: entry.start, items: entry.source.slice(entry.start, entry.end) },
+      });
+      return;
+    }
+    worker.postMessage({
+      id,
+      type: 'encode_player_part',
+      payload: {
+        collection: entry.collection,
+        start: entry.start,
+        items: entry.source.slice(entry.start, entry.end),
+      },
+    });
+  },
+
+  // Encode rpc for the paced manual save: the two O(save) passes (data stringify+checksum,
+  // envelope stringify) run inside the save worker under the same encode_begin/part/finish
+  // protocol the autosave lane posts. Resolves {ok:true, json, checksum, gz, workerCpuMs};
+  // {ok:false, reason} carries either a named bound verdict the caller must honor verbatim
+  // (save_size_limit etc.) or an infra failure it falls back from ('no_worker',
+  // 'save_worker_*', 'post_failed', 'superseded').
+  _encodeEnvelopeViaWorker(descriptor, data) {
+    const worker = this._checkoutSaveWorker();
+    if (!worker) return Promise.resolve({ ok: false, reason: 'no_worker' });
+    const runEpoch = this._runEpoch;
+    const encoder = {
+      id: ++this._saveWorkerRequestId,
+      entries: this._autosaveEncoderEntries(data),
+      index: 0,
+      settled: false,
+      timeout: null,
+      finishPosted: false,
+    };
+    return new Promise((resolve) => {
+      const settle = (result, reusable = false) => {
+        if (encoder.settled) return;
+        encoder.settled = true;
+        clearTimeout(encoder.timeout);
+        this._releaseSaveWorker(worker, { reusable });
+        resolve(result);
+      };
+      const drive = () => {
+        if (encoder.settled) return;
+        if (runEpoch !== this._runEpoch) return settle({ ok: false, reason: 'superseded' });
+        const started = workNowMs();
+        let posted = 0;
+        let lastPostMs = 0;
+        try {
+          while (encoder.index < encoder.entries.length) {
+            const elapsed = workNowMs() - started;
+            if (posted > 0 && elapsed + lastPostMs >= AUTOSAVE_TARGET_SLICE_MS) break;
+            const entry = encoder.entries[encoder.index++];
+            const postStarted = workNowMs();
+            this._postSaveEncodeEntry(worker, encoder.id, entry);
+            lastPostMs = workNowMs() - postStarted;
+            posted++;
+          }
+          if (encoder.index >= encoder.entries.length && !encoder.finishPosted) {
+            const elapsed = workNowMs() - started;
+            if (posted > 0 && elapsed + lastPostMs >= AUTOSAVE_TARGET_SLICE_MS) {
+              this._scheduleAutosaveWork(drive);
+              return;
+            }
+            worker.postMessage({ id: encoder.id, type: 'encode_finish' });
+            encoder.finishPosted = true;
+          }
+        } catch (error) { return settle({ ok: false, reason: 'post_failed' }); }
+        if (encoder.index < encoder.entries.length) this._scheduleAutosaveWork(drive);
+      };
+      worker.onmessage = (event) => {
+        const message = event && event.data;
+        if (!message || message.id !== encoder.id || message.type !== 'encoded') {
+          return settle({ ok: false, reason: 'save_worker_failed' });
+        }
+        // A bounded encode that refused its envelope carries the named reason — that verdict
+        // IS the answer the caller reports, not a transport fault the sync lane re-derives.
+        if (message.ok === false) return settle({ ok: false, reason: message.reason || 'save_size_limit' });
+        if (typeof message.json !== 'string') return settle({ ok: false, reason: 'save_worker_failed' });
+        settle({
+          ok: true,
+          json: message.json,
+          checksum: message.checksum,
+          gz: message.gz === true,
+          workerCpuMs: Number(message.workerCpuMs) || 0,
+        }, true);
+      };
+      worker.onerror = () => settle({ ok: false, reason: 'save_worker_failed' });
+      worker.__spacefaceSaveSupersede = () => settle({ ok: false, reason: 'superseded' });
+      encoder.timeout = setTimeout(
+        () => settle({ ok: false, reason: 'save_worker_timeout' }), SAVE_WORKER_TIMEOUT_MS);
+      try {
+        worker.postMessage({ id: encoder.id, type: 'encode_begin', payload: { descriptor } });
+      } catch (error) { return settle({ ok: false, reason: 'post_failed' }); }
+      this._scheduleAutosaveWork(drive);
+    });
+  },
+
   _postAutosaveEncodeParts(job, capture, encoder, fail) {
     if (!this._autosaveJobCurrent(job) || encoder.runEpoch !== this._runEpoch) {
       fail('superseded', false);
@@ -3261,46 +3458,8 @@ export const save = {
         if (posted > 0 && elapsed + lastPostMs >= AUTOSAVE_TARGET_SLICE_MS) break;
         const entry = encoder.entries[encoder.index++];
         const postStarted = workNowMs();
-        if (Array.isArray(entry)) {
-          const [key, value] = entry;
-          encoder.worker.postMessage({ id: encoder.id, type: 'encode_part', payload: { key, value } });
-        } else if (entry.type === 'encode_player_begin') {
-          postedPlayerPart = true;
-          encoder.worker.postMessage({
-            id: encoder.id,
-            type: entry.type,
-            payload: entry.payload,
-          });
-        } else if (entry.type === 'encode_bag_begin') {
-          postedPlayerPart = true;
-          encoder.worker.postMessage({
-            id: encoder.id,
-            type: 'encode_bag_begin',
-            payload: { key: entry.key, kind: entry.kind, length: entry.length },
-          });
-        } else if (entry.type === 'encode_bag_part') {
-          postedPlayerPart = true;
-          encoder.worker.postMessage({
-            id: encoder.id,
-            type: 'encode_bag_part',
-            payload: {
-              key: entry.key,
-              start: entry.start,
-              items: entry.source.slice(entry.start, entry.end),
-            },
-          });
-        } else {
-          postedPlayerPart = true;
-          encoder.worker.postMessage({
-            id: encoder.id,
-            type: 'encode_player_part',
-            payload: {
-              collection: entry.collection,
-              start: entry.start,
-              items: entry.source.slice(entry.start, entry.end),
-            },
-          });
-        }
+        if (!Array.isArray(entry)) postedPlayerPart = true;
+        this._postSaveEncodeEntry(encoder.worker, encoder.id, entry);
         lastPostMs = workNowMs() - postStarted;
         posted++;
       }
@@ -6562,6 +6721,28 @@ export const save = {
       } else {
         json = null;
       }
+    }
+    return this._finishExportJsonAsync(json, slot);
+  },
+
+  // Async twin of the _finishExportJson entry: the double-fail lane (primary and recovery
+  // both unreadable) serializes live state through the sliced serialize instead of one
+  // sync serialize + stringify — a mature world used to brick the export click in one task.
+  async _finishExportJsonAsync(json, slot) {
+    if (!json) {
+      try {
+        const data = await this._serializeDataFrozenAsync();
+        const envelope = {
+          fmt: FMT,
+          version: CURRENT_VERSION,
+          savedAt: new Date().toISOString(),
+          playtimeS: Math.floor((this.state.meta && this.state.meta.playtimeS) || 0),
+          slot: slot || (this.state.save && this.state.save.currentSlot) || 'quick',
+          checksum: fnv1a(safeStringify(data)),
+          data,
+        };
+        json = JSON.stringify(envelope);
+      } catch (e) { json = null; }
     }
     return this._finishExportJson(json, slot);
   },
