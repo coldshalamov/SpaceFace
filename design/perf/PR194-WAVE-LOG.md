@@ -2466,8 +2466,17 @@ Saturation: 1 of 4 reporting lanes (streak 2/3 by wave verdict).
 ## Wave 123 (in progress — HEAD b16d2730a)
 
 - **lod-in-frame**: saturated → **LANE CLOSED** (3rd consecutive; first lane to close under the evidence contract). W122 machinery verified in code end-to-end; the shadow-map whole-scene walk residual was already covered by _shadowCasterRegistry (vendored, since 713dc74ed). Sole material B1 residual: vendored-three projectObject render-list construction — O(mounted-nodes) per render pass, 1× native+bloom / 2× graph+AO per frame; flat renderable-leaf registry lever sketched (same shape as _shadowCasterRegistry; effort L, impact M, risk M-H — deferred as vendor-patch territory, hardware-unverified benefit).
-- **popin-admission**: auditing (92bf99c2)
-- **boot-loading / in-flight-hitches**: queued on SWE-2 cap
+- **popin-admission**: `saturated: false` — 6 findings, 5 landed (`7acc45245`+`8311f58e9`), F6 deferred
 
-Wave 123 saturation streaks: lod CLOSED (3/3).
+### popin-admission — `saturated: false` (F1–F5 landed `7acc45245`, F2 `8311f58e9`)
+
+- **popin F1+F4+F5-partial (MECHANISM_VERIFIED) — the enforce census re-derived everything selectEvictions and the receipt needed, three times**: `enforceBudget`/`enforceBudgetSteps` now mint `blockedReasons` and the unit-owner index once in the single walk and pass them into `governor.plan` as option projections (`selectEvictions` keeps its self-contained defaults for direct callers); `blockedBreakdown` reuses the minted reasons. Under the named cap the entries list + unit-owner index skip outright (plan can only be evict:[]).
+- **popin F2 (MECHANISM_VERIFIED) — governorBlockedMembers**: a member set re-keyed at the same funnels as the soft-class ledgers (pending activate/deactivate, owner index/unindex, evictIfUnowned, registerAsset) tracks governor-blocked membership; the blocked rows mint off the set in O(blocked) — the per-row policy check drops out of the census entirely on both twins. Verify cadence + verifyLedgerConsistency rebuild/drift-check the set; members re-qualify at consult. Bench: 4000-asset under-budget enforce ~0.5µs/call flat vs blocked count (was an O(assets) owner-graph walk). `releaseUnreferencedCacheOwnersPassSteps` iterates the class member sets instead of spreading the asset table.
+- **popin F3 (MECHANISM_VERIFIED) — prewarm's sync `rotateSector` boundary**: assetLoader's swap site routes through `rotateSectorDeferred`; a paced mint iterator chains FIFO behind `_sectorExitCleanupIter` via a new `queueWarmMint` option, preserving `prepared.rotated` truthiness on cheap-inline rotations (contract: `false` = already-current, mirrors the sync twin).
+- **popin F6 (deferred)** — the diagnostics sort row's O(blocked log blocked) is below noise at observed blocked counts (~<64); revisit only if blocked counts grow.
+- Golden `0b33dde` bit-identical both lanes; ~60 focused tests green (38 residency/governor suite + refcounts; headless real-GLB traversal 120s timeout is the documented env-bound canon).
+
+- **boot-loading / in-flight-hitches**: queued on SWE-2 cap (boot `afaf3789` auditing)
+
+Wave 123 saturation streaks: lod CLOSED (3/3), popin 0/3.
 
