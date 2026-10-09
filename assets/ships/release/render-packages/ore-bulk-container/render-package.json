@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9e0d5dce2eb4fe0d1161ca79f272060b5c43ebf86c8a0ea976e281762f84abf9",
+  "contentHash": "e4a4e83004cb3a60e62eae41bb8f7220d77778204009100a95113c69d94a3f3f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8dbcfb9258c13661c661d8d1a2a0a150b1c362da4529e1c2a67368d6e38dcdc6",
+      "geometryHash": "977d0bd691a717eae890c55244cc90030052e6b1a18a55a8db2d7aad57775792",
       "id": "sf.render.ore-bulk-container.mesh.floor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -79,7 +79,7 @@
       "meshName": "Floor.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.floor",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d37db8f394627984bc381ae5a143c1f3acca46d87bba12a9382dc9a6e5cfb385",
+      "geometryHash": "663401408344df7b023ba1ebb539daa18358766347e43fa853504c51a7a9226d",
       "id": "sf.render.ore-bulk-container.mesh.idplate.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -104,7 +104,7 @@
       "meshName": "IdPlate.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.idplate",
       "primitiveIndex": 0,
-      "vertexCount": 436
+      "vertexCount": 144
     },
     {
       "bounds": {
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bfb6e79fc2c36af4fd759557c0fa4dab282c6f681c8d4614ddee2a2a74be8079",
+      "geometryHash": "7d5a8258767994dc72381bdbc507c30a6df8dbfd82c3e8f299d1d2d585fdb619",
       "id": "sf.render.ore-bulk-container.mesh.orea0.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -145,7 +145,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e463b3b201ff69b02968e921c0e7fb8f73fbd0894f4901bddb3b14522bf74afb",
+      "geometryHash": "5dd79f182be19bd8271ebb9903fa77e54a143816e65ddde73715581eecd49951",
       "id": "sf.render.ore-bulk-container.mesh.orea1.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e37d3b44886b54fa0e73c33d2cf835c1af9c3bfb0887f481e2946b041fbc72c",
+      "geometryHash": "2c1c324c685188e46a555941882e7c908321bc9744857442f0606c75c2c76a84",
       "id": "sf.render.ore-bulk-container.mesh.orea2.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -179,7 +179,7 @@
       "meshName": "OreA2.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.orea2",
       "primitiveIndex": 0,
-      "vertexCount": 948
+      "vertexCount": 946
     },
     {
       "bounds": {
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7ffafb48f27ea248d9dcd7a72f67222ce2cb598f5f183d71bd64b6e0d57a96e",
+      "geometryHash": "058fb3440acc30947ad140bd332fab2482c27b1371549e5a14a461d177d31dac",
       "id": "sf.render.ore-bulk-container.mesh.oreb0.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -220,7 +220,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d858d1bba4e567cb2f96ec17b62d14f2276cc164cf29aa374155f78b5ada1baa",
+      "geometryHash": "edbd449397a569b739b5bf6644fc561aa359fff02bf39ec190fc790dcc136f81",
       "id": "sf.render.ore-bulk-container.mesh.oreb1.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -245,7 +245,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ddc2f76682972bea1bf2df36352b61db895d5606940fe3dedc758d1d6641f63d",
+      "geometryHash": "7d2ed682ea3be2a69e030bb77df8a05ec4a786f056b0d1aafd6d8b3bc777966e",
       "id": "sf.render.ore-bulk-container.mesh.oreb2.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -295,7 +295,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7c24e87831ec41d04b386b3abf671bb353432c8085533858f13c972539686a0",
+      "geometryHash": "8c7a1a151fa71ef77647f14569ebcd6e74e8047137916af4334d1aecf49f6c6d",
       "id": "sf.render.ore-bulk-container.mesh.ribp0.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -304,7 +304,7 @@
       "meshName": "RibP0.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribp0",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -320,7 +320,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3201a210a66f6b04521cea9173c04ee7a52b9d1081887e7db3af5810d36879a",
+      "geometryHash": "42c451bc61d704ed35588c893514a19f630b097520f2e18268490bc528a557de",
       "id": "sf.render.ore-bulk-container.mesh.ribp1.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -329,7 +329,7 @@
       "meshName": "RibP1.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribp1",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -345,7 +345,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4aa29678178fd738aef7b04c0a0f4a4b9c0db2222b3293d4ebe90ff09a2ffa13",
+      "geometryHash": "d793f3c679564ba315a31510f724fc0655e3068d51d29fb0f462512e9fe6cd8f",
       "id": "sf.render.ore-bulk-container.mesh.ribp2.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -354,7 +354,7 @@
       "meshName": "RibP2.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribp2",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -370,7 +370,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fbaa78423160b81b22f4e84d92859cc0cbf8caae872380c1035e92fa6064377f",
+      "geometryHash": "77ca705a6d1432c59341630eac8ee0c1e9f5b82bd85a0f9c0d482664b690fcd8",
       "id": "sf.render.ore-bulk-container.mesh.ribp3.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -379,7 +379,7 @@
       "meshName": "RibP3.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribp3",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -395,7 +395,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b810fe71806a67855c1d2795ceb6f59d477840b3fecb08f4512d059182e92b64",
+      "geometryHash": "7e9e905bf06fcd9449e88481212ec45d61126aa5ff8ba1bee54631af08ad4a3d",
       "id": "sf.render.ore-bulk-container.mesh.ribp4.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -404,7 +404,7 @@
       "meshName": "RibP4.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribp4",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -420,7 +420,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "080dd4e8873bc0757736b2d3e6b981fb3a2e66f0741c755df26bb7c3c2a26f76",
+      "geometryHash": "2ad7b0be3aefd7b853b6ad47a4ed39150f86bd32232ccdd1078f04c0cdb06ae9",
       "id": "sf.render.ore-bulk-container.mesh.ribp5.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -429,7 +429,7 @@
       "meshName": "RibP5.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribp5",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -445,7 +445,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa2ae42c1e72a607790bb2d76323d17c3a06403fb2759c6b354ad27c4b8e921c",
+      "geometryHash": "d62675d306cc3b260d8f72dfda38b6a396e45c91526fa73bfd286236060f7525",
       "id": "sf.render.ore-bulk-container.mesh.ribp6.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -454,7 +454,7 @@
       "meshName": "RibP6.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribp6",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -470,7 +470,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8542b1c1a5b96b1bf6b75cab8a184cbee649c6a9c5e02719f07ccfb3d1fc5b71",
+      "geometryHash": "460ddf6ef1153336d2cd8998dbc578b5cdb652e34707ed4b5fa5a1e912ea7055",
       "id": "sf.render.ore-bulk-container.mesh.ribs0.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -479,7 +479,7 @@
       "meshName": "RibS0.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribs0",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -495,7 +495,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c41441d222d979f2da4973d67a34845a82d646f63d759cfb1f632f3d09ab0453",
+      "geometryHash": "fc4564e44a5b2c7832b500dfa8fc9d83691f04926b8f47079f4f3dbbe1d42a83",
       "id": "sf.render.ore-bulk-container.mesh.ribs1.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -504,7 +504,7 @@
       "meshName": "RibS1.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribs1",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -520,7 +520,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab0e09bf8d13011ee499b2db6cb17f2833dfc8ac132ecf14ac5c18d988d7409e",
+      "geometryHash": "a4c47a12cdaa0babdcfe73b4014b8af118b996081067841976aa943ec4b05026",
       "id": "sf.render.ore-bulk-container.mesh.ribs2.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -529,7 +529,7 @@
       "meshName": "RibS2.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribs2",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -545,7 +545,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "14e97ba0d8fab41c0f74e6562e550d1f8564bb34081645f381e2d06bdbb1a3bf",
+      "geometryHash": "c72d8c010bd468c1310c447196784b6cff111ee826a4120a2fa05c8557d50fb4",
       "id": "sf.render.ore-bulk-container.mesh.ribs3.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -554,7 +554,7 @@
       "meshName": "RibS3.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribs3",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -570,7 +570,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bf5b1f22b1082f6fa018e31dfbdac30d460c8dfaa4e1766d3dd75c7d08ea9555",
+      "geometryHash": "a4f20c38a56e6d8655d111ed8a2dc0dac432df25e126d64e617d0806612e226a",
       "id": "sf.render.ore-bulk-container.mesh.ribs4.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -579,7 +579,7 @@
       "meshName": "RibS4.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribs4",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -595,7 +595,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e111f7aeeec5b5a1876ce0264b2d2e8a18ea2f2a1dbcad6d2566b3374ca24f30",
+      "geometryHash": "44608ad08519954410c609aa1b006791bbe9b81ffca561ed8b2825b45e340f4d",
       "id": "sf.render.ore-bulk-container.mesh.ribs5.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -604,7 +604,7 @@
       "meshName": "RibS5.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribs5",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -620,7 +620,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f2a34e94f496515d53479a06d66cc58c4b553522141b8fe60a9173707db0b46",
+      "geometryHash": "ab452fa572fdaf3743a27c890bbc43e72591529a3ec54b469b07375f75e47b93",
       "id": "sf.render.ore-bulk-container.mesh.ribs6.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -629,7 +629,7 @@
       "meshName": "RibS6.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.ribs6",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -645,7 +645,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d1015210093be3147dc314380a4e2dc3947961f9152ae235385b5b74fa118c4",
+      "geometryHash": "2e3cf756b5870395f5ebfaa39cbd9ad8ca39896ee514662a1c5e61bc5990d5c3",
       "id": "sf.render.ore-bulk-container.mesh.rimaft.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -654,7 +654,7 @@
       "meshName": "RimAft.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.rimaft",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 184
     },
     {
       "bounds": {
@@ -670,7 +670,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "343b6d9eaf594028c6ce6179a17c7bf9df94247b22b08f217d918524fee0b87d",
+      "geometryHash": "4f02b9e393ec9001715bacd638224f16cc1061a6a7a617342389b5c7ffc8edd8",
       "id": "sf.render.ore-bulk-container.mesh.rimfore.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -679,7 +679,7 @@
       "meshName": "RimFore.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.rimfore",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 184
     },
     {
       "bounds": {
@@ -695,7 +695,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "232c95ee1edf4bff85a99f3cf606a3b1c16152026d262a9142f1754f32ae767c",
+      "geometryHash": "8b2d2bd4129b0238ba3dc5727b8529fb742b613e8267c321caec25e8e575f192",
       "id": "sf.render.ore-bulk-container.mesh.rimport.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -704,7 +704,7 @@
       "meshName": "RimPort.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.rimport",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 168
     },
     {
       "bounds": {
@@ -720,7 +720,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b646ea5ff9099aefd72193a0569c6fa6055066cc73209af5b0809c6f33e206a",
+      "geometryHash": "e4d5d19f88d7aa444bc189de52995291bad27a4898682192958860676aaca3dc",
       "id": "sf.render.ore-bulk-container.mesh.rimstar.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -729,7 +729,7 @@
       "meshName": "RimStar.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.rimstar",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 168
     },
     {
       "bounds": {
@@ -745,7 +745,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65933c58e7688eeffb07ab612530d81bce25aa2b3c516852478f127dc02d0e07",
+      "geometryHash": "c2f47ecc860b4882dd2131ea24cd4f299a6869e0d723b3bb0ea5258192dcf21f",
       "id": "sf.render.ore-bulk-container.mesh.rubport.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -754,7 +754,7 @@
       "meshName": "RubPort.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.rubport",
       "primitiveIndex": 0,
-      "vertexCount": 440
+      "vertexCount": 184
     },
     {
       "bounds": {
@@ -770,7 +770,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7078c6e0f9bb86dc55e1c034764237487e3a1f7296c69f4580f2ed4b8772cc35",
+      "geometryHash": "8f0baa1151151fdaf6f9560da20cdd792c00d86f8fe23a97923cbfb244f2a451",
       "id": "sf.render.ore-bulk-container.mesh.rubstar.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -779,7 +779,7 @@
       "meshName": "RubStar.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.rubstar",
       "primitiveIndex": 0,
-      "vertexCount": 440
+      "vertexCount": 184
     },
     {
       "bounds": {
@@ -795,7 +795,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "28a797ffbff83b3d4d2bfcb3f0c0ee142804821f27a41205d813e55abba6587c",
+      "geometryHash": "6e3b8313a9ed659235637843c588765c1c203703d106d424f6de828d186583ca",
       "id": "sf.render.ore-bulk-container.mesh.wallaft.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -804,7 +804,7 @@
       "meshName": "WallAft.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.wallaft",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 144
     },
     {
       "bounds": {
@@ -820,7 +820,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fd04654369f08db0e04d5945b1f93e9c7681516e7e0ece9e94bab732663e7f9",
+      "geometryHash": "3441ff3ce0e2be7298ada18b54b6bf76d02fb96f456d41397c3d9ba0b21e7fcf",
       "id": "sf.render.ore-bulk-container.mesh.wallfore.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -829,7 +829,7 @@
       "meshName": "WallFore.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.wallfore",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 144
     },
     {
       "bounds": {
@@ -845,7 +845,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7972910e6862b32e5b913a5ce8ee4450690dfa4ddcb76033b12905c41fb2934a",
+      "geometryHash": "52fa137c6b054d037463e4bc1349731ef8eba8d3797fc79011f4169643d86f63",
       "id": "sf.render.ore-bulk-container.mesh.wallport.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -854,7 +854,7 @@
       "meshName": "WallPort.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.wallport",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     },
     {
       "bounds": {
@@ -870,7 +870,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c03adfa20d6a90acce5bc064873e216dfdb17834363e70990303408eaa65daa",
+      "geometryHash": "7a66a42d767e3de58ae7467770e40dca2bde32197be77b2e0632fbb477589ecb",
       "id": "sf.render.ore-bulk-container.mesh.wallstar.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -879,7 +879,7 @@
       "meshName": "WallStar.001",
       "nodeId": "sf.render.ore-bulk-container.mesh.wallstar",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 176
     }
   ],
   "hlods": [],
@@ -2669,19 +2669,19 @@
       "sha256": "3814ae9311c6da723b9306fe6b0b04c6f8c145b794efee00731822a7db2c32cd"
     },
     "sourceGlb": {
-      "bytes": 258892,
-      "sha256": "7b3790f47213df97581ecc72216d5f5a5b24e4526823a80e63655cddb63c5b0f",
+      "bytes": 270044,
+      "sha256": "aeab8c5081f7283c582f3f17d69090e96ddf9f01ece27f4e268b3c35f67e1a3b",
       "uri": "place_ore_bulk_container.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 401836,
-    "sha256": "300282438abf4a892a92df366323c0a0713779dc46325c85e9273a73be0d8264",
+    "bytes": 341348,
+    "sha256": "6cdb800bcf7899bb91f57cfd7023b9a30e157e553c7808b2e048c37a1ecad917",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3818,7 +3818,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ore_bulk_container.glb"
   },
-  "runtimeHash": "89eba2aea55e6a1b2208271957dd70ed2760b5328fc4e5b2e5e01e9392fbdaf0",
+  "runtimeHash": "217dfe9f543e216d19db371ead3dacafb9d2207fefcd5ff3759ad7ee03aac958",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fecfb3dff45194987f35687f6cbbfce4dc67832e7bde8aff39a4b3239a983087",
+  "contentHash": "6b5ab73c39811869120ea062e683ede02d83d67eb88068b5c203839b233354ef",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,7 +116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "342068b88ea59e8b9109fa48139dbcdf6180ca4d212c0f99523c3b90e3b03c23",
+      "geometryHash": "d8fdff66079ea9c49ba17ad12fe9e5a4e4a802262a86036e4c85f880aeedc16d",
       "id": "sf.render.inspection-platform.mesh.authority.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -125,7 +125,7 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.inspection-platform.mesh.authority",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     },
     {
       "bounds": {
@@ -1924,19 +1924,19 @@
       "sha256": "29005717c4210a37c247e101f4e2e791349f85a4c966827540f9ab89d1e63c2d"
     },
     "sourceGlb": {
-      "bytes": 27948,
-      "sha256": "b438692c6b4c20651d8412f14b32c848542db71cfdfd2768c149a795f643138d",
+      "bytes": 28076,
+      "sha256": "aebaa92bc8b0334b7305de20c5523ba76d8cc383c90e1733a18d6e470ac7b619",
       "uri": "place_inspection_platform.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 46144,
-    "sha256": "d10e2b6bcbcbcd77a70e1ba511f44d836b4e4e7c815d28ed7f5cb51ba61ba85d",
+    "bytes": 45892,
+    "sha256": "c1dca7b1675bbe4b81cc99b56b94be84aa789605d7034bd6b27228ad231ad010",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2790,7 +2790,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_inspection_platform.glb"
   },
-  "runtimeHash": "0f61c06ae1a644e3f659bfdea6266e0921ad53d5cee0980313ddbec81cebf7cc",
+  "runtimeHash": "1341b1baacacc5241a724c277285e43e029150022aaf6a069848130a8420b419",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

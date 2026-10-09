@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ccff38ac825e362f7cb5125fd71211a2ebfc0fb99ab9b5c028c408e83f22352d",
+  "contentHash": "204575f7376ae700e3687b5b6dea8e7b073462f287f41e550c1603ee63c2fb5d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "55915113442dd7cca340c376083af0fbe448fee2c4ed7862624ea4b55e616db0",
+      "geometryHash": "6f487540f313fe7037c08a0b917c449b0cdcd50f686256eb39692be79ad3cfd0",
       "id": "sf.render.pod-utility.mesh.pod-utility-material-accent-merged.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "632dd0cb56306b25e0323a6178d66737a9514c322b3e84730de75ab5eaf53177",
+      "geometryHash": "707eab9cdba6602d18dd3a2ccdfccadba10a1989ec574dcc14bc5af3cd00d339",
       "id": "sf.render.pod-utility.mesh.pod-utility-material-mechanical-merged.primitive.0",
       "indexCount": 6324,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "pod_utility_Material_Mechanical_Merged",
       "nodeId": "sf.render.pod-utility.mesh.pod-utility-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 2086
+      "vertexCount": 1511
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2672bf80e4a8eb235856693d41690b0e9d2ba3a6a808ff8c7bd833650954796",
+      "geometryHash": "5e53c0d39bf84775f044e526ae789cc88f9e1cce845f5fcd59ff2af49dc82d6f",
       "id": "sf.render.pod-utility.mesh.utility-band.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62a97a1480f9ab34c200fa26bf5dc8bdef18aa44b6634270619d2124671d49e1",
+      "geometryHash": "0efdd888ef5a1c4f16aa377a9c6208a4b079056dbefec5970ca62e407112a389",
       "id": "sf.render.pod-utility.mesh.utility-shell.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -412,19 +412,19 @@
       "sha256": "65c61126a1431906582f9d12890bfc50cd206da9420a1122393d2964f8c63a0b"
     },
     "sourceGlb": {
-      "bytes": 253972,
-      "sha256": "59ed68be9d459227dbb1f9bafcccbfa0064511f71b5628b58abcde837ccbbd9c",
+      "bytes": 250232,
+      "sha256": "2a2d028cf035827209b071e91f4dd2fb748ccfb122b21710d2681f067391ae68",
       "uri": "pod_utility.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 307072,
-    "sha256": "7d185d79270caf12eb0285ce629b0425fbe640a323c0af7f78d2dbe29d6f74b7",
+    "bytes": 269600,
+    "sha256": "fa883800328e6ba86ac8ed97c793116df9c4b47a279087e032303d6c2b4d02f5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -660,7 +660,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_utility.glb"
   },
-  "runtimeHash": "48f16f4646588e9c9b7d053d20c143f851776339548f069e31d9ec47dd7e2fcd",
+  "runtimeHash": "1bf6fd1d8b8f6c93a789d5c3d1696041c8323395ad9319fe673d28d144ebb16d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

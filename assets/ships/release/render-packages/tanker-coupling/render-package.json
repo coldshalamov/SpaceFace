@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6a8bb7c0c78c8bcf944ce05651b7b64e26b4dce0ec7b4bfea5d9f78abaef2fde",
+  "contentHash": "4e853a363c24b232559cade46d85ebf41592bed09209a340476cba37044c3b26",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -166,7 +166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f385cf9c802a030c43e0827d51745b4a86cff080744830f7a9e93654c0e5622",
+      "geometryHash": "1247bc0a0cd138c958ea0d46f0295de63b0faac278225d4787282e099697db3b",
       "id": "sf.render.tanker-coupling.mesh.boom.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -241,7 +241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d477164c7303643d8ae6ecf17791753a3273b0a7e47e1a08d003a026baba8c8",
+      "geometryHash": "206bc50684b5921d5e2f4f20758881c58b8f5e74f4ad2a28af136952a8bc5eef",
       "id": "sf.render.tanker-coupling.mesh.coupler.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -250,7 +250,7 @@
       "meshName": "Cylinder.009",
       "nodeId": "sf.render.tanker-coupling.mesh.coupler",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -282,16 +282,16 @@
         "max": [
           6.562407493591309,
           7.403008937835693,
-          0.2251167595386505
+          0.22511674463748932
         ],
         "min": [
           4.237592697143555,
           5.3969902992248535,
-          -0.2251167595386505
+          -0.22511674463748932
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e80f42c129c0ce4d119a698791d0f2b1ad80fe3ff10304487b032dda19d1a3c",
+      "geometryHash": "a4fe7fbbf1bb0052e606805c25b6bb3dce4c7f036376c403c94c28b6689844ed",
       "id": "sf.render.tanker-coupling.mesh.hose-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -316,7 +316,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "401f923854bbbee8bdcbef55e77367e062db4e06e00e5e176eceaadb2f7c6956",
+      "geometryHash": "1c3a6afe5f1a08cc5911f94103e05f7260620dc8fc70b1eaf6d5a91dcb2cc7bd",
       "id": "sf.render.tanker-coupling.mesh.hose-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -366,7 +366,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79d23ade500c26dbb7dff8c0e6d2ff5c6113eb89de0bb6163e9837a7642d93cf",
+      "geometryHash": "88d6ef169923df56a7c6baa3bbeffa6a845d1ed39dc439d2e3a9498634b9ea62",
       "id": "sf.render.tanker-coupling.mesh.riser0.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -375,7 +375,7 @@
       "meshName": "Cylinder.011",
       "nodeId": "sf.render.tanker-coupling.mesh.riser0",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -391,7 +391,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e3bb6e4236105cea3416f01ea4be66011944bd7b78980fa8517cf979506cfd3f",
+      "geometryHash": "2b08dcdfaaf097b5805ea8042996be117ad778cc68f8ec8e52eec6967502709e",
       "id": "sf.render.tanker-coupling.mesh.riser1.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -400,7 +400,7 @@
       "meshName": "Cylinder.016",
       "nodeId": "sf.render.tanker-coupling.mesh.riser1",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -416,7 +416,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9549f36f7105503fa3f5612c00d41cfb5e6bd5087a0f7b6080a8f6ba72caffbf",
+      "geometryHash": "c0a388305915d65dc9c4a1568caf0c79a9f12d64cde602d0e9ce5066845de632",
       "id": "sf.render.tanker-coupling.mesh.riser2.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -425,7 +425,7 @@
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.tanker-coupling.mesh.riser2",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -441,7 +441,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae2474377277ea89ceccd1b35d2f2125003cc1e5cd1feca6f860282e7432aaa1",
+      "geometryHash": "39268ddc3dce7d0093a7a27f2b443b4127a28927b7b99fa61bcf003bae111a4b",
       "id": "sf.render.tanker-coupling.mesh.shield-strut-p.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -466,7 +466,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bf55bf4291fa729d0704aba230ef19494fce23cecd55cd734c789e8bb8289c36",
+      "geometryHash": "01c0bfdf0df9a426a23a471617a05f37fa4467d19d5edb0de518012022b94ad4",
       "id": "sf.render.tanker-coupling.mesh.shield-strut-s.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -491,7 +491,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cb6f3e72cb8d87b626f5aa4338ed11e495afe12749d2fff4073f15b3b473e1f0",
+      "geometryHash": "28e78bada54a9ae0da77e5680dfa9aad876f93457e7ee14c4f3e5c5217f30fe9",
       "id": "sf.render.tanker-coupling.mesh.top-strobe.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -500,7 +500,7 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.tanker-coupling.mesh.top-strobe",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     },
     {
       "bounds": {
@@ -516,7 +516,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ae3225ad8e935f078ee60bc3b4da2beb505622f0ec855e85c7190c9afdf6600",
+      "geometryHash": "a2dfc27fb52d690f9d99fd2eac7a8d6d225ef276a23e378b2c33d3ed7b514ed6",
       "id": "sf.render.tanker-coupling.mesh.valve0.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -525,7 +525,7 @@
       "meshName": "Cylinder.014",
       "nodeId": "sf.render.tanker-coupling.mesh.valve0",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -541,7 +541,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "49e212466f817bd519b3e8065da0315ba1a57d0173b381d6c602833126624103",
+      "geometryHash": "62d33c35500b808113add1f240af0d632e416042e8c8781577dfac8eeb7181b7",
       "id": "sf.render.tanker-coupling.mesh.valve1.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -550,7 +550,7 @@
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.tanker-coupling.mesh.valve1",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -566,7 +566,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f610443c4494803dcb8940a0114c285dcb48e807d8d54994a1f73d731fa43013",
+      "geometryHash": "c1de287ad3ece084a89be6f526664db59eab37c8fefaed1d63e59b0f57defde2",
       "id": "sf.render.tanker-coupling.mesh.valve2.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -575,7 +575,7 @@
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.tanker-coupling.mesh.valve2",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -591,7 +591,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21faaa1e18873651cae340859a88c790e5bd1b5eda0bb872bbf6fcfb6bc15064",
+      "geometryHash": "876a27b9f30893998ab711b1b753d9a93e602fde44d02633960a7a7ce540f2b4",
       "id": "sf.render.tanker-coupling.mesh.wrap0.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -600,7 +600,7 @@
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.tanker-coupling.mesh.wrap0",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -616,7 +616,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aed5b31b93da13bfa4161fb5e31ff6348dc012ce6d9d1af37f2453ee1a20a5ab",
+      "geometryHash": "f5603ce336474ae95b5ae73c95b609384afd3b3095ad7ea53c4088bde8c45857",
       "id": "sf.render.tanker-coupling.mesh.wrap1.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -625,7 +625,7 @@
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.tanker-coupling.mesh.wrap1",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -641,7 +641,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "304aebfdd319e13d28c03602e53fc56a42f07fff867e0bbbdfcccc01a432c6be",
+      "geometryHash": "38bc0d24608f962c2a47dfc2302c9da9a33e8c9eef33a75da939c3adb4d10e1a",
       "id": "sf.render.tanker-coupling.mesh.wrap2.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -650,7 +650,7 @@
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.tanker-coupling.mesh.wrap2",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     }
   ],
   "hlods": [],
@@ -1854,19 +1854,19 @@
       "sha256": "d88a2d18db6047d9a7f046aef77422387a573f3ce417dc4d60f63d94d4be489c"
     },
     "sourceGlb": {
-      "bytes": 25948,
-      "sha256": "617a2aee352896d7b902752f74d9b7324996f3690731ee949ba488f3b5bae7b6",
+      "bytes": 26516,
+      "sha256": "cfa428bebb877c9c90a7d6fad2c659e4fbd75905d38a7907ad50f66f31646acf",
       "uri": "place_tanker_coupling.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 50544,
-    "sha256": "72f2a28ee488e7bdca909448d0bc13821c8b517f3b76a207993f30e5ad6a8e90",
+    "bytes": 48344,
+    "sha256": "8a07e92c9b69695b7dfe0ce60abea0e74e459755f4e0fe01d00696d5db24bfd3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2689,7 +2689,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tanker_coupling.glb"
   },
-  "runtimeHash": "1190249becea1ba668464a5f891837ec4718dd8477d10e849f6d6b9873ae69f0",
+  "runtimeHash": "4c71da74c3b55367b52b7d6567f69acad4218fce7b05a436fc24906c801dcd0f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

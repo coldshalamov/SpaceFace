@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6d5a9aa92a2e839c11722fb37dc336e89fa39014086889c3a54135e3ab095e99",
+  "contentHash": "903c186d583f8ead8fdf592b4a6c198b3f4034b02f89742bdb8cb82f4580ea4b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95e5b0297f3890658f02526e4ce01f4c65333e6cc5213bc20fd64b59279c30b7",
+      "geometryHash": "6259a558ca576c2fd2cb3505ca963ef05ed96c2ba7932c21baabc50a2db7ac65",
       "id": "sf.render.engine-industrial.node.det-belt-hazard-stripe.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f7c1737e0e7112ae39d6959d7f5733dcafb3a2ea0317cb10f70795cec179123a",
+      "geometryHash": "70e6d0ad52f1b0acfb9bf909a294fa85e2c4483506768ff51f5a5ab96ad6fc58",
       "id": "sf.render.engine-industrial.node.det-cinder-spatter.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f6b611dacd4ad759e6f1405025dc9aeb2026ca677dd3f9c230f3f56214a9743",
+      "geometryHash": "7b23ddc70ca7823e4f3d973204b43dcbe0548f30917fffda5e6d30cdfe7859f9",
       "id": "sf.render.engine-industrial.node.det-exhaust-scorch-band.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01b932e0030c29b3eec234665715f72d58391f47e6ef15dd6b8b44148ff34f20",
+      "geometryHash": "ea2a0f105e66a1241a5088fd7af80ea0464a975cde6e084e393e9ad7a312622b",
       "id": "sf.render.engine-industrial.node.det-ore-dust-cake.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e62f5ba0864fe871b7f1447e8b02ca502c6cb0794bd8f942fee0e932ad195951",
+      "geometryHash": "597bcee05149cb4a98009bc4a7070fd69c1ee1627f46934b8d7e9e6d2ae68ccb",
       "id": "sf.render.engine-industrial.node.det-pipe-coupling.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -148,16 +148,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c0860edc54d21bbf2a590690b8b48a555a4f133269264f0dd5ec49c39ad9ea54",
+      "geometryHash": "c6ed058eb69bd3dd038dae36cedafe4d750c8190084a217e8215b7fbbb875147",
       "id": "sf.render.engine-industrial.node.det-refinery-stencil.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
       "materialHash": "634e62a6432b712b146facd8bc9e32544944d6be649467bb07b73660d2a14496",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.engine-industrial.node.det-refinery-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 78
+      "vertexCount": 64
     },
     {
       "bounds": {
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a5589ea3cd14e1c8f68807e7547cd4529185463a35f0df74cc0c9df2d6a6ead1",
+      "geometryHash": "da380830de79b6d9059406580a9d72ab60569c2c437616100cb26548ea75bfe7",
       "id": "sf.render.engine-industrial.node.det-rust-bloom-flank.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b09f2832f9f2a0649e7c21bdf70b73f59beb1790d54a833f0606f8fbfdad1971",
+      "geometryHash": "26f5c09d70a98dfe55a900e31e0c0d76418fac12782dbe60df0c5829e5798bf6",
       "id": "sf.render.engine-industrial.node.det-soot-vent-stack.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0961df099861893ad18f047d9f746126335c78f7605246e4054f9e403eb83f60",
+      "geometryHash": "e9f908d8798bad809a695b6ab2604a4e4b74c199853ac0dc2ce9e1470b01dbd8",
       "id": "sf.render.engine-industrial.node.engine-industrial-material-hull-merged.primitive.0",
       "indexCount": 2160,
       "indexed": true,
@@ -248,16 +248,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "434254201dac323eb4cdf98d35e7332af3a6568a7de90df13d78dbc9b0390286",
+      "geometryHash": "bd0e8f68a226d4f589f637105617ba756d1debc7a0e4ae3e4b5ce6e3cf47c1d6",
       "id": "sf.render.engine-industrial.node.engine-industrial-material-mechanical-merged.primitive.0",
-      "indexCount": 20952,
+      "indexCount": 20784,
       "indexed": true,
       "materialHash": "124c8e18abd8ffd657dc1982eef3da8df157ff25aa29d3774e5d29d06783e908",
       "materialPipelineKey": "opaque",
       "meshName": "engine_industrial_Material_Mechanical_Merged",
       "nodeId": "sf.render.engine-industrial.node.engine-industrial-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 3571
+      "vertexCount": 7593
     },
     {
       "bounds": {
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5aa1c2a4bc7dfff4e546a201cde8bd07fbe286460ad8bf29f836f92aa8091f9",
+      "geometryHash": "bd0c8f0c0bb1d84b12062a9200cc77176d8b8ae06bf91d4bbe90a2ee41c7d39d",
       "id": "sf.render.engine-industrial.node.hook-drive-core.primitive.0",
       "indexCount": 792,
       "indexed": true,
@@ -298,7 +298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2957442e2ae8f81f07de27b5de4d1bc1147f7c406faac8ddb56a2fe1d64d468",
+      "geometryHash": "048f08575eb43d0e7bfa700dca4d73022e0c0b1c8bbfa8fbd5550f5f51274160",
       "id": "sf.render.engine-industrial.node.hook-drive-fan.primitive.0",
       "indexCount": 3792,
       "indexed": true,
@@ -323,7 +323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc6cc01e8513453c9dafc7c12f384bf8570d69f605c086dcf7dab61143edf4da",
+      "geometryHash": "ef250353c3a14d2376e8104520287e68f7e6e1e66e947a9e6feb4f4d82001c0b",
       "id": "sf.render.engine-industrial.node.hook-drive-plume.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -332,7 +332,7 @@
       "meshName": "HOOK_DRIVE_PLUME",
       "nodeId": "sf.render.engine-industrial.node.hook-drive-plume",
       "primitiveIndex": 0,
-      "vertexCount": 100
+      "vertexCount": 114
     },
     {
       "bounds": {
@@ -348,7 +348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "888376506aa1182a3722c8fcce0ae54c47c50f6f77cb32f225d4a01306bc396d",
+      "geometryHash": "5c5432687f40011259dafa6e1d3eb23f6857de77a80b9fe5b4c8e169e989d9c9",
       "id": "sf.render.engine-industrial.node.lod0-engine-industrial-main.primitive.0",
       "indexCount": 1296,
       "indexed": true,
@@ -2597,19 +2597,19 @@
       "sha256": "fc3c89e83aa713c91f3453916b39c2a8b28fdb5d8ad4aea590e8070d26d1c6ee"
     },
     "sourceGlb": {
-      "bytes": 349184,
-      "sha256": "b3dff895895c7cb709010f90c5b0e6a7b34af2f58d47c503dc7f09c672b7b102",
+      "bytes": 390232,
+      "sha256": "ec4f95dd113c70fbb0ffaac6faf9764ca2ed12a5011a1ce051ca2a210bb51bb7",
       "uri": "engine_industrial.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 458128,
-    "sha256": "9b01d49e29fc6f29a53053acfe6c55063f06e8d347fb810ebe57b3b0a39a8231",
+    "bytes": 549400,
+    "sha256": "a7e8f044d989ecf3ef4e43e0555dff18ae6f4e266728e585d0fc42681c1683e6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3146,7 +3146,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_industrial.glb"
   },
-  "runtimeHash": "6fea895c50bc015617a30621dae96365e34eeef7e2c9fa68b47572ab9afdf467",
+  "runtimeHash": "ae5a71b31bbc6106f0aa3b908a7d8f9d27b86245b0915b570ceff18e7576e8c6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

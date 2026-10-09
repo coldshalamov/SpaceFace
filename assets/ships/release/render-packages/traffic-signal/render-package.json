@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c58be261cbad76aa5be1a12f389b5ad3fd5fccd6499798e0196b536a668b47a5",
+  "contentHash": "0b58fd3e690954ef814e096db25eaec822ca3308b83d5a091e23f0a3856e0583",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "532f2acdd16b580f0d39123cbc2e293350f87b5859e872fa6328546ff73708b5",
+      "geometryHash": "304e36eda06a011b9e9c9c5f8e8ca12c4597a0981bd87a7a27b15a3c86691908",
       "id": "sf.render.traffic-signal.mesh.base.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -129,7 +129,7 @@
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.traffic-signal.mesh.base",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 56
     },
     {
       "bounds": {
@@ -245,7 +245,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bca995ddbbe3e913b04569ef14a70654c760ff946d7fd977ee7536bcc86cabc1",
+      "geometryHash": "7dc6d0bebd24c51b55f6aae8a30a319eaf62369be0338d927e425c38f20424bb",
       "id": "sf.render.traffic-signal.mesh.mast.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -295,7 +295,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92faa4afca525a372705bdc80519a13cafed49ae85e7170c518754ab42fc99e4",
+      "geometryHash": "bc6522b509e181efcaf5877a8ff36b6afb35174d46c05944c0006d63a3b2f927",
       "id": "sf.render.traffic-signal.mesh.top.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -304,7 +304,7 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.traffic-signal.mesh.top",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     }
   ],
   "hlods": [],
@@ -913,19 +913,19 @@
       "sha256": "b904ddf091f94fea9142ba3d2d65c92c8270215ba3b804fc7974d01ced666712"
     },
     "sourceGlb": {
-      "bytes": 17756,
-      "sha256": "6d7e4a6978da130fcd625b09d140143b5fec3aed54258c5a2c15a3108f1be569",
+      "bytes": 17924,
+      "sha256": "4a14278c0af66231fc07e85f9b6be4fadbee340f508d1c8e37f99d3e50af3bed",
       "uri": "place_traffic_signal.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 25804,
-    "sha256": "75d4e83a21a662b5b02c220180019d80acd2c4d10fbf3150f4c297e8b597b3c9",
+    "bytes": 25216,
+    "sha256": "0b30f8d07e03cb09be6a9dc9da9bd29b315caa329687aa364884ce799dcb4002",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1326,7 +1326,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_traffic_signal.glb"
   },
-  "runtimeHash": "dd0964c13a99bd55d0f2c68ec505eb9aea8c8af5228c368a205888dfe1bc6087",
+  "runtimeHash": "cf39960205378dec13d87dbe95591b8e296e08896638a9dcc8108a7b528fb06e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

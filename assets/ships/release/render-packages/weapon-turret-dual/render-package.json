@@ -54,7 +54,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f40671f075d6bda6e267691aac05d13792d24db075eb877686d1f51e5b6b52cb",
+  "contentHash": "5d587d10f414334aa0e6399bc7d2b0064306bd4d1c24bc1df8b9d3d6b31ecb6c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -71,7 +71,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4927e84e3a5c6ba91330c7af6b07e075e45232a57bc71737a0fd54cbac304a56",
+      "geometryHash": "43d722ed4e9ca26425d175b0affedf4b99084aa0631b0b14912337d133bf6d34",
       "id": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1416,
       "indexed": true,
@@ -80,7 +80,7 @@
       "meshName": "Remaster_RecessedTwinBore-0.62",
       "nodeId": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-brushednickel",
       "primitiveIndex": 0,
-      "vertexCount": 816
+      "vertexCount": 480
     },
     {
       "bounds": {
@@ -96,7 +96,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db49ecc71a818e2e834284fb8f587be3cf7bc26443d353b796104bdb8dd92621",
+      "geometryHash": "87ea8c4de1e1e594067e83209001a16dac54afb61b6f7649a708cf3466c8da46",
       "id": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 420,
       "indexed": true,
@@ -105,7 +105,7 @@
       "meshName": "Remaster_ServiceWell_Inner",
       "nodeId": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-shadowenamel",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 168
     },
     {
       "bounds": {
@@ -121,7 +121,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b06096f0a5faaef42066d84d8da775f420fb8abbea99bb1805691944ab4091a",
+      "geometryHash": "701f686958ebfbc711c0ec5c4f0b72f205b6465f52cb949d70a3a6f3eda2b39b",
       "id": "sf.render.weapon-turret-dual.node.turret-barrel-0-62-2.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -130,7 +130,7 @@
       "meshName": "Turret_Barrel_0.62",
       "nodeId": "sf.render.weapon-turret-dual.node.turret-barrel-0-62-2",
       "primitiveIndex": 0,
-      "vertexCount": 93
+      "vertexCount": 82
     },
     {
       "bounds": {
@@ -146,7 +146,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98e7238d5626d4281803d816c7e8034da23adce05332b9bccc20ef8fe8b6d85b",
+      "geometryHash": "ff78b47a6f1d305232e0775bb634060467225dc37578578a6d32a4a0c681bd53",
       "id": "sf.render.weapon-turret-dual.node.turret-barrel-0-62.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -155,7 +155,7 @@
       "meshName": "Turret_Barrel_-0.62",
       "nodeId": "sf.render.weapon-turret-dual.node.turret-barrel-0-62",
       "primitiveIndex": 0,
-      "vertexCount": 93
+      "vertexCount": 82
     },
     {
       "bounds": {
@@ -171,7 +171,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae3854c3ef3ad782efddebec7fe845b28f628739810821c202f3a8b563a0df11",
+      "geometryHash": "94619cbf995d83a3b2db093a0a441f6418c117dd49928c265b0eff97c2ea5939",
       "id": "sf.render.weapon-turret-dual.node.turret-base.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -180,7 +180,7 @@
       "meshName": "Turret_Base",
       "nodeId": "sf.render.weapon-turret-dual.node.turret-base",
       "primitiveIndex": 0,
-      "vertexCount": 108
+      "vertexCount": 98
     },
     {
       "bounds": {
@@ -196,7 +196,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fb72a475cbd39d057258eea85e7145f356a20b9f8f29dac77eb6f2ee84d789dd",
+      "geometryHash": "b8ca053caae67faa4b5fbf2a8154d802fd484216b2112f231a9c25444c9c0daa",
       "id": "sf.render.weapon-turret-dual.node.turret-charge-block.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -205,7 +205,7 @@
       "meshName": "Turret_Charge_Block.001",
       "nodeId": "sf.render.weapon-turret-dual.node.turret-charge-block",
       "primitiveIndex": 0,
-      "vertexCount": 53
+      "vertexCount": 54
     },
     {
       "bounds": {
@@ -221,7 +221,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0ce5636547003268d2ae932b09318251e5c7ad97055cdd4568136b6c7e3391b",
+      "geometryHash": "733f99adff922349e393988bd70fc37537b47fa336f825bc1b8da6e0bbcbab95",
       "id": "sf.render.weapon-turret-dual.node.turret-head.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -230,7 +230,7 @@
       "meshName": "TEMP_castReceiver.001",
       "nodeId": "sf.render.weapon-turret-dual.node.turret-head",
       "primitiveIndex": 0,
-      "vertexCount": 552
+      "vertexCount": 287
     },
     {
       "bounds": {
@@ -246,7 +246,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e939da990445ea618d60ed1949761ad297323290d26aee614cbdbccdd80517da",
+      "geometryHash": "2d692a4c73e3b414ba236dc6b4d635359590e781d9bbd8e9ff7578890f8a9adf",
       "id": "sf.render.weapon-turret-dual.node.turret-muzzle-0-62-2.primitive.0",
       "indexCount": 480,
       "indexed": true,
@@ -271,7 +271,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d6ac5c02ce011e3d66b0bea9f4c6eb8f73e0cc19e168f552c4ebabce003698e",
+      "geometryHash": "2cc94fc5ba7e52b7dbcc1b8421726674889b2e0c9b753feba78fa6812d53b3f2",
       "id": "sf.render.weapon-turret-dual.node.turret-muzzle-0-62.primitive.0",
       "indexCount": 480,
       "indexed": true,
@@ -296,7 +296,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23a176dcd9945e0f0ad3a35df3ba4b4d09656ed6bbefc1d6f1edee994c3b465b",
+      "geometryHash": "cd47ecd7b047bbf78e8a1c2a2cb1955f230bb3f7d5ae0df511d33e2f99ea9da2",
       "id": "sf.render.weapon-turret-dual.node.weapon-turret-dual-material-mechanical-merged.primitive.0",
       "indexCount": 2880,
       "indexed": true,
@@ -1735,19 +1735,19 @@
       "sha256": "08f4d2f1855055cb9494255c9b95171f12a79c33dc77a2efb493f8623f371a5d"
     },
     "sourceGlb": {
-      "bytes": 440012,
-      "sha256": "efe2cf62db55356e4701d5d70833594df3f9af198ec7423bb62623654f32f7ff",
+      "bytes": 436524,
+      "sha256": "26c9e1c24e0548930cce598b4b3b35516cbac3415025d8f753b7fcbf87b0babf",
       "uri": "weapon_turret_dual.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 500320,
-    "sha256": "ecd5799e9fd598ecb32bfab7493425e75d2c210c139a1c7eabd80e21248b6ad1",
+    "bytes": 475388,
+    "sha256": "04eb28b5e3b07dea2093889ef73d07eaf0292d5aebffa9e30c3536c61d26aab6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2227,7 +2227,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
   },
-  "runtimeHash": "d53bfca7ddeca5582d56b8020dc3fe95d059c0149ec80d58c36b98c27e1470ed",
+  "runtimeHash": "ddc3361e32cd648fae4ce0c4221a606cbec9ef3b5495baed30333eda15fc3a66",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -283,7 +283,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a63756e5a4765c69590be8ec17518ac18623d863655fcca7b41682332555fc0c",
+  "contentHash": "dedfd9c05637063ff2cc2e7da19b3985eb30f79b213496b601d759bf0bc2ed23",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -325,7 +325,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5d00f86f902989f96a061ec53410c1c8c7716c2b1455d30d9639598281a5100f",
+      "geometryHash": "abf159abb5cf3378151edf9c515dacf41282de010dd298a43add6685ce3241e2",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.binring0.primitive.1",
       "indexCount": 474,
       "indexed": true,
@@ -375,7 +375,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6dbbbd8271ab8bb5d6c6f5be3a0986ba688712a1ff77e23609afe9fb560b6e79",
+      "geometryHash": "661d3df0e6ca90308208635a2984170b3d359730fb22125349452b8250cb531c",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.binring1.primitive.1",
       "indexCount": 474,
       "indexed": true,
@@ -400,7 +400,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f19cbd72eacc219bac5ffd5c737808e810787a71ed3b859a21f74aeeb4731e89",
+      "geometryHash": "1ec85173797e8d071c30ee00870e3c8c6d6c6f8237d6993ec489a8c15afa03e4",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bowfender.primitive.0",
       "indexCount": 972,
       "indexed": true,
@@ -425,16 +425,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13a63a22ce5bc19f5ddc335af4655384800aa2dca992dcc646a503225b52280a",
+      "geometryHash": "6b36d9cec123dffbb2d38a593a3b1db4a199fff175af1e46e487cfc5da0fc101",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bowfender.primitive.1",
-      "indexCount": 1128,
+      "indexCount": 936,
       "indexed": true,
       "materialHash": "2e1e70eeccb6aad156d8fc2edcc296f55becd8a4a33d765ba44c9643c71cd862",
       "materialPipelineKey": "opaque",
       "meshName": "BowFender",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bowfender",
       "primitiveIndex": 1,
-      "vertexCount": 381
+      "vertexCount": 317
     },
     {
       "bounds": {
@@ -500,7 +500,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf2a6f2d0e8e6cdcec048fa2fa5601216ad909d53190d9f8d217e23c6621e1cc",
+      "geometryHash": "bb4c357380fd13c41b7dfe52c342638e202d39ea604c3d5db3c5477467c4e500",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridge.primitive.0",
       "indexCount": 2748,
       "indexed": true,
@@ -525,7 +525,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d970ec469d65dc206e92f726be0f0952e009f0337bfee585ce85abe379d8da1e",
+      "geometryHash": "9122ca7d5398947f0ef3a26191c0000e45b8202c1d4c0faffdd53d5cb0add02f",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridge.primitive.1",
       "indexCount": 1248,
       "indexed": true,
@@ -550,9 +550,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43a9ab9abb1cb4f36d76167e2f20a057dcd2af382e943c2d5c9e965d6464f092",
+      "geometryHash": "22ec5c2f10f82c863bc12fd2b693e92aeb1be131b9931ad55bf3f630b1e406d0",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridge.primitive.2",
-      "indexCount": 2760,
+      "indexCount": 2748,
       "indexed": true,
       "materialHash": "d7d0257dd1aaa4e71d2d57d5b7127efef954242b4a83fe8b2c631a06b95e098f",
       "materialPipelineKey": "opaque",
@@ -575,7 +575,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "93ec3fe06a275ce9938d2d6aab0df96c07855d7181ff15a50da9c771b0e8c537",
+      "geometryHash": "e22edb55af0ef786bedc921347104f732d82caa0d6a0f8dcdde0ba40e6ae2d0e",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridge.primitive.3",
       "indexCount": 2880,
       "indexed": true,
@@ -825,7 +825,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0a83bc01a71943e3085344a7e0bc99ef1aa542a999fda3dab4f3a2145eb0679",
+      "geometryHash": "a8f0bf87f4a2ddfc2431990f2e2b77872a31137b194eb8ede5134914bea5b3e7",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.dome.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -850,7 +850,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eb24f9a9f0a21fc478514de9515f347608f22b8e308b9ce204834cce45a23912",
+      "geometryHash": "e852cd22c563b51b63205fae2412cf4ba7b522d8343744fdc219d05245829c6f",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.drive.primitive.0",
       "indexCount": 4092,
       "indexed": true,
@@ -875,7 +875,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6c6043a6bf987d8adfb92d12075719aa39e8f61a906cbfcc58a7e6e10177102",
+      "geometryHash": "a85b838dcb194586e8840b7f2c9d31d2eb28a2a21f43ef75de25287f4daf2bf7",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.drive.primitive.1",
       "indexCount": 1608,
       "indexed": true,
@@ -900,7 +900,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03c545724b027ce1add1c403f97a46ea5e6cbd62de06a7d5b72b5326a0ab48a5",
+      "geometryHash": "033ac7457930b8613c00781f8ffba2fdad9fbc0af4d00867f852addf144b448d",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.drive.primitive.2",
       "indexCount": 1200,
       "indexed": true,
@@ -925,7 +925,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc5485a817795925114950d058f11e141663b39e595f8a5d9cf3148219929719",
+      "geometryHash": "3eea28cde56964ea82880ef7393630ea50fe80d4f2f1a7f11f40b1bf16d4a328",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.drive.primitive.3",
       "indexCount": 3174,
       "indexed": true,
@@ -950,16 +950,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "120e0b39b727e7ab69fce0693fc55134eb2e3d83b3a44077298fea7cbf601dac",
+      "geometryHash": "8e85531f20fe4def4f81a6602f638b911aa0f8a5600ccda6cfa96aae714794b0",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.drive.primitive.4",
-      "indexCount": 3168,
+      "indexCount": 2640,
       "indexed": true,
       "materialHash": "2e1e70eeccb6aad156d8fc2edcc296f55becd8a4a33d765ba44c9643c71cd862",
       "materialPipelineKey": "opaque",
       "meshName": "Drive",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.drive",
       "primitiveIndex": 4,
-      "vertexCount": 930
+      "vertexCount": 746
     },
     {
       "bounds": {
@@ -975,7 +975,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45063aeadc014ddc64f6ba3898d58416eb33ee108d6e7818dff01c0343222b94",
+      "geometryHash": "8a07ca4fa3e491206356c9ac520557c3f8422d4cfa475426ca7dcfdc4af0867b",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.forecastle.primitive.0",
       "indexCount": 1074,
       "indexed": true,
@@ -1050,7 +1050,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "451fab27bd31c5c04f66f1e24cc67bfb8b19502b1f1712f0c20691e4fa503968",
+      "geometryHash": "17cf0b803e7c08129dd9f9a5e2f777472325d4918c51fb10a64bd55ef283f5db",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.forecastle.primitive.3",
       "indexCount": 411,
       "indexed": true,
@@ -1075,7 +1075,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "edb9ac7f3f81166b4befe85699ffa0b39d459f0173f4435d53e8f601a01a7b99",
+      "geometryHash": "c2b7d86491bb6734aaca6dad7f8fe557a9079ed6cf3c0344a75b4c77383709a0",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.forecastle.primitive.4",
       "indexCount": 333,
       "indexed": true,
@@ -1100,7 +1100,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "545d7826d658664899c0373bd3c5988da6d5695c67cba6852a40d9bddf5af8bf",
+      "geometryHash": "daa67f53a9fc39919c172c9704518f65f8c99109cbb08b2c5aa10c051c6c605d",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h0heap-001.primitive.0",
       "indexCount": 282,
       "indexed": true,
@@ -1125,7 +1125,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0580d11bac117608482b59dfabb1889167e37002d3d0b6579de8a2a6e96ecb4f",
+      "geometryHash": "5384c27536fc59ce6718ee35ce3aaa50824ebdaf07bc3ddd7eea00a9a1efd770",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h0heap-001.primitive.1",
       "indexCount": 282,
       "indexed": true,
@@ -1300,7 +1300,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f25cd5bc60da094a3833512e74d23698a2745732663bc5faec9c24c18dcf27b4",
+      "geometryHash": "61ec92df4e0336e992f8af513d13431a82396fbfbb5c07c7dfd331917d7d63fa",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h0ore15-001.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -1309,7 +1309,7 @@
       "meshName": "H0Ore15.001",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h0ore15-001",
       "primitiveIndex": 0,
-      "vertexCount": 51
+      "vertexCount": 55
     },
     {
       "bounds": {
@@ -1525,7 +1525,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6036cb6aa0d0889009f9bc6dd204211d2bdfc17c832c33c73e23ce10e3deea66",
+      "geometryHash": "6a9591730bb0edd927334918ea181b5ca2147eb4cbfb4b5a9dc752f5367af7d0",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h0ore8-001.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -1534,7 +1534,7 @@
       "meshName": "H0Ore8.001",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h0ore8-001",
       "primitiveIndex": 0,
-      "vertexCount": 43
+      "vertexCount": 47
     },
     {
       "bounds": {
@@ -1550,7 +1550,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "421fc415c7860abbca8c1a9e13b202159e29a9377037868df99e49878da36b87",
+      "geometryHash": "6aa07c018a95fef6b2b645a9de7cae1a679d6f3a807aef88d85d286783d72e44",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h0ore9-001.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1559,7 +1559,7 @@
       "meshName": "H0Ore9.001",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h0ore9-001",
       "primitiveIndex": 0,
-      "vertexCount": 40
+      "vertexCount": 43
     },
     {
       "bounds": {
@@ -1575,7 +1575,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b2789c30501e3c0930973667ae3d888c2c83757e9e8e8f966f2270805b919f3e",
+      "geometryHash": "e08f4f2a4c367e4309df788bb9ebbb9073016b0e65edf8bdaf2ca73e4587b209",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h2heap.primitive.0",
       "indexCount": 372,
       "indexed": true,
@@ -1584,7 +1584,7 @@
       "meshName": "H2Heap",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h2heap",
       "primitiveIndex": 0,
-      "vertexCount": 199
+      "vertexCount": 242
     },
     {
       "bounds": {
@@ -1625,7 +1625,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a9be9b067d606055cda6af5cc9489d1e29422ef33b8c9ca4a567db1237834a1",
+      "geometryHash": "85fc8c77710d4ad6fefa3cbb6a3d8b0be425680d74d96a9c182a680048272174",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h2ore1.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1650,7 +1650,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dc303cd33c3f40815d92de5d6d2cabd931257295d013a38965cb94af3cf20a12",
+      "geometryHash": "ba90e41c9af73172af566bdd3080e1090ecd8ebaaa281dd233aa3fba10ead195",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h2ore3.primitive.0",
       "indexCount": 66,
       "indexed": true,
@@ -1659,7 +1659,7 @@
       "meshName": "H2Ore3",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h2ore3",
       "primitiveIndex": 0,
-      "vertexCount": 47
+      "vertexCount": 59
     },
     {
       "bounds": {
@@ -1700,7 +1700,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b18ff086ae3bf43df2178f3380933657db29726ace19f506210a2c9365718e2d",
+      "geometryHash": "8de9f12ad8e034dd823d417a8d76e74740d2dc28bcb1cddd9b3b1afd634236f7",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h3heap.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -1725,7 +1725,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f7de921adcdd9731bb15e703ec82f867058ffe9366f2d4e39214b479a20066e",
+      "geometryHash": "0f947362b358f990c8525acd607c25d8a326e7af14f33ba10bfbe78ce921df82",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h3heap.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -1800,7 +1800,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "152ecc413dc0fe2f61065f5818a0ef089d625690784492748cac79de837e1084",
+      "geometryHash": "0d167ef1b9309f2f1ca4177c77b9c5da4e06facb4873349bdcdd03a2fd59c424",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h3ore1.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -2000,7 +2000,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31f55ba55b60b1686663b6b195eb57ecd547ab4bdb84e04778a32215109cf3bb",
+      "geometryHash": "40775188f545cc02f5f1f97a95968b40af2ded9ed4ebdac6b0d1c5f7688ac042",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h3ore16.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -2025,7 +2025,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "083fe739e9ff7a5f2452017fcb22aa6aa3563ba2070062aefb789ee0fb610c57",
+      "geometryHash": "d168bb044839a8317a9e15b30497595bb2f22379daef1e6c11e02aaca6147a08",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h3ore17.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -2125,7 +2125,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "115fff1cbbb848f541afdc05925a4cccb9a56a278938197621f6c1b510f2f4c4",
+      "geometryHash": "b1b532c94a11d33288be8cc196b0e44684934e480fd889ac138d6cd70c39ce60",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h3ore19.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -2200,7 +2200,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e3bfc1b56b2703e0f4bd24b31e5354045a86caf110d5fc0a5bae0e0666401aa8",
+      "geometryHash": "df7f69f1101654822e072f902884ed8e5edaefad8a73a09ea5aff58b9eee2188",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.h3ore4.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -2375,7 +2375,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9be1b5e72a35f5fd95cc97321f53986c623662e6ffc0b04f66f24d52fcdb35e4",
+      "geometryHash": "f07145d8fd673b0150ab5564c6c2955ec640c24fc41ef778e20ccc9c1850b26a",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001.primitive.0",
       "indexCount": 1212,
       "indexed": true,
@@ -2400,7 +2400,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ffb58db76aef6c8c91641cbf64338bfb725096dbd38e8b0a9b340cc0a968df7",
+      "geometryHash": "8f92a1038f24cdfb9659fa645d77eec69a821edc45f3677ad273da3c0c5d1e2a",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001.primitive.1",
       "indexCount": 1296,
       "indexed": true,
@@ -2425,7 +2425,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64704c0bc489198aaaaa1d5ef18d98abf524c7e03df6d016ab2c83a3734a094d",
+      "geometryHash": "cc418ff0df0cd3fda0f55b22b4e1f5249e330822532cba908ef9e16d91287026",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001.primitive.2",
       "indexCount": 357,
       "indexed": true,
@@ -2450,16 +2450,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4788f19da6d3f713b1c11efe3a35e488d87fdc7f7e085c092793c2a379f3304d",
+      "geometryHash": "23627b9e90330988fb4d0662879335163a7f0cb759ed00179dabd7e9accbdd76",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001.primitive.3",
-      "indexCount": 879,
+      "indexCount": 867,
       "indexed": true,
       "materialHash": "d7d4ec9e5756cd29ff9c8b0a4a80d3571e1b44fcecbf610c5d1e009675385b7a",
       "materialPipelineKey": "opaque",
       "meshName": "Hull.001",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001",
       "primitiveIndex": 3,
-      "vertexCount": 240
+      "vertexCount": 237
     },
     {
       "bounds": {
@@ -2475,7 +2475,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b7f94559f1cb8580a8d6d7d803836bda7ef458da3d1565bbb83055c0613b343",
+      "geometryHash": "be9a4905bedd4724fbf62ecac8b34fa0fe0ae233c1a6d5448e6c3d261e9afc3f",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001.primitive.4",
       "indexCount": 1710,
       "indexed": true,
@@ -2500,16 +2500,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1bff3a5d792b59ac3168dd4cff33aa73e82f84110bbcd6c36e7ade1c592fb086",
+      "geometryHash": "bed47da6acfa9d1d20c7d23e781f5d858bc97d344b37d14ec185b45a0ea3ba2c",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001.primitive.5",
-      "indexCount": 1203,
+      "indexCount": 1197,
       "indexed": true,
       "materialHash": "596e78a82c1a871d551d1ad7a2a9695981b43205bf5649f6d5cb8e8caf611402",
       "materialPipelineKey": "opaque",
       "meshName": "Hull.001",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001",
       "primitiveIndex": 5,
-      "vertexCount": 625
+      "vertexCount": 759
     },
     {
       "bounds": {
@@ -2525,16 +2525,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09b7dc784f553a419dca112dd024041700d76c3fe54cf171409a9db0ff0629f6",
+      "geometryHash": "a2d71ec7a4f90ae97e9445967fe7b65f51bcca1e2ecfcaead0906211967881ba",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001.primitive.6",
-      "indexCount": 6747,
+      "indexCount": 6591,
       "indexed": true,
       "materialHash": "964a34d04718a086a00ad9d6c3297dfee44e6bac000a85b6094bb8b9c7ee55fe",
       "materialPipelineKey": "opaque",
       "meshName": "Hull.001",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull-001",
       "primitiveIndex": 6,
-      "vertexCount": 2305
+      "vertexCount": 2559
     },
     {
       "bounds": {
@@ -2550,16 +2550,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e04e0329e5a438166547a5690975e40e98dd249e1ba63b06a9688802c21fc6d1",
+      "geometryHash": "52725cc70523f1782b505f7cb3fca1a3bf2398228e846af5647fcb8fe835d614",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull.primitive.0",
-      "indexCount": 1845,
+      "indexCount": 1809,
       "indexed": true,
       "materialHash": "0a31079a0b042d9ccde182dac942dbedafbb885d498b764d9715956a0aa0a2ed",
       "materialPipelineKey": "opaque",
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull",
       "primitiveIndex": 0,
-      "vertexCount": 671
+      "vertexCount": 656
     },
     {
       "bounds": {
@@ -2575,16 +2575,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d79988e712689ea33e750b5601a7aa1d460315ebd289c1d82aa53275ac9ffc45",
+      "geometryHash": "ea81a1ef63565338b97731d4580078b34f85e5ec6fd91d38af94e273426e67a5",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull.primitive.1",
-      "indexCount": 2664,
+      "indexCount": 2658,
       "indexed": true,
       "materialHash": "fdc53fab1f3a311e1b7f098a2fbad09178c773a1df9efac5dcd1c805d4eca17b",
       "materialPipelineKey": "opaque",
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull",
       "primitiveIndex": 1,
-      "vertexCount": 814
+      "vertexCount": 879
     },
     {
       "bounds": {
@@ -2600,16 +2600,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4de0da0eb0552ddf384d54288aa54642ea97f916824bbe710451c0d744643754",
+      "geometryHash": "b5dcca58e502e5a3ac004d2e0c0d7f64371fca4c9319c48772ae5f125f0e6cb3",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull.primitive.2",
-      "indexCount": 1836,
+      "indexCount": 1710,
       "indexed": true,
       "materialHash": "9b559be26f1aa40664c37793f1bd685a2ef8bbe3e1c6fdce9ed0f3ecaa29a197",
       "materialPipelineKey": "opaque",
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull",
       "primitiveIndex": 2,
-      "vertexCount": 623
+      "vertexCount": 583
     },
     {
       "bounds": {
@@ -2625,7 +2625,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "97d2cc00a4daf9e611d8c0980280d0fe82c01f4aa14c1f46a00f17749d749185",
+      "geometryHash": "49304fa019e4ca1c32af106e4e9070f507491a8352c330487141f6cd4d459851",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull.primitive.3",
       "indexCount": 318,
       "indexed": true,
@@ -2650,16 +2650,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53d53c3d7737bd27a13b7b4176e9205bec4b0b7a35d57db088ed2a9ad4c42a61",
+      "geometryHash": "7b480cd17306ab695cfc7faf7e81914a42af7b2a6f2178b1f76c9fecc3cc5d56",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull.primitive.4",
-      "indexCount": 3735,
+      "indexCount": 3720,
       "indexed": true,
       "materialHash": "2e1e70eeccb6aad156d8fc2edcc296f55becd8a4a33d765ba44c9643c71cd862",
       "materialPipelineKey": "opaque",
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull",
       "primitiveIndex": 4,
-      "vertexCount": 1227
+      "vertexCount": 1224
     },
     {
       "bounds": {
@@ -2675,16 +2675,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a61e771b3264a0d3908b7f1d968ae59facc777a47f28291b502a125ffb129918",
+      "geometryHash": "1899f41b25b2761ba8f3c41468ca31a7e180dc40955930104a3f5b84ad7469a8",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull.primitive.5",
-      "indexCount": 1926,
+      "indexCount": 1869,
       "indexed": true,
       "materialHash": "596e78a82c1a871d551d1ad7a2a9695981b43205bf5649f6d5cb8e8caf611402",
       "materialPipelineKey": "opaque",
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull",
       "primitiveIndex": 5,
-      "vertexCount": 877
+      "vertexCount": 1133
     },
     {
       "bounds": {
@@ -2700,16 +2700,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3423e4d78eeec9b1f5e3290dc31f7ac6aa1a2908846804f3ec8ecb02facaf10a",
+      "geometryHash": "4dfa435e261986d3f9411acdfe03369e2e64a3f17c3b29ecfd40c26fb2fa04fa",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull.primitive.6",
-      "indexCount": 10188,
+      "indexCount": 9828,
       "indexed": true,
       "materialHash": "964a34d04718a086a00ad9d6c3297dfee44e6bac000a85b6094bb8b9c7ee55fe",
       "materialPipelineKey": "opaque",
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.hull",
       "primitiveIndex": 6,
-      "vertexCount": 3322
+      "vertexCount": 4098
     },
     {
       "bounds": {
@@ -2775,7 +2775,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7005499f2336b8c265881ada8eccef2dbbed8e1283c6bf642ed94c3211dbf24",
+      "geometryHash": "3a033bca49558858ca608256b4ebe0c114eaf18935685f118dab715c0a869ce3",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.nozzle-19-10-2.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -2800,7 +2800,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2bd349aff54eaecc7178575b394756fcd414658f5b0948f2b32eb0b85d73a966",
+      "geometryHash": "64a80abefe1bb1c4d13b6c01f18d35ad3cdbddf2fa68998ccc8387f28be48111",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.nozzle-19-10-2.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -2850,7 +2850,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "772b6cb4ff3458e0ff08a249073ef4ce307ae1a8e3e7a0758343afc3d7dfb483",
+      "geometryHash": "348711d09b527c3e3ec18d86ac11795d6c4f0cfba785748b4b6570466daef1dd",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.nozzle-19-10.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -2875,7 +2875,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eb3476c8583b57327efc2510dedf00abd90f2e4e32cbc8502149da28b2004db3",
+      "geometryHash": "16b1983964abf7153dd61f8c2cc21b33003eec7eb091290a77d984be5a45bfd1",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.nozzle-19-10.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -2925,7 +2925,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38da98cc3269adcc6118849140760d465bb9982d02127a3b17de968bddb0a76e",
+      "geometryHash": "51e449952beeda5743dd34cfe5147e669819502e8b5a54c9702ecdb927c3f059",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.nozzle19-10-2.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -2950,7 +2950,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "acacf1f99faed81504e3c5d8cddef8e9953d523fae3ce8a55b82aa96e0ab5cd1",
+      "geometryHash": "80831f584c976eea18d1aa2c0a470c7e4ceb00e1a120a0cf44b8f23c388e9f47",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.nozzle19-10-2.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -3000,7 +3000,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c65deda0b8f0f1ac383d110eb52d9f02f2f68c5c444ae9c58e62914baaf41ebe",
+      "geometryHash": "28129d319e13721828e84575028d95511e2a6cb47be2fe65007e82fb25ddc674",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.nozzle19-10.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -3025,7 +3025,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1bf5d792894e6402f24351873881a12477990bb1b8beee10d983caa920ab5c07",
+      "geometryHash": "3e92b13ce3f2de9ad17a415db1dcd9f1b72291a4259e9e1b89ee8c6e7de8abef",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.nozzle19-10.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -3075,7 +3075,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7ab8db2ea849c3a641fab8f5c3241fd9368811833d57e47f065388d509e42d9",
+      "geometryHash": "2d5870155095f365a85bd9196e85bd127a174e0eee145e84e4be077ce15894df",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.pipeclamp-100-m.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -3100,7 +3100,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e343303091ed8caf681a5505a8a528c7a29dcfd45e0ad91b4b0e35a39dc46827",
+      "geometryHash": "902a8b43d7ec01a8c572f97bcb4af79f0a5053dda8a04b9972b9be79795f10d8",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.pipeclamp-100.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -3125,7 +3125,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c0df13fdfa17435ff4945675dfad8fdb1a3f0d657a65300ea71040554769c23",
+      "geometryHash": "20732a4253b341897351519b45ca97ca3f3227e1108cb12cb9f2a19bfccf186f",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun-001.primitive.0",
       "indexCount": 1764,
       "indexed": true,
@@ -3134,7 +3134,7 @@
       "meshName": "PipeRun.001",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun-001",
       "primitiveIndex": 0,
-      "vertexCount": 599
+      "vertexCount": 780
     },
     {
       "bounds": {
@@ -3150,7 +3150,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a5bdc969827f870fc31062365c937d97e7b12f430e549ada7f344db7d34baf34",
+      "geometryHash": "35eca3ea334baddb8a19093e77ea8ff46ffc4e2523e87df92cbf93e22abdc768",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun-m-001.primitive.0",
       "indexCount": 1548,
       "indexed": true,
@@ -3159,7 +3159,7 @@
       "meshName": "PipeRun_M.001",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun-m-001",
       "primitiveIndex": 0,
-      "vertexCount": 539
+      "vertexCount": 719
     },
     {
       "bounds": {
@@ -3175,16 +3175,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd291b438ee49a53b2300d24c51a4712a2fcb4b510afcc13d9ae4beb9d86171d",
+      "geometryHash": "323f6ec73774ed55130613eed28ed7df08729e8a6a79b8ae6c8b91a7be1f4265",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun-m.primitive.0",
-      "indexCount": 1617,
+      "indexCount": 1611,
       "indexed": true,
       "materialHash": "67f43cb315b89a0208f39b6944a8445321dce1b037c975a3cc1364ca8cabf6ef",
       "materialPipelineKey": "opaque",
       "meshName": "PipeRun_M",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun-m",
       "primitiveIndex": 0,
-      "vertexCount": 589
+      "vertexCount": 803
     },
     {
       "bounds": {
@@ -3200,16 +3200,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab4a047b7cacb8c38c7e13b245e4372ed638d90e9cc1e1b5c9ef166c1641c0e2",
+      "geometryHash": "c215dc1e3710ddf6b741cb425ad48bc96304ed1918edf36c1064c5f7f8bb2ad4",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun-m.primitive.1",
-      "indexCount": 363,
+      "indexCount": 357,
       "indexed": true,
       "materialHash": "964a34d04718a086a00ad9d6c3297dfee44e6bac000a85b6094bb8b9c7ee55fe",
       "materialPipelineKey": "opaque",
       "meshName": "PipeRun_M",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun-m",
       "primitiveIndex": 1,
-      "vertexCount": 170
+      "vertexCount": 202
     },
     {
       "bounds": {
@@ -3225,7 +3225,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be10d311e5642e232f131f8fd2b7217bc8fc9fbf763bcc908d9fd955065a1d95",
+      "geometryHash": "1f09c175b513f1b2dc1ada7bedd123dcd6ab2f2511b5ae0ddf74c10c5a39a516",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun.primitive.0",
       "indexCount": 1617,
       "indexed": true,
@@ -3234,7 +3234,7 @@
       "meshName": "PipeRun",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun",
       "primitiveIndex": 0,
-      "vertexCount": 568
+      "vertexCount": 768
     },
     {
       "bounds": {
@@ -3250,16 +3250,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77d043ad4067188fe23cb0c0e13f876a587cf6658fcfccff9ac4900c7cf8372d",
+      "geometryHash": "44fbfb4ad4e13c64a811927da53d687079906c5296700d637e75f357ea1d0331",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun.primitive.1",
-      "indexCount": 363,
+      "indexCount": 351,
       "indexed": true,
       "materialHash": "964a34d04718a086a00ad9d6c3297dfee44e6bac000a85b6094bb8b9c7ee55fe",
       "materialPipelineKey": "opaque",
       "meshName": "PipeRun",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.piperun",
       "primitiveIndex": 1,
-      "vertexCount": 179
+      "vertexCount": 215
     },
     {
       "bounds": {
@@ -3775,7 +3775,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c409ce5efc29255135c3fdde81946f9faec529790394c1fa331f7ca4d294ba2c",
+      "geometryHash": "54329640720b877b5ec76d3e4d4b472ed9628600e4706c87828c08c78081145b",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.rcsbow-m.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -4000,7 +4000,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d0a9d3e8f91258e0873100ce199930fa4d09e004394b433f7e7a3a4fad46c6e",
+      "geometryHash": "e85001e697189a6ebfd8267b4b36f3369f498e0521aed2791d4a2e5a10cb231f",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.rcsbow.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -4025,7 +4025,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a14de7d0761790d34e458a07abd4eb5fb02a33ee29b485d5130bbbb0c3b39a09",
+      "geometryHash": "95448717f5f01b84316ac3f1c6d7b8787d39f54ebaff659195f4ac6d228afc1e",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.strake-001.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -4050,7 +4050,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e22a23367ce85ecd7cd3e6f1d23fcb17f93a6b3a5130930ac5a830d459cfc8d3",
+      "geometryHash": "e732e09f067d468aebde46cfac5550ebbf76a63d49d90f095dccb587180e236c",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.strake-m-001.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -4075,7 +4075,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a3c248f69f93e76a2e3c7cf1a0140cfafcc294f458561e590a7e7af906174b7",
+      "geometryHash": "ab1a48d12539ac196bc1bb8e382d9df199765304b6f157f237b0ec912e35028c",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.strake-m.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -4175,7 +4175,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a580aeacd4ffdd4567174a2db8585369cf35e9f82d37cc79df1b658ca2da6a84",
+      "geometryHash": "99fa90ba473243bb37b8ed35e8fef8559eba3385ead09404ced5fe7097ce2038",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.towerbase.primitive.0",
       "indexCount": 3084,
       "indexed": true,
@@ -4325,7 +4325,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "86cf09ea398231ae3e57d7bc1fe7210c0ebea54dd25d0708e23b68d732258c39",
+      "geometryHash": "86463ea5b28900a364bb8f522569395d2613944769a13d0e177895327abca956",
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.windlass.primitive.1",
       "indexCount": 588,
       "indexed": true,
@@ -12992,19 +12992,19 @@
       "sha256": "f17896db1652d56c24d50b5ac071b320fe15e09c050e45d8b17c96681c962457"
     },
     "sourceGlb": {
-      "bytes": 816332,
-      "sha256": "7443e1083f4b442e766452cdd2e8718cbd33e9e64b01be0aa5981eae3ad1d51c",
+      "bytes": 851712,
+      "sha256": "4c2038f94b089830ae643f2d1fe9fe614f545d7b0c1a80849797335c861ba790",
       "uri": "place_aftermath_wreck_mining_barge_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1249508,
-    "sha256": "bd720db5fb910af550cf10329722315c4f0e8a4b0de3dc7160be527cb73b7b8d",
+    "bytes": 1299908,
+    "sha256": "454de681a8c2febf2c8c68978ad98990c82590cc2b92110d58b0aea27e1d92ca",
     "uri": "render.glb"
   },
   "runtime": {
@@ -19553,7 +19553,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_mining_barge_authored_down.glb"
   },
-  "runtimeHash": "1485e81c1153977cd08c7ce99f1888db766ac28cfec37dcfd970cd27006f5c55",
+  "runtimeHash": "589aeb3afde331590e17dd778105391be6352ca65bb74b3b49a047c6db8a2e78",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

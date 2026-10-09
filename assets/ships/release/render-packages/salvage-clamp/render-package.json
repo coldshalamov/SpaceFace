@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7d50b89877495032f639e5f28bc5fdf4a620e337efe2cf54ff79a41cc658fcfb",
+  "contentHash": "23c3abedde13945459b934267252a9c56016b722c8829b5ba00899040f07bef1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -145,7 +145,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4bf4ef84c88425d6aa69816a47431c7adc2c3cf011cefbc252c921127ba7f548",
+      "geometryHash": "99265d0056209866ce05abddc279360987cff55ccdcae5a521f4f8dd25860900",
       "id": "sf.render.salvage-clamp.mesh.brace.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b9ec3a424c9905e3584d1b3a993f2836c95733e1d6777182bb7f467b0ec71aff",
+      "geometryHash": "1f9319358e6fd86700e47c277dc2c2f88d707bb6020c6007bcdb756f83f0c391",
       "id": "sf.render.salvage-clamp.mesh.drop-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -220,7 +220,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac4f0e2e502d7eae43de71ec2a047db93e4885c250ed8c57ebd349c8ca0467ef",
+      "geometryHash": "707c81b66fb2030ad71b9a47ce862e8fd944813dd76a14de64653242f9c6c0e4",
       "id": "sf.render.salvage-clamp.mesh.drop-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -495,7 +495,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "828cc4c5488f71ef01688a0534cb9a97e2ada79e403bdd6dfcddeff58dcb5aad",
+      "geometryHash": "170f84749f64c8cd1ffad4c4a816a399c7bfef2092006cc07efef3f729bf6ff3",
       "id": "sf.render.salvage-clamp.mesh.winch.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -504,7 +504,7 @@
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.salvage-clamp.mesh.winch",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 56
     }
   ],
   "hlods": [],
@@ -1486,19 +1486,19 @@
       "sha256": "a93a8258bb4f91911a7b95d91a46c218fa76d808a0005d299b69f4873e069907"
     },
     "sourceGlb": {
-      "bytes": 22360,
-      "sha256": "3bef40f95c7052fa7a1b7bd786072561aaa45543b736a8f849bd83f82c833e5f",
+      "bytes": 22308,
+      "sha256": "aa63a8271859ccece851976218372882c24e9e4c68d6597787a4bdf86d73b3d5",
       "uri": "place_salvage_clamp.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 36880,
-    "sha256": "023d83d402691d44fae04f5253bd224225db61ad9c68cce13da8506a33ee28b2",
+    "bytes": 36644,
+    "sha256": "a4f76bdd17b83c81156838fcd54b2d47d9e238ca719c2a7cc8519406824a6d3a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2156,7 +2156,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_salvage_clamp.glb"
   },
-  "runtimeHash": "072ddc825a9074f8ce6fc6e5e74e25afbe94012a362d8f240c644857d25f1b96",
+  "runtimeHash": "cfb46954a8052f429676eb77dd5fe95bbaa61ff9ea8c2a5520d794e3877193da",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

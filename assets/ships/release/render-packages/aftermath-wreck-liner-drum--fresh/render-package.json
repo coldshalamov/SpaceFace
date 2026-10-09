@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "37b4f8c0673869cdb1880d26c901e0b21950d785b4034124fe21bab53fa1353a",
+  "contentHash": "483cebe29d9f6c7189a163016d2c08be6ce246073b015d4dea178d890c565567",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -837,7 +837,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6559d22e52ea8ae4519cd7fbe27bd266d2f2e08d79ed3b8b6bd2aca6e6f87058",
+      "geometryHash": "ea91da6e5c12c603db055ac5e2118a7282f076a950d0e6c7bb9f19a41d8fb627",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.deck-0-55-2-m.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -846,7 +846,7 @@
       "meshName": "Deck-0.55_2_M",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.deck-0-55-2-m",
       "primitiveIndex": 1,
-      "vertexCount": 4
+      "vertexCount": 6
     },
     {
       "bounds": {
@@ -887,7 +887,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "753d3587e6b0dd88c9ef619a9b2e3ed7b3c33df8c6abd757da7833d163805050",
+      "geometryHash": "2d344cc56a567bd43f49df24c2358fa7011f5a16efdf633953bb72bb6a9bdd2d",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.deck-0-55-2.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -896,7 +896,7 @@
       "meshName": "Deck-0.55_2",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.deck-0-55-2",
       "primitiveIndex": 1,
-      "vertexCount": 4
+      "vertexCount": 6
     },
     {
       "bounds": {
@@ -1087,7 +1087,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e632b48d80c0558d1ed1737c553f345d6b509bd1141e0d25cc3415e026a109e8",
+      "geometryHash": "2099efc13ad7788a7032b062b91615ac580dc806e5aa87bad4289375cefcc4a2",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.deck1-35-2.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -1096,7 +1096,7 @@
       "meshName": "Deck1.35_2",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.deck1-35-2",
       "primitiveIndex": 1,
-      "vertexCount": 4
+      "vertexCount": 6
     },
     {
       "bounds": {
@@ -1112,7 +1112,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d4d431a0aea32ea583986d68485f97fa52155a561d7bb78e2c90831dd22e7a8",
+      "geometryHash": "4639031cacb9f90fce254553ae740f0486afe13e8c96bb8bd8065f7933a254af",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-001.primitive.0",
       "indexCount": 3558,
       "indexed": true,
@@ -1137,7 +1137,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d94f160e8893a4240a99dd0c54777818d7898467f45ad26efe3d87b144459e8",
+      "geometryHash": "e68ec2cb3a7e484366776904cbc7a66a1ef0c7ff7d2be5e78c444f7db59bd7e1",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-001.primitive.1",
       "indexCount": 5793,
       "indexed": true,
@@ -1162,7 +1162,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9884385d6ad762d0d1e7af799359e91d8aa081c024dbeb2e9b05b03dfe8d1034",
+      "geometryHash": "85e0808d4f284ef5ba4ebd7d8addb410bf0e38bf182f7c481f900de11d1f4340",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-001.primitive.2",
       "indexCount": 1551,
       "indexed": true,
@@ -1171,7 +1171,7 @@
       "meshName": "Drum.001",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-001",
       "primitiveIndex": 2,
-      "vertexCount": 729
+      "vertexCount": 932
     },
     {
       "bounds": {
@@ -1187,16 +1187,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ada70d2e718a16138c3b332f79e55c8d37dd58538d07819bf1887aa52442e1cb",
+      "geometryHash": "8e4acdd04727278bf5a20629066231f70c991b4a0164953ab94d2ff5367769e8",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum.primitive.0",
-      "indexCount": 3462,
+      "indexCount": 3339,
       "indexed": true,
       "materialHash": "436e825fb4214a10ba93e7b72a94a36ce31b8abd0ae1cb5a23381e988dcc772c",
       "materialPipelineKey": "opaque",
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum",
       "primitiveIndex": 0,
-      "vertexCount": 1172
+      "vertexCount": 1145
     },
     {
       "bounds": {
@@ -1212,16 +1212,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "972a2b5b8ff011470407d360c824f1deeed4a3e3bfb8484f78e9b23322111092",
+      "geometryHash": "c89e347c4e8c45a8ee040abe4a4dff881be507731cba257b1205243a9073fdff",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum.primitive.1",
-      "indexCount": 6117,
+      "indexCount": 6006,
       "indexed": true,
       "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
       "materialPipelineKey": "opaque",
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum",
       "primitiveIndex": 1,
-      "vertexCount": 1951
+      "vertexCount": 1930
     },
     {
       "bounds": {
@@ -1237,16 +1237,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52254b46eb8f804c4c7b35535b2772810186b3a20f45eece859434b3bf5a7ef7",
+      "geometryHash": "ceb95a3105e307e55bdc725962e8e77bb519fc2636b489725bd144aae8841847",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum.primitive.2",
-      "indexCount": 1569,
+      "indexCount": 1500,
       "indexed": true,
       "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
       "materialPipelineKey": "opaque",
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum",
       "primitiveIndex": 2,
-      "vertexCount": 729
+      "vertexCount": 976
     },
     {
       "bounds": {
@@ -1312,7 +1312,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5786c39bd8d936e320f83454172f562eee39dd42476fb3b9cc4cbf953e2ad4b7",
+      "geometryHash": "6981691849a0b56318e7c73af02dee6f579f815d2451f8e0ecb90d43dc35a09f",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.rcsaft-m.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -1462,7 +1462,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7bd98daad728cb58289fdb9f157a9cb2cc1edf200df15edb7fc561c9576d491d",
+      "geometryHash": "29d0b7354cb9e1d9107069f39fac5d58cf99afc80d9dac8a715dae6909691518",
       "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.rcsaft.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -6378,19 +6378,19 @@
       "sha256": "9a9935958873a257e822e4290ef5306178c305d6166ce9df51453ab329967fb9"
     },
     "sourceGlb": {
-      "bytes": 353280,
-      "sha256": "7ed67f4f20c900010fb564765f26f31ae29f73137fbdce71711abf92eaf2ef57",
+      "bytes": 359472,
+      "sha256": "c1bd24c966ca804bf0bb79c393876e5e077e7e3a7287f76245718baef24a6e96",
       "uri": "place_aftermath_wreck_liner_drum__fresh.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 507068,
-    "sha256": "4732ee20d8c24f106e04f5d09498bb0d576776e81f206cb2920182292885f27e",
+    "bytes": 516508,
+    "sha256": "a7e066a3fccbbf4b7e3621d2f06979ce91d460541ecc820c18f52f0f5cd96c29",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9330,7 +9330,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__fresh.glb"
   },
-  "runtimeHash": "19f483654118036d193173ecd5e3eef45a26ef26d12236673476b74b87ad1528",
+  "runtimeHash": "1927a09c79544758c5e3324880c2ecf3b678a3a247b46a5e19c79d0618236868",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "150c2555987d686fec3de26a3dcc4745e58e42357efc1003b4d6c34c06724684",
+  "contentHash": "d91f182a7a159296383d79dbd215c05c29243547536976f1479920237369b79a",
   "dynamicGroups": [
     {
       "id": "sf.render.outpost-fence.mesh.lod0-hook-nav-port.dynamic",
@@ -408,16 +408,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "02201c225ea4d054566d4e66f7b8e038ab6807c6517b1a7b8944752d4e66b9b9",
+      "geometryHash": "53cc856c8aa2321650f04730914dc62673f04f5905296a5aac4e899e125ac46f",
       "id": "sf.render.outpost-fence.mesh.lod0-armor.primitive.0",
-      "indexCount": 41676,
+      "indexCount": 40014,
       "indexed": true,
       "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 15611
+      "vertexCount": 15416
     },
     {
       "bounds": {
@@ -433,16 +433,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a0377b4eef984cffe6aba664c41692c974e77c7499964d17fce288996f005e7",
+      "geometryHash": "1e1dc3400983fb5ebeaec1d52ecd2e375fa15fbd26536cc1d4c168ec15b3ccda",
       "id": "sf.render.outpost-fence.mesh.lod0-beacon-amber.primitive.0",
-      "indexCount": 15138,
+      "indexCount": 12822,
       "indexed": true,
       "materialHash": "c912b5105da889664864247b8a72e6addddfe4e75392f4f0590ef0380acb9053",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 5955
+      "vertexCount": 5019
     },
     {
       "bounds": {
@@ -508,7 +508,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "238a2380f28758750b04e76509bf6a9862594107d4a7e5dbea7662b2947d2d4b",
+      "geometryHash": "58b8704734f51899a5a1be4a5bfea568cae668cca3cba57e4720fe1c43c7ffee",
       "id": "sf.render.outpost-fence.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -558,16 +558,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30e3dad96b9d9bdb1b64ea5a26fc0795f4fe0a31e25da8b884c9f58a95437964",
+      "geometryHash": "b81e211a077a67fbbfe2528c977f6f12139c6b341c8393c1df93ab32d9301137",
       "id": "sf.render.outpost-fence.mesh.lod0-hull.primitive.0",
-      "indexCount": 1434,
+      "indexCount": 1422,
       "indexed": true,
       "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.outpost-fence.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 447
+      "vertexCount": 443
     },
     {
       "bounds": {
@@ -583,7 +583,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "570cc14d18c89be96e93553e0b3c9a2043edd5ea719deb32d19e0bfcd1256a91",
+      "geometryHash": "f47d771ad7325d4df6823aafcb4df8683ceda67db5f8d9fea17a3b42a80bae02",
       "id": "sf.render.outpost-fence.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 8028,
       "indexed": true,
@@ -633,7 +633,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88a4d77dd02127b16d965bdd77a64e92f3252e1bfdea9a619979b98f989d5a8c",
+      "geometryHash": "fc91a2db438e863b07216fcfad2ee91ace70d6dec0c7d5a34947b9cbb7a3cb55",
       "id": "sf.render.outpost-fence.mesh.lod0-mechanical.primitive.0",
       "indexCount": 2928,
       "indexed": true,
@@ -658,7 +658,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89f5a5817a4835aa677368ee74538005c833b0976fb256f656fb534cac8f64fa",
+      "geometryHash": "712e476727917bf70c4d2560874df070c537716a8a69fa2eeaa7fbd41d2f484a",
       "id": "sf.render.outpost-fence.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 12564,
       "indexed": true,
@@ -683,7 +683,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c14904fcac18d7e8da9da24df71f0cec421c0ffef8b8c5ef4e62db1f2ab5a7c1",
+      "geometryHash": "cf52004b0ca31b17d7d7dc9fae448bd4f26119f28cab8c2b7ea4ecb45439fbce",
       "id": "sf.render.outpost-fence.mesh.lod0-warning.primitive.0",
       "indexCount": 10512,
       "indexed": true,
@@ -708,16 +708,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "599c0b91d65da24baa56d13e7dc03b716d9a94eba94c7319055a6cc14bd6ad4b",
+      "geometryHash": "bebce8dd42ce373bbaee60feb6ba548e713f1df162a4db663e00ba62162fdcc1",
       "id": "sf.render.outpost-fence.mesh.lod1-armor.primitive.0",
-      "indexCount": 17658,
+      "indexCount": 17655,
       "indexed": true,
       "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.outpost-fence.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 8784
+      "vertexCount": 8783
     },
     {
       "bounds": {
@@ -733,7 +733,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f41769e75af2dbd5bacccbbcbed64738a5fecb74aac1faf4599e25168930b59f",
+      "geometryHash": "9ae4e31deabbf1dcd0582f765ad3de26f3ab598c420a7545e344d20d38bf7153",
       "id": "sf.render.outpost-fence.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 3450,
       "indexed": true,
@@ -808,7 +808,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "50304e135e1753b01acc141f31c4f863b0c131dce8da40f1f397b4903d249c9c",
+      "geometryHash": "5ca61b6934ebaa0054b5038c395ac0af6489751938743abf809692250baa6161",
       "id": "sf.render.outpost-fence.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 1068,
       "indexed": true,
@@ -833,7 +833,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "20f51d054f6e09118cbbd82f0fa3a8a786ef4bb692bbed7b23b124dbbfb57bba",
+      "geometryHash": "ffccb78f74aee0b63eb9bd45f1f91d79ff9b3ce95ac543f377bbc8d667cbde20",
       "id": "sf.render.outpost-fence.mesh.lod1-hull-role.primitive.0",
       "indexCount": 330,
       "indexed": true,
@@ -858,7 +858,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce09543e99b6f1423dedef35af6c2ebe7fd40f2f723a53db75cf6de53d9bf3a2",
+      "geometryHash": "cdbb44885f8b053312cd3198b5f25fedddcaf9c23294a6d4c7f4adb50ac8e338",
       "id": "sf.render.outpost-fence.mesh.lod1-hull.primitive.0",
       "indexCount": 624,
       "indexed": true,
@@ -883,7 +883,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39f1a1648e6049fcaf3c96b5b51da374f8a56f9d32881303923594a0339b0385",
+      "geometryHash": "8f5137f54a9e098878d1b60540c6dd8e7c6181740a69a79daece55e9f0abab67",
       "id": "sf.render.outpost-fence.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 6516,
       "indexed": true,
@@ -933,7 +933,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11cd4e3198cf5f9a8450ed0c14cab7898e44817288eaf6228f380e919405a01d",
+      "geometryHash": "aa874919b71b51fba897fabe2ca6fc5c22d725b688f4623eb071455ea2ceb725",
       "id": "sf.render.outpost-fence.mesh.lod1-mechanical.primitive.0",
       "indexCount": 912,
       "indexed": true,
@@ -958,7 +958,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6c261ac40da3684ff74970d85550d0f782c2447fd429dee6e7abb98faa78391",
+      "geometryHash": "7113d04a0ec07c98a1f213f233dc3baaa2d59b99b32ab150a0d42996595fbadd",
       "id": "sf.render.outpost-fence.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 4626,
       "indexed": true,
@@ -1008,7 +1008,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2df3cfcfff83cb50231a0c29f516c7413e637a4ce027960e8712c307100a9845",
+      "geometryHash": "843de80324b6da6c5492622edd5b692d920d4550e3642d6ed6c0cb1c5706f27e",
       "id": "sf.render.outpost-fence.mesh.lod2-armor.primitive.0",
       "indexCount": 7638,
       "indexed": true,
@@ -1183,7 +1183,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "383cd4d8c11b9d90452ded13df33f7afaab5806ed6d54f82b2bf9024134bf944",
+      "geometryHash": "0836e9b9e69404dd51b97ad5505abe0e65983be268597fdaac647aa1680f9067",
       "id": "sf.render.outpost-fence.mesh.lod2-lights-warm.primitive.0",
       "indexCount": 1026,
       "indexed": true,
@@ -1192,7 +1192,7 @@
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.outpost-fence.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 686
+      "vertexCount": 879
     },
     {
       "bounds": {
@@ -1233,7 +1233,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "293e63862e02b4c89c095394f19e4fc0d87ac7bb721df9e7e6bcb725610ec790",
+      "geometryHash": "f83a41af695d5a7190968548d3ba6c1494c31d8804c8c0c9620120ebd8eb9074",
       "id": "sf.render.outpost-fence.mesh.lod2-mechanical.primitive.0",
       "indexCount": 345,
       "indexed": true,
@@ -1258,7 +1258,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "350cb9bfc8ec056571a93018ccb07fe11010f7ab98c3d04bd4ce7b0b55a342f6",
+      "geometryHash": "766242dc91f3d8e036b9ed6c38cc3abe6191ad2f36d9265b22038e35ac875109",
       "id": "sf.render.outpost-fence.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 3621,
       "indexed": true,
@@ -3452,19 +3452,19 @@
       "sha256": "dd4d613d7fae5d94eb05cd9511b3cf52a2c31e164516d3080f326f142b9132a1"
     },
     "sourceGlb": {
-      "bytes": 1120196,
-      "sha256": "9cf8ee23dea1a2e75dda5221799f5a50de9762fa905ec114ef778dae075e1c68",
+      "bytes": 1106128,
+      "sha256": "3ec3818f75c0c6fc990f346317d68ae0156d78dbfe0ff98092c029230397d5a0",
       "uri": "place_claim_outpost_fence.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2234452,
-    "sha256": "9ffbb3f2f603c9d6dd7845d136b49bb82869afa274a2a95b6d01a3e4f3d785af",
+    "bytes": 2198304,
+    "sha256": "2c226f5499e595eebb4aef5e4c31c13640f83a0bf9e2a966eb9b2f2d3d9530dd",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4934,7 +4934,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_outpost_fence.glb"
   },
-  "runtimeHash": "3a02b1c0ddf2653647dd49ef3f1d6a9b30d49c4bcb70fe90faff424a21b55b2e",
+  "runtimeHash": "6860d091aab0e9042973191e0f4e85fff45be7549cde03223165550cdcaa97e5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

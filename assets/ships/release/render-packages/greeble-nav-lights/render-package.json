@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5ae06a77c0e83116aa8cde5b90745d8699a019c7274da6eef14c032c59dffc05",
+  "contentHash": "288137d05f0927b3d666928b4066e9a2ba17648531173ddf211bd220d792b2fc",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e5c828c47bfff3f0e0cfd489d0eb11ee61edef8eef777112ea4bd02d95dbebb",
+      "geometryHash": "0c95488bc8941c8e144c83e38e462365168e4b668b7ada3d12189567f9af1419",
       "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-accent-merged.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cfd201cb8a50e334a6aa95cf22f085f3b6e886d77a1037b810ab6aa8f6ed6a52",
+      "geometryHash": "bd7accb64d9c2a6e52ec97d6b47e8c65fce0d52078a34ee4e6f59467e4db0ec0",
       "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-mechanical-merged.primitive.0",
       "indexCount": 4800,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "greeble_nav_lights_Material_Mechanical_Merged",
       "nodeId": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 1427
+      "vertexCount": 1330
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc9b5fc956eb3be3ef3d06f72af2d85d865b6c730c303b5113eed9ef814d9387",
+      "geometryHash": "097d6cb9e52a291e69b890665afe1c4ecb272d0d2f9bd43853c3a70726ed60f4",
       "id": "sf.render.greeble-nav-lights.mesh.nav-base.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -338,19 +338,19 @@
       "sha256": "79724232f71f3d04e65560841f4aa6c76f67ae4329d2992a400230a38f8f38e8"
     },
     "sourceGlb": {
-      "bytes": 253552,
-      "sha256": "3ae9b0fdf7b57ceeec123b7c96b1cd2cf0f8a955b21f8750e4815f7666207fd8",
+      "bytes": 253132,
+      "sha256": "89ff04eb4fa5165c619dcb6557931f4bfc7de667115dca84bd518b30ef2a813b",
       "uri": "greeble_nav_lights.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 289756,
-    "sha256": "cee519c218367b2a35c6cf64c35f683123f6150d9505ddde1fbf2b5f30a5b907",
+    "bytes": 271368,
+    "sha256": "990f04fc611ee7cccdc65d38f3ef2914e7baba3592a80debc10c5949e2d4ae44",
     "uri": "render.glb"
   },
   "runtime": {
@@ -514,7 +514,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
   },
-  "runtimeHash": "4a217c4c1011d4255d863c96ced161ae0b6b5c97ec420a7abde6b576bf67b901",
+  "runtimeHash": "d9415abdc0f2131d192152d0f371a80c749c504db3a8e6f37d00195907fdebbf",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

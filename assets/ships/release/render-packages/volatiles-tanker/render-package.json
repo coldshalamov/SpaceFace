@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f50d3db169590831c41aa82d784f5c9b04c9d0f9e860e7865136d4287a02aa12",
+  "contentHash": "83f1325980c40c652650da62c9a3ce237b61dda9ab6164276206daa18cfc4383",
   "dynamicGroups": [
     {
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -628,7 +628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd835d6913366311bfd9886670926218cbccbaa30aa367f3f482c6b475a815b0",
+      "geometryHash": "cbe493b4cf49fd7f699294e0509a0a27a2d3fbffcc441aa135ec5c8fd5a7d18d",
       "id": "sf.render.volatiles-tanker.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -653,16 +653,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30ac414b34a1d534c2e2936b2a97a828c720cc71b2719a8b2482d82457439c64",
+      "geometryHash": "4e3307b54a9516fbd3b24f0d9e48e50ca1b5eb7237d609f91ec9b652f83f802f",
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-armor.primitive.0",
-      "indexCount": 62043,
+      "indexCount": 54279,
       "indexed": true,
       "materialHash": "b71939b2125d80f29037888126db8c632abd8620280934b92ac15ea77542f76e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 19621
+      "vertexCount": 18318
     },
     {
       "bounds": {
@@ -703,7 +703,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f83b668fe83b902ceff087c21441d90fc7b79e0e703b610f59994a7ffd20f042",
+      "geometryHash": "b7e32dbd92624f51a5191f7098b645863e5470b205f2582d70014e15b2be8563",
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 2544,
       "indexed": true,
@@ -728,7 +728,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38dafda35925a1384848e45ce7189f60b5e82b0cb592f6e98ef524ec247e69b5",
+      "geometryHash": "0d56356987ebee0ba81742f1a9bfd49c690762982e1b4adf6ef7d2ee57e26394",
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 1176,
       "indexed": true,
@@ -828,16 +828,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "572f7e6270a3d4d4bf80b567d73c6793ce9927869a479a5f696a53c2620f9ddf",
+      "geometryHash": "870a6ad216f53bd09a39b5828988f57303981e5ab35fd129d70a0de810d91245",
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 31128,
+      "indexCount": 28131,
       "indexed": true,
       "materialHash": "be7a1406af5c20bd37620137367814f0689b1fe73038c11c78b77bebea12d8d9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 8687
+      "vertexCount": 8226
     },
     {
       "bounds": {
@@ -853,16 +853,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad3a2ce6f7df3dc7c0674400d5f3052edd3bd8828397e08d3e3decf98673cb09",
+      "geometryHash": "427aeb2088bf82f922bb57065ab1903b1d80f871fd6e2dd601ab2942024c6efa",
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-lights-cyan-rust.primitive.0",
-      "indexCount": 8100,
+      "indexCount": 7350,
       "indexed": true,
       "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
       "nodeId": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-lights-cyan-rust",
       "primitiveIndex": 0,
-      "vertexCount": 2541
+      "vertexCount": 2449
     },
     {
       "bounds": {
@@ -903,16 +903,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8ab79281c10db4a6eb60196685f70686866ec1fee186b3d4fb936e204bead24",
+      "geometryHash": "c1199a8a3f665dd2f8cd2020d154b92cc4a5578442fed69ee760487a28f293d9",
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-livery.primitive.0",
-      "indexCount": 8493,
+      "indexCount": 8469,
       "indexed": true,
       "materialHash": "df1d7f87872efe757d90328b9e54b04ec5cef9abe1199635e20569d8010887a7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Livery",
       "nodeId": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-livery",
       "primitiveIndex": 0,
-      "vertexCount": 3061
+      "vertexCount": 3059
     },
     {
       "bounds": {
@@ -928,7 +928,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fed62e1c40681d4e748d8d4a72d0e7457d00675f88b97102ddec8860d6e1b0c9",
+      "geometryHash": "2c8505b3fac218e0d902b99e8446905e256da29ae55410a5990922d8cc38bb2a",
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 14964,
       "indexed": true,
@@ -953,16 +953,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e1fd31f9a6302623c9f975e95082af826e80e250714f5f54eadc3221b03e3e0",
+      "geometryHash": "273c495a1c3a25e57972f12a4f36438d354f8807b1017980cf1ea31a0f0e5b6b",
       "id": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 5250,
+      "indexCount": 5040,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
       "nodeId": "sf.render.volatiles-tanker.node.lod0-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1846
+      "vertexCount": 1824
     },
     {
       "bounds": {
@@ -1003,16 +1003,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05dc8548a28a4c8aa806e963144a09cbbcc8133b684230bf6cedb0b8b46b28a5",
+      "geometryHash": "c97e1723e842ab56c8f69f41e0b6c283f79d97878867685e1ceda038d47d41c4",
       "id": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-armor.primitive.0",
-      "indexCount": 23367,
+      "indexCount": 23076,
       "indexed": true,
       "materialHash": "b71939b2125d80f29037888126db8c632abd8620280934b92ac15ea77542f76e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 7474
+      "vertexCount": 7292
     },
     {
       "bounds": {
@@ -1053,7 +1053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5cc9e8b3fdea849b79653682590a0f5805f17d09ccf30c99ab98bd311eb49ca6",
+      "geometryHash": "d95fda695ff7201c40c5afb34b1982fad7774586b8485b05ae7ceb92a0530972",
       "id": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 1200,
       "indexed": true,
@@ -1078,7 +1078,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b276045d7e4b5ef3f06c4a2dc6f2a1691ece4cf6a05d9833129336d8fc31d7a",
+      "geometryHash": "55d54a7d74fbc2ceaab61eb1ae51eef7fee867f307d7aeb3ee0f659b75ffba2f",
       "id": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-canopy.primitive.0",
       "indexCount": 342,
       "indexed": true,
@@ -1178,7 +1178,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "80f44f6ceb175749ee9f6be71da04cdc70458590d3a644fb4333a2ff969b9381",
+      "geometryHash": "a41be914d8a4cb8e62c2a83005e8e320dadc61905780defc0ad89e98e41d3927",
       "id": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 9156,
       "indexed": true,
@@ -1203,7 +1203,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1f32f8fbb52dc07caed6d0076540533cca838a5c45bb60bd52e35583d0e4c3e",
+      "geometryHash": "82086d665d444668ebf9ce9db85223e62f3c2b604b291f0464c5065202cd6a7b",
       "id": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-lights-cyan-rust.primitive.0",
       "indexCount": 2412,
       "indexed": true,
@@ -1212,7 +1212,7 @@
       "meshName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
       "nodeId": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-lights-cyan-rust",
       "primitiveIndex": 0,
-      "vertexCount": 737
+      "vertexCount": 860
     },
     {
       "bounds": {
@@ -1253,7 +1253,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0940bb8dd493bb7beda3fc8f685cfba15ef35aa7902ed4785cc9b4bf9653328f",
+      "geometryHash": "f149325cac1d6af86be3e74506a060a2238a1dc2178da2ad90cc0aaea2b87b9b",
       "id": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-livery.primitive.0",
       "indexCount": 3087,
       "indexed": true,
@@ -1278,7 +1278,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33d6905b7cd7cccf27447a6662d56e855aa372c3340759a3ef4424576205b5fe",
+      "geometryHash": "0815a5fe0f9d40bc15a7de8b44782aba8aed7960f82b3e0060daf825d4050974",
       "id": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-mechanical.primitive.0",
       "indexCount": 10152,
       "indexed": true,
@@ -1303,7 +1303,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e0f79aa4c9d5c258d9af78061e6236f55f34de104ff2bedf4771b9a47542026",
+      "geometryHash": "dd9d58b809518622bc17fc70cfb942dc7e3ae32a36f9a636f90eefafce95f125",
       "id": "sf.render.volatiles-tanker.node.lod1-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 3174,
       "indexed": true,
@@ -1353,16 +1353,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54dca7b48b6133d67bbd63bc0cde597dc0d2345d178c523007c324583e3d3686",
+      "geometryHash": "de09e1e5b10a53e083141a35e2ab27572cdc0ff6b1c20b42a968c76412ab2276",
       "id": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-armor.primitive.0",
-      "indexCount": 10170,
+      "indexCount": 9978,
       "indexed": true,
       "materialHash": "b71939b2125d80f29037888126db8c632abd8620280934b92ac15ea77542f76e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3828
+      "vertexCount": 3700
     },
     {
       "bounds": {
@@ -1428,7 +1428,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "02951eb441823d70b127252b52305420aee16c825b9342c988015f7621efa3ab",
+      "geometryHash": "080c1690e9b77265181fba3a3d554a80a32d4dfe60a9ac3c38120e1b68896019",
       "id": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-canopy.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -1528,7 +1528,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "342326ae7773a178d6b08b2c68f5a4d38f0736346d42ddf11b965669a3b3fc8e",
+      "geometryHash": "fbed6284f87fadd816bb4e0100172a94dc11de378d8b8c800ffd0d8aa06b753d",
       "id": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 5835,
       "indexed": true,
@@ -1553,7 +1553,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "532e86432ae9c85e0046afa93871bcc1d31c633084702b349de1d56b86ff5740",
+      "geometryHash": "447db529d4170498b73089e6e0258b37dfe1df6a3777f34062a04cf4c5206977",
       "id": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-lights-cyan-rust.primitive.0",
       "indexCount": 1353,
       "indexed": true,
@@ -1603,7 +1603,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9730729682a166ccd054cad632324e6751f72b73cd60e68b474e29020c099120",
+      "geometryHash": "d7624eb1caaff4f1085f8a81bd3fccea3e7ed6a98165c803c15447e71be26da1",
       "id": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-livery.primitive.0",
       "indexCount": 1566,
       "indexed": true,
@@ -1628,7 +1628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90eb8c74c448bbe99ed6fc85c5f689a013687722d25677ff67e2efba3a08c76a",
+      "geometryHash": "d696a537b18a67ba267a44913d421140b033c23e2e9ba5840753759220ffb75f",
       "id": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 2010,
       "indexed": true,
@@ -1653,7 +1653,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "86fb768750937e89076cf944c568d728d15a217183ae058ae9743260c7abbfe9",
+      "geometryHash": "18c5987c676d125b55037194088471f8e565af77411a9c470e478863de8e88c8",
       "id": "sf.render.volatiles-tanker.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 684,
       "indexed": true,
@@ -4809,19 +4809,19 @@
       "sha256": "042280a5f7a9b6ddfc33b0e220fa079f9e9d14f14dec840ad2fc1393345eac43"
     },
     "sourceGlb": {
-      "bytes": 1379000,
-      "sha256": "dca38912e10fd23f5f89dd4d041368d6b2cb0ae440bffbd25c0a70d1ccb6782d",
+      "bytes": 1352920,
+      "sha256": "2b8bbd43173068b9badb9fc749347d1f893518457dd2fb799927c04e426701b6",
       "uri": "volatiles_tanker.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2723376,
-    "sha256": "417f07c5c9f6b096547865b3e14ae4ed09d342ff8fa032486fc83600da6594f2",
+    "bytes": 2642764,
+    "sha256": "321d918e929c9408471682dd1ef1f0f737dfc0b94a5cabadf9157c1b900642aa",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/volatiles_tanker.glb"
   },
-  "runtimeHash": "e563d08242a7537e800c30a842a6d9a307d9fc8459a642c4ddd1b623fee59c4c",
+  "runtimeHash": "46ff01d1c6b1303233f7d75d38e1220c5f169b08e33e6c8447c33ae1853f42f2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

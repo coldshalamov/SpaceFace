@@ -54,7 +54,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "169cddf0ac5069a31a0dbfb60cd9ca1f9906b8a4d1851a4ddc1ac34882a7441e",
+  "contentHash": "303dda3755614516d4cc3ae1e0eb44e4ca7777831b3a1e24f3c865ea28372785",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -71,7 +71,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dce1b43042b9c6ad9b61168fa33cfb9ecf6e13b5ac35f80ef3e0a8892efd339b",
+      "geometryHash": "3694d8bfed7f9b1b0095678637b466db4640853b626244f83b096c1a922f34fd",
       "id": "sf.render.weapon-gatling.node.det-ammo-feed.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -80,7 +80,7 @@
       "meshName": "Cube",
       "nodeId": "sf.render.weapon-gatling.node.det-ammo-feed",
       "primitiveIndex": 0,
-      "vertexCount": 246
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -96,7 +96,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "224347390ec50f4f338529594749801f074648a2e88385d80b316cc393017959",
+      "geometryHash": "6e655769903db4b4466b37e4809a4d44de52b731e08222dbdb2aad0b7b3760b5",
       "id": "sf.render.weapon-gatling.node.det-mount-rail.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -105,7 +105,7 @@
       "meshName": "Cube.001",
       "nodeId": "sf.render.weapon-gatling.node.det-mount-rail",
       "primitiveIndex": 0,
-      "vertexCount": 242
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -146,7 +146,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d7df6775c3959a8ea2794fd8ae73850bd61713ff59f7b09ac7239b8fd8ab7510",
+      "geometryHash": "6496436243db949751c8aa25459d2f26e8830485366d839f9d28acfd6c277e1e",
       "id": "sf.render.weapon-gatling.node.gatling-barrel-cluster.primitive.0",
       "indexCount": 756,
       "indexed": true,
@@ -171,7 +171,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bed0b9b72d46b8c95db072cc2d9e5c7445fad3b24f8b20f0f53ccdd8211b801a",
+      "geometryHash": "cf3ebd672289c0eae6f3573b85c002339614f2390fd37c1c22766f517c9e5346",
       "id": "sf.render.weapon-gatling.node.gatling-coils-merged.primitive.0",
       "indexCount": 6300,
       "indexed": true,
@@ -196,7 +196,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26ad1b646794a202e056e715cc11dfcdc65848b27875eea12c3be1ca11678deb",
+      "geometryHash": "d7417d39c4b9c06b4a13e621b8e5f1aa22644d4feb94870c7df0a42cc8208a79",
       "id": "sf.render.weapon-gatling.node.gatling-housing.primitive.0",
       "indexCount": 1056,
       "indexed": true,
@@ -205,7 +205,7 @@
       "meshName": "TEMP_castReceiver",
       "nodeId": "sf.render.weapon-gatling.node.gatling-housing",
       "primitiveIndex": 0,
-      "vertexCount": 686
+      "vertexCount": 343
     },
     {
       "bounds": {
@@ -221,7 +221,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b41aced539f7df0c61a8348f5d1e6e7e7f6c6f91f5e88acbcaf0209cdeddb9b",
+      "geometryHash": "97b415703118bc2101d8e79cce3c5c46f2ef9c755bf96d367e7b2738ebf1db40",
       "id": "sf.render.weapon-gatling.node.remaster-material-hull-serviceochre.primitive.0",
       "indexCount": 1344,
       "indexed": true,
@@ -246,7 +246,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "351fb259c763c67d5cbd62bb53faf1c416523c428c1cc6157fa6da30f21169e0",
+      "geometryHash": "9d7f321a8755fdaabad1daefa2f339eb151033e3d27a861b8e7e21579a5fc940",
       "id": "sf.render.weapon-gatling.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1296,
       "indexed": true,
@@ -255,7 +255,7 @@
       "meshName": "Remaster_ReceiverBearing",
       "nodeId": "sf.render.weapon-gatling.node.remaster-material-mechanical-brushednickel",
       "primitiveIndex": 0,
-      "vertexCount": 672
+      "vertexCount": 560
     },
     {
       "bounds": {
@@ -271,7 +271,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a2b95f766bc54fdcabd1f99b08ded85b828358655bad6e76ec2890ccb31ac693",
+      "geometryHash": "617a17e4e6fa452b031c02419853e0a70d2d85542953c252b91ef19e9856d42a",
       "id": "sf.render.weapon-gatling.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 1860,
       "indexed": true,
@@ -280,7 +280,7 @@
       "meshName": "Remaster_ActualRotaryBore0",
       "nodeId": "sf.render.weapon-gatling.node.remaster-material-mechanical-shadowenamel",
       "primitiveIndex": 0,
-      "vertexCount": 936
+      "vertexCount": 880
     }
   ],
   "hlods": [],
@@ -1484,19 +1484,19 @@
       "sha256": "7affae933174107019bf58a0a1dc425bf1123fa98d1c27e7a29f191134276065"
     },
     "sourceGlb": {
-      "bytes": 3129648,
-      "sha256": "60449db6038d283e70eeec4abf7d92dba29b651e309fc715c0fe46c0b2c79d4e",
+      "bytes": 3126168,
+      "sha256": "47a6be96fc5451e1cd18e255a83d18592a7c01b6474e612ffcf0b484b5c3995b",
       "uri": "weapon_gatling.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3198280,
-    "sha256": "cfd0f0f1bca8a0e8826d762847f771e04e68beaf42cad95a65e0993b78a1e842",
+    "bytes": 3172952,
+    "sha256": "e60096f921ca5270d6978649c99106717cd8076c7db4a0573c2b0dd16f42c33c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1948,7 +1948,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_gatling.glb"
   },
-  "runtimeHash": "5b23c0b1aefcbda7ea490ee282c1cb71394a8c9d399e6eee6fe6bedb9d86f546",
+  "runtimeHash": "d93aa42380bee1c04578bd904e6a0f95f4ec99fd20053510accce98fb94817ed",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "28e4e7b1a57e772b6bd7eb56bee76fcb57ca416eae36ff35b0d937210ff05133",
+  "contentHash": "b576c93183bc6bc35c771b1f0bc6f7e6aa71af307d344cba01689bf3600d4cea",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2396ad2c9d872016e7d2ccda46b249486ae0aceb38ae95d47eec748a8d02630",
+      "geometryHash": "bb2ca75f90d249f4f1dc351862a5cbf69f9717dff289a1d0cd070a6ee23eccdb",
       "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-hull-merged.primitive.0",
       "indexCount": 1296,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83180ba21b1d6318db79c5b1f648612ae6a75f4c69ac1637bb040c5b763c64b7",
+      "geometryHash": "fb28fe3a9c15a4b6ebcb89cb6d01233c800cc38bc924c0c9725f988b37173ad7",
       "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-mechanical-merged.primitive.0",
       "indexCount": 516,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a1129de5b7a4bd36c551f3ac270c2c8a3cc66292aded9a59c9f0baf0f0c0a13c",
+      "geometryHash": "cb72c30e1b58583a3ab724c3d5b99d3ff85e20487e0e532d80d250efab5650c9",
       "id": "sf.render.fin-radiator-grid.mesh.radiator-status.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "Radiator_Status",
       "nodeId": "sf.render.fin-radiator-grid.mesh.radiator-status",
       "primitiveIndex": 0,
-      "vertexCount": 42
+      "vertexCount": 54
     }
   ],
   "hlods": [],
@@ -339,19 +339,19 @@
       "sha256": "f7fa137cffb0d356b70b410c0d85d428fcfc8f6a3d62a5b00017851e2cd85835"
     },
     "sourceGlb": {
-      "bytes": 378900,
-      "sha256": "f36ed9ce2824338d92340621b911931e51d242a964bb5e052800b9c71ebb0270",
+      "bytes": 378784,
+      "sha256": "3a3e52f3c7891f44cbff5ad192b38906b9bd3b52e57f264f74486a9073ca0045",
       "uri": "fin_radiator_grid.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 388320,
-    "sha256": "718db07dfcee1be7b30f1718732e8902922495092a28fc0e07ff36e5df9d9553",
+    "bytes": 388460,
+    "sha256": "381a33f76afbee3ed8ca2600b1be68998a437d740843a9fbb23a2f41ece5e1f1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -515,7 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_radiator_grid.glb"
   },
-  "runtimeHash": "9d7a50f99f5e82ffece33b2f7b720016d847dc1afeeb4d769bbb71b5337923b3",
+  "runtimeHash": "b0011b0419b30184654b61699c6dd9366fd43050070e7da4739ffad57b821225",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

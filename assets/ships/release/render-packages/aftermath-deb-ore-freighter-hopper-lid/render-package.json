@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f1d07804afcef3c5ba0dac39490b590749cffad1d96f2263bd3b9e13c9699153",
+  "contentHash": "250b135a86db65d9e2ed1a9146e411ac1523235b6824adec18a5e8711e79c5cd",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c9c8714632112db5ed69c7a0868ed17661235a1d4a045d824534cacc1ff46088",
+      "geometryHash": "fca31daa0e6d66ea295ccbc7c5f0d5dbd27cfbca81a3554c080c73b0bb67c3ae",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0heap.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56f619499f68b5b2d88e392c152e6d0a347ecbd8ade412509dddccc147b4c16c",
+      "geometryHash": "a386e4e35acb0bc3cc2f187a7e2ab1df204fe0f28f09c3524bee4dace91e4e78",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0heap.primitive.1",
       "indexCount": 102,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "H0Heap",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0heap",
       "primitiveIndex": 1,
-      "vertexCount": 65
+      "vertexCount": 77
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ad0195e12b889f37db9ac20d631c9973bc46561cfa20ccfc616e1199086b60b",
+      "geometryHash": "d6f6dc7a23fe7fc4db1b279eac84690633dc0c663bf92a4de74dd91a58dc9c6d",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore1.primitive.1",
       "indexCount": 30,
       "indexed": true,
@@ -298,7 +298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d9e419f05b93746a8e7b4d172a204ee81afab792cf519841a02bbf33da1fac62",
+      "geometryHash": "15df7644b2e2b21c4e52fd7e916d988f447fcad6c1908f8b79bc60f89ffbe53e",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore15.primitive.0",
       "indexCount": 75,
       "indexed": true,
@@ -307,7 +307,7 @@
       "meshName": "H0Ore15",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore15",
       "primitiveIndex": 0,
-      "vertexCount": 59
+      "vertexCount": 62
     },
     {
       "bounds": {
@@ -323,7 +323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74197ed7e25703ba68b17729e6eda19978d6bdeb872ac9a53218c79f9ddcd540",
+      "geometryHash": "30e58f8aa97085b89489bcbd764bd835d03475840d5e50d2ed4a56ab2144b0a0",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore15.primitive.1",
       "indexCount": 9,
       "indexed": true,
@@ -348,7 +348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df3825e517b6b3e38c659af16b2fe33ad40533f5870773bfe0d825bcab7a38c4",
+      "geometryHash": "36db339ac60901c3b5e7b443afcf9b3574ce03d73a5bd7d74cfcc80e834fc1f2",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore16.primitive.0",
       "indexCount": 57,
       "indexed": true,
@@ -357,7 +357,7 @@
       "meshName": "H0Ore16",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore16",
       "primitiveIndex": 0,
-      "vertexCount": 43
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -373,7 +373,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5567b73a0c8b3d1fd463deb9e754a1201023d0e205163db45ee4769b966cdb2",
+      "geometryHash": "2677fa5edc4ce2ea4c271345448e88b733171ff6354b00b164a0547f228f1060",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore16.primitive.1",
       "indexCount": 39,
       "indexed": true,
@@ -382,7 +382,7 @@
       "meshName": "H0Ore16",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore16",
       "primitiveIndex": 1,
-      "vertexCount": 32
+      "vertexCount": 37
     },
     {
       "bounds": {
@@ -423,7 +423,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ddc02b2d702c4ea2731a05c429f03fb8a85549149cf0d2c21fa87bff3dd821a",
+      "geometryHash": "fa6d507239cda738b99d2d87139c27c014fa5082adc6e759a827fcea8fa3ecd2",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore17.primitive.1",
       "indexCount": 24,
       "indexed": true,
@@ -432,7 +432,7 @@
       "meshName": "H0Ore17",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore17",
       "primitiveIndex": 1,
-      "vertexCount": 16
+      "vertexCount": 19
     },
     {
       "bounds": {
@@ -473,7 +473,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "731f651964c406f58af669d60f33be67ebda77f58993a6b3c9ed1a6308799aa2",
+      "geometryHash": "a93e2a0b908cedee17f6a4e18401c8d562a9474d8bc98fe80ba92d6fc521e57c",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore18.primitive.1",
       "indexCount": 39,
       "indexed": true,
@@ -482,7 +482,7 @@
       "meshName": "H0Ore18",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore18",
       "primitiveIndex": 1,
-      "vertexCount": 31
+      "vertexCount": 32
     },
     {
       "bounds": {
@@ -523,7 +523,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5a6b0cc100797d7d4015d5ce9955a5493fcad60288b250ebc5a8847e3649138",
+      "geometryHash": "ec2b6104a2f0bf55e85950c34ecb5de291e791492ad0cc86076b3bd778d1eb6b",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore19.primitive.1",
       "indexCount": 24,
       "indexed": true,
@@ -532,7 +532,7 @@
       "meshName": "H0Ore19",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore19",
       "primitiveIndex": 1,
-      "vertexCount": 23
+      "vertexCount": 22
     },
     {
       "bounds": {
@@ -623,7 +623,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5ec58d246f568da841b56e7b04dc8cbe2b412cf79a62f65273d3d4df8e09b2b1",
+      "geometryHash": "bed12a891b355f55d5696bb351042d556bbc3d195dc44a6f636946e9cdc8e87f",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore3.primitive.1",
       "indexCount": 36,
       "indexed": true,
@@ -632,7 +632,7 @@
       "meshName": "H0Ore3",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore3",
       "primitiveIndex": 1,
-      "vertexCount": 28
+      "vertexCount": 30
     },
     {
       "bounds": {
@@ -648,7 +648,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "46b5910c9a72bcb619e4c2ccdb0d8f73bd12fa01f449e65071ad99c0ef98bb60",
+      "geometryHash": "98a13ac032a77532da8d72ed598c3f81b3c7611b5bde2969581339e4810cdd50",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore4.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -698,7 +698,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd55532e7ce8a6bb0602c3062967179d538b8c963ca97bd79c6b6019ef8418dd",
+      "geometryHash": "a9ed2006c93d6bd19b2c968fbd0f6540844fc11308d6d5cdc72de81eaa4a08fd",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore6.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -723,7 +723,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ee2887f25073432cb72e43821c1bd70957f04229ed001f9c1f626470418b999",
+      "geometryHash": "5126523ff01f9a33117c7283557189819ad81116edb4da55f8a28672341a9d0d",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore7.primitive.0",
       "indexCount": 75,
       "indexed": true,
@@ -798,7 +798,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35f067f60913639c44196224ae1a770029eb1ec0f903eabccfde3b5d7e382d2c",
+      "geometryHash": "3cfde3b96f516e68f3f1ce0bc8a20a16005cd50935ec23357e12d714f0e39265",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore9.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -823,7 +823,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "492dbf5c4d7dc8144d6edd66aa7e5173f393c185889190489d7645d194ed4f52",
+      "geometryHash": "5df2968cea2b59b5e5dd71fb0f2f2112cb0a19d2043031094d82416c28369407",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.0",
       "indexCount": 1182,
       "indexed": true,
@@ -832,7 +832,7 @@
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull",
       "primitiveIndex": 0,
-      "vertexCount": 481
+      "vertexCount": 575
     },
     {
       "bounds": {
@@ -848,7 +848,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f530cd1a2ffbf01b55bf08599182d525f4f3e55f55c211df4799a9e9b4ec70f2",
+      "geometryHash": "37ab6edc76be4c5c04cd51c4cba788170862ba0cb142381f45feab062b942679",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.1",
       "indexCount": 954,
       "indexed": true,
@@ -857,7 +857,7 @@
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull",
       "primitiveIndex": 1,
-      "vertexCount": 352
+      "vertexCount": 436
     },
     {
       "bounds": {
@@ -873,7 +873,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c132c4fe93fb883c6ea08fa625dda1a703b140806e26b6aa4d29f71344555b1",
+      "geometryHash": "cb4d0e039d1a311dbb7f3e783516b67e9c0c1db8ee94a94177a81bd523fe3979",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.2",
       "indexCount": 201,
       "indexed": true,
@@ -898,16 +898,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11c9ce9301a531ee12dd6c11ea67bbc7f67e5eb42daaa195adc0275da5efc3f7",
+      "geometryHash": "03065a19cc5cd70f401c0830e8fde35e3deeca271b54cd8a8eb9d57712476d70",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.3",
-      "indexCount": 435,
+      "indexCount": 429,
       "indexed": true,
       "materialHash": "82b7377d75c8e24eb65947a25b571ac6de1e2e087f1b592921c54430db9301a9",
       "materialPipelineKey": "opaque",
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull",
       "primitiveIndex": 3,
-      "vertexCount": 172
+      "vertexCount": 204
     },
     {
       "bounds": {
@@ -923,7 +923,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82b28169bf16942aa091361f65759958c293c93e4ca098ba06c4d6d65d8222dd",
+      "geometryHash": "d2d85fa3b525ea62d18313b9727f36ed3414508f39c4277e726625ea2bc5efb7",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.4",
       "indexCount": 1668,
       "indexed": true,
@@ -932,7 +932,7 @@
       "meshName": "Hull",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull",
       "primitiveIndex": 4,
-      "vertexCount": 764
+      "vertexCount": 957
     },
     {
       "bounds": {
@@ -1273,16 +1273,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44e7473ba0b08fd3009e8fa9bd71318962f97e24d919a666ec787fc514a00587",
+      "geometryHash": "1b5fcff31a8d4647e1986ac8e20b339c2a61f71a82da155c28cb8c34365ddb56",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun-m.primitive.0",
-      "indexCount": 1302,
+      "indexCount": 1296,
       "indexed": true,
       "materialHash": "fbc5f02020d77dd509e51dc4a45f23cab6f5273733301dbffc94ccbf173e77a0",
       "materialPipelineKey": "opaque",
       "meshName": "PipeRun_M",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun-m",
       "primitiveIndex": 0,
-      "vertexCount": 500
+      "vertexCount": 547
     },
     {
       "bounds": {
@@ -1298,16 +1298,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "68b5be246a3c1ad92004ec5fbed181ab5d8231671a1db621b51b36aa97462595",
+      "geometryHash": "b44f3eb8846a41aea00f16cd8b08cd054163f31042bb6767c2ef29fc32df9ae4",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun-m.primitive.1",
-      "indexCount": 654,
+      "indexCount": 648,
       "indexed": true,
       "materialHash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
       "materialPipelineKey": "opaque",
       "meshName": "PipeRun_M",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun-m",
       "primitiveIndex": 1,
-      "vertexCount": 298
+      "vertexCount": 360
     },
     {
       "bounds": {
@@ -1323,16 +1323,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a323aa11023ad905aaaa187aab747eb7570946d5ebcdca2ef925a4569e255c9",
+      "geometryHash": "90099988b2217308260c1bd5aca57fcc44c4b357fd00131bd9889d723bcfd2fc",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun.primitive.0",
-      "indexCount": 1176,
+      "indexCount": 1173,
       "indexed": true,
       "materialHash": "fbc5f02020d77dd509e51dc4a45f23cab6f5273733301dbffc94ccbf173e77a0",
       "materialPipelineKey": "opaque",
       "meshName": "PipeRun",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun",
       "primitiveIndex": 0,
-      "vertexCount": 449
+      "vertexCount": 529
     },
     {
       "bounds": {
@@ -1348,16 +1348,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef00ee47213d0954252947c90acbe3512f96c5cd7519a21d5fb74e40bc402a39",
+      "geometryHash": "511d6abdc34dde300fd03839734a56c6963bb7edabc98e0a1a1476f3a452e4ed",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun.primitive.1",
-      "indexCount": 588,
+      "indexCount": 579,
       "indexed": true,
       "materialHash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
       "materialPipelineKey": "opaque",
       "meshName": "PipeRun",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun",
       "primitiveIndex": 1,
-      "vertexCount": 279
+      "vertexCount": 325
     },
     {
       "bounds": {
@@ -1373,7 +1373,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71c27a2de5182d1135f062d31eace26d71ab46ee0299d995e7b8e96b89517864",
+      "geometryHash": "4b041745973c37014f46332f982254dbaf9c3e6f1a57feb8e33afa4149e3ada6",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake-m.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -1398,7 +1398,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4dc1c34cb7fe2433c8a3f51bfb435f6e08c0964b00e87b9e7aadcb0ee3ae78f",
+      "geometryHash": "76af8ce491609372763ad1db2e187c57dac5ef13aca46529f2a5a25b1d4aa54d",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake-m.primitive.1",
       "indexCount": 246,
       "indexed": true,
@@ -1407,7 +1407,7 @@
       "meshName": "Strake_M",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake-m",
       "primitiveIndex": 1,
-      "vertexCount": 106
+      "vertexCount": 132
     },
     {
       "bounds": {
@@ -1423,7 +1423,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6e661cfc61917c8ff7e809d66c2dfd567378a1eba86d857d8beca8b3e210648",
+      "geometryHash": "437a9d2d12a05f467b80b651bfe25a11257be9ffe663593eafaacb85512b5b75",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake.primitive.0",
       "indexCount": 321,
       "indexed": true,
@@ -1432,7 +1432,7 @@
       "meshName": "Strake",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake",
       "primitiveIndex": 0,
-      "vertexCount": 120
+      "vertexCount": 145
     },
     {
       "bounds": {
@@ -1448,7 +1448,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c6e8fae73ecab2870160f3d0425c3ce2258ae05b14b9c1987b7de91a00d71e9",
+      "geometryHash": "9eefb7c42d64d11d24e73cb583953073ffb21f8f1137e83eeac5b0e6a1db572e",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake.primitive.1",
       "indexCount": 291,
       "indexed": true,
@@ -1457,7 +1457,7 @@
       "meshName": "Strake",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake",
       "primitiveIndex": 1,
-      "vertexCount": 125
+      "vertexCount": 165
     }
   ],
   "hlods": [],
@@ -3815,19 +3815,19 @@
       "sha256": "03b377f5580ee8034f9dfa16e076b4fd0bdd8187805d3d89c6713e3c296bc29c"
     },
     "sourceGlb": {
-      "bytes": 283888,
-      "sha256": "a3e3c11ccc72c24050c6fe1a0a09901e22514d2980b1275d2d0c28f11d05e117",
+      "bytes": 296528,
+      "sha256": "37bbf859ad7bc096b7573b173377ff8a3ef1bd9ceb13d28ccbba1be42430bcd2",
       "uri": "place_aftermath_deb_ore_freighter_hopper_lid.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 362944,
-    "sha256": "26d2ccf628a72d5b0066c470396e0c2538ccf2fd7761de7e789e0082b91b9ff6",
+    "bytes": 380120,
+    "sha256": "e30763af2cd1f47531cf8a0e8be16876193ead99894a4d651b2d55f1567ced00",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5727,7 +5727,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid.glb"
   },
-  "runtimeHash": "8281bf71756b771a3ff9246a831c2458aaf6828926b71771689d6299df3674ab",
+  "runtimeHash": "580ab9a3aceac128e1cabee33e56650f37f979102a22f2de7c0a29f126c387fb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

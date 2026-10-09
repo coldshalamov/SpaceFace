@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f2cf71f12c2c6a963f90e768634fcc1ee2f7d999bdd02265b95366cb7e7af57d",
+  "contentHash": "13a0405e28208e6e2750fc00a6364c0261cd8aad03530aee7db87ca92106d037",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abfe7f065093313c11568b9fb550c43206ec5c4b98307c2dfd0f44f1d162f4b6",
+      "geometryHash": "e09dc0fa013e841c2c11ed49fbe9263be7e6de07073a0610c6ef5be6f5bad6d8",
       "id": "sf.render.aftermath-aft-armor-slab.mesh.belt1.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -48,16 +48,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a81e0f2c2d9b8f81f22505ca5bfbf9d183b6affbab2f7c0c4ef2c5f66be7a1b",
+      "geometryHash": "a904d4d45433442c5c6dcab20ed43a504e85b97998a10a182600037ba91b22f7",
       "id": "sf.render.aftermath-aft-armor-slab.mesh.belt1.primitive.1",
-      "indexCount": 1548,
+      "indexCount": 1464,
       "indexed": true,
       "materialHash": "636e704c58087f65b4fa220c29eb106370ef5a8ec0c4b4293ad2a98da3b97be7",
       "materialPipelineKey": "opaque",
       "meshName": "Belt1",
       "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.belt1",
       "primitiveIndex": 1,
-      "vertexCount": 494
+      "vertexCount": 479
     },
     {
       "bounds": {
@@ -561,19 +561,19 @@
       "sha256": "d9c3f6b6718af955fd981d6ac52f02ecf7195fc8109f4c18d3d7d65b1bfbfd02"
     },
     "sourceGlb": {
-      "bytes": 104432,
-      "sha256": "9fb62aa06b645434247671d729299bb22d0b1a0f10caf494ba30291311026e2e",
+      "bytes": 104284,
+      "sha256": "f5a42fe08cac7cef21c2907b866f0aa26ff94633a57e394815d7494fb705a155",
       "uri": "place_aftermath_aft_armor_slab.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 119236,
-    "sha256": "cb84445788bd596488fa8a9adcd8d52bd54a357c7a3a6f02bd2914cfea598a16",
+    "bytes": 118896,
+    "sha256": "248f618a44a2fc9fd54b1e6d2754894753e243e38b32bc4d3696d7f295085a1e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -808,7 +808,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab.glb"
   },
-  "runtimeHash": "eb7867a4885f39e764b4022b32e3f468c0255ef138824c278db090f958dfb4df",
+  "runtimeHash": "04bcfef169416c83eafc2ec015ed33322a653254ad14bb5dfc8cf960d253d789",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

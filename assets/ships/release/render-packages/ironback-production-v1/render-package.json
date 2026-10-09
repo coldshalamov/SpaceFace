@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "09ed379643b067d37fb44eeeff741c21a6094bb037bcaf8aeb9d4171527497d2",
+  "contentHash": "b938632e0ae67051c6e30ed3932292da837aa8a6fddb2aa0964c44c1263a5e47",
   "dynamicGroups": [
     {
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -623,7 +623,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87db107103d6120cfca9ad42939ab14a9a2f48ef8db4f49bc0e219d71209af57",
+      "geometryHash": "f843752b3f6592274c129b583a97b971a0852a4eb8bfaa62c86fe79126a475b4",
       "id": "sf.render.ironback-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -648,16 +648,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54f89abdf648d55c78468b829186ec1662cd72ccfd1856f0da2345b19509a2d3",
+      "geometryHash": "8e94025284dced9fbc17e6f19963c3cb69b0822b2b397b0f41a8782076ab2049",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
-      "indexCount": 20079,
+      "indexCount": 18609,
       "indexed": true,
       "materialHash": "cfda2f2a6b5446520f68c6d22c56977849966902e167b1dc45869a5a29b174d7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 6003
+      "vertexCount": 5859
     },
     {
       "bounds": {
@@ -673,7 +673,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d9cb14a91dfdbb70b3b372477ca2c19425fe0da244fd53c59b91b93012fc453",
+      "geometryHash": "eddb8e915b5614f9ddce5c9ecaf182d5c0bad00eb85b62977bdf181905b9708e",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 1260,
       "indexed": true,
@@ -723,7 +723,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff07d78f6025316ac0c3afa49527b5681c23e0b022731888646a353b6d2356ee",
+      "geometryHash": "8c45f09a706160b2908565737bd1dace53bf98be86cc31e450ec0251a4c91f8d",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 789,
       "indexed": true,
@@ -823,7 +823,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d56bd4fc5773cf1d2a9d74ddacd37a947c6fb645be0f1eabbc5aa7722fe8558",
+      "geometryHash": "dd939aa4e42719652094fc430eed9a07f32abe9ce8aee3789abc361b0dfb53f6",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-hook-secondary-hopper-mechanical.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -848,7 +848,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c2e54d38785edd8d35ee0023808d2062f75fff0f552a9df7dd5480bfcd85fe9",
+      "geometryHash": "d51d156f4391976b71a48d7dbb378fd28b5be99dd9c9d3921a6ba5cf4ac98e62",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-hook-secondary-hopper-mechanicaldark.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -923,16 +923,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a3e1ff7e6dbc4f8d871b50ccd168ee95c1f26ed5501884575e9d00db36416d3",
+      "geometryHash": "0279354c458475c2a142f6f4b762565402c666306e1a5a1ed364f40dae8d1981",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical.primitive.0",
-      "indexCount": 2412,
+      "indexCount": 2364,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 698
+      "vertexCount": 690
     },
     {
       "bounds": {
@@ -948,16 +948,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ee8b7bfe7d42d38fff2c1151784515f901072942a9b2f0d984897df9645707b",
+      "geometryHash": "74fc40da0cb7ca3022b4467bada5cf8d2fe51ddc09194f0a066485910803665d",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 29937,
+      "indexCount": 28557,
       "indexed": true,
       "materialHash": "30480625fa5f9da9a5caec39f910641ff82b80472f2c15db750ef8778823168d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 8075
+      "vertexCount": 7866
     },
     {
       "bounds": {
@@ -973,16 +973,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e048a45508b59b4e23affc261ffa606e7dd25f4475f7a6ea69e592f5b452c43",
+      "geometryHash": "4c70c1ba7a63c29485379df958c6cb97aa3a47b1b87b5dc63c97c369064b790e",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-lights-cyan-oxide.primitive.0",
-      "indexCount": 1380,
+      "indexCount": 1290,
       "indexed": true,
       "materialHash": "9e1e328bd5e089957bf69513161a15870b5d0e066e6e6a4c962ac9786bb5794c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_oxide",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-lights-cyan-oxide",
       "primitiveIndex": 0,
-      "vertexCount": 528
+      "vertexCount": 504
     },
     {
       "bounds": {
@@ -1023,7 +1023,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ca2a103672a9ac5363af9fb96a5dd938c0696e56b770a44e9b8f1258da4fba5",
+      "geometryHash": "05de97e28af93feda0a578c054219a75b50c5d264e493302045bc877c0b43092",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 19920,
       "indexed": true,
@@ -1048,16 +1048,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1eec6d425181ae2761630d3817f499508f20aee035140a0c8f638667c46722e0",
+      "geometryHash": "13684a89b9ecbcb16308f1058f5999d6ad00f4a1d061e57c36b04223d2a0ec49",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 44211,
+      "indexCount": 39105,
       "indexed": true,
       "materialHash": "be58dd553170ebb982eb96555febe9f43130cc62b273a3c20a919fe62b75f6e2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 13844
+      "vertexCount": 12706
     },
     {
       "bounds": {
@@ -1073,16 +1073,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a8dba61c6ce732c0251851e17af10efa56f85801ddbed0292b506c7b856b050a",
+      "geometryHash": "b62a6a40daaa8f592ff7f04af4a2c6398cf2c7e5ebdf9a3a95d000a15891d3fe",
       "id": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-warning.primitive.0",
-      "indexCount": 7122,
+      "indexCount": 7089,
       "indexed": true,
       "materialHash": "585b10c036ff9db7ba36a835644a1e4c638ef06e4516e9bd648cebf36c52ca19",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Warning",
       "nodeId": "sf.render.ironback-production-v1.node.lod0-motion-hull-core-warning",
       "primitiveIndex": 0,
-      "vertexCount": 2227
+      "vertexCount": 2214
     }
   ],
   "hlods": [],
@@ -2979,19 +2979,19 @@
       "sha256": "1783de9a131af3c134882a11ce47b221dc12f9f8e52b47a7a8a3be88529f0151"
     },
     "sourceGlb": {
-      "bytes": 921772,
-      "sha256": "4ed8f25f6e45c677281f7b0d1645105c366daf67975f3fb72a195efafa64598a",
+      "bytes": 905800,
+      "sha256": "cf6ff8ff9983b483736522a327ddee37e6f9241e32813b56c801e32908937138",
       "uri": "ironback_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1661956,
-    "sha256": "4d3818c7d60fff26f588c04a97fa94a1d5af3d9d3b4804c76b927eef5a8cedc2",
+    "bytes": 1613880,
+    "sha256": "2f4c26b07a51dc784315d7acbed68ac532e134459495c4323dc2e1fc5b10935b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4355,7 +4355,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ironback_production_v1.glb"
   },
-  "runtimeHash": "eee97a7d4b5f718b863a966ccec9aa4fd38596f08f56440b1df6bcbb70cbd1f1",
+  "runtimeHash": "fcf8ddbdc88553777eee9a07914e232a7fcc3df6473da9be0fe69a11308d7459",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

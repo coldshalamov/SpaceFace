@@ -881,7 +881,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c606acdc6b7b6ae1da72f0820c68424f569f2b1d4c2f06d67b81f80c4e8d96ce",
+  "contentHash": "e55d1ccf186d66971e57f42cc09e53a58f6992d0c8bd96d341c5c7bdbf3eb759",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-breaker.node.lod0-hook-ceres-thruster-main-port-inner-glow-drive.dynamic",
@@ -1644,16 +1644,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3a272a8e9e19250112b3674edb2b8677baf26baf5e7ea7d21ca0e1397121831",
+      "geometryHash": "f41ad08edf5276f35d1bfe3e6442523280b865ab7aa7b4b2a64715378a3aed47",
       "id": "sf.render.ceres-breaker.node.lod0-armor.primitive.0",
-      "indexCount": 49107,
+      "indexCount": 49101,
       "indexed": true,
       "materialHash": "2dbbcd18d482a77ffb81331949631522dd9ca745f42876f46b18757db31a0ae5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.ceres-breaker.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 15858
+      "vertexCount": 15856
     },
     {
       "bounds": {
@@ -1694,7 +1694,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7906d56fd6ce0b267b2186367ac1503f214c077f3ae74fe51673cc0e2c41fdcd",
+      "geometryHash": "caa67af929c94667adef30bcb65134d8cfb7b60c420b5844d2b1ea741ed2c8bb",
       "id": "sf.render.ceres-breaker.node.lod0-brushedmetal.primitive.0",
       "indexCount": 12420,
       "indexed": true,
@@ -1869,7 +1869,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e10f3ae2ce96346725f775155aeb51d4e179f78ad58151c1c8748ff6a8a59de5",
+      "geometryHash": "b61ad309e4deb25a978b9e8d758cca9ef75c1bcb090e452261485cc2914e9f93",
       "id": "sf.render.ceres-breaker.node.lod0-hook-ceres-thruster-rcs-bow-starboard-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1894,7 +1894,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8575861638efb661025f16e43a8d04127b260d637703639bf32cd17678255c6",
+      "geometryHash": "485d21dd2db80e9783d397dc89d9aa15e5e818cba14bd1c83d23f24f98103cf1",
       "id": "sf.render.ceres-breaker.node.lod0-hook-ceres-thruster-rcs-stern-port-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1919,7 +1919,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "204f19b9cfd53c368281957b89449f79583e3b109f1ff33cfd64db66edbc5c71",
+      "geometryHash": "a1bfa02f0882e344654ef413e91f9bf282e0d3116ff1b9df88993680fc2f9dd2",
       "id": "sf.render.ceres-breaker.node.lod0-hook-ceres-thruster-rcs-stern-starboard-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1944,7 +1944,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cd1e6468bfe93312807a6e07d36f8550a2cef6d149d1c4156ee2f4a9d1cb813",
+      "geometryHash": "c9b127420dce34fe1d10b7fc5953a7ab4075d2c1b5a56044c16eb0f8304c2c25",
       "id": "sf.render.ceres-breaker.node.lod0-hook-ceres-thruster-retro-port-glow-drive.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -1969,7 +1969,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d84235c6dcb9c7b7bef483ccefbe97e1318ffba1b1e4a037150ca1c3958519ff",
+      "geometryHash": "a7ccc99d9575aa7d37927ff2b8ae6825226e0505bbaac1b49523cf6432677ba8",
       "id": "sf.render.ceres-breaker.node.lod0-hook-ceres-thruster-retro-starboard-glow-drive.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -1994,7 +1994,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6fa01e16ea63df15f682cdddf487455d8754e855d45ec25ade9354df79a40564",
+      "geometryHash": "b1d44e5b8f0a695c2ee4c30ca4efbe7b2646113d29aaa0347ee8f69e00aa6bfe",
       "id": "sf.render.ceres-breaker.node.lod0-hook-nav-port.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -2019,7 +2019,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0dc4dbfc6c387faf111f1a6f07e93ba6f166832bb40818f2ecedc8949186535b",
+      "geometryHash": "f47403667013f2306e123f8eb19dc7178e3283b86a38af244a30ac12a3a0c5aa",
       "id": "sf.render.ceres-breaker.node.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -2044,7 +2044,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ec192b134811205748ea6b818ce219b6f932292de0fa21b11e05831b88865e9d",
+      "geometryHash": "106a385a0376a92468ea695f0d81c92269568adb89fdedb593b8dd695e9776ed",
       "id": "sf.render.ceres-breaker.node.lod0-hull.primitive.0",
       "indexCount": 11211,
       "indexed": true,
@@ -2094,7 +2094,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "78bace206222e670551c0f9dfeefe4348d4e406db38f336eb33a14a12cde27ed",
+      "geometryHash": "c474a5bde4a1335b7a2a17cfdb0aa59c530eeabed111239f634622300ac455cb",
       "id": "sf.render.ceres-breaker.node.lod0-mechanical.primitive.0",
       "indexCount": 11028,
       "indexed": true,
@@ -2119,7 +2119,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f69fc394744345ec3c4ccdd588f1edc5221394ae1948ecddddf37fae22bdd4fd",
+      "geometryHash": "18b6236c096487d8f4a84f7f8b976f8047f7e3c08874e70f663fb9af1c515c99",
       "id": "sf.render.ceres-breaker.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 11844,
       "indexed": true,
@@ -2144,7 +2144,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b2553eb7a49f47a850caf7e485631f08d8660aaa4c7bd3a4b5372a95a85233da",
+      "geometryHash": "f5a2b2aa94ba7d28f7b9734e317bd06eb4990e503517c3e05d98fc54d2f93e21",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-port-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -2169,7 +2169,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30912f3d6001eef020cf6a624d206e1cd610e604a2442f23492d95c11b9d52c6",
+      "geometryHash": "4dad9f17fec7d2ef8d87901b5958b90b24741ac1a6a460817004af045d616c84",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-port-brushedmetal.primitive.0",
       "indexCount": 5676,
       "indexed": true,
@@ -2194,7 +2194,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8a79ba8492a3f41cda0d87eb1566503db6ddf98ccb9b4e48466b4365bfeb005",
+      "geometryHash": "fae1e90bd056aa0ed6efdec3c5d4ae044a2d9cdf5a67ca8032f98baf581437e3",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-port-mechanical.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -2219,7 +2219,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2aa2b134c1106aac0dc748785fb4379f53a78373fc13fb43da37ce918aecda5",
+      "geometryHash": "64dfa13dbaca95feb38d1f1f926cec8e58f456e248f5c998ed53a072bfafe94e",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-port-mechanicaldark.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -2244,7 +2244,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6356edbd19c0dca9d6e0efa491dda61c558f81dfd5937f8165a979f21ec5c933",
+      "geometryHash": "848d834c682012e5e52ff9855f746c04b92c9041073f8376015e1652384f38eb",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-port-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -2369,7 +2369,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd46c4f4a2a599efe679fa86a0c591cadc005183ed7a1b40b8f8a932858f37b6",
+      "geometryHash": "fe5e03fac780b2f6d1c41094304bb336e3cb0c56c7125388522eee3e7e45ebbf",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -2394,7 +2394,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a36fd39ac5f1274c620a8a51774f418e891fc1152e6e7211eea25a995d989519",
+      "geometryHash": "3719f50cc185e0a1ef49af3ab937da28abca5cb6708c64eb6641923434daf419",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-brushedmetal.primitive.0",
       "indexCount": 5676,
       "indexed": true,
@@ -2419,7 +2419,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cde5aaaf7af326ea48f4926ac1d15b99b8adcb5d4b16319e48b78f1811301a70",
+      "geometryHash": "767796dd9853c5f5bdcc88eec0a3d75f72d9dec78ce7f19ada2459b9f6d4e700",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-mechanical.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -2444,7 +2444,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13ed00b92ba2983101c0380cddc53cb657ea1c1d01addc09ce19704cb6648a8a",
+      "geometryHash": "30450f697e326d05b44cc0f8f8692fb32714ce5d6bfa6ec74c77dfdaf1a44800",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-mechanicaldark.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -2469,7 +2469,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4c79d20d23aef4c25191ad268107121094f9c19d13316beec95e9a92a3d1273",
+      "geometryHash": "bcd3761232ef657ad3ec4b4d219808cf41b5448d851ea937e210fc3d2c6f41c5",
       "id": "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -2494,16 +2494,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df6b7f463daa6bef4ce15b40fe6c323cfb874e1f2e53e9dd1a0362de42272f1d",
+      "geometryHash": "51a189fcce723c5b0cb18a6b479590d514e550c94feb3cf31438dffe021ef8cb",
       "id": "sf.render.ceres-breaker.node.lod0-warning.primitive.0",
-      "indexCount": 14772,
+      "indexCount": 14622,
       "indexed": true,
       "materialHash": "1afc9d21a108dcfd0a2d1008de651ce54baf92a6ab382caa97da56483184b61b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.ceres-breaker.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 4641
+      "vertexCount": 4600
     },
     {
       "bounds": {
@@ -2519,7 +2519,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6a54b48dcfd90242c5d9975c7ddbf2ef4f94552b44369a0aec7eb065a6f0a25",
+      "geometryHash": "a0f906f648face8152f3e9475247eeed64468d927926fcd766ceb9e85a844f9a",
       "id": "sf.render.ceres-breaker.node.lod1-armor.primitive.0",
       "indexCount": 18918,
       "indexed": true,
@@ -2569,7 +2569,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d4c772ce8622e827cb1a437698bd3224609f4938fc899e5674978fe2d33b33b",
+      "geometryHash": "70a9a04182b697e6bc81fe6ad8876018215078f5c4dd269bd32b3295c23ac622",
       "id": "sf.render.ceres-breaker.node.lod1-brushedmetal.primitive.0",
       "indexCount": 5676,
       "indexed": true,
@@ -2744,7 +2744,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e10f3ae2ce96346725f775155aeb51d4e179f78ad58151c1c8748ff6a8a59de5",
+      "geometryHash": "b61ad309e4deb25a978b9e8d758cca9ef75c1bcb090e452261485cc2914e9f93",
       "id": "sf.render.ceres-breaker.node.lod1-hook-ceres-thruster-rcs-bow-starboard-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -2769,7 +2769,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8575861638efb661025f16e43a8d04127b260d637703639bf32cd17678255c6",
+      "geometryHash": "485d21dd2db80e9783d397dc89d9aa15e5e818cba14bd1c83d23f24f98103cf1",
       "id": "sf.render.ceres-breaker.node.lod1-hook-ceres-thruster-rcs-stern-port-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -2794,7 +2794,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "204f19b9cfd53c368281957b89449f79583e3b109f1ff33cfd64db66edbc5c71",
+      "geometryHash": "a1bfa02f0882e344654ef413e91f9bf282e0d3116ff1b9df88993680fc2f9dd2",
       "id": "sf.render.ceres-breaker.node.lod1-hook-ceres-thruster-rcs-stern-starboard-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -2819,7 +2819,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cd1e6468bfe93312807a6e07d36f8550a2cef6d149d1c4156ee2f4a9d1cb813",
+      "geometryHash": "c9b127420dce34fe1d10b7fc5953a7ab4075d2c1b5a56044c16eb0f8304c2c25",
       "id": "sf.render.ceres-breaker.node.lod1-hook-ceres-thruster-retro-port-glow-drive.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -2844,7 +2844,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d84235c6dcb9c7b7bef483ccefbe97e1318ffba1b1e4a037150ca1c3958519ff",
+      "geometryHash": "a7ccc99d9575aa7d37927ff2b8ae6825226e0505bbaac1b49523cf6432677ba8",
       "id": "sf.render.ceres-breaker.node.lod1-hook-ceres-thruster-retro-starboard-glow-drive.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -2919,7 +2919,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c603d557a6c554527af9c683956dc7ae98edc13e49eebf2a353728abcabf881d",
+      "geometryHash": "5c4c15f095e72ccea46c55e6e092159a7f844140437e600691f38f9c9d3b4470",
       "id": "sf.render.ceres-breaker.node.lod1-hull.primitive.0",
       "indexCount": 5643,
       "indexed": true,
@@ -2944,7 +2944,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fd170a66a2374548b79d2dcec0e175124ba8f1d572af1ffc2462ad789d5a2f6",
+      "geometryHash": "821a4b0a546aaec0dfa0d1f77719f08887445de5c8338306a224795a3af3e290",
       "id": "sf.render.ceres-breaker.node.lod1-lights-warm.primitive.0",
       "indexCount": 372,
       "indexed": true,
@@ -2969,7 +2969,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d6cce60783fc4245d172f420f3c9603d69b4d78f0de7e38f577c7e58f898fca",
+      "geometryHash": "84397c55e6a5b9dfdeac640b50c9e62dcfd81655eb21a159f1c934992ce7d396",
       "id": "sf.render.ceres-breaker.node.lod1-mechanical.primitive.0",
       "indexCount": 8442,
       "indexed": true,
@@ -2994,7 +2994,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c39e3eff2fc538c2537155b3bb125fa45d00771e18567bbf764b295ff18d8e39",
+      "geometryHash": "8361ea873cbe6c7def12bf0b5ef80740fd37bbb9806341c409dd99df867c57c3",
       "id": "sf.render.ceres-breaker.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 5700,
       "indexed": true,
@@ -3019,7 +3019,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b078660ae9ebc4e8844459b827898d6f702cefdf6f9722b60da9da8d1ac1870f",
+      "geometryHash": "3a084c2348e47e81a292092b19c9c99a1702027d4b1ad8a3d6055a3e55ea4d64",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-port-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -3044,7 +3044,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cf72e05c8262d47035f0ec87eaf45e87374f37458f5c5e5218d53baba235851",
+      "geometryHash": "11fb96e91f14cf3274eae427f8dfec9358ba75afc591064a6c0fdc7b1bfc631f",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-port-brushedmetal.primitive.0",
       "indexCount": 2112,
       "indexed": true,
@@ -3069,7 +3069,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d7ce9e86514f65c7b494fd182f5cf00f4fa45f211fbdb3a626a934d6cf7e13a",
+      "geometryHash": "35aff9395865dca294b00c7ff81c9fdb383defd415a0a2891303d0adc4ef19dd",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-port-mechanical.primitive.0",
       "indexCount": 552,
       "indexed": true,
@@ -3094,7 +3094,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0335fd0e02bc4de184de9151047716f85fe2884c466426a6ad3490237afb23d5",
+      "geometryHash": "50e34f4e48aa1f4ffec91eb259889ba57dc6f51d59786e52b517a71b3869a5f4",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-port-mechanicaldark.primitive.0",
       "indexCount": 744,
       "indexed": true,
@@ -3119,7 +3119,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc495430f0260466b5905245d165bf312df5e65a4c0a2c6d5b963eef5c3d18bf",
+      "geometryHash": "e290d661e0b325d55960b95878688f50a424e35216b42b08f5c1f74d578da7f1",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-port-warning.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -3144,7 +3144,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "280c69ec51afa693a5acd3d3f99f52a616a6cbcbbcc227c2c046649026891e70",
+      "geometryHash": "319b64bd813fbf0802106e906835c6fae6ab02d9673297d426d49b725db2b0b2",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-ram-port-0-brushedmetal.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -3169,7 +3169,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "02e4c47597bc9f3e83b8a7b21b7f2090f9c60df02ee93a3ce2fd56e6b5f601b4",
+      "geometryHash": "4f28d108fb8c4b5ddf1a9d824b9f192581bd4c881393ee38c42bdf6323ba8ecb",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-ram-port-1-brushedmetal.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -3194,7 +3194,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ab482c8509d14e0395803b6b69bbb145fc9cac2eb8a189b7329510e1908c0f7",
+      "geometryHash": "bda3e92e7cdde09d609033ad8880a87cce43c575c2204198b068a1acdfb8b208",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-ram-starboard-0-brushedmetal.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -3219,7 +3219,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7521320675cb3dfefbd7a1e35b010808c0366f36a04546de07d9adf642b9800",
+      "geometryHash": "693964cb22b8584adca6fabf47653671b7c72ae0a2facd18d9ebfc900bac90d8",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-ram-starboard-1-brushedmetal.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -3244,7 +3244,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7af4e7b46cf954498ced78ff688fc2c2f431faf12a83ba3d4a8011b60135b72e",
+      "geometryHash": "62d868282ddc85fd38941e9b11f97870d5ebf5a4c1750338428a38edc96d98eb",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -3269,7 +3269,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cb977be2141aae10a6729af0205bedbe459f7e2ed8e43e3079ed5dd42119171",
+      "geometryHash": "fbd6867dfad4b56cbb800b9db2e3d95d6b5b3708e9e75fe2ee6b769472a5faef",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-brushedmetal.primitive.0",
       "indexCount": 2106,
       "indexed": true,
@@ -3294,7 +3294,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "20f74e85d4b9a71dc700d24be4c6a0d67d5672231a3b542b4e1f8968e95fceec",
+      "geometryHash": "dee5c8fe0bd09c9c80c4f57729c0273ee7d79a8a566f4d094526bc5d8894a476",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-mechanical.primitive.0",
       "indexCount": 552,
       "indexed": true,
@@ -3319,7 +3319,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e2ef460b2ca40c2233b9db2a0fdce2b0e3e3008ca2c7e5961afe818c456b97fc",
+      "geometryHash": "a9565011c7681e54e0c884db6ab6fd2e2acea884589f8e0c7253d0598fb81d9f",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-mechanicaldark.primitive.0",
       "indexCount": 750,
       "indexed": true,
@@ -3344,7 +3344,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62af4b9cbe3942d86e152bcede9c5184bc27693e2253f73a7ae5108e4154ddc1",
+      "geometryHash": "ccbe3e8c92329cc06bf747719a6f20f8a14a99a323bb99d3e6941c32148f36e1",
       "id": "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-warning.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -3369,7 +3369,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a259e63960e91517a6a87b71ff750241985f21d1497e4d754b4f787469878807",
+      "geometryHash": "8d44aa938d7a3954f646518080ac6a0f1f3743100dc246e98d697273d885eb34",
       "id": "sf.render.ceres-breaker.node.lod1-warning.primitive.0",
       "indexCount": 4152,
       "indexed": true,
@@ -3394,7 +3394,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "61d9bc284781a4dfc1ee496fae48c5113d486d79e0c0f05c7088de1e50ca3064",
+      "geometryHash": "a05b2aa1eb40880e168a18e6ce9258033b0747b10490a6b2884a0e5675cd1831",
       "id": "sf.render.ceres-breaker.node.lod2-armor.primitive.0",
       "indexCount": 7167,
       "indexed": true,
@@ -3419,7 +3419,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d82197e32c597ad5f76049d5bfed881e1e023e30ee79544ae33606429424b3b1",
+      "geometryHash": "477bbfad3f9fedff011612c86822954cce389d9143c88e7e4af6be1fbff22832",
       "id": "sf.render.ceres-breaker.node.lod2-beacon-amber.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -3428,7 +3428,7 @@
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.ceres-breaker.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 26
+      "vertexCount": 30
     },
     {
       "bounds": {
@@ -3444,7 +3444,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c88d2ac4e4bf48921d5073d6e0bcb8abc7127ecefb956e89b1158606901c47a8",
+      "geometryHash": "7134af0df1a106c85710cdd441f06b5537252ce5aa8894fc056681267f8fdbac",
       "id": "sf.render.ceres-breaker.node.lod2-brushedmetal.primitive.0",
       "indexCount": 2910,
       "indexed": true,
@@ -3619,7 +3619,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e10f3ae2ce96346725f775155aeb51d4e179f78ad58151c1c8748ff6a8a59de5",
+      "geometryHash": "b61ad309e4deb25a978b9e8d758cca9ef75c1bcb090e452261485cc2914e9f93",
       "id": "sf.render.ceres-breaker.node.lod2-hook-ceres-thruster-rcs-bow-starboard-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -3644,7 +3644,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8575861638efb661025f16e43a8d04127b260d637703639bf32cd17678255c6",
+      "geometryHash": "485d21dd2db80e9783d397dc89d9aa15e5e818cba14bd1c83d23f24f98103cf1",
       "id": "sf.render.ceres-breaker.node.lod2-hook-ceres-thruster-rcs-stern-port-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -3669,7 +3669,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "204f19b9cfd53c368281957b89449f79583e3b109f1ff33cfd64db66edbc5c71",
+      "geometryHash": "a1bfa02f0882e344654ef413e91f9bf282e0d3116ff1b9df88993680fc2f9dd2",
       "id": "sf.render.ceres-breaker.node.lod2-hook-ceres-thruster-rcs-stern-starboard-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -3694,7 +3694,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cd1e6468bfe93312807a6e07d36f8550a2cef6d149d1c4156ee2f4a9d1cb813",
+      "geometryHash": "c9b127420dce34fe1d10b7fc5953a7ab4075d2c1b5a56044c16eb0f8304c2c25",
       "id": "sf.render.ceres-breaker.node.lod2-hook-ceres-thruster-retro-port-glow-drive.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -3719,7 +3719,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d84235c6dcb9c7b7bef483ccefbe97e1318ffba1b1e4a037150ca1c3958519ff",
+      "geometryHash": "a7ccc99d9575aa7d37927ff2b8ae6825226e0505bbaac1b49523cf6432677ba8",
       "id": "sf.render.ceres-breaker.node.lod2-hook-ceres-thruster-retro-starboard-glow-drive.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -3794,7 +3794,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05d8c6710819339f5ed4e96ff3e7a87ab1507bffac60f4dc000c468f42bd3949",
+      "geometryHash": "524a750259a808c6973ed8304dfafec1004cc4e8ab6ce61879c5b5b1a189d59e",
       "id": "sf.render.ceres-breaker.node.lod2-hull.primitive.0",
       "indexCount": 2676,
       "indexed": true,
@@ -3844,7 +3844,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d9356a04244e35c4af83a372b9381be4181a2217fe9ea637e51c32152867813",
+      "geometryHash": "40f777348bf58f95b24678e400ff8c852f29514818357536561c2811ffe20984",
       "id": "sf.render.ceres-breaker.node.lod2-mechanical.primitive.0",
       "indexCount": 5988,
       "indexed": true,
@@ -3869,7 +3869,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad07fddbdc79c1db2169c54b3ea11664bfe33b9840af32a9278adef29fa0624a",
+      "geometryHash": "62292f889b77f68ebf2ccd9690a902c3c043b68aec3549869a1cbca25c1dab2a",
       "id": "sf.render.ceres-breaker.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 4191,
       "indexed": true,
@@ -3894,7 +3894,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a06949a149b493fdca994f93333969c4537945ea6d0142adb97b755317c2703d",
+      "geometryHash": "a6fa443a2f2d376c9ef962a7e35a687f9578813f0c4a6382134c89e59544ea8c",
       "id": "sf.render.ceres-breaker.node.lod2-motion-shoe-port-armor.primitive.0",
       "indexCount": 234,
       "indexed": true,
@@ -3919,7 +3919,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "472c868be6a6e49dff3d10f9dabee7bac6a1645e2237798a3868808fd55dc08f",
+      "geometryHash": "88ae6e59f3862b280566c705319c148ee0542edb3dd53b2f9e646c2aefa72a45",
       "id": "sf.render.ceres-breaker.node.lod2-motion-shoe-port-brushedmetal.primitive.0",
       "indexCount": 948,
       "indexed": true,
@@ -3969,7 +3969,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b0c9d702d6134f305f477da047c7c7057e5b50091d7f6526be4f8053f8d1aa3",
+      "geometryHash": "f9d0270624e550cc3f73f79ca8ad9c39c5805ca0ec94696c3fab1bb00eeec016",
       "id": "sf.render.ceres-breaker.node.lod2-motion-shoe-port-mechanicaldark.primitive.0",
       "indexCount": 354,
       "indexed": true,
@@ -3994,7 +3994,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13f8c3cbbf48fd14dd7969bef89bf5c457f8a265bf094dcdecccecfce9a91c8f",
+      "geometryHash": "d59b17e94767ed66038ecd8517c52851027edd4f94cddd35af97b605b05211e0",
       "id": "sf.render.ceres-breaker.node.lod2-motion-shoe-port-warning.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -4044,7 +4044,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cee2c6081aebecf0e398c536af53b97502394d1af6681759c3f65ecfe17bce62",
+      "geometryHash": "3e1a87b70e544ac195e470e03f997f195f59423e6207be427ace417303f70b09",
       "id": "sf.render.ceres-breaker.node.lod2-motion-shoe-ram-port-1-brushedmetal.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -4094,7 +4094,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ec944e754722a7ca3020306563304379862232404accfb6a98cff1aa1cb4a322",
+      "geometryHash": "7458d1e2d6885b100edbfeac0e856dec3f32aa1a1e615b4125bf2b21ad013ca4",
       "id": "sf.render.ceres-breaker.node.lod2-motion-shoe-ram-starboard-1-brushedmetal.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -4119,7 +4119,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0218f01e764fcb9c791290f31ca0179a9dab5a521d3f79d1709bdd297475cf5",
+      "geometryHash": "77d7c53883a9507557c5720c68464e8743c215ba35e49384e04dbb0e2d82822f",
       "id": "sf.render.ceres-breaker.node.lod2-motion-shoe-starboard-armor.primitive.0",
       "indexCount": 234,
       "indexed": true,
@@ -4144,7 +4144,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b3788ad15d43f5c36bcdc00861f6006c250b7079319e7bd890771837745e625",
+      "geometryHash": "9c90405878ad3b0652b704d67fb4b1a4b0ae3b15173b7cf7da71efe21b7beaf1",
       "id": "sf.render.ceres-breaker.node.lod2-motion-shoe-starboard-brushedmetal.primitive.0",
       "indexCount": 954,
       "indexed": true,
@@ -4244,7 +4244,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3b7d6582a75bce2b5c8471f81d6ab85cad551d8004f0d9f434a68de06fd6464",
+      "geometryHash": "9e30d694a31cabf807147abd503bc88a353e4d432ce480f192e5cdd3dc7e47db",
       "id": "sf.render.ceres-breaker.node.lod2-warning.primitive.0",
       "indexCount": 2472,
       "indexed": true,
@@ -11599,19 +11599,19 @@
       "sha256": "60d038d885f61b6d5d343400411912d9d7c054f098876131f8b293696cfb0ca9"
     },
     "sourceGlb": {
-      "bytes": 1649376,
-      "sha256": "0edc8c7a224226347a6a11b0cb2a704cd0ecafafe2c40c13ea884d3282b4a69b",
+      "bytes": 1638244,
+      "sha256": "80f49124ab68f65258f8bae2501a0f19333c89a6aefabf729325ddc2fda8b855",
       "uri": "ceres_breaker.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2926580,
-    "sha256": "c06579c1137aa240c602e10f4282d7c3e1a33d366c883f83b71460b5cff77955",
+    "bytes": 2924200,
+    "sha256": "05311feceef01c67ef5f55085379f0c66e9b2ea5e8cf12a640fc2a8d5fd603b1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -16729,7 +16729,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ceres_breaker.glb"
   },
-  "runtimeHash": "fde1c5199ca3812e1662996247750dfedc5c3971ddb247be9511c1022fad9cc7",
+  "runtimeHash": "9aed0b15d61a9ca4ee68fbced9d12b590db6ab4b0ec79b351dbc4735b17f88ba",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

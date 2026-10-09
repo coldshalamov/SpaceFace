@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c510a7576942caa75f265f80334caea2b8fbd6eb346d72df8b0628dff6ec9fce",
+  "contentHash": "a041dab2e57c2d700422b59322df58dcfaf932782f3fbf2b4be6570567788280",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -658,7 +658,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89712d4c24115401e7ded9ea8097f435918f2ae4224aac0aa5eb298e5cc19763",
+      "geometryHash": "5a37bab4607c13a28cd92a7dc690a295370bf4d84e2b293eed54ac6c5dcb9b08",
       "id": "sf.render.helios-span.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -683,7 +683,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b165c6b2fa3b0a8a7d03ccab9f54242657bf57618097f909acf5887a7cdce52d",
+      "geometryHash": "9d7544aa9c0990e16e14eb462197177fd46ade7b22bfc8097f71c769235f2e58",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-armor-b.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -708,7 +708,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e6696613ff913d6f44620aeed63a8310d6e6fede152a70413ef07e98fe23958",
+      "geometryHash": "5771893e9a94bb717bf44ab4a6d31b28cadeb7ef527298511e74f9d7b9d25558",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-armor-box.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -733,7 +733,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4f184eba21e5d9403bfc92894e715375842a3c261ee67fa06fff36a09e48e70",
+      "geometryHash": "cd404a049f1a516638a424b4666c33abbc7dd7462f415513912e7b44478fd4c9",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-armor-teal.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -758,16 +758,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2212ef75056d430287bb3d38dd5b3c1e857f11877ef3a16e260dbd20f223b41e",
+      "geometryHash": "4eb1fb33c53babf1dccb61fbcc78932ad1e3ab71c5fb8b15d22013d1ff60094a",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-armor.primitive.0",
-      "indexCount": 5622,
+      "indexCount": 5544,
       "indexed": true,
       "materialHash": "b481b0f06d8b93bb61c883ef2f629730811449bdcf8ac8c244c1f0a0e3fd6336",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.helios-span.node.lod0-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1719
+      "vertexCount": 1701
     },
     {
       "bounds": {
@@ -808,7 +808,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ef59f99ab2bab6fd2bc695790763faa1596a3a123a08ec488e2bcb15778fb2a",
+      "geometryHash": "074a7bfb52e635c111f92bc8104dba3e906a6498626dcce048ce96bd1096df34",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 3090,
       "indexed": true,
@@ -833,7 +833,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c12b3beeae162bc517e5e96aa22f388633fe0199a35b062db21bfa2464091bd4",
+      "geometryHash": "4b682795049fdd3dee77761c4392a09090071d45dfb05306b40566ef76b02308",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -908,7 +908,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5cff0a988e2b4a4b3befa37dc990dea0a548d62f0c35647b478c89bdb6d7dbf",
+      "geometryHash": "9f39b569a37fbb675e69474a431167e96cf5b4cfff8cc52c3f35934695af85a0",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-hook-secondary-gun-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -933,7 +933,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a81c9ac231c56a0775291d5e661d1b5c5ea4253b965239277ed6d8921af211f8",
+      "geometryHash": "a0abe5071679a704f6fde8262671e932cdf1610cfb8fb03c6a45c40467c6f289",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-hook-secondary-gun-mechanical.primitive.0",
       "indexCount": 3804,
       "indexed": true,
@@ -958,16 +958,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "765a4235c506f9663484e895a6ffdfbf92a185ffaa7312bf185f7acf1294922a",
+      "geometryHash": "8c36d86151f7beaac2f7b4cdee8fdbc0ee26fd79aa8e7f6cecec0c69b053f73d",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 27174,
+      "indexCount": 26937,
       "indexed": true,
       "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.helios-span.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 7992
+      "vertexCount": 7950
     },
     {
       "bounds": {
@@ -983,16 +983,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d76d0d3eed3d246bbf6bd253d36e3fa4904ec6457404863b93cc0eb926365e99",
+      "geometryHash": "04870873af0311f2ea55ff748c6a96037efec5d69f8323631b7d02964b5e93b2",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-lights-cyan-helios.primitive.0",
-      "indexCount": 5388,
+      "indexCount": 5172,
       "indexed": true,
       "materialHash": "78a38bded720ebab88d98c0270160b3f36678149d16db847a383ca0ab973b298",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_helios",
       "nodeId": "sf.render.helios-span.node.lod0-motion-hull-core-lights-cyan-helios",
       "primitiveIndex": 0,
-      "vertexCount": 1724
+      "vertexCount": 1645
     },
     {
       "bounds": {
@@ -1058,7 +1058,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8492e80b2616c58f1e1b18d2d3e7c70c6bbbc58d48fa3f9331621ade42202600",
+      "geometryHash": "b501aa83097079ae95368cfe80d7652cff49013fcfda16aafe8f0aaeaba0ea0c",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 13506,
       "indexed": true,
@@ -1083,7 +1083,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ddfe1fb2d0e73e975cdcbb1f84401ebbf0d8f9a4ce404f9970fac0cd370a9c4",
+      "geometryHash": "27ead3e9272cdf329cb7aaa0cb488b3e9c299aa025389b92d7db9e7a725dfe91",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 21546,
       "indexed": true,
@@ -1108,9 +1108,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c961b85be89417da0c874ea8c4b322932a5ab2cbba99a45a2bc7acdc38e52641",
+      "geometryHash": "ee95de99f78692aae49fe53021152558eeb5e513cd7a59d87ec054812b5f6001",
       "id": "sf.render.helios-span.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 17646,
+      "indexCount": 17598,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
@@ -1158,7 +1158,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f4df405e516d617535c8d8aef73e6628a842c9ea2bd69e37f3cbcdb133cc7a63",
+      "geometryHash": "269d5f6d70099096b2bec10185bf70c11adacf9633191e4819732360579f2350",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-armor-b.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -1183,7 +1183,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c510d5ddc83fbb33ebc40e46475844a407256bf3907c51548b4e29f5f606527",
+      "geometryHash": "ec825523f52054efc7973767a13d9568dd609895b404fd783a194db766e9b61b",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-armor-box.primitive.0",
       "indexCount": 972,
       "indexed": true,
@@ -1208,7 +1208,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eeccd8fe238b67aa371bab7becf9df795550628a37275e7d7a065d4fa3c57515",
+      "geometryHash": "d3c4c5fad884fbcabc00f35891f03665dfa4823402ec4175cc3eab08d801c3f8",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-armor-teal.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -1233,16 +1233,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31441e8cbecec11b13e59c2ac76d6d7b381ff0186cb16bf04b222959de7bd578",
+      "geometryHash": "3c7aa985c60f9fc0a6e05a63f20fad68451e5f176c2a476d7b969818c38e82eb",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-armor.primitive.0",
-      "indexCount": 1770,
+      "indexCount": 1692,
       "indexed": true,
       "materialHash": "b481b0f06d8b93bb61c883ef2f629730811449bdcf8ac8c244c1f0a0e3fd6336",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.helios-span.node.lod1-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 576
+      "vertexCount": 558
     },
     {
       "bounds": {
@@ -1283,7 +1283,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5409995bde2bb859a810d4998ecc339121ee32b0652fb91ec71041456a33b4a8",
+      "geometryHash": "ac53b2c7a8775095e80ae377c3c6d5a9a24ffbd09203146962f9a8bbb551f2e2",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-canopy.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -1308,7 +1308,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c12b3beeae162bc517e5e96aa22f388633fe0199a35b062db21bfa2464091bd4",
+      "geometryHash": "4b682795049fdd3dee77761c4392a09090071d45dfb05306b40566ef76b02308",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -1383,7 +1383,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9b6b9908c202d7fec755aed7b33410edf932e7fc9084d5341b1510e17cf8177",
+      "geometryHash": "f9ba491e1d33e3236f5ebf50ae5b097ca80acff0e61d1d3aa68a10f319d84faf",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-hook-secondary-gun-armor.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -1408,7 +1408,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12ed5590ade69919372bff30fc5aa2df7560421e4aaa3989d5faa51907a3a248",
+      "geometryHash": "878c062f41e5996378cc917e611202bc3746f71ce2ef4e7e9cabd78bf2683cac",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-hook-secondary-gun-mechanical.primitive.0",
       "indexCount": 1278,
       "indexed": true,
@@ -1433,16 +1433,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6cc8afd274181539e03140bf26022f0d5e016d48342ac6aa24caed6888adf59",
+      "geometryHash": "14d6a383215a9d37420cd6ea2a2d9d3ca4c3dd845e7732aa39a5823dc6ff619f",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-hull.primitive.0",
-      "indexCount": 10596,
+      "indexCount": 10386,
       "indexed": true,
       "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.helios-span.node.lod1-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3418
+      "vertexCount": 3381
     },
     {
       "bounds": {
@@ -1458,7 +1458,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3bedf0235d80544151087eebe8750debf02d16b7846a48dd3c1f34db83e00e79",
+      "geometryHash": "210a48a3562682087142d4500cc3d4fed7e28eecb2e4f42c0a785e54338250ae",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-lights-cyan-helios.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -1533,7 +1533,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b51b357f491af5ab3c9687497cb85de787ec365648cf1eb042b956e5cbd4d2c5",
+      "geometryHash": "da775fe43ad086f0b899f9eb71c5197bf96ff190478c8e9ee087298eea4af062",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-livery.primitive.0",
       "indexCount": 3186,
       "indexed": true,
@@ -1558,7 +1558,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "789e894910f61abfaff788a71c4971ec117c461844fa314524ae9329efd4fe58",
+      "geometryHash": "b92bb02fa620f4b1e6adbed530fe14c26e6c1df33e906fee6bc34371ccff6446",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-mechanical.primitive.0",
       "indexCount": 12738,
       "indexed": true,
@@ -1583,7 +1583,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3f15e08e05369f10759e3bd6e1bd2a87e536306fbdf14092ba48d83c878f15b",
+      "geometryHash": "ecf16cd0e76cba5cb3548492ab195c025979475d44baeddffe8d182dc6cb26df",
       "id": "sf.render.helios-span.node.lod1-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 6102,
       "indexed": true,
@@ -1683,16 +1683,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5b05a79075ee1c7fb735fd38b00c0e82392be6fd749fea4aa3efc44d321d5bc",
+      "geometryHash": "dd63048c69c8f36ef14efcb7040736fc9cf67aab312d70f2f8f9e848f005f310",
       "id": "sf.render.helios-span.node.lod2-motion-hull-core-armor.primitive.0",
-      "indexCount": 1059,
+      "indexCount": 981,
       "indexed": true,
       "materialHash": "b481b0f06d8b93bb61c883ef2f629730811449bdcf8ac8c244c1f0a0e3fd6336",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.helios-span.node.lod2-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 383
+      "vertexCount": 365
     },
     {
       "bounds": {
@@ -1733,7 +1733,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1f2d2ce02aece50ab2652c334c5634db02cfe9b65e9a3e557c8321d4b2ef576",
+      "geometryHash": "97fc2b900203cb869b25f3f63ab3dbd1beaf9e76e55cb15993a332cfec2a645d",
       "id": "sf.render.helios-span.node.lod2-motion-hull-core-canopy.primitive.0",
       "indexCount": 414,
       "indexed": true,
@@ -1833,7 +1833,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1afc048884dcf6370c0fe98105c69736fbba79bdf1851c5ebe69fec59878faff",
+      "geometryHash": "7e9406cb85298a9dce5b6c1b98af30b9f25be4374c52a7a03630d2f3b638298d",
       "id": "sf.render.helios-span.node.lod2-motion-hull-core-hook-secondary-gun-armor.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1858,7 +1858,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "390639c59eccd442234290b984b06ea222921e74a910f63036caae70757e8c1c",
+      "geometryHash": "eb452bcb579ea6a3436144db6e262a5ff3f6edc28e04aad846558c4903c154cb",
       "id": "sf.render.helios-span.node.lod2-motion-hull-core-hook-secondary-gun-mechanical.primitive.0",
       "indexCount": 606,
       "indexed": true,
@@ -1883,16 +1883,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4aa73d54825039b6f8e3ec78c195bc9d035fbb80a2430e2e90a9ef958df7ab5e",
+      "geometryHash": "36bc11ce1c57208632a3c58d09c630c8f780edca8a04b72aa6b5433e0d02ed09",
       "id": "sf.render.helios-span.node.lod2-motion-hull-core-hull.primitive.0",
-      "indexCount": 4572,
+      "indexCount": 4362,
       "indexed": true,
       "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.helios-span.node.lod2-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1671
+      "vertexCount": 1635
     },
     {
       "bounds": {
@@ -1908,7 +1908,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0161dced8ce2bd89b89a525416df91fff23ffa9886935ffed69e3de47fb30d4a",
+      "geometryHash": "bf0c9df7f2f61c3ed5044d26664ff90e7ec5583d6817b98cf07a15fbfc289961",
       "id": "sf.render.helios-span.node.lod2-motion-hull-core-lights-cyan-helios.primitive.0",
       "indexCount": 858,
       "indexed": true,
@@ -1958,7 +1958,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37f6dd8278a8c1ab476a81cb23944e7ad91c241c9f2abb73d8added5f07b83a4",
+      "geometryHash": "4c144d1deba4b4b60b97745705e9618cba81817650d4dc6eb678335a84a80403",
       "id": "sf.render.helios-span.node.lod2-motion-hull-core-livery.primitive.0",
       "indexCount": 2289,
       "indexed": true,
@@ -1983,7 +1983,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27639190356fd289d3f8a20e3bee98ffac198e836718f174794c30fefc959994",
+      "geometryHash": "51d97ad7f199a8b2acd861590256c2b5df2b9c5f81efa012ca91017d60561183",
       "id": "sf.render.helios-span.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 4068,
       "indexed": true,
@@ -2008,7 +2008,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "472441f82783a163ad8f9d1bf2d7f51d2b7363e452211f6925cdf41f4146c078",
+      "geometryHash": "2635d13fb491f8da789cda80e0be5a2707e4d6dbc3fbc8e0f25d5b42cc18b113",
       "id": "sf.render.helios-span.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 2316,
       "indexed": true,
@@ -5810,19 +5810,19 @@
       "sha256": "0a8a5b409bec2afdd96f600b0562ac4f03589efdcb839b8280abd726662a1d8d"
     },
     "sourceGlb": {
-      "bytes": 1180204,
-      "sha256": "dff76dd783b81d4ad80430e7156e1100d37a31a5475e80dd4b628fb25f9a9301",
+      "bytes": 1178412,
+      "sha256": "dd932804bc7f099078ffc7d515cf25a839013e3fb46b7c5c08da77957f89ebe8",
       "uri": "helios_span.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2176700,
-    "sha256": "67bfae9d14a3c91a9a3f3662d250999f6dfd28a8f26fa7eb7df9e48ec9c094da",
+    "bytes": 2168756,
+    "sha256": "e857175e3b6d0f1a7c967dce957294d6488fa0533c1649da92f23c8f8c938a3c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -8423,7 +8423,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_span.glb"
   },
-  "runtimeHash": "f378bbe88f5dba526edd3e65c7880beb00e305596f030fc622903d9dcf32b386",
+  "runtimeHash": "5dc3e98747c965672be339cb4342e77e1dc2bf846e0642b444467d3103da65c9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

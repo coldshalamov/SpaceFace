@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1f36d9bf157084a784a5692dffdcc65b8ea53dfcebe7dd49ac27ca41d0c18978",
+  "contentHash": "0af93c70c843f2dcc527c3bc80107d12c201b7677106980c1d93d48f0c36ca1a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52b0f6a5ae02402a97d1f7d8dfcfc352d5a642f1d0fa5ff6d6ee8dbfc60a62ca",
+      "geometryHash": "71b39c60c294f9438bb8ddeff58b5491485fb03f4a538efa0ed50012baf04a0d",
       "id": "sf.render.engine-ion-twin.node.det-cyan-nav-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "Cube",
       "nodeId": "sf.render.engine-ion-twin.node.det-cyan-nav-stripe",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c0e0d3425c68089b593c8fc39dbff6d2dd757ae307b845dc09dda51317555eb3",
+      "geometryHash": "25bd020390ddefa238f2b247be9537f09436bf6d9efbf1682b837f06c6c9b83d",
       "id": "sf.render.engine-ion-twin.node.det-dock-collar-scuff.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "Cube.006",
       "nodeId": "sf.render.engine-ion-twin.node.det-dock-collar-scuff",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -73,16 +73,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "087f1f24233d2eb2df2cf06ba051656ec0f3286275cefd2488d665899a7fd3ca",
+      "geometryHash": "4758b424f0b226990d23f7556ed57b378f3aae9a087419efa3e3530aa758b1c6",
       "id": "sf.render.engine-ion-twin.node.det-inspection-stencil.primitive.0",
-      "indexCount": 324,
+      "indexCount": 252,
       "indexed": true,
       "materialHash": "efa68ffa159a758a680728407e07093af5209f27b6a143d5f41eba3b080d5858",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.engine-ion-twin.node.det-inspection-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 182
+      "vertexCount": 100
     },
     {
       "bounds": {
@@ -98,16 +98,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db522fe44e05fc4b3e460f66058437e10c6c0d20bbf494cfd3429211996c2957",
+      "geometryHash": "895870c51f405b7af24eaeb9ce30b1825cf41629f0539df89b609ff019818de1",
       "id": "sf.render.engine-ion-twin.node.det-maintenance-tick.primitive.0",
-      "indexCount": 324,
+      "indexCount": 252,
       "indexed": true,
       "materialHash": "efa68ffa159a758a680728407e07093af5209f27b6a143d5f41eba3b080d5858",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.engine-ion-twin.node.det-maintenance-tick",
       "primitiveIndex": 0,
-      "vertexCount": 182
+      "vertexCount": 104
     },
     {
       "bounds": {
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "18c80e298b959200d86157f70fec7bee587fc3c397b4e928c57459ae705c2c87",
+      "geometryHash": "358ce046530f946693ac0f47deffb3a499a9ba490d67b461acf04250dad9b9f2",
       "id": "sf.render.engine-ion-twin.node.det-panel-respray-edge.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -132,7 +132,7 @@
       "meshName": "Cube.007",
       "nodeId": "sf.render.engine-ion-twin.node.det-panel-respray-edge",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0620da29f4dbb892b3d8e94dc4df42a16e1cd647ea01cf3cd63d8c8549b1bf5",
+      "geometryHash": "326a766051bd8485072cedba1f1db9da7868e6a8fde1a5e29d316f9ae255a2a6",
       "id": "sf.render.engine-ion-twin.node.det-sync-ring-bridge.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -157,7 +157,7 @@
       "meshName": "Cube.005",
       "nodeId": "sf.render.engine-ion-twin.node.det-sync-ring-bridge",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "78319a6ef55517839f7397eddb13c63de4cf8a923faa31ef85242994b48f1f31",
+      "geometryHash": "75d259366cee762f52a59013ebe40c6af3788976275defc93b7a1bca38a6b6ce",
       "id": "sf.render.engine-ion-twin.node.det-torque-witness-001.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -182,7 +182,7 @@
       "meshName": "Cube.004",
       "nodeId": "sf.render.engine-ion-twin.node.det-torque-witness-001",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd154d6d643136ad0c738c6b43ba6b62ca9e5805a3f1d425d954ea04de09f71a",
+      "geometryHash": "f65d74b853c6e4ca94344da2a0a8a3bdbeccbc99e1f5b6f47427aef00100968e",
       "id": "sf.render.engine-ion-twin.node.det-torque-witness.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -207,7 +207,7 @@
       "meshName": "Cube.003",
       "nodeId": "sf.render.engine-ion-twin.node.det-torque-witness",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "250d331950e1e192706a65c18937e9f0e55a29389d884897fe3d89eb2a02d77e",
+      "geometryHash": "aa1f48606b57b343f08ee35d55eea958f05afef96b376ac11c7b387fc02d98ff",
       "id": "sf.render.engine-ion-twin.node.hook-drive-core-p.primitive.0",
       "indexCount": 672,
       "indexed": true,
@@ -232,7 +232,7 @@
       "meshName": "HOOK_DRIVE_CORE_P",
       "nodeId": "sf.render.engine-ion-twin.node.hook-drive-core-p",
       "primitiveIndex": 0,
-      "vertexCount": 179
+      "vertexCount": 184
     },
     {
       "bounds": {
@@ -248,7 +248,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "242e942fd6ee3d385fa2faee826bf95c225f318c174c05862400c695a5d08830",
+      "geometryHash": "17759a73ef0b10e95ea9dbd2ee931358ed6f16e4678981a951ac48a06814845d",
       "id": "sf.render.engine-ion-twin.node.hook-drive-core-s.primitive.0",
       "indexCount": 672,
       "indexed": true,
@@ -257,7 +257,7 @@
       "meshName": "HOOK_DRIVE_CORE_S",
       "nodeId": "sf.render.engine-ion-twin.node.hook-drive-core-s",
       "primitiveIndex": 0,
-      "vertexCount": 179
+      "vertexCount": 184
     },
     {
       "bounds": {
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd0847be67f1d122c75c9e9ab9b8c7b19eabe68a02501554c81576679ae335ef",
+      "geometryHash": "5fa99be1079275cf61033234730032efa452d7242bb19911fdadac5e494c7d6e",
       "id": "sf.render.engine-ion-twin.node.hook-drive-fan-p.primitive.0",
       "indexCount": 1824,
       "indexed": true,
@@ -298,7 +298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "558a9da8b702a9a21cc0aca41a9df18c91a7551eb963bd0b4995c711fac41c3f",
+      "geometryHash": "5894798f5771aad60334c4bc63a1f96119763255c8e39c4762b6007bd4dc2c84",
       "id": "sf.render.engine-ion-twin.node.hook-drive-fan-s.primitive.0",
       "indexCount": 1824,
       "indexed": true,
@@ -323,7 +323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5bd786b7cc559a49c86f3335e3f5d6b8756ab91c92f41bb871a9262f62477e2d",
+      "geometryHash": "7650161a6f5a62813bac1c171d47b005a0b0e4b7a7b081cdab513ccd25af84e6",
       "id": "sf.render.engine-ion-twin.node.hook-drive-plume-p.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -332,7 +332,7 @@
       "meshName": "HOOK_DRIVE_PLUME_P",
       "nodeId": "sf.render.engine-ion-twin.node.hook-drive-plume-p",
       "primitiveIndex": 0,
-      "vertexCount": 157
+      "vertexCount": 158
     },
     {
       "bounds": {
@@ -348,7 +348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4852a870c0639cb64e388ee139859abb17df24c35eb4d52d905b40c74f9bc9eb",
+      "geometryHash": "85e42b522e88f8b0b11359c33382f95a160981edaf2a5fb73baeb9d6b27f02a3",
       "id": "sf.render.engine-ion-twin.node.hook-drive-plume-s.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -357,7 +357,7 @@
       "meshName": "HOOK_DRIVE_PLUME_S",
       "nodeId": "sf.render.engine-ion-twin.node.hook-drive-plume-s",
       "primitiveIndex": 0,
-      "vertexCount": 157
+      "vertexCount": 158
     },
     {
       "bounds": {
@@ -373,7 +373,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c61ebad06e3c4b7b1708ad5d53b6a8cc632020970b6eb3b3b3c1cc3de56e4f4",
+      "geometryHash": "c8af73efb3a6d0f60cc0886b7b76795d22adb682fe8f884a2e28c7f5999c4b0c",
       "id": "sf.render.engine-ion-twin.node.lod0-engine-ion-twin-main.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -398,7 +398,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c3de7cbe21072283fcb20cb4974421fb78c2981b36a1e8abd611787d309d204",
+      "geometryHash": "887d8758fbcac73934e4d7e350be97943cb2df1e06d0f92bc62193f93eda91d5",
       "id": "sf.render.engine-ion-twin.node.static-hull-merged.primitive.0",
       "indexCount": 2496,
       "indexed": true,
@@ -423,7 +423,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "153eb866706aaab08f1a46c2441673e3bd14c3c800e311e57a94512a2457e17d",
+      "geometryHash": "f08d6dba7184b6dc000713e0812b9cbfc205fc68cc300352b342cb26523e461f",
       "id": "sf.render.engine-ion-twin.node.static-mechanical-merged.primitive.0",
       "indexCount": 5184,
       "indexed": true,
@@ -1751,19 +1751,19 @@
       "sha256": "d1f6dcd06a1b3eeef8930479d567864a525f5cf1d4affeb152fb3e20419950c0"
     },
     "sourceGlb": {
-      "bytes": 152512,
-      "sha256": "f37cd5456c5b93b999499001621a4e6ef50d24b9a02a4e486e2a129f41eec06e",
+      "bytes": 147512,
+      "sha256": "acd2633420f7647729fdc1b93e97a2a7d1fd90449b131151c792adba1a5a6cda",
       "uri": "engine_ion_twin.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 267068,
-    "sha256": "61cb3d02e2cc46700a42cf5135285b0d6a54f2639eb894f0003a168ba8ba672b",
+    "bytes": 234728,
+    "sha256": "8a4140eacccd10a3301fde62eaba28af844962dcd10e96ab3d0fd39852f243ad",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2499,7 +2499,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_ion_twin.glb"
   },
-  "runtimeHash": "9d0cade8f5f651c80af3812949cdaeee66fe5b4f640b581a189b765315e49283",
+  "runtimeHash": "0cf78efc9d6b5bca86f20b8923563e87e49d07b4c6e48012baadd4966aa7307e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "86c5a0d7a81ced42797167d1a3af8b0ed623eb4c387afefd922f7c0e5b8bcf4b",
+  "contentHash": "c04e4e78e2ec57e5e68675f96f35545743d3b76737fa49eb508547e18f40489b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c83c3be4906d1611a1f4b2c571b499248dfc0fe2129db43a48bbc775150ed747",
+      "geometryHash": "103dea4937fa194bb428aed224ac001997b6c72cde81a1aeec74e843aa6d96de",
       "id": "sf.render.drill-platform-cold.mesh.bit-stowed.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "Cone.001",
       "nodeId": "sf.render.drill-platform-cold.mesh.bit-stowed",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 56
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d982b53b310ab78a004e993523392bb17c8eb535658b8283ba71a4660a1d01d",
+      "geometryHash": "6dd6ce2d0064f7f06ee1d6ea25b8ee6bead865654a44fe6514020380d90dbe57",
       "id": "sf.render.drill-platform-cold.mesh.column-stub.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "Cylinder.073",
       "nodeId": "sf.render.drill-platform-cold.mesh.column-stub",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 56
     },
     {
       "bounds": {
@@ -248,7 +248,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e2bcf37df710fba07f8e7dcb076d8c79bb0b7159b0e7933e8e3d877722e3e5e",
+      "geometryHash": "7e2d9951acd182512e21e6d6fc319265d87b62e8b2b2250c118042508c7532be",
       "id": "sf.render.drill-platform-cold.mesh.leg0.primitive.0",
       "indexCount": 1080,
       "indexed": true,
@@ -298,7 +298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f75e50c5bfbbdcb11da225d3f89d1016eb1775891d8461a78ae3d6c56f4b4c09",
+      "geometryHash": "5436e059e6ee8c52f1ac1878b21e092622d3587791c830e915fe3006b7ccee6b",
       "id": "sf.render.drill-platform-cold.mesh.leg2.primitive.0",
       "indexCount": 1080,
       "indexed": true,
@@ -323,7 +323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "caceaee6169190c69f13d39052b0ed7350e40274f5106b4222dc4b68e53c118f",
+      "geometryHash": "e83a6285cc13b0a8fadac49aac5496140699d531631db98517bf4e234215a0f1",
       "id": "sf.render.drill-platform-cold.mesh.leg3.primitive.0",
       "indexCount": 1080,
       "indexed": true,
@@ -1444,19 +1444,19 @@
       "sha256": "cc1dd7b0443fbca197170de662d5a70935c3204f8886f7f8f8baf01a06436bac"
     },
     "sourceGlb": {
-      "bytes": 22632,
-      "sha256": "6d4edcada6d6d3d9d4d9ad63ce3ccec8af069a9ddac54c09c17b51b62852f43e",
+      "bytes": 22572,
+      "sha256": "6ecf03f02e43f7db1367360263f382890b85e9010b1c563885dc28b1c21815c0",
       "uri": "place_drill_platform_cold.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 70936,
-    "sha256": "7a4ec32643c5b194276cf9fa62125eb4c957a4e32877e403307853e025cffc58",
+    "bytes": 70344,
+    "sha256": "196a586d12a7376f8f66a272fbb7f2e239e2650d1f85df8d2b26f1b9be0589b9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2075,7 +2075,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform_cold.glb"
   },
-  "runtimeHash": "58c742e104cd4be295e65a5bb6f70997312e552b81be40e44d752e0675359fc7",
+  "runtimeHash": "8cc58571b0ea9183dd3fe895f5aaf48b87a2e3b7b70ad7c1287dd4adef62d2cc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

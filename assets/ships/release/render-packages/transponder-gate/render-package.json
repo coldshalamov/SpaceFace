@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "560ed9f86f8d59c05e54d591adeeb8b0a2fa9ca5ffa09e93fbe21d1a8a3993ac",
+  "contentHash": "c14d77078a4b1608203214be7d0101d43d53feeb8c20fefa5936437314a21e75",
   "dynamicGroups": [
     {
       "id": "sf.render.transponder-gate.mesh.lod0-hook-nav-port.dynamic",
@@ -92,7 +92,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1aed32680eec0a23371a3d5bb9e79716b805a20c5bfbb29b6172ec4d11a5e06",
+      "geometryHash": "9b1b589fc5e90b8309c3aab986e33320045b469b2dd6667a85d8f5aa055f0c6a",
       "id": "sf.render.transponder-gate.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -117,7 +117,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ec3797169a752f372e67a10d13bd02dc9e01e4961fc763a96a7f04f68efa7d99",
+      "geometryHash": "1f933e8423e6030774627f9f9c65426b7de572eb27d0b98527f3aa93c24aef67",
       "id": "sf.render.transponder-gate.mesh.lod0-armor-navy.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -142,7 +142,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16d6539116081309d183b6162f14bf43aed46414a1b6718b478d72a12ea7071c",
+      "geometryHash": "35c22057d027b85f8658f036dcd2608500e4c63d908ffbf26813968d76beaba3",
       "id": "sf.render.transponder-gate.mesh.lod0-armor.primitive.0",
       "indexCount": 3384,
       "indexed": true,
@@ -167,7 +167,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "444335577662d8ef642088c9673d94b2e9d8464d97ea583f6d7db4ed4c929bd3",
+      "geometryHash": "ce323bfa10feb4e56e7ca904b050003cf9e1cda3c83e99b99a9ea26d191a960b",
       "id": "sf.render.transponder-gate.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -242,7 +242,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af37f597ecdcebe700bb1f98e2f70ffd5454b946b4c255642d12bf152020a3dc",
+      "geometryHash": "d9994cbdbe16b3db8e459fba7c8680f84227234b86c472d9b0d65c57dc06be34",
       "id": "sf.render.transponder-gate.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -267,7 +267,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "249ce54bc2aea70f1344151105f5cde5c04020703123af1fc40df449825faa6d",
+      "geometryHash": "9908265f03b5ba68b660c73025b4e48d4d17664778af780ba733395ccb82c65f",
       "id": "sf.render.transponder-gate.mesh.lod0-mechanical.primitive.0",
       "indexCount": 3324,
       "indexed": true,
@@ -292,7 +292,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1c570574ad0215c9baaa17cbb364bb64d6c2e5cab4451efb07a2f9f03243c3d",
+      "geometryHash": "8fced5d97192da45df6e3abedcc4e92227caa54a8d0016bac0b6374075131aca",
       "id": "sf.render.transponder-gate.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 9576,
       "indexed": true,
@@ -317,7 +317,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7db1028e4b1a613cf79d030718173afb9b3a7d2d0781c1992f38e47cfebd679a",
+      "geometryHash": "99e6b2f1ab325533b202bff10a9324a0de19437466f9bc11409a65dcf97c419a",
       "id": "sf.render.transponder-gate.mesh.lod0-warning.primitive.0",
       "indexCount": 1380,
       "indexed": true,
@@ -342,7 +342,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "495e0556bbe5b4ec65f1b790e8f152c068a89a19157aa2185d478e56b492caec",
+      "geometryHash": "92b55cb0710cfb85deb65430afd6353c86aca4618fab211214ec0dfdca0f26e8",
       "id": "sf.render.transponder-gate.mesh.lod1-armor-navy.primitive.0",
       "indexCount": 1284,
       "indexed": true,
@@ -367,7 +367,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2dd53a3e47cb2f8c7d5929cd54cc1c6f3f1ae66be1a3c297b189170d3751915f",
+      "geometryHash": "8d9353592a906615f9f0c59ea72adbaa9c1f86d0f437404b446ddfdff12b26e9",
       "id": "sf.render.transponder-gate.mesh.lod1-armor.primitive.0",
       "indexCount": 1002,
       "indexed": true,
@@ -392,7 +392,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a6d874eeb2b33a42b77cf41244b951944f56e0dba8b578ba3321462cb420ea8",
+      "geometryHash": "86022142b780907fc62c9b6a24c907597d2d1d67c05ebd6afc8caec7aea42af0",
       "id": "sf.render.transponder-gate.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -467,7 +467,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6fb6f6119f9864d2ecd0aab844914ba24aea7d343c03368386b8d319ebf3098",
+      "geometryHash": "1da54e8b6362c5a22678ee45d2e0cf2a65395c97be3ecb4347e1d1f9e2ece9fd",
       "id": "sf.render.transponder-gate.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 618,
       "indexed": true,
@@ -492,7 +492,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3c9e29a6af41ee8e7dec9db506312b4224ac451c4eee00c25de078359ca195c",
+      "geometryHash": "c6f3c24c577253eb8fb3d6e650340dfad25775a5d4fb686ae869573572ab677e",
       "id": "sf.render.transponder-gate.mesh.lod1-mechanical.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -517,7 +517,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b76e4dfeeab8f502b904680f1c0c129af61834f1afbf77182a98e3afc6a61aa3",
+      "geometryHash": "c5b13327ede3540329c4a44766ed7bf9e3550a8bd28735d6ec1c7a88f7ada943",
       "id": "sf.render.transponder-gate.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 3648,
       "indexed": true,
@@ -617,7 +617,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f170d833399a60ef8d7c588df4ea59e6c2cb4a6e232d215c2aeb0198b0006c82",
+      "geometryHash": "b4807ca7c2c850644721a720dc9fd2b2a4e9264d8b1481496309390337361cc1",
       "id": "sf.render.transponder-gate.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -692,7 +692,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff2dc2b7e5078803ccad26c203c6d2f51a960db6207e5d8a8fb4b118a8323b70",
+      "geometryHash": "8668fc56357f14f0d93a67bac96c63ba8dd09a0a9f83b7ce99285668a9e7bdda",
       "id": "sf.render.transponder-gate.mesh.lod2-lights-warm.primitive.0",
       "indexCount": 231,
       "indexed": true,
@@ -701,7 +701,7 @@
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 109
+      "vertexCount": 169
     },
     {
       "bounds": {
@@ -717,7 +717,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66ce4dc4b3f3572141557cc66a37aa0ae8e18871801c5a21c135dcf3b04418a9",
+      "geometryHash": "65863a76e207121850c6abb9446dc0f6694de38d6a75a0659779be8e6b0039dd",
       "id": "sf.render.transponder-gate.mesh.lod2-mechanical.primitive.0",
       "indexCount": 483,
       "indexed": true,
@@ -2399,19 +2399,19 @@
       "sha256": "70b2fa53cc3718c0ab3c317e15a8df836873f3b96a7b1a1ae83c9daa2ffcf18b"
     },
     "sourceGlb": {
-      "bytes": 566060,
-      "sha256": "a36fbdb18b540d99f5572e9a903fb7827828b6c53583c5126b713e239ac3ba0f",
+      "bytes": 566152,
+      "sha256": "7fbe6186ad239582dc70249626fe075b8144a51158000e6b3c82be5d951497c8",
       "uri": "place_transponder_gate.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 810912,
-    "sha256": "3abc5bc3487ff98778a2fe1c36e119076f74ca5064f1dd706e83206dbbdcadd6",
+    "bytes": 810668,
+    "sha256": "63d0208b72451e7233a2c8f998283408ceaa8360135520946f1b388af37989c7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3371,7 +3371,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transponder_gate.glb"
   },
-  "runtimeHash": "26546bcf4368807b1ac409ae01fcc9fbfd56e6bf69404ddf05dc297837d2f82c",
+  "runtimeHash": "cde60e3f3d68be3cf207f9316b73007a6e778bb8f0d3af7013ed244f6aa2406e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

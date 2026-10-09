@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f70a01de7e9dc9785c8a25b088eb205d97d040d3a542269ff3ceba4b68449fea",
+  "contentHash": "ec282c346499d6bbf6e57fc19ca408aa06fb24bbcc35d0333159a6b1f090c646",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -166,16 +166,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd946231fe955126c6c8509b2462cd25db59c728baf31c452a2f3af7bb75e35a",
+      "geometryHash": "b0ebc9f87bc6fe45d104f5ea1ab78edd18b023be5c926c11541817944f1abb3a",
       "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-hull.primitive.0",
-      "indexCount": 26988,
+      "indexCount": 26136,
       "indexed": true,
       "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_wreck_liner_bow_Material_Hull_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-hull",
       "primitiveIndex": 0,
-      "vertexCount": 7896
+      "vertexCount": 7624
     },
     {
       "bounds": {
@@ -216,7 +216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c48e1bfac403a9c001887e7b40450fad7828ffa76c0d5025f1a909e6bab4ad6e",
+      "geometryHash": "f8fb1b54c0ebd817a3bf163fd6c6e4e503fa988e15d0042d67e0ece6aa4ed5c5",
       "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-structural.primitive.0",
       "indexCount": 2508,
       "indexed": true,
@@ -291,7 +291,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25cc353bf37ababe9cfd57e74125ca06689ce7aae05a6d355d72f8cf31f7d6fe",
+      "geometryHash": "27ed1e1f1e581bc1d18961483e41ed9c134190780adc4bfa8fc0aba2afdfd757",
       "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-hull.primitive.0",
       "indexCount": 12954,
       "indexed": true,
@@ -341,7 +341,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5da0c789592fedd5e09cf7ca31b20e633b850a62367d31cacec790759e300197",
+      "geometryHash": "5f3e093083f1b3355233ce274d08abf0e57e7dd1d03b8a44542becf8878c20bb",
       "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-structural.primitive.0",
       "indexCount": 1200,
       "indexed": true,
@@ -391,7 +391,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e8bd144c309720527fa121a53b8a1efd33de7ae834a95c315e2f9a5a1b3f523",
+      "geometryHash": "d9636f98d2ecd36fc58af27c0bac5a12e65b4143e99ca427015ce1fe42f1f9ac",
       "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-hull.primitive.0",
       "indexCount": 5397,
       "indexed": true,
@@ -400,7 +400,7 @@
       "meshName": "LOD2_wreck_liner_bow_Material_Hull_mesh",
       "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2871
+      "vertexCount": 2980
     },
     {
       "bounds": {
@@ -441,7 +441,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a27f0207798003865677fbfb6d8e042c95565e4feefb4420fe32c2d731bfe4a7",
+      "geometryHash": "aa155ac7a9a524808afc82812fe04adb63d1d009141a5cc09ed5d0515c89eaa0",
       "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-structural.primitive.0",
       "indexCount": 501,
       "indexed": true,
@@ -1666,19 +1666,19 @@
       "sha256": "28b86b8c5f294b9b47f6a8b16ba682b7e6fb1179bafe3e2bbc4cf0dd94099c10"
     },
     "sourceGlb": {
-      "bytes": 1447032,
-      "sha256": "9eaad3698f99fca504cd55a472ef412bd219ddc58baad0a793fb017d8a3748fe",
+      "bytes": 1447904,
+      "sha256": "6156817a6646b2ccb996a86f88350720120418addb4859051ef5e32b0a40c89e",
       "uri": "place_aftermath_wreck_liner_bow_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1648248,
-    "sha256": "0a69bad0d7115a55d1537d9a46eb686e972376262d2c3c79caf3a345cd389cee",
+    "bytes": 1644720,
+    "sha256": "f0ea258b2b5c8d08753b7d36cb059a952602d32072e28d25c16ebdc04344f2ac",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2246,7 +2246,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_bow_authored_down.glb"
   },
-  "runtimeHash": "a82928d4e6b8766762d831c2a7aebf1f6ffae44ffa597c56244e49cd8f3c2f40",
+  "runtimeHash": "ecfda15edacd0344c4feb69ffd158851dbbdc365487578dd871dabb7c40a83d3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

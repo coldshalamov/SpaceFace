@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "902eeb99ec26c49d7de09c12f6172369b9d01ead5a8e90a786dec2c0b45dc133",
+  "contentHash": "fb4b5347f230da4c49e74eaa1a1fa63ff7c794118e3f059c5b1fddad9f8a2269",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cbc5dd9ea1c4c2fb3c1045ec9b6cf07397fe547d754baddbf20422f6b16910ea",
+      "geometryHash": "65350b422468d0ed07b48ca5c71d445abfc20bc284fd247348589f6217fde3ed",
       "id": "sf.render.weapon-pulse-cannon.node.pulse-muzzle-glow.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -79,7 +79,7 @@
       "meshName": "Pulse_Muzzle_Glow",
       "nodeId": "sf.render.weapon-pulse-cannon.node.pulse-muzzle-glow",
       "primitiveIndex": 0,
-      "vertexCount": 76
+      "vertexCount": 66
     },
     {
       "bounds": {
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24d0f3eaf10958bd7f6cb0be91ca9bd657fd330cf4ff3db9d62d1535430d6434",
+      "geometryHash": "35884b3df95fb1e63bea99ba698406c2cf99c3d52e94146e5a539e071888ff1c",
       "id": "sf.render.weapon-pulse-cannon.node.remaster-material-hull-vitreousceramic.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -104,7 +104,7 @@
       "meshName": "Remaster_PulseCompressionCollar0",
       "nodeId": "sf.render.weapon-pulse-cannon.node.remaster-material-hull-vitreousceramic",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 336
     },
     {
       "bounds": {
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9452d4881535a0d6adb21111c9db8e01e1a9bec5c30297905adb26ea110d07f3",
+      "geometryHash": "167bf5013df91e7ff219458a4f1c655478520e02c72b01d47cd93b24edfac9d6",
       "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 396,
       "indexed": true,
@@ -129,7 +129,7 @@
       "meshName": "Remaster_PulseHeatShield_0",
       "nodeId": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-brushednickel",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 156
     },
     {
       "bounds": {
@@ -145,7 +145,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af5e882cb43661fce235c70a8dd811a53b2deb42a7fc5b7602fb1954f668ef65",
+      "geometryHash": "65719f5d83a340d23961d34b314b766bec28ed7a8789427894619597c1b19669",
       "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 420,
       "indexed": true,
@@ -154,7 +154,7 @@
       "meshName": "Remaster_PulseAperture",
       "nodeId": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-shadowenamel",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 160
     },
     {
       "bounds": {
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4058dfa704488075a0cfae72898ec84ea6a91fdf1246e9ffc5d932853a5c96d3",
+      "geometryHash": "5f43cda3bdbdcad1ac6fb8086a3e55323ba3faae6b472d4f01edc7b015ff4b50",
       "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged.primitive.0",
       "indexCount": 1944,
       "indexed": true,
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98cb16a84ba2577570e745280167c943ea7facad2aeed56da58acd9fd719a58c",
+      "geometryHash": "9fc067b18cafb24ad952ec6bae4a72ea9d81496a5b17124bdd03cdd909d83ea3",
       "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged.primitive.1",
       "indexCount": 1116,
       "indexed": true,
@@ -204,7 +204,7 @@
       "meshName": "weapon_pulse_cannon_Material_Hull_Merged.001",
       "nodeId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged",
       "primitiveIndex": 1,
-      "vertexCount": 728
+      "vertexCount": 363
     },
     {
       "bounds": {
@@ -220,7 +220,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fb74ee5b6890d9be140485855cca5270fbe1a75ab590007e1ebeeb128d1c2fc",
+      "geometryHash": "2c13fa0f7ef7cdabf78b7ef11a8f906344cfdb3b38ee41c4c48cd7707bda8823",
       "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-mechanical-merged.primitive.0",
       "indexCount": 3120,
       "indexed": true,
@@ -1657,19 +1657,19 @@
       "sha256": "61a368d05a01b9cfefbcd56a2111530709ca7888ce2a3fc1212c8a0749c51156"
     },
     "sourceGlb": {
-      "bytes": 443484,
-      "sha256": "f6b5cd089af47a2d5744bea2f45b53e7559638bb28ed135b269df8449ac8148d",
+      "bytes": 441476,
+      "sha256": "f8a1e66aad668d6a06507706e25882b4d457577c1a4a94011de455aae97f38d8",
       "uri": "weapon_pulse_cannon.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 498652,
-    "sha256": "0de61a5eeb46cc55e8a3f36d76e9fe127ff121c2ab7fe369fa99a16ee6195111",
+    "bytes": 480924,
+    "sha256": "84131d90c003db67e7da39565fd86d6239a2e9d19a16d956c70b6714f4840b9e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2020,7 +2020,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
   },
-  "runtimeHash": "a0a07120f2f342a7422cc135fbecc875d34b8fe09b27863e7e4dfcfed415e095",
+  "runtimeHash": "acdc8b342a3968f97c18ac994a1bc8af20c16406bd7684da80958e388751b1a2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c3fb16c4673adb84b7dd1588f92141359dfd65e60eb85ef6f0aaaaced499fb08",
+  "contentHash": "e6c944d9f567d11f7987fff4367c7d43a855ae2344901609e485d757b527268f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad1becf5abc7262f68c807bd01b7158f4e4ce51c7deca8f4630ecc55a152a30c",
+      "geometryHash": "beeb35797444d7e433ddd21e941b4c0cce227c86d99eeb4c1cca0325c61185cd",
       "id": "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "Cube",
       "nodeId": "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0261c1f145308df3302a757cf35aefcf30f5bcd79317de25b3731a644313e8f",
+      "geometryHash": "ef6581c77a4f99b1392fa0ec267485e6191c2585710277a2f6d65f5a63304498",
       "id": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "Cube.001",
       "nodeId": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a51d80aeb1eda618dcc5e65acf1a04181e88932dd6d4debe8f0f4321089a4a4",
+      "geometryHash": "b2f78424c8eaa725b7e6051c5e6cb70bf9af266452ae8c3711766c9f5c2b7e21",
       "id": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "Cube.002",
       "nodeId": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "740889677da8cfdbaba3905519879cf95e0270096002f7416f5ca7d6c2e1116d",
+      "geometryHash": "2b7db35db07494391a3514ea5611ab2dd5e3c20a399cbfb271c413553d107f0a",
       "id": "sf.render.engine-plasma-ring.mesh.engine-plasma-ring-material-mechanical-merged.primitive.0",
       "indexCount": 2400,
       "indexed": true,
@@ -123,16 +123,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53e4be013329990215a3d7d171d3a1f30c7346831ce0ce480753d2f8afa51075",
+      "geometryHash": "d093633d9dfa9f4cbcf4f982f91d9311e71983729e907ba76d654395ea33af0f",
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-core.primitive.0",
-      "indexCount": 672,
+      "indexCount": 588,
       "indexed": true,
       "materialHash": "891439b8a477a06f92362ccef92fc567d27c7597683ea4d4cf471dd946ae88e9",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_CORE.001",
       "nodeId": "sf.render.engine-plasma-ring.mesh.hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 135
+      "vertexCount": 133
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fcdfa8add2f3cc0bda1985b9f601998476854072ceb4280e064dc8766581e6b",
+      "geometryHash": "484eb72348f6bc3eca06e4e5f76b8f175f8f9207cee9d625f31894bfb8bd2b50",
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-fan.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "749bbc7ca276c3bf2e28b390440c2a83dc5dfa637ead5c75dbaba4c7b0f004e3",
+      "geometryHash": "175ec29ec654955638e940c0374e31f77fc682b270995e03edab9ed8e0d59a7f",
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-plume.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6df4200df95c71c0fda76b2d522fed17e50c92393f1bb1efcd72d1f8a5d05b2",
+      "geometryHash": "b8bef43eee6ea1552233e7bfc6a625e9ca71a1534ba7e98b65c6f9d2114e4552",
       "id": "sf.render.engine-plasma-ring.mesh.lod0-engine-plasma-ring-main.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b36bea34d3b9a800f52ce1e67c579a79b3484d81d47dc117f4a2f61500c654a",
+      "geometryHash": "ca7203466476332b85323d6beec925d32d79938ac6f9b66ce515db2833934934",
       "id": "sf.render.engine-plasma-ring.mesh.plasma-ring-outer.primitive.0",
       "indexCount": 4032,
       "indexed": true,
@@ -768,19 +768,19 @@
       "sha256": "fb28c9933925e4e7f6b401c37df28cc0a1d5f81e5152472f3f978d2d9bf781bf"
     },
     "sourceGlb": {
-      "bytes": 59752,
-      "sha256": "d95e8d93c4a80fe05d01aed7787f38c1870058d7bc6fedc0f120462656cd8633",
+      "bytes": 60884,
+      "sha256": "ad690ba3aff8890bdbc447bc0d53d39b9d8f2cc65c67050c419c1a609929aecd",
       "uri": "engine_plasma_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 118856,
-    "sha256": "64b69152b3d872cd45f472e2cf20cfa39b45f5fd2020f5d56b1665a440ca2316",
+    "bytes": 109012,
+    "sha256": "d0a34a774fd2c76161c337c363cf5c4e6988dbec4b29fc4086b1bb7daa63c1cf",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1160,7 +1160,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_plasma_ring.glb"
   },
-  "runtimeHash": "d138b2d4b9db21e1c751f0946ca9d33271c793690bd298f9f9031c5d95fa7a4f",
+  "runtimeHash": "35538c7c753f8e86e4467d2149c6f007e1d4491d907ef2ca6910b51720423c7b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6be7a8b28a8995298807fd8b87ad7625d88c1f889677223cb1c6f29e46a8268e",
+  "contentHash": "43c40d69e16e141a8b025bc8be22039e6bbcb46eff4f0eae1f0f143453bd2059",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d16f3b01829363b85aae4702d50abaf22c142469449e8117f4490ee4f5d73ce8",
+      "geometryHash": "31b32a340cf02b19d32e9c0f59526106f8b024a74fe663cd78b38d1069bb4f95",
       "id": "sf.render.welding-drone.mesh.arm0-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -85,17 +85,17 @@
       "bounds": {
         "max": [
           1.314905047416687,
-          0.13975892961025238,
-          -0.30302172899246216
+          0.13975897431373596,
+          -0.30302175879478455
         ],
         "min": [
-          0.8650948405265808,
-          0.01024107076227665,
+          0.865094780921936,
+          0.010241030715405941,
           -0.5369783043861389
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa4fda37c7e51701d47b410798e5607aa8369b572ce296ee1b87faeace6a5f34",
+      "geometryHash": "f1643d201710270d8d72370d03d663a45473451dcf64ac7b45dabcd989232778",
       "id": "sf.render.welding-drone.mesh.arm0-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -115,12 +115,12 @@
         ],
         "min": [
           0.3797427713871002,
-          -0.04422866553068161,
+          -0.04422866925597191,
           0.2429332286119461
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88cc51af53524aac198fd07759b6ff4138fc33e0ae693b5ee7118b3b84965cb6",
+      "geometryHash": "cb2e743bf594d9d29c32ac8625e78f9eb5b7473ec5c085ed7fedf48980a52c21",
       "id": "sf.render.welding-drone.mesh.arm1-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -140,12 +140,12 @@
         ],
         "min": [
           0.8650948405265808,
-          0.010241140611469746,
+          0.010241133160889149,
           0.30302172899246216
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2316a1d8d6a9762ca41e4291f88b6e85e8271b29e78c0edc8bcaeab34594ab5f",
+      "geometryHash": "cf60c9b5fdb2cbe0151835c99908bcaa48790a48c9206df1df4c9a1ec0c827d6",
       "id": "sf.render.welding-drone.mesh.arm1-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -270,7 +270,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a8976d2203409e02f871e6580140e376599448f2bdc48195327c696a967752a6",
+      "geometryHash": "82406f5ed10e983334eba9079d64b9b680644b3fc98b67fe355271f94e0e919f",
       "id": "sf.render.welding-drone.mesh.tail.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -279,7 +279,7 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.welding-drone.mesh.tail",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     },
     {
       "bounds": {
@@ -973,19 +973,19 @@
       "sha256": "6bb7e5aa7691776d2b7c1856ade7d2dc3b181cef7b0cd89c0ce4107a179f0410"
     },
     "sourceGlb": {
-      "bytes": 18568,
-      "sha256": "cef60e7a466d14e59aa4e0e75e88b6ab80c3046ae50676a33b38bcf13ee09418",
+      "bytes": 18732,
+      "sha256": "939d0855d8bd7cc5790d1412a5d53c5eb438ae79705051663467763efaeaf7ee",
       "uri": "place_welding_drone.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 29136,
-    "sha256": "cb610487979741587c0647f457d67d37a7d3e37f862552ae2b066bcd592734a6",
+    "bytes": 28748,
+    "sha256": "c934a61d285f00bfed9f022f509ed693198a8a287c86b3859ccc7d11199f829f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1420,7 +1420,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_welding_drone.glb"
   },
-  "runtimeHash": "964de062416f128ef74c7708a513b681edadc0f925e1d43f317b20b42063153e",
+  "runtimeHash": "4775cbdb6dd830a269ad74fbc782a9f258aaec2d8db5f0e978c2cf54c4dfd66f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

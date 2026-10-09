@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9e4387a41bee2823d30fb3038b82ace673018648ffeaf9289d55873c24cb7c4a",
+  "contentHash": "e075b916b634e71ba0251c645dbb47f252045161f681399e4f52bb654383bece",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "171e40555284d1dec0ab1a2f570dde4ded63bd185a355ffb13563c5e82e1bb07",
+      "geometryHash": "ca8b7bfb2fbdacdb1307794e6692f0f3f44a2124fa89158086dbfaecb39730e8",
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbarbette.primitive.0",
       "indexCount": 1908,
       "indexed": true,
@@ -320,7 +320,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bfbbeaf4830193af4fa9c9f73f6db2faffa0ab77ee5ee4401e33eec8bf773229",
+      "geometryHash": "b7fc3f7d4022047602a6b35e261a2f6c8595760538b7522e85a4dbc178dc8a38",
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse.primitive.0",
       "indexCount": 1299,
       "indexed": true,
@@ -345,7 +345,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5c7e01028875f6eb60dc07e68a88d371de3632a83c56837c4be23af4b11362b1",
+      "geometryHash": "de97f5c3bbb6d8c879f424c0bc040b148e219009437d2d2ed6bc5a0037c5dc3a",
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse.primitive.1",
       "indexCount": 837,
       "indexed": true,
@@ -370,16 +370,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5070dfee0641a0a2f5720ddea2ee0fc1679db4e5488aaf767393ce627444356",
+      "geometryHash": "e18b178b95d8c27240f2951c150fed0f91379ca6bf91db81b9f19faf08b8ef04",
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse.primitive.2",
-      "indexCount": 1404,
+      "indexCount": 1284,
       "indexed": true,
       "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
       "materialPipelineKey": "opaque",
       "meshName": "TurretBHouse",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse",
       "primitiveIndex": 2,
-      "vertexCount": 492
+      "vertexCount": 451
     },
     {
       "bounds": {
@@ -420,7 +420,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4f61d64646b8a1a592d4cb524da5e29de662386664eefa508692ed54c03f869",
+      "geometryHash": "e081edf9eccc8c3d7fd1fbbac0f27b7af2decbdc7d27bfe04538fbcd71e9d1ab",
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbrace.primitive.0",
       "indexCount": 1908,
       "indexed": true,
@@ -445,7 +445,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f11603e70507d28a7631a293a091fec851d8d010a2ff2f1fd7f6965b4db77df",
+      "geometryHash": "a8062752ffbc68683c105a20d97b2fadb73b99e7f2c705b4573fdd0f5c73116e",
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbring.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -470,7 +470,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76d90f44a72bd7f25877170a1f78213da57b0632c3d8be6fac704d1862e5e172",
+      "geometryHash": "ce9a832f9acc60e86cac9175fa0cbf49bf590c39c36abca566018e4266766991",
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbring.primitive.1",
       "indexCount": 1188,
       "indexed": true,
@@ -520,7 +520,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed99021ded0b034a657a98c5fd06710c9a1eb21d1cac7f6b1967a382a51178c0",
+      "geometryHash": "e18af5da2de2cc35b292171c53820db6fd0e5c050278de1061c5397d91f6e773",
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbsleeve-0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -545,7 +545,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27989118eb97f27b150cf106c172574a9c0f17242d07d42ca9b1f84a67055c6a",
+      "geometryHash": "071dc37d496dfd2a48d9784f7374a73366cea0e85850dbc47551ad92dfd642f9",
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbsleeve0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -1755,19 +1755,19 @@
       "sha256": "438ee4e776a56b495cbbc7daaf6456ff17056c68f77929561bd6e475e1439e73"
     },
     "sourceGlb": {
-      "bytes": 210192,
-      "sha256": "8e6705900237ae20e026e0b879cf4f3469c5d36e101269d51549ebb5afe58023",
+      "bytes": 205960,
+      "sha256": "6b9e44bcf615bbe611a06415bb33f5c81ab7d95c34f8072781f4ad8efd284d9e",
       "uri": "place_aftermath_aft_weapon_spar.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 270117,
+      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 263684,
-    "sha256": "8803221c91eea71a94035e28a34c592262f63fc46543830a34e3a243035a76a6",
+    "bytes": 262868,
+    "sha256": "fac570f3a6f7c93173bf68635df618ba1cd4a6c008c7ffabc136ce97fa3ed648",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2489,7 +2489,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_weapon_spar.glb"
   },
-  "runtimeHash": "13a4ec6e1e3c47fcdcc2820f46bdf5089651d78fbba501cf2f6aeb85f4dc9d04",
+  "runtimeHash": "0b8b4dc24ece3057b5aa1c337f67ba21e31c21add99236a920b3642e24faba86",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
