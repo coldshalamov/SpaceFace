@@ -5698,8 +5698,8 @@ function warmNemesisSquadDecode(owner, payload) {
  * inside the marker window at the glass. Poll the pending list once per residency pass:
  * an item whose dueAt sits inside the decode runway warms every planned archetype at
  * deadline class. Gate-deferred items mutate dueAt to the new window and re-warm (the
- * lease refresh keeps them alive); the WeakMap dedupes repeats at the same dueAt, and
- * file-level dedupe caps redundant decodes the rest of the way. Items that fizzle or get
+ * lease refresh keeps them alive); registry dedupe caps redundant decodes — a resident
+ * file re-pins for a Map lookup while an evicted one re-decodes. Items that fizzle or get
  * cancelled simply let their lease expire — nothing mounts on the roster's behalf.
  */
 function warmEncounterPendingDecode(owner) {
@@ -5708,14 +5708,13 @@ function warmEncounterPendingDecode(owner) {
   const pending = state && state.encounterDirector && state.encounterDirector.pending;
   if (!Array.isArray(pending) || !pending.length) return;
   const now = state.simTime || 0;
-  const warmedAt = owner._encounterPendingWarmDueAt
-    || (owner._encounterPendingWarmDueAt = new WeakMap());
+  // No once-fired latch: each residency poll re-posts the arm — a soft-budget eviction
+  // re-decodes through the registry while a resident file re-pins for a Map lookup.
   for (const item of pending) {
     if (!item || !Number.isFinite(item.dueAt) || item.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
     if ((!Array.isArray(item.ships) || !item.ships.length)
       && (!Array.isArray(item.warmShips) || !item.warmShips.length)
       && (!Array.isArray(item.warmAssets) || !item.warmAssets.length)) continue;
-    if (warmedAt.get(item) === item.dueAt) continue;
     // Keep the whole ship record, not just its archetype: kit squads stamp factionId (and
     // trafficRole where traffic-sourced) and the faction kit swaps both the hull file and
     // the 'place'-slot hulk the roster's warm must resolve.
@@ -5741,7 +5740,6 @@ function warmEncounterPendingDecode(owner) {
       if (typeof file === 'string' && file) files.push(file);
     }
     if (!archetypes.length && !files.length) continue;
-    warmedAt.set(item, item.dueAt);
     if (archetypes.length) {
       warmEnemyRosterDecode(owner, archetypes, 'encounter-pending-decode-runway', item.sectorId);
     }
@@ -5771,7 +5769,7 @@ function warmEncounterPendingDecode(owner) {
  * residency pass and warm each due member's hull (typeId + the faction the spawn will
  * resolve drive the same faction-kit key) at deadline class while its due tick sits
  * inside the runway. Abandoned/cancelled records drop off the queue and let the lease
- * expire; the WeakMap dedupes repeat polls per record.
+ * expire; every poll re-posts — the registry re-pins residents and re-decodes evictions.
  */
 function warmPendingReinforcementsDecode(owner) {
   const state = owner && owner.state;
@@ -5779,15 +5777,11 @@ function warmPendingReinforcementsDecode(owner) {
     && state.aiEncounter.owner.pendingReinforcements;
   if (!Array.isArray(pending) || !pending.length) return;
   const tick = Number.isFinite(state.tick) ? state.tick : 0;
-  const warmedAt = owner._reinforcementWarmDueTick
-    || (owner._reinforcementWarmDueTick = new WeakMap());
   const bySector = new Map();
   for (const item of pending) {
     if (!item || typeof item.typeId !== 'string' || !item.typeId) continue;
     if (!Number.isFinite(item.dueTick)
         || item.dueTick - tick > TABLE_DECODE_RUNWAY_SECONDS * 60) continue;
-    if (warmedAt.get(item) === item.dueTick) continue;
-    warmedAt.set(item, item.dueTick);
     const key = item.sectorId || '';
     let bucket = bySector.get(key);
     if (!bucket) {
@@ -5818,16 +5812,12 @@ function warmCombatReinforcementsDecode(owner) {
   const pending = state && state.combat && state.combat.pendingReinforcements;
   if (!Array.isArray(pending) || !pending.length) return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  const warmedAt = owner._combatReinforcementWarmAt
-    || (owner._combatReinforcementWarmAt = new WeakMap());
   const sectorId = (state.world && state.world.currentSectorId) || null;
   const records = [];
   for (const item of pending) {
     if (!item || typeof item.typeId !== 'string' || !item.typeId) continue;
     if (!Number.isFinite(item.spawnAt)
         || item.spawnAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if (warmedAt.get(item) === item.spawnAt) continue;
-    warmedAt.set(item, item.spawnAt);
     records.push({
       archetype: item.typeId,
       factionId: enemySpawnFactionId(item.typeId, item.factionId),
@@ -5846,7 +5836,7 @@ function warmCombatReinforcementsDecode(owner) {
  * watch rows once per residency pass and warm the roster while the row sits inside the
  * decode runway, mirroring _resolveHostilePursuit's gates (security >= 0.25, not resolved,
  * not already intervened). A row that settles through grabbing_range or dies to pruning
- * just lets the lease expire; the WeakMap dedupes per firstAt.
+ * just lets the lease expire; every poll re-posts so an eviction re-decodes.
  */
 function warmPursuitInterventionDecode(owner) {
   const state = owner && owner.state;
@@ -5860,7 +5850,6 @@ function warmPursuitInterventionDecode(owner) {
   const sec = sectorSecurityOf(state);
   if (!(sec >= 0.25)) return;
   const intervened = dir.patrolIntervened || null;
-  const warmedAt = owner._pursuitWarmAt || (owner._pursuitWarmAt = new WeakMap());
   let due = false;
   for (const hostileId in watch) {
     const row = watch[hostileId];
@@ -5868,8 +5857,6 @@ function warmPursuitInterventionDecode(owner) {
     if (intervened && intervened[hostileId] != null) continue;
     const remaining = PURSUIT_RESOLVE_S - (now - row.firstAt);
     if (remaining > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if (warmedAt.get(row) === row.firstAt) continue;
-    warmedAt.set(row, row.firstAt);
     due = true;
   }
   if (due) {
@@ -5886,7 +5873,8 @@ function warmPursuitInterventionDecode(owner) {
  * incident ring the player just heard the countdown for. Poll state.lawSecurity.incidents
  * once per residency pass; while a distress/responding incident's dispatchAt sits inside the
  * decode runway, warm the responder hull (same archetype + factionId the dispatch mints).
- * Resolved/cleared incidents just let the lease expire; the WeakMap dedupes per record.
+ * Resolved/cleared incidents just let the lease expire; every poll re-posts so an
+ * eviction re-decodes.
  */
 function warmLawIncidentDispatchDecode(owner) {
   const state = owner && owner.state;
@@ -5894,7 +5882,6 @@ function warmLawIncidentDispatchDecode(owner) {
   const incidents = law && law.incidents;
   if (!incidents || typeof incidents !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  const warmedAt = owner._lawIncidentWarmAt || (owner._lawIncidentWarmAt = new WeakMap());
   const roster = [];
   for (const key in incidents) {
     const incident = incidents[key];
@@ -5902,8 +5889,6 @@ function warmLawIncidentDispatchDecode(owner) {
     if (incident.status !== 'distress' && incident.status !== 'responding') continue;
     if (!Number.isFinite(incident.dispatchAt)) continue;
     if (incident.dispatchAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if (warmedAt.get(incident) === incident.dispatchAt) continue;
-    warmedAt.set(incident, incident.dispatchAt);
     roster.push({
       archetype: 'patrol_lawman',
       factionId: incident.factionId || 'faction_scn',
@@ -5921,20 +5906,17 @@ function warmLawIncidentDispatchDecode(owner) {
  * transition gives the screen zero decode lead. Poll the live fight ledger once per
  * residency pass and warm every unrequested wing's archetypes up front: the roster is
  * score-static, so no later signal arrives ahead of the spawn. Bound wings skip (their
- * members are entities already) and terminal fights and repeats dedupe on the record —
- * file-level dedupe caps decodes the rest of the way.
+ * members are entities already) and terminal fights skip outright — the registry
+ * re-pins residents and re-decodes evictions each poll.
  */
 function warmCapitalBossWingDecode(owner) {
   const state = owner && owner.state;
   const fights = state && state.capitalBossEncounters && state.capitalBossEncounters.fights;
   if (!fights || typeof fights !== 'object') return;
-  const warmed = owner._capitalWingWarmFights || (owner._capitalWingWarmFights = new WeakMap());
   const roster = [];
   for (const id in fights) {
     const record = fights[id];
     if (!record || record.terminal === true || !record.encounterId) continue;
-    if (warmed.has(record)) continue;
-    warmed.set(record, true);
     roster.push(...capitalBossWingRosterRows(record.encounterId, record));
   }
   if (roster.length) {
@@ -5951,8 +5933,8 @@ function warmCapitalBossWingDecode(owner) {
  * (10 class hulls), so when the player's heat reaches the bounty band — one tier below
  * NETS, two below IMPOUND — decode the whole pool plus the patrol_lawman (warrant hunter)
  * and customs_cutter (checkpoint cutter / impound clerk) escorts those posts mint. A heat
- * dip below the band or a paid-off bounty just lets the lease expire; deduped per sector,
- * file-level dedupe caps repeated decodes the rest of the way.
+ * dip below the band or a paid-off bounty just lets the lease expire; the registry
+ * re-pins residents and re-decodes evictions each poll.
  */
 function warmWantedTierDecode(owner) {
   const state = owner && owner.state;
@@ -5961,10 +5943,6 @@ function warmWantedTierDecode(owner) {
   const heat = state.player && Number.isFinite(state.player.heat) ? state.player.heat : 0;
   if (heatLevelFor(heat) < 2) return;
   const sectorId = (state.world && state.world.currentSectorId) || null;
-  const warmed = owner._wantedTierWarmSectors || (owner._wantedTierWarmSectors = new Set());
-  const sectorKey = sectorId || '';
-  if (warmed.has(sectorKey)) return;
-  warmed.add(sectorKey);
   // Speculative by contract (heat can dip / the bounty can be paid): post at ambient-warm
   // class — a genuine deadline join on the cached task re-grades the queued tail via
   // deadlineJoin + promote, so speculation never sits ahead of real deadline demand.
@@ -5984,12 +5962,11 @@ function warmWantedTierDecode(owner) {
  * post, a staged bounty pair) can decode the whole bounded set so whichever parts the seed
  * selects arrive resident. The slot argument rides with each file: the authored cache keys
  * url::slot, so a mismatched slot decodes a second blueprint the production attach never
- * reuses. Deduped per (sector, arm-role): each family gets its own once-per-sector warm — an
- * earlier arm's latch must not starve a later one, and callers can pass armKey for a
- * per-countdown dedupe so a re-armed countdown in the same sector re-warms.
+ * reuses. No once-fired latch: every residency poll re-posts the closed set — a
+ * resident file re-pins for a Map lookup, an evicted one re-decodes.
  * 'place' is not a ship-kit slot — the prop set stays out of this pool.
  */
-function warmSeededModularPool(owner, sectorId, residencyRole, armKey = null) {
+function warmSeededModularPool(owner, sectorId, residencyRole) {
   const renderer = owner && owner.renderer;
   if (!renderer || !renderer.domElement) return;
   // No 'already posted' latch: the pool is closed (~43 files) and each loadAuthoredPart
@@ -6028,8 +6005,9 @@ const GATE_SCENE_DAY_SECONDS = 600;
  * stares at through the whole charge. The scene is a pure function of (seed, sector, gate,
  * day, faction/security/wanted), so while the player sits on approach inside
  * GATE_WING_WARM_DIST, replay planGateScene per in-range gate and warm the wasp hull the
- * wing will draw — faction-kit included — before chargeStart ever fires. Deduped per
- * (sector, gate, day): a hostile verdict or a superseded scene just lets the lease expire.
+ * wing will draw — faction-kit included — before chargeStart ever fires. The scene
+ * verdict is memoized per input tuple so a ctx flip re-plans, while the hull warm
+ * re-posts every poll: an evicted file re-decodes instead of stranding cold.
  */
 function warmGateWingDecode(owner) {
   const state = owner && owner.state;
@@ -6050,7 +6028,10 @@ function warmGateWingDecode(owner) {
   const factionId = sector.factionId || null;
   const security = Number.isFinite(sector.security) ? sector.security : 0.5;
   const wanted = isPlayerWanted(state);
-  const warmed = owner._gateWingWarmKeys || (owner._gateWingWarmKeys = new Set());
+  // Verdict memo, not a post latch: planGateScene re-runs only when the input tuple
+  // moves (sector/gate/day/faction/security/wanted), while the warm re-posts every
+  // poll so a soft-budget eviction re-decodes instead of stranding the wasp cold.
+  const verdicts = owner._gateWingWarmKeys || (owner._gateWingWarmKeys = new Map());
   const roster = [];
   for (const gt of gates) {
     const to = gt && (gt.to != null ? gt.to : gt.gateTo);
@@ -6059,14 +6040,14 @@ function warmGateWingDecode(owner) {
     const dx = gpos.x - ppos.x;
     const dz = gpos.z - ppos.z;
     if (dx * dx + dz * dz > GATE_WING_WARM_DIST_SQ) continue;
-    // The ctx triple feeds planGateScene's verdict, so it belongs in the dedupe key — a
-    // wanted flip or a sector ctx recompute under the same (sector, gate, day) must
-    // re-evaluate the scene rather than replay a verdict keyed on stale inputs.
     const dedupe = `${sectorId}|${to}|${day}|${factionId}|${security}|${wanted ? 1 : 0}`;
-    if (warmed.has(dedupe)) continue;
-    const scene = planGateScene(seed, sectorId, to, day, { factionId, security, wanted });
-    if ((scene.scanWing | 0) <= 0) continue;
-    warmed.add(dedupe);
+    let wing = verdicts.get(dedupe);
+    if (wing === undefined) {
+      const scene = planGateScene(seed, sectorId, to, day, { factionId, security, wanted });
+      wing = (scene.scanWing | 0) > 0;
+      verdicts.set(dedupe, wing);
+    }
+    if (!wing) continue;
     roster.push({
       factionId: factionId || 'faction_scn',
       entitySpec: { type: 'ship', shipId: 'ship_wasp', factionId: factionId || 'faction_scn' },
@@ -6079,19 +6060,16 @@ function warmGateWingDecode(owner) {
 }
 
 /**
- * The speculative-warm latches key on bare sector identity but the cohort
- * they armed for dies with the sector's FULL residency (extras strip on any
- * demotion). Drop the demoted sector's keys so a return visit re-arms the
- * bounded warms instead of suppressing them as "already warmed" — the second
- * visit's spawn arms would otherwise pay cold decode/mint on presented frames.
+ * The gate-wing verdict memo keys carry the sector prefix and the cohort they
+ * planned for dies with the sector's FULL residency (extras strip on any
+ * demotion). Drop the demoted sector's keys so a return visit re-plans under
+ * the fresh context instead of reusing a verdict minted against the old one.
  */
 function clearSectorWarmLatchKeys(owner, sectorId) {
-  const wanted = owner._wantedTierWarmSectors;
-  if (wanted) wanted.delete(sectorId);
   const gateWing = owner._gateWingWarmKeys;
   if (gateWing) {
     const prefix = `${sectorId}|`;
-    for (const key of gateWing) {
+    for (const key of gateWing.keys()) {
       if (typeof key === 'string' && key.startsWith(prefix)) gateWing.delete(key);
     }
   }
@@ -6103,7 +6081,8 @@ function clearSectorWarmLatchKeys(owner, sectorId) {
  * _fire mints it the moment the beat lands — inside the marker window at the station seam.
  * Poll the pending list once per residency pass; while a budgeted item's dueAt sits inside
  * the decode runway, warm the patrol hull for the station it will launch from. Deferrals
- * mutate dueAt and re-warm (the WeakMap keys the row), cancelled items let the lease expire.
+ * mutate dueAt into a fresh window, cancelled items let the lease expire, and each
+ * poll re-posts so an evicted hull re-decodes.
  */
 function warmStationPatrolDecode(owner) {
   const state = owner && owner.state;
@@ -6111,14 +6090,11 @@ function warmStationPatrolDecode(owner) {
   const pending = state && state.stationSideEvents && state.stationSideEvents.pending;
   if (!state || !renderer || !renderer.domElement || !Array.isArray(pending) || !pending.length) return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  const warmedAt = owner._stationPatrolWarmAt || (owner._stationPatrolWarmAt = new WeakMap());
   const roster = [];
   let entities = null;
   for (const item of pending) {
     if (!item || (item.budget | 0) <= 0 || !Number.isFinite(item.dueAt)) continue;
     if (item.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if (warmedAt.get(item) === item.dueAt) continue;
-    warmedAt.set(item, item.dueAt);
     if (!entities) {
       entities = state.entityList || (state.entities && typeof state.entities.values === 'function'
         ? [...state.entities.values()] : []);
@@ -6146,14 +6122,13 @@ function warmStationPatrolDecode(owner) {
  * watching. Poll aceMemory once per residency pass and warm the exact crew returnCrewForAce
  * will roll, mirroring _processReturns' gates (undefeated, returnScheduled, returnAt inside
  * the runway, promoted-unexpired, non-nemesis owner). Records that settle through the
- * moral-return ledger or defer simply let the lease expire; the WeakMap dedupes per record.
+ * moral-return ledger or defer simply let the lease expire; every poll re-posts.
  */
 function warmAceReturnDecode(owner) {
   const state = owner && owner.state;
   const memory = state && state.aceMemory;
   if (!memory || typeof memory !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  const warmedAt = owner._aceReturnWarmAt || (owner._aceReturnWarmAt = new WeakMap());
   const records = [];
   for (const [id, rec] of Object.entries(memory)) {
     if (ACE_MEMORY_META_KEYS.has(id) || !rec || typeof rec !== 'object') continue;
@@ -6164,8 +6139,6 @@ function warmAceReturnDecode(owner) {
     if (rec.promoted === true && rec.expired === true) continue;
     const ace = aceById(id) || (rec.promoted === true ? promotedAceShapeForRecord(id, rec) : null);
     if (!ace || ace.lifecycleOwner === 'nemesis') continue;
-    if (warmedAt.get(rec) === rec.returnAt) continue;
-    warmedAt.set(rec, rec.returnAt);
     // offers_work fields an unstyled crew — warming the escalated style decodes the wrong files.
     const style = stanceForRecord(rec).stance === 'offers_work'
       ? null : escalatedStyleFromMemory(memory, ace);
@@ -6193,7 +6166,6 @@ function warmCultureIntroDecode(owner) {
   if (!intros || typeof intros !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
-  const warmedAt = owner._cultureIntroWarmAt || (owner._cultureIntroWarmAt = new WeakMap());
   const records = [];
   for (const [aceId, intro] of Object.entries(intros)) {
     if (!intro || typeof intro !== 'object') continue;
@@ -6203,8 +6175,6 @@ function warmCultureIntroDecode(owner) {
         || intro.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
     const ace = aceById(aceId);
     if (!ace) continue;
-    if (warmedAt.get(intro) === intro.dueAt) continue;
-    warmedAt.set(intro, intro.dueAt);
     const style = escalatedStyleFromMemory(memory, ace);
     const loadout = styleLoadoutForAce(ace, style);
     for (const archetype of [loadout.bossArchetype, loadout.escortArchetype]) {
@@ -6242,7 +6212,7 @@ function warmBountyStagedDecode(owner) {
   const currentSectorId = state.world && state.world.currentSectorId;
   if (!currentSectorId || !Number.isFinite(own.nextStageAt)) return;
   if (own.nextStageAt - now > TABLE_DECODE_RUNWAY_SECONDS) return;
-  warmSeededModularPool(owner, currentSectorId, 'bounty-staged-decode-runway', own.nextStageAt);
+  warmSeededModularPool(owner, currentSectorId, 'bounty-staged-decode-runway');
 }
 
 function warmPlanetChallengeDecode(owner) {
@@ -6252,7 +6222,6 @@ function warmPlanetChallengeDecode(owner) {
   if (!challenges || typeof challenges !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
-  const warmedAt = owner._planetChallengeWarmAt || (owner._planetChallengeWarmAt = new WeakMap());
   const records = [];
   for (const [aceId, challenge] of Object.entries(challenges)) {
     if (!challenge || typeof challenge !== 'object') continue;
@@ -6262,8 +6231,6 @@ function warmPlanetChallengeDecode(owner) {
         || challenge.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
     const ace = aceById(aceId);
     if (!ace) continue;
-    if (warmedAt.get(challenge) === challenge.dueAt) continue;
-    warmedAt.set(challenge, challenge.dueAt);
     const style = escalatedStyleFromMemory(memory, ace);
     const loadout = styleLoadoutForAce(ace, style);
     for (const archetype of [loadout.bossArchetype, loadout.escortArchetype]) {
@@ -6292,8 +6259,11 @@ function warmUniqueWreckComplicationDecode(owner) {
   if (!complications || typeof complications !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
-  const warmedAt = owner._uniqueWreckComplicationWarmAt
-    || (owner._uniqueWreckComplicationWarmAt = new WeakMap());
+  // Roster memo keyed on the record's own deadline stamp: planUniqueWreckEncounter
+  // re-runs only when dueAt moves (a re-schedule), while the warm re-posts every
+  // residency poll so a soft-budget eviction re-decodes instead of stranding cold.
+  const plans = owner._uniqueWreckComplicationWarmPlans
+    || (owner._uniqueWreckComplicationWarmPlans = new WeakMap());
   const records = [];
   for (const record of Object.values(complications)) {
     if (!record || typeof record !== 'object') continue;
@@ -6309,21 +6279,26 @@ function warmUniqueWreckComplicationDecode(owner) {
     if (sectorId !== currentSectorId) continue;
     const shape = ENCOUNTERS[record.encounterId];
     if (!shape) continue;
-    if (warmedAt.get(record) === record.dueAt) continue;
-    warmedAt.set(record, record.dueAt);
-    const item = planUniqueWreckEncounter({
-      programSeed: own.programSeed,
-      def,
-      bearing,
-      // _requestEncounter mints the fire record as {anchor: bearing.exactPos, encounterId}.
-      complication: { anchor: bearing.exactPos, encounterId: record.encounterId },
-      sectorId,
-      simTime: state.simTime,
-      shape,
-    });
-    for (const ship of (item && item.ships) || []) {
-      if (ship && typeof ship.archetype === 'string' && ship.archetype) records.push(ship);
+    const memo = plans.get(record);
+    let ships = memo && memo.dueAt === record.dueAt ? memo.ships : null;
+    if (!ships) {
+      const item = planUniqueWreckEncounter({
+        programSeed: own.programSeed,
+        def,
+        bearing,
+        // _requestEncounter mints the fire record as {anchor: bearing.exactPos, encounterId}.
+        complication: { anchor: bearing.exactPos, encounterId: record.encounterId },
+        sectorId,
+        simTime: state.simTime,
+        shape,
+      });
+      ships = [];
+      for (const ship of (item && item.ships) || []) {
+        if (ship && typeof ship.archetype === 'string' && ship.archetype) ships.push(ship);
+      }
+      plans.set(record, { dueAt: record.dueAt, ships });
     }
+    for (const ship of ships) records.push(ship);
   }
   if (records.length) {
     warmEnemyRosterDecode(owner, records, 'unique-wreck-complication-decode-runway', currentSectorId);
@@ -6348,12 +6323,13 @@ function _stationEntityForId(state, stationId) {
 
 /**
  * Replay an announced requestAuthoredEncounter payload through the shared plan helper and
- * warm the planned roster — the same rng stream and zone assembly the fire consumes, so the
- * decoded hull set is exactly what the fire will spawn. Returns the warmed roster size.
+ * return the planned roster — the same rng stream and zone assembly the fire consumes, so
+ * the decoded hull set is exactly what the fire will spawn. Polled arms memo this result
+ * on the record's own deadline stamp and re-post the warm every pass.
  */
-function warmAuthoredEncounterArm(owner, payload, residencyRole, sectorId) {
+function plannedAuthoredEncounterShips(owner, payload) {
   const state = owner && owner.state;
-  if (!state || !payload || typeof payload !== 'object') return 0;
+  if (!state || !payload || typeof payload !== 'object') return null;
   const player = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId) : null;
   const planned = planAuthoredEncounterItem({
@@ -6362,12 +6338,18 @@ function warmAuthoredEncounterArm(owner, payload, residencyRole, sectorId) {
     playerPos: player && player.pos,
   });
   const ships = planned && planned.item && planned.item.ships;
-  if (!Array.isArray(ships) || !ships.length) return 0;
+  if (!Array.isArray(ships) || !ships.length) return null;
   const records = [];
   for (const ship of ships) {
     if (ship && typeof ship.archetype === 'string' && ship.archetype) records.push(ship);
   }
-  if (records.length) warmEnemyRosterDecode(owner, records, residencyRole, sectorId);
+  return records.length ? records : null;
+}
+
+function warmAuthoredEncounterArm(owner, payload, residencyRole, sectorId) {
+  const records = plannedAuthoredEncounterShips(owner, payload);
+  if (!records) return 0;
+  warmEnemyRosterDecode(owner, records, residencyRole, sectorId);
   return records.length;
 }
 
@@ -6386,7 +6368,9 @@ function warmDepotWatchDecode(owner) {
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
   const bodies = (state.claims && state.claims.bodies) || [];
-  const warmedAt = owner._depotWatchWarmAt || (owner._depotWatchWarmAt = new WeakMap());
+  // Roster memo keyed on watchAt: the encounter plan re-runs only on re-schedule,
+  // while the warm re-posts every poll so an evicted hull re-decodes.
+  const plans = owner._depotWatchWarmPlans || (owner._depotWatchWarmPlans = new WeakMap());
   for (const service of services) {
     if (!service || service.watchResolved) continue;
     if (!Number.isFinite(service.watchAt)
@@ -6394,8 +6378,6 @@ function warmDepotWatchDecode(owner) {
     const body = bodies.find((entry) => entry && entry.id === service.bodyId);
     // The maintenance pass only arms watches while the body is in-sector — same gate.
     if (!body || body.sectorId !== currentSectorId) continue;
-    if (warmedAt.get(service) === service.watchAt) continue;
-    warmedAt.set(service, service.watchAt);
     const station = _stationEntityForId(state, service.stationId);
     const anchor = station && station.pos
       ? {
@@ -6403,18 +6385,26 @@ function warmDepotWatchDecode(owner) {
         z: station.pos.z + (body.z - station.pos.z) * 0.75,
       }
       : { x: body.x, z: body.z };
-    warmAuthoredEncounterArm(owner, {
-      shapeId: 'ambush_snare',
-      encounterId: `depot-watch:${body.id}`,
-      sectorId: currentSectorId,
-      anchor,
-      zoneId: `depot-route:${body.id}`,
-      zoneName: `${body.name} supply route`,
-      zoneType: 'ambush_lane',
-      zoneRadius: 240,
-      force: true,
-      data: { claimDepotId: body.id },
-    }, 'depot-watch-decode-runway', currentSectorId);
+    const memo = plans.get(service);
+    let ships = memo && memo.watchAt === service.watchAt ? memo.ships : null;
+    if (!ships) {
+      ships = plannedAuthoredEncounterShips(owner, {
+        shapeId: 'ambush_snare',
+        encounterId: `depot-watch:${body.id}`,
+        sectorId: currentSectorId,
+        anchor,
+        zoneId: `depot-route:${body.id}`,
+        zoneName: `${body.name} supply route`,
+        zoneType: 'ambush_lane',
+        zoneRadius: 240,
+        force: true,
+        data: { claimDepotId: body.id },
+      });
+      plans.set(service, { watchAt: service.watchAt, ships });
+    }
+    if (ships && ships.length) {
+      warmEnemyRosterDecode(owner, ships, 'depot-watch-decode-runway', currentSectorId);
+    }
   }
 }
 
@@ -6430,7 +6420,9 @@ function warmDepotPatrolDecode(owner) {
   if (!bodies.length) return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
-  const warmedAt = owner._depotPatrolWarmAt || (owner._depotPatrolWarmAt = new WeakMap());
+  // Roster memo keyed on the arm tuple: the patrol plan re-runs only when the
+  // rotation/encounter id or the countdown moves, while the warm re-posts every poll.
+  const plans = owner._depotPatrolWarmPlans || (owner._depotPatrolWarmPlans = new WeakMap());
   for (const body of bodies) {
     const ds = body && body.depotSupport;
     const patrol = ds && ds.supported === true ? ds.patrol : null;
@@ -6450,20 +6442,26 @@ function warmDepotPatrolDecode(owner) {
       }
       : { x: body.x + 200, z: body.z };
     const armKey = `${encounterId}:${nextAt}`;
-    if (warmedAt.get(patrol) === armKey) continue;
-    warmedAt.set(patrol, armKey);
-    warmAuthoredEncounterArm(owner, {
-      shapeId: DEPOT_PATROL_SHAPE_ID,
-      encounterId,
-      sectorId: body.sectorId,
-      anchor,
-      zoneId: `depot-lane:${body.id}`,
-      zoneName: `${body.name} depot lane`,
-      zoneType: 'patrol_corridor',
-      zoneRadius: DEPOT_PATROL_ZONE_RADIUS_WU,
-      force: true,
-      data: { claimDepotId: body.id, depotPatrol: true, rotation, stationId },
-    }, 'depot-patrol-decode-runway', currentSectorId);
+    const memo = plans.get(patrol);
+    let ships = memo && memo.armKey === armKey ? memo.ships : null;
+    if (!ships) {
+      ships = plannedAuthoredEncounterShips(owner, {
+        shapeId: DEPOT_PATROL_SHAPE_ID,
+        encounterId,
+        sectorId: body.sectorId,
+        anchor,
+        zoneId: `depot-lane:${body.id}`,
+        zoneName: `${body.name} depot lane`,
+        zoneType: 'patrol_corridor',
+        zoneRadius: DEPOT_PATROL_ZONE_RADIUS_WU,
+        force: true,
+        data: { claimDepotId: body.id, depotPatrol: true, rotation, stationId },
+      });
+      plans.set(patrol, { armKey, ships });
+    }
+    if (ships && ships.length) {
+      warmEnemyRosterDecode(owner, ships, 'depot-patrol-decode-runway', currentSectorId);
+    }
   }
 }
 
@@ -6533,14 +6531,11 @@ function warmClaimDefenseDecode(owner) {
   const rosters = owner && owner._claimDefenseRosters;
   const bodies = state && state.claims && state.claims.bodies;
   if (!rosters || !rosters.size || !Array.isArray(bodies)) return;
-  const warmedAt = owner._claimDefenseWarmed
-    || (owner._claimDefenseWarmed = new WeakMap());
   for (const body of bodies) {
     const defense = body && body.spec && body.spec.defense;
     if (!defense || defense.phase !== 'warning' || !defense.encounterId) continue;
     const roster = rosters.get(defense.encounterId);
-    if (!roster || warmedAt.get(defense) === defense.deadlineAt) continue;
-    warmedAt.set(defense, defense.deadlineAt);
+    if (!roster) continue;
     warmEnemyRosterDecode(owner, roster.archetypes, 'claim-defense-decode-runway',
       roster.sectorId || body.sectorId);
   }

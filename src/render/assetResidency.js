@@ -392,6 +392,12 @@ export function createAssetResidencyRegistry(options = {}) {
         entry.ownersVersion += 1;
         // A boundary-scoped serve claiming a warm lease is a fresh demand signal.
         entry.lastWarmClaimAtMs = now();
+      } else if (metadata.decodeWarm === true || metadata.softLease === true) {
+        // A warm re-post on an already-held entry is still a fresh demand signal:
+        // the soft-eviction sort reads lastWarmClaimAtMs, so an un-refreshed armed
+        // cohort keeps its first-post stamp and deterministically evicts first on
+        // every pressure wave. Re-pin it — the W130 "re-post re-pins" intent.
+        entry.lastWarmClaimAtMs = now();
       }
       return false;
     }
@@ -441,6 +447,18 @@ export function createAssetResidencyRegistry(options = {}) {
       if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
       else softBudgetPending = true;
     }
+    return true;
+  }
+
+  // Warm re-post consult for the latch-free arms: an entry this owner already holds
+  // needs no request mint — refresh the soft-claim stamp in place so the idle sort
+  // keeps the armed cohort young, then let the shared task cache serve the blueprint.
+  // True only when the entry is resident under this exact owner.
+  function reclaimWarm(key, owner) {
+    const entry = assets.get(String(key || ''));
+    if (!entry || entry.state !== 'resident' || owner == null) return false;
+    if (!entry.owners.has(owner)) return false;
+    entry.lastWarmClaimAtMs = now();
     return true;
   }
 
@@ -2529,6 +2547,7 @@ export function createAssetResidencyRegistry(options = {}) {
   return Object.freeze({
     registerAsset,
     retain,
+    reclaimWarm,
     beginRequest,
     release,
     releaseOwner,
