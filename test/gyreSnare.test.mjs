@@ -1917,6 +1917,50 @@ test('a light clump keeps the mass-proportional knock (floor never fires)', asyn
   t.cleanup();
 });
 
+test('a spiraling meal deposits its angular momentum on the merge — clamped on a railgun feed', async () => {
+  const t = await bootPhysics();
+  // A heavy clump: big inertia means a slow feed lands unclamped, so the exact
+  // deposit (L = m·v_t·d) is assertable; the same clump still clamps a railgun.
+  const core = rock(t.sim, T.mawDist, 0, 800, 8);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id);
+  // A meal parked on -x corkscrewing in on +z: the approach axis is +x, so the
+  // whole velocity is tangential. L = m·v_t·d must land on the core as a
+  // y-torque with the feed's chirality — a slow feed deposits exactly L.
+  const slow = rock(t.sim, core.pos.x - 30, core.pos.z, 6, 4);
+  slow.vel = { x: 0, y: 0, z: 0.1 };
+  let dx = core.pos.x - slow.pos.x, dz = core.pos.z - slow.pos.z;
+  const dist = Math.hypot(dx, dz);
+  consumePhysicsCommand(core);
+  t.sys._absorb(t.state, t.sys._rt, core, slow, dx, dz, dist);
+  let cmd = consumePhysicsCommand(core);
+  assert.ok(cmd && cmd.torqueImpulses.length >= 1, 'the deposit crossed the membrane');
+  // The impulse IS the meal's angular momentum m·v_t·d (Δω = L/I lands via
+  // inertia·Δω) — mirror the production formula so the clump's own orbit drift
+  // (a real core slides ~1 wu/s on its slot) can't flake the exact value.
+  let relZ = slow.vel.z - (core.vel && core.vel.z || 0);
+  let relX = slow.vel.x - (core.vel && core.vel.x || 0);
+  const wantY = 6 * (relX * (-dz / dist) + relZ * (dx / dist)) * dist;
+  let inertia = Math.max(8, Math.round(t.sys._rt.clumpMass * t.sys._rt.clumpRadius * t.sys._rt.clumpRadius * 0.4));
+  assert.ok(Math.abs(wantY / inertia) < 0.5, 'slow feed is unclamped on this clump');
+  assert.ok(Math.abs(cmd.torqueImpulses[0].y - wantY) < 1e-6,
+    `slow feed deposits m·v_t·d on the core (got ${cmd.torqueImpulses[0].y}, want ${wantY})`);
+  assert.equal(Math.sign(cmd.torqueImpulses[0].y), Math.sign(wantY), 'the deposit keeps the feed\'s chirality');
+  // A railgun-fast feed quickens rather than spins out — the same clamp bounds it.
+  const fast = rock(t.sim, core.pos.x - 30, core.pos.z, 6, 4);
+  fast.vel = { x: 0, y: 0, z: 80 };
+  dx = core.pos.x - fast.pos.x; dz = core.pos.z - fast.pos.z;
+  const dist2 = Math.hypot(dx, dz);
+  consumePhysicsCommand(core);
+  t.sys._absorb(t.state, t.sys._rt, core, fast, dx, dz, dist2);
+  cmd = consumePhysicsCommand(core);
+  inertia = Math.max(8, Math.round(t.sys._rt.clumpMass * t.sys._rt.clumpRadius * t.sys._rt.clumpRadius * 0.4));
+  assert.ok(Math.abs(cmd.torqueImpulses[0].y - inertia * 0.5) < 1e-6,
+    `railgun feed clamps at inertia·0.5 (got ${cmd.torqueImpulses[0].y}, want ${inertia * 0.5})`);
+  t.cleanup();
+});
+
 // -- coverage: basinCount skips persistent/exempt bodies inside the cone --
 test('basinCount counts cone material but skips persistent and marked bodies', async () => {
   const t = await bootPhysics();
