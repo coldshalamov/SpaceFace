@@ -971,7 +971,13 @@ export const save = {
   // is frozen: the same section generator driven on the restore lane’s deadline gate splits
   // the multi-MB serialize into paint-seamed chunks without changing a single byte of the
   // snapshot. It only stays coherent while the freeze holds — every yield re-checks.
-  async _serializeDataFrozenAsync() {
+  async _serializeDataFrozenAsync(frozenBoundary) {
+    // An explicit boundary predicate extends the freeze contract past the pause/dock
+    // surfaces — a deferred capture inside an open restore session relies on its
+    // scale-0 + _restoring gates instead of _frozenTickBoundary().
+    const staysFrozen = typeof frozenBoundary === 'function'
+      ? frozenBoundary
+      : () => this._frozenTickBoundary();
     const it = this._serializeDataSteps();
     let lastYieldAt = nowMs();
     let r;
@@ -983,7 +989,7 @@ export const save = {
         lastYieldAt = nowMs();
         // If the sim unfreezes between sections the generator's prefix/suffix would mix
         // frozen and live ticks — retake the snapshot atomically on the live state.
-        if (!this._frozenTickBoundary()) return this.serializeData();
+        if (!staysFrozen()) return this.serializeData();
       }
     }
     return r.value;
@@ -2188,6 +2194,59 @@ export const save = {
     return { ...merged };
   },
 
+  // Async twin for the Continue lane: identical verdict + merge + publish contract, but a
+  // generation miss no longer pays the whole enumerate→scan→merge as one brick on the
+  // click task. An in-flight _scheduleSlotIndexValidation pass already walking this
+  // generation is ridden to its publish; otherwise the scans run with the same
+  // 16-entry yields the validation walk uses, and untrusted blobs ride
+  // _prepareEnvelopeMetaAsync's worker verdict before a card rebuild. The sync twin stays
+  // authoritative for every sync caller (title list, sync load, deleteSlot).
+  async _slotIndexWithFallbackAsync(burst = null) {
+    const { sig, raws } = burst && burst.sig != null ? burst
+      : (burst ? Object.assign(burst, this._slotStoreSignature()) : this._slotStoreSignature());
+    const cache = this._slotIndexCache;
+    if (cache && cache.sig === sig) return { ...cache.merged };
+    const inFlight = this._slotIndexValidationInFlight;
+    if (inFlight && inFlight.sig === sig && inFlight.promise) {
+      try { await inFlight.promise; } catch (err) { /* publish stays best-effort */ }
+      const settled = this._slotIndexCache;
+      if (settled && settled.sig === sig) return { ...settled.merged };
+      // No publish means the generation moved mid-ride — re-sign so the walk below
+      // reads current bytes instead of the stale collect.
+      const fresh = this._slotStoreSignature();
+      if (fresh.sig !== sig) return this._slotIndexWithFallbackAsync(burst || null);
+    }
+    // The signature collect above already paid its getItem walk on this task — break
+    // before the scans so the miss can't fuse the whole store read into one frame.
+    await this._restoreFrameYield();
+    const indexed = normalizeSlotIndex(this._readIndex());
+    const scanned = await this._scanStoredSlotsAsync(indexed, raws);
+    const recovered = await this._scanRecoverySlotsAsync(indexed, scanned, raws);
+    const merged = mergeSlotIndexes(indexed, scanned);
+    for (const slot in recovered) {
+      merged[slot] = Object.assign({}, merged[slot] || {}, recovered[slot], {
+        slot,
+        recoveryAvailable: true,
+        integrity: 'recovery',
+      });
+    }
+    for (const slot in merged) {
+      if (!scanned[slot] && !recovered[slot]) delete merged[slot];
+    }
+    for (const slot in merged) {
+      const m = merged[slot];
+      if (m && (m._blobHash !== undefined || m._recoveryBlobHash !== undefined || m._recoveryCard !== undefined)) {
+        merged[slot] = Object.assign({}, m);
+        delete merged[slot]._blobHash;
+        delete merged[slot]._recoveryBlobHash;
+        delete merged[slot]._recoveryCard;
+      }
+    }
+    this._slotIndexCache = { sig, merged, authoritative: true };
+    this._maybeSpeculateContinuePrepare(sig, merged, raws);
+    return { ...merged };
+  },
+
   // Menu-visible slot cards without blob validation: index entries whose primary key still
   // exists, plus recovery-only slots via the rotation-stamped recovery card. O(key names), no
   // getItem — the authoritative scan still gates Continue/Save&Load, so a stale card only ever
@@ -2237,7 +2296,7 @@ export const save = {
   _scheduleSlotIndexValidation(sig) {
     if (this._slotIndexValidationSig === sig) return;
     this._slotIndexValidationSig = sig;
-    (async () => {
+    const promise = (async () => {
       try {
         if (typeof localStorage === 'undefined') return;
         // An authoritative same-generation scan already hash-verified every blob — the walk
@@ -2328,8 +2387,15 @@ export const save = {
         this._slotIndexCache = { sig, merged, authoritative: false };
         this._maybeSpeculateContinuePrepare(sig, merged, primaryRaws);
         if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('save:slotsValidated', {});
-      } catch (err) { /* validation is best-effort */ }
+      } catch (err) { /* validation is best-effort */ } finally {
+        if (this._slotIndexValidationInFlight && this._slotIndexValidationInFlight.sig === sig) {
+          this._slotIndexValidationInFlight = null;
+        }
+      }
     })();
+    // Continue's async fallback consult rides this pass's publish instead of paying a
+    // parallel enumerate+meta walk when a click lands mid-validation.
+    this._slotIndexValidationInFlight = { sig, promise };
   },
 
   // The newest occupied slot is almost certainly what Continue resolves on the next click —
@@ -2472,6 +2538,58 @@ export const save = {
     return out;
   },
 
+  // Async twin of _scanStoredSlots for the Continue lane: identical verdict contract
+  // (hash-trusted index card, else full meta verdict, else the gzip peek keeps the slot
+  // discoverable), but the walk yields every 16 keys and each untrusted blob pays its
+  // parse+checksum on the save worker via _prepareEnvelopeMetaAsync instead of bricking
+  // the click frame. A verified-ok blob still rebuilds its card through the sync meta —
+  // same shape _scheduleSlotIndexValidation's publish leg uses — one bounded prepare per
+  // foreign write, yields in between.
+  async _scanStoredSlotsAsync(indexed = {}, raws = null) {
+    const out = {};
+    if (raws == null && typeof localStorage === 'undefined') return out;
+    try {
+      const entries = raws != null ? [...raws.entries()] : (() => {
+        const list = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          list.push([key, localStorage.getItem(key)]);
+        }
+        return list;
+      })();
+      let n = 0;
+      for (const [key, raw] of entries) {
+        if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
+        const slot = key.slice(LS_PREFIX.length);
+        if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+        const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
+        if (indexCard && typeof indexCard._blobHash === 'string' && typeof raw === 'string'
+            && fnv1a(raw) === indexCard._blobHash) {
+          const trusted = Object.assign({}, indexCard);
+          delete trusted._blobHash;
+          out[slot] = trusted;
+        } else {
+          const verdict = await this._prepareEnvelopeMetaAsync(raw);
+          const env = verdict && verdict.ok ? this._prepareEnvelopeMeta(raw) : null;
+          if (env) {
+            // Card straight off the envelope, same as the sync twin — the checksum already
+            // ran inside the meta, so the post-migration re-verify can never misfire.
+            const meta = slotCardFromEnvelopeData(slot, env, null);
+            if (meta) out[slot] = meta;
+          } else {
+            const peek = this._peekSaveEnvelope(raw);
+            const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
+            if (meta) out[slot] = meta;
+          }
+        }
+        if (++n % 16 === 0) await this._restoreFrameYield();
+      }
+    } catch (err) {
+      // localStorage scans are a recovery path; never break title/load screens.
+    }
+    return out;
+  },
+
   _scanRecoverySlots(indexed = {}, primarySlots = {}, raws = null) {
     const out = {};
     if (raws == null && typeof localStorage === 'undefined') return out;
@@ -2503,6 +2621,49 @@ export const save = {
         const peek = this._peekSaveEnvelope(raw);
         const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
         if (meta) out[slot] = meta;
+      }
+    } catch (err) {
+      // Backup discovery is best-effort; explicit load still attempts the named recovery key.
+    }
+    return out;
+  },
+
+  // Async twin of _scanRecoverySlots — same fingerprint-trust / verdict / peek contract
+  // with the same yields and worker verdicts as _scanStoredSlotsAsync.
+  async _scanRecoverySlotsAsync(indexed = {}, primarySlots = {}, raws = null) {
+    const out = {};
+    if (raws == null && typeof localStorage === 'undefined') return out;
+    try {
+      const entries = raws != null ? [...raws.entries()] : (() => {
+        const list = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          list.push([key, localStorage.getItem(key)]);
+        }
+        return list;
+      })();
+      let n = 0;
+      for (const [key, raw] of entries) {
+        if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
+        const slot = key.slice(RECOVERY_PREFIX.length);
+        if (!slot || isUnsafePlainKey(slot) || primarySlots[slot]) continue;
+        const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
+        if (indexCard && typeof indexCard._recoveryBlobHash === 'string' && typeof raw === 'string'
+            && fnv1a(raw) === indexCard._recoveryBlobHash && indexCard._recoveryCard) {
+          out[slot] = clonePlain(indexCard._recoveryCard);
+        } else {
+          const verdict = await this._prepareEnvelopeMetaAsync(raw);
+          const env = verdict && verdict.ok ? this._prepareEnvelopeMeta(raw) : null;
+          if (env) {
+            const meta = slotCardFromEnvelopeData(slot, env, null);
+            if (meta) out[slot] = meta;
+          } else {
+            const peek = this._peekSaveEnvelope(raw);
+            const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
+            if (meta) out[slot] = meta;
+          }
+        }
+        if (++n % 16 === 0) await this._restoreFrameYield();
       }
     } catch (err) {
       // Backup discovery is best-effort; explicit load still attempts the named recovery key.
@@ -2624,6 +2785,13 @@ export const save = {
     return selectLatestOccupiedSlot(idx);
   },
 
+  // Async twin for the Continue lane — identical verdict, but the index fallback rides
+  // the sliced async walk instead of paying the atomic scan on the click task.
+  async _latestSlotAsync(burst = null) {
+    const idx = await this._slotIndexWithFallbackAsync(burst);
+    return selectLatestOccupiedSlot(idx);
+  },
+
   // INF-091: when Continue resolves past a NEWER raw-indexed slot, say so explicitly instead of
   // silently downgrading. Returns { slot, reason, recoveryReason } when the newest raw-indexed
   // slot has no playable generation in either copy, else null. Both generations are re-validated
@@ -2664,7 +2832,7 @@ export const save = {
     } catch (err) { return null; }
     const best = selectLatestOccupiedSlot(raw);
     if (!best) return null;
-    if (this._latestSlot(burst) === best) return null; // newest is playable — no skip
+    if (await this._latestSlotAsync(burst) === best) return null; // newest is playable — no skip
     let primaryRaw = null, backupRaw = null;
     try {
       primaryRaw = localStorage.getItem(LS_PREFIX + best);
@@ -4395,7 +4563,7 @@ export const save = {
     if (slot === 'latest') {
       const slotBurst = {};
       try { skippedNewer = await this._newerUnplayableSkipAsync(slotBurst); } catch (err) { skippedNewer = null; }
-      const resolved = this._latestSlot(slotBurst);
+      const resolved = await this._latestSlotAsync(slotBurst);
       if (!resolved) {
         this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
           skippedNewer ? { skippedNewer } : null));
@@ -4434,8 +4602,17 @@ export const save = {
     let rollbackSnapshot = null;
     let rollbackSnapshotError = null;
     if (this._hasPlayerEntity()) {
-      try { rollbackSnapshot = await this._captureRollbackSnapshotAsync(); }
-      catch (err) { rollbackSnapshotError = err; }
+      if (this._frozenTickBoundary()) {
+        try { rollbackSnapshot = await this._captureRollbackSnapshotAsync(); }
+        catch (err) { rollbackSnapshotError = err; }
+      } else {
+        // A live-sim capture can't slice coherently on this task — defer it into the
+        // restore session, where its scale-0 + _restoring gates hold the sim frozen and
+        // the same sliced walk pays the O(world) serialize across frames instead of
+        // bricking this click+1 continuation. _restoreAsync/_restore resolve the marker
+        // to a real snapshot before the first destructive chunk runs.
+        rollbackSnapshot = { deferred: true };
+      }
     } else {
       rollbackSnapshot = { notNeeded: true };
     }
@@ -4891,6 +5068,13 @@ export const save = {
   // against the pre-restore snapshot when one exists. Rollback rides the caller's own lane —
   // the async Continue path's second failure chunks the rollback the same as the first.
   _handleLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt) {
+    const marker = rollbackSnapshot;
+    if (marker && marker.deferred === true) {
+      if (!marker.resolved && marker.error) {
+        return this._deferredCaptureFailure(slot, options, marker.error);
+      }
+      rollbackSnapshot = marker.resolved;
+    }
     const failure = this._beginLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
     if (failure === null) return false;
     let rollbackError = null;
@@ -4917,6 +5101,13 @@ export const save = {
   // chunks so a double-failure on the Continue lane stays paintable instead of re-running the
   // whole restore as one uninterruptible block behind the veil.
   async _handleLoadFailureAsync(err, slot, options, rollbackSnapshot, rollbackAttempt) {
+    const marker = rollbackSnapshot;
+    if (marker && marker.deferred === true) {
+      if (!marker.resolved && marker.error) {
+        return this._deferredCaptureFailure(slot, options, marker.error);
+      }
+      rollbackSnapshot = marker.resolved;
+    }
     const failure = this._beginLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
     if (failure === null) return false;
     let rollbackError = null;
@@ -4936,6 +5127,22 @@ export const save = {
       this._rollbackInProgress = false;
     }
     this._endLoadFailure(failure, rollbackError);
+    return false;
+  },
+
+  // A deferred rollback capture that refused inside the opened session reports the same
+  // pre-destructive receipt the eager capture arm emits: the restore closed before any
+  // chunk ran, so the world is intact and there is nothing to roll back to.
+  _deferredCaptureFailure(slot, options, captureError) {
+    console.error('[save] rollback snapshot failed', captureError);
+    if (options.emitError !== false) {
+      this.bus.emit('save:error', {
+        slot,
+        reason: 'restore_prepare_failed',
+        rollback: 'unavailable',
+        error: restoreErrorMessage(captureError),
+      });
+    }
     return false;
   },
 
@@ -5043,10 +5250,16 @@ export const save = {
         rollbackSnapshot = options.rollbackSnapshot;
         rollbackSnapshotError = options.rollbackSnapshotError || null;
       } else if (this._hasPlayerEntity()) {
-        try {
-          rollbackSnapshot = this._captureRollbackSnapshot();
-        } catch (err) {
-          rollbackSnapshotError = err;
+        if (this._frozenTickBoundary()) {
+          try {
+            rollbackSnapshot = await this._captureRollbackSnapshotAsync();
+          } catch (err) {
+            rollbackSnapshotError = err;
+          }
+        } else {
+          // Same deferral contract as loadAsync's live-sim lane — the atomic capture
+          // used to run here on this task regardless of caller.
+          rollbackSnapshot = { deferred: true };
         }
       } else {
         rollbackSnapshot = { notNeeded: true };
@@ -5119,7 +5332,7 @@ export const save = {
   // generator drives with frame yields between sections instead — same bytes, spread across frames. Every pass after the capture walks
   // the detached copy, so clone → migrate → normalize yield a frame between them
   // (same pacing _prepareEnvelopeStringAsync uses) instead of extending the capture brick.
-  async _captureRollbackSnapshotAsync() {
+  async _captureRollbackSnapshotAsync(frozenBoundary) {
     const state = this.state;
     const slot = state && state.save && state.save.currentSlot
       ? state.save.currentSlot
@@ -5128,8 +5341,9 @@ export const save = {
     this._rollbackCaptureActive = true;
     let data;
     try {
-      if (this.state && this._frozenTickBoundary()) {
-        data = await this._serializeDataFrozenAsync();
+      if (this.state && (this._frozenTickBoundary()
+          || (typeof frozenBoundary === 'function' && frozenBoundary()))) {
+        data = await this._serializeDataFrozenAsync(frozenBoundary);
       } else {
         data = this.serializeData();
       }
@@ -5193,6 +5407,19 @@ export const save = {
     }
 
     const s = this._openRestoreSession(data, slot, options);
+    if (options.rollbackSnapshot && options.rollbackSnapshot.deferred === true) {
+      // The sync drive can't pace the capture across frames — the identical atomic
+      // capture still lands inside the frozen session, before the first destructive chunk.
+      const marker = options.rollbackSnapshot;
+      try {
+        marker.resolved = this._captureRollbackSnapshot();
+        options.rollbackSnapshot = marker.resolved;
+      } catch (error) {
+        marker.error = error;
+        options.rollbackSnapshot = null;
+        return this._closeRestoreSession(s, error);
+      }
+    }
     const it = this._restoreChunks(s);
     let restoreError = null;
     try {
@@ -5237,6 +5464,23 @@ export const save = {
     }
 
     const s = this._openRestoreSession(data, slot, options);
+    if (options.rollbackSnapshot && options.rollbackSnapshot.deferred === true) {
+      // A live-sim caller deferred its O(world) rollback capture to this point — the
+      // session's scale-0 freeze + _restoring-gated writes hold the sim still between
+      // yields, so the same sliced walk pays it across frames and still completes before
+      // the first destructive chunk. The marker must resolve to real snapshot data (or a
+      // refusal) before the generator runs, or a later chunk failure would consume the
+      // marker itself as rollback data.
+      const marker = options.rollbackSnapshot;
+      try {
+        marker.resolved = await this._captureRollbackSnapshotAsync(() => this._restoring === true);
+        options.rollbackSnapshot = marker.resolved;
+      } catch (error) {
+        marker.error = error;
+        options.rollbackSnapshot = null;
+        return this._closeRestoreSession(s, error);
+      }
+    }
     const it = this._restoreChunks(s);
     let restoreError = null;
     // Chunks pay a frame boundary only once the last one is at least a frame old — a
