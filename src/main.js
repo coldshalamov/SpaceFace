@@ -577,12 +577,12 @@ async function bootstrapScene(state, helpers, bus, registry, options = {}) {
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
 async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
-  const newGamePlus = resolveNewGamePlusOverlay(registry, opts);
   // The dynamic authority's bring-up (Rapier WASM compile + world construction) is pure CPU
   // work with no dependency on authored assets or the GPU cook. Kicked at scenePrepared it
   // overlaps the whole readiness chain instead of sitting as a serial stage at the end;
   // waitForPhysics below still gates flight on the same promise.
   let physicsPrep = null;
+  let newGamePlus = null;
   return runNewGameStartTransition({
     guard: runTransitionGuard,
     token: transitionToken,
@@ -590,6 +590,11 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // The veil goes up before the roster clear: a populated sector's entity:destroyed fan-out
       // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
       enterLoadingMode(state, bus);
+      // The NG+ overlay revalidates its source slot — up to two O(save) envelope prepares —
+      // so it resolves under the veil through the yielded twin instead of bricking the
+      // click task pre-veil. A resolve failure lands in the transition's discard path
+      // (veil drops, roster restore aborted) identically to any other prepareRun fault.
+      newGamePlus = await resolveNewGamePlusOverlay(registry, opts);
       let cleared = 0;
       for (const e of [...state.entityList]) {
         clearEntityRuntime(e);
@@ -858,13 +863,15 @@ function applyStarterPick(state, ships, opts) {
   }
 }
 
-function resolveNewGamePlusOverlay(registry, opts = {}) {
+async function resolveNewGamePlusOverlay(registry, opts = {}) {
   const request = opts && opts.newGamePlus;
   if (!request) return null;
   const saveSystem = registry && typeof registry.get === 'function' ? registry.get('save') : null;
-  const overlay = saveSystem && typeof saveSystem.prepareNewGamePlus === 'function'
-    ? saveSystem.prepareNewGamePlus(request)
-    : null;
+  const overlay = saveSystem && typeof saveSystem.prepareNewGamePlusAsync === 'function'
+    ? await saveSystem.prepareNewGamePlusAsync(request)
+    : (saveSystem && typeof saveSystem.prepareNewGamePlus === 'function'
+      ? saveSystem.prepareNewGamePlus(request)
+      : null);
   if (overlay) return overlay;
   throw new GameStartReadinessError(
     'NEW_GAME_PLUS_UNAVAILABLE',

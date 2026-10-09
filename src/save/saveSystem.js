@@ -110,7 +110,9 @@ let _onSaveStoreBump = null;
 function bumpSaveStoreGeneration(key) {
   if (key != null) {
     const k = String(key);
-    if (!k.startsWith(LS_PREFIX) && !k.startsWith(RECOVERY_PREFIX)) return;
+    // sf.settings.* rows ride the shared-store mirror too; an untracked settings write
+    // inside a collect's generation bracket can ship a stale row in the materialized map.
+    if (!k.startsWith(LS_PREFIX) && !k.startsWith(RECOVERY_PREFIX) && !k.startsWith('sf.settings.')) return;
   }
   _saveStoreGeneration++;
   if (_onSaveStoreBump) {
@@ -2574,6 +2576,18 @@ export const save = {
     });
   },
 
+  /** Yielded twin of prepareNewGamePlus — same projection, prepared on the sliced async lane. */
+  async prepareNewGamePlusAsync(selection = {}) {
+    const slot = selection && selection.slot ? String(selection.slot) : null;
+    if (!slot) return null;
+    const prepared = await this._prepareNewGamePlusSlotAsync(slot);
+    if (!prepared) return null;
+    return buildNewGamePlusOverlay(prepared.data, selection, {
+      slot: prepared.slot,
+      savedAt: prepared.env && prepared.env.savedAt,
+    });
+  },
+
   _prepareNewGamePlusSlot(slot) {
     if (!slot || isUnsafePlainKey(slot) || typeof localStorage === 'undefined') return null;
     let primaryRaw = null;
@@ -3415,7 +3429,14 @@ export const save = {
         }
         // A bounded encode that refused its envelope carries the named reason — that verdict
         // IS the answer the caller reports, not a transport fault the sync lane re-derives.
-        if (message.ok === false) return settle({ ok: false, reason: message.reason || 'save_size_limit' });
+        // The worker's bounded failures carry limit/actual like the sync lane's — forward them
+        // so the receipt names the bound it tripped instead of a bare reason.
+        if (message.ok === false) return settle({
+          ok: false,
+          reason: message.reason || 'save_size_limit',
+          ...(message.limit != null ? { limit: message.limit } : {}),
+          ...(message.actual != null ? { actual: message.actual } : {}),
+        });
         if (typeof message.json !== 'string') return settle({ ok: false, reason: 'save_worker_failed' });
         settle({
           ok: true,
@@ -4323,8 +4344,12 @@ export const save = {
         try {
           localStorage.setItem(LS_PREFIX + slot, backupRaw);
           promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
-          if (promoted) this._updateIndex(slot, backup.env, backupRaw);
-          if (promoted) this._queueSharedStoreMirror();
+          if (promoted) {
+            const indexJson = this._updateIndex(slot, backup.env, backupRaw);
+            this._queueSharedStoreMirror(typeof indexJson === 'string'
+              ? { [LS_PREFIX + slot]: backupRaw, [INDEX_KEY]: indexJson }
+              : { [LS_PREFIX + slot]: backupRaw });
+          }
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
         this._publishRecovery({
           slot,
@@ -4433,8 +4458,12 @@ export const save = {
         try {
           localStorage.setItem(LS_PREFIX + slot, backupRaw);
           promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
-          if (promoted) this._updateIndex(slot, backup.env, backupRaw);
-          if (promoted) this._queueSharedStoreMirror();
+          if (promoted) {
+            const indexJson = this._updateIndex(slot, backup.env, backupRaw);
+            this._queueSharedStoreMirror(typeof indexJson === 'string'
+              ? { [LS_PREFIX + slot]: backupRaw, [INDEX_KEY]: indexJson }
+              : { [LS_PREFIX + slot]: backupRaw });
+          }
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
         this._publishRecovery({
           slot,
