@@ -42,6 +42,8 @@ uniform float uTremble;   // 0..1 — strain * calm: the high-frequency shiver (
 uniform float uLeanZ;     // local-units lateral bend: the glass flexes toward the
                           // orbiting clump instead of the mouth sliding off a
                           // rigid silhouette (rim takes full lean, nose none)
+uniform vec2 uGulp;       // x = meal-graded amplitude, y = swallow start (uTime) —
+                          // a gulp band enters at the rim and runs to the apex
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -57,7 +59,13 @@ void main() {
                // strain tremble: a high-frequency shiver layered on the metronome
                // waves — under load the GLASS itself reads stressed, not just brighter.
                + uTremble * 0.6 * sin(uv.y * 110.0 - uTime * 60.0 + ang * 6.0);
-  float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * (1.0 + uMass * 0.3) * uCalm;
+  // The swallow swells the skin where the band is passing: same gk band as the
+  // fragment's — the glass physically fattens around the meal as it runs aft.
+  // uCalm is already inside amp, so the vertex side inherits the motion gate.
+  float gkv = (uTime - uGulp.y) / 0.22;
+  float swell = (gkv >= 0.0 && gkv <= 1.0)
+    ? uGulp.x * (1.0 - gkv) * exp(-pow((uv.y - (1.0 - gkv)) * 7.0, 2.0)) : 0.0;
+  float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * (1.0 + uMass * 0.3) * uCalm * (1.0 + swell * 2.0);
   vec2 radial = p.xz;
   float rl = max(length(radial), 1e-4);
   p.xz += (radial / rl) * ripple * amp;
@@ -77,6 +85,8 @@ uniform float uAlpha;
 uniform float uPulse;
 uniform float uCalm;      // reduced motion freezes the traveling shimmer too
 uniform float uStrain;    // raw strain — hue warn is a color read, NOT calm-gated
+uniform vec2 uGulp;       // x = meal-graded amp, y = swallow start — the band
+                          // enters at the rim, runs to the apex (~0.22 s)
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -99,11 +109,19 @@ void main() {
   float bands = mix(0.25, band * band2, uCalm);
   float rim = smoothstep(0.80, 1.0, vUv.y);
   float apex = smoothstep(0.20, 0.0, vUv.y);
+  // Each meal visibly travels the cone's surface: a brightness band enters at
+  // the rim (uv.y=1) and sweeps to the apex over ~0.22 s, amplitude graded by
+  // the meal — a uniform floor bump brightened the whole glass at once and read
+  // as ambient shimmer instead of a swallow. An event cue, not ambient motion —
+  // deliberately NOT folded by uCalm (like the warn wash).
+  float gk = (uTime - uGulp.y) / 0.22;
+  float gulp = (gk >= 0.0 && gk <= 1.0)
+    ? uGulp.x * (1.0 - gk) * exp(-pow((vUv.y - (1.0 - gk)) * 7.0, 2.0)) : 0.0;
   // The apex anchors the lash's origin a hair harder — against a bright nebula
   // the additive cone can wash the nose end out, and nothing else marks where
   // the beam emits from.
-  float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + bands * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.30);
-  vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4, 0.0, 1.0));
+  float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + bands * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.30 + gulp * 0.30);
+  vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4 + gulp * 0.6, 0.0, 1.0));
   // Strain warning = a warm wash toward uColWarn, not the near-identical rim
   // white — 'about to tear' is chromatic, not just kinetic. Raw strain (not
   // calm-gated): a color read is not motion, reduced-motion users keep it.
@@ -289,6 +307,7 @@ export class GyreSnarePresentation {
       uniforms: {
         uTime: { value: 0 }, uPulse: { value: 0 }, uMass: { value: 0 }, uCalm: { value: 1 }, uStrain: { value: 0 }, uTremble: { value: 0 },
         uLeanZ: { value: 0 },
+        uGulp: { value: new THREE.Vector2(0, -1e4) }, // amp, start time — far past = idle
         uColWarn: { value: new THREE.Color(P.warn) },
         uColGlass: { value: new THREE.Color(glass) },
         uColHot: { value: new THREE.Color(hot) },
@@ -878,8 +897,10 @@ export class GyreSnarePresentation {
       // brace — a const here threw ReferenceError on every frame a spot existed.
       const wakeEase = this._wakeEase = this._wakeRamp * this._wakeRamp * (3 - 2 * this._wakeRamp); // smoothstep
       // The beam projects: the glass GROWS nose→maw over the ignition ramp instead
-      // of fading in already-extended — a lash that shoots out to its reach.
-      const drawLen = len * Math.max(0.12, wakeEase);
+      // of materializing already-extended. Squared — the alpha ramp rides wakeEase
+      // itself, so a linear length ramp still showed a ~60 wu cone on the first
+      // visible frames; the lag makes the extrusion actually read as travel.
+      const drawLen = len * Math.max(0.02, wakeEase * wakeEase);
       // The ~100 ms coil responds geometrically, not just in the pulse floor: the
       // funnel tapers ~7% and the mouth cocks aft a few wu — the glass visibly
       // tenses against the payload it's about to sling.
@@ -1005,11 +1026,13 @@ export class GyreSnarePresentation {
         this._discKick = Math.min(2.0, this._discKick + mealK);
         this._clumpKick = Math.min(2.0, this._clumpKick + mealK);
         this._moteKick = Math.min(2.0, this._moteKick + mealK);
-        // The swallow ripples up the WHOLE glass, not just the mouth: a floor bump
-        // on the shared pulse so each meal visibly travels the cone's surface.
-        // The floor grades by meal size like the three kicks beside it — a pebble
-        // shouldn't swell the cone like a wreck (0.12–0.3 across mealK's range).
-        this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.2 * mealK);
+        // The swallow ripples up the WHOLE glass, not just the mouth: a
+        // meal-graded band enters at the rim and sweeps to the apex (~0.22 s) —
+        // each meal visibly travels the cone's surface. A retrigger re-enters
+        // at the rim keeping a third of the last gulp's heat, capped at 1.5.
+        const uG = this._coneMat.uniforms.uGulp.value;
+        uG.x = Math.min(1.5, uG.x * 0.35 + mealK * 0.45);
+        uG.y = this.time;
         // The gulp lands on the side the mass actually hit — the member ledger's
         // approach direction (world frame) biases the funnel's aim while the kick lasts.
         this._gulpDirX = finite(mirror.absorbDir && mirror.absorbDir.x);
