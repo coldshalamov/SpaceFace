@@ -1005,8 +1005,11 @@ export const gyreSnare = {
           // offset — positive angular momentum about the maw, the SAME direction
           // the orbit slot integrates (orbitDir·rate on (cos,sin)). The old
           // (dz, −dx) term counter-stirred the clump's revolve on every hold.
-          ax -= (dz / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper;
-          az += (dx / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper;
+          // The courtesy discount folds into the stir too — wedge/tug fold it
+          // into their base terms; without it a towed body corkscrewed ~2.3x
+          // harder per unit pull than a meal.
+          ax -= (dz / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper * (absorbable ? 1 : D.nonAbsorbablePull);
+          az += (dx / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper * (absorbable ? 1 : D.nonAbsorbablePull);
         }
         // Frame damping inside the basin: settle relative to the ship so captures stick.
         ax -= (finite(e.vel && e.vel.x) - shipVx) * D.basinDamping;

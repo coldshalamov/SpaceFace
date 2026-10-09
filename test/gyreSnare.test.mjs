@@ -1098,6 +1098,32 @@ test('the wedge courtesy lane corkscrews — a mid-cone body spirals in, not ray
   t.cleanup();
 });
 
+test('the basin lane corkscrews — the strongest stir rides the eased stir sign', () => {
+  // boot() not bootPhysics(): queued impulses survive the step, so the
+  // radial/tangential decomposition reads clean — the same gap that let the
+  // wave-126 counter-stir live ~86 waves transitively covered.
+  const t = boot();
+  // Parked in the basin, past the snag band — the pull owns it but never cores it.
+  const body = rock(t.sim, T.mawDist + 55, 0, T.rockMass, 4);
+  hold(t);
+  for (let i = 0; i < 6; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'beaming');
+  const cmd = consumePhysicsCommand(body);
+  assert.ok(cmd && cmd.impulses && cmd.impulses.length >= 1, 'the basin pulls its body');
+  let ix = 0, iz = 0;
+  for (const imp of cmd.impulses) { ix += imp.x; iz += imp.z; }
+  const dx = body.pos.x - T.mawDist, dz = body.pos.z; // outward radial from the maw
+  const dist = Math.hypot(dx, dz);
+  const radial = ix * (dx / dist) + iz * (dz / dist);   // inward drag → negative
+  // Co-rotating tangent (−dz,+dx)/dist — positive angular momentum about the
+  // maw, the direction the clump's own orbit integrates.
+  const perp = ix * -(dz / dist) + iz * (dx / dist);
+  const swirl = t.sys._rt.swirlBlend;
+  assert.ok(radial < 0, `the basin drags inward (radial=${radial.toFixed(1)})`);
+  assert.ok(Math.sign(perp) === Math.sign(swirl),
+    `the basin stirs WITH the revolve (perp=${perp.toFixed(1)}, swirl=${swirl.toFixed(2)})`);
+});
+
 test('published cone rim equals the wedge rim at the maw plane, floored at basinRadius', async () => {
   const t = await bootPhysics(4242, { playerRadius: 60 }); // capital hull — apex rides far ahead
   hold(t);
