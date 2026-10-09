@@ -346,6 +346,38 @@
     "boot-loading: saturated false (streak 0/3)",
     "in-flight-hitches: saturated false (streak 0/3)"
    ]
+  },
+  {
+   "wave": 124,
+   "head": "a65ee22b8",
+   "lanes": {
+    "popin-admission": {
+     "saturated": false,
+     "streak": 0,
+     "findings": 5,
+     "landed": 4,
+     "commits": [
+      "ece6d36d5"
+     ],
+     "headline": "freedBytesForSelection per-selection O(S·U·E) rescan replaced by incremental per-unit remaining-count (~150-600x on the dominant plan leg, MECHANISM VERIFIED + CPU-measured); rotateSectorDeferred call-time decisions consult the newest REQUESTED target with seq-guarded repoint — stale-sector warm coverage/dropped reversals closed (F1); selectEvictions dead legs folded (kind-gated spread, lazy sum, decorated sort, no index map); validatedUnits row memo + two-set sweep iteration (F5).",
+     "deferred": [
+      "F3 sector→entity index — declined: ~15 sector restamp sites outside the index funnel make a maintained map unprovable; index.version misses post-append restamps → stale memo under-warms or throws spurious fail-closed cert errors"
+     ]
+    },
+    "boot-loading": {
+     "status": "auditing",
+     "session": "d6109b5c"
+    },
+    "in-flight-hitches": {
+     "status": "queued on SWE-2 cap"
+    }
+   },
+   "verdicts": [
+    "lod-in-frame: CLOSED (closed at W123, no wave-124 audit)",
+    "popin-admission: saturated false (streak 0/3)",
+    "boot-loading: auditing",
+    "in-flight-hitches: queued"
+   ]
   }
  ],
  "laneStatus": {
