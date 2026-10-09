@@ -2490,3 +2490,18 @@ Saturation: 1 of 4 reporting lanes (streak 2/3 by wave verdict).
 
 Wave 123 saturation streaks: lod CLOSED (3/3), popin 0/3, boot 0/3, hitches 0/3.
 
+
+## Wave 124 (in progress — HEAD ece6d36d5)
+
+### popin-admission — `saturated: false` (F1+F2+F4+F5 landed `ece6d36d5`, F3 declined)
+
+- **popin F2 (H, MECHANISM_VERIFIED + CPU-measured) — the per-selection `freedBytesForSelection` rescan was O(S·U·E) inside the atomic `governor.plan` call**: replaced with an incremental per-unit `remaining` counter (O(U)+O(selected-units) total); the census's `entryUnitIds` projection (already computed in the same fold) rides in as a plan option, so the enforce path pays ~0 setup. The lane's synthetic N=4000/8000 plan measured 150.7/624.7ms with ~92% in this leg — incremental model ~1ms. Eviction order and receipts are unchanged by construction.
+- **popin F1 (M-H, MECHANISM_VERIFIED) — `rotateSectorDeferred` derived the departing sector eagerly off a `currentSectorId` that lags one queued rotation**: wrong-sector warm coverage, doubled release+retain+coverage per crossing, and dropped B→A reversals. Call-time decisions now consult the newest REQUESTED target (`pendingSectorTarget`); each rotate mints a seq and the queued iterator repoints only while still the newest APPLIED rotation — a sync/cheap-path supersede can no longer regress the pointer; `repin` consumes queued seqs; an abandoned mint clears its pending marker so the next request re-derives live.
+- **popin F4 (M, MECHANISM_VERIFIED) — `selectEvictions`' dead legs**: rows already stamped with this call's kind/bytes (the governorRow memos) skip the O(A) object-spread; the summed-bytes fallback is computed lazily only when `initialResidentBytes` isn't supplied; the sort decorates `evictionPriority` once per entry (O(A) predicate evals, identical order); the O(A) `entryIndexes` map is deleted outright.
+- **popin F5 (S/L, MECHANISM_VERIFIED)** — `memoryUnitList(row)` per-enforce re-dedup/re-validation replaced by a `validatedUnits` memo minted inside `governorEntry`; the sweep's per-pass `[...a, ...b]` concat is a two-set generator.
+- **popin F3 (declined — funnel coverage unprovable)** — a maintained `Map<sectorId, entity[]>` needs every `homeSectorId`/`data.sectorId` write funneled; ~15 restamp sites live outside the index path (`aftermathWrecks:1856`, `ambientPredation:1002`, `encounterDirector:1393`, …) and `index.version` misses post-append restamps on already-indexed entities. A stale memo would either under-warm (the pop-in defect) or mint spurious `SPACEFACE_SECTOR_PREWARM_INCOMPLETE_PUBLICATION` fail-closed throws at certification. Revisit with a dedicated sector-write epoch funneled through the index path.
+- Golden `0b33dde` bit-identical; 75/76 focused tests green (headless real-GLB traversal 120s timeout = documented env-bound canon).
+- Regression notes (lane-verified on `f33dc3058`): paced save chain, async export, corpse sweep gating, diagnostics quarantine, W123 single-fold census + blocked member set — all PASS.
+
+### boot-loading — lane `d6109b5c` auditing
+### in-flight-hitches — queued on SWE-2 cap (spawns as slots free)
