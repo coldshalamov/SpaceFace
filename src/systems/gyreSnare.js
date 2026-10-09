@@ -1539,10 +1539,13 @@ export const gyreSnare = {
         this._evidence(state.tick));
       // The meal's ANGULAR momentum lands too — a spiraling feed doesn't die
       // spinless at the merge. Δω = L/I with L ≈ m·v_t·d, the lever arm being
-      // the CONTACT distance (the meal struck at dist, not at clumpRadius):
-      // a fast corkscrewing wreck visibly quickens the katamari's drift in the
-      // direction it came in on. Capped so a railgun meal quickens, not spins out.
-      const tangential = relX * (-dz / dist) + relZ * (dx / dist);
+      // the CONTACT distance (the meal struck at dist, not at clumpRadius).
+      // v_t is the relative velocity projected on the funnel's OWN co-rotating
+      // tangent (dz,−dx)/dist — the same axis the pull lanes corkscrew on — so a
+      // meal arriving WITH the vortex deposits +angVel (the +0.55 tumble servo
+      // target's sense) instead of counter-spinning against the chirality it
+      // was fed on. Capped so a railgun meal quickens, not spins out.
+      const tangential = relX * (dz / dist) - relZ * (dx / dist);
       const dOmega = Math.max(-0.5, Math.min(0.5, em * tangential * dist / newInertia));
       if (Math.abs(dOmega) > 1e-3) {
         queuePhysicsTorqueImpulse(core, { x: 0, y: newInertia * dOmega, z: 0 }, this._evidence(state.tick));
