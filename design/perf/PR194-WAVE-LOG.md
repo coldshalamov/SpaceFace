@@ -2519,3 +2519,27 @@ Wave 123 saturation streaks: lod CLOSED (3/3), popin 0/3, boot 0/3, hitches 0/3.
 - Golden `0b33dde` bit-identical; 41 focused runner/liveness/lifecycle tests green.
 
 Wave 124 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 0/3.
+
+## Wave 125 (in progress — HEAD b3b142e24)
+
+### popin-admission — `saturated: false` (F1-F4 landed `2ed5695a1`)
+
+- **popin F1 (M, MECHANISM VERIFIED) — entityIndex gains a `bySectorId` lane** keyed on the canonical chain (`e.homeSectorId | data.homeSectorId | data.sectorId | null`, unstamped → null bucket = global): sector-scoped membership reads are now an index lookup instead of an O(entities) scan. `appendEntityIndex`/`removeEntityIndex`/`removeEntitiesFromIndex` stamp `e._indexSectorKey` and bump `laneVersions.sectorMemberships` so every (laneVersion, sectorId) memo invalidates on membership moves.
+- **popin F2 (M) — the W124-declined avenue landed behind a provable funnel**: `syncEntitySectorMembership(index, entity)` is the single production restamp path; `scripts/lib/sectorMembershipGuard.mjs` scans the 16-file restamp allowlist (`ALLOWED_SECTOR_RESTAMP_FILES` + `SECTOR_RESTAMP_CALLER_SYNCED` for the worldRecords caller-synced case) and contract-tests that no out-of-funnel restamp site exists — `violations: []` on the real tree, 9/9 funnel tests green. All 12+ restamp systems (traffic, factionPresence, missions, world, worldSiteRuntime, uniqueWrecks, aftermathWrecks, mothlight, palletJack, asteroidField, farActorTable, npcJobsRuntime incl. the CERES occupational-adoption stamps) now call the funnel.
+- F3 sectorless-retain diagnostic lane + F4 never-started-mint marker lag — both landed.
+- Golden `0b33dde` bit-identical both lanes; sector-membership-index 9/9 green.
+
+### boot-loading — `saturated: false` (all findings landed `9e72466b4`)
+
+- **boot CONTAMINATED-1 (S, MECHANISM VERIFIED) — the last click-path sync brick is under the veil**: `resolveNewGamePlusOverlay` is now async and runs inside `prepareRun` AFTER `enterLoadingMode` raises the veil — the ~2× multi-MB `_prepareNewGamePlusSlot` (parse+preflight+checksum+normalize) no longer bricks the New Run+ click frame with no loading shell up. `prepareNewGamePlusAsync` prefers the sliced `_prepareNewGamePlusSlotAsync` with sync fallback; `newGamePlus` result hoisted to `startNewGame` scope. runNewGameStartTransition's catch→discardRun contract preserved.
+- **mirror delta shipping**: both recovery-promotion sites (:4327 sync / :4437 async) now emit `{[LS_PREFIX+slot]: backupRaw, [INDEX_KEY]: indexJson}` through `_queueSharedStoreMirror` — the whole-corpus chunked collect no longer re-arms per promotion (wasted MB-scale walk → few lines).
+- **worker-encode settle parity**: bound verdicts forward `limit`/`actual` like the sync lane's :1701 receipt.
+- **settings generation tracking**: `bumpSaveStoreGeneration` now tracks `sf.settings.*` — a profile-settings write inside a collect's generation bracket can no longer ship a stale row in the materialized map (races the delta patch; self-heals on next tracked write before, now correctly invalidated).
+- Golden `0b33dde` bit-identical; ~23 save-system focused tests green.
+
+### in-flight-hitches — `saturated: false` (F1 landed `b3b142e24`)
+
+- **hitches F1 (M, MECHANISM VERIFIED + bounded staleness) — classifyWorld's shelved-discovery walk is a cell map**: partition-0 members (shelved tiers + unstamped gap entities — the members the spatial hash cannot see) sit in a coarse 2048wu `Map<cellKey, Set>` keyed on build-time pos inside `selectClassifyEntities`. Quiet passes answer the discovery disc in O(cells + candidates) with the `discover + maxPresence` pad preserving the walk's envelope semantics. The O(list) walk remains the cold build AND a bounded audit sweep every 8th incremental pass, so a silently-moved shelved member is recovered inside the cadence; `PHYSICS_PARTITION_EPOCH` and `entityIndexVersion` movement force immediate rebuilds. `runtime.shelvedDiscovery.walks/queries` counters make the lane observable. New suite classify-shelved-discovery 4/4 — cold-build population, return-visit rediscovery without rebuild, silent-move recovery ≤ audit cadence, tier-flip forced rebuild. This is the avenue W124 deferred as L/UNVERIFIED; landed at M with the determinism hazard designed out (the walk is retained as authority on every stale pass).
+- Enumeration results: 0 retaggable bus listeners; deferred-enter PACED everywhere; W124 machinery intact. H1-H3 deferred — GPU conclusions hardware-unverified on this box.
+
+### skeptic — lane `51c3d7e5` auditing
