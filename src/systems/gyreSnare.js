@@ -168,6 +168,13 @@ function freshRuntime() {
     towCount: 0,           // non-absorbable bodies under tow this tick — loot the beam drags but never eats
     towLatched: false,     // the 0->1 tow edge ticks once — the last silent arrival class
     towLane: null,         // 'basin' | 'suck' — positions the tick where the tow was counted
+    deflectCount: 0,       // projectiles the cone is bending this tick — the weapon's only
+                           // defensive payoff; its own ledger so it never masquerades as tow
+    deflectLane: null,     // 'basin' | 'suck' — positions the 0->1 tick where the bend happened
+    deflectLatched: false, // the 0->1 deflect edge ticks once, latch symmetry with tow
+    ballOverflow: 0,       // live marked balls evicted past ballWatchMax — they keep their
+                           // marks+credit to TTL but leave the watch ledger, so the HUD
+                           // names the silent tail instead of letting it die invisible
     prevPreyD: Infinity,   // last tick's closest absorbable-to-maw distance — the pre-snag
                            // riser only speaks while it CLOSES (orbiters at a fixed seat never chirp)
     snagRiserT: 0,         // ~5-tick gate between riser emits — shimmer, not chatter
@@ -313,6 +320,7 @@ export const gyreSnare = {
     rt.basinCount = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0; // dead-state hygiene — the lag read is HOLD-only but resets like the rest
     rt.basinSpots.length = 0;
@@ -346,6 +354,9 @@ export const gyreSnare = {
     rt.tooHeavyLane = null;
     rt.towLatched = false;
     rt.towLane = null;
+    rt.deflectLatched = false;
+    rt.deflectLane = null;
+    rt.ballOverflow = 0;   // a drop frees every ball — the silent tail dies with the beam
     rt.prevPreyD = Infinity; rt.snagRiserT = 0; // the pre-snag riser's ledgers too —
                                               // latch symmetry: a fresh beam diffs
                                               // its first prey off a clean baseline
@@ -682,7 +693,9 @@ export const gyreSnare = {
       const victim = this.state && this.state.entities ? this.state.entities.get(rt.ballIds[evict]) : null;
       if (victim && victim.alive !== false && victim.data) {
         if (!victim.data.gyreLaunched) this._handBack(victim); // already adopted — full strip
-        else this._disarmBall(victim); // still ours — keep the mark, shed the weapon scale
+        else { this._disarmBall(victim); rt.ballOverflow += 1; } // a LIVE mark leaving the
+        // watch ledger — it flies silent to TTL; the HUD names the pile's tail instead of
+        // letting it die invisible.
       }
       rt.ballIds.splice(evict, 1);
     }
@@ -1015,6 +1028,13 @@ export const gyreSnare = {
         this._rt.towCount += 1;
         this._rt.towLane = 'basin';
       }
+      // Point-defense reads on its own ledger: a projectile the cone bends is the
+      // verb's only defensive payoff — hostile, not towed loot, so it doesn't sit
+      // in towCount and it doesn't stay silent.
+      if (e.type === 'projectile' && pullK > 0.05) {
+        this._rt.deflectCount += 1;
+        this._rt.deflectLane = 'basin';
+      }
       // The gravity edge moves at the cone's own projection speed: the glass
       // takes ~150 ms to reach the maw, so the pull eases in over the same ramp
       // — a parked body no longer starts sliding before the cone visibly arrives.
@@ -1213,8 +1233,10 @@ export const gyreSnare = {
     // The beam keeps sweeping the basin toward the maw — still the funnel throat while
     // the suck lane owns the clump annulus (the clump is what "increases gravity" there).
     // towCount resets above BOTH lanes — a local reset inside _pullPass would wipe
-    // the suck lane's annulus count from the same tick.
+    // the suck lane's annulus count from the same tick. deflectCount rides the same
+    // reset point (its basin half lands in _pullPass too).
     rt.towCount = 0;
+    rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     // The clump's merge is the one irreversible sim mutation — a wreck eaten
     // behind a modal screen can't be unseen, so only _absorb freezes with the
@@ -1332,6 +1354,10 @@ export const gyreSnare = {
           if (admission !== 'too-heavy' && e.type !== 'projectile' && tugK > 0.05) {
             rt.towCount += 1;
             rt.towLane = 'suck'; // the 0->1 tick speaks where the tow was grabbed
+          }
+          if (e.type === 'projectile' && tugK > 0.05) {
+            rt.deflectCount += 1;
+            rt.deflectLane = 'suck';
           }
           // Tugged mass inside the annulus glows at its discounted share too —
           // abs:false: courtesy tows can never be caught, so they never get the hot seat.
@@ -1487,9 +1513,10 @@ export const gyreSnare = {
           id: 'gyre_snare_absorb', gain: 0.7,
           rate: 1.15 - Math.min(0.5, em / 160)
             + 0.3 * Math.pow(Math.min(1, rt.clumpMass / D.maxClumpMass), 0.75),
-          // The meal swallows where the clump IS — off-axis meals play off-axis
-          // like every other body-scoped gyre voice (snag/windup/launch/death).
-          position: { x: core.pos.x, z: core.pos.z },
+          // The gulp speaks at the SKIN CONTACT, not the clump's heart — on a
+          // capped 60 wu ball a center-seated cue sits ~60 wu off the swallow
+          // (the same gap hit-side glints and the funnel dip were authored to fix).
+          position: { x: e.pos.x, z: e.pos.z },
         });
         // The haptic ride shares the gate: a dense belt feed would otherwise hold the
         // pad in a continuous buzz exactly where the audio designers decided it should
@@ -1566,6 +1593,7 @@ export const gyreSnare = {
     rt.basinCount = 0; // the "N in net" read is basin-only — a flying ball owns none
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
+    rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
     // basinSpots deliberately rides through LAUNCH: the victims are still real
@@ -1697,6 +1725,7 @@ export const gyreSnare = {
     rt.basinCount = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;
     rt.basinSpots.length = 0;
@@ -1712,6 +1741,9 @@ export const gyreSnare = {
     rt.tooHeavyLane = null;
     rt.towLatched = false;
     rt.towLane = null;
+    rt.deflectLatched = false;
+    rt.deflectLane = null;
+    rt.ballOverflow = 0;   // a completed bowl ends the pile — the tail dies with it
     rt.prevPreyD = Infinity; rt.snagRiserT = 0; // riser ledgers — twin of the _drop reset
     rt.catchTickPeak = 0;         // drop/finishLaunch reset symmetry — the ratchet
     // dies with the funnel: _publish's latch clear covers non-BEAM ticks anyway
@@ -2008,6 +2040,7 @@ export const gyreSnare = {
       graves: null, thrownBeat: false, thrownTick: 0, basinSpots: null, dropReason: null, fuseS: 0,
       liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
       tornId: null, tornPos: { x: 0, z: 0 }, tornDir: { x: 0, z: 0 },
+      deflectCount: 0, deflectLane: null, ballOverflow: 0,
       // Published unconditionally at rt's rest values — a reader between
       // init and the first publish tick sees these too, not undefined.
       suckRadius: 0, swirlBlend: 1, orbitSeed: 0,
@@ -2049,6 +2082,9 @@ export const gyreSnare = {
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
     pub.towCount = rt.towCount || 0;
+    pub.deflectCount = rt.deflectCount || 0;
+    pub.deflectLane = rt.deflectLane;
+    pub.ballOverflow = rt.ballOverflow || 0;
     pub.tooHeavyCount = rt.tooHeavyCount || 0;
     // Live-ball count publishes on EVERY phase incl. OFF — the HUD's '+N' counts balls
     // still flying while the lash is closed; freezing it here would pin a phantom
@@ -2202,6 +2238,19 @@ export const gyreSnare = {
           position: { x: towAt.x, z: towAt.z },
         });
       } else if (!towing) rt.towLatched = false;
+      // "It's bending their fire": a deflection was invisible except as tow —
+      // the cone's only defensive payoff deserves its own 0->1 edge. Sharper
+      // than the tow tick (hostile steel, not soft loot), quieter than a catch.
+      const deflecting = (rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && rt.deflectCount > 0;
+      if (deflecting && !rt.deflectLatched) {
+        rt.deflectLatched = true;
+        const defAt = rt.deflectLane === 'suck'
+          ? (core && core.pos ? core.pos : pub.corePos) : maw;
+        this.bus.emit('audio:cue', {
+          id: 'gyre_snare_catch', gain: 0.15, rate: 1.6,
+          position: { x: defAt.x, z: defAt.z },
+        });
+      } else if (!deflecting) rt.deflectLatched = false;
       // Pre-snag escalation gets an ear to match its eyes: while the hottest
       // ABSORBABLE closes the dead lip (~2.2x snagR -> snagR) a quiet beam-riser
       // ticks up in pitch. Only fires while it actually closes — an orbiter at
@@ -2635,6 +2684,7 @@ export const gyreSnare = {
       if (rt.phase === PHASE.LAUNCH && rt.launchWindup <= 0 && rt.launchLeft <= 0) this._finishLaunch(state);
     } else if (rt.phase === PHASE.BEAM) {
       rt.towCount = 0;
+      rt.deflectCount = 0;
       rt.tooHeavyCount = 0;
       this._pullPass(dt, state, player, maw, nose);
       // The coring edge is a visible commit — gyreCore mark + lifetime stash +

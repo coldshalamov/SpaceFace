@@ -1263,6 +1263,15 @@ test('a projectile in the basin gets pulled toward the maw but can never core', 
   for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'beaming', 'a shot can never be cored');
   assert.equal(t.state.gyreSnare.towCount, 0, 'a streaking bullet never counts as towed loot');
+  // Point-defense names its own payoff: the shot the cone is bending counts on
+  // deflectCount — its own ledger, never folded into tow — and the HUD rows
+  // speak it (pure DEFLECTING when it's the only job; · DEFLECT ×N alongside).
+  assert.ok(t.state.gyreSnare.deflectCount >= 1, 'the bend reads on its own ledger');
+  assert.equal(t.state.gyreSnare.deflectLane, 'basin');
+  const hud2 = Object.create(gyreHud);
+  hud2.init({ state: t.state });
+  const defRow = hud2._resolve(t.state.gyreSnare, t.state.simTime).text;
+  assert.match(defRow, /DEFLECTING ×1|DEFLECT ×1/, 'a bent volley is never bare SEARCHING: ' + defRow);
   assert.equal(shot.alive, true, 'a shot can never be absorbed');
   assert.ok(shot.vel.x > -35 || Math.abs(speed(shot) - sx0) > 3,
     'the basin visibly tugs the shot (vx -40 -> ' + shot.vel.x.toFixed(1) + ')');
@@ -3142,6 +3151,17 @@ test('an already-adopted ball on watch overflow gets the full hand-back strip', 
   assert.equal(balls[1].data.gyreLaunched, true, 'a still-marked sibling keeps its mark');
   assert.equal(balls[1].physicsBody.impactDamageScale, 8,
     'and its armed payload — the evict lane never touched it');
+  assert.equal(rt.ballOverflow, 0, 'an unmarked eviction is bookkeeping, not a silent ball');
+  // A tenth watch with every slot still live+marked evicts a LIVE ball — it keeps
+  // its marks and flies silent to TTL. ballOverflow names the pile's tail so the
+  // HUD can print "+N" instead of letting it die invisible.
+  const tenth = rock(t.sim, 4100, 0, 6, 4);
+  tenth.data.gyreLaunched = true;
+  tenth.data.despawnAt = t.state.simTime + 60;
+  t.sys._trackBall(tenth.id);
+  assert.equal(rt.ballOverflow, 1, 'a live-marked eviction counts the silent tail');
+  t.sys._publish(t.state, t.state.entities.get(t.state.playerId));
+  assert.equal(t.state.gyreSnare.ballOverflow, 1, 'the tail publishes');
   t.cleanup();
 });
 

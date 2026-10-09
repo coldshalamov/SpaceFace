@@ -570,7 +570,7 @@ export class GyreSnarePresentation {
       + Math.round(finite(member.nx) * 977) + Math.round(finite(member.nz) * 1291)) | 0;
   }
 
-  _addLump(member, i, instant = false) {
+  _addLump(member, i, instant = false, stagger = 0) {
     let slot = null;
     for (const l of this._lumps) if (!l.used) { slot = l; break; }
     if (!slot) {
@@ -589,14 +589,15 @@ export class GyreSnarePresentation {
     // later lumps literally bloom later: a dense feed lands as a wave of arrivals,
     // oldest first, not N lumps in lockstep (nor reverse — a past spawnT would
     // arrive already grown). Capped so a long feed never delays beyond ~0.4 s.
-    slot.spawnT = instant ? this.time
+    slot.spawnT = instant ? this.time + stagger * 0.012
       : this.time + Math.min(this._spawnStagger || 0, 8) * 0.045;
     if (!instant) this._spawnStagger = (this._spawnStagger || 0) + 1;
     // The body the lump replaces vanished THIS tick — seed at nearly half scale so
     // the eye tracks the meal continuously instead of the mesh popping out first.
     // A ledger rebuild isn't a meal: `instant` restores full scale so the same
-    // ball doesn't visibly re-bloom in place.
-    slot.spawnScale = instant ? 1 : 0.45;
+    // ball doesn't visibly re-bloom in place — UNLESS staggered (a rebuild wave
+    // still swells each lump back rather than teleporting it whole).
+    slot.spawnScale = instant ? (stagger ? 0.55 : 1) : 0.45;
     const m = slot.mesh;
     m.material = this._lumpMaterial(member.type);
     // Katamari compaction: the member ledger caps at MAX_LUMPS but the ball keeps
@@ -1130,10 +1131,14 @@ export class GyreSnarePresentation {
             aimT.set(ox * bx + oz * bz, 0, -ox * bz + oz * bx);
           }
         }
-        // Decay, not zero — uAim eases back over ~0.1 s and a hard-zeroed leanZ
-        // snapped the maw/disc to center in one frame while the funnel still
-        // visibly unbent.
-        this._leanZ = (this._leanZ || 0) * Math.exp(-sdt * 8);
+        // The mouth sniffs too: during beaming _leanZ decays to 0 and the maw
+        // stays dead-center while the funnel visibly bends toward the hot seat.
+        // Ease a discounted share of the same aim target into the lean — capped
+        // at ±60 leanZ (±6 wu at the 0.10 draw gain), vs the hold's ±180 seat:
+        // anticipation, not a second gravity well.
+        const sniff = phase === 'beaming' ? Math.max(-60, Math.min(60, aimT.z * 0.7)) : 0;
+        this._leanZ = (this._leanZ || 0) * Math.exp(-sdt * 8)
+          + sniff * (1 - Math.exp(-sdt * 6));
       }
       this._spiralMat.uniforms.uAim.value.lerp(aimT, 1 - Math.exp(-sdt * 8));
       // The drawn vortex stirs the way the sim's basin actually does — swirlBlend is
@@ -1755,7 +1760,10 @@ export class GyreSnarePresentation {
       for (const l of this._lumps) if (l.used) have++;
       for (let i = have; i < want; i++) this._addLump(members[i], i);
       // If the sim restarted the ledger (new core), rebuild.
-      if (want < have) { this._clearLumps(); for (let i = 0; i < want; i++) this._addLump(members[i], i, true); }
+      // A ledger restart re-forms staggered (~12 ms/lump, swell from 0.55) — the
+      // ball visibly re-forms rather than every member teleporting to full scale
+      // in one frame. Correct seats + no rim fly-in (still `instant`).
+      if (want < have) { this._clearLumps(); for (let i = 0; i < want; i++) this._addLump(members[i], i, true, i); }
       // Grow-in: a fresh lump swells 0.45→1× over ~150 ms — katamari stick lands visibly.
       for (const l of this._lumps) {
         if (!l.used) continue;

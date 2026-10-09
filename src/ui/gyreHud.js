@@ -179,8 +179,17 @@ export const gyreHud = {
       ? ` · ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.floor(fuseS)))}s` : '';
     const tow = g.towCount || 0;
     const heavy = g.tooHeavyCount || 0;
+    const deflect = g.deflectCount || 0;
+    // Point-defense names its own payoff: projectiles bent into the maw count on
+    // their own ledger — a volley under tow never reads as retrievable loot, and
+    // a beam whose ONLY job is bending fire still isn't bare SEARCHING.
     const handlingTxt = (tow > 0 ? ` · TOWING ×${tow}` : '')
+      + (deflect > 0 ? ` · DEFLECT ×${deflect}` : '')
       + (heavy > 0 ? ` · TOO HEAVY ×${heavy}` : '');
+    // The watch ledger caps at ballWatchMax — live marks past it fly silent to
+    // TTL. Name the pile's tail instead of letting it die invisible.
+    const over = Math.max(0, g.ballOverflow || 0);
+    const overTxt = over > 0 ? ` · +${over}` : '';
     if (!g.phase || g.phase === 'off') {
       // A thrown clump still on the map deserves a quiet "it's yours" dot for its short flight.
       if (g && g.launchedId != null) {
@@ -199,7 +208,7 @@ export const gyreHud = {
           // The mass text names the same payload the DMG× does — _bowlMass is the
           // clumpMass ledger and can diverge from the frozen ball on an adopter edge.
           const bowlT = Math.round(g.ballMass != null ? g.ballMass : (this._bowlMass || 0));
-          return { text: `GYRE — BOWL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched', fuse: fuseS };
+          return { text: `GYRE — BOWL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
@@ -211,7 +220,7 @@ export const gyreHud = {
         // arc stays legible instead of revealing itself only on impact.
         const dmg = dmgText(g.ballMass || 0);
         const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t · DMG×${dmg}` : `GYRE — BALL AWAY · ${mass}t · DMG×${dmg}`) : 'GYRE — BALL AWAY';
-        return { text: label + ballTxt, cls: 'gyre-ball', fuse: fuseS };
+        return { text: label + ballTxt + overTxt, cls: 'gyre-ball', fuse: fuseS };
       }
       // No primary, but secondaries are still streaking (one retires before the rest) —
       // the pill shouldn't go dark while balls fly. balls[] is ttlS-sorted: [0] dies first.
@@ -232,7 +241,7 @@ export const gyreHud = {
         }
         const sDmg = dmgText(sMassMax);
         const sMassTxt = sMass > 0 ? ` · ${Math.round(sMass)}t · DMG×${sDmg}` : '';
-        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}`, cls: 'gyre-ball', fuse: fuseS };
+        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}${overTxt}`, cls: 'gyre-ball', fuse: fuseS };
       }
       return { text: '', cls: '' };
     }
@@ -306,6 +315,12 @@ export const gyreHud = {
     }
     if (heavy > 0) {
       return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}`, cls: 'gyre-heavy', fuse: fuseS };
+    }
+    if (deflect > 0) {
+      // The defensive-only read: nothing to tow or eat — the cone is purely
+      // bending their fire. Its own word so the pill isn't silent SEARCHING
+      // while the weapon's one defensive payoff does real work.
+      return { text: `GYRE — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
     }
     return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
   },
