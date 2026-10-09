@@ -1438,7 +1438,7 @@ test('basinSpots ride through LAUNCH so the pull glows collapse on the windup', 
 test('a too-heavy body entering the net ticks once — hushed descending variant', async () => {
   const t = await bootPhysics();
   const heavies = () => t.events.filter((e) =>
-    e.name === 'audio:cue' && e.p.id === 'gyre_snare_catch' && e.p.rate === 0.72);
+    e.name === 'audio:cue' && e.p.id === 'gyre_snare_drop' && e.p.gain === 0.14);
   rock(t.sim, T.mawDist + 45, 10, T.maxClumpMass + 1, 4);
   t.state.input.actions.gyreSnare = true; t.sim.step();
   t.state.input.actions.gyreSnare = true; t.sim.step();

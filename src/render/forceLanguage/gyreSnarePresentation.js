@@ -1029,6 +1029,21 @@ export class GyreSnarePresentation {
         }
       } else {
         aimT.set(0, 0, 0);
+        // Searching but not empty-handed: while bodies ride the net the funnel
+        // reaches for the hottest absorbable being dragged — the glass
+        // anticipates the catch instead of staying dead-axial while a rock
+        // visibly spirals in. basinSpots publish k-sorted, so the first
+        // absorbable IS the hot seat the victim glows already picked.
+        if (phase === 'beaming' && mirror.basinSpots) {
+          const hot = mirror.basinSpots.find((s) => s && s.abs);
+          if (hot) {
+            const hl = this.toLocal(finite(hot.x), finite(hot.z), this._hotPt || (this._hotPt = { x: 0, z: 0 }));
+            const ox = hl.x - mL.x, oz = hl.z - mL.z;
+            const inv = len > 0 ? 1 / len : 0;
+            const bx = dx * inv, bz = dz * inv;
+            aimT.set(ox * bx + oz * bz, 0, -ox * bz + oz * bx);
+          }
+        }
         // Decay, not zero — uAim eases back over ~0.1 s and a hard-zeroed leanZ
         // snapped the maw/disc to center in one frame while the funnel still
         // visibly unbent.
@@ -1504,10 +1519,12 @@ export class GyreSnarePresentation {
         const gx = gL.x - mL2.x, gz = gL.z - mL2.z;
         const gd = Math.max(1, Math.hypot(gx, gz));
         // Ride the same vertical bob as the clump's heart — a flat spoke at y=0.55
-        // visibly separated from the ball's drift by up to 0.3 wu.
+        // visibly separated from the ball's drift by up to 0.3 wu. HOLD-gated
+        // like the bob itself: through the coil the payload sits flat at y=0.6
+        // and a floating midpoint would detach on the tautest beat.
         this._grip.position.set(
           mL2.x + gx * 0.5,
-          0.6 + Math.sin(this.time * 0.7 + finite(mirror.orbitSeed)) * 0.3 * calm,
+          0.6 + (phase === 'holding' ? Math.sin(this.time * 0.7 + finite(mirror.orbitSeed)) * 0.3 * calm : 0),
           mL2.z + gz * 0.5,
         );
         this._grip.rotation.y = Math.atan2(-gz, gx);

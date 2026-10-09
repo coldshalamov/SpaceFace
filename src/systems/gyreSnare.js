@@ -149,6 +149,7 @@ function freshRuntime() {
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
     basinCatchLatched: false, // the first basin catch ticks once per empty->net edge
     tooHeavyLatched: false,   // the first UNEATABLE net fill ticks once too — sibling edge
+    tooHeavyLane: null,       // 'basin' | 'suck' — which lane counted the newest too-heavy (positions its tick)
     catchTickPeak: 0,         // escalation ratchet — quieter count-graded ticks fire on each new shown +N peak
     prevBasinN: 0,            // last-published basin count — the re-tick's position follows whichever lane grew
     prevSuckN: 0,             // same for the annulus half
@@ -295,6 +296,7 @@ export const gyreSnare = {
     rt.fuseCueLatched = false;
     rt.basinCatchLatched = false;
     rt.tooHeavyLatched = false;
+    rt.tooHeavyLane = null;
     rt.catchTickPeak = 0;   // the escalation ratchet dies with the beam ledger
     rt.tornTrack = null; // any new drop ends a previous torn body's follow
     // dropped = a live beam/hold released without launch; coreId is null when the beam
@@ -868,6 +870,7 @@ export const gyreSnare = {
       if (e.data && e.data.gyreCore) continue;
       if (remainingMass > 0 && admission === 'too-heavy' && (inBasin || lipT === 0)) {
         this._rt.tooHeavyCount += 1;
+        this._rt.tooHeavyLane = 'basin'; // the voice speaks where the refusal happened
       }
       // Only absorbables get the full basin grab; other dynamics get a courtesy tug so the
       // beam still reads as gravity on them.
@@ -1195,7 +1198,7 @@ export const gyreSnare = {
         // Too heavy to EAT — not too heavy to feel: falls through to the courtesy tug
         // below so the strongest gravity zone (inside owned.r, where the basin lane is
         // suppressed) has no dead spot for a heavy rock hovering at the skin.
-        if (remainingMass > 0) rt.tooHeavyCount += 1;
+        if (remainingMass > 0) { rt.tooHeavyCount += 1; rt.tooHeavyLane = 'suck'; }
       }
       const dx = core.pos.x - e.pos.x;
       const dz = core.pos.z - e.pos.z;
@@ -1582,6 +1585,7 @@ export const gyreSnare = {
     rt.fullCueLatched = false;
     rt.basinCatchLatched = false;
     rt.tooHeavyLatched = false;
+    rt.tooHeavyLane = null;
     rt.catchTickPeak = 0;         // drop/finishLaunch reset symmetry — the ratchet
     // dies with the funnel: _publish's latch clear covers non-BEAM ticks anyway
     rt.launchedId = null;
@@ -2018,9 +2022,16 @@ export const gyreSnare = {
       const heavy = (rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && rt.tooHeavyCount > 0;
       if (heavy && !rt.tooHeavyLatched) {
         rt.tooHeavyLatched = true;
+        // "It can't eat that" lands as a let-DOWN — the descending drop-tail
+        // contour at whisper gain, not the rising catch tick at low pitch.
+        // Position on the lane that counted it: a basin refusal speaks at the
+        // maw, an annulus refusal at the clump's live seat (the +N ratchet's
+        // own rule — up to ~90 wu apart).
+        const heavyAt = rt.tooHeavyLane === 'suck'
+          ? (core && core.pos ? core.pos : pub.corePos) : maw;
         this.bus.emit('audio:cue', {
-          id: 'gyre_snare_catch', gain: 0.14, rate: 0.72,
-          position: { x: maw.x, z: maw.z },
+          id: 'gyre_snare_drop', gain: 0.14, rate: 0.9,
+          position: { x: heavyAt.x, z: heavyAt.z },
         });
       } else if (!heavy) rt.tooHeavyLatched = false;
       // The appetite has a voice while it builds: the shown +N (basin fold +
