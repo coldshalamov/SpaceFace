@@ -1441,12 +1441,24 @@ export const save = {
     const recoveryKey = RECOVERY_PREFIX + slot;
     let previousRaw = null;
     let previousPrepared = null;
-    try { previousRaw = localStorage.getItem(primaryKey); }
-    catch (err) { return { ok: false, reason: 'read_failed', bytes: json.length, stringifyMs, storageMs, indexMs }; }
+    if (options.previousRaw !== undefined) {
+      // Caller already read (and optionally verified) the previous generation on a paced lane.
+      previousRaw = options.previousRaw;
+      previousPrepared = options.previousPrepared || null;
+    } else {
+      try { previousRaw = localStorage.getItem(primaryKey); }
+      catch (err) { return { ok: false, reason: 'read_failed', bytes: json.length, stringifyMs, storageMs, indexMs }; }
+    }
 
     // Refuse to destroy the last known-good generation when storage cannot preserve it. A corrupt
-    // primary is never rotated over an existing good recovery copy.
-    if (previousRaw) previousPrepared = this._prepareEnvelopeString(previousRaw);
+    // primary is never rotated over an existing good recovery copy. The verify consults the
+    // caller-supplied verdict and the proven-envelope cache before paying a whole-ledger sync
+    // prepare — generations this process already verified (its own writes, paced validates,
+    // async prepares) answer O(1) instead.
+    if (previousRaw && !previousPrepared) {
+      previousPrepared = this._cachedPreparedEnvelope(previousRaw) || this._prepareEnvelopeString(previousRaw);
+      this._rememberPreparedEnvelope(previousRaw, previousPrepared);
+    }
     let backupCreated = false;
     if (previousPrepared && previousPrepared.ok) {
       try {
@@ -1537,10 +1549,13 @@ export const save = {
       // stale null) must not masquerade as corruption — a real byte mismatch reads identically.
       try { storedRaw = localStorage.getItem(primaryKey); } catch (err) {}
     }
-    // A worker-compressed write cannot re-validate on this sync lane — the byte-exact
-    // re-read above is the corruption gate, and the worker already proved the envelope
-    // before encoding it.
-    const storedPrepared = storedRaw === json && isGzippedSaveText(storedRaw)
+    // A byte-exact re-read of the string this write just produced needs no re-verify on ANY
+    // lane: every lane reaching here bounded the envelope before encoding it (preflightSaveImport
+    // at autosave/worker encode, and inside _writeSlot above for the manual lane) — the same
+    // proven-bytes escape the gzip lane documented, extended to plain envelopes. The mismatch
+    // path is a cold failure receipt, where the sync prepare stays so the report can name the
+    // corruption it found.
+    const storedPrepared = storedRaw === json
       ? { ok: true }
       : this._prepareEnvelopeString(storedRaw);
     if (storedRaw !== json || !storedPrepared.ok) {
@@ -1569,6 +1584,16 @@ export const save = {
       backupCreated && previousPrepared && previousPrepared.env
         ? { raw: previousRaw, env: previousPrepared.env } : null);
     indexMs = nowMs() - t;
+    // The bytes just stored are proven — a later write whose previousRaw is this string answers
+    // its rotate-over-good check O(1) instead of re-preparing a generation we already verified.
+    if (envelope && typeof envelope === 'object') {
+      this._rememberPreparedEnvelope(json, {
+        ok: true,
+        env: envelope,
+        data: envelope.data,
+        version: readSaveVersion(envelope.version).version,
+      });
+    }
     return {
       ok: true,
       bytes: json.length,
@@ -3193,8 +3218,33 @@ export const save = {
     }
   },
 
-  _commitAutosaveSnapshot(job, snapshot) {
+  async _commitAutosaveSnapshot(job, snapshot) {
     if (!job || !snapshot || !this._autosaveInFlight) return false;
+    if (this._restoring || job.restoreSequence !== this._restoreSequence) {
+      const timing = this._saveTiming({
+        slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
+        serializeMs: snapshot.serializeMs, stringifyMs: snapshot.stringifyMs,
+        ok: false, failure: 'superseded', blockingSlicesMs: snapshot.blockingSlices || [snapshot.blockingSliceMs, 0],
+      });
+      this._autosaveInFlight = false;
+      if (this._activeAutosaveJob === job) this._activeAutosaveJob = null;
+      return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
+    }
+
+    // The previous-generation verify is a whole-ledger prepare — run it on the paced lane
+    // (yielded twin when this no-worker commit exists precisely because the worker refused)
+    // instead of inside _writeSlot's scheduled task. A read failure defers to _writeSlot's
+    // own read, which returns read_failed identically.
+    let previousRaw;
+    try { previousRaw = localStorage.getItem(LS_PREFIX + AUTOSAVE_SLOT); }
+    catch (error) { previousRaw = undefined; }
+    const previousPrepared = previousRaw
+      ? await this._prepareEnvelopeStringAsync(previousRaw).catch(() => ({ ok: false, reason: 'load_failed' }))
+      : null;
+    // Liveness re-check after the paced prepare: a restore/run boundary crossed during
+    // the await already cancelled this job and published its own terminal receipt —
+    // finish quietly instead of writing over the newer generation.
+    if (!this._autosaveInFlight || this._activeAutosaveJob !== job) return false;
     if (this._restoring || job.restoreSequence !== this._restoreSequence) {
       const timing = this._saveTiming({
         slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
@@ -3210,6 +3260,7 @@ export const save = {
     const write = this._writeSlot(AUTOSAVE_SLOT, snapshot.envelope, {
       json: snapshot.json,
       stringifyMs: snapshot.stringifyMs,
+      ...(previousRaw !== undefined ? { previousRaw, previousPrepared } : {}),
     });
     const writeSliceMs = workNowMs() - writeStarted;
     const timing = this._saveTiming({
@@ -3487,10 +3538,11 @@ export const save = {
         return;
       }
       if (result && result.ok && result.version < CURRENT_VERSION) {
-        this._scheduleAutosaveWork(() => {
+        this._scheduleAutosaveWork(async () => {
           const verifyStarted = workNowMs();
           const peek = this._peekSaveEnvelope(tx.previousRaw);
-          const prepared = peek || this._prepareEnvelopeString(tx.previousRaw);
+          const prepared = peek || await this._prepareEnvelopeStringAsync(tx.previousRaw).catch(() => null) || { ok: false, reason: 'load_failed' };
+          if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return;
           const verifyMs = workNowMs() - verifyStarted;
           tx.verifyMs += verifyMs;
           this._pushAutosaveSlice(tx, 'validate_previous_migration', verifyMs);
@@ -3521,13 +3573,16 @@ export const save = {
     return true;
   },
 
-  _autosaveValidatePreviousSync(job, snapshot, tx) {
+  async _autosaveValidatePreviousSync(job, snapshot, tx) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
     // A prior compressed generation is a valid previous write: its wrapper meta proves it
-    // without a sync decode the platform cannot run.
+    // without a sync decode the platform cannot run. The remaining whole-ledger prepare rides
+    // the worker-first async lane (yielded twin when this fallback exists precisely because
+    // the worker refused) so the verify no longer bricks its scheduled task.
     const peek = this._peekSaveEnvelope(tx.previousRaw);
-    const prepared = peek || this._prepareEnvelopeString(tx.previousRaw);
+    const prepared = peek || await this._prepareEnvelopeStringAsync(tx.previousRaw).catch(() => null) || { ok: false, reason: 'load_failed' };
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const verifyMs = workNowMs() - started;
     tx.verifyMs += verifyMs;
     this._pushAutosaveSlice(tx, 'validate_previous_sync', verifyMs);
@@ -3651,14 +3706,18 @@ export const save = {
     return true;
   },
 
-  _autosaveValidateReadbackSync(job, snapshot, tx, storedRaw) {
+  async _autosaveValidateReadbackSync(job, snapshot, tx, storedRaw) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
-    // A worker-compressed write cannot re-validate on this sync lane; a byte-exact re-read of
-    // the string the worker produced is the corruption gate (the worker bounded it pre-write).
-    const prepared = storedRaw === snapshot.json && isGzippedSaveText(storedRaw)
+    // A byte-exact re-read of the string this transaction produced needs no re-verify on ANY
+    // lane — the envelope was bounded at encode (the gzip lane's proven-bytes escape, extended
+    // to plain envelopes). The mismatched path is cold (the caller only schedules this verify
+    // after the byte compare passed, so it is defensive insurance) and now rides the async
+    // prepare lane rather than bricking the scheduled task.
+    const prepared = storedRaw === snapshot.json
       ? { ok: true }
-      : this._prepareEnvelopeString(storedRaw);
+      : await this._prepareEnvelopeStringAsync(storedRaw).catch(() => null) || { ok: false, reason: 'load_failed' };
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const verifyMs = workNowMs() - started;
     tx.verifyMs += verifyMs;
     this._pushAutosaveSlice(tx, 'validate_readback_sync', verifyMs);
@@ -4131,6 +4190,7 @@ export const save = {
             this._decodedSaveEnvelopes.set(raw, preparedResult);
           } catch (err) { /* a cache miss only forces the async lane again */ }
         }
+        this._rememberPreparedEnvelope(raw, preparedResult);
         return preparedResult;
       } catch (err) {
         return { ok: false, reason: 'load_failed', error: err };
@@ -4145,13 +4205,13 @@ export const save = {
     if (typeof raw === 'string' && isGzippedSaveText(raw)) {
       return this._loadEnvelopeFromStringAsync(raw, slot);
     }
-    // The import lane is a live UI path (Save/Load screen): restoring the whole
-    // chunked ledger atomically froze the veil for the entire _restoreChunks
-    // drain. Route through the sliced async twin like every other UI-visible
-    // restore; the stamp lets a queued drain bail on a newer commit.
-    const acceptSeq = this._restoreSequence;
-    const prepared = this._prepareEnvelopeString(raw);
-    if (!prepared.ok) {
+    // Keep the O(1) rejects synchronous — importString still answers literal `false`
+    // for them (byte-cap/pre-parse pins). The deep walks (parse → preflight →
+    // checksum → migrate → normalize) ride the same sliced async lane the gzip leg
+    // and slot loads already take, so a multi-MB plain import no longer bricks the
+    // Save/Load click before deferLoadedGameRestore can even paint progress.
+    if (!raw || typeof raw !== 'string' || saveImportByteLength(raw) > SAVE_IMPORT_MAX_BYTES) {
+      const prepared = this._prepareEnvelopeString(raw);
       this.bus.emit('save:error', {
         slot,
         reason: prepared.reason,
@@ -4160,8 +4220,7 @@ export const save = {
       });
       return false;
     }
-    this._importProfileSideBags(prepared.env, slot);
-    return this._restorePreparedEnvelopeAsync(prepared, slot, { acceptSeq });
+    return this._loadEnvelopeFromStringAsync(raw, slot);
   },
 
   async _loadEnvelopeFromStringAsync(raw, slot) {
@@ -4200,6 +4259,25 @@ export const save = {
     }
     this._importProfileSideBags(prepared.env, slot);
     return this._restorePreparedEnvelope(prepared, slot);
+  },
+
+  // Proven-envelope verdict cache: any lane that already verified a raw stored string
+  // (a completed write, a paced validate, an async prepare) leaves its verdict here so the
+  // next consumer — usually _writeSlot's previous-generation check — answers O(1) instead of
+  // re-running a whole-ledger prepare over bytes this process already proved. FIFO-capped; a
+  // miss costs nothing beyond the sync fallback the caller already had.
+  _cachedPreparedEnvelope(raw) {
+    const cache = this._preparedEnvelopeCache;
+    if (!cache || typeof raw !== 'string') return null;
+    return cache.get(raw) || null;
+  },
+
+  _rememberPreparedEnvelope(raw, prepared) {
+    if (typeof raw !== 'string' || !prepared || prepared.ok !== true) return;
+    const cache = this._preparedEnvelopeCache || (this._preparedEnvelopeCache = new Map());
+    if (cache.has(raw)) cache.delete(raw);
+    cache.set(raw, prepared);
+    while (cache.size > 8) cache.delete(cache.keys().next().value);
   },
 
   /** Pure validation/migration preparation shared by normal load, recovery, and write verification. */
@@ -4573,7 +4651,12 @@ export const save = {
     }
 
     try {
-      const result = await this._restoreAsync(prepared.data, slot, {
+      // Test seams stub the synchronous _restore twin alone; honoring it keeps those
+      // contracts identical across sync/async lanes (a stubbed _restoreAsync wins first).
+      const restoreLane = this._restoreAsync !== CANONICAL_SAVE_RESTORE_ASYNC
+        ? this._restoreAsync
+        : this._restore !== CANONICAL_SAVE_RESTORE ? this._restore : this._restoreAsync;
+      const result = await restoreLane.call(this, prepared.data, slot, {
         ...options,
         rollbackSnapshot,
       });
@@ -6379,6 +6462,8 @@ export const save = {
 };
 
 const CANONICAL_SAVE_SERIALIZE = save.serialize;
+const CANONICAL_SAVE_RESTORE = save._restore;
+const CANONICAL_SAVE_RESTORE_ASYNC = save._restoreAsync;
 
 // ── module helpers ────────────────────────────────────────────────────────────────────────────
 

@@ -463,7 +463,7 @@ test('a gzipped export bundle carries profile on the wrapper and merges it on im
   } finally { h.restore(); }
 });
 
-test('a rejected envelope never touches the side bags', () => {
+test('a rejected envelope never touches the side bags', async () => {
   const storage = memoryStorage();
   const h = installHarness(storage);
   try {
@@ -479,7 +479,7 @@ test('a rejected envelope never touches the side bags', () => {
     const rejected = JSON.stringify(bundle);
     const beforeAchievements = storage.getItem(ACHIEVEMENTS_STORAGE_KEY);
     const beforeCrucible = storage.getItem(CRUCIBLE_META_STORAGE_KEY);
-    assert.equal(save.importString(rejected, '3'), false);
+    assert.equal(await save.importString(rejected, '3'), false);
     assert.equal(h.restored.length, 0);
     assert.equal(storage.getItem(ACHIEVEMENTS_STORAGE_KEY), beforeAchievements);
     assert.equal(storage.getItem(CRUCIBLE_META_STORAGE_KEY), beforeCrucible);
