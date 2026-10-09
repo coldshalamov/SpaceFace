@@ -109,7 +109,12 @@ export function collectFieldLoopSpecs(state, out = []) {
     // Katamari escalation arc: the loop's envelope (which also drives its pitch — a
     // winding field spins up) rides clump mass, so the hum swells and sharpens as
     // the ball grows instead of mass staying ear-invisible until the FULL chime.
-    const massFrac = Number.isFinite(gyre.clumpMass) && Number.isFinite(gyre.maxClumpMass) && gyre.maxClumpMass > 0
+    // Gated to holding/launching: clumpMass deliberately keeps a still-flying
+    // ball's frozen mass during 'beaming' — the presentation HOLD-gates the same
+    // ledger so an empty funnel reads empty; the hum must not swell over a ball
+    // the lash no longer holds.
+    const massLive = gyre.phase === 'holding' || gyre.phase === 'launching';
+    const massFrac = massLive && Number.isFinite(gyre.clumpMass) && Number.isFinite(gyre.maxClumpMass) && gyre.maxClumpMass > 0
       ? Math.min(1, gyre.clumpMass / gyre.maxClumpMass) : 0;
     // The coil's own term: strain01 publishes 0 through LAUNCH, so without this
     // the hum sags to its mass floor through the ~183 ms pull-back — exactly the

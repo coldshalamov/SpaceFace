@@ -2250,7 +2250,7 @@ export class GyreSnarePresentation {
     this._maw.geometry.dispose();
     this._disc.geometry.dispose();
     this._spiral.geometry.dispose();
-    this._coneMat.dispose(); this._mawMat.dispose(); this._discMat.dispose(); this._spiralMat.dispose();
+    this._coneMat.dispose(); this._coneInnerMat.dispose(); this._mawMat.dispose(); this._discMat.dispose(); this._spiralMat.dispose();
     for (const l of this._lumps) l.mesh.geometry.dispose();
     for (const k in this._lumpMats) this._lumpMats[k].dispose();
     for (const b of this._bursts) { b.mesh.geometry.dispose(); b.mesh.material.dispose(); }
