@@ -191,7 +191,10 @@ export const gyreHud = {
           // at launch. An adopted-ball edge can leave _bowlMass (clumpMass ledger)
           // divergent from the payload; the yield tier must track the ball.
           const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : (this._bowlMass || 0));
-          return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
+          // The mass text names the same payload the DMG× does — _bowlMass is the
+          // clumpMass ledger and can diverge from the frozen ball on an adopter edge.
+          const bowlT = Math.round(g.ballMass != null ? g.ballMass : (this._bowlMass || 0));
+          return { text: `GYRE — BOWL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
@@ -249,7 +252,9 @@ export const gyreHud = {
       // stamped scale froze on; bowlMass (clumpMass ledger) can diverge on an
       // adopted-ball edge, so the tier reads the ball.
       const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : bowlMass);
-      return { text: `GYRE — BOWL ×${bowlN} · ${bowlMass}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
+      // Mass text reads the frozen payload too — one row, one ball.
+      const bowlT = Math.round(g.ballMass != null ? g.ballMass : bowlMass);
+      return { text: `GYRE — BOWL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;

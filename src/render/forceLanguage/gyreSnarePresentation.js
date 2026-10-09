@@ -532,6 +532,7 @@ export class GyreSnarePresentation {
     this._launchSeq = 0;       // last adopted thrownTick — 'larger than seen' IS the throw edge:
                                // a render frame spanning two sim ticks can't miss a monotonic value
     this._lastGraveTick = -1;  // graves dedupe — one bloom per sim tick, not per render frame
+    this._seenGraves = null;   // per-entry dedupe for hosts without a sim tick counter
     this._deathT = 0;          // >0 while a dead ball's rubble dissolves into its grave (~0.25 s)
     this._secGraveT = null;    // >0 while a secondary ball's lumps scatter into its grave
     this._launchKick = 0;      // armed veil surge on the thrown ball — ~0.7 s tail off thrownBeat
@@ -656,7 +657,9 @@ export class GyreSnarePresentation {
       if (g2.t <= 0) continue;
       g2.t *= Math.exp(-sdt * 10);
       if (g2.t < 0.02) { g2.t = 0; g2.mesh.visible = false; continue; }
-      if (g2.t > 0.5 && g2.a0 != null) {
+      // World-pin ~85% of the spark's life (t>0.2) — a capped ball tumbling
+      // ~3 rad/s used to drag the fading half ~30° around the skin.
+      if (g2.t > 0.2 && g2.a0 != null) {
         const la = g2.a0 - (this._clumpSpin - g2.spin0);
         g2.mesh.position.set(Math.cos(la) * g2.r, 0.35, Math.sin(la) * g2.r);
       }
@@ -1319,16 +1322,28 @@ export class GyreSnarePresentation {
       this._lastBall = null;
     }
     // Non-primary graves: a second ball retired on a quiet TTL gets its own ring at
-    // its own spot — the sim publishes {x,z,r} only on the retire tick. Dedupe on
-    // state.tick: the list persists across render frames within a tick, so a 144 Hz
-    // panel would otherwise bloom the same grave 2-3 times (each burst steals a slot).
-    if (Array.isArray(mirror.graves) && mirror.graves.length
-      && state.tick !== this._lastGraveTick) {
-      this._lastGraveTick = state.tick;
-      for (let i = 0; i < mirror.graves.length; i++) {
-        const g = mirror.graves[i];
-        this._fireBurst(finite(g.x), finite(g.z), Math.max(6, finite(g.r, 6) * 1.6), flashCalm);
+    // its own spot — the sim publishes {x,z,r,id} only on the retire tick. Dedupe on
+    // state.tick when the host forwards one: the list persists across render frames
+    // within a tick, so a 144 Hz panel would otherwise bloom the same grave 2-3 times
+    // (each burst steals a slot). On hosts without a tick counter the dedupe falls
+    // to the grave's own id — one bloom per death either way.
+    if (Array.isArray(mirror.graves)) {
+      const tick = state && Number.isFinite(state.tick) ? state.tick : null;
+      if (tick != null && tick !== this._lastGraveTick) {
+        this._lastGraveTick = tick;
+        this._seenGraves = null; // a new publish tick — the dedupe refills
       }
+      if (mirror.graves.length) {
+        const seen = this._seenGraves || (this._seenGraves = new Set());
+        for (let i = 0; i < mirror.graves.length; i++) {
+          const g = mirror.graves[i];
+          const key = g && g.id != null ? g.id
+            : finite(g && g.x) + ':' + finite(g && g.z) + ':' + finite(g && g.r);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          this._fireBurst(finite(g && g.x), finite(g && g.z), Math.max(6, finite(g && g.r, 6) * 1.6), flashCalm);
+        }
+      } else this._seenGraves = null; // the publish flushed — nothing pending can re-bloom
     }
 
     // Victim-side gravity read: each body the cone is dragging this tick gets a

@@ -3583,11 +3583,35 @@ test('a too-heavy rock parked inside the suck annulus still eats the courtesy tu
   assert.ok(heavy.alive !== false, 'a too-heavy body is never absorbed');
   assert.ok(heavy.vel.x < -0.001,
     `the annulus tugs the too-heavy body toward the clump (vx=${heavy.vel.x.toFixed(4)})`);
-  assert.ok((t.state.gyreSnare.towCount || 0) >= 1,
-    `a heavy body under tow counts TOWING (got ${t.state.gyreSnare.towCount})`);
+  // The body still FEELS the courtesy tug — but the TOWING ledger is for
+  // retrievable loot: a too-heavy rock already fills TOO HEAVY, and counting it
+  // twice bloomed both pills + both 0->1 edge cues on the same tick.
+  assert.ok((t.state.gyreSnare.tooHeavyCount || 0) >= 1,
+    `a heavy body hovering the annulus fills TOO HEAVY (got ${t.state.gyreSnare.tooHeavyCount})`);
+  assert.equal(t.state.gyreSnare.towCount || 0, 0,
+    `a too-heavy body never double-counts as towed loot (got ${t.state.gyreSnare.towCount})`);
   assert.ok((t.state.gyreSnare.basinSpots || []).some(
     (s) => Math.hypot(s.x - heavy.pos.x, s.z - heavy.pos.z) < 30),
     'the tugged heavy publishes a pull glow like a basin victim');
+  t.cleanup();
+});
+
+test('a same-tick multi-absorb publishes absorbR for the BIGGEST meal', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const core = t.state.entities.get(t.sys._rt.coreId);
+  // Both land on the clump in the same absorb pass — the publish ledger used to
+  // carry whichever body resolved LAST, so a wreck-then-pebble batch under-
+  // graded the HUD eat-pop it feeds.
+  rock(t.sim, core.pos.x + 1, core.pos.z, 2, 4);
+  rock(t.sim, core.pos.x - 1, core.pos.z, 8, 12);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // spatial index registers
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.absorbR, 12,
+    `the publish ledger carries the biggest meal's radius (got ${t.state.gyreSnare.absorbR})`);
   t.cleanup();
 });
 

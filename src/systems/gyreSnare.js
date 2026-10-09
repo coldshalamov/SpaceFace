@@ -123,7 +123,7 @@ function freshRuntime() {
     members: [],           // bounded absorb records for the clump lumps VFX
     absorbDir: { x: 0, z: 0 }, // newest meal's approach dir — UNBOUNDED channel (the
                              // ledger caps at 28; a frozen gulp dir past that is stale)
-    absorbRadius: 0,       // newest meal's collider radius — the swallow kick grades by meal size
+    absorbRadius: 0,       // biggest meal's collider radius this tick — the gulp reads scale by it
     // Launch bookkeeping.
     launchLeft: 0,         // ticks of the launch impulse burst still owed
     launchWindup: 0,       // ticks of the pre-burst coil (anticipation) still owed
@@ -1294,9 +1294,11 @@ export const gyreSnare = {
           const tug = D.suckAccel * tugK;
           this._queueAccel(e, (dx / dist) * tug, (dz / dist) * tug, entityMass(e), dt, state);
           // Same towCount the basin lane publishes — loot riding the annulus is still
-          // under tow (the projectile exclusion matches _pullPass: a bullet isn't loot).
+          // under tow (the exclusions match _pullPass: a bullet isn't loot, and a
+          // too-heavy body already fills TOO HEAVY — without it the same rock counted
+          // in BOTH ledgers and both 0->1 cues fired on the same tick at one seat).
           // Without it TOWING drops to 0 exactly while the dragged mass is closest.
-          if (e.type !== 'projectile' && tugK > 0.05) {
+          if (admission !== 'too-heavy' && e.type !== 'projectile' && tugK > 0.05) {
             rt.towCount += 1;
             rt.towLane = 'suck'; // the 0->1 tick speaks where the tow was grabbed
           }
@@ -1380,7 +1382,10 @@ export const gyreSnare = {
     // The gulp direction rides its own unbounded channel — the member ledger caps
     // out and would freeze the dip on the 28th meal while absorbs keep landing.
     rt.absorbDir.x = nx; rt.absorbDir.z = nz;
-    rt.absorbRadius = er; // meal size — the gulp kicks scale with what was swallowed
+    // Publish carries the tick's BIGGEST meal (last-write used to under-grade a
+    // wreck-then-pebble batch — every per-meal channel grades on its own em/er
+    // locals, only this publish ledger needed the max).
+    rt.absorbRadius = Math.max(rt.absorbRadius || 0, er);
     // Katamari knock: the ball physically flinches off the meal's approach — a
     // mass-scaled shove so a wreck visibly rocks the tether (a pebble is a tap,
     // and a heavier ball shrugs more since Δv = impulse/mass). The hold spring
