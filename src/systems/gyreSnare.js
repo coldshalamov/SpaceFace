@@ -1001,8 +1001,12 @@ export const gyreSnare = {
           // beat before coring — going radial there makes the grab land when the
           // funnel's gulp language promises it. The catch edge itself is unchanged.
           const swirlTaper = 0.2 + 0.8 * Math.min(1, Math.max(0, distMaw - D.snagRadius) / D.snagRadius);
-          ax += (dz / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper;
-          az -= (dx / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper;
+          // Co-rotating tangent: (−dz, +dx) is the +90° rotation of the outward
+          // offset — positive angular momentum about the maw, the SAME direction
+          // the orbit slot integrates (orbitDir·rate on (cos,sin)). The old
+          // (dz, −dx) term counter-stirred the clump's revolve on every hold.
+          ax -= (dz / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper;
+          az += (dx / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper;
         }
         // Frame damping inside the basin: settle relative to the ship so captures stick.
         ax -= (finite(e.vel && e.vel.x) - shipVx) * D.basinDamping;
@@ -1018,8 +1022,8 @@ export const gyreSnare = {
           // reaches — the courtesy lane corkscrews at the suck lane's share
           // (keyed to swirlBlend like the basin) instead of ray-dragging
           // straight while the motes around it twist.
-          ax += (dz / distMaw) * wedge * D.wedgeSwirlFrac * this._rt.swirlBlend;
-          az -= (dx / distMaw) * wedge * D.wedgeSwirlFrac * this._rt.swirlBlend;
+          ax -= (dz / distMaw) * wedge * D.wedgeSwirlFrac * this._rt.swirlBlend;
+          az += (dx / distMaw) * wedge * D.wedgeSwirlFrac * this._rt.swirlBlend;
         }
       }
       // The gravity-pull glow rides the same ledger the count does — a faint
@@ -1362,9 +1366,12 @@ export const gyreSnare = {
           // suck lane corkscrews at suckSwirlFrac·swirlBlend; a towed pickup
           // spiraling the basin then ray-shooting straight inside the annulus
           // broke the vocabulary at exactly the most readable range.
+          // (dx,dz) here points meal→core — the INWARD radial — so the
+          // co-rotating tangent is (dz, −dx): positive angular momentum about
+          // the clump, matching the orbit's revolve like the basin lane.
           this._queueAccel(e,
-            (dx / dist) * tug + (-dz / dist) * tug * D.suckSwirlFrac * rt.swirlBlend,
-            (dz / dist) * tug + (dx / dist) * tug * D.suckSwirlFrac * rt.swirlBlend,
+            (dx / dist) * tug + (dz / dist) * tug * D.suckSwirlFrac * rt.swirlBlend,
+            (dz / dist) * tug + (-dx / dist) * tug * D.suckSwirlFrac * rt.swirlBlend,
             entityMass(e), dt, state);
           // Same towCount the basin lane publishes — loot riding the annulus is still
           // under tow (the exclusions match _pullPass: a bullet isn't loot, and a
@@ -1420,8 +1427,8 @@ export const gyreSnare = {
         // language and the basin's mawSwirlAccel both promise a spiral-in, so the
         // radial pull gets a tangential share keyed to the eased stir — a meal
         // visibly whips around the katamari once on the way in.
-        ax += (-dz / dist) * pull * D.suckSwirlFrac * rt.swirlBlend;
-        az += (dx / dist) * pull * D.suckSwirlFrac * rt.swirlBlend;
+        ax += (dz / dist) * pull * D.suckSwirlFrac * rt.swirlBlend;
+        az += (-dx / dist) * pull * D.suckSwirlFrac * rt.swirlBlend;
         // Gentle frame damping so incoming mass settles onto the ball instead of orbiting it.
         ax -= (finite(e.vel && e.vel.x) - shipVx) * D.suckDamping;
         az -= (finite(e.vel && e.vel.z) - shipVz) * D.suckDamping;

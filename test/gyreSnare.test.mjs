@@ -1081,16 +1081,20 @@ test('wedge pull fades across the soft lip and ends at the maw plane', async () 
 
 test('the wedge courtesy lane corkscrews — a mid-cone body spirals in, not ray-drags', async () => {
   const t = await bootPhysics();
-  // a=60, z=20 (inside the ~29.6 wu rim → lipT 0): dx=-114, dz=+20 off the maw.
-  // A pure-radial courtesy pull would drift vel.z NEGATIVE (toward the axis);
-  // the swirl share pushes it positive — the tangential lane shows in the
-  // body's own motion, matching the funnel's corkscrew promise.
   const body = rock(t.sim, apexGap() + 60, 20, 6, 4, 'drone');
   assert.ok(Math.hypot(body.pos.x - T.mawDist, body.pos.z) > T.basinRadius, 'wedge lane, not the basin');
   hold(t);
   for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'beaming', 'a wedge-only body never snags');
-  assert.ok(body.vel.z > 0.2, `swirl share drifts tangentially (vel.z=${body.vel.z.toFixed(2)} — pure radial gives <0)`);
+  // Decompose velocity about the maw: radial drags inward; the tangential
+  // share must ride the eased stir CO-ROTATING — (−dz,+dx)/dist is the
+  // positive-L tangent the clump's own orbit integrates.
+  const dx = body.pos.x - T.mawDist, dz = body.pos.z;
+  const dist = Math.hypot(dx, dz);
+  const perp = (body.vel.x * -dz + body.vel.z * dx) / dist;
+  const swirl = t.sys._rt.swirlBlend;
+  assert.ok(Math.sign(perp) === Math.sign(swirl) && Math.abs(perp) > 0.15,
+    `the corkscrew stirs WITH the clump's revolve (perp=${perp.toFixed(2)}, swirl=${swirl.toFixed(2)})`);
   t.cleanup();
 });
 
@@ -3386,11 +3390,13 @@ test('the suck lane corkscrews — tangential share rides the eased stir', () =>
   const dist = Math.hypot(dx, dz);
   const rx = dx / dist, rz = dz / dist;
   const radial = ix * rx + iz * rz;   // radial share (∝ pull)
-  const perp = ix * -rz + iz * rx;    // tangential share (∝ pull·suckSwirlFrac·swirlBlend)
+  // Co-rotating tangent: (dz,−dx) on the INWARD radial is positive angular
+  // momentum about the clump — the stir chases the orbit's own direction.
+  const perp = ix * rz - iz * rx;     // tangential share (∝ pull·suckSwirlFrac·swirlBlend)
   const swirl = t.sys._rt.swirlBlend;
   assert.ok(radial > 0, `the meal is dragged inward (radial=${radial.toFixed(1)})`);
   assert.ok(Math.sign(perp) === Math.sign(swirl),
-    `the corkscrew rides the stir sign (perp=${perp.toFixed(1)}, swirl=${swirl.toFixed(2)})`);
+    `the corkscrew stirs WITH the revolve (perp=${perp.toFixed(1)}, swirl=${swirl.toFixed(2)})`);
   // Ratio ≈ frac·swirl (damping is ~zero on a fresh, still meal) — a ray-shooting
   // lane (frac=0) is what this regressed against.
   const ratio = perp / radial;
@@ -3404,7 +3410,7 @@ test('the suck lane corkscrews — tangential share rides the eased stir', () =>
   if (imp2) {
     const dx2 = core.pos.x - meal.pos.x, dz2 = core.pos.z - meal.pos.z;
     const d2 = Math.hypot(dx2, dz2);
-    const perp2 = imp2.x * -(dz2 / d2) + imp2.z * (dx2 / d2);
+    const perp2 = imp2.x * (dz2 / d2) - imp2.z * (dx2 / d2);
     assert.ok(Math.sign(perp2) === -Math.sign(swirl),
       `flipping the stir flips the corkscrew (perp=${perp2.toFixed(1)})`);
   }
@@ -4307,4 +4313,48 @@ test('a closed beam forgets its count ledgers — the next beam diffs from zero'
   assert.equal(t.sys._rt.prevBasinN, 0, 'basin fold ledger reset on drop');
   assert.equal(t.sys._rt.prevSuckN, 0, 'suck fold ledger reset on drop');
   t.cleanup();
+});
+
+test('pub.ballAngVel carries the thrown body\'s signed spin — live lane, promote re-seat, ball-less zero', async () => {
+  // boot() not bootPhysics(): the entity's authored angVel isn't write-backed
+  // by a physics authority, so the sign pin reads the publish lane, not a
+  // torque integration.
+  const t = boot();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) t.sim.step();
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the flying ball');
+  const pub = t.state.gyreSnare;
+
+  // Signed on the live lane — a ricochet-reversed ball reads reversed.
+  a.angVel = -2.5;
+  t.sim.step();
+  assert.equal(pub.ballAngVel, -2.5, 'the primary lane publishes signed spin');
+
+  // A second bowl while A flies: B takes the primary lane with its own spin.
+  const b = rock(t.sim, T.mawDist + 2, 0, 8, 5);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 2; i++) t.sim.step();
+  assert.equal(t.sys._rt.ballId, b.id);
+  b.angVel = 3.0;
+  t.sim.step();
+  assert.equal(pub.ballAngVel, 3.0);
+
+  // B retires → A promotes: the mirror re-seats A's whole frame, spin
+  // included — it must not keep the corpse's chirality for a tick.
+  b.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 6; i++) t.sim.step();
+  assert.equal(b.alive, false, 'B retired on its own deadline');
+  assert.equal(t.sys._rt.ballId, a.id, 'A promoted back into the primary lane');
+  assert.equal(pub.ballAngVel, -2.5, 'the promote re-seats the survivor\'s spin');
+
+  // A retires too — every ball-less lane zeroes the field.
+  a.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 6; i++) t.sim.step();
+  assert.equal(t.sys._rt.ballId, null);
+  assert.equal(pub.ballAngVel, 0, 'no flying ball → no spin to carry');
 });
