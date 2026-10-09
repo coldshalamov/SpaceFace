@@ -2491,7 +2491,7 @@ Saturation: 1 of 4 reporting lanes (streak 2/3 by wave verdict).
 Wave 123 saturation streaks: lod CLOSED (3/3), popin 0/3, boot 0/3, hitches 0/3.
 
 
-## Wave 124 (in progress — HEAD ece6d36d5)
+## Wave 124 (in progress — HEAD db49720e7)
 
 ### popin-admission — `saturated: false` (F1+F2+F4+F5 landed `ece6d36d5`, F3 declined)
 
@@ -2511,4 +2511,11 @@ Wave 123 saturation streaks: lod CLOSED (3/3), popin 0/3, boot 0/3, hitches 0/3.
 - Lane-contract items (a–d): veil-lift tail clean, deferred-continuation drain verified, no new atomics — all confirmed in review.
 - Golden `0b33dde` bit-identical both lanes; ~77 focused save tests green (incl. mirror status, write-bound gzip, slot label/still, autosave transaction, corrupt-recovery, paced exit chain, save-fuzz 5000-seed).
 
-### in-flight-hitches — lane `9dea94a1` auditing
+### in-flight-hitches — `saturated: false` (F1 landed `db49720e7`, F2 documented-not-recommended)
+
+- **hitches F1 (S effort / M, MECHANISM_VERIFIED) — `frame()`'s post-finally tail was the last unquarantined segment on the presented frame**: `perf.recordFrameCallback`/`perf.tier1` samplers and the `checkGraphicsRecovery`→restore→`schedule()` segment sat past the frame catch — a tail throw propagated to the rAF caller with `frameHandle` already null, skipping `schedule()` → permanent silent loop death, invisible to `frame._errs` and the stall reporter (strictly worse than W123's diag.update gap, which was at least counted). Both tail segments now sit in their own guards (20-cap `[loop] frame tail error` ledger); `schedule()` is unconditional on every path — safe because it no-ops under `destroyed || suspended || frameHandle !== null`, covering both early-return cases verbatim. Tail throws stay out of the stall counters (they degrade instrumentation, not the presented frame).
+- **hitches F2 (documented, keep-atomic) — `classifyWorld` pays ~2 O(entityList) passes per membership-bump tick** (~1ms at n≈4k stacked on spawn/death ticks): no deterministic-preserving slice — classification publishes same-tick and interleaved reads of a half-published classification are the hazard. A shelved-entity discovery index is the only avenue (L effort, M-H determinism risk, benefit UNVERIFIED) — recorded, not recommended.
+- Probe-order analysis clean: the 128-slice is itself the per-tick bound and the 64-tick backstop bounds detection latency; skipping the backstop when the probe covered the whole list is sub-noise (~1-3µs/tick) — documented, not recommended. Hunt (c): all other presented-frame consumer callbacks verified quarantined; F1 was the only remaining site.
+- Golden `0b33dde` bit-identical; 41 focused runner/liveness/lifecycle tests green.
+
+Wave 124 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 0/3.

@@ -349,7 +349,7 @@
     },
     {
       "wave": 124,
-      "head": "aec85e97d",
+      "head": "db49720e7",
       "lanes": {
         "popin-admission": {
           "saturated": false,
@@ -375,15 +375,25 @@
           "headline": "whole-corpus mirror collect replaced by the write delta (mirrorPatch: primary bytes + rotated recovery/tombstone + index row — same shape deleteSlot emits; uncovered writers defer to the chunked generation-bracketed collect); paced chain's two O(save) legs (checksum+envelope stringify) run inside the save worker via _encodeEnvelopeViaWorker reusing the autosave encode protocol, named bound verdicts verbatim + sync-legs fallback; exportSlotAsync double-fail lane slices through _serializeDataFrozenAsync."
         },
         "in-flight-hitches": {
-          "status": "auditing",
-          "session": "9dea94a1"
+          "saturated": false,
+          "streak": 0,
+          "findings": 2,
+          "landed": 1,
+          "commits": [
+            "db49720e7"
+          ],
+          "headline": "frame() post-finally tail quarantined (perf samplers + checkGraphicsRecovery→restore segment were the last unguarded presented-frame consumers — a tail throw skipped schedule() = permanent silent loop death invisible to frame._errs/stall reporter; both segments now self-guarded with a 20-cap tail-error ledger, schedule() unconditional). F2 classifyWorld ~2xO(entityList) per classify tick documented keep-atomic — no deterministic slice; shelved-entity index the only avenue (L, UNVERIFIED).",
+          "deferred": [
+            "F2 classifyWorld O(n) classify-tick passes — keep-atomic: same-tick publish semantics, shelved-entity discovery index only avenue (L effort, benefit UNVERIFIED)",
+            "corpse-probe backstop skip when probe covered whole list — sub-noise, documented not recommended"
+          ]
         }
       },
       "verdicts": [
         "lod-in-frame: CLOSED (closed at W123, no wave-124 audit)",
         "popin-admission: saturated false (streak 0/3)",
         "boot-loading: saturated false (streak 0/3)",
-        "in-flight-hitches: auditing"
+        "in-flight-hitches: saturated false (streak 0/3)"
       ]
     }
   ],
