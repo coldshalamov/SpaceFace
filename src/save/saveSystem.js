@@ -18,7 +18,7 @@ import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
-import { restoreCombatState, serializeCombatState, hasPendingCeresWorkfleetAttachments,
+import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, hasPendingCeresWorkfleetAttachments,
   resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments,
   ceresWorkfleetEntityRef, ceresWorkfleetRefKey, resolveCeresWorkfleetEntityRef, ceresWorkfleetHostileAttachmentOwners, ceresWorkfleetIncomingSavedOwnerIds } from '../combat/persistence.js';
 import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
@@ -2615,6 +2615,10 @@ export const save = {
     if (!this.state || this.state.mode !== 'loading' || !this._hasPlayerEntity()) return false;
     const plan = this._saveCapturePlan();
     const incrementalPlayer = this._shouldCapturePlayerIncrementally();
+    // A slice armed by restore A must never resume inside restore B's loading window
+    // (mode is 'loading' again, so the mode guard alone can't tell them apart — B's
+    // reads would capture mid-restore state under A's captured plan).
+    const restoreSeq = this._restoreSequence;
     const runSlice = (index) => {
       try {
         const started = workNowMs();
@@ -2637,8 +2641,10 @@ export const save = {
         // Same macrotask cadence the autosave capture slices use: bounded reads between
         // painted frames instead of one ~50-read monolith at the end of the restore. The warm
         // only exists for loading mode; once flight starts, the first real autosave reads
-        // again anyway, so a stale slice simply stops.
-        if (this.state.mode !== 'loading' || !this._hasPlayerEntity()) return true;
+        // again anyway, so a stale slice simply stops. A newer restore's own prime re-arms
+        // under its own sequence — this chain belongs to the minted session only.
+        if (this.state.mode !== 'loading' || !this._hasPlayerEntity()
+            || this._restoreSequence !== restoreSeq) return true;
         this._scheduleAutosaveWork(() => runSlice(index));
       }
       return true;
@@ -4793,6 +4799,14 @@ export const save = {
     state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
     if (state.world && typeof state.world === 'object') state.world.enterSerial = state.enterSerialSeq;
     this.bus.emit('save:restoring', { slot, source: restoreSource });
+    // sector:exit slicing is restore-scoped: the world-restore chunk's departure emit
+    // parks its listener tail on the bus and the restore's own yields + frame-leftover
+    // drains retire it across painted beats. Inside a restore the sim is frozen and
+    // exit listeners observe departure only, so the order hazard that forbids exit
+    // slicing on live ticks does not apply here. Cleared in _closeRestoreSession.
+    if (typeof this.bus.setEmitSliceBudget === 'function') {
+      this.bus.setEmitSliceBudget('sector:exit', 8);
+    }
     timeEffects.reset();
     timeEffects.set(restoreSource, { scale: 0 });
     const entityIdRemap = new Map();
@@ -5047,15 +5061,24 @@ export const save = {
       this._clearStaleTargets();
 
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
-      this._restoreCombat(data.combat, entityIdRemap);
+      yield* this._restoreCombatSteps(data.combat, entityIdRemap);
       yield 'combat-ledger-restored';
+      // Each afterContinue re-derives session state from the restored world —
+      // splitting the run lets a dense save's per-system reconciles paint between.
       this.registry.get('lastShift')?.afterContinue?.();
+      yield 'after-continue-lastShift';
       this.registry.get('redKite')?.afterContinue?.();
+      yield 'after-continue-redKite';
       this.registry.get('ilexArk')?.afterContinue?.();
+      yield 'after-continue-ilexArk';
       this.registry.get('kilnback')?.afterContinue?.();
+      yield 'after-continue-kilnback';
       this.registry.get('mothlight')?.afterContinue?.();
+      yield 'after-continue-mothlight';
       this.registry.get('palletJack')?.afterContinue?.();
+      yield 'after-continue-palletJack';
       this.registry.get('towlineTable')?.afterContinue?.();
+      yield 'after-continue-towlineTable';
       this.registry.get('borrowedVoice')?.afterContinue?.();
       yield 'after-continue-applied';
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
@@ -5296,10 +5319,19 @@ export const save = {
       // the async lane can paint between the resume chain and the whole-census WASM
       // rebuild instead of stacking them inside one generator step before veil lift.
       yield 'physics-restored';
-      this.registry?.get?.('physics')?.completeRestore?.({
+      // The stepped twin lets the native-world adopt's JS legs + per-body fallback
+      // mints pace across presented beats; the WASM adopt itself stays one step.
+      // Sync callers (fixtures, older paths) keep the atomic completeRestore.
+      const physicsSystem = this.registry?.get?.('physics');
+      const completeRestoreContext = {
         entityIdRemap,
         pendingBodyRefs: [...(this._ceresEntityReferenceRestore?.pending?.values() || [])].map(entry => entry.alias),
-      });
+      };
+      if (typeof physicsSystem?.completeRestoreSteps === 'function') {
+        yield* physicsSystem.completeRestoreSteps(completeRestoreContext);
+      } else {
+        physicsSystem?.completeRestore?.(completeRestoreContext);
+      }
       this.primeAutosaveCapture();
       if (finalizeLoadedGame) {
         let finalizerResult;
@@ -5312,12 +5344,17 @@ export const save = {
           this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
         }
         if (s.finalizerPending) {
+          const restoreSeqAtArm = this._restoreSequence;
           Promise.resolve(finalizerResult).then(
             () => timeEffects.clear(restoreSource),
             (err) => {
               timeEffects.clear(restoreSource);
               console.error('[save] finalizeLoadedGame', err);
-              this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
+              // A rejection surfacing under a NEWER restore session is the stale
+              // finalizer's tail — the live session owns the failure toast.
+              if (this._restoreSequence === restoreSeqAtArm) {
+                this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
+              }
             },
           );
         }
@@ -5327,6 +5364,7 @@ export const save = {
       // listener ignores persist:false, so Continue does not rewrite the raw profile or timestamp.
       if (!this._pendingRunTransition) {
         this.bus.emit('settings:changed', { section: 'audio', key: null, persist: false, source: 'save-load' });
+        yield 'save-settings-audio';
         this.bus.emit('settings:changed', { section: 'video', key: null, persist: false, source: 'save-load' });
       }
     } catch (error) {
@@ -5348,6 +5386,11 @@ export const save = {
     hadPendingRunTransition = !!pendingRunTransition;
     this._pendingRunTransition = null;
     this._restoring = false;
+    // sector:exit slicing was armed in _openRestoreSession for this session's
+    // world leg only — a live-tick exit emit must never slice (listener order).
+    if (typeof this.bus.setEmitSliceBudget === 'function') {
+      this.bus.setEmitSliceBudget('sector:exit', 0);
+    }
     // The envelope's record-id deferral is restore-scoped: every rematerialize that could see
     // it ran inside _restoreChunks (membership enter + residency drain), and a drained newer
     // route republishes its own set in _openRestoreSession. Clearing must precede the error
@@ -5555,6 +5598,13 @@ export const save = {
   },
 
   _restoreCombat(d, entityIdRemap) {
+    const it = this._restoreCombatSteps(d, entityIdRemap);
+    let r;
+    while (!(r = it.next()).done) { /* synchronous lane runs the whole chain */ }
+    return r.value;
+  },
+
+  *_restoreCombatSteps(d, entityIdRemap) {
     const state = this.state;
     const resolveEntityRef = (ref) => {
       if (!ref || typeof ref !== 'object') return null;
@@ -5566,7 +5616,7 @@ export const save = {
       return null;
     };
     this._cancelCeresAttachmentRestore();
-    restoreCombatState(state, d, resolveEntityRef, { deferCeresAttachments: true });
+    yield* restoreCombatStateSteps(state, d, resolveEntityRef, { deferCeresAttachments: true });
     if (!hasPendingCeresWorkfleetAttachments(state)) return;
     const token = { state, combat: state.combat, sequence: this._restoreSequence,
       runEpoch: this._runEpoch, ready: false, off: [] };

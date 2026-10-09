@@ -737,6 +737,77 @@ export class Sg02DynamicBodyOwner {
     } catch (error) { candidate.dispose(); throw error; }
   }
 
+  // Stepped twin of syncFromEntities: identical mint/removal/resume order, with a
+  // yield every `yieldEvery` collider mints so a mature save's rebuild paces across
+  // presented beats instead of one atomic WASM-build span inside the veil window.
+  *syncFromEntitiesSteps(entities = [], yieldEvery = 16) {
+    const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+    this._syncSerial++;
+    const live = this._liveEntityIds;
+    live.clear();
+    let count = 0;
+    let minted = 0;
+    for (const entity of entities) {
+      if (!entity || entity.alive === false || entity.physicsBody === false) continue;
+      const spec = resolvePhysicsBodySpec(entity);
+      if (!spec || !(spec.radius > 0)) continue;
+      live.add(entity.id);
+      count++;
+      this._syncRecord(entity, spec);
+      if (++minted % every === 0) yield;
+    }
+
+    for (const [id, rec] of this.records) {
+      if (!live.has(id)) this._removeRecord(id, rec);
+    }
+    this._resumeSuspendedAttachments(live);
+    this._staticLayerVersion = null;
+    this._writeSyncDiagnostics('full', count, 0, 0, -1);
+  }
+
+  // Stepped twin of rebuildWorldFromEntities: candidate construction, scratch staging,
+  // the paced collider mints, mirror collection, then the atomic _commitNativeOwner —
+  // commit still lands in one step so a suspended drive can never publish a torn world.
+  *rebuildWorldFromEntitiesSteps(entities = [], options = {}, yieldEvery = 16) {
+    const candidate = new Sg02DynamicBodyOwner(this.RAPIER, {
+      fixedDt: this.fixedDt, quantum: this.quantum, mode: this.mode,
+      captureContactImpacts: this.captureContactImpacts, publishTelemetry: this.publishTelemetry,
+      frameOrigin: options.frameOrigin || this._frameOrigin,
+      frameOriginSeq: options.frameOriginSeq ?? this._frameOriginSeq,
+    });
+    try {
+      // Construction may move coincident spawns. Stage those mirrors too so a later
+      // native construction failure cannot mutate entities belonging to the old owner.
+      const originals = new Map();
+      const staged = entities.map(entity => {
+        if (!entity) return entity;
+        const scratch = { ...entity, pos: entity.pos && { ...entity.pos },
+          prevPos: entity.prevPos && { ...entity.prevPos }, vel: entity.vel && { ...entity.vel },
+          flags: entity.flags && { ...entity.flags } };
+        originals.set(scratch, entity);
+        return scratch;
+      });
+      yield 'native-rebuild-staged';
+      yield* candidate.syncFromEntitiesSteps(staged, yieldEvery);
+      if (candidate._pendingNativeRebuilds.size) throw new Error('scalar_body_reconstruction_failed');
+      const mirrors = [];
+      for (const rec of candidate.records.values()) {
+        const scratch = rec.entity, entity = originals.get(scratch);
+        for (const property of ['pos', 'prevPos']) {
+          for (const key of ['x', 'z']) {
+            if (entity[property] && scratch[property] && entity[property][key] !== scratch[property][key]) {
+              mirrors.push({ entity: entity[property], key, value: scratch[property][key] });
+            }
+          }
+        }
+        rec.entity = entity;
+        if (ceresWorkfleetSlideRole(entity)) {rec.ceresWorkfleetEntity=entity;rec.ceresWorkfleetLife=entity.occupantGeneration;}
+      }
+      yield 'native-rebuild-mirrored';
+      this._commitNativeOwner(candidate, mirrors);
+    } catch (error) { candidate.dispose(); throw error; }
+  }
+
   _commitNativeOwner(candidate, mirrors = []) {
     const previousWorld = this.world, previousQueue = this._eventQueue;
     const previousFailures = this._pendingNativeRebuilds;

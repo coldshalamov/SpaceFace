@@ -3132,7 +3132,17 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   installBoundaryResolvingMarker(boundary, entity, markerOptions);
 
   let activeRoot = fallbackRoot;
+  // Epoch guard mirroring installPreparedBoundaryPublisher: a deferred swap armed by
+  // admission run A must refuse to fire after a newer run re-minted the boundary's
+  // epoch — grafting A's root under B's epoch would overlay stale geometry.
+  const installedEpoch = boundary.userData.admissionEpoch;
   const setActiveRoot = (next) => {
+    if (boundary.userData.admissionEpoch !== installedEpoch) {
+      if (boundary.userData.__setActiveVisualRoot === setActiveRoot) {
+        delete boundary.userData.__setActiveVisualRoot;
+      }
+      return;
+    }
     activeRoot = next;
     boundary.userData.hull = next;
     boundary.userData.lod = next?.userData?.lod || null;
@@ -3815,7 +3825,16 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   });
 
   let activeRoot = fallbackRoot;
+  // Same epoch guard as installPreparedBoundaryPublisher: a swap armed under a
+  // superseded admission epoch must self-clear instead of grafting stale geometry.
+  const installedEpoch = boundary.userData.admissionEpoch;
   const setActiveVisualRoot = (next) => {
+    if (boundary.userData.admissionEpoch !== installedEpoch) {
+      if (boundary.userData.__setActiveVisualRoot === setActiveVisualRoot) {
+        delete boundary.userData.__setActiveVisualRoot;
+      }
+      return;
+    }
     if (!next || !next.isObject3D) return;
     activeRoot = next;
     boundary.userData.hull = next;
@@ -3985,7 +4004,16 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
 
   attachLodState(boundary);
   let activeRoot = fallbackRoot;
+  // Same epoch guard as installPreparedBoundaryPublisher: a swap armed under a
+  // superseded admission epoch must self-clear instead of grafting stale geometry.
+  const installedEpoch = boundary.userData.admissionEpoch;
   const setActiveVisualRoot = (next) => {
+    if (boundary.userData.admissionEpoch !== installedEpoch) {
+      if (boundary.userData.__setActiveVisualRoot === setActiveVisualRoot) {
+        delete boundary.userData.__setActiveVisualRoot;
+      }
+      return;
+    }
     if (!next || !next.isObject3D) return;
     activeRoot = next;
     boundary.userData.hull = next;

@@ -389,6 +389,62 @@ export const physics = {
     this._nativeRestorePending = true;
   },
 
+  // Stepped twin of completeRestore: the save epilogue drives it via yield* so the
+  // JS reconcile legs and the per-body collider mints pace across presented beats.
+  // The WASM adopt stays one step (an un-sliceable invoke); the fallback rebuild
+  // batches bodies under syncFromEntitiesSteps and commits atomically.
+  *completeRestoreSteps(options = {}) {
+    this._nativeRestoreDeferred = false;
+    this._nativeRestoreContext = options;
+    this._nativeRestorePending = true;
+    if (!this._sg02) return false;
+    return yield* this._finishNativeRestoreSteps();
+  },
+
+  *_finishNativeRestoreSteps() {
+    const live = () => this._sg02 && this._nativeRestorePending && !this._nativeRestoreDeferred;
+    if (!live()) return false;
+    const state = this.state;
+    const payload = this._pendingSg02Snapshot;
+    const context = this._nativeRestoreContext || {};
+    resetActivityRuntimeForRestore(state);
+    yield 'native-restore-activity-reset';
+    if (!live()) return false;
+    reconcileMachineryBeforePhysics(state);
+    yield 'native-restore-machinery-reconciled';
+    if (!live()) return false;
+    reconcileLatchBeforePhysics(state);
+    yield 'native-restore-latch-reconciled';
+    if (!live()) return false;
+    const activity = ensureActivityClassified(state);
+    const entities = activity ? [...activity.physicsStatics, ...activity.physicsDynamics] : state.entityList;
+    let adopted = false;
+    let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
+    if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
+    else if (payload && (payload.frameOrigin?.x !== worldFrameOrigin(state).x
+      || payload.frameOrigin?.z !== worldFrameOrigin(state).z)) reason = 'frame_origin_changed';
+    else if (payload) {
+      adopted = this._sg02.adoptWorldSnapshot(payload, entities, {
+        entityIdRemap: context.entityIdRemap || state.sessionEntityIdRemap,
+        attachments: state.combat?.attachments?.byId || {},
+        resolveAttachmentContract: this.helpers?.describeCombatPhysicsAttachment,
+      });
+    }
+    yield 'native-restore-adopted';
+    if (!live()) return false;
+    if (!adopted) {
+      yield* this._sg02.rebuildWorldFromEntitiesSteps(entities, {
+        frameOrigin: worldFrameOrigin(state), frameOriginSeq: worldFrameOriginSeq(state),
+      });
+    }
+    this._pendingSg02Snapshot = null;
+    this._nativeRestorePending = false;
+    this._nativeRestoreContext = null;
+    if (!state.physicsRuntime) state.physicsRuntime = {};
+    state.physicsRuntime.nativeRestore = { mode: adopted ? 'native' : 'scalar', exact: adopted, reason: adopted ? null : reason };
+    return adopted;
+  },
+
   _finishNativeRestore() {
     if (!this._sg02 || !this._nativeRestorePending || this._nativeRestoreDeferred) return false;
     const state = this.state;
