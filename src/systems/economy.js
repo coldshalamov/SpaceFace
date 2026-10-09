@@ -4514,6 +4514,29 @@ function cloneSaveTree(value) {
 }
 
 // ---- exported public API (UI & other systems call without the bus) --------------------------
+// Lane read view (claims/drill pattern): the whole-sim worker owns the economy
+// system; main-side callers resolve a prototype view over the mirrored state so
+// synchronous reads (quote) run the real implementation against the facade.
+// Mint paths cannot run facade-side — they draw worker rng and write
+// authoritative markets — so the view stubs them into a signal: the registry
+// wrapper ships economyMintListing and the real row arrives on a mirror apply.
+export function economyReadView(state) {
+  const view = Object.create(economy);
+  view.state = state;
+  view.bus = null;
+  view.ctx = { state, bus: null };
+  view.eagerMarketMint = false;
+  view.__mintNeeded = null;
+  view.ensureMarket = function (stationId) {
+    view.__mintNeeded = view.__mintNeeded || { kind: 'market', stationId };
+    return null;
+  };
+  view.mintUnseededListing = function (stationId) {
+    view.__mintNeeded = view.__mintNeeded || { kind: 'listing', stationId };
+    return null;
+  };
+  return view;
+}
 export function quote(stationId, commodityId, side, qty) {
   return economy._instance ? economy._instance.quote(stationId, commodityId, side, qty) : { ok: false, reason: 'no_economy' };
 }

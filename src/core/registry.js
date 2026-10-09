@@ -112,7 +112,7 @@ import { mining } from '../systems/mining.js';
 import { fieldDepletion } from '../systems/fieldDepletion.js';
 import { cargo } from '../systems/cargo.js';
 import { fragileCargo } from '../systems/fragileCargo.js';
-import { economy } from '../systems/economy.js';
+import { economy, economyReadView } from '../systems/economy.js';
 import { automation } from '../systems/automation.js';
 import { asteroidSites } from '../systems/asteroidSites.js'; // durable in-asteroid machine sites (ASTEROID_SITES_BRIEF)
 import { asteroidFormations } from '../systems/asteroidFormations.js'; // discovered-formation knowledge owner (A02)
@@ -958,10 +958,37 @@ export function createRegistry(ctx) {
             reason: typeof reason === 'string' ? reason : 'lifecycle',
           }),
         };
-      case 'economy':
-        // Price lookups are synchronous reads — the stage-5 census showed the
-        // only caller (market price column) degrades to a blank cell on null.
-        return { name: 'economy', quote: () => null };
+      case 'economy': {
+        // quote() is a synchronous read — the stage-5 census missed that the
+        // market's trade console (selectedTradeQuote / contemplatedSaleQuote /
+        // tradeQuantityLimit / unitPrice) calls it in the buy/sell path, so a
+        // null stub left GO disabled and every trade dead on the lane. Run the
+        // real implementation on a prototype view over the mirrored economy
+        // root (claims/drill pattern). Mint paths can't run facade-side
+        // (worker rng + authoritative writes): the view signals them and this
+        // wrapper asks the worker to mint the real row — it arrives on the
+        // next mirror apply; until then the quote reads 'untraded', same as a
+        // main-lane quote on a genuinely untraded good.
+        const readView = economyReadView(st);
+        return {
+          name: 'economy',
+          quote: (stationId, commodityId, side, qty) => {
+            readView.__mintNeeded = null;
+            let q = null;
+            try { q = readView.quote(stationId, commodityId, side, qty); } catch (_) { q = null; }
+            if (readView.__mintNeeded) {
+              laneRpc('economyMintListing', {
+                stationId,
+                commodityId,
+                side,
+                kind: readView.__mintNeeded.kind,
+              });
+              return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+            }
+            return q;
+          },
+        };
+      }
       case 'cargo':
         return {
           name: 'cargo',

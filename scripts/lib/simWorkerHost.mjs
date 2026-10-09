@@ -904,6 +904,21 @@ export function createSimHost() {
         if (!c || typeof c.jettison !== 'function') throw new Error('cargo-system-unavailable');
         return c.jettison((args && args.commodityId) || null, (args && args.qty) || 1);
       }],
+      // Market mint: the facade's read view signals a mint it cannot perform
+      // itself (unseeded listing / unvisited-station market — worker rng draws
+      // and authoritative writes). Routing through quote's own mint path keeps
+      // the gate (tier/legality) and the eager-deferral semantics identical to
+      // a local quote; the seeded row ships on the next mirror apply.
+      ['economyMintListing', (args) => {
+        const e = registry.get('economy');
+        if (!e || typeof e.quote !== 'function') return { ok: false, reason: 'economy-system-unavailable' };
+        const stationId = args && args.stationId;
+        const commodityId = args && args.commodityId;
+        if (!stationId || !commodityId) return { ok: false, reason: 'bad-args' };
+        const side = args && args.side === 'buy' ? 'buy' : 'sell';
+        e.quote(stationId, commodityId, side, 0);
+        return { ok: true };
+      }],
       // Every mutating claims call the main-side screens make — the facade's
       // read names stay mirrored; these run on the real system one rpc hop
       // away. 'claim' also ships the new body row so claimOrOpenBase can open
@@ -1036,6 +1051,10 @@ export function createSimHost() {
           } : null,
           lastRpcAck: host.lastRpcAck || null,
           lastBusEmit: host.lastBusEmit || null,
+          playerCredits: state.player ? state.player.credits : null,
+          playerCargo: state.player && state.player.cargo
+            ? { usedVolume: state.player.cargo.usedVolume, capVolume: state.player.cargo.capVolume }
+            : null,
           lastStorageStage: host.lastStorageStage || null,
           gameStartedEmits: host.gameStartedEmits,
           pendingGameStarted: host.pendingGameStarted !== null,

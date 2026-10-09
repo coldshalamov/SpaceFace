@@ -496,7 +496,11 @@ export function resolveDomainValue(state, key) {
 // last-signed digest per leaf path, so it stays consistent with the facade
 // state between cold/warm re-signs (facades trail live by the tier interval
 // at worst — the signed digest still describes the shipped content).
-export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1 });
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1 });
+// player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
+// player.cargo) sign every pass instead of trailing the monolithic player
+// leaf's cold-tier 60-tick interval: a settled trade used to leave the facade
+// showing pre-trade credits for up to a full cold period.
 // Path-prefix expansion overrides: a matching prefix raises the expansion
 // depth for that subtree. None active — measured 2026-10: expanding
 // economy.markets one more level (per-commodity rows) balloons the leaf set
