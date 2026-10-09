@@ -457,6 +457,12 @@ export const gyreSnare = {
       // an empty-beam release, fuller when a clump slipped the beam. Boundaries stay silent
       // (a save/sector swap shouldn't talk).
       if (!quiet) {
+        // Seat the loss voice where the clump slipped — a strain break frees the
+        // ball ~480-640 wu off the nose and the tear-fade draws at tornPos; the
+        // vocabulary's loudest loss beat shouldn't play head-locked. (The
+        // too-heavy drop variant already seats its own emit; gyre_snare_off is
+        // hull-side — an empty beam frees nothing and stays head-locked.)
+        const cueCore = emitId != null ? this._ensurePub(this.state).corePos : null;
         this.bus.emit('audio:cue', {
           // A strain break is the verb's biggest loss beat — it gets its own clink +
           // harsh-dust TEAR voice, not the polite release's descending fizzle.
@@ -464,6 +470,7 @@ export const gyreSnare = {
           // shatter, not a polite release — same glassier cue, same close shape.
           id: emitId != null ? ((reason === 'strained' || reason === 'core_lost') ? 'gyre_snare_tear' : 'gyre_snare_drop') : 'gyre_snare_off',
           gain: emitId != null ? 0.9 : 0.5,
+          ...(cueCore && Number.isFinite(cueCore.x) ? { position: { x: cueCore.x, z: cueCore.z } } : null),
         });
         // A strain break is the verb's biggest loss beat — land it in the body too
         // (mass-scaled like the launch kick, smaller since nothing was thrown).
@@ -2569,7 +2576,12 @@ export const gyreSnare = {
       if (!rt.strainCueLatched) {
         rt.strainCueLatched = true;
         rt.strainCueNextTick = (Number.isFinite(tk) ? tk : 0) + Math.ceil(0.5 * TICKS_PER_S);
-        if (this.bus) this.bus.emit('audio:cue', { id: 'gyre_snare_strain', gain: 0.7 });
+        // The warn voice seats on the straining mass like the tear and the
+        // too-heavy refusal — a hard drag can read ~480 wu off the nose.
+        if (this.bus) this.bus.emit('audio:cue', {
+          id: 'gyre_snare_strain', gain: 0.7,
+          position: { x: pub.corePos.x, z: pub.corePos.z },
+        });
         // Strain reaches the hands too — one warning pulse on the latch edge, not a rumble
         // the whole excursion (the sustained voice + HUD carry that).
         // The warn latch shares its name with the terminal drop reason 'strained'
@@ -2584,6 +2596,7 @@ export const gyreSnare = {
         rt.strainCueNextTick = tk + Math.ceil(0.5 * TICKS_PER_S);
         if (this.bus) this.bus.emit('audio:cue', {
           id: 'gyre_snare_strain', gain: 0.3 + 0.3 * pub.strain01, rate: 0.9,
+          position: { x: pub.corePos.x, z: pub.corePos.z },
         });
       }
     } else if (pub.strain01 < 0.25) {
