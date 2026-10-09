@@ -21,5 +21,7 @@ export function runtimeWorkerUrl(id, moduleUrl, {
   // A split chunk's import.meta.url is NOT the document root. Use the deployment's
   // document base for retail, including deployments hosted below a path prefix.
   if (production) return new URL(spec.output, documentBase || moduleUrl).href;
-  return new URL(`./${spec.source.split('/').pop()}`, moduleUrl).href;
+  // Dev serves the source tree at the origin root — spec.source is a repo-root
+  // path, so resolve it there regardless of which module asks.
+  return new URL(`/${spec.source}`, moduleUrl).href;
 }
