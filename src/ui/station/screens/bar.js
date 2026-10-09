@@ -704,16 +704,19 @@ export function createBarScreen(ctx) {
       const missionId = accept.getAttribute('data-accept-mission');
       const wasAvailable = missionOfferAvailable(ctx.state || {}, missionId);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-      // The lane rpc is the authoritative verdict; the emitted path (main lane) keeps
-      // the local availability re-read because there is no ack to await.
+      // The worker-lane rpc returns the authoritative verdict; the emitted path
+      // (main lane) has no ack, so acceptance is verified by re-reading the offer.
       const res = await acceptMissionOnLane(ctx.bus, missionId);
-      const accepted = res && res.ok === true && res.emitted !== true
-        ? true
-        : wasAvailable && !missionOfferAvailable(ctx.state || {}, missionId);
-      if (accepted) {
+      const laneAccepted = res && res.ok === true && res.emitted !== true;
+      const markAccepted = () => {
         acceptedMissionId = missionId;
         pendingMissionOffer = null;
         saidText = `Accepted + tracked. Mission Log (${BINDINGS.missionLog.label}) now carries route, timer, and progress. Undock when Departure Check is green.`;
+      };
+      if (wasAvailable && !missionOfferAvailable(ctx.state || {}, missionId)) {
+        markAccepted();
+      } else if (laneAccepted) {
+        markAccepted();
       } else {
         saidText = wasAvailable
           ? 'Mission still pending. Resolve the readiness blocker before accepting.'
