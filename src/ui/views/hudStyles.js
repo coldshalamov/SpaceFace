@@ -2814,8 +2814,12 @@ export function injectHudCss() {
      the viewport height, so the ring is sized in vmin to clear the silhouette at every resolution.
      Strokes are in the 120-unit viewBox (x ~2.5 on screen). */
   #hud .sf-threat-ring {
+    display:none;
     width:clamp(220px, 30vmin, 420px); height:clamp(220px, 30vmin, 420px); margin:0; transform:translate(-50%, -50%);
   }
+  /* The large center instrument reads as a gunsight. Reserve it for the explicitly
+     toggled combat stick; ordinary mouse flight has only its real target cursor. */
+  body.sf-flight-cursor #hud .sf-threat-ring { display:block; }
   #hud .sf-threat-ring__arc { stroke-width:1.6; }
   #hud:is([data-tether="ready"], [data-tether="latched"], [data-tether="strain"]) .sf-threat-ring { opacity:1; }
   /* the halo: a hairline ring with four bearing ticks, so the arcs read as marks on one instrument */

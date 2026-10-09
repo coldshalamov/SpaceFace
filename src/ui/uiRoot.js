@@ -38,6 +38,7 @@ import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { occupantGenerationOf } from '../core/entity.js';
+import { flightCursorMode, installNativeFlightCursor } from './flightCursor.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -759,8 +760,8 @@ export const ui = {
     // === UI: aiming reticle ===
     // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
     // this third-person chase-cam game, and it sat on every screen as an unexplained symbol.)
-    // The target cursor is the mouse pointer in flight. Keep it outside #hud so HUD
-    // opacity, disruption and blackout effects cannot hide or displace it.
+    // The native target cursor owns ordinary mouse flight. This independent DOM marker
+    // carries hit feedback and the centered combat-stick sight, outside HUD effects.
     const reticle = document.createElement('div');
     reticle.id = 'aim-reticle';
     reticle.dataset.mode = 'manual';
@@ -772,12 +773,14 @@ export const ui = {
     const hudRoot = document.getElementById('hud');
     document.getElementById('ui-root').appendChild(reticle);
     const flightPointer = createFlightPointerTracker(window, document);
+    const nativeCursor = installNativeFlightCursor(document);
 
     let hitTickTimeout = null;
     this._destroyFlightCursor = () => {
       if (hitTickTimeout) clearTimeout(hitTickTimeout);
       flightPointer.destroy();
-      document.body.classList.remove('sf-flight-cursor');
+      nativeCursor.destroy();
+      document.body.classList.remove('sf-flight-cursor', 'sf-flight-pointer');
       reticle.remove();
       this._syncFlightCursor = null;
       this._destroyFlightCursor = null;
@@ -856,6 +859,8 @@ export const ui = {
         && this.state.settings.gameplay.controlScheme);
       setPromptBindings(this.state);
       refreshReticleModeLabel();
+      // Read the applied palette after the settings listeners update accessibility classes.
+      queueMicrotask(() => nativeCursor.refresh());
     });
 
     const syncFlightCursor = (visible, reticleAlive = visible) => {
@@ -882,11 +887,14 @@ export const ui = {
       // `reticle` created above is the only element with id 'aim-reticle': the old
       // getElementById could only ever resolve to it (or nothing) — skip the per-frame lookup.
       const reticleEl = reticle;
-      // Hide the system arrow only when its actual target-cursor replacement is present.
-      // Input activity is not part of this decision; an idle mouse still has a cursor.
+      // Only combat-stick mode hides the native pointer for a centered sight. Ordinary
+      // flight always selects the native target image, even before the first mouse event
+      // or after a transient focus/input reset. Windows/browser owns its actual position.
       const targetCursorVisible = !!(reticleAlive && position && flightPointer.pointer.focused
         && reticleEl.isConnected);
-      document.body.classList.toggle('sf-flight-cursor', visible && targetCursorVisible);
+      const cursorMode = flightCursorMode(st, visible, targetCursorVisible);
+      document.body.classList.toggle('sf-flight-pointer', cursorMode === 'mouse');
+      document.body.classList.toggle('sf-flight-cursor', cursorMode === 'stick');
       const nextReticleDisplay = targetCursorVisible ? 'block' : 'none';
       if (lastReticleDisplay !== nextReticleDisplay) {
         lastReticleDisplay = nextReticleDisplay;

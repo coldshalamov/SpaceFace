@@ -1028,10 +1028,18 @@ export function createInputEcho({ root, rigHost = null, onInput }) {
   if (!doc || typeof doc.addEventListener !== 'function' || typeof onInput !== 'function') return { dispose() {}, pointer: () => null };
   let pointer = null;
   const downKeys = new Set();
-  const send = (ev) => { try { onInput(ev); } catch (e) { console.warn('[help] echo failed', e); } };
+  // Help is mounted during screen prewarm, before it ever becomes the visible modal.
+  // Document-level listeners must not echo flight/system keys from that cached screen.
+  const active = () => root.isConnected !== false && !root.inert
+    && root.getAttribute?.('aria-hidden') !== 'true'
+    && !root.closest?.('[inert], [aria-hidden="true"], [hidden]');
+  const send = (ev) => {
+    if (!active()) return;
+    try { onInput(ev); } catch (e) { console.warn('[help] echo failed', e); }
+  };
 
   const onKeyDown = (e) => {
-    if (isTextEntry(e.target)) return;
+    if (!active() || isTextEntry(e.target)) return;
     const code = e.code || '';
     if (!code || e.repeat) return;
     downKeys.add(code);
@@ -1048,7 +1056,7 @@ export function createInputEcho({ root, rigHost = null, onInput }) {
     return !!(host && t && typeof host.contains === 'function' && host.contains(t));
   };
   const isControl = (t) => !!(t && typeof t.closest === 'function' && t.closest('button, a, input, textarea, select, [role="tab"], [tabindex]:not([tabindex="-1"])'));
-  const onPointerMove = (e) => { pointer = { x: e.clientX, y: e.clientY }; };
+  const onPointerMove = (e) => { if (active()) pointer = { x: e.clientX, y: e.clientY }; };
   const mouseCode = (b) => (b === 0 ? 'Mouse0' : b === 2 ? 'Mouse2' : b === 1 ? 'Mouse1' : `Mouse${b}`);
   const onPointerDown = (e) => {
     pointer = { x: e.clientX, y: e.clientY };
@@ -1087,6 +1095,11 @@ export function createInputEcho({ root, rigHost = null, onInput }) {
     return null;
   };
   const poll = () => {
+    if (!active()) {
+      prev = [];
+      prevAxes = { up: false, down: false, left: false, right: false, aim: false };
+      return true;
+    }
     const p = readPad();
     if (!p) { if (prev.length) { prev.forEach((on, i) => { if (on) send({ device: 'pad', button: PAD_STD_NAMES[i], down: false }); }); prev = []; } return true; }
     const now = (p.buttons || []).map((b) => !!(b && (b.pressed || (typeof b.value === 'number' && b.value > 0.5))));

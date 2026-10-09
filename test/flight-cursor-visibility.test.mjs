@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { flightReticlePosition, createFlightPointerTracker } from '../src/ui/uiRoot.js';
+import { flightCursorMode, nativeFlightCursorCss } from '../src/ui/flightCursor.js';
+
+test('ordinary flight retains its custom platform cursor regardless of marker/input/focus activity', () => {
+  const state = { input: { autoFire: false, pointerScreen: { active: false } } };
+  assert.equal(flightCursorMode(state, true, false), 'mouse');
+  assert.equal(flightCursorMode(state, true, true), 'mouse');
+  state.input.autoFire = true;
+  assert.equal(flightCursorMode(state, true, true), 'stick');
+  assert.equal(flightCursorMode(state, true, false), 'mouse', 'a missing centered marker must not hide the platform cursor');
+  assert.equal(flightCursorMode(state, false, true), 'ui', 'menus retain their own cursor');
+  const css = nativeFlightCursorCss({ lamp: 'rgb(242, 185, 80)', hot: 'rgb(255, 232, 181)', outline: 'rgb(4, 6, 9)' });
+  assert.match(css, /24 24, crosshair/);
+  const svg = decodeURIComponent(css.match(/data:image\/svg\+xml,([^"\s]+)/)[1]);
+  assert.match(svg, /width="48" height="48"/);
+  assert.match(svg, /stroke="rgb\(242, 185, 80\)"/);
+});
 
 class EventTarget {
   constructor() { this.listeners = new Map(); }
