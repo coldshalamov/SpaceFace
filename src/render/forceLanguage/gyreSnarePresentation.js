@@ -44,6 +44,8 @@ uniform float uLeanZ;     // local-units lateral bend: the glass flexes toward t
                           // rigid silhouette (rim takes full lean, nose none)
 uniform vec2 uGulp;       // x = meal-graded amplitude, y = swallow start (uTime) —
                           // a gulp band enters at the rim and runs to the apex
+uniform float uNet;       // 0..1 — bodies riding the net (basinCount/3): the skin
+                          // quickens with prey aboard before the catch lands
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -65,10 +67,14 @@ void main() {
   float gkv = (uTime - uGulp.y) / 0.22;
   float swell = (gkv >= 0.0 && gkv <= 1.0)
     ? uGulp.x * (1.0 - gkv) * exp(-pow((uv.y - (1.0 - gkv)) * 7.0, 2.0)) : 0.0;
-  float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * (1.0 + uMass * 0.3) * uCalm * (1.0 + swell * 2.0);
+  float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * (1.0 + uMass * 0.3) * uCalm * (1.0 + swell * 2.0) * (1.0 + uNet * 0.35);
   vec2 radial = p.xz;
   float rl = max(length(radial), 1e-4);
   p.xz += (radial / rl) * ripple * amp;
+  // The swallow band also fattens the skin coherently — fold-into-amp alone is
+  // interference-shaped and pinches to nothing where the sines cancel, so a big
+  // meal read as a louder wobble instead of a bulge running aft.
+  p.xz += (radial / rl) * swell * 0.05 * uCalm;
   vec4 wp = modelMatrix * vec4(p, 1.0);
   vW = wp.xyz;
   vN = normalize(mat3(modelMatrix) * normal);
@@ -87,6 +93,11 @@ uniform float uCalm;      // reduced motion freezes the traveling shimmer too
 uniform float uStrain;    // raw strain — hue warn is a color read, NOT calm-gated
 uniform vec2 uGulp;       // x = meal-graded amp, y = swallow start — the band
                           // enters at the rim, runs to the apex (~0.22 s)
+uniform float uNet;       // 0..1 — bodies riding the net: the skin glows denser
+                          // as the funnel fills (anticipation, before the catch)
+uniform vec2 uInner;      // x = band-rate scale, y = band phase — the interior
+                          // shell rides a slower counter-phase for parallax depth
+uniform float uShellA;    // alpha grade per shell — outer 1, inner ~0.5
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -101,8 +112,8 @@ void main() {
   // motion a frozen full-bright glint would sit as two permanent vertical seams
   // the animated cone never shows. mix(0.3, 1.0) leaves a faint static sheen.
   float glint = pow(abs(sin(vUv.x * 6.2832 - uTime * 2.4 * uCalm)), 24.0) * mix(0.3, 1.0, uCalm);
-  float band = 0.5 + 0.5 * sin(vUv.y * 34.0 - uTime * 13.0 * uCalm);
-  float band2 = 0.5 + 0.5 * sin(vUv.y * 71.0 - uTime * 23.0 * uCalm);
+  float band = 0.5 + 0.5 * sin(vUv.y * 34.0 - uTime * 13.0 * uCalm * uInner.x + uInner.y);
+  float band2 = 0.5 + 0.5 * sin(vUv.y * 71.0 - uTime * 23.0 * uCalm * uInner.x + uInner.y * 1.7);
   // Same calm contract as the glint: frozen full-contrast interference bands
   // bake permanent axial stripes onto a cone the animated version never shows
   // — fold the product down to an even sheen under reduced motion.
@@ -120,7 +131,7 @@ void main() {
   // The apex anchors the lash's origin a hair harder — against a bright nebula
   // the additive cone can wash the nose end out, and nothing else marks where
   // the beam emits from.
-  float a = uAlpha * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + bands * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.30 + gulp * 0.30);
+  float a = uAlpha * uShellA * (0.05 + fres * 0.38 + lobe * 0.20 + glint * 0.10 + bands * 0.11 + rim * (0.30 + uPulse * 0.45) + apex * 0.30 + gulp * 0.30 + uNet * 0.08);
   vec3 col = mix(uColGlass, uColHot, clamp(rim * 0.75 + apex * 0.55 + fres * 0.4 + lobe * 0.3 + glint * 0.25 + uPulse * 0.4 + gulp * 0.6, 0.0, 1.0));
   // Strain warning = a warm wash toward uColWarn, not the near-identical rim
   // white — 'about to tear' is chromatic, not just kinetic. Raw strain (not
@@ -308,10 +319,13 @@ export class GyreSnarePresentation {
         uTime: { value: 0 }, uPulse: { value: 0 }, uMass: { value: 0 }, uCalm: { value: 1 }, uStrain: { value: 0 }, uTremble: { value: 0 },
         uLeanZ: { value: 0 },
         uGulp: { value: new THREE.Vector2(0, -1e4) }, // amp, start time — far past = idle
+        uNet: { value: 0 },
         uColWarn: { value: new THREE.Color(P.warn) },
         uColGlass: { value: new THREE.Color(glass) },
         uColHot: { value: new THREE.Color(hot) },
         uAlpha: { value: 0.55 },
+        uInner: { value: new THREE.Vector2(1, 0) }, // outer shell: full-rate in-phase bands
+        uShellA: { value: 1 },
       },
       transparent: true, blending: THREE.AdditiveBlending,
       depthWrite: false, side: THREE.DoubleSide,
@@ -328,6 +342,32 @@ export class GyreSnarePresentation {
     this._cone.rotation.z = -Math.PI / 2;   // cylinder +Y → beam +X
     this._cone.frustumCulled = false;       // scaled per frame; bounding sphere lies
     this._beam.add(this._cone);
+
+    // Interior shell: the glassy read was resting entirely on rim/fresnel alpha.
+    // A second pass of the same geometry — BackSide, ~0.8× radius, bands on a
+    // slower counter-phase — puts a visible inside face behind the rim so the
+    // cone has parallax depth (one extra draw call, same shaders). The uniform
+    // objects are SHARED with the outer material, so every per-frame write
+    // animates both shells; only uInner/uShellA differ.
+    const coneU = this._coneMat.uniforms;
+    this._coneInnerMat = new THREE.ShaderMaterial({
+      vertexShader: CONE_VERT, fragmentShader: CONE_FRAG,
+      uniforms: {
+        uTime: coneU.uTime, uPulse: coneU.uPulse, uMass: coneU.uMass,
+        uCalm: coneU.uCalm, uStrain: coneU.uStrain, uTremble: coneU.uTremble,
+        uLeanZ: coneU.uLeanZ, uGulp: coneU.uGulp, uNet: coneU.uNet,
+        uColWarn: coneU.uColWarn, uColGlass: coneU.uColGlass, uColHot: coneU.uColHot,
+        uAlpha: coneU.uAlpha,
+        uInner: { value: new THREE.Vector2(0.62, 2.6) }, // slower counter-phase bands
+        uShellA: { value: 0.5 },
+      },
+      transparent: true, blending: THREE.AdditiveBlending,
+      depthWrite: false, side: THREE.BackSide,
+    });
+    this._coneInner = new THREE.Mesh(coneGeo, this._coneInnerMat);
+    this._coneInner.rotation.z = -Math.PI / 2;
+    this._coneInner.frustumCulled = false;
+    this._beam.add(this._coneInner);
 
     // Glass body under the additive rim: pure glow sells "light" but reads flat — a
     // whisper of normal-blend surface gives the cone a physical skin the rim sits on.
@@ -548,7 +588,7 @@ export class GyreSnarePresentation {
     }
     this._spotPt = { x: 0, z: 0 };
 
-    this._nose = { x: 0, z: 0 };
+    this._pt = { x: 0, z: 0 };
     this._mawPt = { x: 0, z: 0 };
     this._ballPt = { x: 0, z: 0 };
     this._corePt = { x: 0, z: 0 };
@@ -589,18 +629,37 @@ export class GyreSnarePresentation {
       + Math.round(finite(member.nx) * 977) + Math.round(finite(member.nz) * 1291)) | 0;
   }
 
+  // Katamari legibility is seeing WHAT you ate, not just its tint — the member
+  // type picks the silhouette family (wreck: shard, pickup: crate, payload:
+  // canister, asteroid: rock) on the same identity hash that seeds the jitter.
+  _lumpGeometry(member, seed) {
+    const t = member && member.type;
+    let geo = new THREE.IcosahedronGeometry(1, 1);
+    let rough = 0.28;
+    if (t === 'wreck') geo.scale(1.45, 0.55, 0.75);
+    else if (t === 'payload') geo.scale(0.7, 1.35, 0.7);
+    else if (t === 'pickup') { geo = new THREE.BoxGeometry(1.3, 1.3, 1.3, 2, 2, 2); rough = 0.12; }
+    return jitterGeometry(geo, rough, seed);
+  }
+
   _addLump(member, i, instant = false, stagger = 0) {
+    // Seed on the member's own identity, not its ledger index — a want<have
+    // rebuild re-adds the same members and their silhouettes should survive
+    // it instead of re-jittering into new rocks. A pooled slot recycled to a
+    // DIFFERENT member rebuilds its geometry: silhouette follows type.
+    const lSeed = this._lumpSeed(member);
     let slot = null;
     for (const l of this._lumps) if (!l.used) { slot = l; break; }
     if (!slot) {
       if (this._lumps.length >= MAX_LUMPS) return;
-      // Seed on the member's own identity, not its ledger index — a want<have
-      // rebuild re-adds the same members and their silhouettes should survive
-      // it instead of re-jittering into new rocks.
-      const geo = jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, this._lumpSeed(member));
-      slot = { mesh: new THREE.Mesh(geo), used: false, baseScale: 1, spawnT: 0 };
+      const geo = this._lumpGeometry(member, lSeed);
+      slot = { mesh: new THREE.Mesh(geo), used: false, baseScale: 1, spawnT: 0, lumpSeed: lSeed };
       this._clump.add(slot.mesh);
       this._lumps.push(slot);
+    } else if (slot.lumpSeed !== lSeed) {
+      slot.mesh.geometry.dispose();
+      slot.mesh.geometry = this._lumpGeometry(member, lSeed);
+      slot.lumpSeed = lSeed;
     }
     slot.used = true;
     // grow-in: lumps swell in over ~150 ms, not pop. Same-tick absorbs stagger
@@ -736,7 +795,7 @@ export class GyreSnarePresentation {
     // The two brightest flashes in the vocabulary respect reduced-flash like
     // everything else — scale the ring's alpha, not just its lifespan.
     slot.mesh.material.uniforms.uCalm.value = calm;
-    const p = this.toLocal(x, z, this._nose);
+    const p = this.toLocal(x, z, this._pt);
     slot.mesh.position.set(p.x, 0.4, p.z);
     // A directed burst stretches its ring along the throw axis — the payoff
     // aims downrange instead of blooming radially. rotation.z spins the plane
@@ -862,7 +921,7 @@ export class GyreSnarePresentation {
       const nz = finite(mirror.nose && mirror.nose.z);
       const mx = finite(mirror.maw && mirror.maw.x);
       const mz = finite(mirror.maw && mirror.maw.z);
-      const nL = this.toLocal(nx, nz, this._nose);
+      const nL = this.toLocal(nx, nz, this._pt);
       const mL = this.toLocal(mx, mz, this._mawPt);
       let dx = mL.x - nL.x, dz = mL.z - nL.z;
       let len = Math.max(1, Math.hypot(dx, dz));
@@ -915,6 +974,7 @@ export class GyreSnarePresentation {
       // on pebbles, where the old 6+r*0.3 under-read the real 13 wu draw.
       const coilBack = windup * Math.min(Math.max(13, this._clumpRadius * 0.4), endR * 0.5);
       this._cone.scale.set(coilR, drawLen - coilBack, coilR);
+      this._coneInner.scale.set(coilR * 0.82, drawLen - coilBack, coilR * 0.82);
       this._coneBody.scale.set(coilR * 0.97, drawLen - coilBack, coilR * 0.97);
       this._maw.position.set(drawLen - coilBack, 0, 0);
       // The mouth gulps geometrically: each absorb kick dilates ring + disc, not just
@@ -1012,6 +1072,10 @@ export class GyreSnarePresentation {
       // +30% on a capped moon (the shimmer reads heavier, matching the pulse
       // floor's massFrac*0.1). Eased both ways so the launch close can't pop it.
       this._coneMat.uniforms.uMass.value += (massFrac - this._coneMat.uniforms.uMass.value) * Math.min(1, sdt * 8);
+      // Bodies riding the net quicken + deepen the glass: a funnel holding three
+      // meals shimmered identically to an empty search while the disc and the
+      // mote pace already read the load. ~8% alpha + 35% amp at a full net.
+      this._coneMat.uniforms.uNet.value = Math.min(3, finite(mirror.basinCount, 0)) / 3;
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
@@ -1509,7 +1573,7 @@ export class GyreSnarePresentation {
           // RIDES it — the sim publishes the body's live pos for ~0.5 s (tornPos).
           // The lash visibly LOSES the ball instead of the rubble de-rezzing while
           // the grown body plainly still flies. Shrinks gently as it leaves.
-          const p = this.toLocal(finite(mirror.tornPos.x), finite(mirror.tornPos.z), this._nose);
+          const p = this.toLocal(finite(mirror.tornPos.x), finite(mirror.tornPos.z), this._pt);
           this._clump.position.set(p.x, 0.6, p.z);
           this._clumpSpin += sdt * spinRate;
           this._clump.rotation.y = -this._clumpSpin;
@@ -1563,7 +1627,7 @@ export class GyreSnarePresentation {
       this._deathT = 0; this._adoptT = 0;
       this._closeTear = false; // a re-beam mid-tear-follow hands the clump group to the new core
       this._tearFade = null;
-      const p = this.toLocal(cx, cz, this._nose);
+      const p = this.toLocal(cx, cz, this._pt);
       this._clump.visible = true;
       // Loose zero-G also drifts UP: a slow ±0.3 wu bob seeded on the clump's orbit
       // phase breaks the rigid-hover look — lumps bob internally already; the ball
@@ -1891,14 +1955,13 @@ export class GyreSnarePresentation {
             // balls, so re-jitter when this slot's member actually changed.
             const lSeed = this._lumpSeed(member);
             if (!lm) {
-              lm = new THREE.Mesh(
-                jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, lSeed));
+              lm = new THREE.Mesh(this._lumpGeometry(member, lSeed));
               lm.userData.lumpSeed = lSeed;
               this._secLumps.push(lm);
               this._secGroup.add(lm);
             } else if (lm.userData.lumpSeed !== lSeed) {
               lm.geometry.dispose();
-              lm.geometry = jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, lSeed);
+              lm.geometry = this._lumpGeometry(member, lSeed);
               lm.userData.lumpSeed = lSeed;
             }
             lm.material = this._lumpMaterial(member.type);
