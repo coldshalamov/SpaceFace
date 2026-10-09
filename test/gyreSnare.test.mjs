@@ -3162,6 +3162,14 @@ test('an already-adopted ball on watch overflow gets the full hand-back strip', 
   assert.equal(rt.ballOverflow, 1, 'a live-marked eviction counts the silent tail');
   t.sys._publish(t.state, t.state.entities.get(t.state.playerId));
   assert.equal(t.state.gyreSnare.ballOverflow, 1, 'the tail publishes');
+  // The ~2x/s recount keeps a live overflow ball named and drops it within ~0.5 s
+  // of a quiet unwatched death — no ~9 s stale +N pinned to TTL. balls[1] is the
+  // evicted live+marked body: watched balls and the handed-back victim don't count.
+  for (let i = 0; i < 31; i++) t.sim.step();
+  assert.equal(rt.ballOverflow, 1, 'a live overflow ball stays named through the recount');
+  balls[1].alive = false;
+  for (let i = 0; i < 31; i++) t.sim.step();
+  assert.equal(rt.ballOverflow, 0, 'a quiet overflow death drops +N within ~0.5 s');
   t.cleanup();
 });
 

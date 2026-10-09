@@ -175,6 +175,7 @@ function freshRuntime() {
     ballOverflow: 0,       // live marked balls evicted past ballWatchMax — they keep their
                            // marks+credit to TTL but leave the watch ledger, so the HUD
                            // names the silent tail instead of letting it die invisible
+    overflowSweepT: 0,     // ~2x/s recount gate in _sweepBallWatch — the tail is body-scoped
     prevPreyD: Infinity,   // last tick's closest absorbable-to-maw distance — the pre-snag
                            // riser only speaks while it CLOSES (orbiters at a fixed seat never chirp)
     snagRiserT: 0,         // ~5-tick gate between riser emits — shimmer, not chatter
@@ -356,7 +357,9 @@ export const gyreSnare = {
     rt.towLane = null;
     rt.deflectLatched = false;
     rt.deflectLane = null;
-    rt.ballOverflow = 0;   // a drop frees every ball — the silent tail dies with the beam
+    // ballOverflow deliberately NOT reset here: it's body-scoped, not beam-scoped —
+    // flying overflow balls keep their marks+deadline through a drop, so a zero
+    // would just blip until the ~0.5 s recount restores the true count.
     rt.prevPreyD = Infinity; rt.snagRiserT = 0; // the pre-snag riser's ledgers too —
                                               // latch symmetry: a fresh beam diffs
                                               // its first prey off a clean baseline
@@ -1743,7 +1746,9 @@ export const gyreSnare = {
     rt.towLane = null;
     rt.deflectLatched = false;
     rt.deflectLane = null;
-    rt.ballOverflow = 0;   // a completed bowl ends the pile — the tail dies with it
+    // ballOverflow deliberately NOT reset — twin of _drop: the thrown balls die this
+    // tick and the recount reaches 0 on its own within ~0.5 s; a forced zero would
+    // only misreport any overflow ball still legitimately flying.
     rt.prevPreyD = Infinity; rt.snagRiserT = 0; // riser ledgers — twin of the _drop reset
     rt.catchTickPeak = 0;         // drop/finishLaunch reset symmetry — the ratchet
     // dies with the funnel: _publish's latch clear covers non-BEAM ticks anyway
@@ -1794,7 +1799,11 @@ export const gyreSnare = {
       rt.overflowSweepT = 0;
       let n = 0;
       if (state.entities) for (const [id, e] of state.entities) {
-        if (e && e.alive !== false && e.data && e.data.gyreLaunched && rt.ballIds.indexOf(id) === -1) n++;
+        // despawnAt != null: an unwatched adoptee whose deadline a foreign owner
+        // stripped is an immortal disarmed body, not a ball still flying to a grave —
+        // it must not pin the tail forever (watched adoptees shed via _handBack).
+        if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.data.despawnAt != null
+          && rt.ballIds.indexOf(id) === -1) n++;
       }
       rt.ballOverflow = n;
     }
