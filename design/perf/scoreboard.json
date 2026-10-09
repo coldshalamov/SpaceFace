@@ -295,7 +295,7 @@
   },
   {
    "wave": 123,
-   "head": "8311f58e9",
+   "head": "10cd72d65",
    "lanes": {
     "lod-in-frame": {
      "saturated": true,
@@ -318,11 +318,33 @@
      "deferred": [
       "F6 diagnostics sort — below noise at observed blocked counts"
      ]
+    },
+    "boot-loading": {
+     "saturated": false,
+     "streak": 0,
+     "findings": 2,
+     "landed": 2,
+     "commits": [
+      "10cd72d65"
+     ],
+     "headline": "Emit-driven writes paced: saveAsync twin of save() — identical receipts/boundary markers, chain hops through _scheduleAutosaveWork while frozen; live-flight defers to sync coherent capture; supersede/stale-realm aborts silent; exportSlot async via proven-envelope memo + chunked prepare; capturePhotoPngAsync toBlob+FileReader."
+    },
+    "in-flight-hitches": {
+     "saturated": false,
+     "streak": 0,
+     "findings": 2,
+     "landed": 2,
+     "commits": [
+      "f39fd835c"
+     ],
+     "headline": "lifetimeSweep corpse collect gated: DIRTY.MEMBERSHIP death-latch + rolling 128-slice probe for unmarked kills + 64-tick backstop — full walk only when a corpse provably exists; diag.update quarantined (catch + capped console.error)."
     }
    },
    "verdicts": [
     "lod-in-frame: LANE CLOSED (3rd consecutive saturated)",
-    "popin-admission: saturated false (streak 0/3)"
+    "popin-admission: saturated false (streak 0/3)",
+    "boot-loading: saturated false (streak 0/3)",
+    "in-flight-hitches: saturated false (streak 0/3)"
    ]
   }
  ],

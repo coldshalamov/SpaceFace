@@ -2476,7 +2476,17 @@ Saturation: 1 of 4 reporting lanes (streak 2/3 by wave verdict).
 - **popin F6 (deferred)** — the diagnostics sort row's O(blocked log blocked) is below noise at observed blocked counts (~<64); revisit only if blocked counts grow.
 - Golden `0b33dde` bit-identical both lanes; ~60 focused tests green (38 residency/governor suite + refcounts; headless real-GLB traversal 120s timeout is the documented env-bound canon).
 
-- **boot-loading / in-flight-hitches**: queued on SWE-2 cap (boot `afaf3789` auditing)
+### boot-loading — `saturated: false` (F1+F2 landed `10cd72d65`)
 
-Wave 123 saturation streaks: lod CLOSED (3/3), popin 0/3.
+- **boot F1 (M→H, MECHANISM_VERIFIED) — `game:save` / `game:exitToMenu` ran serialize→stringify→prepare→write atomically inside the emit**: a multi-hundred-ms frozen task paid on the menu-transition frame. `saveAsync()` is the paced twin — identical guards, receipts (save:started→_noteWritePending→focus-loss markers→_saveTiming w/ per-leg blockingSamples→save:completed) and durable write — but the legs hop through `_scheduleAutosaveWork` while `_frozenTickBoundary()` holds (pause/dock/stacked surfaces, where `_serializeDataFrozenAsync` slices coherently; an unfreeze retakes atomically). Live-flight saves keep the documented one-task coherent capture by deferring to sync `save()`. Overlapping paced writes supersede; a torn-down realm (runEpoch bump) aborts silently as `stale` — no spurious save:error in the new session; a superseded abort re-mints the active job's pending row. The unload flush stays synchronous — durability outranks paint there.
+- **boot F2 (S-M, MECHANISM_VERIFIED) — `exportSlot`'s sync safeStringify+prepare inside the click**: `exportSlotAsync` consults the proven-envelope memo then falls back to chunked `_prepareEnvelopeStringAsync` for the primary + recovery envelopes; the Save/Load `_export` awaits it (sync fallback kept). `capturePhotoPngAsync` moves the PNG read to `toBlob`+`FileReader`.
+- Tests modernized to the async contract at the same assertion strength (pro-06 awaits `save._activePacedSave.promise`; demo-path adopts upstream's mountEmits slice — already on master as `4644f4bac`).
+
+### in-flight-hitches — `saturated: false` (F1+F2 landed `f39fd835c`)
+
+- **hitches F1 (M, MECHANISM_VERIFIED) — lifetimeSweep's corpse collect walked the whole list every tick**: canonical kills already mark DIRTY.MEMBERSHIP — the sweep now arms on that signal; a rolling 128-slice probe catches the ~168 unmarked `alive=false` sites within length/128 ticks (500-entity world: ≤4 ticks, invisible); a 64-tick unconditional backstop bounds the worst case. The full collect walk only runs once a corpse provably exists — and the next-tick-despawn contract holds for both marked and unmarked kills (core-player-lifetime-sweep 2/2 unchanged).
+- **hitches F2 (S, MECHANISM_VERIFIED) — `diag.update(frameDt)` unguarded in runRenderUpdatePhase's finally**: a diagnostics throw could mask the journal-ack contract and escape to the rAF caller every presented frame; quarantined like the sibling lanes (catch + 20-verbatim-capped console.error).
+- Golden `0b33dde` bit-identical both lanes; ~400 focused tests green (save-growth soak + autosave-capture-plan order reds reproduce identically on clean master — canon).
+
+Wave 123 saturation streaks: lod CLOSED (3/3), popin 0/3, boot 0/3, hitches 0/3.
 
