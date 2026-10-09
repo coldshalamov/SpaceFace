@@ -120,7 +120,7 @@ Notes:
 | muzzle flashes | `_onFire`, `_muzzleProfile`, ballistic muzzle exhaust | |
 | projectile trails | `PROJECTILE_TRAIL_PROFILES`, `_emitProjectileTrails` | |
 | impacts / ricochet / spall | `_onProjectileHit`, `_composeImpact`, `combatContactVfx` | |
-| shields | `weapons/shieldContacts.js` (`addShieldContact`) | |
+| shields | not verifiable here | The harness sends `_onDamage({shieldAbsorbed:true})` against a synthetic `capture-target` id. Shield contacts ride the target entity's shell, so with no entity the frame matches the hull frame. A real shielded target is needed. |
 | explosions / destruction | `_onKilled`, `_explode`, causal explosion phases, `bombDetonationVfx`, `fragmentFamilies` | |
 | damage smoke / gas | `_emitDamageSmoke`, gas ablation | |
 | tether / massline | `_initTetherCable`, massline release arc | |
@@ -186,3 +186,46 @@ Sheet: `/workspace/look-unify/bar/vfx_frames.png` (contact-zone crops of every f
 Outcome: no VFX code changed in this PR. The frames show no defect that a cheap profile tweak would fix. The three
 unverifiable families need a GPU capture, or a harness that advances the VFX clock with the frozen sim. Both are
 follow-ups, and neither belongs in `bloom.js` or `renderer.js` (#220).
+
+## 5. Rendered before/after (fleet-look, inspect view, SwiftShader; master 62d5 base vs this branch)
+Sheets live in `/workspace/look-unify/bar/`:
+- `worst_parts_close.png` and `worst_parts_inspect.png`: the 20 worst models, before | after. That's the static top 16 plus gas tap, wasp frag, volatiles tanker and ore barge.
+- `all_models.png`: all 280 live models, before | after, most-changed first.
+- `vfx_frames.png`: VFX frames per family and phase. VFX code is unchanged, so before == after.
+- `metrics_compare.txt`, `before_m.json`, `after_m.json`: per-model metrics.
+
+```
+models compared: 281
+L         before 0.2142  after 0.2179
+contrast  before 0.1684  after 0.1720
+sat       before 0.5328  after 0.5270
+detail    before 0.0145  after 0.0150
+very dark (L<0.14): 40 -> 38
+flat (contrast<0.05): 1 -> 1
+most changed (mean |dL| 0-255, d_detail):
+  greeble_rcs                                   15.21 +0.0015
+  greeble_pipes                                 11.03 +0.0050
+  cockpit_slab                                  4.03 +0.0011
+  engine_ion_small                              2.83 +0.0002
+  place_works_gas_tap                           2.51 +0.0052
+  place_ore_bulk_container                      1.43 +0.0032
+  place_aftermath_wreck_ore_freighter_hopper    1.21 -0.0001
+  place_works_massline_core                     1.11 -0.0003
+  place_works_cargo_port                        1.09 +0.0018
+  weapon_turret_dual                            1.01 -0.0007
+  ore_barge                                     0.99 +0.0011
+  warden_production_v1                          0.95 +0.0012
+  borrowed_voice_ring                           0.95 +0.0015
+  mothlight                                     0.95 +0.0012
+  fin_swept_smuggler                            0.94 +0.0006
+  sable_patchwork                               0.93 +0.0011
+  massline_express_liner_v1                     0.91 +0.0009
+  ilex_ark                                      0.91 +0.0009
+  place_observation_blister                     0.90 +0.0000
+  colossus_production_v1                        0.88 +0.0011
+```
+The changes are shading-level, so the fleet means move only slightly: mean L 0.214 -> 0.218, contrast 0.168 -> 0.172,
+detail 0.0145 -> 0.0150, and very dark models 40 -> 38. The visible wins are local:
+- greeble_rcs / greeble_pipes base plates, which had 67 % inverted normals and read as unlit blue, now catch the key light.
+- cockpit_slab: the bridge block had inverted normals; its glass and mechanical UVs were collapsed.
+- engine_ion_small, gas tap, ore bulk container, cargo port and the hulls/* collapsed-UV faces.
