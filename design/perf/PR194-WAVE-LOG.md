@@ -2503,5 +2503,12 @@ Wave 123 saturation streaks: lod CLOSED (3/3), popin 0/3, boot 0/3, hitches 0/3.
 - Golden `0b33dde` bit-identical; 75/76 focused tests green (headless real-GLB traversal 120s timeout = documented env-bound canon).
 - Regression notes (lane-verified on `f33dc3058`): paced save chain, async export, corpse sweep gating, diagnostics quarantine, W123 single-fold census + blocked member set — all PASS.
 
-### boot-loading — lane `d6109b5c` auditing
-### in-flight-hitches — queued on SWE-2 cap (spawns as slots free)
+### boot-loading — `saturated: false` (F1+F2+F3 landed `aec85e97d`)
+
+- **boot F1 (S effort / M-H, MECHANISM_VERIFIED) — every save boundary re-collected + re-stringified + PUT the whole `sf.save.*`/`sf.recovery.*` corpus**: `_publishSaveResult` → `_queueSharedStoreMirror()` with no patch walked ~205-224KB of blobs per save. `_writeSlot` now returns `mirrorPatch` — the delta it just landed (`primaryKey: json`, rotated `recoveryKey` bytes or its tombstone via a `recoveryGone` disposition, the `INDEX_KEY` row `_updateIndex` now returns) — and `_publishSaveResult` ships it, the same shape `deleteSlot` already emits. The no-patch arm survives only for writers the delta contract does not cover yet, and now defers to the chunked generation-bracketed collect instead of the sync corpus walk.
+- **boot F2 (M/M, MECHANISM_VERIFIED) — the paced save chain's two un-sliceable O(save) legs** ((i) `safeStringify`+`fnv1a`+`_readIndex`+`stampSlotCard` fused to the serialize tail; (ii) `preflightSaveImport`+`JSON.stringify(envelope)`) now run inside the save worker under the existing `encode_begin`/`encode_part`/`encode_finish` protocol via a new `_encodeEnvelopeViaWorker` rpc: the card stamp rides the descriptor so the encoded blob is byte-complete, named bound verdicts pass through verbatim (the worker bounded the same envelope), and infra failures (`no_worker`, `save_worker_*`, `post_failed`) fall back to the same two sync legs on their own bounded tasks. `workerRoundtripMs` rides the save timing receipt; the encode-post arm extraction (`_postSaveEncodeEntry`) keeps autosave + rpc on exactly one wire protocol.
+- **boot F3 (S/L, MECHANISM_VERIFIED) — `exportSlotAsync`'s double-fail lane serialized live state in one sync brick**: new `_finishExportJsonAsync` serializes through the sliced `_serializeDataFrozenAsync` when primary AND recovery prepares both failed; `_finishExportJson` stays for the sync `exportSlot` callers.
+- Lane-contract items (a–d): veil-lift tail clean, deferred-continuation drain verified, no new atomics — all confirmed in review.
+- Golden `0b33dde` bit-identical both lanes; ~77 focused save tests green (incl. mirror status, write-bound gzip, slot label/still, autosave transaction, corrupt-recovery, paced exit chain, save-fuzz 5000-seed).
+
+### in-flight-hitches — lane `9dea94a1` auditing
