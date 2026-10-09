@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f580071589ecb54c1b2c62b027ac3f6db134c58cfab3007b2694dab793e3ee58",
+  "contentHash": "e081a8217f627e267a5f91fea4200e6d40da495cc35d950e76770f0b00364409",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -653,7 +653,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53e9a3db5c64dfcd4ce6daa78c7d04412ce90bc05e43293f9e3b2f2db506688a",
+      "geometryHash": "2b5f298480e6d71917e2a0ef9a34ebc7d6ecfee6c0b5316ffae7dc5b2c9f3595",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 11484,
       "indexed": true,
@@ -703,7 +703,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca92235801efe9a7ae00567ad2c73d10aeb185b622237b65b12967ecafeadc9d",
+      "geometryHash": "6c063edd420776aafcb59a2f8ff4c39c1ac417b8b6fc3d2ae7d9899389431fc7",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 5064,
       "indexed": true,
@@ -728,7 +728,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c49752cd2f0eac5d5fb75807bf57652f4ecf44171ce806a0cc135770ad17dbc",
+      "geometryHash": "83e99272a4ef88ff1ca1147a165c96c86e7d2ff51ff8d07e1bd95a03fa6154d4",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -753,7 +753,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4274c0cfaf8ed726b5c74f287b999535f3a13f95cc680021646cb663e14dd364",
+      "geometryHash": "e45ba163df3aadce3ee76d45a2282f7c0bb00e9fa01a7990823a77b51179ba7d",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 3612,
       "indexed": true,
@@ -828,16 +828,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f779434d0fb88c270a3703745d306e8f0720480b2c42dfd372d43a8cd0195d8",
+      "geometryHash": "440722df9dd063a6423e6dc3bf89153abf633a92948c29aebc5ce6739747cd08",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 4509,
+      "indexCount": 4350,
       "indexed": true,
       "materialHash": "c10d873b9d8db09bde0ac765d24876c9a3c78d136df9040569964b27a03b3dc1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1741
+      "vertexCount": 1665
     },
     {
       "bounds": {
@@ -853,7 +853,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "effd7715dd7214911dbe6d6f59bca884d56e0c85f23f8f0c9a9d6e0bfd834b5f",
+      "geometryHash": "442c0946837a572ffddd151765928bb86af1b77ec70a22ee7a5f28a3f82f8233",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 2076,
       "indexed": true,
@@ -903,7 +903,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "107e146284f33577b179f93291f0f7e984a5642ee2c9cef42d0340fa822d8f04",
+      "geometryHash": "de7045e80838df821c350347fe2def59964b7320ebd6fae8b92c162ec6120e70",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 1194,
       "indexed": true,
@@ -928,7 +928,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b474f6ece1ef0a34f67153510899479d3ef32d7386046af9ece5a4afc02d0cb3",
+      "geometryHash": "f863eab1252e9820e38e1ebc788d5b0d9e43e6993a33355ee90b89858c561a3f",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 15420,
       "indexed": true,
@@ -953,7 +953,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ea6c4d9512ae490f68c9f52d0f1edac94d6a5758f8eb17b70148a93a9f39c97",
+      "geometryHash": "7bc7b9fe33f92dcd633fcdd7f35a0176c57fe8e9b03e9928170308c8bcb974dc",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 19095,
       "indexed": true,
@@ -978,7 +978,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c94ba6dae14349ef0794c7b8df0f6acb6ebc93d6d25326e93e1ccc72dff7acbe",
+      "geometryHash": "37348cd405b00b03dc9634614879dd22cf824e54bd850b1f722e062715aef82b",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1003,7 +1003,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e637881d806e2825a282b6a27400d5e3a7dce1e1beb9bb5f7bdd338063af0822",
+      "geometryHash": "57a33a76b22b4ce68d03b5da7c58cb93c2bc5007c95d84def9c99d1d5f27dfc5",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-armor.primitive.0",
       "indexCount": 3903,
       "indexed": true,
@@ -1053,7 +1053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64b5d53eba54d2b76a84514078d949b394c61ec0233a10f5ef9004b53f30f7a8",
+      "geometryHash": "6913d7ea4a05e4e6995771b2e259f8a200dd9d048f32014c5567319166c19752",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 1926,
       "indexed": true,
@@ -1078,7 +1078,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0aa912d32a8168e65072b6c26963535ff7d9f7dc41305930c31bb86ee67b606c",
+      "geometryHash": "cad52ae870171962802120c1dc7fdb6be205dc7e2d5ab22fb0a1e23c55a6024c",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-canopy.primitive.0",
       "indexCount": 936,
       "indexed": true,
@@ -1103,7 +1103,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cb55bebb52f730ccfad5ea8d0e5ba494aedcd5190e74b47251bcf95b72cee23",
+      "geometryHash": "27ff707512ac3189a1690e65b1eb54483ee0e1a112403dc52cc7a9ff06e742e8",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 1884,
       "indexed": true,
@@ -1178,7 +1178,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da2099950cb125a22cff7be9fdd5d49d15f665e6feeba5dfd23802e3a0213a6a",
+      "geometryHash": "a7db8c79560d15f9f14b1c7ecc6237da7a975428e758ff373224e0bb90e92a29",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 1005,
       "indexed": true,
@@ -1203,7 +1203,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad2d3f68ec637df02d7bd0c2b17d2d3d30cbe5fa6ff254616c0cc0e1703543bf",
+      "geometryHash": "326f8a0b1da7adae0d99fc6df6611c6d4b38677a8666f5b2e375c8e509661509",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 234,
       "indexed": true,
@@ -1278,7 +1278,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e0e7f8f81af16ff5e7bbed6c64c6fc5801cbd77483fa8d4067f0aea5fb685fe",
+      "geometryHash": "b2694dbcf51598a598430c19315e6a95435ed7aab8ac511c17eca1fea7aa7884",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanical.primitive.0",
       "indexCount": 8463,
       "indexed": true,
@@ -1303,7 +1303,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0c324c9e92d5b04b3e8b39fc77cc512b775d2fd49b1c04f76b83609dc763fe2",
+      "geometryHash": "974069548497b126da815fd676de72cf762b0b6a3b8826133c715bc1ea1194fc",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 8562,
       "indexed": true,
@@ -1328,7 +1328,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ff0cb66da23e04de0e2e874c6a694e9d88dabb00d53e075762438ce1d1925ac",
+      "geometryHash": "c3f846e03e645a0b266755fa6c5cb4fba4dfebf76d5e945ab2a6a1760eee1844",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-warning.primitive.0",
       "indexCount": 1047,
       "indexed": true,
@@ -1353,7 +1353,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3532e53c5ad209fef0f444ad1c92ccda5cae0976409dd738e949fd4d6a7c3884",
+      "geometryHash": "6f70c3e0867aeb30c2ccfd3b00a6a068ef270fb6827b60d28b9d3eea86345cd7",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-armor.primitive.0",
       "indexCount": 1707,
       "indexed": true,
@@ -1403,7 +1403,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07378eae9f5a7f1e5895119764509bc6de7efd7c48ade72d3a0e78c01067edd3",
+      "geometryHash": "265c295520e8fb135cf98ea4593c865cbf9dd62ec2abc349afc28a223112ad38",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -1628,7 +1628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8bb1c4b5d9345ecad29adc25485a710af8a4fd534cceccdd376e215e81157207",
+      "geometryHash": "a7352a1d2183043fb187af545b62142b4498b7f914b3ea45546cc1c8573c1377",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 3096,
       "indexed": true,
@@ -1653,7 +1653,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "526aaf99ed3506e48847a3e80305e7bca25832970719b6998659563ec52aa831",
+      "geometryHash": "261d58ca11764252e753a088dffc22fbe674bbc5b077dfcc87a437ecb1d78481",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 2379,
       "indexed": true,
@@ -1678,7 +1678,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13732987947286b98b799667aef548517511a842b711097cd2a90c8dfdf2b79d",
+      "geometryHash": "28ccd0a6b72ec9d6acefd5f20f3c700c2b31245916951d1993fcc2ff50d401e6",
       "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-warning.primitive.0",
       "indexCount": 546,
       "indexed": true,
@@ -4809,19 +4809,19 @@
       "sha256": "1aead27e2c6a4927a9d0e58be0128f01ec0fc94c96c6807183fe4cac7ade876c"
     },
     "sourceGlb": {
-      "bytes": 916180,
-      "sha256": "6b2e35f5140e8bf553f35c786d7cfa9aaeaf6d61c04f87c4b3fbb903f4b401f5",
+      "bytes": 915488,
+      "sha256": "7966c0ff4294041cb1b30ad8986937cc4d0bd4633c83d4ecf21c580e2ec6c3f1",
       "uri": "ashline_rig_corsair_blade.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1589608,
-    "sha256": "7a967a139293839ed4e9765ed2fe6f77e5f0d5d2c7a400baedc47e5ab761a57b",
+    "bytes": 1588284,
+    "sha256": "d9c9319f36c86b4e3ae95ac5fac23cb425fd85b0bcc7e4f731f339fa85f13bee",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb"
   },
-  "runtimeHash": "90e20ec70f11bc6b155e274985998914ab540bb3fe3bfa446df4d97b794dfa39",
+  "runtimeHash": "625d59ab30c60201f87b9f4d06e4571194bf9febe53cd84ff3772ad775bb9853",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

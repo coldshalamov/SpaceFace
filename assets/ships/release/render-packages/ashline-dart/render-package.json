@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "817b6f702ae2cbe60c0fe834008147642d93385fa01b1ace1d23c48573971e1a",
+  "contentHash": "8c3f2612cd64a48c521f9f5924ae2893e93ab73cb4ed7218367912ab3c823acd",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -653,16 +653,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "78da133da952b051fcbe91ddd32dbe89c92609b28f88148b2d61306a16d39b04",
+      "geometryHash": "cb544a24217c5dc846431eb50216683d4fa5a75798dbe75c37b95ea689df2899",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-armor.primitive.0",
-      "indexCount": 13632,
+      "indexCount": 13626,
       "indexed": true,
       "materialHash": "8d4dd9f85e120f7b933880a49573fd10a730e176c84930835a0cc0ee284bda22",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.ashline-dart.node.lod0-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3829
+      "vertexCount": 3828
     },
     {
       "bounds": {
@@ -703,7 +703,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9526bbefb46af95f8470b27c5060f6f98292bbaeaa53a924ad26ccb8e2d3a433",
+      "geometryHash": "209fe71eecfefaa6f77e85981b26e1820dd4771befc03d1e3eb3a42d555fb275",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 3768,
       "indexed": true,
@@ -728,7 +728,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "06c7fc64bf0ab12396e3713c8e62fcd6bc4138149a12d30ba584692a9aede817",
+      "geometryHash": "9bee5a2793934d25fd952cb46221a93542f6e472eaa9998418d2a7c05e6f859f",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -753,7 +753,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45deb08737f43e7f31a7442ae068440db244a7b023df4dcdaefc39ddc9c61d96",
+      "geometryHash": "b56d6de77dbe44c846bc4f0543b00022da4d78207562168e52654161f989fe50",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 2382,
       "indexed": true,
@@ -828,16 +828,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "60d6fe064a06912d06012f431305945e1de99b108441e3f5611311e2d06f57f1",
+      "geometryHash": "0f12d48ab810c4f5ae9ab954e4adbacd17e6d3ef8c474feaf7b1cab4a4e2a330",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 7785,
+      "indexCount": 7416,
       "indexed": true,
       "materialHash": "c10d873b9d8db09bde0ac765d24876c9a3c78d136df9040569964b27a03b3dc1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.ashline-dart.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2465
+      "vertexCount": 2411
     },
     {
       "bounds": {
@@ -853,7 +853,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ec80a9101c4171bfd2619d98bdc32735d6828ae1eef90faf79f739da8b376b59",
+      "geometryHash": "0de5822180eb443a69b27666c42086a2fa344ad59be7d585d6cec9e8b705f90e",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 2337,
       "indexed": true,
@@ -903,7 +903,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9a8f24aa903c900b300e7c207a5594af97b44eba6b067ad6642584a311f3083",
+      "geometryHash": "d25a730571e1206f58a5664b38d414cd620d0f2909c9ed612936b5985101a14d",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 1110,
       "indexed": true,
@@ -928,7 +928,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3b167eb7c3de3c5a34d5eba32e2898fb9e96e6358c33bf11bc578710f9f627b",
+      "geometryHash": "35be574302fb0b5c70bebf259da8489f807e9ca6db5fc1228dc5557b27fc5985",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 24360,
       "indexed": true,
@@ -953,9 +953,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "80f812b2df33d3b7df76f6165ecdfc4ec09cee1b356f7b113f33cd52e35c95f6",
+      "geometryHash": "83c2a8b637499fef18b0a7ef699420b748b0912f4227e7445ee70db2b17c77f7",
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 14418,
+      "indexCount": 14376,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
@@ -1003,7 +1003,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e7ff825178d0de957bf1517cdb116fa78627cdd0b4d49277771fb709d53b8dd",
+      "geometryHash": "053bba920ed3bcff19608bc0593f14ab1631a9ae41282f1bc1883b558c703577",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-armor.primitive.0",
       "indexCount": 4905,
       "indexed": true,
@@ -1053,7 +1053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "824d4ccbd63ab43c3b21ede3c1601d6e3673e79461a897643681a370f25504b9",
+      "geometryHash": "bb5b405a1d505c73245780dfb6af7ff6e98acfd813740982f61bf5a6ebc3331b",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 846,
       "indexed": true,
@@ -1078,7 +1078,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad964c9556d65e27cf5922d03cba8b7acb3eeda607ca1bc91a127838c2fa4fde",
+      "geometryHash": "c537f1be40345a5dcf20ff02e92e6a310b16966e55ffca5b0022f49dcaa0feca",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-canopy.primitive.0",
       "indexCount": 948,
       "indexed": true,
@@ -1103,7 +1103,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a70062fe32fd22b6ebe14b3e5f2aebd83ea362875ef2f7cb0a24e44c22b02c7f",
+      "geometryHash": "7aa5930b7665afe37398aac91ca8243d4c5f674b1d2ea835a6c06680def0b9ad",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 1230,
       "indexed": true,
@@ -1178,7 +1178,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f853a50e65de8d85dd7e3a943d44940f68539ba686102d1473e9c6d64683b7c0",
+      "geometryHash": "aaf781a097c4f200fbbf7bfd1ead2249e5bb083e75909699166fe55d97e15bdf",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 1743,
       "indexed": true,
@@ -1203,7 +1203,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e7337930655d29f83f0a8ac635537359c614e2b63283c26f24d1c4c160fb9b6",
+      "geometryHash": "e1d524c52c0b033214964b31d9f6b05b0e993c74793965f5079ac87659312f4b",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 210,
       "indexed": true,
@@ -1253,7 +1253,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2e35dacde596ae48ccae5675156de7535823eb4b52a532bece39c3062f46f02",
+      "geometryHash": "05297a6e0761729e2e3edb8c7dd7c096a8da5d18d233101ee29296c820814488",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-livery.primitive.0",
       "indexCount": 186,
       "indexed": true,
@@ -1278,7 +1278,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe6798661722774efd93ab88e3eacb64f9c9c1b8519dd02023003ec5fbed9713",
+      "geometryHash": "b8e797f1584a28a22bc145558c102dd655ceed2eb4d54067404aac0d4852f83d",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-mechanical.primitive.0",
       "indexCount": 11379,
       "indexed": true,
@@ -1303,7 +1303,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0679e53a6b264480df44d4871953433d3a79f1fd458260e13b413f7981d282c8",
+      "geometryHash": "be1df4ad87b31fd191b6386e582483288a8f5a11eea988666a69b308bc13a9c7",
       "id": "sf.render.ashline-dart.node.lod1-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 7098,
       "indexed": true,
@@ -1353,7 +1353,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f55061e3752e62c543bee7c326205813b02fc02d8709d5cb8cd2748e1b28b2a",
+      "geometryHash": "c5fbfd78229ac3790cbc17b49f7f279f74d45a44608244d4658944c14cec30b0",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-armor.primitive.0",
       "indexCount": 1992,
       "indexed": true,
@@ -1403,7 +1403,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bfdb73b347656dec71e07c19b517ba210f3e1a508f73b3b41871f05cca5c15a8",
+      "geometryHash": "f628fc9e0a9eb59f4a6fe3501da048eb97e08c5a4ca74471498ebc6b4cd4bc9a",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1428,7 +1428,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5715173d83c58f2608dfa550913704c352ee9559614903594cc415f24c28066a",
+      "geometryHash": "28cd24257e890c9c177f37ed135ddbbfede0f50fb6bfd71746e38b55d07c78fe",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-canopy.primitive.0",
       "indexCount": 438,
       "indexed": true,
@@ -1453,7 +1453,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c88b82efc8c7eeb0bd471540dd7ab73bcc87f0f0b627c53326043e61094517b3",
+      "geometryHash": "c568aeb34ec058bc699571e9d79f44894bc0ed33235e45bc815a58a456055abe",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 615,
       "indexed": true,
@@ -1528,7 +1528,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89ed516aece17b3563b1a76cd93a3405656b7dcb8681cd81f4b04ff1b1b45eb4",
+      "geometryHash": "e2dfc65625f1449699ff13d32a59124c26350028234165252479314c2d0b1035",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 807,
       "indexed": true,
@@ -1628,7 +1628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0825e51cf9ccce64866a17352638d7759fdb8c695c3e038d57dd16753464293c",
+      "geometryHash": "fe4812cc1d920ea4a03503b9228a06b04c453122aafd481f941de27c93602c5c",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 4638,
       "indexed": true,
@@ -1653,7 +1653,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05165bf74ef2c4c72ba98418320fbef50e00db71187ee616fde9d0722e3ea03b",
+      "geometryHash": "28ff78a754177b75224c8bfe291d96c8ce364b026c4447ede8dbbd3bd98ac1a2",
       "id": "sf.render.ashline-dart.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 2157,
       "indexed": true,
@@ -4809,19 +4809,19 @@
       "sha256": "3ecaf5e191a6b762b413c50390e1accec159cac5f8a0b90c80158025bef6b52a"
     },
     "sourceGlb": {
-      "bytes": 889976,
-      "sha256": "6ee52af74932b0032ae0432305ad391e006a3fccaa7796ae06e4104dfcab5051",
+      "bytes": 889396,
+      "sha256": "ec3f7c11553b83d3a5ddb43021e1657436628e3eb7101d0f3469b95d097c08c8",
       "uri": "ashline_dart.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1566944,
-    "sha256": "1814ded7e84ff4ce49692060034ae3d10ccb19768ef6e80fac0122be8c540a75",
+    "bytes": 1565088,
+    "sha256": "f778897a89a929a70c16732c9e46cc3a870380a8aab890127b16c9f435d0e7b0",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_dart.glb"
   },
-  "runtimeHash": "f8565c072a61a09c2d240e2e18a007805ffdea677e0b3a0412e5e469c20c3f47",
+  "runtimeHash": "3ede220db9b8e990b15082fcf43f0579e90402409fe39954ee6e3f63544a56a1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

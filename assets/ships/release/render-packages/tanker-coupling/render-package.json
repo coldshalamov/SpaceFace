@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "72b8aeef42dc3779946a57a786ab3f94b6652c5fdb658884ae0aea37f08b6670",
+  "contentHash": "913e689e33bdbc22c0e8cce87813685902cbcfa143e15568ed34c7cb3bd9fd84",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -157,16 +157,16 @@
         "max": [
           4.437263488769531,
           7.616804122924805,
-          0.19065159559249878
+          0.19065158069133759
         ],
         "min": [
           -2.0372631549835205,
           6.083196640014648,
-          -0.19065159559249878
+          -0.19065158069133759
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e761ba3bd1f73c52201674be6343f69a3d0458f325290c50c925520c31cd140c",
+      "geometryHash": "1dfa073ad6d6088b4a5aefe505a59b73b566dafada6d102d4a79ed100c875bbf",
       "id": "sf.render.tanker-coupling.mesh.boom.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -291,7 +291,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8bd43f9ccf4b31008cc83e10fcd9d8fd2ef9e188e9e3c62f99c5cdaafe225cef",
+      "geometryHash": "43e984b05519bb2fa630380222552f38163ba55e9a256d84d3de15abadd08b3f",
       "id": "sf.render.tanker-coupling.mesh.hose-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -316,7 +316,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d278951073b13c08ffcb669804bab5cd4058f336208c14f6144c00816f10b7df",
+      "geometryHash": "05ad7ab6360e6117ba466f87607873bb92e6c72d586a32f99ec3ab3511a58588",
       "id": "sf.render.tanker-coupling.mesh.hose-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -441,7 +441,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a2a00f5f787b3f2e8ee591f41efbf8395c021e7df69b4988a80875981a76b93",
+      "geometryHash": "c4d46d6d8bf417ea3cd1aee54e94009da4d0fcd3cd7adb019c371acc6088652c",
       "id": "sf.render.tanker-coupling.mesh.shield-strut-p.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -466,7 +466,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33fba07c6edf7eefee51cda3c85ba8631d6b256a80e73456ca1c8773ea107eb5",
+      "geometryHash": "0013994d20ec6457c94ce29a94537e76f8650fceb87e0a46cb8ba051a423ee65",
       "id": "sf.render.tanker-coupling.mesh.shield-strut-s.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -1855,18 +1855,18 @@
     },
     "sourceGlb": {
       "bytes": 26528,
-      "sha256": "e4c6c7ee98605b6138aa6751803e7ce7957c000705646e0b984d82df028629ef",
+      "sha256": "5a0797a2c8fdc08e0e5849c6de51cc826acb151c53173f0c63683a0e6a1f30fd",
       "uri": "place_tanker_coupling.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 48348,
-    "sha256": "2b2be54ca1d685caffe14265e327813b635b0e4f42c8f351b5808222e5317581",
+    "bytes": 48352,
+    "sha256": "5a56d24d6797c97eb61cf50f778b9fc3bf913e2a0461ed1a541ec02c9d7e5668",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2689,7 +2689,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tanker_coupling.glb"
   },
-  "runtimeHash": "d0f4210fe8d612cd634e5a48991798fee7305a672bbc751d74208ccee0a63e0f",
+  "runtimeHash": "2caa077184e506f39e429f98e6ec4ee6f28d8ebaf0b8b56a6455228472e91f64",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9db4a568da00994d319fecfa14ee7ff7f0beb7aede90571feb0671849e0b9d5f",
+  "contentHash": "0672eae26eb8ea8e4416b1f4a0bdce476a9fe53e4de85e148263449f74615df6",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -208,7 +208,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39d3e6a4c81424a5b416c1769fd12c39adbc0ef55ffb64548827d953f08535a9",
+      "geometryHash": "8e421024f294402da7092a7694115694fc8cb54c72ed0f08f02293c0eaf145d3",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.bowfender.primitive.0",
       "indexCount": 972,
       "indexed": true,
@@ -308,7 +308,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5dbcc7fe6bedacf6bd04228fc2b04071bf2d7dfced67a5be1d9757853cb1ff18",
+      "geometryHash": "d38108d8549641a1c90ac5ebc5ef509351cbf7791f3654b19018ca224c171342",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.forecastle.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -383,7 +383,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "220743ced0c7950a073a63f3cc4b1b117a942b55a597a4d89229dfe8a4f542fc",
+      "geometryHash": "f7679998bbd8ecd2885c3b2570f2eda34a0bcba1a9a874ad80e00cde7e3954f1",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.forecastle.primitive.3",
       "indexCount": 510,
       "indexed": true,
@@ -608,7 +608,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e703da4e297a942a5cacb0e4fa97d71e67626e8654c365ce10e6d23ec6c3d37c",
+      "geometryHash": "dfae1f3048cba1f9d3b6c3c37c284b1a6a3600276300fe8b673ad75ae9730c70",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.gapring0.primitive.0",
       "indexCount": 510,
       "indexed": true,
@@ -658,7 +658,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7b9270079d89d820032d69d5fb626404e45e0ea9faceab579515c34fa0d9b7a",
+      "geometryHash": "53d916bc71c3fa07686863faf105f29dabdf46601563f0ba334716d9d3db5d2e",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.gapring1.primitive.0",
       "indexCount": 510,
       "indexed": true,
@@ -733,7 +733,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a02ec731984776ff99569f212ea57080572da979d83f0584cb5fd3b517510ff1",
+      "geometryHash": "6ee20b22dd8ca7826a881bf7a6941e4536b02cdd706d2d1a3a3f5290c405ff3b",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.h0heap-001.primitive.1",
       "indexCount": 570,
       "indexed": true,
@@ -1133,7 +1133,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "742e6357c40176a6112922721753e23b7a928c4fdf9224e483dd19ee9d87b1ef",
+      "geometryHash": "2873bcee1497cfa0335b71d37e3c52873bc45606ca2269fdc65e016605b385f6",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.h0ore4-001.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -1283,7 +1283,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d54e217138d50c94319e191070eaaa63d26d846190376004e9431d70f4461d3",
+      "geometryHash": "eefef196a47e4cd7e7a45dd8b22791987e27c11ff7fb47272ca9fc6ba184b3ad",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.h0ore8.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1408,7 +1408,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16db9828ceb3d66fd98995f82eea7147fca893e5d7452fbb6c3bfb62a6680745",
+      "geometryHash": "7ea81821749e30084adf0526e293cd252f8aa2c681275d6bf54c24a160bd79fb",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.h2heap.primitive.1",
       "indexCount": 396,
       "indexed": true,
@@ -1433,7 +1433,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b405e0d3446f5355612d43cc4a05947e0c27f2bcd02ece6d67f839f2445c4282",
+      "geometryHash": "36c1905feab534123c14adceab324daad4c4c84b9a7b4d2a56d5ddacf9c4bc53",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.h2heap.primitive.2",
       "indexCount": 420,
       "indexed": true,
@@ -2208,7 +2208,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27d2bdb029879eb85fdf10232d9646b0593b5b099a29f1a10759584c3c65799d",
+      "geometryHash": "da5b700de41a42471e8f72ef981606181294b893b3c7f49c31e21a7228915ed6",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.h2ore6.primitive.2",
       "indexCount": 63,
       "indexed": true,
@@ -2308,7 +2308,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e5031d239dac5da7449c92498283947382a4c808837a431f30207a152aad595",
+      "geometryHash": "e39581878dc55734b7ed82c7755b6d0b73ac6ab7c14413becf0a1062d076eedf",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull-001.primitive.0",
       "indexCount": 1953,
       "indexed": true,
@@ -2333,7 +2333,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac38551de03276e35bdb315042b3b39f1ddc0154824c7109168e1412263c79c0",
+      "geometryHash": "cc9b535757bb483d7eca66e428603bd7be05b97340ac3e1884adcaf2b5230a6a",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull-001.primitive.1",
       "indexCount": 2262,
       "indexed": true,
@@ -2358,7 +2358,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3859bf7b5eb88ca4d3acc74d1555444c3b6076c1720d03daa6651becec699292",
+      "geometryHash": "9ff264de6b5b2153e4d8921602b59be7b40c6bb208b0ea513e06d54fdadecc67",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull-001.primitive.2",
       "indexCount": 894,
       "indexed": true,
@@ -2383,7 +2383,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8c263f7010041b2d99e2b522d545ed92a3e0c85d8b45a965be9ff1da1f490b5",
+      "geometryHash": "cd7a03e63526b9275741b896c7cc46dadb9e1da21f1751f07cfdad747dc250fa",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull-001.primitive.3",
       "indexCount": 357,
       "indexed": true,
@@ -2408,7 +2408,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "caaa8d46dca8fc85b0206c14e49018163eb4dbf9e09afcdb06646d382187ede6",
+      "geometryHash": "150eddc40e9aaf2c27a921a539ffe7bbf6bd28a894a092ca17482ad47ebb7d09",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull-001.primitive.4",
       "indexCount": 879,
       "indexed": true,
@@ -2433,7 +2433,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "02786d5de92b9997ae836c658bed32de396dc5535664dae8e09e1f48f43f4fbf",
+      "geometryHash": "538574a13efe3328320a8dd211c28e778995f51933a0f2ccf5d23bebce2bea19",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull-001.primitive.5",
       "indexCount": 2793,
       "indexed": true,
@@ -2458,7 +2458,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ace522ba6be302b3e48403082cd2d8dfb5582677746d5d79f7c0e1422c7e706",
+      "geometryHash": "42afb67ef2884d5d03456f59a2efdc1cb312d970eb1875108ca45db56822e297",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull-001.primitive.6",
       "indexCount": 1116,
       "indexed": true,
@@ -2483,7 +2483,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1a01d378d26177c497f6ff08218de7903e9918e670612e5cc3053ed7e31ec698",
+      "geometryHash": "c7de268da6989ae9719eb1daa9031dd6283989eff1830377ec53be48a3dfd685",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull-001.primitive.7",
       "indexCount": 2988,
       "indexed": true,
@@ -2558,7 +2558,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d80e0ed18d1d28c3fa6a577d48b2bb28904c3ddf31509be9a56f15a4b433274",
+      "geometryHash": "24439e3c4406004720793c080917fd59bb15d661f5eb1c0a5640ee0cb92d9288",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull.primitive.2",
       "indexCount": 2820,
       "indexed": true,
@@ -2583,7 +2583,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79331b5246fc6bcd888f82d1b186a1e5a367712812a611f7346f6a5c9e2cac01",
+      "geometryHash": "bec4ed457fbfacb417a2ad0bed67818b990cbf8a249e999ce1ff4b49a715789d",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.hull.primitive.3",
       "indexCount": 4215,
       "indexed": true,
@@ -2658,7 +2658,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5aa436148f12a4347d49e0d652760eda0f008655ae26a024c96f64c5b27e60d5",
+      "geometryHash": "da0822f15041601af7b0e0065cfd4c3fe98e3391bdd418cbfee64993b344cce3",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.pipeclamp120-m.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -2683,7 +2683,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "287e4c4d98f14f8344818bb940b58271a930d823a7c999710d9d7207fb8574b1",
+      "geometryHash": "17dabe94535fa232aa724adcb490fcd7e5fff23d274616651cf8dca49e0aa6fe",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.pipeclamp120.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -2733,7 +2733,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "329a52e92c718d53b99d86334804c0fca03afd71f1c8d4eae68162aeaba3af08",
+      "geometryHash": "a1dd9121fdb0711cc1b61158ac87d9f49ef38b03f4552aa09cf968a7f2387cc8",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.piperun-001.primitive.1",
       "indexCount": 1626,
       "indexed": true,
@@ -2783,7 +2783,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "094ee19d94315aae85ae241370f17ce3e686839b3ecb341eb182ff10e386877f",
+      "geometryHash": "e9b13a525556f19f4a585a6ed9ada92d9165c9b5b2d8c9534e9b94383c42c0b3",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.piperun-m-001.primitive.1",
       "indexCount": 1662,
       "indexed": true,
@@ -2833,7 +2833,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf3aa6b3a1112e63ca8167f517f480aa5caca4b91c918407387addb7012e293b",
+      "geometryHash": "2d1162debe2367aaf2329bdf38eda5e00728ae192893a40d57681276f86004ac",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.piperun-m.primitive.1",
       "indexCount": 1644,
       "indexed": true,
@@ -2883,7 +2883,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "380268a41c3c8993aca46068d49ed51481d8ee773d19a1bdb4a5b91732e46802",
+      "geometryHash": "10efad3264dc1195c6f99cd86511f1b3af1a9eae862c47a2bf938fdf134abee5",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.piperun.primitive.1",
       "indexCount": 1500,
       "indexed": true,
@@ -2908,7 +2908,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f6ef8a628fdcecf712785ee9bbebb177234a369b00c5bb340d4ff3be25ea41b",
+      "geometryHash": "fba5b095f6741ea0e7f2c0b1e5405a5273c2ae09ed11a47c6717141483213497",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.rcsbow-m.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -3133,7 +3133,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4f1eb7789c37a6de86e31d9917a19fbb17f0a32f029de8ea68a9088e5d8695b",
+      "geometryHash": "b301966dfc64dc71e34b88a93531295fde2fccde3795f4470cecb6257e537a08",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.rcsbow.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -3233,7 +3233,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "100461e3ef0ee986d1175b31323823df809f8e9deb4ea1d3950bfdd7553a54ce",
+      "geometryHash": "01f5483e7c70bdaf5afd68330f8f302fcb5fdceb7924fe9c7f3a55d7c408fbdb",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.strake-m-001.primitive.1",
       "indexCount": 480,
       "indexed": true,
@@ -3258,7 +3258,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8efd629f87f3d18ee487425312d3b99134ddd52b294ca722df3285f31a1fc96c",
+      "geometryHash": "0245d6bceedc902d745b53a0d7d398323fb6443bae89e23d444278ef6a9643c2",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.strake-m.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -3383,7 +3383,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "923d30623aaaab360865540ed1396d229f8a0dabf3d44bc3cb6a63508433803c",
+      "geometryHash": "6ede76a8e676a262b85a90f9f79be30867f0ec1dde42e130423378dcb911cfa7",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.strake.primitive.2",
       "indexCount": 387,
       "indexed": true,
@@ -3433,7 +3433,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8975602f958a6d70ccea9c8843ca3ab061f0d12bd4b491c65ed700f3da16a3a9",
+      "geometryHash": "27aab95bc1b798b0c90d9e38e3cc0d7d7bc9bd5b5ef03ba9c9ce71a0d3c4528d",
       "id": "sf.render.aftermath-wreck-ore-freighter-bow.mesh.windlass.primitive.1",
       "indexCount": 588,
       "indexed": true,
@@ -10120,19 +10120,19 @@
       "sha256": "9098a30c08d727ca1e9d3b2af0e5323279634f5b69dd1a658b2252102c1b6ffe"
     },
     "sourceGlb": {
-      "bytes": 646752,
-      "sha256": "2e9232b6a9712291623ac0b0b7f9dfa603e3ccf3d5bdc2624c7d2a3cf0b554ff",
+      "bytes": 646792,
+      "sha256": "f28da3224dd961304c08f953ac889df4d3c172c079a29ec6964b5ee6889e2515",
       "uri": "place_aftermath_wreck_ore_freighter_bow.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 913060,
-    "sha256": "50ce61023b0c4ea7205e07efd7416819cbad98c03ddbbd97b8c032703643dd28",
+    "bytes": 912968,
+    "sha256": "f4a3b456947f345f76e6977a150f72006238e27f58c025cfeef98c242d696808",
     "uri": "render.glb"
   },
   "runtime": {
@@ -15639,7 +15639,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow.glb"
   },
-  "runtimeHash": "153f71ac0e82664c81cc2166408fbc336c7039eb04b1e0e91a644f655f2660d4",
+  "runtimeHash": "c6c7f6d9fd25df4753324eb96447b81057d0647debf012928be79075b5e6542d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

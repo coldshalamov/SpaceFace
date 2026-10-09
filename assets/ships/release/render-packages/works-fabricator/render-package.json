@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9154af88fc4902045968ecc4c42adc08a7e2c0315a20fbf2ec1bc0bf80c64daf",
+  "contentHash": "27787203d8b96ac8b6060df718043344155cf3d28d6d94ceb4fe8fbecf0bf2ff",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dc98efaf5fc02ba1b656a06c677c3cb810eadd699c274f24b88237fd20182ef0",
+      "geometryHash": "0538aa8f56b364bf33ef3dbdb37c1de3a5fb1da948bf29f27c1393ff4a933d86",
       "id": "sf.render.works-fabricator.mesh.lod0-fabricator.primitive.0",
       "indexCount": 19524,
       "indexed": true,
@@ -582,13 +582,13 @@
       "sha256": "ca2bc1e15a0625e1a373a6e76396e0348b218c62f1bbe52141d54bdba2479ee6"
     },
     "sourceGlb": {
-      "bytes": 757340,
-      "sha256": "8c58ac53048f967290deef45b1009e50eeb9c45502ae012662a54f521bf00370",
+      "bytes": 757344,
+      "sha256": "5634bc6dc5d85362937f73418d3d4020823e14e55bca7458633d3b6c94c4e1fd",
       "uri": "place_works_fabricator.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
@@ -926,7 +926,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_fabricator.glb"
   },
-  "runtimeHash": "85aa41ad4e59239af7c9a578fb49ea0ff7f81b512f9846702e6ed1a6881a8b55",
+  "runtimeHash": "1fefee6b1a76ee510cefd91c17d20bb0dc7a4d1e0375991b09ae0295e67f0ed1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

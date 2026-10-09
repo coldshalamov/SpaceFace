@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "205eeb183b2238782525798579ee65e550a52cdbb81ea44e63f12809d50fd624",
+  "contentHash": "fa16471bced1a59553795f301323e67f5d9bad35eeee4bb26e5df7ca196b5e47",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -751,13 +751,13 @@
       "sha256": "57d938e947c7623f1a1e3a185a0ff1b7ac9cc7dce55f7e60d1cb2d418d595b57"
     },
     "sourceGlb": {
-      "bytes": 30100,
-      "sha256": "374d33266b0e9270798f7cf0fa731812169cc57619c147ed16e93717bdc5d127",
+      "bytes": 30128,
+      "sha256": "e9515d6c765a85a56f4b03ae469586473da6802c63201586fd19486285ebb244",
       "uri": "place_observation_blister.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
@@ -1100,7 +1100,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_observation_blister.glb"
   },
-  "runtimeHash": "ca4bd451797e7398deca0ed80bd637aa60a2c753041caf626188466c1006a2ec",
+  "runtimeHash": "eb3cb9e5c36f917bc081b8e3e0d113af15985dadca4c1eec3a497ed9fc085867",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

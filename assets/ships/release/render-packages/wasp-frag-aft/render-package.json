@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cf5221850d86007d696458c62ad13ea415d2bbbd3c48864d33cf903b5fd5c2f8",
+  "contentHash": "a6e6faf13715490ff35ba6e296fc078c19c8481c9b77ea206cfb34efaeb3ada9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -582,7 +582,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "edc6654736d02e2b5796054ce84ba8f6850110e66939da5713f614690084c0e3",
+      "geometryHash": "9d40aa2c9e45a1d5b2fa599767e0ac455d6af9efdae3155e313c4a28049ae32b",
       "id": "sf.render.wasp-frag-aft.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -607,7 +607,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8fd843cd3f268b5d482b7a22ecc11b30b7add83ff1238e5b4d7f27307ac25dd",
+      "geometryHash": "9ff4676693c186534f328685fc70f7507db39b74dfab93a2528f55d05c04cf37",
       "id": "sf.render.wasp-frag-aft.node.lod0-armor-torn.primitive.0",
       "indexCount": 4416,
       "indexed": true,
@@ -632,16 +632,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23f6a563f37a1b33d3a86da604a6160d5c25a63c43417b560b7799dac62c9ea3",
+      "geometryHash": "27b1ce8174240da8939fd7b3fbba1c569d26d4589d155519009b300720f24b35",
       "id": "sf.render.wasp-frag-aft.node.lod0-armor.primitive.0",
-      "indexCount": 10140,
+      "indexCount": 10101,
       "indexed": true,
       "materialHash": "3a33bb997528ba28002fc9eb0de29df1682df111b73fb536c72d4dd264a4cf3f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.wasp-frag-aft.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3800
+      "vertexCount": 3784
     },
     {
       "bounds": {
@@ -657,7 +657,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "47c1e0812793185bf6868305634daec351e3c74406288f5780509fad1edd51fd",
+      "geometryHash": "3445e3bac01e2679b6a356ec3d34ecda7db37517d8f282b7a4be83e3d4e42a84",
       "id": "sf.render.wasp-frag-aft.node.lod0-beacon-amber.primitive.0",
       "indexCount": 11436,
       "indexed": true,
@@ -757,16 +757,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b87db0d87541202b22ce1bac215c6ce495683256ff3d093761783d7728ae89a8",
+      "geometryHash": "5a270bb6804f2b3bf7945d41355c212ace97141aeb2e92c329422b70476c228e",
       "id": "sf.render.wasp-frag-aft.node.lod0-hull.primitive.0",
-      "indexCount": 21408,
+      "indexCount": 20481,
       "indexed": true,
       "materialHash": "60a3dff74c6d0feb37f8bd4302572c2f1273e8bec0528429c3375e420350ba83",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.wasp-frag-aft.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 5725
+      "vertexCount": 5525
     },
     {
       "bounds": {
@@ -782,7 +782,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "896264cc0f55fc73da8b189638a415a17a4b2f5c7ed22db228240390c480dd61",
+      "geometryHash": "9aa7db5e5bf0a80be0bd4daa9f97b0d414f28b48ae2788125341df012f3ed10b",
       "id": "sf.render.wasp-frag-aft.node.lod0-lights-cyan.primitive.0",
       "indexCount": 3420,
       "indexed": true,
@@ -807,16 +807,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fb542e77f76538886d5e376fec93e01a1b81bc3aff0f6807e5587a230c1726f",
+      "geometryHash": "be7e6e3fff324e526283d976498486327a790f2014d72a8756f4457795fc1a28",
       "id": "sf.render.wasp-frag-aft.node.lod0-mechanical.primitive.0",
-      "indexCount": 15984,
+      "indexCount": 15936,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.wasp-frag-aft.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 5079
+      "vertexCount": 5051
     },
     {
       "bounds": {
@@ -832,16 +832,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fd04711dbe51b20ee08bca1e1fdcbde60681d117fce939fde6a56693f1887ee",
+      "geometryHash": "a593b5b46a52f56c9535341ed667546d4195d947f2ec3298d9f8c670b4065f9d",
       "id": "sf.render.wasp-frag-aft.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 22569,
+      "indexCount": 22533,
       "indexed": true,
       "materialHash": "162a43f835e10cea4f6ab11e9fb947193270cd113f15f55b276f87f85572fc96",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.wasp-frag-aft.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 7661
+      "vertexCount": 7657
     },
     {
       "bounds": {
@@ -857,7 +857,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "427cee14396ff46c91ac96b97ce0634b4d228c9ec4e836067c70b704029bd7fd",
+      "geometryHash": "bd1e1a837cd54d1deb62d06feb4be904a3fb86f5edd0c6f05a28c0eb8f5f68cc",
       "id": "sf.render.wasp-frag-aft.node.lod0-motion-frag-flap-armor-torn.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -882,7 +882,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "045033359e1f50f506d2898269e1ed19b64f9e242a0306f1f59ddd95aa3a8f37",
+      "geometryHash": "0361fa3a851c91ed9e8ad759389c228ffffb8cdcdeb437352b1be4c63b5e5343",
       "id": "sf.render.wasp-frag-aft.node.lod0-motion-frag-mast-mechanical.primitive.0",
       "indexCount": 672,
       "indexed": true,
@@ -907,7 +907,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "354cfebf7ef06318a0e0c97e3b18079b4e4f657a4780142eda77ab7bd2a496ff",
+      "geometryHash": "cfdaa38d24c24cf5a219bdd659dd0d3e4a3a3aa5fa212c6ab18f3701aa81e4b2",
       "id": "sf.render.wasp-frag-aft.node.lod1-armor-torn.primitive.0",
       "indexCount": 1476,
       "indexed": true,
@@ -932,7 +932,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3066c13e82aafa69351cd85c63c0d0313d32e981e2d79521fc59ee38bcc782e8",
+      "geometryHash": "7c99bc2e1d06bf92cf5cb1ca491690ca6b75bd20c8e09990d1598bf1a24b9979",
       "id": "sf.render.wasp-frag-aft.node.lod1-armor.primitive.0",
       "indexCount": 5187,
       "indexed": true,
@@ -957,7 +957,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "856f7cf4eddcb9f3edd1acfa3aa52033071339ac0aa7559ff3739229e1d80664",
+      "geometryHash": "f0dfdb51a81ea22c7177216c97ae608be569d8d3f2823f51b227d1d18bdb26d9",
       "id": "sf.render.wasp-frag-aft.node.lod1-beacon-amber.primitive.0",
       "indexCount": 5604,
       "indexed": true,
@@ -1057,7 +1057,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a44dad8e1274ed5d964be4f39040577149ec0530f1fa59bbbf012acf1e57f279",
+      "geometryHash": "4bd49b372624e6aa9199ad73afcbfcf1fd717df942b3dd090e99da8a55a52a60",
       "id": "sf.render.wasp-frag-aft.node.lod1-hull.primitive.0",
       "indexCount": 5982,
       "indexed": true,
@@ -1082,7 +1082,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "832f087fd60734559a6a0f0aa7c7039b3f0c0852165c05ae8f64c694a3bfed93",
+      "geometryHash": "1a1ae08c68d22840796c7c6304859ff9eff6622d52479ad162429e2c41eb0611",
       "id": "sf.render.wasp-frag-aft.node.lod1-lights-cyan.primitive.0",
       "indexCount": 1086,
       "indexed": true,
@@ -1107,7 +1107,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad5daa4f68ab576a157aa9264a4b1e0dedb366e51778f20032a9b288268295db",
+      "geometryHash": "df79169f77b792711b8484f76af6a4b45d45bbbb1639c30b00e734ff6f98f4c5",
       "id": "sf.render.wasp-frag-aft.node.lod1-mechanical.primitive.0",
       "indexCount": 8763,
       "indexed": true,
@@ -1132,7 +1132,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ff5f7a289eae7792489d85810f595ee710deb415aa454a82bedd58c2aa98d86",
+      "geometryHash": "ab6a0134ec7b2114d59f9cada70538817280437a20f91dd0afc47e2a6f35779c",
       "id": "sf.render.wasp-frag-aft.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 11220,
       "indexed": true,
@@ -1182,7 +1182,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c13642b3faed9d467bef877ebe655a359524b556fc55db5893fa382030a0de00",
+      "geometryHash": "5b956660f3a2d1c594d0dcfb8462a23292679068ee739d8776319de5b60a1933",
       "id": "sf.render.wasp-frag-aft.node.lod1-motion-frag-mast-mechanical.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1207,7 +1207,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b9db0d58b851962e0cca1f5cb2ef803287f04a99d09775d8491bc529225fe67",
+      "geometryHash": "0b303195ea2a5d683d252d17ec85952811d45f848a9199d7d5213eba11697a35",
       "id": "sf.render.wasp-frag-aft.node.lod2-armor-torn.primitive.0",
       "indexCount": 915,
       "indexed": true,
@@ -1232,7 +1232,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "620d001b9366b451aab5944f51af5cbcc99822c7577ea54886cb6aa7253715f1",
+      "geometryHash": "f2d9cb13012b4790b20f80252ff9f530c82306d38da79458f11fdc980faf5fc1",
       "id": "sf.render.wasp-frag-aft.node.lod2-armor.primitive.0",
       "indexCount": 1863,
       "indexed": true,
@@ -1357,7 +1357,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9109b61285a3d1df41855c34090b89cc8ce1c1e0921cbe174b701ff979c4ca1",
+      "geometryHash": "259a8c6f68d6d44e52a6ecb0d0919055dbb85f6a273c8bfd7115561267cc9bbb",
       "id": "sf.render.wasp-frag-aft.node.lod2-hull.primitive.0",
       "indexCount": 3636,
       "indexed": true,
@@ -1382,7 +1382,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd8583b367a8a7eb4a95e0958d6334c1516de2a1be78f640c146ca2a28e23c55",
+      "geometryHash": "9bbaf4b11d204bdb107db57da0fc2c8ac43032348b018b02ef630ea80e8c6921",
       "id": "sf.render.wasp-frag-aft.node.lod2-lights-cyan.primitive.0",
       "indexCount": 441,
       "indexed": true,
@@ -1407,7 +1407,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7dc997edbceeed702985dca7a7e23b2eed8f90a8bd85d383393a26b911d4da6c",
+      "geometryHash": "563e9904f4fb83f8e98c244c745b97efdfb1d6f90b15dc23889ceb5c5286f728",
       "id": "sf.render.wasp-frag-aft.node.lod2-mechanical.primitive.0",
       "indexCount": 4296,
       "indexed": true,
@@ -1432,7 +1432,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "597e5c95289fc2c2b6fa3d501a005fa7a08394f88e5a2ab8d9abdac9004a5be9",
+      "geometryHash": "32acd55a7e523b6bf12db07e20384d9410a1688825094eda99b2a8be10418cf9",
       "id": "sf.render.wasp-frag-aft.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 4461,
       "indexed": true,
@@ -4254,19 +4254,19 @@
       "sha256": "eb9cd5d916be9f3d384c48e774d1127377f8875098d0cbd13b45dcaf9b6fd321"
     },
     "sourceGlb": {
-      "bytes": 882808,
-      "sha256": "5e375a4458a5bb70c1bbe0e0c213fd71ce07a4c63e194275b65633aa615855a3",
+      "bytes": 879704,
+      "sha256": "4210008ae1387286bb0d92165c3b8b37efc812b43f636d0f23d77d9671911bf8",
       "uri": "place_wasp_frag_aft.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1785444,
-    "sha256": "14ea785144e65dc73146d3cf87431d3c27e35e485441eee74d094a7360475e7e",
+    "bytes": 1777976,
+    "sha256": "28f35926a421dc73f59cf281f3efbca2f8672558b166346f5f0805d862b3ebd2",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6299,7 +6299,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_wasp_frag_aft.glb"
   },
-  "runtimeHash": "4b90dae34391ff733bbb295d39406a09d6a8a895b5406bee2e15d7414d3c4048",
+  "runtimeHash": "854214a5a14d589f9bb2080c8d40031d9a07000c9731e6ba43fc1de4739bed45",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

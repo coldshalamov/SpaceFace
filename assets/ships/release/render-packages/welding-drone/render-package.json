@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2e9f179753eb4ed4799621d9db80683535c9489c2c6d903e113e9aadf58834cf",
+  "contentHash": "8eabb1e744db81bdf64dd84b55f50514420eb23cc46f31c7e07297b794c0d370",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -84,18 +84,18 @@
     {
       "bounds": {
         "max": [
-          1.314905047416687,
-          0.13975904881954193,
+          1.3149051666259766,
+          0.13975907862186432,
           -0.30302178859710693
         ],
         "min": [
           0.8650947213172913,
-          0.010240957140922546,
+          0.01024092361330986,
           -0.5369782447814941
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dc8254d538b07231f1fcf5bca7881e1c65786fd3f5b2a88b92961952ea30d93a",
+      "geometryHash": "5bd9a8d5ca4bc962150709f10db13c7ef68913b16aa8128555d2937d8b2c7443",
       "id": "sf.render.welding-drone.mesh.arm0-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "edb18080c8179acec703c1f9e49d3471b245b6ed2bfe0bf6da3c795f2d09852b",
+      "geometryHash": "8108941d4d9a967f20a8407aa5d19b380403cdd7ed946548da80a22b7140f5d3",
       "id": "sf.render.welding-drone.mesh.arm1-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -140,12 +140,12 @@
         ],
         "min": [
           0.8650948405265808,
-          0.010241134092211723,
+          0.010241135023534298,
           0.30302172899246216
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c79b22d7d7ae66034a95a3739b3a52dc1e0612fe449fda2a9208950572a25693",
+      "geometryHash": "f0b5e75259e76b35af6e720848582a468d5bace36cf1b39d41ece44102285f48",
       "id": "sf.render.welding-drone.mesh.arm1-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -973,19 +973,19 @@
       "sha256": "6bb7e5aa7691776d2b7c1856ade7d2dc3b181cef7b0cd89c0ce4107a179f0410"
     },
     "sourceGlb": {
-      "bytes": 18732,
-      "sha256": "2d168b17a47df778438d2a85ab55bd0e8927cb9cc1c08b1707c4b22b6515c4be",
+      "bytes": 18716,
+      "sha256": "a9590b4c9f7d8b99ea5d92cdc78723cb88d74d2ad762d377c3ff7105c6594b36",
       "uri": "place_welding_drone.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 28744,
-    "sha256": "1fa15f56b88a2d5dbfe4939228ecdf47100f626f1f132753c89a85af0027e35e",
+    "bytes": 28748,
+    "sha256": "3f4c35d204768a4af18a34f036dc202ff112b64850b7a989744ffb055cf8ea90",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1420,7 +1420,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_welding_drone.glb"
   },
-  "runtimeHash": "53f63850cd168fd675cb24bef05726ebbe77bec2fa8e31a089a9f5df7239ba19",
+  "runtimeHash": "98ec93a17f18b48869d55f3af500dfdb62aa68abc33b30bd44ce01061282967d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8d36bd561218a078cef6d728f83362375b0bb3854abdd08067d7ca7cfc7efd3f",
+  "contentHash": "cc5a3f4749d4c2e6c8e98971e7a5b0ae4e7d4e2dccad067790282bbb1aa4ccc3",
   "dynamicGroups": [
     {
       "id": "sf.render.ore-barge.node.lod0-hook-drive-core.dynamic",
@@ -653,16 +653,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2e083ee37f55ecd351e81c034b730bbb10676becb490f22ab6cfa594a92499d",
+      "geometryHash": "87911f942a0eff898198c7400aba6f9a7f76864b90d04cc603f8004800a94318",
       "id": "sf.render.ore-barge.node.lod0-armor.primitive.0",
-      "indexCount": 11940,
+      "indexCount": 11877,
       "indexed": true,
       "materialHash": "3d2e96bd18f8bba6cb6cdb619574ecd76bf38bbd885f24122eec1ee2aa7d187e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.ore-barge.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3548
+      "vertexCount": 3529
     },
     {
       "bounds": {
@@ -703,7 +703,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb297a7da7f8b6ab7758a6f934f0fa894faaff6fe5ec4e3c31c83bb8d75a662d",
+      "geometryHash": "4f94f85f53d00c7a4b8e288c974f36a8936a3bd8a658740ab1068fd91394b4b7",
       "id": "sf.render.ore-barge.node.lod0-brushedmetal.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -728,7 +728,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41c2cb128d85ee22a92f214acaebace426fe1f7b1a3b317e8efddd29e85e16c9",
+      "geometryHash": "e10b347b9ed98b8449fbe8120989212a07df9e02cb090c9041715f66a7a254a3",
       "id": "sf.render.ore-barge.node.lod0-canopy.primitive.0",
       "indexCount": 2748,
       "indexed": true,
@@ -753,7 +753,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a27b3afb499ac89b1cce0cc5af7adc116fea3551a0af7211efb7ae0116cc45a",
+      "geometryHash": "6592e9df65618bd41fc7a30a769991677fc1e6ef2f79440a7519e516579304ec",
       "id": "sf.render.ore-barge.node.lod0-ceramic-ore.primitive.0",
       "indexCount": 3180,
       "indexed": true,
@@ -778,7 +778,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fcf3afb409d73726a1b318d47e132943b5431500e84d6ed0fc98ec32471bb39",
+      "geometryHash": "0c7003a4fc1914a8c30465f4a671be15b393239c97cb2004854365d2d39aaa37",
       "id": "sf.render.ore-barge.node.lod0-ceramic-ore2.primitive.0",
       "indexCount": 1620,
       "indexed": true,
@@ -878,16 +878,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b56f5797b68f1499fc09672104ed38b872e18897efdb6524d1f22b0a2fbdb04f",
+      "geometryHash": "0ab6a43dd8e6f44177f2f185041468026b18dbf838f83eb489c38cfc09d023d3",
       "id": "sf.render.ore-barge.node.lod0-hull.primitive.0",
-      "indexCount": 20118,
+      "indexCount": 19797,
       "indexed": true,
       "materialHash": "0f6b54826e3f4efb7a7bd61d09382ee048b35481f56fa6540416af5d3119f435",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.ore-barge.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 6515
+      "vertexCount": 6427
     },
     {
       "bounds": {
@@ -903,7 +903,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "394e744d3855f6682af9ac11eaddc88d45bc8b30ec35cfe9bce875551e2c8a15",
+      "geometryHash": "e74517a9aa4fe91881048a3f01bcf254a3e5eacf2337ace4148f5e15b1bdeae7",
       "id": "sf.render.ore-barge.node.lod0-lights-cyan-rust.primitive.0",
       "indexCount": 4032,
       "indexed": true,
@@ -978,7 +978,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b2c544c0074bf59a3fda5bc44d76da262b68ce30683fdab9fe44922545ac0a4",
+      "geometryHash": "8903023b01dcefd8e69e93d3cf062f21e15eb489e07810aa4ae85b3c60a3d324",
       "id": "sf.render.ore-barge.node.lod0-livery.primitive.0",
       "indexCount": 7284,
       "indexed": true,
@@ -1003,7 +1003,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38b6f4f151cb15ebd1e9f075117b81bc5c39e5582dee5fd0875a4eaac39fda01",
+      "geometryHash": "ccea472386122e114b5f96be196b0f301a9f3fd5616b01feaa0dffd45eb3fe33",
       "id": "sf.render.ore-barge.node.lod0-mechanical.primitive.0",
       "indexCount": 16101,
       "indexed": true,
@@ -1028,7 +1028,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65195a08eb9a3897d668ba52b29c530c6bea952a09c85bc638eea65572bf5948",
+      "geometryHash": "4768652a2153aff5f61650f2acaea0e62441f1d2ba4f9e233a2f73dcbfa5e27d",
       "id": "sf.render.ore-barge.node.lod0-mechanicaldark-ore.primitive.0",
       "indexCount": 3792,
       "indexed": true,
@@ -1053,7 +1053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6394f7e7f77de2537f7e0ddc2fea9d00d6a2c3031086a33137c310aa85d17b1c",
+      "geometryHash": "9c1d00609099b8e1d6a82260011279abedb4f8cebdf90c1629c244b843df52a9",
       "id": "sf.render.ore-barge.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 10026,
       "indexed": true,
@@ -1103,7 +1103,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12b19ff0c2ff6253a2f976466231b01296848a1c19c06160e24909b7abb0a73b",
+      "geometryHash": "253ca6a62163489009c5d811e5ca69934737b3cb5db07ae5a101f0cac1a2d7fe",
       "id": "sf.render.ore-barge.node.lod0-motion-barge-claw-mechanical.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1178,7 +1178,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3401446310d38a732e1b1c3d0b39aa43904c546c10b647f536d92a1329259f7b",
+      "geometryHash": "d11d0568bb1d33df751181a303baeb0dc18031deefffa7fddec4a25bb95fbd3f",
       "id": "sf.render.ore-barge.node.lod0-motion-barge-trolley-mechanical.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1203,16 +1203,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16477eece733e8f643754129451e04a989ef02e26c842f0370efed24ebadbf41",
+      "geometryHash": "6c8a0064a335bf37756ecfa637128c7e9050ef482edf53abc2e6f66dd0a81e1e",
       "id": "sf.render.ore-barge.node.lod0-warning.primitive.0",
-      "indexCount": 20130,
+      "indexCount": 20121,
       "indexed": true,
       "materialHash": "9d5c40355ac60b834a23854f6a3c19409ff0e157abf9417d474277e58eb329e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.ore-barge.node.lod0-warning",
       "primitiveIndex": 0,
-      "vertexCount": 7685
+      "vertexCount": 7680
     },
     {
       "bounds": {
@@ -1228,7 +1228,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40d9bd94edbb93e298577d01261b9f2dad567a26532e3392bb7343463a1b0f67",
+      "geometryHash": "e1a95af87c0163ab7d4e2abbead8aae6fa928a8a06c926c90591a2ecf02dc893",
       "id": "sf.render.ore-barge.node.lod1-armor.primitive.0",
       "indexCount": 2712,
       "indexed": true,
@@ -1278,7 +1278,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30b01456e79f8a3ebd45ea0e4c369ba9ee416aadbbb20367a83bb7e687224f02",
+      "geometryHash": "e8fe6749de34aa11ba9f90015939ed9919c8e337a15cdd7fc14de2438b490ef4",
       "id": "sf.render.ore-barge.node.lod1-brushedmetal.primitive.0",
       "indexCount": 552,
       "indexed": true,
@@ -1303,7 +1303,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c995e8b09d806ba73360d72478251da168271f482b6e3c8e565b990b78597932",
+      "geometryHash": "683fc73cdf0ed96b206090f6daedc51d680fc4e75de03c05b9d25b5ee9a11b94",
       "id": "sf.render.ore-barge.node.lod1-canopy.primitive.0",
       "indexCount": 1335,
       "indexed": true,
@@ -1328,7 +1328,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a27b3afb499ac89b1cce0cc5af7adc116fea3551a0af7211efb7ae0116cc45a",
+      "geometryHash": "6592e9df65618bd41fc7a30a769991677fc1e6ef2f79440a7519e516579304ec",
       "id": "sf.render.ore-barge.node.lod1-ceramic-ore.primitive.0",
       "indexCount": 3180,
       "indexed": true,
@@ -1353,7 +1353,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fcf3afb409d73726a1b318d47e132943b5431500e84d6ed0fc98ec32471bb39",
+      "geometryHash": "0c7003a4fc1914a8c30465f4a671be15b393239c97cb2004854365d2d39aaa37",
       "id": "sf.render.ore-barge.node.lod1-ceramic-ore2.primitive.0",
       "indexCount": 1620,
       "indexed": true,
@@ -1453,7 +1453,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8906f1aaad3fa47185a3067b8611d0684aa385a5b0112dcdba69ef3e5eace8c2",
+      "geometryHash": "f6c776cf9be2c5d71ed8f8b7d62208bbe20fee265d16b9921325c1509f4e0ac8",
       "id": "sf.render.ore-barge.node.lod1-hull.primitive.0",
       "indexCount": 9399,
       "indexed": true,
@@ -1478,7 +1478,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "55072d97d7209212e638a99fb527a73899bf1bc6ef6fcda4fc8d3dfd85a4d831",
+      "geometryHash": "3b903611f38fc8a1b2f3b3d13ad2fc83ffa8e2dd9c2a18ba8a45f20e9b999a2c",
       "id": "sf.render.ore-barge.node.lod1-lights-cyan-rust.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -1553,7 +1553,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e47e21eba7c31e797d121cf2c53365f5973816ce961fd7fbc42f835d3953dda2",
+      "geometryHash": "9f38cd65d5d9e82ee2609405e41066ce0f9088a63dd08bdaaed72693373011dc",
       "id": "sf.render.ore-barge.node.lod1-livery.primitive.0",
       "indexCount": 3285,
       "indexed": true,
@@ -1578,7 +1578,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bba03784c353e69e4a322010152ce88a84a50ae31796b221cea12863d56941de",
+      "geometryHash": "48aff7fa9009fb5f6ad4eb816f641af2eb6ffc33d407f5195b6f38329a86bae9",
       "id": "sf.render.ore-barge.node.lod1-mechanical.primitive.0",
       "indexCount": 9099,
       "indexed": true,
@@ -1603,7 +1603,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "494f6533491228603962b69887c50859a894ce9103210c3ab2403d61a3b97c67",
+      "geometryHash": "d264664ab0e5ec6a455ecef5c1fb4e21cf1e75b1343617913090b20cdbbd8900",
       "id": "sf.render.ore-barge.node.lod1-mechanicaldark-ore.primitive.0",
       "indexCount": 3168,
       "indexed": true,
@@ -1628,7 +1628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d077af1189a8711f2747910605a26af47fb86461b947824226b73552d238fe44",
+      "geometryHash": "251f9a948755db6e31e681d45079f4f004998a8a0f62effc95c410fd8831b60b",
       "id": "sf.render.ore-barge.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 5556,
       "indexed": true,
@@ -1678,7 +1678,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a171d7136cbca74888c07cc82cfed945e24597cb42c8f8f7a8b5bb305759f401",
+      "geometryHash": "53a9e0a91ce579543c8e8b55ee1b12910e2aa22a0ce7c399abb03ef9d575de80",
       "id": "sf.render.ore-barge.node.lod1-motion-barge-claw-mechanical.primitive.0",
       "indexCount": 402,
       "indexed": true,
@@ -1778,7 +1778,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6927aaf24c1e3036f2ad1873e17395a88b9feadd4c39e6f776565a67c41589e6",
+      "geometryHash": "8000556aede5153fa6aede398995ec9034e7fd2c016ae97c898d93dbd9c4879e",
       "id": "sf.render.ore-barge.node.lod1-warning.primitive.0",
       "indexCount": 5106,
       "indexed": true,
@@ -1803,7 +1803,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "755610a375a2eb80f42982d8ad6d30f677432c10f4bd78dc5a11a69b59bbe44b",
+      "geometryHash": "9461a30dbb77cf8badb8a42776da3108451cd759a6532fb81faa1db679252e70",
       "id": "sf.render.ore-barge.node.lod2-armor.primitive.0",
       "indexCount": 1587,
       "indexed": true,
@@ -1853,7 +1853,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa716e6add10ed49aa31327e41359138589a4edb5c1a7a4a3b9ef6ff310e034e",
+      "geometryHash": "c463227b05d98245299da4eef368c1e41f3c526c96c94613b02776ec724b8779",
       "id": "sf.render.ore-barge.node.lod2-canopy.primitive.0",
       "indexCount": 498,
       "indexed": true,
@@ -1953,7 +1953,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62a8cd80b5100dd7309b7380c176ba4e163e978e21f2f5dc701cf7ce53021724",
+      "geometryHash": "cbb2ee7a49e1ef482a70658fd3618839b7325590f0f8696873f3d8c5a798875b",
       "id": "sf.render.ore-barge.node.lod2-hull.primitive.0",
       "indexCount": 4080,
       "indexed": true,
@@ -2053,7 +2053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4b0b99e7f27b4936fdca06df837c31d1af8d19ebc25326c0cb9e11ec3f5a2c3",
+      "geometryHash": "093b42b5c54f26267b2aa47b34145c52296366228be42aa1b96bcf53270c8dea",
       "id": "sf.render.ore-barge.node.lod2-mechanical.primitive.0",
       "indexCount": 2532,
       "indexed": true,
@@ -2078,7 +2078,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9a83701549ede17ad21a7fdb6bad5c31f38783a1f533ca59a494fc17fc46043",
+      "geometryHash": "b30a3b87000c463cad6b6ce8db40e0b06c5235ef03e47677b77fc265e01ebb1f",
       "id": "sf.render.ore-barge.node.lod2-mechanicaldark-ore.primitive.0",
       "indexCount": 1674,
       "indexed": true,
@@ -2103,7 +2103,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57a0c37413f6ba23d2be69ef66c41a74e55e3ea0ac4c120cd0173496d46a13fc",
+      "geometryHash": "e477d94d7c5ad5535f304c5c8135da3599674db0dcc32f8e50f01356204e0a73",
       "id": "sf.render.ore-barge.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1941,
       "indexed": true,
@@ -2253,7 +2253,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be15850858b32d477c60e4233243d668bc60a185dc640923d5b5dc39e93da3f1",
+      "geometryHash": "bfb202c1dca0f83160d015d2c7440e8ef9d8c5f8aef6114585d677dd4153b53d",
       "id": "sf.render.ore-barge.node.lod2-warning.primitive.0",
       "indexCount": 2955,
       "indexed": true,
@@ -6757,19 +6757,19 @@
       "sha256": "908bcd4567f616d6c8da8fa366c25cdd26ae6b050af5707596f3c9dd2b9d7b53"
     },
     "sourceGlb": {
-      "bytes": 1258324,
-      "sha256": "65e18a9b9a2b20ed22aeaad4d56a8c98703b48a63afbe12071cf195af1c202c3",
+      "bytes": 1256948,
+      "sha256": "8c7996ef96b8066cc5e43048592208c3296efcf22c5a693a24a6fe24af40e3b9",
       "uri": "ore_barge.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2420988,
-    "sha256": "2e9b745e1bbe6014540ff29a58d3d3328b798dbccccdf004d18e7d28d789fe67",
+    "bytes": 2416968,
+    "sha256": "b88bb9e02cb8313deac50b56d84dfad24ba6b25f08a65ae5e1ae5aae161f353a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9874,7 +9874,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ore_barge.glb"
   },
-  "runtimeHash": "d752b813d2aab72c4cb86503094b2af3655194c3835ebadbf0e1d3c70f0644b4",
+  "runtimeHash": "205e314410d8ebf52862db682f3dde63d15f3fc011faf1aa9053610bf9c1696b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

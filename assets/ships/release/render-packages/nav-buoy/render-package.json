@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "755f225933b371b693c412089da193455cc1224487a8919cfe2f640a0f9a46e4",
+  "contentHash": "de3ae0dc7f6de28d1f12dcbe5b9404ccadac389ab7f138ed3a4e48d1c1b5b058",
   "dynamicGroups": [
     {
       "id": "sf.render.nav-buoy.node.lod0-hook-nav-port.dynamic",
@@ -132,7 +132,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5d161ca064856de51779121ded263297f8cdb2a238add39429212f2054cf3787",
+      "geometryHash": "e6f0175eafe2a5522cb30dc280ad80f4e27434c738c7992b0272e03261d0f7bb",
       "id": "sf.render.nav-buoy.node.lod0-armor.primitive.0",
       "indexCount": 13959,
       "indexed": true,
@@ -207,7 +207,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "314c9f182251a2a7a92671262291bfd4811fda1e843ce23ee48a33b052ef015a",
+      "geometryHash": "a13a0dda5b78ecd56a885eece58e39abb78954a29beff108bb1e91db901659cc",
       "id": "sf.render.nav-buoy.node.lod0-canopy.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -282,7 +282,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df12e3a030b06b3f464ecafe6cb9df5906abd37b41a8b585aea4df4d028da046",
+      "geometryHash": "4213dd6ddfedaeced9fbad0428aa19c931ef9f811e9f6a65e4942b5b7081642d",
       "id": "sf.render.nav-buoy.node.lod0-hull.primitive.0",
       "indexCount": 7512,
       "indexed": true,
@@ -307,7 +307,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5a31c9609f333409c7ceda4b7b2ae9aa541e1ffcfb58f3ad9559e15270f685f",
+      "geometryHash": "127eb871ba2df3cfd6f953904f58ac9395bf713f79be9573b5038589ab1e803e",
       "id": "sf.render.nav-buoy.node.lod0-lights-cyan.primitive.0",
       "indexCount": 744,
       "indexed": true,
@@ -332,7 +332,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "211a45c3894395b2a64f3e04c68416578e08a989fbedf8475ccb52fda5ce5fb6",
+      "geometryHash": "37ef3a744482da7da056ef418d41eb401355e9d2cd4afa612fbf37bdac4b5384",
       "id": "sf.render.nav-buoy.node.lod0-livery.primitive.0",
       "indexCount": 5184,
       "indexed": true,
@@ -357,7 +357,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f66c4d6d79b3ea1fb33a67625879c504a081010276a3fc6e8352b9f3c1321fc",
+      "geometryHash": "2bbeeaafeaf940129ae9dbf54b922463b33dcd54a057273f9979e3fb0cff10b7",
       "id": "sf.render.nav-buoy.node.lod0-mechanical.primitive.0",
       "indexCount": 10212,
       "indexed": true,
@@ -382,7 +382,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "99856de9f059ae8f3a4a71be02ae8316e099fcaf0cd323882f5ba0425d181fda",
+      "geometryHash": "00e5d7ecc06e6c2ef22de492a92dc244bce55b35809742f26f098e709c4a031c",
       "id": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-cage-mechanical.primitive.0",
       "indexCount": 3744,
       "indexed": true,
@@ -407,7 +407,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6509c624b47cd50245cada5c11738ea9ade002a139dd279b5c8f8be20742a5f",
+      "geometryHash": "9bc4dedac4fb2ea4d4eaf0f28195b587a4deca9c847217581eda4b9764e50b76",
       "id": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-pulse-lights-cyan.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -457,7 +457,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a96a9472fc60b427f0478551f39f9b112488f07947b0c2bbcfbc9b4ac2f66b8",
+      "geometryHash": "4d7de77c9b4f5528f034813c8137eacf1527c361753ec079d8021bfec77bd3e5",
       "id": "sf.render.nav-buoy.node.lod1-armor.primitive.0",
       "indexCount": 4380,
       "indexed": true,
@@ -482,7 +482,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5759db3ec04ec0e21950b6d1cbc466f66f2f0369d509d4cf4e08ec981fd00489",
+      "geometryHash": "73f82aa0a2a3deac3d2360426c47de8e1d24d72c91165378d295adb867107bd6",
       "id": "sf.render.nav-buoy.node.lod1-beacon-amber.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -532,7 +532,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa0727c672775943ec00ac6c19e91a33bc8c60f2f71ece0a1c2981dc479ba71b",
+      "geometryHash": "ee4d178b43c000b8754c393f50ff759a2b157cac7844f22339c609381941f913",
       "id": "sf.render.nav-buoy.node.lod1-canopy.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -607,7 +607,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5ec3b070a82cd16c8dd7e2c99dd0af59ccfbceef877af32ecfc6136a3cbbaf3",
+      "geometryHash": "0174b95ce1c4aed91535c645ec4cafd575f9e420e48bbd3f32350a5ef9a0be5c",
       "id": "sf.render.nav-buoy.node.lod1-hull.primitive.0",
       "indexCount": 2088,
       "indexed": true,
@@ -657,7 +657,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f6ac9bc8bfe4f9a82cdcfe6689afb77be793d073ecb1e6b0fa62b80dc922e88",
+      "geometryHash": "5278d91495ff58f3d860fe6e799e05aa96a98560a7f47891700c3be58bbdf323",
       "id": "sf.render.nav-buoy.node.lod1-livery.primitive.0",
       "indexCount": 1656,
       "indexed": true,
@@ -682,7 +682,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fc7e4509c3182fc07c69612d8cb52026cb263938029fabd71c42d412c0bda75",
+      "geometryHash": "f51d907d644ef5f087f4f5309c9b32d9ff6ea4679e313aff92d51fb8a0e2eb09",
       "id": "sf.render.nav-buoy.node.lod1-mechanical.primitive.0",
       "indexCount": 5988,
       "indexed": true,
@@ -707,7 +707,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d875414d06632b4381697e0dc79b1c3408b4babf89b6814f04e87b729f20dc7f",
+      "geometryHash": "e6c24bc3c856a28f4c8d143696f6fb40cc2939a00c244266ec5244e2165a312c",
       "id": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-cage-mechanical.primitive.0",
       "indexCount": 1494,
       "indexed": true,
@@ -732,7 +732,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25eb7b680ad07ccd3959cd15c355f77db866f80837acbd4af8360827af549386",
+      "geometryHash": "0dc7534e48c4f9ecc4b9833f1f716c2f84d4ac83497bb1df3cbadc1ba40a8d51",
       "id": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-pulse-lights-cyan.primitive.0",
       "indexCount": 342,
       "indexed": true,
@@ -757,7 +757,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a727939704665910756ec47df25ca9bacebeb46089c10dcfecad3f2c56b9471",
+      "geometryHash": "84b34559f52e09e3bbd8b591ebe321b5b69d32b6654bdb4a1d6f07c1e765c50a",
       "id": "sf.render.nav-buoy.node.lod1-warning.primitive.0",
       "indexCount": 510,
       "indexed": true,
@@ -1007,7 +1007,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd8b4ba674432a501c77bb461f1e5df2357df5611e5e0098f0268d3d3b512f1b",
+      "geometryHash": "70de786c27d36c8fa935c30ab38d604afc3a2a4095ad118dc42023473917c54b",
       "id": "sf.render.nav-buoy.node.lod2-mechanical.primitive.0",
       "indexCount": 2838,
       "indexed": true,
@@ -3495,18 +3495,18 @@
     },
     "sourceGlb": {
       "bytes": 577952,
-      "sha256": "c9d306d7c8b6c00ce24beb27a45b82ca2f543d73a859068252046804704af3f3",
+      "sha256": "1c9f4876356bef5f24858aa2abff4ccac4fc74c4f5cbc0dca7014e99cb9bceef",
       "uri": "place_nav_buoy.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1060652,
-    "sha256": "c055f6a6ba7ca4ea138a96f5b9967e9af0b5a4ca9e7ac72589cba56700c1943d",
+    "bytes": 1060564,
+    "sha256": "f0e77e6d6520384aa905262e870745e7195622a62353555294e0f83f6990de2b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5014,7 +5014,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
-  "runtimeHash": "9ad7563c03e4abd497d3ab30aa0c111c09a717a76e52ba1d892892aea30aa4d6",
+  "runtimeHash": "14fd168bd89c39239e1d3fe045c9a13165185518697d894ac9e978a1413ad03d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

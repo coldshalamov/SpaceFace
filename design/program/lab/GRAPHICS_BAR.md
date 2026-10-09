@@ -127,4 +127,40 @@ Notes:
 | mining beam | `_initMiningBeam`, seam markers | |
 | combat beams | `_initCombatBeams` | |
 
-(Frames and verdicts follow in section 4.)
+(Frames and verdicts: section 4.)
+
+## 3. Model / part fixes (all zero-cost: no new draw calls, no material or texture additions)
+One transform, `scripts/lib/glbShadingRepair.mjs`, applied in place by `scripts/repair-release-shading.mjs`
+and wired into both release builders (`build-sg04-release-assets`, `build-place-release-assets`) before
+meshopt, so a rebuild from source reproduces it. Primitive counts are preserved. Certified Ceres-workfleet
+geometry (exact-anatomy contract) and the lossless `place_ceres_second_measure` shell are skipped.
+
+| step | what it fixes | result |
+|---|---|---|
+| degenerate triangles | zero-area tris (saucer MechanicalDark was 24.5k of 33.7k tris) | 348,290 tris removed, release bytes about -2 % |
+| faceted curves | shallow 4–35° edges carrying hard normals: normals rebuilt, area-weighted, 35° crease | 479 prims smoothed. Geology (rock/stone/ice/ore/crystal) stays faceted on purpose. "Ceramic_ore" hull paint and `wreck_ore_freighter_*` are no longer mistaken for geology |
+| flipped normals | normals opposing the winding (>2 %) | 482 prims re-oriented |
+| collapsed UVs | zero-area UV tris on textured kitbash prims smear one texel across a face (streaked box sides on rover, cargo port, inclusion kit, gas tap, hulls/*, cockpits, fins, weapons) | 20,071 tris re-projected on their dominant axis at the prim's median texel density, anchored at the old UV. Scatter debris over 1,500 tris (wreck cathedral) is left alone |
+| no UVs on a textured material | `place_ore_bulk_container` walls, ribs, rims and floor sampled texel (0,0) and read as flat swatches | 26 prims get box UVs at the material's own texel density |
+| z-fighting | the same triangle authored twice in two materials (hull under armour/livery/warning/light panel) | 4,456 hidden twin tris dropped across 51 models (wasp frag, volatiles tanker, ironback, survey pin, repair tender, apron shuttle…). The overlay material is kept; a transparent keeper never drops |
+
+Harness fix: the `kestrel_lod1`/`_lod2` "black outlier" in the pass-3 metrics was fleet-look drawing
+an empty frame. Split-file LOD siblings carry only LOD1_/LOD2_ names and `fleetLook.blueprintToGroup`
+kept lod0 only. It now shoots the finest level the file has. The runtime LOD selector is unchanged, and
+the LODs render correctly.
+
+### Static audit, before -> after (visible primitives with a defect)
+| defect | before | after |
+|---|---|---|
+| any defect | 1760 | see final numbers below |
+| degenerate-tris | 930 | 3 |
+| flipped-normals | 462 | 2 |
+| faceted-curve | 470 | 90 (about 33 are intended geology; most of the rest are tiny emissive nav-light spheres) |
+| uv-collapsed-textured | 200 | 8 (wreck-cathedral scatter, kept) |
+| textured-without-uv | 26 | 0 |
+| uv-stretch | 42 | 33 |
+
+Not changed, deliberately:
+- **`Material_Accent` emissive trim** on kitbash parts (fins, greebles, weapons, hull accents). This is the parts library's accent-glow convention. Runtime role mapping (#237) governs its intensity.
+- **Glass emissive on `cockpit_dome` and `cockpit_recessed`.** Same convention.
+- **LOD material drops.** kestrel LOD1/2 drop the ivory panels and ironback LOD2 its brushed metal. The geometry was decimated away rather than merged, so parity would mean adding triangles back to distance LODs. Logged, not fixed.

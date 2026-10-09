@@ -216,11 +216,115 @@ export function repairCollapsedUVs(document, prim) {
   return { uvCollapsedFixed: collapsed.length, vertsAddedForUV: extra };
 }
 
+// 4. Textured material, no UVs at all: every vertex samples texel (0,0), so the part reads as a flat
+//    swatch beside its textured neighbours. Give it a per-vertex box projection (dominant normal
+//    axis) at the document's own median texel density for that material, else the document's.
+function triUvDensity(prim) {
+  const uv = prim.getAttribute('TEXCOORD_0'), pos = prim.getAttribute('POSITION');
+  if (!uv || !pos || prim.getMode() !== 4) return [];
+  const idx = prim.getIndices(); const n = pos.getCount();
+  const I = idx ? idx.getArray() : Uint32Array.from({ length: n }, (_, i) => i);
+  const out = [];
+  for (let t = 0; t + 2 < I.length && out.length < 4000; t += 3) {
+    const a = pos.getElement(I[t], []), b = pos.getElement(I[t + 1], []), c = pos.getElement(I[t + 2], []);
+    const A = len(cross(sub(b, a), sub(c, a))) / 2; if (A < 1e-10) continue;
+    const ua = uv.getElement(I[t], []), ub = uv.getElement(I[t + 1], []), uc = uv.getElement(I[t + 2], []);
+    const uA = Math.abs((ub[0] - ua[0]) * (uc[1] - ua[1]) - (uc[0] - ua[0]) * (ub[1] - ua[1])) / 2;
+    if (uA > 1e-10) out.push(Math.sqrt(uA / A));
+  }
+  return out;
+}
+const median = (xs) => { if (!xs.length) return null; const s = xs.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
+
+export function addMissingUVs(document, prim, densityFor) {
+  const mat = prim.getMaterial(); const pos = prim.getAttribute('POSITION');
+  if (!mat || !pos || prim.getAttribute('TEXCOORD_0') || prim.getMode() !== 4) return null;
+  const textured = mat.getBaseColorTexture() || mat.getNormalTexture() || mat.getMetallicRoughnessTexture();
+  if (!textured) return null;
+  const s = densityFor(mat);
+  const nrm = prim.getAttribute('NORMAL'); const n = pos.getCount();
+  const out = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    const p = pos.getElement(i, []); const q = nrm ? nrm.getElement(i, []) : [0, 1, 0];
+    const ax = [Math.abs(q[0]), Math.abs(q[1]), Math.abs(q[2])];
+    const [u, v] = ax[0] >= ax[1] && ax[0] >= ax[2] ? [2, 1] : (ax[1] >= ax[2] ? [0, 2] : [0, 1]);
+    out[i * 2] = p[u] * s; out[i * 2 + 1] = p[v] * s;
+  }
+  prim.setAttribute('TEXCOORD_0', document.createAccessor().setType('VEC2').setArray(out).setBuffer(pos.getBuffer()));
+  return { uvAdded: n };
+}
+
+// 5. Z-fighting: the same triangle (same three world-space corners, same facing) authored in two
+//    materials, typically a hull plate and the armour/livery/warning/light panel laid on it. The two
+//    flicker against each other at range. Keep the triangle in the overlay material and drop the
+//    copy underneath; nothing visible is lost and the draw gets cheaper.
+const OVERLAY_RANK = [
+  [/emissive|light|beacon|nav/i, 6], [/warning|hazard|decal|stencil/i, 5], [/livery|accent|stripe|torn|scorch/i, 4],
+  [/armou?r/i, 3], [/mechanical(?!dark)|brushed|metal/i, 2], [/mechanicaldark/i, 1], [/hull|primer/i, 0],
+];
+const overlayRank = (name) => { for (const [re, r] of OVERLAY_RANK) if (re.test(name || '')) return r; return 0; };
+
+export function repairCoincidentFaces(document) {
+  const users = new Map();
+  for (const node of document.getRoot().listNodes()) { const m = node.getMesh(); if (m) users.set(m, (users.get(m) || 0) + 1); }
+  const faces = new Map();
+  for (const node of document.getRoot().listNodes()) {
+    const mesh = node.getMesh();
+    if (!mesh || users.get(mesh) > 1 || /COLLISION/i.test((mesh.getName() || '') + (node.getName() || ''))) continue;
+    const lod = (/^LOD([012])_/i.exec(node.getName() || '') || [, '0'])[1];
+    const M = node.getWorldMatrix();
+    for (const prim of mesh.listPrimitives()) {
+      const mat = prim.getMaterial(); const pos = prim.getAttribute('POSITION'); const idx = prim.getIndices();
+      if (!mat || !pos || !idx || prim.getMode() !== 4) continue;
+      const I = idx.getArray(); const rank = overlayRank(mat.getName());
+      for (let t = 0; t + 2 < I.length; t += 3) {
+        const w = [I[t], I[t + 1], I[t + 2]].map((i) => { const p = pos.getElement(i, []);
+          return [M[0]*p[0]+M[4]*p[1]+M[8]*p[2]+M[12], M[1]*p[0]+M[5]*p[1]+M[9]*p[2]+M[13], M[2]*p[0]+M[6]*p[1]+M[10]*p[2]+M[14]]; });
+        const n = cross(sub(w[1], w[0]), sub(w[2], w[0])); const A = len(n); if (A < 1e-8) continue;
+        // Positions are quantized per primitive, so twins differ by a fraction of a millimetre:
+        // bucket by centroid (4 mm) and facing, then confirm every corner within 3 mm.
+        const c = [0, 1, 2].map((k) => (w[0][k] + w[1][k] + w[2][k]) / 3);
+        const key = lod + '|' + c.map((x) => Math.round(x * 250)).join(',') + '|' + n.map((x) => Math.round((x / A) * 10)).join(',');
+        if (!faces.has(key)) faces.set(key, []);
+        faces.get(key).push({ prim, t, rank, mat, w });
+      }
+    }
+  }
+  const drop = new Map();
+  for (const list of faces.values()) {
+    if (list.length < 2 || new Set(list.map((f) => f.mat)).size < 2) continue;
+    const keep = list.reduce((a, b) => (b.rank > a.rank ? b : a));
+    // A see-through keeper would open a hole where the dropped copy used to be.
+    if (keep.mat.getAlphaMode() !== 'OPAQUE' || /canopy|glass|window/i.test(keep.mat.getName() || '')) continue;
+    const twin = (f) => f.w.every((q) => keep.w.some((r) => Math.hypot(q[0] - r[0], q[1] - r[1], q[2] - r[2]) < 0.003));
+    for (const f of list) if (f !== keep && f.mat !== keep.mat && twin(f)) {
+      if (!drop.has(f.prim)) drop.set(f.prim, new Set()); drop.get(f.prim).add(f.t);
+    }
+  }
+  let dropped = 0;
+  for (const [prim, ts] of drop) {
+    const idx = prim.getIndices(); const I = idx.getArray(); const keep = [];
+    for (let t = 0; t + 2 < I.length; t += 3) if (!ts.has(t)) keep.push(I[t], I[t + 1], I[t + 2]);
+    if (!keep.length) continue; // never empty a primitive (primitive count is a release contract)
+    dropped += ts.size;
+    prim.setIndices(document.createAccessor().setType('SCALAR').setArray(new (I.constructor)(keep)).setBuffer(idx.getBuffer()));
+  }
+  return dropped;
+}
+
 export function repairDocumentShading(document, opts = {}) {
   // Certified geometry (Ceres workfleet) promises exact source anatomy, down to triangle counts.
   const extras = document.getRoot().getAsset().extras || {};
   if (extras.ceresWorkfleet) return [];
   const rows = [];
+  // Texel density per material (and overall) from primitives that already carry UVs.
+  const byMat = new Map(); const all = [];
+  for (const mesh of document.getRoot().listMeshes()) for (const prim of mesh.listPrimitives()) {
+    const d = triUvDensity(prim); if (!d.length) continue;
+    const m = prim.getMaterial(); if (!byMat.has(m)) byMat.set(m, []); byMat.get(m).push(...d); all.push(...d);
+  }
+  const overall = median(all) || 0.5;
+  const densityFor = (m) => median(byMat.get(m) || []) || overall;
   for (const mesh of document.getRoot().listMeshes()) {
     for (const prim of mesh.listPrimitives()) {
       const mat = prim.getMaterial();
@@ -228,9 +332,13 @@ export function repairDocumentShading(document, opts = {}) {
       let r = repairPrimitive(document, prim, mesh.getName(), mat ? mat.getName() : null, opts);
       const uv = opts.uv === false ? null : repairCollapsedUVs(document, prim);
       if (uv) r = { mesh: mesh.getName(), material: mat ? mat.getName() : null, ...(r || {}), ...uv };
+      const added = opts.uv === false ? null : addMissingUVs(document, prim, densityFor);
+      if (added) r = { mesh: mesh.getName(), material: mat ? mat.getName() : null, ...(r || {}), ...added };
       if (r) rows.push(r);
     }
   }
+  const zDropped = opts.zfight === false ? 0 : repairCoincidentFaces(document);
+  if (zDropped) rows.push({ mesh: '*', material: '*', zFightTrisDropped: zDropped });
   // Orphaned accessors from replaced attributes.
   for (const acc of document.getRoot().listAccessors()) if (acc.listParents().length <= 1) acc.dispose();
   return rows;

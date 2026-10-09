@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a33362d7fff9545e79319bde0b1d4cbdd666a7780c9ea58bc0ce0b3f7e546eda",
+  "contentHash": "dcd1ad5b71f87a75c32832e2e39cbb700a2594480db4854aa5011deaab5f57a0",
   "dynamicGroups": [
     {
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull.dynamic",
@@ -663,7 +663,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d119cf4057ec544b37133fca4c9afe4ec419568534645f42bdfc2617299394d",
+      "geometryHash": "b4c334394bfc8abe6aa6b2597c12173aa05e05c82616ebf9757b6b47093ca8a3",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 9555,
       "indexed": true,
@@ -713,7 +713,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b378df69115f76f48845752f392054f6f0a5c5067e99e53d9850097ca7ff10f",
+      "geometryHash": "0e7c4947441b464cf2ce7c145e4d10d156eb4c2b010fe5aa787eee02cb939d00",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -738,7 +738,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f561c0609c63f1caf507a976afff09887b75b0f2f8dc119cfcff81a9ad95efb",
+      "geometryHash": "5fef5d91b9cc8f52386f3f328232d1f6256bd28ddfed1d9fea982e4717b8240d",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-armor-port-livery.primitive.0",
       "indexCount": 1533,
       "indexed": true,
@@ -763,7 +763,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b6d2eabbe4520e84a701006f4763dce0683b7fa1acccce8a00788252bdd48de",
+      "geometryHash": "202d206429c87447cc1be8983dcc4dc36e28794f41d11526d9346cfaa5189d6a",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -888,7 +888,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a1144249492ee3e1b2651e67146447b3c449cb3f3173fc25f08f2de5731828ea",
+      "geometryHash": "a9836926669e919428b7927811f110539f8a4b1dba1b2fc2923fb1a948f8e351",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanicaldark.primitive.0",
       "indexCount": 516,
       "indexed": true,
@@ -938,7 +938,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b9eb7c8d892af5db92043bd88d2fd390aac9df459150503559b84b8dfc8b587",
+      "geometryHash": "eb6e4ed4edc94d10db1e8d48542b6cd2cfa87e0281563381501fc29b625075a3",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical.primitive.0",
       "indexCount": 1404,
       "indexed": true,
@@ -988,7 +988,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fc8da28b93b6898878b4846edcdd0ffa9d610bb36bd8798e3baac440df14bc4",
+      "geometryHash": "ad3c0e59110b22450c3810fa5b796422ffbae76dd559fca4fbd3784a735a3fac",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hull-upper.primitive.0",
       "indexCount": 7185,
       "indexed": true,
@@ -1013,16 +1013,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4732450f8a45f6c19b9d08915730feea5286ce8f90721d69d887d4291d53ac6",
+      "geometryHash": "4fe7d6f4457e903ce3f36d734eaaf21767087d0c0fcf9c267c89d22bd4e6df72",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 18849,
+      "indexCount": 18627,
       "indexed": true,
       "materialHash": "6c70722c524d651879531c380dd93a942d0b1afdbb70f25ac034925f2d4b7b9c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 6425
+      "vertexCount": 6355
     },
     {
       "bounds": {
@@ -1038,7 +1038,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5f35c2f770631ba9eef45f2d23b64526d6925007ca621114fab0b6de734f7f3",
+      "geometryHash": "4061b2595ba56ca5cc970f225260f8344818444f48680fc8c8d9d6e78b81fbfb",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-lights-cyan-warning.primitive.0",
       "indexCount": 3972,
       "indexed": true,
@@ -1088,16 +1088,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3654ff78a40b4c4d19c8f4b5685e283eb6f50d05393d83435ecba104f710584e",
+      "geometryHash": "178f622d31c34229c0700c082c64d94044c0d21684da6c219cae5601236d2b07",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-livery.primitive.0",
-      "indexCount": 11016,
+      "indexCount": 10869,
       "indexed": true,
       "materialHash": "22b833ce092f23048dad04bddaf85f13c40cf81a8cf5f84bd3da896dd42e078f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Livery",
       "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-livery",
       "primitiveIndex": 0,
-      "vertexCount": 3857
+      "vertexCount": 3830
     },
     {
       "bounds": {
@@ -1113,7 +1113,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f0f9d35093bd979ea36e4edd4afc7952802404f2ca01ff66f370a31edf1c82b",
+      "geometryHash": "89df3245ffcf833f9538744f8c88e3fbc4506cb984eee6ab9303be85ca5a820d",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 16866,
       "indexed": true,
@@ -1138,7 +1138,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6edf2b26cf1d201c454b9cc5aee257cf2b744dc6af6459eb213968a2958029c",
+      "geometryHash": "3674ce6d4b2f2decc1650d9d2bc824da9808bc9aa3b909ff6434ca28d3ac3e7f",
       "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 18177,
       "indexed": true,
@@ -3137,19 +3137,19 @@
       "sha256": "13b719c9d24ad727493a2b3f2f943ca90464e8002149242e3f183ba9288ed9ad"
     },
     "sourceGlb": {
-      "bytes": 808176,
-      "sha256": "1d959c0f08f061d6e0115cf5cddd3a0244ab70565536309dad8286a1a6d3deb4",
+      "bytes": 807168,
+      "sha256": "3a288f96417ed30f02043895bf0d33552ed56d006c896aacf389af902803e3c5",
       "uri": "bastion_production_v1.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1333664,
-    "sha256": "7fb5906559d2260b492d2a60bb6b0a9dbc839f93a28fe6b3d4ff955ed3c61809",
+    "bytes": 1331120,
+    "sha256": "c6060b11c1ae1f77d9f4fe6335d2b476d20e9651006862f566628067da97ed2c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4581,7 +4581,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
   },
-  "runtimeHash": "f14977bd6b74eb2125390438e66bcfbf1590cf21b5b356c5ea539c1c772de8fe",
+  "runtimeHash": "873714a343b9e514331a040ac0ecea7a494658ea44c8eb47fce06f187058c55f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

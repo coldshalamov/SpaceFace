@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "235f561bbd3fb85b17ecba1f062d51fdfb65391b150aaf9821e6a4b5801d3ee2",
+  "contentHash": "fd7e1a702625a598b782c753498ea9619b3b0d617ffa725b34b375370628341a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "977d0bd691a717eae890c55244cc90030052e6b1a18a55a8db2d7aad57775792",
+      "geometryHash": "3014bd1961918aee757df0190233998fe337cd80db2fe53e72719578336696ef",
       "id": "sf.render.ore-bulk-container.mesh.floor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "663401408344df7b023ba1ebb539daa18358766347e43fa853504c51a7a9226d",
+      "geometryHash": "409006cc737b8624b6e831fc07f6018733fcfa5b2c5a29c78f7997e4b2599f9f",
       "id": "sf.render.ore-bulk-container.mesh.idplate.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "058fb3440acc30947ad140bd332fab2482c27b1371549e5a14a461d177d31dac",
+      "geometryHash": "1c7c414dbf16d59981bd59eac3191d14b4da1d9622415d2f6e7af066b248bfa3",
       "id": "sf.render.ore-bulk-container.mesh.oreb0.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -295,7 +295,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c7a1a151fa71ef77647f14569ebcd6e74e8047137916af4334d1aecf49f6c6d",
+      "geometryHash": "53483881c81875316cfd0955d5ad61e86dd8bf931860eef846a15deb03fad361",
       "id": "sf.render.ore-bulk-container.mesh.ribp0.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -320,7 +320,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42c451bc61d704ed35588c893514a19f630b097520f2e18268490bc528a557de",
+      "geometryHash": "a28a32d219be3801fef67f20e732f92354fce28be8360c2418369654ffc40208",
       "id": "sf.render.ore-bulk-container.mesh.ribp1.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -345,7 +345,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d793f3c679564ba315a31510f724fc0655e3068d51d29fb0f462512e9fe6cd8f",
+      "geometryHash": "855026823cac5e767415ad0731ddbba075dd7b43baa4dfa539394cb85e94ee67",
       "id": "sf.render.ore-bulk-container.mesh.ribp2.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -370,7 +370,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77ca705a6d1432c59341630eac8ee0c1e9f5b82bd85a0f9c0d482664b690fcd8",
+      "geometryHash": "21997656f2ccdf74ba55a67cd2d31d4c18a1add491834ad18301ed4d45fbd019",
       "id": "sf.render.ore-bulk-container.mesh.ribp3.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -395,7 +395,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e9e905bf06fcd9449e88481212ec45d61126aa5ff8ba1bee54631af08ad4a3d",
+      "geometryHash": "3060e684ecb09e85b33375409b71066dacb15e78ccd1b3dcf2e3bd347e63d2d4",
       "id": "sf.render.ore-bulk-container.mesh.ribp4.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -420,7 +420,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ad7b0be3aefd7b853b6ad47a4ed39150f86bd32232ccdd1078f04c0cdb06ae9",
+      "geometryHash": "d2a6c8387151729255ea705570c15274233c62f4f9640ed0183d256294cc1894",
       "id": "sf.render.ore-bulk-container.mesh.ribp5.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -445,7 +445,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d62675d306cc3b260d8f72dfda38b6a396e45c91526fa73bfd286236060f7525",
+      "geometryHash": "fd4e89d705872f762773c99a4bc347f3ed771234676c1e0c8fac00c821b48a29",
       "id": "sf.render.ore-bulk-container.mesh.ribp6.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -470,7 +470,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "460ddf6ef1153336d2cd8998dbc578b5cdb652e34707ed4b5fa5a1e912ea7055",
+      "geometryHash": "882840912320b0d0402337378ac090a024c34ef8ed7153b61507107505995d7d",
       "id": "sf.render.ore-bulk-container.mesh.ribs0.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -495,7 +495,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc4564e44a5b2c7832b500dfa8fc9d83691f04926b8f47079f4f3dbbe1d42a83",
+      "geometryHash": "693df5d0e57c024f6ee7169ed4be1f36f0543438db6165a4fab7dbf7ac8ed595",
       "id": "sf.render.ore-bulk-container.mesh.ribs1.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -520,7 +520,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4c47a12cdaa0babdcfe73b4014b8af118b996081067841976aa943ec4b05026",
+      "geometryHash": "37dace01b606bb367c863ffc161b6e1ec564fe57c4d1338da15cd195038d5ff5",
       "id": "sf.render.ore-bulk-container.mesh.ribs2.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -545,7 +545,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c72d8c010bd468c1310c447196784b6cff111ee826a4120a2fa05c8557d50fb4",
+      "geometryHash": "c93899dc41e8fbc1a30a0b8d53c3cc5de638becafde01d85e3b7902cd33e5d25",
       "id": "sf.render.ore-bulk-container.mesh.ribs3.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -570,7 +570,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4f20c38a56e6d8655d111ed8a2dc0dac432df25e126d64e617d0806612e226a",
+      "geometryHash": "412bc4b2d7d7989a9d81728e1a085c6c9cbc1b0278631a8b0cdd16a203da2625",
       "id": "sf.render.ore-bulk-container.mesh.ribs4.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -595,7 +595,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44608ad08519954410c609aa1b006791bbe9b81ffca561ed8b2825b45e340f4d",
+      "geometryHash": "4997fa8375c20fcc7a62682057d683fea13e7bb6db9f270e68462775cd587e01",
       "id": "sf.render.ore-bulk-container.mesh.ribs5.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -620,7 +620,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab452fa572fdaf3743a27c890bbc43e72591529a3ec54b469b07375f75e47b93",
+      "geometryHash": "9358435dde022bb727aa06bdce53ea92477d1ec263c98cfc72bf0c167cf23c3b",
       "id": "sf.render.ore-bulk-container.mesh.ribs6.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -645,7 +645,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e3cf756b5870395f5ebfaa39cbd9ad8ca39896ee514662a1c5e61bc5990d5c3",
+      "geometryHash": "9e1bda04b36a7125044606f991572e08e4ce68a63e807494388ec7f6d47305bd",
       "id": "sf.render.ore-bulk-container.mesh.rimaft.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -670,7 +670,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f02b9e393ec9001715bacd638224f16cc1061a6a7a617342389b5c7ffc8edd8",
+      "geometryHash": "176f3a577bb817bf44d69c6e5adfe92b65b327b598bc804dd8e41ff77fbc0f01",
       "id": "sf.render.ore-bulk-container.mesh.rimfore.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -695,7 +695,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b2d2bd4129b0238ba3dc5727b8529fb742b613e8267c321caec25e8e575f192",
+      "geometryHash": "a260d337d888713eeb547b2262d0678be0c25d63fe63df08e76a709854e5a70a",
       "id": "sf.render.ore-bulk-container.mesh.rimport.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -720,7 +720,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4d5d19f88d7aa444bc189de52995291bad27a4898682192958860676aaca3dc",
+      "geometryHash": "f69a0e1bd72c5459c9a4a3221f2a7f4a00e63d9167a18a2a41bcf96ffae03542",
       "id": "sf.render.ore-bulk-container.mesh.rimstar.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -745,7 +745,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2f47ecc860b4882dd2131ea24cd4f299a6869e0d723b3bb0ea5258192dcf21f",
+      "geometryHash": "67e25ae4304a8177383040f9354de8992a704c26b3e5e11116986795583be47b",
       "id": "sf.render.ore-bulk-container.mesh.rubport.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -770,7 +770,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f0baa1151151fdaf6f9560da20cdd792c00d86f8fe23a97923cbfb244f2a451",
+      "geometryHash": "1396514e411d47af99488352bf332e645eea082963ac018f5b9cef15d6e43ba0",
       "id": "sf.render.ore-bulk-container.mesh.rubstar.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -795,7 +795,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e3b8313a9ed659235637843c588765c1c203703d106d424f6de828d186583ca",
+      "geometryHash": "fe7ce8c90098892f8ddde03b68dc97d9a82a882123050295c9bd2d769b4003de",
       "id": "sf.render.ore-bulk-container.mesh.wallaft.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -820,7 +820,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3441ff3ce0e2be7298ada18b54b6bf76d02fb96f456d41397c3d9ba0b21e7fcf",
+      "geometryHash": "7a066da42c957d1953eeedc8efcfa5b03da125011ba222d6e327b729f62a27d0",
       "id": "sf.render.ore-bulk-container.mesh.wallfore.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -845,7 +845,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52fa137c6b054d037463e4bc1349731ef8eba8d3797fc79011f4169643d86f63",
+      "geometryHash": "be14f33797610f2baeb4fd9e5d851b4c160d5a7ff4852f793093ddc100a564b5",
       "id": "sf.render.ore-bulk-container.mesh.wallport.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -870,7 +870,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a66a42d767e3de58ae7467770e40dca2bde32197be77b2e0632fbb477589ecb",
+      "geometryHash": "08b8ddb5966b90dbbfb73292608bf269b703f2289560242c97b007882ba41fa6",
       "id": "sf.render.ore-bulk-container.mesh.wallstar.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -2669,19 +2669,19 @@
       "sha256": "3814ae9311c6da723b9306fe6b0b04c6f8c145b794efee00731822a7db2c32cd"
     },
     "sourceGlb": {
-      "bytes": 270044,
-      "sha256": "aeab8c5081f7283c582f3f17d69090e96ddf9f01ece27f4e268b3c35f67e1a3b",
+      "bytes": 345524,
+      "sha256": "4117d8c43c032c66e0ebccb16916b87881f49239aa4cfcb4a8b5884e5b4e593d",
       "uri": "place_ore_bulk_container.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 341348,
-    "sha256": "6cdb800bcf7899bb91f57cfd7023b9a30e157e553c7808b2e048c37a1ecad917",
+    "bytes": 378696,
+    "sha256": "174d61a92887450178d995f57f81dcf275722a435fec80ed9fdee9cd324f324e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2755,12 +2755,12 @@
     },
     "materialProfiles": [
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 3,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 4,
         "role": "mechanical"
       },
@@ -2800,122 +2800,122 @@
         "role": "geology"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 12,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 13,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 14,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 15,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 16,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 17,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 18,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 19,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 20,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 21,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 22,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 23,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 24,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 25,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 26,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 27,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 28,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 29,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 30,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 31,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 33,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 34,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 35,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 36,
         "role": "hull"
       }
@@ -3818,7 +3818,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ore_bulk_container.glb"
   },
-  "runtimeHash": "b45a3d1bffb226b09e6906645b77e41ddf9201478557f37a54bb1b4641bcc017",
+  "runtimeHash": "72736f90271dd662ba9b583b42b0be05bbed7baf5cc3a9d71c4b8bbd046ed1ee",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

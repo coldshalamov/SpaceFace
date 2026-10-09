@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ba9c0a40ac26175c345424a8049cca875fe5055efdf8f52c7f05d920d0b1d2ad",
+  "contentHash": "b2199e407ef472dd0b02452909957ee6900e8ca6784bb60edddbeca418d854d5",
   "dynamicGroups": [
     {
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.dynamic",
@@ -748,16 +748,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b267ab421f22a95edebac40c6ea0adcdd5bafea692945b21a97b9b33abb57aef",
+      "geometryHash": "b424c948a4ee2c7066f1ce95e9d17192b2992b0f4975f2e85e0752c7671f5abb",
       "id": "sf.render.yard-tug.node.lod0-armor.primitive.0",
-      "indexCount": 23712,
+      "indexCount": 23565,
       "indexed": true,
       "materialHash": "8d8a772b3630ac2edf18c2438210dbb5227578b405f9f879f6690b2e9db22408",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.yard-tug.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 8091
+      "vertexCount": 8061
     },
     {
       "bounds": {
@@ -773,7 +773,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2229e6d6d3c29199eff2ae18ce68d0164e218100b1c1ce2cb12be6b429512fc",
+      "geometryHash": "226fa6fd9d20abc4836fe16d3a537362329643cc2d0e629aa1c84a71bdff9a1d",
       "id": "sf.render.yard-tug.node.lod0-brushedmetal.primitive.0",
       "indexCount": 2832,
       "indexed": true,
@@ -798,7 +798,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4fb7baf56ef240bb931882edf0684285e5f95b7bad3068e1d624672f0a15f77",
+      "geometryHash": "a6d86259603325b0a10e84ba60b78106999dfd5008d0cb23052fee0f43208302",
       "id": "sf.render.yard-tug.node.lod0-canopy.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -823,7 +823,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d25665b851a4116120e7d860fb9e3345f57c83087d24d9056ecbdf9ae4624f48",
+      "geometryHash": "9ea7af74fdc261582aba82d2c87341cc8f20e31f31342ab919677ccc544149e1",
       "id": "sf.render.yard-tug.node.lod0-hook-armor-winch-armor.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -998,16 +998,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9eea346b44fdbf0d042ddd75e58b76c5703ee1c73a7aa858cba10941515d92ff",
+      "geometryHash": "39463c7325dc22f19250bdbc5843222ae843d5e6fb4311fd50d1a32ec3a910c5",
       "id": "sf.render.yard-tug.node.lod0-hull.primitive.0",
-      "indexCount": 11160,
+      "indexCount": 10857,
       "indexed": true,
       "materialHash": "6bf601edc71cbc76d7ffa281493f74d2225382d254c0efefb5eb55e28c6b86f1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.yard-tug.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3197
+      "vertexCount": 3127
     },
     {
       "bounds": {
@@ -1023,7 +1023,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f46f3d9a9f82ac513815845ef4a04be8c0faab8e1ba0e37feeeb1c17b044aa2",
+      "geometryHash": "be59f922dc459f4a7ecc3b7331085f128eaa63446a73c495c95e3794ac8bc23c",
       "id": "sf.render.yard-tug.node.lod0-lights-cyan-rust.primitive.0",
       "indexCount": 492,
       "indexed": true,
@@ -1048,7 +1048,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6f85157ed2fff8b9f6f80705dbc4974b1369a7b9f455750aa9186f54fc4708de",
+      "geometryHash": "96785b8f2ed186b48d36709bbd6bc67459b0552a10dc551543f49e8d457ee13c",
       "id": "sf.render.yard-tug.node.lod0-lights-warm.primitive.0",
       "indexCount": 1440,
       "indexed": true,
@@ -1073,7 +1073,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ad947da26a79832848b2c5922b51a8e34ea610820639d652e39c5cfc547ced0",
+      "geometryHash": "6b3420b4684aa3b5a35bc4588b6048ebc9b15c6e7fe651b99e05d84d538ccd79",
       "id": "sf.render.yard-tug.node.lod0-mechanical.primitive.0",
       "indexCount": 17262,
       "indexed": true,
@@ -1098,16 +1098,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e9634840e57549649d9003558f18b2356108d8d58cc140de2d903e37de26c2f",
+      "geometryHash": "ebf58d08678144ab56dc57db9cb5f3b22b0c05a5276444ce6db4f1e92dddb891",
       "id": "sf.render.yard-tug.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 15036,
+      "indexCount": 14955,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.yard-tug.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 6089
+      "vertexCount": 6087
     },
     {
       "bounds": {
@@ -1123,7 +1123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38da8ddd9eef47cc7c776a94c0c94df7b7d2f2c1b4cb75aa434323417731de09",
+      "geometryHash": "72e09f10490797b95adb3928e77d63afec91d42fa4bb6efcd503ffd57d92c515",
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-fairlead-hook-secondary-towgear-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1148,7 +1148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6be1790e95a243f8cea3e6be5d89f3e737046c932d69691f69833564ef183fa7",
+      "geometryHash": "2ef27ad62445881bd2f542d8bd0368e845c5e7188b852203a84b778478a35d74",
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-fairlead-hook-secondary-towgear-brushedmetal.primitive.0",
       "indexCount": 756,
       "indexed": true,
@@ -1173,7 +1173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "150fd56bc360f5874d3ebc0c450c4b0c6ded8cac28b4c80f3efe913d16db5693",
+      "geometryHash": "42ce92995cd2754e51cc3a8f0573a0ecde8e02d55d033ec3e489848310b7a225",
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-hook-hook-secondary-towgear-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1223,7 +1223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b037d16ee7c99d131f7560c040ef3b823fa8706dafb453ea345684255c56dd83",
+      "geometryHash": "8befe42d6cec8013ead79499a89e0bf40306eb73664a906011d44b8de111f635",
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-brushedmetal.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -1248,7 +1248,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "120412bc920a82064d02b52eaaf9b4cb797ffe2685721b88163e7ef0c9efb707",
+      "geometryHash": "983b9ea7a8113fdf19b474bccdc409f53fa3bd10c57bbf771134fda9bda47d86",
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-mechanical.primitive.0",
       "indexCount": 4320,
       "indexed": true,
@@ -1273,7 +1273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b506b1486ed20c57af2b5c6bcfc510ab00e81dbfa6fdc164ccf61333519acc1",
+      "geometryHash": "912998e3ba915ad9efbf46399fc14194ebd4d7a2075d11f8ecad7af3feeb09b6",
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-mechanicaldark.primitive.0",
       "indexCount": 1524,
       "indexed": true,
@@ -1298,7 +1298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0142a370077c455a199f3d7ce7f548b400d3c0133650adfa5d858f3afbc6b455",
+      "geometryHash": "72812403aa75fa223f9ac0735a14d8b22e3fd8ebf4a97c43427e3e2f0f078900",
       "id": "sf.render.yard-tug.node.lod0-motion-yard-tug-winch-warning.primitive.0",
       "indexCount": 3048,
       "indexed": true,
@@ -1323,7 +1323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9748e04e522f346dc2157b3373ee551ffb53470ee654ddd4fb3e25c2f49031ee",
+      "geometryHash": "a6099501c3c230a40d66dfb2c2b5c91bc332fd468fd70e630118a72322429451",
       "id": "sf.render.yard-tug.node.lod0-warning.primitive.0",
       "indexCount": 6918,
       "indexed": true,
@@ -1348,7 +1348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd66d630b3fcb5b55a62a7e791356ac99953ad98b5e4232f0a75c428e36353cf",
+      "geometryHash": "1181eccb7a7a7fdc7968eff2e62c7b6d53df65d51549ac4e7e99015de291d569",
       "id": "sf.render.yard-tug.node.lod1-armor.primitive.0",
       "indexCount": 8757,
       "indexed": true,
@@ -1373,7 +1373,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "500a668f0f9355bb1d038affc9e06146c6742aead06b6441e74c4157629e3f71",
+      "geometryHash": "4b8cd566551c60da91a7aadc116ceea6f3e0c8954e01a983f39fc140cbfacff0",
       "id": "sf.render.yard-tug.node.lod1-brushedmetal.primitive.0",
       "indexCount": 2208,
       "indexed": true,
@@ -1398,7 +1398,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f72fc7b9f7497753a59003f5014d5ac431a1c9814e2eab8ffe6f792aa23c3a0",
+      "geometryHash": "07268fd807963648dd4fbe6477a6f81c522f63c891faa5348f92cf33884cd502",
       "id": "sf.render.yard-tug.node.lod1-canopy.primitive.0",
       "indexCount": 636,
       "indexed": true,
@@ -1423,7 +1423,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f9bf69c2fd77f162378a549a32c4a8586b443f1c5e89e9475e6d624ae60446e",
+      "geometryHash": "8256df3d44c4cad79bd2839468a73009c1850039ddd957115aec0eb8091996de",
       "id": "sf.render.yard-tug.node.lod1-hook-armor-winch-armor.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -1598,7 +1598,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "007e7d0feabb7764f9958a703790335aa6b746a4cfc3ebd496732c1fc504b13e",
+      "geometryHash": "9cb8432a66019db2f5b5ea31e7ed7b30a3b4ef38d4cef5799605cb85f2dc674c",
       "id": "sf.render.yard-tug.node.lod1-hull.primitive.0",
       "indexCount": 4521,
       "indexed": true,
@@ -1673,7 +1673,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc11a3b59989caf2b5df9cd5a8bcf8eb3aa5e8594b8a76e1b0c298e6a6e38be4",
+      "geometryHash": "87907e1a41d805c47347f5a1cc582ab72d1391c608a124bb37b1e8290dd6db4c",
       "id": "sf.render.yard-tug.node.lod1-mechanical.primitive.0",
       "indexCount": 13218,
       "indexed": true,
@@ -1698,7 +1698,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7488050841f8d5ede7593195dea5075c9094a0ae3ed30877901981efeaf70881",
+      "geometryHash": "08b25b0d980b98712a8bd6a670c5ec5916d41c9493035a093709efd64d13cb65",
       "id": "sf.render.yard-tug.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 10470,
       "indexed": true,
@@ -1723,7 +1723,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "497f5f5f47714be779ccedc1f29fde35b985d2d68e3499365698b61316cbed50",
+      "geometryHash": "9e3defcea5bdf067f0a9f45717b18aaaa87da9b75a83b6c66c447bf0794663df",
       "id": "sf.render.yard-tug.node.lod1-motion-yard-tug-fairlead-hook-secondary-towgear-armor.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -1923,7 +1923,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9b5691f9fd363f799603c2811f67da5472cd6d24d50146a10822966ecdaf30f",
+      "geometryHash": "9493122b7b19b412052248ba0bf9d44406a0ad622444eb5d6ae494b4b38f98bd",
       "id": "sf.render.yard-tug.node.lod1-warning.primitive.0",
       "indexCount": 3168,
       "indexed": true,
@@ -1948,7 +1948,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "102b0266788c222cafd9a1ec222dc2d5d6725763987b64aed661d5682130be0f",
+      "geometryHash": "b44fb86129acbc34498a34c3e10ac8f3fb5000dc5145afcea614cd134762649d",
       "id": "sf.render.yard-tug.node.lod2-armor.primitive.0",
       "indexCount": 4818,
       "indexed": true,
@@ -2148,7 +2148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "15b6b9a977e4128f7555af6069d3bc8614d91e6137490eafd32524f102bd5ada",
+      "geometryHash": "39c8e61695665c689bda8b196bf5751418fa562f81b9f381459e4e4a8bf3de12",
       "id": "sf.render.yard-tug.node.lod2-hull.primitive.0",
       "indexCount": 2715,
       "indexed": true,
@@ -2223,7 +2223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa454b2297e6304efab7bbeddbf4b5ec0a6aad10ea0470400fb9d1a87d420e95",
+      "geometryHash": "194d458985e9b4ecf14eb43d48f78f785a5819876b022403c0befe42188aecb1",
       "id": "sf.render.yard-tug.node.lod2-mechanical.primitive.0",
       "indexCount": 1746,
       "indexed": true,
@@ -2248,7 +2248,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "743f4734ca53504651f196a044b19e9cbfd36748c321e0a8f0757451bd61799e",
+      "geometryHash": "a08050f24fa5edf56d273447924dc727123241c127e9a149e6d2b6ec2d80bbd7",
       "id": "sf.render.yard-tug.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 4449,
       "indexed": true,
@@ -2423,7 +2423,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d54073ed5551edb9a46dc298048325b642f41d4c6f4fa08a4b3bb86e1fa0722e",
+      "geometryHash": "547c5ffdce67ac9f795977ad11dbfff5bd6b1b63eb749120fd52d25f6d38e935",
       "id": "sf.render.yard-tug.node.lod2-motion-yard-tug-winch-mechanicaldark.primitive.0",
       "indexCount": 186,
       "indexed": true,
@@ -2473,7 +2473,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b74f5924635641c237d85b8277ad09d3a2702d97d89dfddb7a09c457e0d12832",
+      "geometryHash": "beb47e5e00ba8d50d48287390e7a65b0c05c6dbf5c8162ad55ec2b853e6763c1",
       "id": "sf.render.yard-tug.node.lod2-warning.primitive.0",
       "indexCount": 1950,
       "indexed": true,
@@ -7024,19 +7024,19 @@
       "sha256": "5e628c875401d877455155f7a82e9ff3cc643598ea5f64efc57c525a0196c661"
     },
     "sourceGlb": {
-      "bytes": 1265960,
-      "sha256": "e9592fe91f12ec2b97f1d64865f943e54fb58de410b9e662545d788c31fa1dad",
+      "bytes": 1264640,
+      "sha256": "d605a5566f770bff3e00bbe1be38a5ad72fb9ae9c574956c4716573711cf6991",
       "uri": "yard_tug.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2302108,
-    "sha256": "d79a384f7f769e49c9a5467b1e07d91c5676c5d59b5c750da8675935d7c418ba",
+    "bytes": 2299244,
+    "sha256": "4ae3581027a5850a8109c4cb1ea47f4c4a34e21a6c9c82ef6708f815f3bee03d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -10261,7 +10261,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
-  "runtimeHash": "c400fb55b0773aa63d52bc7fd6821dfb7e9250e8dc5d436880143a0b43fd3143",
+  "runtimeHash": "80edde7aa4d08d5c65e95efee30e976b12e7d4aae219227eaea8394fea801759",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

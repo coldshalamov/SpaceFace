@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "190736db61fdfb9efd2c728bafff04e963a71c6f1c732bbc5eca8f0a1497cf29",
+  "contentHash": "6a7004e744c6b2f7dddb40d86bca6b32cea586662da49ba2057278844cd2ecde",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2707,13 +2707,13 @@
       "sha256": "83242c800fbec38004c65f1249bfddf1bc3580b9708fb19ea136f4be707a75b3"
     },
     "sourceGlb": {
-      "bytes": 38324,
-      "sha256": "e4dadb05617d27c29339c276dd8ce1a7aa6545bce4707d1a98909a70871aa1b5",
+      "bytes": 38340,
+      "sha256": "067296cf4f21847b27c6c9a0cc92432b3190893737aaaf003ccc4fcb44a3f551",
       "uri": "place_construction_frame.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
@@ -3925,7 +3925,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_construction_frame.glb"
   },
-  "runtimeHash": "814c0f67b6ccbfa32e91dbc417ddb1a3a05bf4a7d268c8edca9204f79135f5a6",
+  "runtimeHash": "9b0cfade09b5181fe7605f454a613e2aa15b7f7d0432fba9727b099a3deebc1a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
