@@ -6680,13 +6680,6 @@ function abortStalledOrInactiveUpgradeJobs(state) {
         abortStalledUpgradeJob(state, job);
       }
     }
-    finishUpgradeDiagnostic(state, job, job.upgradeDiagnostic);
-    const error = new Error('Authored upgrade exceeded its admission deadline');
-    error.name = 'TimeoutError';
-    error.code = 'AUTHORED_ADMISSION_TIMEOUT';
-    job.abortedStalled = true;
-    job.admission.abort(error);
-    settleAbortedStalledBoundary(job);
   }
 }
 

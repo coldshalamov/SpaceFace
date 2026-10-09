@@ -166,6 +166,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'drill:approachCompleted',
   'drill:approachStarted',
   'dust',
+  'game:embarkSpeculation',
   'game:loadingProgress',
   'game:over:dismissed',
   'game:startFailed',
