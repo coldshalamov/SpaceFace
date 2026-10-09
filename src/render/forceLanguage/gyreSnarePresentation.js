@@ -453,7 +453,6 @@ export class GyreSnarePresentation {
     this._secGroup.add(this._secVeil);
     this._secLumps = [];
     this._secId = null;   // which balls[] id the overlay currently tracks
-    this._secIdHash = 0;  // written after the first bob read — 0 keeps the seed benign
     this._secN = -1;      // lump ledger size last laid out (rebuild key)
     scene.add(this._secGroup);
 
@@ -840,7 +839,12 @@ export class GyreSnarePresentation {
       // funnel's uAim. Gating it on holdLag01 hid the whole lean on a healthy
       // orbit: a capped clump circling ±72 wu read dead-center. Now it rides the
       // seat offset itself — drag still exaggerates it since lag adds to the offset.
-      const lagLean = Math.max(-11, Math.min(11, (this._leanZ || 0) * 0.10));
+      // The lean's travel cap grades by the seat offset itself — a flat ±11 wu
+      // was sub-perceptual on a pebble's 22 wu orbit and hard-capped on a capped
+      // clump's ±72 wu swing under drag. ±min(18, |seat|·0.25) keeps the mouth's
+      // reach proportional to the ball it's reaching for.
+      const leanCap = Math.min(18, Math.abs(this._leanZ || 0) * 0.25);
+      const lagLean = Math.max(-leanCap, Math.min(leanCap, (this._leanZ || 0) * 0.10));
       this._maw.position.z += lagLean;
       this._disc.position.z += lagLean;
       // The GLASS flexes to reach that seat — uLeanZ is the same lean in cone-local
@@ -1653,18 +1657,10 @@ export class GyreSnarePresentation {
       const sbm = sb && Array.isArray(sb.members) ? sb.members : null;
       if (sb && Number.isFinite(sb.x) && this.toLocal) {
         const lp = this.toLocal(sb.x, sb.z, this._ballPt);
-        // String ids hash like the member-lump seed — finite(id)%7 folds every
-        // non-numeric id to 0 and locksteps the bob phase across secondaries.
-        // Computed BEFORE position.set — reading the previous ball's hash made
-        // the first frame after a secondary swap bob on a stale phase.
-        let sbh = 0;
-        const sids = String(sb.id);
-        for (let c2 = 0; c2 < sids.length; c2++) sbh = ((sbh * 31) + sids.charCodeAt(c2)) | 0;
-        this._secIdHash = sbh;
-        // Same loose-rubble drift as the primary clump — secondaries bob on the
-        // group's own orbit-seeded phase, not flat at 0.6 like a HUD overlay.
-        this._secGroup.position.set(lp.x,
-          0.6 + Math.sin(this.time * 0.7 + (Math.abs(this._secIdHash) % 7)) * 0.3 * calm, lp.z);
+        // No y-bob here — the overlay only ever dresses THROWN balls, and the
+        // primary clump's own rule is "no hover drift on a ballistic arc" (the
+        // HOLD-gated bob above). A secondary rides its ballistic path flat.
+        this._secGroup.position.set(lp.x, 0.6, lp.z);
         const ballR = Math.max(2.5, finite(sb.r, 8));
         this._secR = ballR; // grave scatter flings off this radius
         this._secVeil.scale.setScalar(ballR * 1.22);

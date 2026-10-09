@@ -2082,8 +2082,12 @@ export const gyreSnare = {
     pub.maxClumpMass = D.maxClumpMass;
     // The suck annulus publishes its own drawn radius — the halo reads the sim's
     // formula instead of re-computing it, so a tuning edit can't silently desync
-    // the drawn ring from the real pull (same contract as endRadius above).
-    pub.suckRadius = rt.phase === PHASE.HOLD && rt.coreId != null ? this._suckRadius(rt) : 0;
+    // the drawn ring from the real pull (same contract as endRadius above). The
+    // publish rides through LAUNCH like ballMass/ballClumpRadius: rt.clumpRadius
+    // is frozen for the coil+burst, so the annulus keeps its drawn reach and dies
+    // on the close fade — zeroing here snapped a capped ball's ring ~129→~60 wu
+    // in one frame exactly as the windup collapse began.
+    pub.suckRadius = (rt.phase === PHASE.HOLD || rt.phase === PHASE.LAUNCH) && rt.coreId != null ? this._suckRadius(rt) : 0;
     // A re-beam while the thrown ball still flies keeps ITS frozen ledger — opening a fresh
     // search must not strip the old ball's lumps or collapse its eventual death-burst to
     // the 6 wu floor. The live ledger only wins while a new core is held.

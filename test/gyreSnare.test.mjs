@@ -3208,10 +3208,21 @@ test('suckRadius publishes live during HOLD and drains on OFF — no stale annul
   assert.equal(t.state.gyreSnare.phase, 'holding');
   assert.ok(t.state.gyreSnare.suckRadius > 0,
     'the annulus publishes its live radius while the hold runs');
+  const heldSuckR = t.state.gyreSnare.suckRadius;
   release(t); // a hold release is the throw — ride the launch lane to OFF
+  let sawLaunch = false;
   for (let i = 0; i < 20 && t.state.gyreSnare.phase !== 'off'; i++) {
     t.state.input.actions.gyreSnare = false; t.sim.step();
+    if (t.state.gyreSnare.phase === 'launching') {
+      sawLaunch = true;
+      // The annulus keeps its drawn reach through the coil+burst — the ring dies
+      // on the close fade, not a ~129→~60 wu snap back to the clump-radius
+      // fallback on the same frame the collapse begins.
+      assert.equal(t.state.gyreSnare.suckRadius, heldSuckR,
+        'the frozen hold radius publishes through LAUNCH');
+    }
   }
+  assert.ok(sawLaunch, 'the loop actually rode through the launching phase');
   assert.equal(t.state.gyreSnare.phase, 'off', 'the launch resolves to OFF');
   assert.equal(t.state.gyreSnare.suckRadius, 0,
     'the OFF branch zeroes the mirror — no reader sees the last annulus radius');

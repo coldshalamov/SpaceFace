@@ -439,7 +439,7 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // emits (`_launch` then the LAUNCH block decrements the coil), so its 5-tick min-gap
   // silently ate the 140 ms draw rumble — the sling's richest beat — on every launch.
   // `gyre:windup` marks coil-engage and `gyre:thrown` marks the throw; nothing is lost.
-  'gyre:windup':            { strong: 0.15, weak: 0.50, ms: 105 }, // the draw — a low rumble under the ~100 ms coil (140 bled ~40 ms into thrown's beat)
+  'gyre:windup':            { strong: 0.15, weak: 0.50, ms: 105 }, // the draw — a low rumble under the ~100 ms coil (up to ~155 after the +50·t mass grading, bleeding into thrown's beat)
   'gyre:thrown':            { strong: 0.90, weak: 0.70, ms: 160 }, // the throw — biggest beat in the pad vocabulary
   'gyre:absorbTick':        { strong: 0.30, weak: 0.20, ms: 50 },
   'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
