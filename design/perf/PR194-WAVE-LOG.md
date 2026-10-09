@@ -2646,3 +2646,7 @@ Bisected W120–W127: merge base `e261ae275` is itself bad — the failure preda
 - Golden `0b33dde` bit-identical; 85/86 + 23/25 focused green (3 reds reproduce byte-identical on clean HEAD — canon).
 
 Wave 129 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches CLOSED.
+
+## CI adjudication — `live-whole-ship-admission` reds (static 1–3) = canon
+
+Ships stall at `'loading'`/`'compiling-pipelines'` instead of reaching `'authored'`. Reproduces byte-identical on `38d75108f` (pre-W129) and on clean master `38368f739` — documented live-whole-ship env canon (real-pipeline dependence), not a W129 regression.
