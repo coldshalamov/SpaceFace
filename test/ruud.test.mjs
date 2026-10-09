@@ -155,6 +155,16 @@ test('a decent release only counts on the buoy and never boards or flies the pla
   const pull = impulse(suit);
   assert.ok(pull.x < 0, 'suit returns toward the buoy, not the departed hull');
   assert.deepEqual(f.sacred(), before);
+  assert.equal(suit.data.scanLabel, 'HOOK-LEFT · plate Ruud · on the lane buoy');
+  f.events.length = 0;
+  f.state.simTime = 30;
+  f.step();
+  assert.equal(f.events.some(e => e[0] === 'audio:cue'), false);
+  f.bus.emit('combat:damage', { targetId: suit.id, attackerId: f.player.id, applied: 5 });
+  const shot = f.events.find(e => e[1]?.key === 'weapon');
+  assert.equal(shot[1].text.includes('Cold face'), false);
+  assert.equal(shot[1].text.includes('filing is closed'), true);
+  assert.equal(f.state.ruud.disposition, 'spared');
   const missed = fixture();
   missed.state.simTime = 20;
   missed.part('suit').pos.x += 10;
@@ -331,6 +341,7 @@ test('the suit, fin, buoy, and bladder are authored and the cold face has no fea
   fin.userData.updateAuthoredMotion({ data: { ruudPose: { hatch: 0, sheared: 1, chain: 0, simTime: 2 } } }, 2, { reducedMotion: true });
   assert.equal(sign.rotation.z, signRot);
   assert.equal(shear.visible, true);
+  assert.equal(fin.getObjectByName('ANIM_cold_tip').visible, false);
   const cold = fin.getObjectByName('cold_face_out');
   assert.ok(Math.abs(cold.rotation.y - Math.PI) < 1e-6);
   const suitMem = freshRuudMemory();
@@ -347,6 +358,9 @@ test('the suit, fin, buoy, and bladder are authored and the cold face has no fea
   assert.equal(chain.visible, false);
   const breath = suit.getObjectByName('ANIM_breath');
   assert.equal(breath.visible, true);
+  const puff = breath.children[0];
+  assert.ok(Math.abs(puff.rotation.x + Math.PI / 2) < 1e-6);
+  assert.ok(puff.position.x < -0.8);
   const buoy = buildRuudVisual(ruudEntitySpec(freshRuudMemory(), 'buoy'));
   const barL = buoy.getObjectByName('bar_left');
   buoy.userData.updateAuthoredMotion({ data: { ruudPose: { plateOpen: 0, simTime: 0 } } }, 0, { reducedMotion: true });

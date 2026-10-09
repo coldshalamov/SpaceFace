@@ -21,7 +21,7 @@ const LABELS = {
   },
   suit: {
     unchosen: 'HOOK-LEFT · plate Ruud · plumbed to Fin-3',
-    spared: 'HOOK-LEFT · plate Ruud · plumbed to Fin-3',
+    spared: 'HOOK-LEFT · plate Ruud · on the lane buoy',
     cut: 'HOOK-LEFT · backup bladder · no charge filed',
   },
   buoy: {
@@ -482,7 +482,7 @@ export function createRuud() {
           if (this._inside && m.disposition === 'unchosen' && m.met) this._say('ignore');
           this._inside = false;
         }
-        if (distance <= C.hearRadius) {
+        if (distance <= C.hearRadius && m.disposition === 'unchosen') {
           if (m.disposition === 'unchosen' && now >= this._nextTick) {
             this._nextTick = now + C.tickEvery;
             this.bus?.emit('audio:cue', { id: 'sfx_ruud_tick', position: { x: suit.pos.x, z: suit.pos.z }, gain: 0.22, rate: 1 });
