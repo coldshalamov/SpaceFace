@@ -2594,6 +2594,13 @@ Wave 126 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 1/3.
 - Golden `0b33dde` bit-identical; save-shared-continuation 4/4, e5-save-parity 1/1 green.
 - W126 machinery re-verified by the lane: roster pools `entityList` (F1), `sorterTargetsForSector`/`tickBolus` on buckets (F2/F3), mirror re-queue patch filter (boot F1), `applySharedStoreKeysChunked` 8-key yields (boot F2) — all PASS.
 
-### in-flight-hitches — lane pending (SWE-2 cap)
+### in-flight-hitches — `saturated: true` (streak 2/3; clean audit, lane `b34199c0` @ `236614edc`)
 
-Wave 127 streaks so far: lod CLOSED, popin 0/3, boot 0/3.
+- **F1 (DOCUMENTED/skip) — kill-write funnel over ~168 `alive=false` sites**: coverage IS provable (entity/particle domain boundary is the directory — a source-scan lint guards all ~140 literal + 3 indirect channels), but the measured win is ≤0.12ms worst-case (micro-bench: 18.3µs @N=2000 zero-dead → 29.9µs @N=10000) against M effort + the documented corpse-visibility regression class (`f39fd835c`). Below materiality — recorded, not landed.
+- **F2 clean** — F1's backward collect is the ONLY unconditional per-tick O(entityList) walk left in the presented path; `sorterTargetsForSector`/`tickBolus` ride `bySectorId` buckets; `bandRadio` landmark cache is lane-version-gated; `syncEntityViewsSteps` yields at 128-row strides.
+- **F3 clean** — `combat:damage` ~56 listeners measured 0.5µs/emit synthetic (filter-then-return bodies + pooled snapshot); `sector:enter` already count-sliced; `physics:impact`/`economy:tradeCompleted` same shape or rare.
+- **F4 clean** — all 28 paced-work resume seams route `postTaskAtBackgroundPriorityBounded`; the two inline-resolve sites (`saveSystem.js:5303`, `renderer.js:10564`) adjudicated not-the-seam-class; `partsLibrary.js:7612` stays on display callback by documented 40–150ms compose measurement.
+- **F5 clean** — stall reporter self-measures escaping tail (`frameUntrackedStats`/`frameExternalGapStats`/`frameDispatchLagStats`); post-endFrame segment is thin bounded work on the flight path.
+- Regression sweep at `236614edc`: roster pool restore (popin F1), mirror re-queue dominance (boot F1), chunked applySharedStoreKeys (boot F2), W125 sector-lane/restamp machinery — all PASS.
+
+Wave 127 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 2/3.
