@@ -46,6 +46,9 @@ uniform vec2 uGulp;       // x = meal-graded amplitude, y = swallow start (uTime
                           // a gulp band enters at the rim and runs to the apex
 uniform float uNet;       // 0..1 — bodies riding the net (basinCount/3): the skin
                           // quickens with prey aboard before the catch lands
+uniform vec2 uInner;      // shared with the frag: the interior shell runs the
+                          // gulp band a hair ahead (uInner.y offset) so the
+                          // swallow itself parallaxes between the two skins
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
@@ -64,7 +67,7 @@ void main() {
   // The swallow swells the skin where the band is passing: same gk band as the
   // fragment's — the glass physically fattens around the meal as it runs aft.
   // uCalm is already inside amp, so the vertex side inherits the motion gate.
-  float gkv = (uTime - uGulp.y) / 0.22;
+  float gkv = (uTime - uGulp.y) / 0.22 + uInner.y * 0.04;
   float swell = (gkv >= 0.0 && gkv <= 1.0)
     ? uGulp.x * (1.0 - gkv) * exp(-pow((uv.y - (1.0 - gkv)) * 7.0, 2.0)) : 0.0;
   float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * (1.0 + uMass * 0.3) * uCalm * (1.0 + swell * 2.0) * (1.0 + uNet * 0.35);
@@ -125,7 +128,7 @@ void main() {
   // the meal — a uniform floor bump brightened the whole glass at once and read
   // as ambient shimmer instead of a swallow. An event cue, not ambient motion —
   // deliberately NOT folded by uCalm (like the warn wash).
-  float gk = (uTime - uGulp.y) / 0.22;
+  float gk = (uTime - uGulp.y) / 0.22 + uInner.y * 0.04;
   float gulp = (gk >= 0.0 && gk <= 1.0)
     ? uGulp.x * (1.0 - gk) * exp(-pow((vUv.y - (1.0 - gk)) * 7.0, 2.0)) : 0.0;
   // The apex anchors the lash's origin a hair harder — against a bright nebula
@@ -670,14 +673,6 @@ export class GyreSnarePresentation {
     slot.spawnT = instant ? this.time + stagger * 0.012
       : this.time + Math.min(this._spawnStagger || 0, 8) * 0.045;
     if (!instant) this._spawnStagger = (this._spawnStagger || 0) + 1;
-    // The body the lump replaces vanished THIS tick — seed at nearly half scale so
-    // the eye tracks the meal continuously instead of the mesh popping out first.
-    // A ledger rebuild isn't a meal: `instant` restores full scale so the same
-    // ball doesn't visibly re-bloom in place — UNLESS staggered (a rebuild wave
-    // still swells each lump back rather than teleporting it whole).
-    slot.spawnScale = instant ? (stagger ? 0.55 : 1) : 0.45;
-    const m = slot.mesh;
-    m.material = this._lumpMaterial(member.type);
     // Katamari compaction: the member ledger caps at MAX_LUMPS but the ball keeps
     // growing — lumps scale WITH the clump so 28 chunks still carpet a capped 60 wu
     // shell instead of leaving most of the sphere bare past the ledger's bound.
@@ -688,6 +683,16 @@ export class GyreSnarePresentation {
         * Math.min(3, Math.max(1, finite(this._clumpRadius, 12) / 14)),
       finite(this._clumpRadius, 12) * 0.45);
     slot.baseScale = r;
+    // The body the lump replaces vanished THIS tick — seed at nearly the body's
+    // own drawn size so the swap doesn't step down visibly (a 30 wu wreck used
+    // to trade for a ~12 wu lump at the contact point), then ease into rubble
+    // scale. A ledger rebuild isn't a meal: `instant` restores full scale so
+    // the same ball doesn't visibly re-bloom in place — UNLESS staggered (a
+    // rebuild wave still swells each lump back rather than teleporting it whole).
+    slot.spawnScale = instant ? (stagger ? 0.55 : 1)
+      : Math.min(1, Math.max(0.45, finite(member.radius, 2) / Math.max(0.5, r) * 0.9));
+    const m = slot.mesh;
+    m.material = this._lumpMaterial(member.type);
     m.scale.setScalar(r * (slot.spawnScale || 0.45));
     const spread = Math.max(0, finite(this._clumpRadius) - r * 0.45);
     m.position.set(
@@ -1110,7 +1115,12 @@ export class GyreSnarePresentation {
         let gs = this._glints[0];
         for (const g2 of this._glints) if (g2.t < gs.t) gs = g2;
         const gr = Math.max(2, this._clumpRadius * 0.9);
-        gs.mesh.position.set(Math.cos(this._gulpLocalA) * gr, 0.35, Math.sin(this._gulpLocalA) * gr);
+        // The contact flash seats on the newest lump's own height share too —
+        // rubble spreads ±(r·1.1) vertically, so a meal striking high rubble
+        // was blooming its spark at the mid-plane regardless.
+        let ly = 0.4, lyT = -1;
+        for (const l of this._lumps) if (l.used && l.spawnT > lyT) { lyT = l.spawnT; ly = l.mesh.position.y || 0.4; }
+        gs.mesh.position.set(Math.cos(this._gulpLocalA) * gr, ly * 0.85 + 0.3, Math.sin(this._gulpLocalA) * gr);
         gs.mesh.scale.setScalar(2 + this._clumpRadius * 0.18);
         // World-pin the bright half: a capped ball tumbles ~3 rad/s and would drag
         // 'the spark where it stuck' ~0.3 rad around the skin. Counter-rotate the
@@ -1935,13 +1945,20 @@ export class GyreSnarePresentation {
         // the same 0.55→1 sag the rumble envelope + HUD ·Ns keep inside
         // ballTtlWarnS — the drawn veil was the one lane that stayed flat.
         const secTtlWarn = clamp01(finite(sb.ttlS, 99) / Math.max(0.5, GYRE_SNARE.ballTtlWarnS));
-        this._secVeilMat.opacity = (0.05 + 0.04 * Math.min(1, finite(sb.mass) / GYRE_SNARE.maxClumpMass)) * (0.55 + 0.45 * secTtlWarn) * flashCalm;
+        // Same enter-ramp contract as every sibling: a fresh overlay's veil
+        // eases in over ~150 ms instead of appearing at full opacity on attach
+        // (the lumps get a matching per-lump swell in the bob loop below).
+        this._secVeilIn = Math.min(1.5, (this._secVeilIn || 0) + sdt * 6.7);
+        const veilSw = clamp01(this._secVeilIn);
+        this._secVeilMat.opacity = (0.05 + 0.04 * Math.min(1, finite(sb.mass) / GYRE_SNARE.maxClumpMass)) * (0.55 + 0.45 * secTtlWarn) * flashCalm
+          * (veilSw * veilSw * (3 - 2 * veilSw));
         // Rebuild key is (id, member-count): launch-meta members are FROZEN at
         // throw, so sbm.length only moves on a re-adopt — a live-members refactor
         // would silently never re-lay-out the lumps if this stayed id-only.
         if (this._secId !== sb.id || this._secN !== (sbm ? sbm.length : 0)) {
           this._secId = sb.id;
           this._secN = sbm ? sbm.length : 0;
+          this._secVeilIn = 0; // re-lay-out re-enters the veil + lumps ramped
           for (let i = 0; i < this._secLumps.length; i++) this._secLumps[i].visible = false;
           // Radius-graded: a capped 60 wu secondary still reads as a katamari
           // (~11 lumps) instead of the sparse 6 a pebble needs — bounded at 12.
@@ -1969,7 +1986,11 @@ export class GyreSnarePresentation {
             // the ball so a capped secondary still carpets its own shell.
             const r = Math.max(0.35, finite(member.radius, 2) * 0.62)
               * Math.min(3, Math.max(1, ballR / 14));
-            lm.scale.setScalar(r);
+            lm.userData.baseR = r;
+            // Staggered re-form like the primary's rebuild wave — a fresh
+            // overlay's rubble swells in ~12 ms/lump instead of teleporting on.
+            lm.userData.spawnT = this.time + i * 0.012;
+            lm.scale.setScalar(r * 0.55);
             const spread = Math.max(0, ballR - r * 0.45);
             lm.position.set(
               finite(member.nx, 0) * spread,
@@ -2005,6 +2026,10 @@ export class GyreSnarePresentation {
               + Math.sin(this.time * (1.9 + ((i * 0.61803398875) % 1) * 0.8) + i * 1.7)
                 * (lm.userData.bobAmp || 0) * calm;
           }
+          // The primary pool's ~150 ms swell applies here too — spawnT was set
+          // staggered at relayout so a fresh overlay's rubble blooms on.
+          const sw = clamp01((this.time - (lm.userData.spawnT || 0)) / 0.15);
+          lm.scale.setScalar((lm.userData.baseR || 1) * (0.55 + 0.45 * (sw * sw * (3 - 2 * sw))));
         }
         this._secGroup.visible = true;
       } else if (this._secGroup.visible && this._secGraveT == null) {
