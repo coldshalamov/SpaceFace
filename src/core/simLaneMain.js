@@ -49,6 +49,7 @@ import {
 import { flattenEventPayload } from '../../scripts/lib/simEventBridge.mjs';
 import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
+import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import {
   installSimCommandSink,
@@ -750,8 +751,13 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     });
     listen(window, 'mouseup', (e) => laneDomEvent({ type: 'mouseup', button: e.button }));
 
+    // The mobile touch deck is DOM — it runs here and ships resolved gesture
+    // frames as touchFrame descriptors to the worker's input reducer.
+    const laneTouch = createLaneTouchSurface({ state: st, bus, helpers });
+
     return {
       dispose() {
+        try { laneTouch.dispose(); } catch (_) {}
         for (const { target, type, fn, options } of bindings) {
           try { target.removeEventListener(type, fn, options); } catch (_) { /* host teardown */ }
         }

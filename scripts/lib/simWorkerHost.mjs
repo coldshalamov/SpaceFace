@@ -1142,6 +1142,9 @@ export function createSimHost() {
       scenarioContract: contract.document || null,
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,
+      // The input system lives in this realm — its touch deck is DOM, so it
+      // gets the lane reducer: resolved mobile frames arrive as descriptors.
+      mobileSeams: { lane: 'worker' },
       warmSectorFullExtras: (sectorId, bag) => {
         const stubs = liveSectorFullExtrasStubs(host.state, String(sectorId), bag || null);
         if (stubs && stubs.sectorId) {

@@ -1118,6 +1118,15 @@ export const input = {
         else if (d.op === 'end' && typeof drill.end === 'function') drill.end(d.opts);
         break;
       }
+      case 'touchFrame': {
+        // The mobile deck runs on the main realm (DOM detector + view + model);
+        // its resolved frame lands here — the lane touch reducer applies axes,
+        // actions and cancelled-role resets into the sim-owned touch surface.
+        if (this.touch && typeof this.touch.applyLaneFrame === 'function') {
+          this.touch.applyLaneFrame(d.frame, this);
+        }
+        break;
+      }
       case 'resize':
         if (this.touch && typeof this.touch.autoDetect === 'function') this.touch.autoDetect();
         break;
