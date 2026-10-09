@@ -900,6 +900,12 @@ export const gyreSnare = {
         if (distMaw > 1e-4) {
           ax -= (dx / distMaw) * wedge;
           az -= (dz / distMaw) * wedge;
+          // The funnel's promise is "matter spirals in" everywhere the glass
+          // reaches — the courtesy lane corkscrews at the suck lane's share
+          // (keyed to swirlBlend like the basin) instead of ray-dragging
+          // straight while the motes around it twist.
+          ax += (dz / distMaw) * wedge * D.wedgeSwirlFrac * this._rt.swirlBlend;
+          az -= (dx / distMaw) * wedge * D.wedgeSwirlFrac * this._rt.swirlBlend;
         }
       }
       // The gravity-pull glow rides the same ledger the count does — a faint
@@ -1434,7 +1440,11 @@ export const gyreSnare = {
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
-    rt.basinSpots.length = 0;
+    // basinSpots deliberately rides through LAUNCH: the victims are still real
+    // free bodies at their last-dragged spots, and the presentation fades the
+    // pull glows on (1 - launchWindup01) — "the well collapsing into the throw".
+    // An instant clear here popped them ~11 ticks before the launched close
+    // ramp even started. _finishLaunch's ledger reset owns the real clear.
     rt.ballMass = rt.clumpMass;
     // The floor itself sags with throw mass: a capped moon bowls ~22% slower than a
     // pebble — heavy reads heavy in the ARC, not just growl/recoil. Computed HERE,
@@ -1982,6 +1992,10 @@ export const gyreSnare = {
           id: 'gyre_snare_catch', gain: 0.3, rate: 1.35,
           position: { x: maw.x, z: maw.z },
         });
+        // The net's first fill lands in the hands too — a whisper pulse only on
+        // this edge; the +N ratchet stays audio-only or a dense belt feed would
+        // buzz the pad on every arrival.
+        this.bus.emit(GYRE_EVENTS.caught, { id: player.id, tick: state.tick });
       } else if (!caught) rt.basinCatchLatched = false;
       // The appetite has a voice while it builds: the shown +N (basin fold +
       // annulus arrivals during HOLD) used to climb eyes-only. A quieter

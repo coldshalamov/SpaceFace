@@ -1051,11 +1051,18 @@ export class GyreSnarePresentation {
       // is the only ring then), fainter once the suck annulus takes the bright
       // read on snag. (_halo stays suck-ring-only — drawing the basin edge on
       // it here was dead code: the cx==null branch force-hides it every frame.)
-      if (phase === 'beaming' || phase === 'holding') {
+      // The pull edge collapses INTO the throw rather than popping at the
+      // HOLD→launching flip: through the coil it fades on the windup — the well
+      // draining into the payload. (A hide here was also a dead write into
+      // _closeSeeds — the kk ramp only writes alpha onto still-visible rings.)
+      const windFade = 1 - windup;
+      if (phase === 'beaming' || phase === 'holding'
+        || (phase === 'launching' && windFade > 0.02)) {
         this._basinHalo.position.set(mL.x, 0.42, mL.z);
         this._basinHalo.scale.setScalar(finite(GYRE_SNARE.basinRadius, 86)
           * (1 + (phase === 'beaming' ? 0.035 : 0.02) * Math.sin(this.time * 1.7) * calm));
-        this._basinHaloMat.opacity = (phase === 'beaming' ? 0.06 * wakeEase : 0.03) * flashCalm;
+        const liveA = phase === 'beaming' ? 0.06 * wakeEase : 0.03;
+        this._basinHaloMat.opacity = liveA * flashCalm * (phase === 'launching' ? windFade : 1);
         this._basinHalo.visible = true;
       } else if (this._basinHalo.visible) {
         this._basinHalo.visible = false;
@@ -1240,8 +1247,12 @@ export class GyreSnarePresentation {
       // a body at the basin's heart burns brighter than one fading at the lip —
       // and warms toward rim-hot in hue, so 'about to be grabbed' reads at a glance.
       // wakeEase gates them too: the sim's pull is live on frame one but the glass
-      // takes ~150 ms to project — glows must not outrun the drawn rim.
-      g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * this._wakeEase * (this._fuseDim || 1);
+      // takes ~150 ms to project — glows must not outrun the drawn rim. Through
+      // the coil they collapse on the windup like the rings — the victims are
+      // still free bodies at their last-dragged spots (rt.basinSpots rides LAUNCH),
+      // so the residue dies with the throw instead of popping at the flip.
+      const spotFade = phase === 'launching' ? 1 - clamp01(finite(mirror.launchWindup01)) : 1;
+      g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * this._wakeEase * (this._fuseDim || 1) * spotFade;
       g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
       // The strongest ABSORBABLE puller burns hottest — the rock about to cross
       // snagRadius. A courtesy-tugged pickup/mine/projectile can top the k sort
@@ -1502,15 +1513,19 @@ export class GyreSnarePresentation {
       // It dims out as the clump saturates — at cap the suck lane is disabled and the
       // ring would advertise a dead well.
       const capFade = Math.max(0, 1 - finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1)));
-      if (phase === 'holding' && capFade > 0.03) {
+      const suckFade = phase === 'launching' ? 1 - wind : 1;
+      if ((phase === 'holding' && capFade > 0.03)
+        || (phase === 'launching' && capFade > 0.03 && suckFade > 0.02)) {
         // The drawn reach IS the sim's annulus — pub.suckRadius carries the
         // floor-banded, basin-capped formula so a data tuning edit can't desync
         // the ring from the pull it advertises (clumpRadius floor covers the
-        // first-publish tick before the mirror fills).
+        // first-publish tick before the mirror fills). Through the coil the
+        // ring rides the payload and dies on the windup like the basin ring —
+        // the well collapsing into the throw, not a pop at the flip.
         const suckR = finite(mirror.suckRadius, 0) || this._clumpRadius;
         this._halo.position.set(p.x, 0.42, p.z);
         this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
-        this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6);
+        this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6) * suckFade;
         this._halo.visible = true;
       } else if (!this._closing && this._halo.visible) {
         this._halo.visible = false;
@@ -1519,7 +1534,11 @@ export class GyreSnarePresentation {
       // The shared lump materials glow hotter at cap — same saturated-payload tell
       // as the veil pulse above, carried by every merged chunk.
       const lumpGlow = fullGlow > 0 ? 0.4 + 0.12 * Math.sin(this.time * 3.4) * calm : 0.22;
-      for (const k in this._lumpMats) this._lumpMats[k].emissiveIntensity = lumpGlow;
+      // The ARMED read reaches the rubble too — the thrown ball's contents
+      // flash with its shell for the same ~0.7 s launchKick window (lumpGlow
+      // is hold-gated, so without this floor a flying katamari's chunks sat at
+      // the cold baseline while the veil surged rim-hot around them).
+      for (const k in this._lumpMats) this._lumpMats[k].emissiveIntensity = Math.max(lumpGlow, armed * 0.4);
       const members = mirror.members;
       const want = Array.isArray(members) ? Math.min(members.length, MAX_LUMPS) : 0;
       let have = 0;

@@ -52,7 +52,7 @@ function boot(seed = 4242, { withPhysics = false, playerRadius = 12 } = {}) {
   state.playerId = player.id;
   player.cap = 100; // full capacitor — the verb drains it
   const events = [];
-  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:absorbTick', 'gyre:windup', 'gyre:launched', 'gyre:thrown', 'gyre:dropped', 'gyre:fuseLow', 'gyre:ballGrave', 'audio:cue', 'toast']) {
+  for (const name of ['gyre:beamOn', 'gyre:beamOff', 'gyre:snagged', 'gyre:absorbed', 'gyre:absorbTick', 'gyre:windup', 'gyre:launched', 'gyre:thrown', 'gyre:dropped', 'gyre:fuseLow', 'gyre:ballGrave', 'gyre:caught', 'audio:cue', 'toast']) {
     sim.bus.on(name, (p) => events.push({ name, p, tick: state.tick }));
   }
   return { sim, state, bus: sim.bus, helpers, player, events, sys: sim.registry.get('gyreSnare'), physicsSys: sim.registry.get('physics') };
@@ -1000,6 +1000,21 @@ test('wedge pull fades across the soft lip and ends at the maw plane', async () 
   t.cleanup();
 });
 
+test('the wedge courtesy lane corkscrews — a mid-cone body spirals in, not ray-drags', async () => {
+  const t = await bootPhysics();
+  // a=60, z=20 (inside the ~29.6 wu rim → lipT 0): dx=-114, dz=+20 off the maw.
+  // A pure-radial courtesy pull would drift vel.z NEGATIVE (toward the axis);
+  // the swirl share pushes it positive — the tangential lane shows in the
+  // body's own motion, matching the funnel's corkscrew promise.
+  const body = rock(t.sim, apexGap() + 60, 20, 6, 4, 'drone');
+  assert.ok(Math.hypot(body.pos.x - T.mawDist, body.pos.z) > T.basinRadius, 'wedge lane, not the basin');
+  hold(t);
+  for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'beaming', 'a wedge-only body never snags');
+  assert.ok(body.vel.z > 0.2, `swirl share drifts tangentially (vel.z=${body.vel.z.toFixed(2)} — pure radial gives <0)`);
+  t.cleanup();
+});
+
 test('published cone rim equals the wedge rim at the maw plane, floored at basinRadius', async () => {
   const t = await bootPhysics(4242, { playerRadius: 60 }); // capital hull — apex rides far ahead
   hold(t);
@@ -1352,6 +1367,44 @@ test('the basin catch voice ticks once, count-grades new peaks, and never re-tic
   assert.equal(cues().length, 5, 'post-drop catch fires the loud tick');
   assert.ok(Math.abs(cues()[4].p.gain - 0.3) < 1e-6);
   release(t);
+  t.cleanup();
+});
+
+// -- the first net fill lands in the hands: one whisper edge, no ratchet buzz --
+test('the first net fill emits gyre:caught once on the edge — the pad whisper pulse', async () => {
+  const t = await bootPhysics();
+  const caught = () => t.events.filter((e) => e.name === 'gyre:caught');
+  rock(t.sim, T.mawDist + 45, 10, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.basinCount, 1);
+  assert.equal(caught().length, 1, 'the empty→net edge emits exactly once');
+  // A new shown peak re-ticks the AUDIO cue only — the pad edge stays single-shot
+  // or a dense belt feed would buzz it on every arrival.
+  rock(t.sim, T.mawDist + 50, -20, 6, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.basinCount, 2);
+  assert.equal(caught().length, 1, 'the +N ratchet stays audio-only');
+  release(t);
+  t.cleanup();
+});
+
+// -- the victim glow ledger survives the flip — the well collapses on the windup --
+test('basinSpots ride through LAUNCH so the pull glows collapse on the windup', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist + 45, 10, 6, 4, 'drone'); // in the basin, never absorbable
+  rock(t.sim, T.mawDist + 30, 0, 6, 4);          // cores on the wake-gated snag
+  hold(t);
+  assert.equal(t.sys._rt.phase, 'holding');
+  assert.ok(t.state.gyreSnare.basinSpots.length >= 1, 'the dragged bystander glows');
+  release(t);
+  assert.equal(t.sys._rt.phase, 'launching');
+  assert.ok(t.state.gyreSnare.basinSpots.length >= 1,
+    'victim glows fade on the windup — not an instant pop at the HOLD→launching flip');
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 3; i++) t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.equal(t.state.gyreSnare.basinSpots.length, 0, '_finishLaunch owns the real clear');
   t.cleanup();
 });
 

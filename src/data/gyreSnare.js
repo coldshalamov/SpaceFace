@@ -50,6 +50,9 @@ export const GYRE_SNARE = Object.freeze({
                            // but the absolute accel lands ~4x lower (150*0.5 vs 620*0.45) —
                            // deliberate: a body crossing laterally out of the basin keeps a
                            // courtesy tug, not the basin's grab, so the rim reads 'release'.
+  wedgeSwirlFrac: 0.28,      // tangential share of the wedge courtesy pull — the funnel's
+                           // "matter spirals in" promise reaches the soft lip too; same
+                           // share as the suck lane's corkscrew, keyed to swirlBlend like the basin
   nonAbsorbablePull: 0.45,   // ×accel on dynamic bodies that can never core/member (rocks the maw shoves)
   queryReachWu: 60,          // wu — extra query radius past the basin so the wedge reaches its lip
   basinDamping: 1.6,         // 1/s — velocity damping vs ship frame inside the basin (settle, don't orbit-shoot)
@@ -216,6 +219,9 @@ export const GYRE_EVENTS = Object.freeze({
   // Quiet-TTL grave — emitted beside the gyre_snare_ball_death cue on a thrown ball's
   // authored expiry (primary + secondaries) so the arc closes in the hands too.
   ballGrave: 'gyre:ballGrave',
+  // First fill of the net — the basinCatchLatched edge. A whisper pad pulse
+  // rides it; the +N ratchet stays audio-only so a dense belt feed can't buzz.
+  caught: 'gyre:caught',
   dropped: 'gyre:dropped',
   strained: 'gyre:strained',
   // The lash's ~3 s countdown — latched once per hold so the forced bowl lands
