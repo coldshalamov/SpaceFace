@@ -2659,3 +2659,16 @@ Wave 129 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches CLOSED.
 ## CI adjudication — `live-whole-ship-admission` reds (static 1–3) = canon
 
 Ships stall at `'loading'`/`'compiling-pipelines'` instead of reaching `'authored'`. Reproduces byte-identical on `38d75108f` (pre-W129) and on clean master `38368f739` — documented live-whole-ship env canon (real-pipeline dependence), not a W129 regression.
+
+## Wave 130 (in progress — HEAD 46ef3e012)
+
+### popin-admission — `saturated: false` (F1+F2 landed `46ef3e012`)
+
+- **popin F1 (M, MECHANISM VERIFIED) — surviving seen-latches strand the cohort on re-entry/re-approach**: `_spawnRequestWarmSeen` (`${sectorId}:${archetypes}`) and `_interventionWarmSeen` (bare sectorId) were session-lifetime Sets with only mint sites — never cleared on demote, warm-owner retract, or byte-pressure eviction of their ownerless soft-lease decodes. `world.pendingSpawns[sectorId]` and `state.pendingInterventions` outlive the warms through demote AND save/load, so every later visit mounted cold files: the intervention wreck exemplars plus the ~43-file modular kit covering the site's guard/jumper ships decoded at mount inside presented frames (the same demote→re-enter skip-work class W129 F1 fixed for the other three latches — these two were the surviving ones, and the intervention cohort has no charge-time cover elsewhere).
+- **Fix shape** — both outer latches deleted outright, per the lane's preferred option: every arm site dedupes on the shared asset-task registry, so a re-post no-ops while files are resident and re-decodes after any eviction, while `beginRequest` re-pins the soft lease mid-approach (the `warmEncounterPendingDecode` `dueAt`-refresh idiom — covers retract→re-approach AND pressure evictions, which a demote-only clear could not). The inner `_modularPoolWarmSectors` latch had the identical once-fired defect for the pool itself — removed with it; `clearSectorWarmLatchKeys` drops its dead modular block. Worst case is bounded dedupe no-ops per residency poll while a sector carries pendings — the intended trade.
+- **popin F2 (doc defect, folded) — stale `liveEnterSpawnerStubs` comment concealed the gap**: it claimed guard/jumper "mount the procedural buildShipMesh path — no authored file to warm", but `_spawnGuard`/`_spawnJumper` stamp only `data.ai.archetype` so `wholeShipVisualForEntity` falls through to `authoredPreloadPlanForEntity`'s seeded modular pick — exactly the files `warmSeededModularPool` decodes. Comment corrected.
+- Regression block: W129 machinery all four blocks PASS re-verified concretely by the lane (residency-emit latch-clear key parity, cooked-stamp demote clear, `_slotStoreSignatureAsync` generation bracketing, bounded verdict fan-out, `slotBurst.raws` freshness proof).
+- Golden `0b33dde` bit-identical; focused suites green except `sector-prewarm-boundary-generation`'s cargo-capsule dispose red which reproduces byte-identical on clean `c19a717f8` (canon, unrelated to the warm machinery).
+
+### boot-loading — auditing (queued behind SWE-2 session cap; spawns as a slot frees)
+### skeptical disprove-the-gains — queued (rotating ~5th-wave lane; spawns as a slot frees)
