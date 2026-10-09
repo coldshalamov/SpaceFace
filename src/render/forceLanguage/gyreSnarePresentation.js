@@ -298,7 +298,9 @@ export class GyreSnarePresentation {
     // scaled x/z to mouth radius, y to beam length, offset so the apex sits at the group origin.
     // 40 height segments: the strain shiver sweeps ~17 cycles down the cone —
     // under ~22 at Nyquist it aliased into incoherent sparkle instead of a tremble.
-    const coneGeo = new THREE.CylinderGeometry(1, 0.045, 1, 36, 40, true);
+    // Apex ~2% of mouth radius (~1.7 wu at endR 86) — the beam reads as light
+    // emitted from a point; 4.5% was a visible muzzle stub at the nose.
+    const coneGeo = new THREE.CylinderGeometry(1, 0.02, 1, 36, 40, true);
     coneGeo.translate(0, 0.5, 0);           // apex at local origin, mouth at y=1
     this._cone = new THREE.Mesh(coneGeo, this._coneMat);
     this._cone.rotation.z = -Math.PI / 2;   // cylinder +Y → beam +X
@@ -534,6 +536,7 @@ export class GyreSnarePresentation {
     this._lastGraveTick = -1;  // graves dedupe — one bloom per sim tick, not per render frame
     this._seenGraves = null;   // per-entry dedupe for hosts without a sim tick counter
     this._deathT = 0;          // >0 while a dead ball's rubble dissolves into its grave (~0.25 s)
+    this._adoptT = 0;          // >0 while an adopted ball's rubble de-rezzes in place (~0.15 s)
     this._secGraveT = null;    // >0 while a secondary ball's lumps scatter into its grave
     this._launchKick = 0;      // armed veil surge on the thrown ball — ~0.7 s tail off thrownBeat
   }
@@ -596,8 +599,12 @@ export class GyreSnarePresentation {
     // Katamari compaction: the member ledger caps at MAX_LUMPS but the ball keeps
     // growing — lumps scale WITH the clump so 28 chunks still carpet a capped 60 wu
     // shell instead of leaving most of the sphere bare past the ledger's bound.
-    const r = Math.max(0.35, finite(member.radius, 2) * 0.62)
-      * Math.min(3, Math.max(1, finite(this._clumpRadius, 12) / 14));
+    // Capped at 45% of the clump — a lump is a lump OF the ball, never bigger
+    // than it (a 30 wu member on a capped 60 wu clump drew ~56 wu unclamped).
+    const r = Math.min(
+      Math.max(0.35, finite(member.radius, 2) * 0.62)
+        * Math.min(3, Math.max(1, finite(this._clumpRadius, 12) / 14)),
+      finite(this._clumpRadius, 12) * 0.45);
     slot.baseScale = r;
     m.scale.setScalar(r * (slot.spawnScale || 0.45));
     const spread = Math.max(0, finite(this._clumpRadius) - r * 0.45);
@@ -783,7 +790,7 @@ export class GyreSnarePresentation {
       // secondary grave scatter resuming against a new ball, a stale warn veil
       // or strain shimmer bleeding into the next hold.
       this._holdT = 0; this._leanZ = 0; this._strainVis = 0; this._swirlDir = 1;
-      this._secId = null; this._secGraveT = null;
+      this._secId = null; this._secGraveT = null; this._adoptT = 0;
       this._veilMat.opacity = 0; this._veilMat.color.copy(this._colGlass);
       this._veil.visible = false;
     }
@@ -1423,7 +1430,7 @@ export class GyreSnarePresentation {
       // still-flying ball reads as a mid-air burst for a body that never died.
       if (this._ballId != null && !this._closing && this._deathT <= 0) {
         if (mirror.ballGrave !== false) this._deathT = 0.25;
-        else this._clearLumps();
+        else this._adoptT = 0.15; // adoption: a quick de-rez, not a death scatter
       }
       if (this._deathT > 0) {
         this._deathT -= sdt;
@@ -1433,6 +1440,13 @@ export class GyreSnarePresentation {
         this._scatterLumps(1 - k);
         this._clump.visible = this._deathT > 0;
         if (this._deathT <= 0) this._clearLumps();
+      } else if (this._adoptT > 0) {
+        // Adopted away: the body still flies for its new owner, so the rubble
+        // can't scatter like a death — a ~0.15 s in-place shrink de-rezzes it.
+        this._adoptT -= sdt;
+        this._clump.scale.multiplyScalar(Math.exp(-sdt * 8));
+        this._clump.visible = this._adoptT > 0;
+        if (this._adoptT <= 0) { this._clearLumps(); this._clump.scale.setScalar(1); }
       } else if (this._closeTear) {
         if (mirror.tornId != null) {
           // Tear follow: the freed core whips off on its parting snap and the rubble
@@ -1487,9 +1501,10 @@ export class GyreSnarePresentation {
         this._halo.visible = false;
         this._basinHalo.visible = false;
       }
-      if (phase === 'off' && this._ballId == null && !this._closing && this._deathT <= 0) this._clearLumps();
+      if (phase === 'off' && this._ballId == null && !this._closing
+        && this._deathT <= 0 && this._adoptT <= 0) this._clearLumps();
     } else {
-      this._deathT = 0;
+      this._deathT = 0; this._adoptT = 0;
       this._closeTear = false; // a re-beam mid-tear-follow hands the clump group to the new core
       this._tearFade = null;
       const p = this.toLocal(cx, cz, this._nose);

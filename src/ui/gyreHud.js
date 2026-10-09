@@ -112,6 +112,11 @@ export const gyreHud = {
       // scales (absorbR kicks, cue rate); the pill's bump was the one ungraded
       // edge: a wreck lands ~×1.2, a pebble a hair over ×1.05.
       this._eatScale = 1.05 + Math.min(0.15, (g.absorbR || 0) * 0.006);
+      // Re-trigger the transition per meal — the .18 s ease-out otherwise holds
+      // the enlarged state across back-to-back absorbs (<150 ms apart) and a
+      // dense feed reads as one long swell instead of discrete gulps.
+      dom.pill.classList.remove('gyre-eat');
+      void dom.pill.offsetWidth;
     }
     this._lastAbsorbs = ab;
     this._apply(dom, text, cls, strain, fuse);

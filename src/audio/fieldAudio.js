@@ -123,7 +123,11 @@ export function collectFieldLoopSpecs(state, out = []) {
     const fuseS = Number.isFinite(gyre.fuseS) ? gyre.fuseS : 0;
     const fuseTerm = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
       ? 0.55 + 0.45 * (fuseS / GYRE_SNARE.fuseWarnVisS) : 1;
-    const pos = gyre.maw && Number.isFinite(gyre.maw.x) ? gyre.maw : null;
+    // The hum's seat rides the load: during HOLD the clump orbits up to ~72 wu
+    // off the maw — the voice follows the mass the player is watching.
+    const pos = gyre.phase === 'holding' && gyre.corePos && Number.isFinite(gyre.corePos.x)
+      ? gyre.corePos
+      : (gyre.maw && Number.isFinite(gyre.maw.x) ? gyre.maw : null);
     if (pos) {
       out.push({
         key: FIELD_LOOP_PREFIX + 'gyre',
