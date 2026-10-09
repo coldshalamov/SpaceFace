@@ -2659,6 +2659,22 @@ export const gyreSnare = {
                              // deny lane sets it, not just the cap_dry close sites
       }
     }
+    // A denied press is not a dead key: while the verb stays held the cap climbing
+    // back over the arm floor grants the wake the refusal deferred — 'needs charge'
+    // already narrated; holding reads as 'wake when there's charge'. The wake still
+    // fires exactly once per hold (wasHeld stays latched; dryDenyDone is spent on
+    // the grant), and a released key resets both latches back to the edge contract.
+    if (held && rt.wasHeld && rt.dryDenyDone && !modalHeld && rt.phase === PHASE.OFF
+      && this._cap(player) >= D.capActivateMin) {
+      rt.phase = PHASE.BEAM;
+      rt.beamWake = 0;
+      rt.dropReason = null;
+      rt.dryDenyDone = false;
+      if (this.bus) {
+        this.bus.emit(GYRE_EVENTS.beamOn, { id: player.id, playerId: player.id, tick: state.tick });
+        this.bus.emit('audio:cue', { id: 'gyre_snare_beam', gain: 0.55 });
+      }
+    }
     if (!held) rt.dryDenyDone = false; // a released key re-arms the deny voice
     if (!held && rt.wasHeld && !modalHeld) {
       // Deliberate release bowls a held clump; every other close (beam with no core, mid-launch,

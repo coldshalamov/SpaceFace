@@ -37,7 +37,7 @@ export const GYRE_HUD_CSS = `
   box-shadow: none;
   text-shadow: var(--dp-emit, none);
   pointer-events: none; white-space: nowrap;
-  transition: transform .18s ease-out;
+  transition: transform .12s ease-out; /* snappier than the 150 ms class window — the pop completes instead of clipping mid-swing */
 }
 .sf-gyre-pill.gyre-eat { transform: translateX(-50%) scale(var(--gyre-eat-scale, 1.1)); } /* a meal just landed — the counter gulps (keep the seat's translate) */
 .sf-gyre-pill.gyre-holding { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
@@ -112,7 +112,7 @@ export const gyreHud = {
       // scales (absorbR kicks, cue rate); the pill's bump was the one ungraded
       // edge: a wreck lands ~×1.2, a pebble a hair over ×1.05.
       this._eatScale = 1.05 + Math.min(0.15, (g.absorbR || 0) * 0.006);
-      // Re-trigger the transition per meal — the .18 s ease-out otherwise holds
+      // Re-trigger the transition per meal — a longer ease-out otherwise holds
       // the enlarged state across back-to-back absorbs (<150 ms apart) and a
       // dense feed reads as one long swell instead of discrete gulps.
       dom.pill.classList.remove('gyre-eat');
@@ -176,7 +176,9 @@ export const gyreHud = {
     // only through the after-the-fact dry toast.
     const fuseS = g.fuseS || 0;
     const fuseTxt = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
-      ? ` · ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.floor(fuseS)))}s` : '';
+      ? ` · fuse ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.floor(fuseS)))}s` : '';
+    // Labeled 'fuse' like the ball countdown's 'ball' — a HOLD row carrying both
+    // (the previous ball still flying) used to read '· 3s · ball 4s' ambiguously.
     const tow = g.towCount || 0;
     const heavy = g.tooHeavyCount || 0;
     const deflect = g.deflectCount || 0;

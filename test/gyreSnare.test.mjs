@@ -399,6 +399,21 @@ test('a denied wake speaks once per press and re-arms on release', async () => {
   t.cleanup();
 });
 
+test('a held denied key auto-grants the wake when the cap crosses the arm floor', async () => {
+  const t = await bootPhysics();
+  t.player.cap = T.capActivateMin - 2;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off');
+  // Charge arrives while the verb is still held — the refusal was already
+  // narrated; holding is 'wake me when there's charge', not a dead key.
+  t.player.cap = T.capActivateMin + 1;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'beaming', 'the crossing grants the deferred wake');
+  assert.equal(t.events.filter((e) => e.name === 'gyre:beamOn').length, 1, 'one wake edge');
+  assert.equal(t.events.filter((e) => e.name === 'toast').length, 1, 'the refusal stays single');
+  t.cleanup();
+});
+
 test('a dry capacitor mid-hold auto-bowls the clump', async () => {
   const t = await bootPhysics();
   const body = rock(t.sim, T.mawDist, 0);
