@@ -331,10 +331,15 @@ export const gyreSnare = {
     rt.swirlBlend = 1;
     // A boundary drop also forgets the flying ball mirror — stale ballPos would leak a
     // dead clump overlay into the next scene. The sweep then re-seeds watch + mirror
-    // from what actually lives in the new map: a serialized ball mid-flight keeps its
-    // HUD mirror (and launchedId) across a save:load, while a sector-exit ball — its
-    // entity gone — stays forgotten. The sweep must run AFTER these resets or they
-    // would wipe the mirror it just adopted.
+    // from what the CURRENT map holds: on save:loaded that is already the new map (a
+    // serialized ball mid-flight keeps its HUD mirror + launchedId across the load),
+    // and on a continuous sector enter the ball persists as a resident neighbor, so
+    // re-adopting it is correct there too. On a NON-continuous sector:exit the emit
+    // fires BEFORE the residency pass removes the outgoing sector's entities, so the
+    // sweep re-adopts a doomed ball for one tick — the retire lane then finds it
+    // missing and retires it silently: a disappearance at a boundary isn't a death
+    // the player watched (impact removals already sing through collision FX).
+    // The sweep must run AFTER these resets or they would wipe the mirror it just adopted.
     if (boundary) {
       rt.ballId = null; rt.ballMass = 0; rt.ballMembers = null; rt.ballClumpRadius = 0; rt.ballAbsorbs = 0;
       // Forget the watch list BEFORE the sweep re-seeds it from live marks: a stale id
@@ -1929,8 +1934,15 @@ export const gyreSnare = {
         || ball.data.despawnAt == null) {
         // Grave vs adoption: a still-live body that lost only its deadline was handed
         // back to a foreign owner — retire the mirror with NO grave (the burst would
-        // bloom under a live adopted body). Dead/removed balls are real graves.
-        pub.ballGrave = !(ball && ball.alive !== false);
+        // bloom under a live adopted body). Dead corpses in the map are real graves.
+        // A MISSING body is a disappearance, not a watched death — a sector:exit
+        // fires before the residency pass removes the outgoing sector's entities, so
+        // the boundary sweep re-adopts a doomed ball for one tick; blooming the ring
+        // at stale pre-swap coordinates would narrate a death that never happened.
+        // Impact removals already sing through collision FX at the true spot, and a
+        // quiet-TTL grave sang on its last live tick before compaction — only a
+        // dead-in-map corpse needs the ring here.
+        pub.ballGrave = !!(ball && ball.alive === false);
         // The ball met its grave. Only a quiet TTL expiry gets the shatter — an entity
         // left dead with its deadline passed — while impact deaths (removed, or dead with
         // no deadline pending) already sing through collision audio at the same spot.

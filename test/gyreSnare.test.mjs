@@ -864,6 +864,35 @@ test('sector:exit and game:newGame are silent boundary drops', async () => {
   }
 });
 
+test('a sector-exit boundary retires a re-adopted ball silently — disappearance is not a grave', async () => {
+  const t = await bootPhysics();
+  const body = rock(t.sim, T.mawDist, 0);
+  hold(t);
+  for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → bowl
+  assert.equal(t.sys._rt.ballId, body.id);
+  // sector:exit emits BEFORE the residency pass removes the outgoing sector's
+  // entities (world.js ordering): the boundary sweep re-adopts the still-live
+  // marked ball from the still-live old map for one tick.
+  t.bus.emit('sector:exit', {});
+  assert.equal(t.sys._rt.ballId, body.id, 'the sweep re-adopts a still-live marked ball');
+  assert.equal(t.sys._rt.launchedId, body.id);
+  // Then the residency pass runs — the outgoing sector's entities leave the map.
+  t.state.entities.delete(body.id);
+  t.sim.step();
+  // A disappearance is not a death the player watched: no ring, no grave lane,
+  // no narration. (Impact removals already sing collision FX; a quiet-TTL death
+  // sang on its last live tick before compaction.)
+  assert.equal(t.state.gyreSnare.ballGrave, false, 'a vanished ball blooms no grave ring');
+  assert.ok(!t.state.gyreSnare.graves || t.state.gyreSnare.graves.length === 0,
+    'the graves lane stays empty too');
+  assert.equal(t.state.gyreSnare.launchedId, null, 'the mirror retires quietly');
+  assert.equal(t.sys._rt.ballId, null, 'the watch clears');
+  assert.ok(!t.events.some((e) => e.name === 'gyre:ballGrave'),
+    'no ballGrave event narrates a boundary disappearance');
+  t.cleanup();
+});
+
 test('a despawned ball retires launchedId so the mirror stops tracking it', async () => {
   const t = await bootPhysics();
   const body = rock(t.sim, T.mawDist, 0);
