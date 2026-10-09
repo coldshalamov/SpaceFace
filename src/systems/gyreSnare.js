@@ -245,9 +245,15 @@ export const gyreSnare = {
     // the ball's arming stamps — gyreLaunched, up-to-8× impact scale, the
     // lash deadline, kill credit — but zero burst ticks ever fired. Handed
     // back below like any interrupted adoption; otherwise it would park at
-    // the coil anchor for ballTtlS as a live attributed mine.
+    // the coil anchor for ballTtlS as a live attributed mine. The victim must
+    // be launch-OWNED (rt.coreId), not promote-managed (rt.launchedId) — the
+    // same guard the LAUNCH lane keeps: if the throwing ball retired mid-coil
+    // and a survivor was promoted, that survivor is still legitimately flying
+    // and must NOT be handed back; the throwing ball's own retire lane
+    // already shed it. On divergence there is no abort victim at all.
     const coilAbortId = !boundary && droppedPhase === PHASE.LAUNCH
-      && rt.launchLeft === D.launchTicks ? rt.launchedId : null;
+      && rt.launchLeft === D.launchTicks && rt.launchedId === rt.coreId
+      ? rt.coreId : null;
     // The tear snap's whip scale — captured before the reset zeroes clumpRadius
     // (which would unfloor the ponderous rate). Strain drops only.
     let droppedDir = 1, droppedOrbitR = 0, droppedRate = 0, droppedClumpR = 0;

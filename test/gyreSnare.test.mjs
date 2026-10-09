@@ -2969,6 +2969,43 @@ test('a survivor promoted mid-launch does NOT inherit the dead ball\'s coil or b
   t.cleanup();
 });
 
+test('a drop inside the promote-divergence window never hands back the innocent survivor', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step(); // A flying — its own launch resolved
+  const b = rock(t.sim, T.mawDist + 2, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  assert.equal(t.sys._rt.phase, 'launching');
+  assert.equal(t.sys._rt.coreId, b.id, 'the launch owns B');
+  // Same divergence construction as the truncate test above: B's marks stripped
+  // mid-coil → the sweep hands B back and _promoteNextBall re-seats launchedId
+  // to A — with phase STILL 'launching' until next tick's launch lane truncates.
+  delete b.data.gyreLaunched;
+  delete b.data.despawnAt;
+  t.sim.step();
+  assert.equal(t.sys._rt.launchedId, a.id, 'the survivor took the mirror lane');
+  assert.equal(t.sys._rt.coreId, b.id, 'the launch ledger still owns B');
+  assert.equal(t.sys._rt.phase, 'launching', 'the lane truncates next tick — the window is open NOW');
+  // A non-boundary drop lands inside that window. The coil-abort victim must be
+  // the launch-OWNED ball (coreId) — never the promoted survivor, which is
+  // still a live thrown ball flying its own resolved launch.
+  t.state.mode = 'dock';
+  t.sim.step(); // not_flight
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.equal(a.data.gyreLaunched, true, 'the survivor keeps its mark');
+  assert.ok(Number.isFinite(a.data.despawnAt), 'the survivor keeps its flight deadline');
+  assert.ok('gyrePrevImpactScale' in a.data, 'the survivor keeps its disarm ledger');
+  assert.ok(t.sys._rt.ballIds.includes(a.id), 'the survivor keeps its watch slot');
+  assert.ok(readRecentImpulseProvenance(a, t.state.tick), 'the survivor keeps its kill credit');
+  assert.equal(b.data.gyreLaunched, undefined, 'B was already handed back by its own retire lane');
+  t.cleanup();
+});
+
 test('an already-adopted ball on watch overflow gets the full hand-back strip', async () => {
   const t = await bootPhysics();
   const rt = t.sys._rt;
