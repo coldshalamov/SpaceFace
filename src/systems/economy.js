@@ -2973,7 +2973,7 @@ export const economy = {
         qty: Math.max(0, Math.floor(Number(qty) || 0)),
         reason: 'not_docked',
       });
-      return;
+      return { ok: false, reason: 'not_docked' };
     }
     const res = this.execute(stationId, commodityId, side, qty, opts);
     if (!res.ok) {

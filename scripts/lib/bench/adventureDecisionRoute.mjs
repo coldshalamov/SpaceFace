@@ -73,7 +73,7 @@ function undock(sim) {
   state.ui.dockedStationId = null;
 }
 
-function resolveSurface(sim, stationId, surface, notes) {
+async function resolveSurface(sim, stationId, surface, notes) {
   const { state, bus } = sim;
   const economySystem = sim.registry.get('economy');
   for (let step = 0; step < 4; step++) {
@@ -81,7 +81,7 @@ function resolveSurface(sim, stationId, surface, notes) {
     const next = shown.find((record) => record && record.id);
     if (!next) return;
     const optionId = pickOption(next);
-    const result = chooseAdventureDecision(state, next.id, optionId, { bus, economy: economySystem });
+    const result = await chooseAdventureDecision(state, next.id, optionId, { bus, economy: economySystem });
     if (result && result.ok) {
       notes.push({ stationId, kind: next.kind, optionId, atS: state.simTime });
       // One fork per desk per berth. Taking every leftover pair on the same board
@@ -103,7 +103,7 @@ function resolveSurface(sim, stationId, surface, notes) {
  * Play the reference corridor for one sim hour and return the decision metric.
  * @param {number} [seed]
  */
-export function runReferenceAdventureHour(seed = REFERENCE_ADVENTURE_SEED) {
+export async function runReferenceAdventureHour(seed = REFERENCE_ADVENTURE_SEED) {
   const sim = createSimulation({
     seed,
     systems: [cargo, economy, factions, missions],
@@ -135,8 +135,8 @@ export function runReferenceAdventureHour(seed = REFERENCE_ADVENTURE_SEED) {
   while ((Number(state.simTime) || 0) < REFERENCE_ADVENTURE_HOUR_S && guard < 48) {
     guard += 1;
     dock(sim, stationId);
-    resolveSurface(sim, stationId, 'contracts', notes);
-    resolveSurface(sim, stationId, 'market', notes);
+    await resolveSurface(sim, stationId, 'contracts', notes);
+    await resolveSurface(sim, stationId, 'market', notes);
     undock(sim);
     const haulDest = state.nav && state.nav.waypoint && state.nav.waypoint.kind === 'trade'
       ? state.nav.waypoint.stationId

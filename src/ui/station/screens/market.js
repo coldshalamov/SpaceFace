@@ -1763,12 +1763,12 @@ export function createMarketScreen(ctx) {
 
   // Delegation rides the screen root, not consoleEl: the route table and trade leads live in
   // .sx-mkt__stage outside the console, and their Set Course buttons must reach this handler.
-  el.addEventListener('click', (ev) => {
+  el.addEventListener('click', async (ev) => {
     const adventure = ev.target.closest('[data-adventure-option]');
     if (adventure) {
       const decisionId = adventure.getAttribute('data-adventure-id');
       const optionId = adventure.getAttribute('data-adventure-option');
-      const chosen = chooseAdventureDecision(ctx.state || {}, decisionId, optionId, {
+      const chosen = await chooseAdventureDecision(ctx.state || {}, decisionId, optionId, {
         bus: ctx.bus,
         economy: null,
       });

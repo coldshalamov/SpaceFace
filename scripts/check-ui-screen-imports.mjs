@@ -527,7 +527,9 @@ if (!gameOverSrc.includes('_refreshSummary(ctx)') || !/onShow\(ctx\)\s*\{[\s\S]*
   console.log('ok   gameOverScreen - cached run summary refreshes on show');
   ok++;
 }
-if (!gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';") || gameOverSrc.includes("\n      state.mode = 'menu';")) {
+if (!(gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';")
+  || gameOverSrc.includes("laneSetMode(ctx.state, ctx.bus, 'menu')"))
+  || gameOverSrc.includes("\n      state.mode = 'menu';")) {
   console.log('FAIL gameOverScreen - Main Menu action must use ctx.state, not an undefined global state');
   fail++;
 } else {

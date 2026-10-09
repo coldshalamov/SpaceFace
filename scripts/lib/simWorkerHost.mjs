@@ -909,6 +909,16 @@ export function createSimHost() {
       // and authoritative writes). Routing through quote's own mint path keeps
       // the gate (tier/legality) and the eager-deferral semantics identical to
       // a local quote; the seeded row ships on the next mirror apply.
+      // Authoritative trade verdict — ui:buy/ui:sell forward as emits and apply fine,
+      // but a decision effect needs the sync ok/reason the emit chain can't return.
+      ['economyTrade', (args) => {
+        const e = registry.get('economy');
+        if (!e || typeof e.handleTrade !== 'function') return { ok: false, reason: 'economy-system-unavailable' };
+        const a = args || {};
+        const res = e.handleTrade(a.commodityId, a.side, a.qty,
+          a.expectedTotal != null ? { expectedTotal: a.expectedTotal } : null);
+        return { ok: true, result: res || { ok: false, reason: 'no_result' } };
+      }],
       ['economyMintListing', (args) => {
         const e = registry.get('economy');
         if (!e || typeof e.quote !== 'function') return { ok: false, reason: 'economy-system-unavailable' };
@@ -959,7 +969,7 @@ export function createSimHost() {
         const m = registry.get('missions');
         if (!m) return { ok: false, reason: 'missions-system-unavailable' };
         const method = args && args.method;
-        const SIGNATURES = { postAndAcceptAuthoredOffer: ['offer'] };
+        const SIGNATURES = { postAndAcceptAuthoredOffer: ['offer'], acceptMission: ['missionId'] };
         const signature = method && SIGNATURES[method];
         if (!signature || typeof m[method] !== 'function') return { ok: false, reason: 'unknown-missions-method' };
         return { ok: true, result: m[method](...signature.map((key) => args[key])) };
@@ -1055,6 +1065,22 @@ export function createSimHost() {
           playerCargo: state.player && state.player.cargo
             ? { usedVolume: state.player.cargo.usedVolume, capVolume: state.player.cargo.capVolume }
             : null,
+          missionsActive: state.missions && Array.isArray(state.missions.active)
+            ? state.missions.active.length : null,
+          missionsActiveIds: state.missions && Array.isArray(state.missions.active)
+            ? state.missions.active.map((m) => m && (m.id || m.missionId || null)) : null,
+          missionsDiag: (() => {
+            const sys = registry.get('missions');
+            const sysState = sys && sys.state;
+            const boards = sysState && sysState.missions && sysState.missions.boards;
+            return {
+              rootType: typeof state.missions,
+              stateEqSys: sysState === state,
+              sysActive: sysState && sysState.missions && Array.isArray(sysState.missions.active)
+                ? sysState.missions.active.length : null,
+              boardStations: boards ? Object.keys(boards) : null,
+            };
+          })(),
           lastStorageStage: host.lastStorageStage || null,
           gameStartedEmits: host.gameStartedEmits,
           pendingGameStarted: host.pendingGameStarted !== null,
