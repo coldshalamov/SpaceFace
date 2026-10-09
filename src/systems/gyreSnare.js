@@ -668,7 +668,7 @@ export const gyreSnare = {
         // provenance) on the very next tick, so stamping would only open a
         // one-tick window where a foreign-owned body carries restored lash
         // credit — collisionConsequences updates before this system.
-        if (meta && this.state && e.data.despawnAt != null) {
+        if (this.state && e.data.despawnAt != null) {
           const rec = recordImpulseProvenance(e, {
             actorId: meta.actorId, weaponId: meta.weaponId, tag: meta.tag,
             appliedTick: this.state.tick | 0, magnitude: meta.magnitude,

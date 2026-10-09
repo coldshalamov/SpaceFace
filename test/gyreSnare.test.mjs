@@ -1232,6 +1232,34 @@ test('a dense belt feed rate-gates the absorb glass tick', async () => {
   t.cleanup();
 });
 
+test('the absorb cue grades gain and rate by meal mass', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const absorbCues = () => t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_absorb');
+  // A light meal: gain keeps the quiet-tick floor, rate rides the meal+growth terms.
+  const light = rock(t.sim, T.mawDist + 12, 0, 3, 2);
+  for (let i = 0; i < 90 && light.alive !== false; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const lightCue = absorbCues().pop();
+  assert.ok(lightCue, 'a light meal speaks');
+  assert.ok(Math.abs(lightCue.p.gain - (0.55 + 0.35 * Math.min(1, 3 / 160))) < 1e-9,
+    `light gain grades by meal mass (${lightCue.p.gain})`);
+  const lightRateWant = 1.15 - Math.min(0.5, 3 / 160)
+    + 0.3 * Math.pow(Math.min(1, t.sys._rt.clumpMass / T.maxClumpMass), 0.75);
+  assert.ok(Math.abs(lightCue.p.rate - lightRateWant) < 1e-9,
+    `light rate = 1.15 - em/160 term + growth arc (${lightCue.p.rate} vs ${lightRateWant})`);
+  // Clear the 0.08 s cue gate, then a wreck-class meal: gain tops at 0.9.
+  for (let i = 0; i < 12; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const heavy = rock(t.sim, T.mawDist + 12, 0, 200, 6);
+  for (let i = 0; i < 90 && heavy.alive !== false; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const heavyCue = absorbCues().pop();
+  assert.ok(heavyCue && heavyCue !== lightCue, 'a wreck meal speaks its own cue');
+  assert.ok(Math.abs(heavyCue.p.gain - 0.9) < 1e-9, `wreck gain lands at the cap (${heavyCue.p.gain})`);
+  assert.ok(heavyCue.p.gain > lightCue.p.gain, 'a heavier gulp speaks louder');
+  t.cleanup();
+});
+
 // ── belt-gravel promotion ───────────────────────────────────────────────────────
 test('a belt-field rock inside the basin promotes into a live body the beam can catch', async () => {
   const { insertAsteroidFieldRock } = await import('../src/world/asteroidField.js');
