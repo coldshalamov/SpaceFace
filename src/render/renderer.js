@@ -2189,17 +2189,28 @@ function stormWarn(site, ...args) {
       const oldest = _stormWarnLog.keys().next();
       if (!oldest.done) _stormWarnLog.delete(oldest.value);
     }
-    row = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
+    row = { logged: 0, suppressed: 0, lastWarnAt: -Infinity, heartbeatMs: 1000 };
     _stormWarnLog.set(site, row);
+  }
+  // Quiet-gap heal, same contract laneWarn/warnDedup/busError carry: a site
+  // silent for >60 s has recovered — its next faults earn a fresh verbatim
+  // budget instead of inheriting a stale storm's suppression.
+  if (row.lastWarnAt !== -Infinity && now - row.lastWarnAt > 60000) {
+    row.logged = 0; row.suppressed = 0; row.heartbeatMs = 1000;
   }
   if (row.logged < LANE_WARN_BUDGET_PER_EPOCH) {
     row.logged += 1;
+    row.lastWarnAt = now;
     console.warn(...args);
     return;
   }
   row.suppressed += 1;
-  if (now - row.lastWarnAt >= 1000) {
+  // Backing-off heartbeat (1 s doubling to a 30 s cap — the laneWarn shape)
+  // so a sustained fault's true volume stays observable without a flat ~N
+  // warns/s for the whole storm.
+  if (now - row.lastWarnAt >= row.heartbeatMs) {
     row.lastWarnAt = now;
+    row.heartbeatMs = Math.min(row.heartbeatMs * 2, 30000);
     console.warn(`[render] '${site}' faulted ${row.suppressed} more times; latest:`, ...args);
     row.suppressed = 0;
   }

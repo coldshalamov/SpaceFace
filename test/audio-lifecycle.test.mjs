@@ -109,6 +109,9 @@ test('audio lifecycle stops its owned frame loop and resumes only after restore'
     const [frameId, callback] = pendingFrames.entries().next().value;
     pendingFrames.delete(frameId);
     callback();
+    // The frame body dispatches on a bounded background post now — flush the
+    // armed task before asserting the same ownership contract.
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
     assert.equal(audioFrames, 1);
     assert.equal(pendingFrames.size, 1);
 
