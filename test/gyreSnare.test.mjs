@@ -2490,6 +2490,63 @@ test('a retired primary promotes the youngest of three live flights, not the old
   t.cleanup();
 });
 
+test('a marked non-primary whose pos vanishes mid-flight is spliced and disarmed, not handed back', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step();
+  const b = rock(t.sim, T.mawDist + 2, 0, 8, 5);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step();
+  assert.equal(t.sys._rt.ballId, b.id, 'B is the freshest flight — A rides the watch ledger');
+
+  // A foreign lane leaves a live, marked, deadlined body with no pos — the one
+  // retire path that disarms WITHOUT hand-back semantics (no deadline strip,
+  // no adoption): the splice lane's own unwatched => disarmed contract.
+  // (A full step would crash on pos-less entities in coreSystem — the lane only
+  // exists for pos-less bodies at lookup time, so drive the sweep directly.)
+  a.pos = null;
+  t.sys._sweepBallWatch(t.state);
+  assert.ok(!t.sys._rt.ballIds.includes(a.id), 'the watch ledger splices it');
+  assert.equal(a.data.gyrePrevImpactScale, undefined, 'the single-shot disarm consumed its ledger key');
+  assert.equal(a.data.gyreLaunched, true, 'the mark survives the disarm lane — hand-back lanes own the strip');
+  assert.ok(a.data.gyreLaunchMeta, 'the meta rides with the mark for a later boundary reload');
+  assert.equal(t.sys._rt.ballId, b.id, 'the live primary is untouched');
+  t.cleanup();
+});
+
+test('promotion on an exact deadline tie is deterministic — the latest-registered survivor wins', async () => {
+  const t = await bootPhysics();
+  const balls = [];
+  for (let n = 0; n < 3; n++) {
+    const e = rock(t.sim, T.mawDist + n * 2, n * 3, 6 + n, 4);
+    hold(t);
+    for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+    release(t);
+    for (let i = 0; i < 10; i++) t.sim.step();
+    balls.push(e);
+  }
+  const [a, b, c] = balls;
+  // _promoteNextBall scans the watch ledger back-to-front taking score > bestScore,
+  // so on an equal despawnAt the LAST-registered live ball promotes first —
+  // deterministic, just not simply "oldest wins". Pin it.
+  const dl = t.state.simTime + 5;
+  a.data.despawnAt = dl; b.data.despawnAt = dl; c.data.despawnAt = dl;
+  assert.equal(t.sys._rt.ballId, c.id, 'C was already the freshest flight');
+  c.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 6; i++) t.sim.step();
+  assert.equal(c.alive, false, 'C retired');
+  assert.equal(t.sys._rt.ballId, b.id, 'the tie breaks to the later-registered survivor');
+  b.data.despawnAt = t.state.simTime + 0.02;
+  for (let i = 0; i < 6; i++) t.sim.step();
+  assert.equal(t.sys._rt.ballId, a.id, 'A alone remains');
+  t.cleanup();
+});
+
 test('the basin pull ramps in over the cone projection — the gravity edge moves at the glass\'s speed', async () => {
   const t = await bootPhysics();
   // Parked in the basin well past snag range — pulled, never cored.

@@ -2001,6 +2001,14 @@ export const gyreSnare = {
     // Fetched here (not just at the publish below) so the escalation tick can
     // position at the clump's LIVE seat — pub.corePos is one publish stale.
     const core = rt.coreId != null && state.entities ? state.entities.get(rt.coreId) : null;
+    // The +N lane deltas feed the escalation ratchet's seat pick inside the bus
+    // block — but the prevN ledgers must re-seed EVERY publish tick, bus or not
+    // (their field comments promise per-tick re-seed), so they live outside the
+    // emit guard.
+    const dBasin = rt.basinCount - rt.prevBasinN;
+    const dSuck = (rt.phase === PHASE.HOLD ? rt.suckCount : 0) - rt.prevSuckN;
+    rt.prevBasinN = rt.basinCount;
+    rt.prevSuckN = rt.phase === PHASE.HOLD ? rt.suckCount : 0;
     // First-catch edge: the net going empty -> occupied gets a soft tick so the
     // "xN IN NET" read has ears too — positioned at the maw where the mass
     // actually entered the funnel. HOLD's absorbs have their own voice.
@@ -2022,7 +2030,7 @@ export const gyreSnare = {
       // arrival class with no voice — the catch tick, +N ratchet, absorb gulp,
       // snag bite and deny edges all narrate but an uneatable rock entering the
       // funnel was eyes-only (TOO HEAVY pill + warm class). A hushed descending
-      // variant of the catch tick on the 0->1 edge closes the why-won't-it-snag
+      // drop-tail variant on the 0->1 edge closes the why-won't-it-snag
       // channel — latch symmetry with the catch (re-arms when the net empties).
       const heavy = (rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && rt.tooHeavyCount > 0;
       if (heavy && !rt.tooHeavyLatched) {
@@ -2048,10 +2056,8 @@ export const gyreSnare = {
       // Which lane grew? The tick belongs where the arrival happened — a basin
       // arrival speaks at the maw, an annulus arrival at the clump (up to ~90 wu
       // apart — an always-maw tick points the ear at empty space during HOLD).
-      const dBasin = rt.basinCount - rt.prevBasinN;
-      const dSuck = (rt.phase === PHASE.HOLD ? rt.suckCount : 0) - rt.prevSuckN;
-      rt.prevBasinN = rt.basinCount;
-      rt.prevSuckN = rt.phase === PHASE.HOLD ? rt.suckCount : 0;
+      // (dBasin/dSuck + the prevN re-seeds hoist above the bus guard so the
+      // ledgers re-seed on bus-less hosts too — bookkeeping, not emit-gated.)
       if ((rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && shownN > rt.catchTickPeak) {
         rt.catchTickPeak = shownN;
         const n = Math.min(6, shownN);
@@ -2085,8 +2091,9 @@ export const gyreSnare = {
     pub.clumpMass = ridingBall ? rt.ballMass : rt.clumpMass;
     pub.clumpRadius = ridingBall ? rt.ballClumpRadius : rt.clumpRadius;
     pub.absorbs = ridingBall ? rt.ballAbsorbs : rt.totalAbsorbed;
-    // READ-ONLY CONTRACT: members/basinSpots publish live sim-owned arrays into the
-    // mirror — no per-tick slice. Presentation consumers read only; a mutation would
+    // READ-ONLY CONTRACT: members aliases the rt ledger live (no per-tick slice);
+    // basinSpots is a stable pub-owned array REFILLED each tick — same entries,
+    // different container. Either way consumers read only: a mutation would
     // corrupt the ledger mid-pass.
     pub.members = ridingBall ? rt.ballMembers : rt.members;
     pub.launchDir.x = rt.launchDir.x; pub.launchDir.z = rt.launchDir.z;
