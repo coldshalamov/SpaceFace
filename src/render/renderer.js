@@ -2213,9 +2213,9 @@ function laneWarn(owner, lane, ...args) {
   const epoch = serviceFaultEpoch(state);
   const rollup = render.laneWarns || (render.laneWarns = {});
   const row = rollup[lane]
-    || (rollup[lane] = { epoch: -1, warns: 0, suppressed: 0, summarized: false, lastWarnAt: -Infinity });
+    || (rollup[lane] = { epoch: -1, warns: 0, suppressed: 0, summarized: false, lastWarnAt: -Infinity, heartbeatMs: 1000 });
   if (row.epoch !== epoch) {
-    row.epoch = epoch; row.warns = 0; row.suppressed = 0; row.summarized = false;
+    row.epoch = epoch; row.warns = 0; row.suppressed = 0; row.summarized = false; row.heartbeatMs = 1000;
   }
   row.warns += 1;
   const warnNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
@@ -2229,12 +2229,13 @@ function laneWarn(owner, lane, ...args) {
       + ' suppressing further lane warns until the epoch flips');
     return;
   }
-  // stormWarn's heartbeat shape: suppressed counts re-surface every ~1 s so a
-  // sustained fault's true volume stays observable past the ninth warn — the
-  // lanes riding this (depthStageArm/shadowCensus/entityViewSync) are exactly
-  // the ones an audit reads for hitch evidence.
-  if (warnNow - row.lastWarnAt >= 1000) {
+  // stormWarn's heartbeat shape: suppressed counts re-surface at a backing-off
+  // cadence (1 s doubling to a 30 s cap, reset on epoch flip — the shape
+  // tryPresentedCall's retryAt already uses) so a sustained fault's true volume
+  // stays observable without paying a flat ~N warns/s for the whole storm.
+  if (warnNow - row.lastWarnAt >= row.heartbeatMs) {
     row.lastWarnAt = warnNow;
+    row.heartbeatMs = Math.min(row.heartbeatMs * 2, 30000);
     console.warn(`[render] '${lane}' faulted ${row.suppressed} more times; latest:`, ...args);
     row.suppressed = 0;
   }
@@ -32190,7 +32191,10 @@ function afterBrowserPaint(callback, schedule = null) {
     return;
   }
   requestAnimationFrame(() => {
-    scheduleLater(() => requestAnimationFrame(callback));
+    // Second hop rides the same post-present contract as every other resume
+    // seam — a nested rAF would land the callback pre-present inside the
+    // next frame's rAF task (the surface shape closed everywhere else).
+    scheduleLater(() => postTaskAtBackgroundPriorityBounded(callback));
   });
 }
 

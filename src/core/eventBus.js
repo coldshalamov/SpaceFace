@@ -114,7 +114,7 @@ function noteBusHandlerError(event, err, label, listener) {
         retired.rows.splice(retired.rows.indexOf(retired), 1);
       }
     }
-    entry = { rows, label, event, logged: 0, suppressed: 0, faults: 0, lastWarnAt: -Infinity, lastErrorHead: null };
+    entry = { rows, label, event, logged: 0, suppressed: 0, faults: 0, lastWarnAt: -Infinity, lastErrorHead: null, heartbeatMs: 1000 };
     rows.push(entry);
     busErrorIndex.add(entry);
   }
@@ -132,8 +132,16 @@ function noteBusHandlerError(event, err, label, listener) {
     return;
   }
   entry.suppressed += 1;
-  if (now - entry.lastWarnAt >= 1000) {
+  // Exponentially-backing-off heartbeat (1 s doubling to a 30 s cap — the
+  // same shape as warnDedup/tryPresentedCall): a persistently-faulting
+  // listener's storm still reports its volume without paying a flat ~1
+  // console.error+stack-serialize per second for the whole storm.
+  // Heal proxy: a >60 s quiet gap re-arms the short cadence so a fresh
+  // storm doesn't inherit the previous one's backed-off interval.
+  if (now - entry.lastWarnAt >= 60000) entry.heartbeatMs = 1000;
+  if (now - entry.lastWarnAt >= entry.heartbeatMs) {
     entry.lastWarnAt = now;
+    entry.heartbeatMs = Math.min(entry.heartbeatMs * 2, 30000);
     console.error(
       `[bus] ${label} for "${event}": ${entry.suppressed} further fault(s) suppressed; latest:`,
       err,
