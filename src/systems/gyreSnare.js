@@ -759,6 +759,7 @@ export const gyreSnare = {
     if (pub) {
       pub.ballVx = finite(best.vel && best.vel.x);
       pub.ballVz = finite(best.vel && best.vel.z);
+      pub.ballAngVel = finite(best.angVel); // same splice — the rubble chirality must not ride the corpse's spin for a tick
       pub.ballTtl01 = best.data.despawnAt != null && Number.isFinite(state.simTime)
         ? Math.max(0, Math.min(1, (best.data.despawnAt - state.simTime) / D.ballTtlS)) : 1;
       pub.ballTtlLeftS = best.data.despawnAt != null && Number.isFinite(state.simTime)
@@ -2039,13 +2040,16 @@ export const gyreSnare = {
         // ring blooms where it died) but velocity zeroes like ttl/radius — a dead
         // ball has no heading to keep. Only when nothing promoted: a survivor's
         // own vx/vz/ttl were just re-seated inside _promoteNextBall.
-        if (rt.launchedId == null) { pub.ballVx = 0; pub.ballVz = 0; }
+        if (rt.launchedId == null) { pub.ballVx = 0; pub.ballVz = 0; pub.ballAngVel = 0; }
       } else {
         pub.ballPos.x = ball.pos.x; pub.ballPos.z = ball.pos.z;
         // Live velocity too — the primary ribbon steers by it like the secondaries
         // do: after a ricochet the streak must point where the ball NOW flies, not
         // along the frozen launchDir it left on.
         pub.ballVx = finite(ball.vel && ball.vel.x); pub.ballVz = finite(ball.vel && ball.vel.z);
+        // Signed spin — the primary rubble's tumble chirality, same contract the
+        // balls[] lane carries (a ricochet-reversed ball can't counter-rotate).
+        pub.ballAngVel = finite(ball.angVel);
         pub.ballClumpRadius = rt.ballClumpRadius;
         pub.ballTtl01 = ball.data.despawnAt != null && Number.isFinite(state.simTime)
           ? Math.max(0, Math.min(1, (ball.data.despawnAt - state.simTime) / D.ballTtlS)) : 1;
@@ -2086,7 +2090,7 @@ export const gyreSnare = {
           this._promoteNextBall(rt, state, pub); // a younger flight inherits the primary lane
           // Same guard as the dead-ball lane above: zero only when nothing
           // promoted — the survivor's own heading was re-seated inside the call.
-          if (rt.launchedId == null) { pub.ballVx = 0; pub.ballVz = 0; }
+          if (rt.launchedId == null) { pub.ballVx = 0; pub.ballVz = 0; pub.ballAngVel = 0; }
         }
       }
     }
@@ -2101,7 +2105,7 @@ export const gyreSnare = {
       coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
       coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
-      members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballVx: 0, ballVz: 0, ballMass: 0, ballTtl01: 1,
+      members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballVx: 0, ballVz: 0, ballAngVel: 0, ballMass: 0, ballTtl01: 1,
       ballTtlLeftS: 0,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, launchBurst01: 0, ballGrave: false,
       graves: null, thrownBeat: false, thrownTick: 0, basinSpots: null, dropReason: null, fuseS: 0,
@@ -2145,7 +2149,7 @@ export const gyreSnare = {
       ? this._cap(player) / Math.max(0.001, D.capDrainPerS * drainMult) : 0;
     // No-live-ball hygiene: heading zeroes with the rest of the ball channels —
     // covers every exit path (boundary drops bypass the retire lanes above).
-    if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlLeftS = 0; pub.ballClumpRadius = 0; pub.ballVx = 0; pub.ballVz = 0; }
+    if (rt.ballId == null) { pub.ballTtl01 = 1; pub.ballTtlLeftS = 0; pub.ballClumpRadius = 0; pub.ballVx = 0; pub.ballVz = 0; pub.ballAngVel = 0; }
     pub.launchedId = rt.ballId;
     pub.basinCount = (rt.basinCount || 0) + (rt.phase === PHASE.HOLD ? rt.suckCount : 0);
     pub.towCount = rt.towCount || 0;

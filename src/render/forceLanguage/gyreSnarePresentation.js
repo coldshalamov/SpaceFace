@@ -1293,7 +1293,7 @@ export class GyreSnarePresentation {
         this._basinHalo.scale.setScalar(finite(GYRE_SNARE.basinRadius, 86)
           * (1 + (phase === 'beaming' ? 0.035 : 0.02) * Math.sin(this.time * 1.7 + 1.3) * calm));
         const liveA = phase === 'beaming' ? 0.06 * wakeEase : 0.03;
-        this._basinHaloMat.opacity = liveA * flashCalm * (phase === 'launching' ? windFade : 1);
+        this._basinHaloMat.opacity = liveA * flashCalm * (this._fuseDim || 1) * (phase === 'launching' ? windFade : 1);
         this._basinHalo.visible = true;
       } else if (this._basinHalo.visible) {
         this._basinHalo.visible = false;
@@ -1430,7 +1430,12 @@ export class GyreSnarePresentation {
       // The tumble tracks the flight — a ricochet-stalled ball barely spins; a
       // clean bowl tumbles at full rate (2.6 at authored launch speed).
       const bs = Math.hypot(finite(mirror.ballVx), finite(mirror.ballVz));
-      spinRate = 2.6 * Math.max(0.15, Math.min(1, bs / (GYRE_SNARE.launchSpeed || 520)));
+      // Signed chirality from the thrown body's own spin — the contract the
+      // secondary lane keeps: a ricochet-reversed ball must not counter-rotate
+      // its rubble. Magnitude still grades off flight speed (a stalled ball
+      // barely tumbles); unsigned angVel (~0) keeps the positive launch dir.
+      spinRate = 2.6 * Math.max(0.15, Math.min(1, bs / (GYRE_SNARE.launchSpeed || 520)))
+        * (finite(mirror.ballAngVel) < 0 ? -1 : 1);
     }
     // The swirl's chirality for lump fly-ins: meals arrive spiralling the same
     // way the rubble tumbles, so their rim entry tilts along the group spin.
@@ -1815,7 +1820,7 @@ export class GyreSnarePresentation {
         this._grip.scale.set(gd, 1, 2.2 * (1 + strain * 0.35 * Math.sin(this.time * 37) * calm) * (1 - windGrip * 0.45));
         // Blooms in on the hold edge (~0.2 s) — a snag before ~150 ms was landing
         // the ~0.34-alpha spoke in a single frame while every sibling ramps in.
-        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2 + windGrip * 0.4) * flashCalm * Math.min(1, (this._holdT || 0) / 0.2);
+        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2 + windGrip * 0.4) * flashCalm * (this._fuseDim || 1) * Math.min(1, (this._holdT || 0) / 0.2);
         this._grip.visible = true;
       } else if (!this._closing && this._grip.visible) {
         this._grip.visible = false;
@@ -1840,7 +1845,7 @@ export class GyreSnarePresentation {
         this._halo.scale.setScalar(suckR * (1 + 0.035 * Math.sin(this.time * 1.7) * calm));
         // Same ~0.2 s hold-edge bloom as the spoke — the ~50-129 wu annulus was
         // the only element that teleported onto a fresh snag at full alpha.
-        this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * Math.min(1, capFade * 1.6) * suckFade * Math.min(1, (this._holdT || 0) / 0.2);
+        this._haloMat.opacity = (0.1 + this._discKick * 0.12) * flashCalm * (this._fuseDim || 1) * Math.min(1, capFade * 1.6) * suckFade * Math.min(1, (this._holdT || 0) / 0.2);
         this._halo.visible = true;
       } else if (!this._closing && this._halo.visible) {
         this._halo.visible = false;
