@@ -78,7 +78,7 @@ import {
   saveCrucibleMeta,
 } from '../systems/survivalRecords.js';
 import {
-  applySharedStoreKeys,
+  applySharedStoreKeysChunked,
   collectLocalSharedStoreKeys,
   collectLocalSharedStoreKeysChunked,
   fetchSharedPlayerStore,
@@ -537,7 +537,11 @@ export const save = {
       const localNow = genAtCollect === _saveStoreGeneration
         ? local : await this._collectSharedStoreKeysChunked();
       const merged = mergeSharedStoreKeys(localNow, remote || {});
-      applySharedStoreKeys(merged);
+      // Chunked: the getItem-compare + setItem pass was the last multi-MB atomic
+      // leg in the boot reconcile — same semantics, the task queue yields between batches.
+      await applySharedStoreKeysChunked(merged, globalThis.localStorage, {
+        yieldQueue: () => this._restoreFrameYield(),
+      });
       // Post-apply storage == merged for every shared key (skipped writes were identical by
       // construction) — hand the materialized map to the slot signature so the first menu scan
       // doesn't getItem the same megabytes a second time.
@@ -586,7 +590,14 @@ export const save = {
           .then(() => this._collectSharedStoreKeysChunked())
           .then((keys) => {
             this._sharedStoreCollectQueued = false;
-            this._queueSharedStoreMirror(keys || {});
+            if (!keys) return;
+            // A writer delta that landed between the collect's generation check and
+            // this merge is fresher than the collect's row for that key — keep it
+            // dominant; the collect only fills keys the delta doesn't cover.
+            const pending = this._sharedStorePatch;
+            this._queueSharedStoreMirror(pending
+              ? Object.fromEntries(Object.entries(keys).filter(([k]) => !Object.hasOwn(pending, k)))
+              : keys);
           })
           .catch(() => { this._sharedStoreCollectQueued = false; });
       }
