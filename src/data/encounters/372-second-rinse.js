@@ -1,7 +1,9 @@
 // 372 — SECOND RINSE. Hasp hangs Tuesday's wash in a pocket off the Helios freight
 // chord. Concord calls lint a contaminant inside the station, so the lines are outside.
-// The blue sheet hangs off its pin to port. The bare pin is to starboard. Whites stay clipped.
-// None of it is cargo.
+// The blue sheet hangs off the line, aft and outward. The bare pin is ahead of
+// the kettle, still outward of the chord. Whites stay clipped on the outward line.
+// The yard is presence-owned (the secondRinse system). externalOnly keeps the
+// director from rolling it as a whisper and spending a Helios ambient slot.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { secondRinseEncounter } from '../../systems/secondRinse.js';
 
@@ -16,7 +18,7 @@ export const trigger = deepFreeze({
   pressureCost: 5,
   cooldownS: 1200,
   proximity: true,
-  gates: { sectorIds: ['sector_helios_prime'] },
+  gates: { sectorIds: ['sector_helios_prime'], externalOnly: true },
 });
 export const runtime = secondRinseEncounter;
 export default defineEncounter(trigger, {

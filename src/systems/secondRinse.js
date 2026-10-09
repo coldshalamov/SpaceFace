@@ -9,6 +9,7 @@ import {
   normalizeSecondRinse,
   secondRinseBeat,
   secondRinsePocket,
+  secondRinseReach,
   secondRinseSample,
 } from '../data/secondRinse.js';
 
@@ -16,6 +17,10 @@ const owners = new WeakMap();
 
 function playerOf(state) {
   return state?.entities?.get(state.playerId) || null;
+}
+
+function motionReduced(state) {
+  return state?.settings?.video?.motionReduce === true;
 }
 
 function findSkiff(state) {
@@ -64,9 +69,12 @@ export const secondRinse = {
     this._cutAt = null;
   },
   update(dt, state) {
-    if (state.mode !== 'flight' || state.ui?.docked) return;
-    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
-    if (state.world?.currentSectorId !== C.sectorId) return;
+    if (state.mode !== 'flight' || state.ui?.docked
+      || (state.run?.kind === 'survival' && state.run.phase !== 'inactive')
+      || state.world?.currentSectorId !== C.sectorId) {
+      this._prev = null;
+      return;
+    }
     const skiff = this.place();
     if (!skiff) return;
     this._tickContact(skiff, dt);
@@ -106,6 +114,7 @@ export const secondRinse = {
       role: 'laundry',
       bountyCr: 0,
       lootTableId: null,
+      visualRadius: secondRinseReach(),
       worldRecordId: C.worldRecordId,
       persistenceOwner: C.persistenceOwner,
       secondRinseId: 'hasp',
@@ -131,6 +140,7 @@ export const secondRinse = {
     skiff.weapons = [];
     if (skiff.data) skiff.data.weapons = [];
     skiff.flags = { ...(skiff.flags || {}), persistent: true, invuln: true };
+    if (skiff.data) skiff.data.visualRadius = secondRinseReach();
   },
   _onLost(payload) {
     const id = payload?.entityId ?? payload?.id ?? payload?.targetId;
@@ -147,10 +157,15 @@ export const secondRinse = {
     const text = LINES[key];
     if (!text) return;
     const voice = this.helpers && this.helpers.voice;
-    if (voice && typeof voice.say === 'function') {
-      voice.say({ channel: 'alert', text, kind: 'encounter', factionId: C.factionId });
-    }
-    this.bus?.emit?.('toast', { text, kind: 'info', ttl: 4.5 });
+    const spoken = voice && typeof voice.say === 'function' && voice.say({
+      id: `second-rinse:${key}:${this.state?.tick ?? 0}`,
+      channel: 'comms',
+      text,
+      kind: 'encounter',
+      factionId: C.factionId,
+      ttl: 4.5,
+    });
+    if (!spoken) this.bus?.emit?.('toast', { text, kind: 'info', ttl: 4.5 });
   },
   _cue(id) {
     this.bus?.emit?.('audio:cue', { id });
@@ -158,21 +173,23 @@ export const secondRinse = {
   _tickContact(skiff, dt) {
     const player = playerOf(this.state);
     if (!player?.pos) return;
-    const frozen = this.state.video?.motionReduce === true;
+    const frozen = motionReduced(this.state);
     const simTime = this.state.simTime || 0;
+    const prev = this._prev;
+    const step = prev ? Math.hypot(player.pos.x - prev.x, player.pos.z - prev.z) : Infinity;
+    const sweepCap = Math.max(90, 1200 * Math.max(Number(dt) || 0, 1 / 60));
     const sample = secondRinseSample(
       skiff.pos,
       skiff.rot || 0,
       player.pos,
-      this._prev,
-      player.radius || 8,
+      prev && step <= sweepCap ? prev : null,
+      Number.isFinite(player.radius) ? player.radius : 8,
       simTime,
       this._memory.flag,
       frozen,
     );
     sample.wasOnBlue = this._wasOnBlue;
     sample.wasOnWhite = this._wasOnWhite;
-    sample.simTime = frozen ? 0 : simTime;
     const next = secondRinseBeat({
       flag: this._memory.flag,
       heard: this._memory.heard,
@@ -223,13 +240,12 @@ export const secondRinse = {
 export function secondRinsePresentation(state, entity) {
   if (!entity || entity.data?.secondRinseId !== 'hasp' || entity.alive === false) return null;
   const mem = state?.secondRinse;
-  if (!mem || state.mode !== 'flight') return null;
+  if (!mem) return null;
   const owner = owners.get(state);
-  const frozen = state.video?.motionReduce === true;
   return {
     flag: mem.flag === 'crooked' || mem.flag === 'cut' ? mem.flag : 'open',
     simTime: state.simTime || 0,
-    frozen,
+    frozen: motionReduced(state),
     tick: state.tick,
     clapAt: owner?._clapAt ?? null,
     cutAt: owner?._cutAt ?? null,

@@ -1,10 +1,13 @@
 // Hasp, aboard the Second Rinse. Pure numbers. The renderer is not imported here.
-// Three contacts, and a fair hull can take only one at a time:
-//   the blue sheet (port, whipping) seats crooked,
-//   the bare pin-cord (starboard) cuts,
-//   the white sheets (on the line) only hail.
-// Shapes stay more than two fair-radii apart through the whole whip, so a Hitch
-// or a common hauler (radius <= fairRadius) cannot graze a second verb on the way in.
+// Three contacts. Any catalog hull (radius <= fairRadius, the widest frame in
+// ships.js) can take only one verb at a time:
+//   the loose blue sheet seats crooked — the boat turns over,
+//   the bare pin-cord, beside the kettle, cuts — the cord parts,
+//   the white sheets, neighbors on the outward line, only hail.
+// The whites share one hail, so they may sit closer than two fair radii.
+// Blue, the pin, and that line stay more than two fair-radii apart through
+// the whip, and the whole yard hangs outward of the freight chord. The blue
+// sheet stays in the picture after a cut. The pin does not.
 
 import { buildLaneGeometry, LANE_HELIOS_CERES } from './travelLaneRoutes.js';
 import { sectorMembershipAtGlobal } from './sectorCoordinates.js';
@@ -19,31 +22,32 @@ export const SECOND_RINSE = Object.freeze({
   callsign: 'HASP',
   name: 'Hasp · Second Rinse',
   hullRadius: 11,
-  fairRadius: 18,
+  fairRadius: 45,
   pocketLateral: 620,
   minAlong: 1600,
-  hailRadius: 280,
+  hailRadius: 420,
   warnBand: 12,
   hoverSeconds: 1.25,
   againCooldown: 8,
-  sheetAlong: 20,
-  sheetAcross: 10,
+  seatSlide: 18,
+  sheetAlong: 22,
+  sheetAcross: 12,
   whiteSpan: 9,
   whiteDrop: 10,
   whipAmp: 0.7,
   whipPeriod: 2.8,
   mast: Object.freeze({ x: 0, z: 32 }),
-  buoy: Object.freeze({ x: 0, z: 210 }),
-  blueHinge: Object.freeze({ x: -52, z: 96 }),
+  buoy: Object.freeze({ x: 0, z: 300 }),
+  blueHinge: Object.freeze({ x: -150, z: 210 }),
   blueHang: Object.freeze({ x: -1, z: 0 }),
   blueAcross: Object.freeze({ x: 0, z: 1 }),
   whiteCenters: Object.freeze([
-    Object.freeze({ x: 0, z: 42 }),
-    Object.freeze({ x: 0, z: 150 }),
-    Object.freeze({ x: 0, z: 198 }),
+    Object.freeze({ x: 0, z: 170 }),
+    Object.freeze({ x: 0, z: 214 }),
+    Object.freeze({ x: 0, z: 258 }),
   ]),
-  pinA: Object.freeze({ x: 62, z: 88 }),
-  pinB: Object.freeze({ x: 62, z: 104 }),
+  pinA: Object.freeze({ x: 150, z: 28 }),
+  pinB: Object.freeze({ x: 150, z: 52 }),
 });
 
 const TAU = Math.PI * 2;
@@ -92,6 +96,33 @@ export function blueSheetLocal(simTime, flag) {
     corner(L, W / 2),
     corner(0, W / 2),
   ];
+}
+
+/** Farthest drawn point from the kettle, plus a pad. The glass culls by this, not the hull. */
+let reachMemo = 0;
+export function secondRinseReach() {
+  if (reachMemo) return reachMemo;
+  let reach = 0;
+  const take = (p, pad = 0) => {
+    if (!p) return;
+    const d = Math.hypot(p.x, p.z) + pad;
+    if (d > reach) reach = d;
+  };
+  take(SECOND_RINSE.buoy, 2);
+  take(SECOND_RINSE.mast, 2);
+  take(SECOND_RINSE.pinA, 2);
+  take(SECOND_RINSE.pinB, 2);
+  for (const center of SECOND_RINSE.whiteCenters) take(center, SECOND_RINSE.whiteSpan);
+  const steps = 8;
+  for (let i = 0; i <= steps; i++) {
+    for (const corner of blueSheetLocal((i / steps) * SECOND_RINSE.whipPeriod, 'open')) take(corner, 2);
+  }
+  blueSheetLocal(0, 'crooked').forEach((corner, index) => {
+    const free = index === 1 || index === 2;
+    take({ x: corner.x, z: corner.z + (free ? SECOND_RINSE.seatSlide : 0) }, 2);
+  });
+  reachMemo = Math.ceil(reach + 8);
+  return reachMemo;
 }
 
 export function pinCordLocal() {
@@ -161,9 +192,15 @@ export function circleHitsPoly(x, z, radius, corners) {
   return distToPoly(x, z, corners) <= Math.max(0, radius || 0);
 }
 
-/** Minimum distance between two convex polygons. 0 when they touch or overlap. */
+/** Minimum distance between two convex polygons. 0 when they touch, overlap, or their edges cross. */
 export function polyGap(a, b) {
   if (!a || !b || a.length < 2 || b.length < 2) return Infinity;
+  for (let i = 0; i < a.length; i++) {
+    const a2 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j++) {
+      if (segmentsCross(a[i], a2, b[j], b[(j + 1) % b.length])) return 0;
+    }
+  }
   const gapFrom = (pts, poly) => {
     let best = Infinity;
     for (const p of pts) {
@@ -185,7 +222,33 @@ export function segmentsCross(a, b, c, d) {
   return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
 }
 
-/** Inclusive: a hull path that lands on the cord still cuts it. A proper cross does too. */
+/** Minimum distance between two segments. 0 when they touch, cross, or overlap. */
+export function segmentGap(p, q, a, b) {
+  if (!p || !q || !a || !b) return Infinity;
+  if (segmentHitsSegment(p, q, a, b)) return 0;
+  return Math.min(
+    distToSeg(p.x, p.z, a, b),
+    distToSeg(q.x, q.z, a, b),
+    distToSeg(a.x, a.z, p, q),
+    distToSeg(b.x, b.z, p, q),
+  );
+}
+
+/**
+ * What the yard shows. The blue sheet is never the thing that leaves.
+ * A cut parts the pin. A seating turns the boat over. Only an open yard whips.
+ */
+export function secondRinsePicture(flag) {
+  const seated = flag === 'crooked';
+  const cut = flag === 'cut';
+  return {
+    flag: seated || cut ? flag : 'open',
+    blue: true,
+    pin: !cut,
+    boatInverted: seated,
+    whipping: !seated && !cut,
+  };
+}
 export function segmentHitsSegment(p, q, a, b) {
   if (!p || !q || !a || !b) return false;
   const orient = (s, t, r) => {
@@ -226,9 +289,11 @@ export function secondRinseResolve(flag, sample) {
 /**
  * World-space contact against the skiff's wash. `prev` is the previous hull center.
  * `motionReduce` freezes the whip so the hit matches the still picture.
+ * `clock` stays on sim time so a repeat line can still cool down.
  */
 export function secondRinseSample(origin, rot, pos, prev, radius, simTime, flag, motionReduce) {
-  const time = motionReduce ? 0 : (Number(simTime) || 0);
+  const clock = Number(simTime) || 0;
+  const time = motionReduce ? 0 : clock;
   const open = flag === 'open';
   const blue = localsToWorld(origin, rot, blueSheetLocal(time, flag));
   const r = Math.max(0, radius || 0);
@@ -244,11 +309,11 @@ export function secondRinseSample(origin, rot, pos, prev, radius, simTime, flag,
   const a = localToWorld(origin, rot, pin.a);
   const b = localToWorld(origin, rot, pin.b);
   const from = prev || pos;
-  const cordCut = open && segmentHitsSegment(from, pos, a, b);
+  const cordCut = open && segmentGap(from, pos, a, b) <= r;
   const blueDist = distToPoly(pos.x, pos.z, blue);
   const nearBlue = open && !overlapsBlue && blueDist <= r + SECOND_RINSE.warnBand;
   const inHail = Math.hypot(pos.x - origin.x, pos.z - origin.z) <= SECOND_RINSE.hailRadius;
-  return { overlapsBlue, overlapsWhite, cordCut, nearBlue, inHail, simTime: time };
+  return { overlapsBlue, overlapsWhite, cordCut, nearBlue, inHail, simTime: time, clock };
 }
 
 /**
@@ -263,7 +328,7 @@ export function secondRinseBeat(mem, sample, dt) {
   let flag = mem.flag;
   let hoverDwell = mem.hoverDwell || 0;
   let againAt = Number.isFinite(mem.againAt) ? mem.againAt : -1e9;
-  const simTime = Number(sample.simTime) || 0;
+  const simTime = Number.isFinite(sample.clock) ? sample.clock : (Number(sample.simTime) || 0);
   const hit = secondRinseResolve(flag, sample);
   if (hit === 'cut') {
     flag = 'cut';
@@ -335,7 +400,7 @@ export function secondRinsePocket(geometry = buildLaneGeometry(LANE_HELIOS_CERES
 export const LINES = Object.freeze({
   tuesday: 'HASP: Tuesday. The core calls lint a contaminant. I call it the load.',
   boat: 'HASP: Blue, with the boat. It\u2019s off the pin. Don\u2019t put your burn on it.',
-  hover: 'HASP: Don\u2019t hover. It has to hit you.',
+  hover: 'HASP: Don\u2019t hover. Sit the sheet, or leave it.',
   shut: 'HASP: Shut. Boat\u2019s upside down. Leave it.',
   cut: 'HASP: You cut it. I won\u2019t call that clean.',
   stay: 'HASP: Lines stay up. File it with Concord.',

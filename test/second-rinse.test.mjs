@@ -9,17 +9,21 @@ import {
   blueSheetLocal,
   circleHitsPoly,
   localsToWorld,
+  localToWorld,
   normalizeSecondRinse,
   pinCordLocal,
   polyGap,
   secondRinseBeat,
+  secondRinsePicture,
   secondRinsePocket,
+  secondRinseReach,
   secondRinseResolve,
   secondRinseSample,
   segmentsCross,
   whiteSheetLocal,
 } from '../src/data/secondRinse.js';
 import { secondRinse } from '../src/systems/secondRinse.js';
+import { SHIPS } from '../src/data/ships.js';
 import { buildLaneGeometry, LANE_HELIOS_CERES, LANE_CORRIDOR_RADIUS_WU } from '../src/data/travelLaneRoutes.js';
 
 const ORIGIN = { x: 0, z: 0 };
@@ -100,6 +104,12 @@ test('second rinse encounter shape is a civilian yard on the Helios lane', () =>
   assert.equal(encounter.shape.situation, 'yard');
   assert.deepEqual([...encounter.shape.place], ['trade_lane']);
   assert.equal(encounter.squad, undefined);
+  assert.equal(trigger.gates.externalOnly, true);
+});
+
+test('fair radius covers every catalog hull', () => {
+  const widest = Math.max(...SHIPS.map((ship) => ship.collisionRadius || 0));
+  assert.ok(C.fairRadius >= widest, `fair ${C.fairRadius} < widest hull ${widest}`);
 });
 
 test('the wash pocket sits off the freight chord, still in Helios', () => {
@@ -154,7 +164,7 @@ test('a fair hull can hail white, seat the blue sheet, or cut the pin, and only 
     assert.deepEqual(seated.lines, ['tuesday', 'boat', 'shut'], `blue r=${radius} got ${seated.lines}`);
     assert.equal(seated.flag, 'crooked');
     assert.deepEqual(seated.cues, ['clap']);
-    const cut = walk(segment({ x: 500, z: pinMid.z }, { x: pinMid.x - 10, z: pinMid.z }, 2), radius);
+    const cut = walk(segment({ x: 500, z: pinMid.z }, pinMid, 2), radius);
     assert.deepEqual(cut.lines, ['tuesday', 'cut'], `pin r=${radius} got ${cut.lines}`);
     assert.equal(cut.flag, 'cut');
     assert.deepEqual(cut.cues, ['pin']);
@@ -218,14 +228,46 @@ test('hover is a linger beside the loose sheet, and leaving after a change files
 });
 
 test('reduced motion freezes the whip without moving the pin', () => {
-  const pos = { x: 62, z: 96 };
-  const prev = { x: 66, z: 96 };
-  const live = secondRinseSample(ORIGIN, 0, pos, prev, 14, C.whipPeriod * 0.25, 'open', false);
-  const still = secondRinseSample(ORIGIN, 0, pos, prev, 14, C.whipPeriod * 0.25, 'open', true);
+  const pin = pinCordLocal();
+  const mid = { x: (pin.a.x + pin.b.x) / 2, z: (pin.a.z + pin.b.z) / 2 };
+  const prev = { x: mid.x + 8, z: mid.z };
+  const live = secondRinseSample(ORIGIN, 0, mid, prev, 14, C.whipPeriod * 0.25, 'open', false);
+  const still = secondRinseSample(ORIGIN, 0, mid, prev, 14, C.whipPeriod * 0.25, 'open', true);
   assert.equal(live.cordCut, true);
   assert.equal(still.cordCut, true);
   assert.equal(still.overlapsBlue, false);
   assert.equal(still.overlapsWhite, false);
+  const swung = blueSheetLocal(C.whipPeriod * 0.25, 'open');
+  const frozen = blueSheetLocal(0, 'open');
+  assert.notEqual(swung[1].z, frozen[1].z);
+  assert.deepEqual(blueSheetLocal(C.whipPeriod * 0.25, 'cut')[1], frozen[1]);
+});
+
+test('a hull cuts the pin without crossing its center, and the two endings stay different pictures', () => {
+  const pin = pinCordLocal();
+  const grazed = secondRinseSample(
+    ORIGIN, 0,
+    { x: pin.a.x + 12, z: pin.b.z + 4 },
+    { x: pin.a.x + 12, z: pin.a.z - 4 },
+    14, 0, 'open', false,
+  );
+  assert.equal(grazed.cordCut, true);
+  assert.equal(grazed.overlapsBlue, false);
+  assert.equal(grazed.overlapsWhite, false);
+  const miss = secondRinseSample(
+    ORIGIN, 0,
+    { x: pin.a.x + 60, z: pin.b.z },
+    { x: pin.a.x + 60, z: pin.a.z },
+    14, 0, 'open', false,
+  );
+  assert.equal(miss.cordCut, false);
+  const open = secondRinsePicture('open');
+  const crooked = secondRinsePicture('crooked');
+  const cut = secondRinsePicture('cut');
+  assert.equal(open.blue && open.pin && open.whipping && !open.boatInverted, true);
+  assert.equal(crooked.blue && crooked.pin && crooked.boatInverted && !crooked.whipping, true);
+  assert.equal(cut.blue && !cut.pin && !cut.boatInverted && !cut.whipping, true);
+  assert.equal(secondRinsePicture('salvage').flag, 'open');
 });
 
 test('the save flag only keeps open, crooked, or cut, plus which lines were heard', () => {
@@ -261,6 +303,7 @@ test('the skiff is pinned, unarmed, and the blue sheet seats on contact', () => 
   const player = { id: 1, alive: true, pos: { x: 0, z: 0 }, radius: 14, type: 'ship' };
   entities.set(1, player);
   entityList.push(player);
+  const said = [];
   const toasts = [];
   const cues = [];
   const bus = {
@@ -292,7 +335,7 @@ test('the skiff is pinned, unarmed, and the blue sheet seats on contact', () => 
         const actor = entities.get(id);
         if (actor) actor.alive = false;
       },
-      voice: { say() { return true; } },
+      voice: { say(payload) { said.push(payload); return true; } },
     },
   });
   try {
@@ -303,6 +346,8 @@ test('the skiff is pinned, unarmed, and the blue sheet seats on contact', () => 
     assert.equal(skiff.flags.invuln, true);
     assert.deepEqual(skiff.data.weapons, []);
     assert.equal(skiff.data.callsign, 'HASP');
+    assert.equal(skiff.data.visualRadius, secondRinseReach());
+    assert.ok(skiff.data.visualRadius > C.fairRadius * 4);
     skiff.pos.x += 40;
     skiff.vel.x = 12;
     secondRinse.place();
@@ -316,7 +361,11 @@ test('the skiff is pinned, unarmed, and the blue sheet seats on contact', () => 
     player.pos.z = hit.z;
     secondRinse.update(1 / 60, state);
     assert.equal(state.secondRinse.flag, 'crooked');
-    assert.ok(toasts.some((text) => text.includes('upside down')));
+    assert.ok(said.some((line) => line.channel === 'comms' && line.text.includes('upside down')));
+    assert.equal(toasts.length, 0);
+    secondRinse.helpers.voice.say = () => false;
+    secondRinse._speak('stay');
+    assert.ok(toasts.some((text) => text.includes('Concord')));
     assert.ok(cues.includes('sfx.secondRinse.clap'));
     assert.equal(cues.includes('sfx.secondRinse.pin'), false);
     const saved = secondRinse.serialize();
@@ -325,6 +374,179 @@ test('the skiff is pinned, unarmed, and the blue sheet seats on contact', () => 
     secondRinse.newGame();
     assert.equal(state.secondRinse.flag, 'open');
     assert.equal(saved.flag, 'crooked');
+  } finally {
+    secondRinse.destroy();
+  }
+});
+
+test('reduce motion seats the still sheet, not the swing the picture hides', () => {
+  let nextId = 1;
+  const entities = new Map();
+  const entityList = [];
+  const state = {
+    mode: 'flight',
+    simTime: C.whipPeriod * 0.25,
+    tick: 4,
+    playerId: 1,
+    entities,
+    entityList,
+    world: { currentSectorId: 'sector_helios_prime' },
+    settings: { video: { motionReduce: true } },
+    ui: {},
+    run: { kind: 'adventure', phase: 'inactive' },
+  };
+  const player = { id: 1, alive: true, pos: { x: 0, z: 0 }, radius: 14, type: 'ship' };
+  entities.set(1, player);
+  entityList.push(player);
+  secondRinse.init({
+    state,
+    bus: { on() { return () => {}; }, emit() {} },
+    helpers: {
+      spawnEntity(spec) {
+        const actor = {
+          ...spec,
+          id: ++nextId,
+          alive: true,
+          pos: { ...spec.pos },
+          vel: { x: 0, z: 0 },
+          data: { ...spec.data },
+          flags: { ...(spec.flags || {}) },
+        };
+        entities.set(actor.id, actor);
+        entityList.push(actor);
+        return actor;
+      },
+      removeEntity(id) {
+        const actor = entities.get(id);
+        if (actor) actor.alive = false;
+      },
+      voice: { say() { return true; } },
+    },
+  });
+  try {
+    const skiff = secondRinse.place();
+    assert.ok(skiff);
+    const pocket = secondRinsePocket();
+    const swungCorners = localsToWorld(pocket, pocket.rot, blueSheetLocal(state.simTime, 'open'));
+    const stillCorners = localsToWorld(pocket, pocket.rot, blueSheetLocal(0, 'open'));
+    const miss = swungCorners.find((p) => !circleHitsPoly(p.x, p.z, 1, stillCorners));
+    assert.ok(miss);
+    player.radius = 1;
+    player.pos.x = miss.x;
+    player.pos.z = miss.z;
+    secondRinse.update(1 / 60, state);
+    assert.equal(state.secondRinse.flag, 'open');
+    const still = centroid(stillCorners);
+    player.radius = 14;
+    player.pos.x = still.x;
+    player.pos.z = still.z;
+    secondRinse.update(1 / 60, state);
+    assert.equal(state.secondRinse.flag, 'crooked');
+  } finally {
+    secondRinse.destroy();
+  }
+});
+
+test('the drawn reach covers the buoy, the pin, and the whipping sheet', () => {
+  const reach = secondRinseReach();
+  assert.ok(reach > Math.hypot(C.buoy.x, C.buoy.z));
+  assert.ok(reach > Math.hypot(C.pinA.x, C.pinA.z));
+  for (let i = 0; i <= 8; i++) {
+    for (const corner of blueSheetLocal((i / 8) * C.whipPeriod, 'open')) {
+      assert.ok(Math.hypot(corner.x, corner.z) + 4 <= reach);
+    }
+  }
+  blueSheetLocal(0, 'crooked').forEach((corner, index) => {
+    const free = index === 1 || index === 2;
+    const z = corner.z + (free ? C.seatSlide : 0);
+    assert.ok(Math.hypot(corner.x, z) + 4 <= reach);
+  });
+});
+
+test('a crossed pair has no gap, and reduced motion still cools the again line', () => {
+  assert.equal(polyGap(
+    [{ x: 0, z: 1 }, { x: 3, z: 1 }, { x: 3, z: 2 }, { x: 0, z: 2 }],
+    [{ x: 1, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 3 }, { x: 1, z: 3 }],
+  ), 0);
+  const heard = normalizeSecondRinse({ flag: 'crooked' }).heard;
+  const first = secondRinseSample(ORIGIN, 0, { x: 80, z: 0 }, { x: 80, z: 0 }, 14, 5, 'crooked', true);
+  const later = secondRinseSample(ORIGIN, 0, { x: 80, z: 0 }, { x: 80, z: 0 }, 14, 20, 'crooked', true);
+  assert.equal(first.simTime, 0);
+  assert.equal(first.clock, 5);
+  assert.equal(later.clock, 20);
+  let beat = secondRinseBeat({ flag: 'crooked', heard, inHail: false, hoverDwell: 0, againAt: -1e9 }, first, 0.1);
+  assert.equal(beat.line, 'crookedAgain');
+  beat = secondRinseBeat({
+    flag: 'crooked', heard, inHail: false, hoverDwell: 0, againAt: beat.againAt,
+  }, later, 0.1);
+  assert.equal(beat.line, 'crookedAgain');
+});
+
+test('a dock or a teleport does not cut the pin with the chord it skipped', () => {
+  let nextId = 1;
+  const entities = new Map();
+  const entityList = [];
+  const state = {
+    mode: 'flight',
+    simTime: 2,
+    tick: 1,
+    playerId: 1,
+    entities,
+    entityList,
+    world: { currentSectorId: 'sector_helios_prime' },
+    settings: { video: {} },
+    ui: {},
+    run: { kind: 'adventure', phase: 'inactive' },
+  };
+  const player = { id: 1, alive: true, pos: { x: 0, z: 0 }, radius: 14, type: 'ship' };
+  entities.set(1, player);
+  entityList.push(player);
+  secondRinse.init({
+    state,
+    bus: { on() { return () => {}; }, emit() {} },
+    helpers: {
+      spawnEntity(spec) {
+        const actor = {
+          ...spec,
+          id: ++nextId,
+          alive: true,
+          pos: { ...spec.pos },
+          vel: { x: 0, z: 0 },
+          data: { ...spec.data },
+          flags: { ...(spec.flags || {}) },
+        };
+        entities.set(actor.id, actor);
+        entityList.push(actor);
+        return actor;
+      },
+      removeEntity(id) {
+        const actor = entities.get(id);
+        if (actor) actor.alive = false;
+      },
+      voice: { say() { return true; } },
+    },
+  });
+  try {
+    const skiff = secondRinse.place();
+    const pocket = secondRinsePocket();
+    const pin = pinCordLocal();
+    const worldA = localToWorld(pocket, pocket.rot, pin.a);
+    const worldB = localToWorld(pocket, pocket.rot, pin.b);
+    const mid = { x: (worldA.x + worldB.x) / 2, z: (worldA.z + worldB.z) / 2 };
+    const side = { x: -(worldB.z - worldA.z), z: worldB.x - worldA.x };
+    const len = Math.hypot(side.x, side.z) || 1;
+    player.pos.x = mid.x + (side.x / len) * 80;
+    player.pos.z = mid.z + (side.z / len) * 80;
+    secondRinse.update(1 / 60, state);
+    assert.equal(state.secondRinse.flag, 'open');
+    state.ui.docked = true;
+    secondRinse.update(1 / 60, state);
+    state.ui.docked = false;
+    player.pos.x = mid.x - (side.x / len) * 80;
+    player.pos.z = mid.z - (side.z / len) * 80;
+    secondRinse.update(1 / 60, state);
+    assert.equal(state.secondRinse.flag, 'open');
+    assert.equal(skiff.alive !== false, true);
   } finally {
     secondRinse.destroy();
   }
