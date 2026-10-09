@@ -1,473 +1,473 @@
 {
- "schema": 1,
- "updated": "2026-10-09",
- "purpose": "Machine-readable cumulative scoreboard for the magic-frame hill-climb campaign. Every accepted wave records evidence level, integrity gates, and measurement status. Durable narrative log lives in PR194-WAVE-LOG.md; this file is the diff-friendly ledger.",
- "evidenceLevels": {
-  "MECHANISM_VERIFIED": "A real inefficiency exists and the change removes it (code-level proof + tests).",
-  "PERFORMANCE_VERIFIED": "Matched before/after measurements on the relevant workload, same hardware/settings/scenario/content.",
-  "UNVERIFIED": "Plausible but runtime benefit unknown."
- },
- "environment": {
-  "cloudBox": "Windows Server 2022 + SwiftShader software GL. Frame-time and GPU timings are NOT representative of real hardware — never promoted to PERFORMANCE_VERIFIED. Electron launches here but the game presents 0 frames (probe-runtime-witness inconclusive: executedFrames delta 0 over 15 s sample).",
-  "loadBearingMeasurementsOnThisBox": [
-   "golden sim hash bit-identity (node scripts/sf-sim.mjs inspect --scenario 47a)",
-   "unit-level CPU micro-measurements in node for modules importable headlessly",
-   "test-harness pacing contracts (cooperativeSlice budgets, slice-stride pins)",
-   "static structure checks (scripts/check-*.mjs)"
+  "schema": 1,
+  "updated": "2026-10-09",
+  "purpose": "Machine-readable cumulative scoreboard for the magic-frame hill-climb campaign. Every accepted wave records evidence level, integrity gates, and measurement status. Durable narrative log lives in PR194-WAVE-LOG.md; this file is the diff-friendly ledger.",
+  "evidenceLevels": {
+    "MECHANISM_VERIFIED": "A real inefficiency exists and the change removes it (code-level proof + tests).",
+    "PERFORMANCE_VERIFIED": "Matched before/after measurements on the relevant workload, same hardware/settings/scenario/content.",
+    "UNVERIFIED": "Plausible but runtime benefit unknown."
+  },
+  "environment": {
+    "cloudBox": "Windows Server 2022 + SwiftShader software GL. Frame-time and GPU timings are NOT representative of real hardware — never promoted to PERFORMANCE_VERIFIED. Electron launches here but the game presents 0 frames (probe-runtime-witness inconclusive: executedFrames delta 0 over 15 s sample).",
+    "loadBearingMeasurementsOnThisBox": [
+      "golden sim hash bit-identity (node scripts/sf-sim.mjs inspect --scenario 47a)",
+      "unit-level CPU micro-measurements in node for modules importable headlessly",
+      "test-harness pacing contracts (cooperativeSlice budgets, slice-stride pins)",
+      "static structure checks (scripts/check-*.mjs)"
+    ],
+    "hardwareVerification": "UNAVAILABLE on this environment. Owner-side reproducible benchmark commands for real-GPU verification:",
+    "benchmarkCommands": {
+      "witness": "SPACEFACE_WITNESS_MS=60000 npm run probe:runtime-witness -- --no-sample-shots",
+      "shaderTimeline": "npm run probe:shader-timeline -- --headed",
+      "goldenHash": "node scripts/sf-sim.mjs inspect --scenario 47a",
+      "smoothFlight": "npm run probe:smooth-flight",
+      "frameSolid": "npm run probe:frame-solid"
+    }
+  },
+  "campaignBaseline": {
+    "note": "Original campaign baseline measured on owner hardware (HILLCLIMB-LOG.md experiment 0). A-E columns are owner-hardware numbers; cloud-box numbers are not comparable to them.",
+    "commit": "pre-wave-1",
+    "metrics": {
+      "A_framesPer60sFlight": 3124,
+      "B_drawTimeMissShaderLinks": 36,
+      "C_longTaskBlocksGte2p5sPer60s": 3,
+      "D_jsHeapFloorMbAfterForcedGC": 485,
+      "E_excessMsPer1000Frames": 629
+    }
+  },
+  "integrityGate": {
+    "goldenHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+    "goldenHashScenario": "47a (720 ticks, reload-at 600)",
+    "goldenHashStatus": "bit-identical through wave 120",
+    "canonReds": [
+      "save-load-integrity",
+      "continuation-readiness x6",
+      "pq146-save-roundtrip",
+      "headless GLB traversal 120s timeout",
+      "authoritative-manifest pair",
+      "Vercel build rate-limit",
+      "draw-flight",
+      "check-sg02-dash-collision",
+      "check-sg05-runtime",
+      "help-gamepad-rebind (pad table 37 vs pin 36)",
+      "opening-cook-ledger seam pin",
+      "asset-npc-authored-binding queue-seam",
+      "bounded-autosave raw 8/12ms task-graph-settle pair (identical on clean master)",
+      "save-growth-dock-trade-flat parityArmSlope=11024 B/cycle (identical on clean master — window-churn artifact)",
+      "static(2): src-reachability thimbleDoorVisuals/borrowedSun/borrowedSunPrompt + check-parts-manifest GLB drift (upstream 11f12f596)"
+    ]
+  },
+  "worstRemainingBottlenecks": {
+    "asOf": "wave 122 + s1 checklist",
+    "ranked": [
+      "s1-sim-worker-spike Stage A rebase in progress — 22 conflicts measured via merge-tree (tier1: partsLibrary 13 / saveSystem 3 / main 5 / renderer 7 / world 4 / asteroidField 4), dormant-behind-flag merge",
+      "owner-hardware verification gap — every optimization since wave 1 is MECHANISM_VERIFIED; real-GPU frame-time benefit unmeasured on this box",
+      "presentation floor — B1/B3/B7 from W121 blind global remain scoped-not-implemented (whole-scene traversals, sim-atomic bursts incl. econTick 3.9ms-p95 measured, physics FFI spans)",
+      "first-frame shader link set (draw-time misses) — 36 on owner hardware at campaign start; cloud box cannot re-measure"
+    ]
+  },
+  "waves": [
+    {
+      "wave": 120,
+      "head": "20bb78011",
+      "lanes": {
+        "lod-in-frame": {
+          "saturated": false,
+          "findings": 4,
+          "commits": [
+            "ec2c91b93"
+          ],
+          "headline": "Bolus rig light census churn (mass program relink at boundary), dead-serve witness, collect epoch stamp, census-flip bulk re-stage"
+        },
+        "popin-admission": {
+          "saturated": false,
+          "findings": 6,
+          "landed": 6,
+          "commits": [
+            "241b5be05"
+          ],
+          "headline": "soft-budget evict storm suppression, enforceBudget Steps twin under sector:exit, pendingKeys memo, warmCoverage memo, evictIfUnowned O(1) consult"
+        },
+        "boot-loading": {
+          "saturated": false,
+          "findings": 8,
+          "commits": [
+            "ca626ba4a"
+          ],
+          "headline": "finishNativeRestore Steps twins (16-body stride), sector:exit emit slice-budget scoped to restore, restoreCombatStateSteps, restoreSequence staleness guards, armed-slot epoch self-clear; NOTE: ca626ba4a commit msg misdescribes the diff — corrected in PR194-WAVE-LOG.md W120"
+        },
+        "in-flight-hitches": {
+          "saturated": false,
+          "findings": 12,
+          "commits": [
+            "20bb78011"
+          ],
+          "headline": "5 background-priority resume seams, ~25 dedup'd warn sites, bus fault index LRU+tombstone"
+        }
+      },
+      "evidence": {
+        "goldenHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+        "level": "PERFORMANCE_VERIFIED (CPU-scope: assetResidency bookkeeping paths only — matched A/B, same box/scenario; GPU/frame-time remains hardware-unverified)",
+        "hardwareVerified": false,
+        "unitMeasurement": {
+          "harness": "C:/Users/Administrator/perf-waves/bench-residency.mjs (imports src/render/assetResidency.js headlessly; old rev extracted via git show 241b5be05^)",
+          "fixture": "1200 assets / 400 pending requests / 200 soft holds / 600 boundary-owned; medians of 5-9 reps",
+          "results": {
+            "enforceBudget_overCeiling_evict200": {
+              "old_ms": 14.55,
+              "new_ms": 4.58,
+              "parity": "identical evicted set + remainingBytes"
+            },
+            "releaseOwnerBurst_600Entries": {
+              "old_ms": 4.54,
+              "new_ms": 1.21
+            },
+            "warmHandoffConsult_400Retains": {
+              "old_ms": 0.9,
+              "new_ms": 0.69
+            },
+            "enforceBudget_underCeiling": {
+              "old_ms": 1.48,
+              "new_ms": 1.88,
+              "note": "with BENCH_SOFT=0 the delta vanishes (1.59 vs 1.51) — the +0.4ms is W120's soft-residency census doing its intended count, not a regression"
+            }
+          }
+        },
+        "focusedTests": "event-bus-contract 34/0, vfx-save-restore-destroy, input-lifecycle, deep-sky-plate-pipeline, asteroid-instance suites green; residual reds canon"
+      },
+      "verdict": "kept"
+    },
+    {
+      "wave": 121,
+      "head": "1262d91fe",
+      "contractChange": "owner-refined evidence contract adopted: MECHANISM_VERIFIED / PERFORMANCE_VERIFIED / UNVERIFIED labels, blind global + skeptic lanes, this file committed as the machine-readable ledger",
+      "lanes": {
+        "lod-in-frame": {
+          "saturated": true,
+          "findings": 0,
+          "landed": 0,
+          "commits": [],
+          "headline": "FIRST saturated lane report under either contract — only L-class residuals remain in scope (saturation streak 1/3)"
+        },
+        "popin-admission": {
+          "saturated": false,
+          "findings": 5,
+          "landed": 5,
+          "commits": [
+            "0917823d6"
+          ],
+          "headline": "sectorOwnerIndex + owner-membership counters (O(sector) boundary legs), deferred diagnostics publish, live-maintained activePendingKeys set (cancel burst 8.09→0.66ms), byte ledgers O(1) + blockedRows fold (enforceBudget over-ceiling −46%), fault-path enforceBudgetSteps chain"
+        },
+        "boot-loading": {
+          "saturated": false,
+          "findings": 5,
+          "landed": 4,
+          "declined": 1,
+          "commits": [
+            "d37b0fab6"
+          ],
+          "headline": "import lane rides sliced async restore (F1 H — production-path veil brick closed), mode:changed restore-scoped emit slice, preflight yield move, recoveryEncounter/aceMemory deserializeChunked twins; F4 declined — all 9 afterContinue bodies bounded by construction"
+        },
+        "in-flight-hitches": {
+          "saturated": true,
+          "findings": 3,
+          "landed": 2,
+          "documented": 1,
+          "commits": [
+            "f73cf6268"
+          ],
+          "headline": "SECOND saturated lane report — W120 resume-seam machinery holds (17 dispatch sites closed); exponential dedup-heartbeat backoff 1s→30s on all 3 suppressed-count ledgers + heal proxy; last inner-rAF seam (afterBrowserPaint) closed; F3 per-emit throw mint documented contract"
+        },
+        "blind-global": {
+          "saturated": false,
+          "findings": 7,
+          "landed": 1,
+          "scoped": 4,
+          "commits": [
+            "1262d91fe"
+          ],
+          "headline": "lanes own variance/bursts; steady-state per-frame floor uncovered — B2 owner-visibility memo landed (1.37-1.72x CPU-scope); B1 whole-scene traversals / B3 sim-atomic bursts / B6 unbudgeted audio rAF / B7 physics FFI fed to W122; PURSUE: devin/s1-sim-worker-spike (SHIP-proven, golden bit-identical, journal 0.21-0.26ms) + scene-graph diet + BatchedMesh re-census + SoA columns; rejected: GPU culling/WebGPU/per-kernel worker/event interning/three-mesh-bvh/meshlets/render-in-worker"
+        },
+        "skeptic": {
+          "clean": false,
+          "findings": 6,
+          "landed": 6,
+          "commits": [
+            "1262d91fe"
+          ],
+          "headline": "F1-H __setActiveVisualRoot epoch-guard (swapEpoch re-stamp at request mint, probe fails pre-fix); F2-M per-leg sector-exit cleanup guards (enforceBudgetSteps no longer strandable); F3-L deferred restore .catch shape; F4-L rebuildWorldFromEntitiesSteps abandoned-iterator WASM world leak (committed-flag finally); F5-L verifyLedgerConsistency() + in-sweep drift emit; F6-L laneWarn >60s quiet-gap heal. Verified clean: byte ledgers, pending keys, sector index, Steps twins, emit slicing, import lane, no subtraction"
+        }
+      },
+      "evidence": {
+        "goldenHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+        "level": "PERFORMANCE_VERIFIED (CPU-scope only — assetResidency bookkeeping + cancel burst on pinned fixture; boot F1/F2/F5 mechanism-verified, frame relief hardware-unverified; lod saturation is a scope verdict, not a perf claim)",
+        "hardwareVerified": false,
+        "unitMeasurement": {
+          "harness": "C:/Users/Administrator/perf-waves/bench-residency-w121.mjs (imports src/render/assetResidency.js headlessly; old rev extracted via git show HEAD^:path)",
+          "fixture": "1200 assets / 400 pending / 200 soft holds / 600 boundary-owned; BENCH_OWNERS=N multiplies presentation owners per boundary asset; medians of 5-9 reps",
+          "results": {
+            "cancelBurst_400Deactivations": {
+              "old_ms": 8.09,
+              "new_ms": 0.659,
+              "parity": "identical evicted set + diagnostics"
+            },
+            "enforceBudget_overCeiling": {
+              "old_ms": "~13.4",
+              "new_ms": "~7.2",
+              "parity": "identical evicted set + remainingBytes + blockedRows total"
+            },
+            "prepareSectorExit_BENCH_OWNERS_4": {
+              "old_ms": 0.66,
+              "new_ms": 0.55,
+              "note": "1-owner microfixture regresses 0.45→0.61 (index maintenance + snapshot) — net win only at real multi-owner density, recorded honestly"
+            },
+            "rotateSector_BENCH_OWNERS_4": {
+              "old_ms": 0.65,
+              "new_ms": 0.49
+            },
+            "visibilityMemo_ownerConsults": {
+              "old_ms": {
+                "200x12": 40.1,
+                "500x24": 266.3,
+                "50x60": 41.2
+              },
+              "new_ms": {
+                "200x12": 28.5,
+                "500x24": 198.5,
+                "50x60": 25.2
+              },
+              "parity": "identical held verdicts at hysteresis boundary (grok-build20-picture 15/15 pin)"
+            }
+          }
+        },
+        "focusedTests": "fb-export-bundles-medals 6/0, save-rejected-candidate 7/7, save-import-bounds 8/8, pr-instrument-integrity 8/8, event-bus-contract 34/0, recovery-encounter 12/12, save-arbitration 7/7, save-envelope-fidelity 2/2, save-restore-atomicity 5/5, save-shared-continuation 4/4, ~60 recovery/ace/wreck suites green; residual reds canon (incl. new: save-growth-dock-trade-flat parityArmSlope identical on clean master) | final batch: asset-residency-{accounting,detached-owners} green, refcounts browser test = canon 120s env-timeout on clean master too, sector-arrival-publish-release 10/0, world-residency 17/0, startup-geometry 24/0, decode-runway 19/0, authored-upgrade-queue-lifecycle 1/1 canon, sg02-native-rebuild-lifetime 10/0, save suites green; golden 0b33dde re-verified post-edit"
+      },
+      "verdict": "kept"
+    },
+    {
+      "wave": 122,
+      "head": "b16d2730a",
+      "lanes": {
+        "lod-in-frame": {
+          "saturated": true,
+          "findings": 0,
+          "landed": 0,
+          "commits": [],
+          "headline": "2nd consecutive saturated report — W121 remediations re-verified clean at c3d84934c; residual scope is vendored-three render-list fan-out + mounted-node diet, bounded (streak 2/3)"
+        },
+        "popin-admission": {
+          "saturated": false,
+          "findings": 6,
+          "landed": 6,
+          "commits": [
+            "007e8d976"
+          ],
+          "headline": "deferred warm mint into fused exit leg (0.80-4.47ms probe at K=500), governorEntry per-entry row memos (ownersVersion-keyed), fused cache-owner sweep walk, class byte ledgers O(1) soft-budget early-out, paced warmCoverage mint, diagnostics row memos"
+        },
+        "boot-loading": {
+          "saturated": false,
+          "findings": 2,
+          "landed": 2,
+          "commits": [
+            "728302fe5"
+          ],
+          "headline": "plain-text import prepare routed through sliced async lane (O(1) sync rejects preserved — last unpaced O(save-size) click brick); autosave fallback whole-ledger prepares await async lanes w/ liveness re-checks + prepared-envelope FIFO memo; verify-before-index ordering unchanged"
+        },
+        "in-flight-hitches": {
+          "saturated": false,
+          "findings": 4,
+          "landed": 2,
+          "commits": [
+            "a7151dcaf"
+          ],
+          "headline": "audio frame body (~25 calls) dispatched via bounded background post — last unbudgeted presented-frame per-frame work; stormWarn ported the sibling 1s->30s backoff + 60s quiet-gap heal (was flat 1s forever, no heal); F2 econTick sweep MECHANISM_VERIFIED deferred w/ fresh measure 2.7ms p50/3.9ms p95 per 5s — all hot legs sim-authoritative (RNG order, simTime stamps) so any frame split risks golden hash; F4 FFI span tracked for S1 lane"
+        },
+        "s1-spike-mining": {
+          "saturated": null,
+          "findings": 7,
+          "landed": 0,
+          "commits": [],
+          "headline": "VERDICT proceed-with-changes (~4-5.5 sessions): 22 real conflicts/172 overlap (partsLibrary 13 hunks tier-1); cargo:jettison dead-feature blocker under ?simLane (~30-line rpc); 67 unforwarded classified (52 render-only + 8 intent folds + 5 dead + 1 blocker); p95 0.85ms = wake latency not clone size — SAB Atomics envelope predicted ~0.15ms; Electron SAB already unblocked via COOP/COEP headers, needs ~10-line ?simLane URL hook; staged plan A merge-behind-flag → B dead-feature sweep → C SAB envelopes → D Electron → E default flip"
+        }
+      },
+      "evidence": "all CPU-scope mechanism verification on this box; GPU/frame-time benefit hardware-unverified per environment declaration",
+      "verdict": "kept"
+    },
+    {
+      "wave": 123,
+      "head": "10cd72d65",
+      "lanes": {
+        "lod-in-frame": {
+          "saturated": true,
+          "streak": 3,
+          "findings": 1,
+          "landed": 0,
+          "commits": [],
+          "headline": "LANE CLOSED — 3rd consecutive saturated. All W122 machinery verified in code; shadow-map walk residual removed (covered by _shadowCasterRegistry since 713dc74ed). Sole material B1 residual: vendored-three projectObject render-list walk (O(mounted-nodes) × 1-2 passes/frame, hardware-unverified); flat renderable-leaf registry lever sketched (effort L, impact M, risk M-H — vendor-patch)."
+        },
+        "popin-admission": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 6,
+          "landed": 5,
+          "commits": [
+            "7acc45245",
+            "8311f58e9"
+          ],
+          "headline": "Enforce census single-fold: blockedRows/reasons + unit-owner index mint once (F1/F4/F5); governorBlockedMembers set makes under-budget enforce O(blocked) — 4000-asset ~0.5us/call (F2, MECHANISM VERIFIED); prewarm swap routes through rotateSectorDeferred FIFO-chained behind sector-exit cleanup (F3); F6 diagnostics sort deferred below noise.",
+          "deferred": [
+            "F6 diagnostics sort — below noise at observed blocked counts"
+          ]
+        },
+        "boot-loading": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 2,
+          "landed": 2,
+          "commits": [
+            "10cd72d65"
+          ],
+          "headline": "Emit-driven writes paced: saveAsync twin of save() — identical receipts/boundary markers, chain hops through _scheduleAutosaveWork while frozen; live-flight defers to sync coherent capture; supersede/stale-realm aborts silent; exportSlot async via proven-envelope memo + chunked prepare; capturePhotoPngAsync toBlob+FileReader."
+        },
+        "in-flight-hitches": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 2,
+          "landed": 2,
+          "commits": [
+            "f39fd835c"
+          ],
+          "headline": "lifetimeSweep corpse collect gated: DIRTY.MEMBERSHIP death-latch + rolling 128-slice probe for unmarked kills + 64-tick backstop — full walk only when a corpse provably exists; diag.update quarantined (catch + capped console.error)."
+        }
+      },
+      "verdicts": [
+        "lod-in-frame: LANE CLOSED (3rd consecutive saturated)",
+        "popin-admission: saturated false (streak 0/3)",
+        "boot-loading: saturated false (streak 0/3)",
+        "in-flight-hitches: saturated false (streak 0/3)"
+      ]
+    },
+    {
+      "wave": 124,
+      "head": "db49720e7",
+      "lanes": {
+        "popin-admission": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 5,
+          "landed": 4,
+          "commits": [
+            "ece6d36d5"
+          ],
+          "headline": "freedBytesForSelection per-selection O(S·U·E) rescan replaced by incremental per-unit remaining-count (~150-600x on the dominant plan leg, MECHANISM VERIFIED + CPU-measured); rotateSectorDeferred call-time decisions consult the newest REQUESTED target with seq-guarded repoint — stale-sector warm coverage/dropped reversals closed (F1); selectEvictions dead legs folded (kind-gated spread, lazy sum, decorated sort, no index map); validatedUnits row memo + two-set sweep iteration (F5).",
+          "deferred": [
+            "F3 sector→entity index — declined: ~15 sector restamp sites outside the index funnel make a maintained map unprovable; index.version misses post-append restamps → stale memo under-warms or throws spurious fail-closed cert errors"
+          ]
+        },
+        "boot-loading": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 3,
+          "landed": 3,
+          "commits": [
+            "aec85e97d"
+          ],
+          "headline": "whole-corpus mirror collect replaced by the write delta (mirrorPatch: primary bytes + rotated recovery/tombstone + index row — same shape deleteSlot emits; uncovered writers defer to the chunked generation-bracketed collect); paced chain's two O(save) legs (checksum+envelope stringify) run inside the save worker via _encodeEnvelopeViaWorker reusing the autosave encode protocol, named bound verdicts verbatim + sync-legs fallback; exportSlotAsync double-fail lane slices through _serializeDataFrozenAsync."
+        },
+        "in-flight-hitches": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 2,
+          "landed": 1,
+          "commits": [
+            "db49720e7"
+          ],
+          "headline": "frame() post-finally tail quarantined (perf samplers + checkGraphicsRecovery→restore segment were the last unguarded presented-frame consumers — a tail throw skipped schedule() = permanent silent loop death invisible to frame._errs/stall reporter; both segments now self-guarded with a 20-cap tail-error ledger, schedule() unconditional). F2 classifyWorld ~2xO(entityList) per classify tick documented keep-atomic — no deterministic slice; shelved-entity index the only avenue (L, UNVERIFIED).",
+          "deferred": [
+            "F2 classifyWorld O(n) classify-tick passes — keep-atomic: same-tick publish semantics, shelved-entity discovery index only avenue (L effort, benefit UNVERIFIED)",
+            "corpse-probe backstop skip when probe covered whole list — sub-noise, documented not recommended"
+          ]
+        }
+      },
+      "verdicts": [
+        "lod-in-frame: CLOSED (closed at W123, no wave-124 audit)",
+        "popin-admission: saturated false (streak 0/3)",
+        "boot-loading: saturated false (streak 0/3)",
+        "in-flight-hitches: saturated false (streak 0/3)"
+      ]
+    },
+    {
+      "wave": 125,
+      "head": "b3b142e24",
+      "lanes": {
+        "popin-admission": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 4,
+          "landed": 4,
+          "commits": [
+            "2ed5695a1"
+          ],
+          "headline": "entityIndex gains a bySectorId lane keyed on the canonical sector chain (homeSectorId|data.homeSectorId|data.sectorId|null) — the W124-declined F3 avenue landed behind a 16-file restamp allowlist: syncEntitySectorMembership() funnels every production sector restamp and sectorMembershipGuard.mjs contract-tests the funnel (violations:0, MECHANISM VERIFIED). append/remove bump laneVersions.sectorMemberships so (laneVersion,sectorId) memos invalidate on membership moves; sectorless entities retain their null bucket diagnostic; never-started mints no longer lag a pass behind sector entry."
+        },
+        "boot-loading": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 4,
+          "landed": 4,
+          "commits": [
+            "9e72466b4"
+          ],
+          "headline": "CONTAMINATED-1 closed: resolveNewGamePlusOverlay is async and runs inside prepareRun after enterLoadingMode raises the veil — ~2x multi-MB sync envelope prepare off the New Run+ click frame (MECHANISM VERIFIED, CPU-side). Recovery-promotion self-heals ship their delta ({slot}+index row) instead of re-arming the whole-corpus collect; worker-encode bound verdicts forward limit/actual; bumpSaveStoreGeneration tracks sf.settings.* so a profile write inside a collect bracket cannot ship a stale mirrored row."
+        },
+        "in-flight-hitches": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 4,
+          "landed": 1,
+          "commits": [
+            "b3b142e24"
+          ],
+          "headline": "F1 landed — the W124-deferred avenue shipped: classify discovery authority now uses a shelved-member cell map (2048wu cells over partition-0 members keyed on build-time pos); quiet passes query O(cells+candidates) with a max-presence pad preserving envelope semantics; the O(list) walk survives as cold build + every-8th-pass audit for silently-moved shelved members; partition-epoch/index-membership movement forces rebuild (MECHANISM VERIFIED by 4-test suite + walks/queries counters; CPU-scope benefit UNVERIFIED on this box — needs the pinned scenario bench).",
+          "deferred": [
+            "H1-H3 hardware-unverified items (GPU conclusions unmeasurable on SwiftShader)",
+            "exhaustive enumeration: 0 retaggable bus listeners; deferred-enter PACED everywhere; W124 machinery intact"
+          ]
+        },
+        "skeptic": {
+          "status": "auditing"
+        }
+      },
+      "verdicts": [
+        "lod-in-frame: CLOSED (closed at W123)",
+        "popin-admission: saturated false (streak 0/3)",
+        "boot-loading: saturated false (streak 0/3)",
+        "in-flight-hitches: saturated false (streak 0/3)",
+        "skeptic: pending"
+      ]
+    }
   ],
-  "hardwareVerification": "UNAVAILABLE on this environment. Owner-side reproducible benchmark commands for real-GPU verification:",
-  "benchmarkCommands": {
-   "witness": "SPACEFACE_WITNESS_MS=60000 npm run probe:runtime-witness -- --no-sample-shots",
-   "shaderTimeline": "npm run probe:shader-timeline -- --headed",
-   "goldenHash": "node scripts/sf-sim.mjs inspect --scenario 47a",
-   "smoothFlight": "npm run probe:smooth-flight",
-   "frameSolid": "npm run probe:frame-solid"
+  "laneStatus": {
+    "lod-in-frame": "closed@w123 (3 consecutive saturated)"
+  },
+  "s1Spike": {
+    "stageA": {
+      "status": "merged-behind-flag",
+      "pr": 260,
+      "head": "c65576cbf",
+      "mergeCommit": "8fad14efe",
+      "conflicts": {
+        "files": 22,
+        "overlappingFiles": 172,
+        "tier1": "partsLibrary.js (13 hunks)"
+      },
+      "evidence": "PERFORMANCE VERIFIED (CPU-scope): golden 0b33dde1 bit-identical on SIM_LANE=main AND worker; check-game-playable 16/16 main + 18/18 worker (LANE-FWD green); 85/86 focused tests (1 canon red on clean master)",
+      "mergeCasualtiesFixed": [
+        "settleAbortedStalledBoundary ReferenceError — dead spike-side deadline tail removed to master shape",
+        "game:embarkSpeculation declared KNOWN_UNFORWARDED (main-side-only UI->renderer prefetch)"
+      ],
+      "nextStage": "B: cargo:jettison rpc + facade-miss census/gate",
+      "completedAt": "2026-10-09"
+    }
   }
- },
- "campaignBaseline": {
-  "note": "Original campaign baseline measured on owner hardware (HILLCLIMB-LOG.md experiment 0). A-E columns are owner-hardware numbers; cloud-box numbers are not comparable to them.",
-  "commit": "pre-wave-1",
-  "metrics": {
-   "A_framesPer60sFlight": 3124,
-   "B_drawTimeMissShaderLinks": 36,
-   "C_longTaskBlocksGte2p5sPer60s": 3,
-   "D_jsHeapFloorMbAfterForcedGC": 485,
-   "E_excessMsPer1000Frames": 629
-  }
- },
- "integrityGate": {
-  "goldenHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
-  "goldenHashScenario": "47a (720 ticks, reload-at 600)",
-  "goldenHashStatus": "bit-identical through wave 120",
-  "canonReds": [
-   "save-load-integrity",
-   "continuation-readiness x6",
-   "pq146-save-roundtrip",
-   "headless GLB traversal 120s timeout",
-   "authoritative-manifest pair",
-   "Vercel build rate-limit",
-   "draw-flight",
-   "check-sg02-dash-collision",
-   "check-sg05-runtime",
-   "help-gamepad-rebind (pad table 37 vs pin 36)",
-   "opening-cook-ledger seam pin",
-   "asset-npc-authored-binding queue-seam",
-   "bounded-autosave raw 8/12ms task-graph-settle pair (identical on clean master)",
-   "save-growth-dock-trade-flat parityArmSlope=11024 B/cycle (identical on clean master — window-churn artifact)",
-   "static(2): src-reachability thimbleDoorVisuals/borrowedSun/borrowedSunPrompt + check-parts-manifest GLB drift (upstream 11f12f596)"
-  ]
- },
- "worstRemainingBottlenecks": {
-  "asOf": "wave 122 + s1 checklist",
-  "ranked": [
-   "s1-sim-worker-spike Stage A rebase in progress — 22 conflicts measured via merge-tree (tier1: partsLibrary 13 / saveSystem 3 / main 5 / renderer 7 / world 4 / asteroidField 4), dormant-behind-flag merge",
-   "owner-hardware verification gap — every optimization since wave 1 is MECHANISM_VERIFIED; real-GPU frame-time benefit unmeasured on this box",
-   "presentation floor — B1/B3/B7 from W121 blind global remain scoped-not-implemented (whole-scene traversals, sim-atomic bursts incl. econTick 3.9ms-p95 measured, physics FFI spans)",
-   "first-frame shader link set (draw-time misses) — 36 on owner hardware at campaign start; cloud box cannot re-measure"
-  ]
- },
- "waves": [
-  {
-   "wave": 120,
-   "head": "20bb78011",
-   "lanes": {
-    "lod-in-frame": {
-     "saturated": false,
-     "findings": 4,
-     "commits": [
-      "ec2c91b93"
-     ],
-     "headline": "Bolus rig light census churn (mass program relink at boundary), dead-serve witness, collect epoch stamp, census-flip bulk re-stage"
-    },
-    "popin-admission": {
-     "saturated": false,
-     "findings": 6,
-     "landed": 6,
-     "commits": [
-      "241b5be05"
-     ],
-     "headline": "soft-budget evict storm suppression, enforceBudget Steps twin under sector:exit, pendingKeys memo, warmCoverage memo, evictIfUnowned O(1) consult"
-    },
-    "boot-loading": {
-     "saturated": false,
-     "findings": 8,
-     "commits": [
-      "ca626ba4a"
-     ],
-     "headline": "finishNativeRestore Steps twins (16-body stride), sector:exit emit slice-budget scoped to restore, restoreCombatStateSteps, restoreSequence staleness guards, armed-slot epoch self-clear; NOTE: ca626ba4a commit msg misdescribes the diff — corrected in PR194-WAVE-LOG.md W120"
-    },
-    "in-flight-hitches": {
-     "saturated": false,
-     "findings": 12,
-     "commits": [
-      "20bb78011"
-     ],
-     "headline": "5 background-priority resume seams, ~25 dedup'd warn sites, bus fault index LRU+tombstone"
-    }
-   },
-   "evidence": {
-    "goldenHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
-    "level": "PERFORMANCE_VERIFIED (CPU-scope: assetResidency bookkeeping paths only — matched A/B, same box/scenario; GPU/frame-time remains hardware-unverified)",
-    "hardwareVerified": false,
-    "unitMeasurement": {
-     "harness": "C:/Users/Administrator/perf-waves/bench-residency.mjs (imports src/render/assetResidency.js headlessly; old rev extracted via git show 241b5be05^)",
-     "fixture": "1200 assets / 400 pending requests / 200 soft holds / 600 boundary-owned; medians of 5-9 reps",
-     "results": {
-      "enforceBudget_overCeiling_evict200": {
-       "old_ms": 14.55,
-       "new_ms": 4.58,
-       "parity": "identical evicted set + remainingBytes"
-      },
-      "releaseOwnerBurst_600Entries": {
-       "old_ms": 4.54,
-       "new_ms": 1.21
-      },
-      "warmHandoffConsult_400Retains": {
-       "old_ms": 0.9,
-       "new_ms": 0.69
-      },
-      "enforceBudget_underCeiling": {
-       "old_ms": 1.48,
-       "new_ms": 1.88,
-       "note": "with BENCH_SOFT=0 the delta vanishes (1.59 vs 1.51) — the +0.4ms is W120's soft-residency census doing its intended count, not a regression"
-      }
-     }
-    },
-    "focusedTests": "event-bus-contract 34/0, vfx-save-restore-destroy, input-lifecycle, deep-sky-plate-pipeline, asteroid-instance suites green; residual reds canon"
-   },
-   "verdict": "kept"
-  },
-  {
-   "wave": 121,
-   "head": "1262d91fe",
-   "contractChange": "owner-refined evidence contract adopted: MECHANISM_VERIFIED / PERFORMANCE_VERIFIED / UNVERIFIED labels, blind global + skeptic lanes, this file committed as the machine-readable ledger",
-   "lanes": {
-    "lod-in-frame": {
-     "saturated": true,
-     "findings": 0,
-     "landed": 0,
-     "commits": [],
-     "headline": "FIRST saturated lane report under either contract — only L-class residuals remain in scope (saturation streak 1/3)"
-    },
-    "popin-admission": {
-     "saturated": false,
-     "findings": 5,
-     "landed": 5,
-     "commits": [
-      "0917823d6"
-     ],
-     "headline": "sectorOwnerIndex + owner-membership counters (O(sector) boundary legs), deferred diagnostics publish, live-maintained activePendingKeys set (cancel burst 8.09→0.66ms), byte ledgers O(1) + blockedRows fold (enforceBudget over-ceiling −46%), fault-path enforceBudgetSteps chain"
-    },
-    "boot-loading": {
-     "saturated": false,
-     "findings": 5,
-     "landed": 4,
-     "declined": 1,
-     "commits": [
-      "d37b0fab6"
-     ],
-     "headline": "import lane rides sliced async restore (F1 H — production-path veil brick closed), mode:changed restore-scoped emit slice, preflight yield move, recoveryEncounter/aceMemory deserializeChunked twins; F4 declined — all 9 afterContinue bodies bounded by construction"
-    },
-    "in-flight-hitches": {
-     "saturated": true,
-     "findings": 3,
-     "landed": 2,
-     "documented": 1,
-     "commits": [
-      "f73cf6268"
-     ],
-     "headline": "SECOND saturated lane report — W120 resume-seam machinery holds (17 dispatch sites closed); exponential dedup-heartbeat backoff 1s→30s on all 3 suppressed-count ledgers + heal proxy; last inner-rAF seam (afterBrowserPaint) closed; F3 per-emit throw mint documented contract"
-    },
-    "blind-global": {
-     "saturated": false,
-     "findings": 7,
-     "landed": 1,
-     "scoped": 4,
-     "commits": [
-      "1262d91fe"
-     ],
-     "headline": "lanes own variance/bursts; steady-state per-frame floor uncovered — B2 owner-visibility memo landed (1.37-1.72x CPU-scope); B1 whole-scene traversals / B3 sim-atomic bursts / B6 unbudgeted audio rAF / B7 physics FFI fed to W122; PURSUE: devin/s1-sim-worker-spike (SHIP-proven, golden bit-identical, journal 0.21-0.26ms) + scene-graph diet + BatchedMesh re-census + SoA columns; rejected: GPU culling/WebGPU/per-kernel worker/event interning/three-mesh-bvh/meshlets/render-in-worker"
-    },
-    "skeptic": {
-     "clean": false,
-     "findings": 6,
-     "landed": 6,
-     "commits": [
-      "1262d91fe"
-     ],
-     "headline": "F1-H __setActiveVisualRoot epoch-guard (swapEpoch re-stamp at request mint, probe fails pre-fix); F2-M per-leg sector-exit cleanup guards (enforceBudgetSteps no longer strandable); F3-L deferred restore .catch shape; F4-L rebuildWorldFromEntitiesSteps abandoned-iterator WASM world leak (committed-flag finally); F5-L verifyLedgerConsistency() + in-sweep drift emit; F6-L laneWarn >60s quiet-gap heal. Verified clean: byte ledgers, pending keys, sector index, Steps twins, emit slicing, import lane, no subtraction"
-    }
-   },
-   "evidence": {
-    "goldenHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
-    "level": "PERFORMANCE_VERIFIED (CPU-scope only — assetResidency bookkeeping + cancel burst on pinned fixture; boot F1/F2/F5 mechanism-verified, frame relief hardware-unverified; lod saturation is a scope verdict, not a perf claim)",
-    "hardwareVerified": false,
-    "unitMeasurement": {
-     "harness": "C:/Users/Administrator/perf-waves/bench-residency-w121.mjs (imports src/render/assetResidency.js headlessly; old rev extracted via git show HEAD^:path)",
-     "fixture": "1200 assets / 400 pending / 200 soft holds / 600 boundary-owned; BENCH_OWNERS=N multiplies presentation owners per boundary asset; medians of 5-9 reps",
-     "results": {
-      "cancelBurst_400Deactivations": {
-       "old_ms": 8.09,
-       "new_ms": 0.659,
-       "parity": "identical evicted set + diagnostics"
-      },
-      "enforceBudget_overCeiling": {
-       "old_ms": "~13.4",
-       "new_ms": "~7.2",
-       "parity": "identical evicted set + remainingBytes + blockedRows total"
-      },
-      "prepareSectorExit_BENCH_OWNERS_4": {
-       "old_ms": 0.66,
-       "new_ms": 0.55,
-       "note": "1-owner microfixture regresses 0.45→0.61 (index maintenance + snapshot) — net win only at real multi-owner density, recorded honestly"
-      },
-      "rotateSector_BENCH_OWNERS_4": {
-       "old_ms": 0.65,
-       "new_ms": 0.49
-      },
-      "visibilityMemo_ownerConsults": {
-       "old_ms": {
-        "200x12": 40.1,
-        "500x24": 266.3,
-        "50x60": 41.2
-       },
-       "new_ms": {
-        "200x12": 28.5,
-        "500x24": 198.5,
-        "50x60": 25.2
-       },
-       "parity": "identical held verdicts at hysteresis boundary (grok-build20-picture 15/15 pin)"
-      }
-     }
-    },
-    "focusedTests": "fb-export-bundles-medals 6/0, save-rejected-candidate 7/7, save-import-bounds 8/8, pr-instrument-integrity 8/8, event-bus-contract 34/0, recovery-encounter 12/12, save-arbitration 7/7, save-envelope-fidelity 2/2, save-restore-atomicity 5/5, save-shared-continuation 4/4, ~60 recovery/ace/wreck suites green; residual reds canon (incl. new: save-growth-dock-trade-flat parityArmSlope identical on clean master) | final batch: asset-residency-{accounting,detached-owners} green, refcounts browser test = canon 120s env-timeout on clean master too, sector-arrival-publish-release 10/0, world-residency 17/0, startup-geometry 24/0, decode-runway 19/0, authored-upgrade-queue-lifecycle 1/1 canon, sg02-native-rebuild-lifetime 10/0, save suites green; golden 0b33dde re-verified post-edit"
-   },
-   "verdict": "kept"
-  },
-  {
-   "wave": 122,
-   "head": "b16d2730a",
-   "lanes": {
-    "lod-in-frame": {
-     "saturated": true,
-     "findings": 0,
-     "landed": 0,
-     "commits": [],
-     "headline": "2nd consecutive saturated report — W121 remediations re-verified clean at c3d84934c; residual scope is vendored-three render-list fan-out + mounted-node diet, bounded (streak 2/3)"
-    },
-    "popin-admission": {
-     "saturated": false,
-     "findings": 6,
-     "landed": 6,
-     "commits": [
-      "007e8d976"
-     ],
-     "headline": "deferred warm mint into fused exit leg (0.80-4.47ms probe at K=500), governorEntry per-entry row memos (ownersVersion-keyed), fused cache-owner sweep walk, class byte ledgers O(1) soft-budget early-out, paced warmCoverage mint, diagnostics row memos"
-    },
-    "boot-loading": {
-     "saturated": false,
-     "findings": 2,
-     "landed": 2,
-     "commits": [
-      "728302fe5"
-     ],
-     "headline": "plain-text import prepare routed through sliced async lane (O(1) sync rejects preserved — last unpaced O(save-size) click brick); autosave fallback whole-ledger prepares await async lanes w/ liveness re-checks + prepared-envelope FIFO memo; verify-before-index ordering unchanged"
-    },
-    "in-flight-hitches": {
-     "saturated": false,
-     "findings": 4,
-     "landed": 2,
-     "commits": [
-      "a7151dcaf"
-     ],
-     "headline": "audio frame body (~25 calls) dispatched via bounded background post — last unbudgeted presented-frame per-frame work; stormWarn ported the sibling 1s->30s backoff + 60s quiet-gap heal (was flat 1s forever, no heal); F2 econTick sweep MECHANISM_VERIFIED deferred w/ fresh measure 2.7ms p50/3.9ms p95 per 5s — all hot legs sim-authoritative (RNG order, simTime stamps) so any frame split risks golden hash; F4 FFI span tracked for S1 lane"
-    },
-    "s1-spike-mining": {
-     "saturated": null,
-     "findings": 7,
-     "landed": 0,
-     "commits": [],
-     "headline": "VERDICT proceed-with-changes (~4-5.5 sessions): 22 real conflicts/172 overlap (partsLibrary 13 hunks tier-1); cargo:jettison dead-feature blocker under ?simLane (~30-line rpc); 67 unforwarded classified (52 render-only + 8 intent folds + 5 dead + 1 blocker); p95 0.85ms = wake latency not clone size — SAB Atomics envelope predicted ~0.15ms; Electron SAB already unblocked via COOP/COEP headers, needs ~10-line ?simLane URL hook; staged plan A merge-behind-flag → B dead-feature sweep → C SAB envelopes → D Electron → E default flip"
-    }
-   },
-   "evidence": "all CPU-scope mechanism verification on this box; GPU/frame-time benefit hardware-unverified per environment declaration",
-   "verdict": "kept"
-  },
-  {
-   "wave": 123,
-   "head": "10cd72d65",
-   "lanes": {
-    "lod-in-frame": {
-     "saturated": true,
-     "streak": 3,
-     "findings": 1,
-     "landed": 0,
-     "commits": [],
-     "headline": "LANE CLOSED — 3rd consecutive saturated. All W122 machinery verified in code; shadow-map walk residual removed (covered by _shadowCasterRegistry since 713dc74ed). Sole material B1 residual: vendored-three projectObject render-list walk (O(mounted-nodes) × 1-2 passes/frame, hardware-unverified); flat renderable-leaf registry lever sketched (effort L, impact M, risk M-H — vendor-patch)."
-    },
-    "popin-admission": {
-     "saturated": false,
-     "streak": 0,
-     "findings": 6,
-     "landed": 5,
-     "commits": [
-      "7acc45245",
-      "8311f58e9"
-     ],
-     "headline": "Enforce census single-fold: blockedRows/reasons + unit-owner index mint once (F1/F4/F5); governorBlockedMembers set makes under-budget enforce O(blocked) — 4000-asset ~0.5us/call (F2, MECHANISM VERIFIED); prewarm swap routes through rotateSectorDeferred FIFO-chained behind sector-exit cleanup (F3); F6 diagnostics sort deferred below noise.",
-     "deferred": [
-      "F6 diagnostics sort — below noise at observed blocked counts"
-     ]
-    },
-    "boot-loading": {
-     "saturated": false,
-     "streak": 0,
-     "findings": 2,
-     "landed": 2,
-     "commits": [
-      "10cd72d65"
-     ],
-     "headline": "Emit-driven writes paced: saveAsync twin of save() — identical receipts/boundary markers, chain hops through _scheduleAutosaveWork while frozen; live-flight defers to sync coherent capture; supersede/stale-realm aborts silent; exportSlot async via proven-envelope memo + chunked prepare; capturePhotoPngAsync toBlob+FileReader."
-    },
-    "in-flight-hitches": {
-     "saturated": false,
-     "streak": 0,
-     "findings": 2,
-     "landed": 2,
-     "commits": [
-      "f39fd835c"
-     ],
-     "headline": "lifetimeSweep corpse collect gated: DIRTY.MEMBERSHIP death-latch + rolling 128-slice probe for unmarked kills + 64-tick backstop — full walk only when a corpse provably exists; diag.update quarantined (catch + capped console.error)."
-    }
-   },
-   "verdicts": [
-    "lod-in-frame: LANE CLOSED (3rd consecutive saturated)",
-    "popin-admission: saturated false (streak 0/3)",
-    "boot-loading: saturated false (streak 0/3)",
-    "in-flight-hitches: saturated false (streak 0/3)"
-   ]
-  },
-  {
-   "wave": 124,
-   "head": "db49720e7",
-   "lanes": {
-    "popin-admission": {
-     "saturated": false,
-     "streak": 0,
-     "findings": 5,
-     "landed": 4,
-     "commits": [
-      "ece6d36d5"
-     ],
-     "headline": "freedBytesForSelection per-selection O(S·U·E) rescan replaced by incremental per-unit remaining-count (~150-600x on the dominant plan leg, MECHANISM VERIFIED + CPU-measured); rotateSectorDeferred call-time decisions consult the newest REQUESTED target with seq-guarded repoint — stale-sector warm coverage/dropped reversals closed (F1); selectEvictions dead legs folded (kind-gated spread, lazy sum, decorated sort, no index map); validatedUnits row memo + two-set sweep iteration (F5).",
-     "deferred": [
-      "F3 sector→entity index — declined: ~15 sector restamp sites outside the index funnel make a maintained map unprovable; index.version misses post-append restamps → stale memo under-warms or throws spurious fail-closed cert errors"
-     ]
-    },
-    "boot-loading": {
-     "saturated": false,
-     "streak": 0,
-     "findings": 3,
-     "landed": 3,
-     "commits": [
-      "aec85e97d"
-     ],
-     "headline": "whole-corpus mirror collect replaced by the write delta (mirrorPatch: primary bytes + rotated recovery/tombstone + index row — same shape deleteSlot emits; uncovered writers defer to the chunked generation-bracketed collect); paced chain's two O(save) legs (checksum+envelope stringify) run inside the save worker via _encodeEnvelopeViaWorker reusing the autosave encode protocol, named bound verdicts verbatim + sync-legs fallback; exportSlotAsync double-fail lane slices through _serializeDataFrozenAsync."
-    },
-    "in-flight-hitches": {
-     "saturated": false,
-     "streak": 0,
-     "findings": 2,
-     "landed": 1,
-     "commits": [
-      "db49720e7"
-     ],
-     "headline": "frame() post-finally tail quarantined (perf samplers + checkGraphicsRecovery→restore segment were the last unguarded presented-frame consumers — a tail throw skipped schedule() = permanent silent loop death invisible to frame._errs/stall reporter; both segments now self-guarded with a 20-cap tail-error ledger, schedule() unconditional). F2 classifyWorld ~2xO(entityList) per classify tick documented keep-atomic — no deterministic slice; shelved-entity index the only avenue (L, UNVERIFIED).",
-     "deferred": [
-      "F2 classifyWorld O(n) classify-tick passes — keep-atomic: same-tick publish semantics, shelved-entity discovery index only avenue (L effort, benefit UNVERIFIED)",
-      "corpse-probe backstop skip when probe covered whole list — sub-noise, documented not recommended"
-     ]
-    }
-   },
-   "verdicts": [
-    "lod-in-frame: CLOSED (closed at W123, no wave-124 audit)",
-    "popin-admission: saturated false (streak 0/3)",
-    "boot-loading: saturated false (streak 0/3)",
-    "in-flight-hitches: saturated false (streak 0/3)"
-   ]
-  },
-  {
-   "wave": 125,
-   "head": "b3b142e24",
-   "lanes": {
-    "popin-admission": {
-     "saturated": false,
-     "streak": 0,
-     "findings": 4,
-     "landed": 4,
-     "commits": [
-      "2ed5695a1"
-     ],
-     "headline": "entityIndex gains a bySectorId lane keyed on the canonical sector chain (homeSectorId|data.homeSectorId|data.sectorId|null) — the W124-declined F3 avenue landed behind a 16-file restamp allowlist: syncEntitySectorMembership() funnels every production sector restamp and sectorMembershipGuard.mjs contract-tests the funnel (violations:0, MECHANISM VERIFIED). append/remove bump laneVersions.sectorMemberships so (laneVersion,sectorId) memos invalidate on membership moves; sectorless entities retain their null bucket diagnostic; never-started mints no longer lag a pass behind sector entry."
-    },
-    "boot-loading": {
-     "saturated": false,
-     "streak": 0,
-     "findings": 4,
-     "landed": 4,
-     "commits": [
-      "9e72466b4"
-     ],
-     "headline": "CONTAMINATED-1 closed: resolveNewGamePlusOverlay is async and runs inside prepareRun after enterLoadingMode raises the veil — ~2x multi-MB sync envelope prepare off the New Run+ click frame (MECHANISM VERIFIED, CPU-side). Recovery-promotion self-heals ship their delta ({slot}+index row) instead of re-arming the whole-corpus collect; worker-encode bound verdicts forward limit/actual; bumpSaveStoreGeneration tracks sf.settings.* so a profile write inside a collect bracket cannot ship a stale mirrored row."
-    },
-    "in-flight-hitches": {
-     "saturated": false,
-     "streak": 0,
-     "findings": 4,
-     "landed": 1,
-     "commits": [
-      "b3b142e24"
-     ],
-     "headline": "F1 landed — the W124-deferred avenue shipped: classify discovery authority now uses a shelved-member cell map (2048wu cells over partition-0 members keyed on build-time pos); quiet passes query O(cells+candidates) with a max-presence pad preserving envelope semantics; the O(list) walk survives as cold build + every-8th-pass audit for silently-moved shelved members; partition-epoch/index-membership movement forces rebuild (MECHANISM VERIFIED by 4-test suite + walks/queries counters; CPU-scope benefit UNVERIFIED on this box — needs the pinned scenario bench).",
-     "deferred": [
-      "H1-H3 hardware-unverified items (GPU conclusions unmeasurable on SwiftShader)",
-      "exhaustive enumeration: 0 retaggable bus listeners; deferred-enter PACED everywhere; W124 machinery intact"
-     ]
-    },
-    "skeptic": {
-     "status": "auditing"
-    }
-   },
-   "verdicts": [
-    "lod-in-frame: CLOSED (closed at W123)",
-    "popin-admission: saturated false (streak 0/3)",
-    "boot-loading: saturated false (streak 0/3)",
-    "in-flight-hitches: saturated false (streak 0/3)",
-    "skeptic: pending"
-   ]
-  }
- ],
- "laneStatus": {
-  "lod-in-frame": "closed@w123 (3 consecutive saturated)"
- },
- "s1Spike": {
-  "stageA": {
-   "status": "merged-behind-flag",
-   "pr": 260,
-   "head": "c65576cbf",
-   "mergeCommit": "8fad14efe",
-   "conflicts": {
-    "files": 22,
-    "overlappingFiles": 172,
-    "tier1": "partsLibrary.js (13 hunks)"
-   },
-   "evidence": "PERFORMANCE VERIFIED (CPU-scope): golden 0b33dde1 bit-identical on SIM_LANE=main AND worker; check-game-playable 16/16 main + 18/18 worker (LANE-FWD green); 85/86 focused tests (1 canon red on clean master)",
-   "mergeCasualtiesFixed": [
-    "settleAbortedStalledBoundary ReferenceError — dead spike-side deadline tail removed to master shape",
-    "game:embarkSpeculation declared KNOWN_UNFORWARDED (main-side-only UI->renderer prefetch)"
-   ],
-   "nextStage": "B: cargo:jettison rpc + facade-miss census/gate",
-   "completedAt": "2026-10-09"
-  }
- }
 }
