@@ -228,10 +228,16 @@ function checkFullscreenCompositorShellsSleep() {
   assert.match(hudStyles, /\.sf-dock-fade\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden docking overlay should be display:none in injected HUD CSS');
   assert.match(uiRoot, /dockFade\.hidden\s*=\s*true/, 'docking overlay should return to hidden after the fade');
   assert.match(uiRoot, /dockFade\.hidden\s*=\s*false/, 'docking overlay should only mount while the transition is active');
-  assert.match(lockRing, /display:\s*none/, 'idle lock ring should not stay in the compositor tree');
-  assert.match(lockRingActive, /display:\s*block/, 'active lock ring should still mount for lock feedback');
-  assert.match(lockDiamond, /display:\s*none/, 'idle target diamond should not keep its pulsing glow mounted');
-  assert.match(lockDiamondVisible, /display:\s*block/, 'visible target diamond should still mount for selected targets');
+  // Combat marks retain their layout through the grace window and fade before visibility sleeps.
+  // Both hiding mechanisms are valid; opacity alone must not leave an idle mark visible to paint.
+  assert.ok(/display:\s*none/.test(lockRing) || /visibility:\s*hidden/.test(lockRing),
+    'idle lock ring should be hidden after its feedback fade');
+  assert.ok(/display:\s*block/.test(lockRingActive) || /visibility:\s*visible/.test(lockRingActive),
+    'active lock ring should still show lock feedback');
+  assert.ok(/display:\s*none/.test(lockDiamond) || /visibility:\s*hidden/.test(lockDiamond),
+    'idle target diamond should be hidden after its feedback fade');
+  assert.ok(/display:\s*block/.test(lockDiamondVisible) || /visibility:\s*visible/.test(lockDiamondVisible),
+    'visible target diamond should still show selected targets');
   assert.match(hud, /objWrap\.style\.display\s*=\s*'none'/, 'empty objective tracker should start out of the compositor tree');
   assert.match(hud, /setDisplay\(objWrap,\s*false\)/, 'legacy multi-objective list should remain out of the compositor tree');
   assert.match(hud, /missionTracker\.style\.display\s*=\s*'none'/, 'active-objective command surface starts asleep');
