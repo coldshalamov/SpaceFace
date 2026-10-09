@@ -149,6 +149,10 @@ export function collectFieldLoopSpecs(state, out = []) {
         // centered on the hull — honest, and it dies with the player like any track.
         trackId: state.playerId,
         envelope: Math.min(1, 0.35 + 0.65 * strain + 0.22 * massFrac + 0.25 * windup) * fuseTerm,
+        // Heavier load = deeper voice: the hum sags ~13% under a capped moon,
+        // the same arc the thrown ball's rumble already grades by mass. The
+        // spec pitch folds into the loop's envelope-driven rate (no new infra).
+        pitch: 1 - 0.13 * massFrac,
         phase: 'active',
         position: pos,
       });
@@ -249,7 +253,7 @@ function startFieldLoop(host, spec) {
   voice.role = 'combat';
   voice._fieldKey = spec.key;
   voice._fieldEnvelope = spec.envelope;
-  voice._fieldPitch = fieldLoopPitch(spec.envelope) * (rt._bulletTimePitch || 1);
+  voice._fieldPitch = fieldLoopPitch(spec.envelope) * (spec.pitch || 1) * (rt._bulletTimePitch || 1);
   voice._statusScale = 1;
   rt.loops[spec.key] = voice;
   if (typeof host._setVoiceRate === 'function') host._setVoiceRate(voice, voice._fieldPitch);
@@ -292,7 +296,7 @@ export function syncFieldAudioLoops(host) {
       }
       existing._fieldEnvelope = spec.envelope;
       existing._statusScale = 1;
-      const pitch = fieldLoopPitch(spec.envelope) * (rt._bulletTimePitch || 1);
+      const pitch = fieldLoopPitch(spec.envelope) * (spec.pitch || 1) * (rt._bulletTimePitch || 1);
       if (Math.abs((existing._fieldPitch || 1) - pitch) > 0.02 && typeof host._setVoiceRate === 'function') {
         host._setVoiceRate(existing, pitch);
         existing._fieldPitch = pitch;

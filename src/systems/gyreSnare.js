@@ -1603,7 +1603,10 @@ export const gyreSnare = {
         // GROWTH CURVE (mass fraction, not meal count) — a capped moon's 40th meal still
         // escalates while a pebble pile can't fake hunger at count 20.
         this.bus.emit('audio:cue', {
-          id: 'gyre_snare_absorb', gain: 0.7,
+          // Meal size in the loudness too: a wreck gulp lands ~0.9 while belt
+          // gravel keeps the quiet tick — every other meal channel (knock,
+          // glint, shake, pad pulse, the rate above) already grades on em.
+          id: 'gyre_snare_absorb', gain: 0.55 + 0.35 * Math.min(1, em / 160),
           rate: 1.15 - Math.min(0.5, em / 160)
             + 0.3 * Math.pow(Math.min(1, rt.clumpMass / D.maxClumpMass), 0.75),
           // The gulp speaks at the SKIN CONTACT, not the clump's heart — on a

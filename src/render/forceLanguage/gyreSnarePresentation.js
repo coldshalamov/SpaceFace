@@ -2206,6 +2206,7 @@ export class GyreSnarePresentation {
         if (died) {
           this._secGraveT = 0.15;
           for (const lm of this._secLumps) {
+            if (!lm.visible) continue; // never-built pool slots have no scatter dir to stamp
             const bl = Math.hypot(lm.position.x, lm.position.z) || 1;
             lm.userData.scatX = lm.position.x / bl;
             lm.userData.scatZ = lm.position.z / bl;
@@ -2222,6 +2223,7 @@ export class GyreSnarePresentation {
         // Same formula as the primary's _scatterLumps — one grave language.
         const fling = Math.max(16, finite(this._secR, 8) * 1.3) / 0.15;
         for (const lm of this._secLumps) {
+          if (!lm.visible) continue; // same visibility contract the live loop keeps
           lm.position.x += (lm.userData.scatX || 0) * fling * sdt;
           lm.position.y += 1.5 * sdt;
           lm.position.z += (lm.userData.scatZ || 0) * fling * sdt;
