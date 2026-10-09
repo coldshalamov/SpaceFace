@@ -529,6 +529,8 @@ export class GyreSnarePresentation {
     this._ballPt = { x: 0, z: 0 };
     this._corePt = { x: 0, z: 0 };
     this._throwBeat = false;   // latched once per launch: the big ring blooms on the sim's thrownBeat tick
+    this._launchSeq = 0;       // last adopted thrownTick — 'larger than seen' IS the throw edge:
+                               // a render frame spanning two sim ticks can't miss a monotonic value
     this._lastGraveTick = -1;  // graves dedupe — one bloom per sim tick, not per render frame
     this._deathT = 0;          // >0 while a dead ball's rubble dissolves into its grave (~0.25 s)
     this._secGraveT = null;    // >0 while a secondary ball's lumps scatter into its grave
@@ -771,7 +773,17 @@ export class GyreSnarePresentation {
     // Restored sim rewound the clock — the ledger AND every phase accumulator go back
     // to zero, or the first post-restore gulp dedupes against a pre-rewind _absorbSeen
     // and clump/motes snap against their frozen phase.
-    if (clock < this.time) { this._clearLumps(); this._absorbSeen = 0; this._clumpSpin = 0; this._moteT = 0; }
+    if (clock < this.time) {
+      this._clearLumps(); this._absorbSeen = 0; this._clumpSpin = 0; this._moteT = 0;
+      // A restored sim also orphans the presentation-owned residues the ledger
+      // reset predates: a maw lean aimed at a clump that no longer exists, a
+      // secondary grave scatter resuming against a new ball, a stale warn veil
+      // or strain shimmer bleeding into the next hold.
+      this._holdT = 0; this._leanZ = 0; this._strainVis = 0; this._swirlDir = 1;
+      this._secId = null; this._secGraveT = null;
+      this._veilMat.opacity = 0; this._veilMat.color.copy(this._colGlass);
+      this._veil.visible = false;
+    }
     const sdt = Math.max(0, clock - this.time);  // sim-domain delta — every accumulator
     this.time = clock;                           // below rides the same clock as the sim,
                                                  // so bullet-time/pause freeze the lash
@@ -1329,7 +1341,20 @@ export class GyreSnarePresentation {
     for (let i = 0; i < this._basinGlows.length; i++) {
       const g = this._basinGlows[i];
       const s = spots && i < spots.length ? spots[i] : null;
-      if (!s || !this.toLocal) { g.visible = false; continue; }
+      if (!this.toLocal) { g.visible = false; continue; }
+      if (!s) {
+        // A spot that expires from the ledger mid-collapse rides the same
+        // spotFade its still-published siblings get — blinking out a frame
+        // early pops under the winding cone.
+        if (phase === 'launching' && g.userData.spotK != null) {
+          const fade0 = 1 - clamp01(finite(mirror.launchWindup01));
+          g.material.opacity = (0.06 + 0.14 * g.userData.spotK) * flashCalm * this._wakeEase * (this._fuseDim || 1) * fade0;
+          g.visible = fade0 > 0.02;
+          continue;
+        }
+        g.visible = false; g.userData.spotK = null; continue;
+      }
+      g.userData.spotK = finite(s.k, 0.5);
       const lp = this.toLocal(finite(s.x), finite(s.z), this._spotPt);
       g.position.set(lp.x, 0.35, lp.z);
       g.scale.setScalar(Math.max(1.5, finite(s.r, 3) * 2.6)
@@ -1888,7 +1913,7 @@ export class GyreSnarePresentation {
     // burst tick, where gyre:thrown, the pad thump, camera shake and the Newton kick
     // all land. Gating on windup01 alone fired a frame early (windup01 hits its end
     // on the decrement tick, a tick before the first impulse).
-    if (phase === 'launching' && !this._throwBeat && mirror.thrownBeat === true) {
+    if (phase === 'launching' && !this._throwBeat && finite(mirror.thrownTick) > this._launchSeq) {
       this._throwBeat = true;
       this._launchKick = 1; // the freed ball's veil surges armed for ~0.7 s
       const bx = mirror.ballPos ? finite(mirror.ballPos.x) : finite(mirror.corePos && mirror.corePos.x);
@@ -1897,6 +1922,7 @@ export class GyreSnarePresentation {
       this._fireBurst(bx, bz, br, flashCalm, mirror.launchDir, 1.1);
       this._coneMat.uniforms.uPulse.value = 1;
     }
+    this._launchSeq = finite(mirror.thrownTick);
 
     // ── bursts ───────────────────────────────────────────────────────────────
     for (const b of this._bursts) {

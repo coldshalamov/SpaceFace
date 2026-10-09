@@ -171,7 +171,10 @@ export const gyreHud = {
           // swallow the freshly-thrown ball's own ·Ns.
           // The payoff beat keeps the destructive-yield telegraph too — HOLD and
           // BALL AWAY both carry DMG×; BOWL shouldn't drop the arc's climax.
-          const bowlDmg = dmgText(this._bowlMass || 0);
+          // DMG× reads ballMass — the mass the stamped impact scale was frozen on
+          // at launch. An adopted-ball edge can leave _bowlMass (clumpMass ledger)
+          // divergent from the payload; the yield tier must track the ball.
+          const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : (this._bowlMass || 0));
           return { text: `GYRE — BOWL ×${this._bowlN} · ${this._bowlMass}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
         }
         const mass = Math.round(g.ballMass || 0);
@@ -226,8 +229,10 @@ export const gyreHud = {
       const bowlMass = this._bowlMass != null ? this._bowlMass : Math.round(g.clumpMass || 0);
       const bowlN = this._bowlN != null ? this._bowlN : (g.absorbs || 0) + 1;
       // Same DMG× the HOLD/AWAY reads carry — the throw's yield telegraph
-      // doesn't drop for the payoff's own beat.
-      const bowlDmg = dmgText(bowlMass);
+      // doesn't drop for the payoff's own beat. ballMass is the payload the
+      // stamped scale froze on; bowlMass (clumpMass ledger) can diverge on an
+      // adopted-ball edge, so the tier reads the ball.
+      const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : bowlMass);
       return { text: `GYRE — BOWL ×${bowlN} · ${bowlMass}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched' };
     }
     if (g.phase === 'holding') {

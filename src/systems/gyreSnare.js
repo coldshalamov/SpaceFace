@@ -173,6 +173,10 @@ function freshRuntime() {
                            // a mild second-order tension read for ordinary dragging (strained only
                            // trips past holdStrainDist — lag shades the glass before that)
     dropReason: null,      // last _drop cause ('strained', 'released', ...) — presentation reads it for the close shape
+    thrownSeq: 0,          // monotonic throw counter — published as thrownTick: a render frame
+                           // spanning two sim ticks still sees the changed value, where the
+                           // one-tick thrownBeat flag would flip true->false between reads.
+                           // Never reset on drop/finish — 'larger than last seen' IS the edge.
   };
 }
 
@@ -1941,7 +1945,7 @@ export const gyreSnare = {
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballVx: 0, ballVz: 0, ballMass: 0, ballTtl01: 1,
       ballTtlLeftS: 0,
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, launchBurst01: 0, ballGrave: false,
-      graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
+      graves: null, thrownBeat: false, thrownTick: 0, basinSpots: null, dropReason: null, fuseS: 0,
       liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
       tornId: null, tornPos: { x: 0, z: 0 }, tornDir: { x: 0, z: 0 },
       // Published unconditionally at rt's rest values — a reader between
@@ -2208,6 +2212,11 @@ export const gyreSnare = {
     // ring blooms on this same tick instead of a frame early off windup01.
     pub.thrownBeat = rt.phase === PHASE.LAUNCH
       && rt.launchLeft === D.launchTicks - 1;
+    // The seq rides the same edge — publish-side edge bookkeeping, same class
+    // as the cue latches: a skipped render frame cannot miss a value that only
+    // ever grows (the one-tick thrownBeat flag can).
+    if (pub.thrownBeat) rt.thrownSeq += 1;
+    pub.thrownTick = rt.thrownSeq;
     if (core && core.pos) {
       pub.corePos.x = core.pos.x; pub.corePos.z = core.pos.z;
       // The held body's real spin — the VFX lumps ride it instead of an authored rate.
