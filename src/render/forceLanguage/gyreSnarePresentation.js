@@ -987,6 +987,7 @@ export class GyreSnarePresentation {
       this._secId = null; this._secGraveT = null; this._adoptT = 0;
       this._veilMat.opacity = 0; this._veilMat.color.copy(this._colGlass);
       this._veil.visible = false;
+      this._prevNet = 0; // first-fill edge dies with the state it tracked
       // uGulp.y is an absolute sim-clock stamp — a mid-beam restore rewinding
       // simTime to before a gulp's start would replay the swallow band once at
       // its leftover amplitude on the new clock. One write covers both shells
@@ -1061,6 +1062,9 @@ export class GyreSnarePresentation {
         this._beamWasOn = true;
         this._closing = false; // a re-wake mid-fade cancels the ramp cleanly
         this._wakeRamp = 0;
+        // A drop mid-fill left _prevNet >0: re-arming the first-fill edge keeps
+        // the maw-kick honest with the sim's basinCatch latch (reset in _drop).
+        this._prevNet = 0;
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.4);
       }
       this._wakeRamp = Math.min(1, this._wakeRamp + sdt / 0.15);

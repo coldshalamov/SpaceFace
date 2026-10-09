@@ -919,8 +919,8 @@ export const gyreSnare = {
     // ramp's end — every reader clamps vs 0.15, so an unbounded counter in a long
     // hold is dead bookkeeping.
     this._rt.basinCount = 0; // reset above the guard — a helper-less host must not
-    // towCount resets at the two callers: _suckPass runs before this lane in HOLD and
-    // its annulus tow would be wiped by a local reset here.
+    // publish last tick's count. towCount resets at the two callers: _suckPass runs
+    // before this lane in HOLD and its annulus tow would be wiped by a local reset here.
     this._rt.basinSpots.length = 0; // same early reset — a helper-less host can't keep last tick's glow spots
     // On the helper-less early return only: clear the scratch so spots _suckPass
     // staged can't publish a tick late beside the next run's basin glows. (Not

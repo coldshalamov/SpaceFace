@@ -150,8 +150,11 @@ export function collectFieldLoopSpecs(state, out = []) {
         trackId: state.playerId,
         // Rescaled so the payload arc survives the warn band: the old weights
         // (0.35+0.65·strain+0.22·massFrac+0.25·windup) hit the 1.0 clamp on
-        // strain alone, killing mass/windup grading exactly at the crest.
-        envelope: Math.min(1, 0.3 + 0.45 * strain + 0.15 * massFrac + 0.1 * windup) * fuseTerm,
+        // strain alone, killing mass/windup grading exactly at the crest. The
+        // basin term lets a loading funnel thicken the voice before the catch —
+        // ears join the uNet shimmer/disc kick eyes already got for the fill.
+        envelope: Math.min(1, 0.3 + 0.45 * strain + 0.15 * massFrac + 0.1 * windup
+          + 0.05 * Math.min(1, (Number.isFinite(gyre.basinCount) ? gyre.basinCount : 0) / 3)) * fuseTerm,
         // Heavier load = deeper voice: the hum sags ~13% under a capped moon,
         // the same arc the thrown ball's rumble already grades by mass. The
         // spec pitch folds into the loop's envelope-driven rate (no new infra).
