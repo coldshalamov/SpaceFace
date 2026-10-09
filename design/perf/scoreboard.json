@@ -684,6 +684,40 @@
     "sector-prewarm-boundary-generation cargo-capsule dispose red — byte-identical on clean HEAD, documented canon",
     "bundled Blob worker encoder red — green standalone + on clean HEAD, documented flake"
    ]
+  },
+  {
+   "wave": 132,
+   "head": "d131b4182",
+   "lanes": {
+    "boot-loading": {
+     "saturated": false,
+     "streak": 0,
+     "findings": 7,
+     "landed": 7,
+     "commits": [
+      "766f6d954"
+     ],
+     "headline": "F1 (H, CPU-measured 15-32ms/parse): slot-data memo miss paid a sync JSON.parse per pick — stage chrome renders from card meta, portrait fills via specPrepared bus fan-in (worker structured clone, zero main parse) + 180ms trailing-debounce fill for misses. F2 (M-H, ~21ms/MB): saveImportByteLength band gate skips the char walk when the verdict cannot flip. F3/F4 (M): parked spec timer no longer survives consume or screen exit — loadAsync clears _timer; new disarmSpeculativePrepare on hide/dispose + mode re-check before emit fan. F5 (M): export profile splice textual for object-root JSON. F6/F7 (L): once-per-sig Continue arm immediate (no 200ms park); foreign-write re-arm defers via setTimeout not microtask."
+    },
+    "popin-admission": {
+     "saturated": false,
+     "streak": 0,
+     "findings": 4,
+     "landed": 4,
+     "commits": [
+      "d131b4182"
+     ],
+     "headline": "F1 (M): collectEncounterWarmChannels + warmAuthoredEncounterFiles carry item.warmShips/item.warmAssets through all warm arms (encounterPending, authoredArm, depot watch/patrol, unique-wreck memos). F4 (L-M): warmNemesisPendingDecode poll arms the squad kit at notBefore-runway — last once-fired warm closed. F2 (L-M): reclaimWarm covers in-flight requests under the same owner — no sibling beginRequest mint per poll. F3 (L, CPU-measured): authoredPreloadPlanForEntity WeakMap memo on full input tuple (0.69us hit vs 1.16us cold whole-ship; modular ships higher) — ensureEntityLibrary stale-plan detection preserved."
+    }
+   },
+   "integrity": {
+    "goldenSha256": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+    "bitIdentical": true
+   },
+   "ciAdjudication": [
+    "authored-entity-plan-budget awaits-exact-pipeline-admission pin — byte-identical on clean HEAD 766f6d954, canon",
+    "asset-residency-refcounts headless real release-GLB traversal 120s — documented env-bound canon"
+   ]
   }
  ],
  "laneStatus": {
