@@ -6079,6 +6079,32 @@ function warmGateWingDecode(owner) {
 }
 
 /**
+ * The three speculative-warm latches key on bare sector identity but the cohort
+ * they armed for dies with the sector's FULL residency (extras strip on any
+ * demotion). Drop the demoted sector's keys so a return visit re-arms the
+ * bounded warms instead of suppressing them as "already warmed" — the second
+ * visit's spawn arms would otherwise pay cold decode/mint on presented frames.
+ */
+function clearSectorWarmLatchKeys(owner, sectorId) {
+  const wanted = owner._wantedTierWarmSectors;
+  if (wanted) wanted.delete(sectorId);
+  const modular = owner._modularPoolWarmSectors;
+  if (modular) {
+    const prefix = `${sectorId} `;
+    for (const key of modular) {
+      if (typeof key === 'string' && key.startsWith(prefix)) modular.delete(key);
+    }
+  }
+  const gateWing = owner._gateWingWarmKeys;
+  if (gateWing) {
+    const prefix = `${sectorId}|`;
+    for (const key of gateWing) {
+      if (typeof key === 'string' && key.startsWith(prefix)) gateWing.delete(key);
+    }
+  }
+}
+
+/**
  * Station side events carry their own countdown: _planStation leaves each budgeted patrol
  * (ship_wasp at the station's faction) in stationSideEvents.pending with a fixed dueAt, and
  * _fire mints it the moment the beat lands — inside the marker window at the station seam.
@@ -18495,7 +18521,26 @@ export const render = {
     this._helperBindings = { target: ctx.helpers, values: helperBindings };
 
     onBus('entity:spawned', () => { this._meshReconcileDirty = true; });
-    onBus('world:residency', () => { this._meshReconcileDirty = true; });
+    onBus('world:residency', ({ sectors } = {}) => {
+      this._meshReconcileDirty = true;
+      // A sector leaving FULL loses the cohort its warm latches and session cook
+      // armed for. The latches and the cooked stamp key on bare sector identity —
+      // a return visit would suppress every re-warm and the keep-GPU recook would
+      // skip its coverage censuses while the re-materialized cohort drains at
+      // paced-service rate past the veil. Re-arm both on demote.
+      if (Array.isArray(sectors)) {
+        for (const row of sectors) {
+          const demotedId = row && row.sectorId;
+          if (demotedId == null || row.tier === 'FULL') continue;
+          clearSectorWarmLatchKeys(this, demotedId);
+          if (this._sessionLiveSectorCookedId === demotedId) {
+            this._sessionLiveSectorCookedId = null;
+            this._sessionRecookKeepGpu = false;
+            if (state.render) state.render.sessionLiveSectorCookedId = null;
+          }
+        }
+      }
+    });
     onBus('entity:destroyed', ({ id }) => {
       this._appearanceReplacements?.get(id)?.cancel('appearance-entity-destroyed');
       const still = resolveWorldPresentationEntity(this.state, id);
