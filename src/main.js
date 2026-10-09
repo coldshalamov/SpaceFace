@@ -274,6 +274,10 @@ async function boot() {
     let loopController = null;
     const closeRuntime = createPresentationRuntimeCloser({
       stopPresentation() {
+        // Retire async Launch/Continue and GPU admissions before any teardown can settle their
+        // gates. A late success must not publish flight into a runtime whose loop is stopped.
+        const cancelledToken = runTransitionGuard.begin('runtime-closed');
+        if (state.render) state.render.admissionRunGeneration = cancelledToken.generation;
         const errors = [];
         try { loadingPresenter.destroy(); } catch (error) { errors.push(error); }
         try { loopController?.stop?.(); } catch (error) { errors.push(error); }
@@ -346,6 +350,10 @@ async function boot() {
     });
 
     bus.on('game:exitToMenu', () => {
+      // Returning to the menu also owns outstanding readiness work. Without a new generation,
+      // an old Launch/Continue can settle afterward and put the player straight back in flight.
+      const cancelledToken = runTransitionGuard.begin('exit-to-menu');
+      if (state.render) state.render.admissionRunGeneration = cancelledToken.generation;
       const previousMode = state.mode;
       state.mode = 'menu';
       if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
