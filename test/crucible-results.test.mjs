@@ -164,6 +164,56 @@ test('the player dying ends the run and publishes a causal summary', () => {
   assert.match(result.headline, /Reaver Corsair killed you on wave 4/);
 });
 
+test('brood kill receipts count into the run total and the wave that earned them', () => {
+  // Brood are not entities — their deaths arrive only as swarm:broodKills batches, and the
+  // results plate's KILLS figure must include them beside "112 BEST KILL CHAIN".
+  const harness = boot();
+  beginActive(harness);
+  harness.state.run.wave = 1;
+  harness.bus.emit('run:waveStarted', { wave: 1, tick: 0 });
+  cohortKill(harness);
+  harness.bus.emit('swarm:broodKills', { count: 5, cause: 'direct', pos: { x: 1, z: 1 }, credits: 10, score: 50, wave: 1 });
+  harness.bus.emit('run:waveCleared', { wave: 1 });
+  harness.bus.emit('player:death', { ...DEFEAT_RECEIPT });
+  const result = named(harness.emitted, 'run:resultsReady')[0].payload;
+  assert.equal(result.kills, 6, 'one ship kill plus the five-body brood receipt');
+  const heavy = (result.moments || []).find((m) => m && /heavy lifting/.test(m.text));
+  assert.ok(heavy && /6 kills/.test(heavy.text), `wave stats carry the brood kills: ${JSON.stringify(result.moments)}`);
+});
+
+test('terrain and collision brood deaths file as improvised kills in the rematch ledger', () => {
+  const harness = boot();
+  beginActive(harness);
+  harness.state.run.wave = 1;
+  harness.bus.emit('run:waveStarted', { wave: 1, tick: 0 });
+  harness.bus.emit('swarm:broodKills', { count: 3, cause: 'terrain', pos: null, wave: 1 });
+  harness.bus.emit('swarm:broodKills', { count: 2, cause: 'collision', pos: null, wave: 1 });
+  harness.bus.emit('swarm:broodKills', { count: 4, cause: 'explosive', pos: null, wave: 1 });
+  harness.bus.emit('player:death', { ...DEFEAT_RECEIPT });
+  // The player reads the plate, backs out, and relaunches — the run tears down to inactive
+  // before the next begin is legal (the same seam swarm-rematch.test.mjs uses).
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'ended', nextPhase: 'inactive', reason: 'return_to_menu', tick: 0 });
+  beginActive(harness);
+  harness.state.run.wave = 1;
+  harness.bus.emit('run:waveStarted', { wave: 1, tick: 0 });
+  harness.bus.emit('player:death', { ...DEFEAT_RECEIPT });
+  const result = survivalResults.lastResult();
+  assert.ok(result && result.rematch && result.rematch.prior, 'the second attempt cites the first');
+  assert.equal(result.rematch.prior.improvised, 5, 'the room killed five brood for the player');
+  assert.equal(result.rematch.prior.kills, 9, 'all nine brood deaths counted');
+});
+
+test('brood kill receipts outside a live run, or with no bodies, count nothing', () => {
+  const harness = boot();
+  harness.bus.emit('swarm:broodKills', { count: 9, cause: 'direct', pos: null, wave: 1 });
+  beginActive(harness);
+  harness.bus.emit('swarm:broodKills', { count: 0, cause: 'direct', pos: null, wave: 1 });
+  harness.bus.emit('swarm:broodKills', { cause: 'terrain' });
+  harness.bus.emit('player:death', { ...DEFEAT_RECEIPT });
+  const result = named(harness.emitted, 'run:resultsReady')[0].payload;
+  assert.equal(result.kills, 0, 'receipts without a live run — or without bodies — are ignored');
+});
+
 test('victory publishes results even though it emits no run:ended', () => {
   const harness = boot();
   beginActive(harness);
