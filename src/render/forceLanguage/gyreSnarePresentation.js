@@ -613,6 +613,14 @@ export class GyreSnarePresentation {
     } else {
       slot.fromX = finite(member.nx, 0) * touch;
       slot.fromZ = finite(member.nz, 0) * touch;
+      // The real approach corkscrewed (suckSwirlFrac, the funnel's whole
+      // promise) — rotating the rim entry ~0.45 rad along the clump's spin
+      // keeps the stick reading as a spiral-in, not a straight radial slide.
+      const swA = 0.45 * (this._swirlDir || 1);
+      const sc = Math.cos(swA), ss = Math.sin(swA);
+      const fX = slot.fromX * sc - slot.fromZ * ss;
+      slot.fromZ = slot.fromX * ss + slot.fromZ * sc;
+      slot.fromX = fX;
     }
     slot.bobPhase = i * 2.39;
     slot.bobRate = 1.15 + ((i * 0.61803398875) % 1) * 0.9;
@@ -727,12 +735,12 @@ export class GyreSnarePresentation {
     mesh.rotation.y = Math.atan2(-spec.dz, spec.dx);
     mesh.scale.set(trailLen, 1, Math.max(3, Math.min(48, spec.r * 1.15, trailLen)));
     const ttl01 = Math.max(0, Math.min(1, finite(spec.ttl01, 1)));
-    // Alpha floor: a pebble's 9 s flight keeps a readable streak at range — the
-    // throw's mass still grades the shimmer but can't drop the ribbon to ~0.2.
-    const massFade = 0.8 + 0.3 * Math.min(1, finite(spec.mass) / GYRE_SNARE.maxClumpMass);
-    // Proportional floor: a pebble keeps ~85% of its slot alpha — readable at
-    // range without flattening the primary/secondary streak hierarchy.
-    mat.uniforms.uAlpha.value = Math.max(spec.alpha * massFade, spec.alpha * 0.85) * flashCalm
+    // Mass-graded streak: a pebble's 9 s flight keeps ~70% of its slot alpha —
+    // readable at range — while a capped moon carries ~110%. The throw's mass
+    // actually grades the shimmer; the old max(floor) flattened everything
+    // under ~400 t and could only ever brighten.
+    const massFade = 0.7 + 0.4 * Math.min(1, finite(spec.mass) / GYRE_SNARE.maxClumpMass);
+    mat.uniforms.uAlpha.value = spec.alpha * massFade * flashCalm
       * (1 - (spec.wind || 0)) * (0.3 + 0.7 * Math.min(1, ttl01 / 0.25));
     mesh.visible = true;
   }
@@ -1113,8 +1121,11 @@ export class GyreSnarePresentation {
         const bx = phase === 'launching' ? nL.x + dx * (drawLen - coilBack) : mL.x;
         const bz = phase === 'launching' ? nL.z + dz * (drawLen - coilBack) : mL.z;
         this._basinHalo.position.set(bx, 0.42, bz);
+        // Phase-staggered off the suck halo's identical 1.7 rad/s breathe —
+        // both rings pulsing in lockstep read as one system; the rest of the
+        // vocabulary staggers on golden-ratio phases.
         this._basinHalo.scale.setScalar(finite(GYRE_SNARE.basinRadius, 86)
-          * (1 + (phase === 'beaming' ? 0.035 : 0.02) * Math.sin(this.time * 1.7) * calm));
+          * (1 + (phase === 'beaming' ? 0.035 : 0.02) * Math.sin(this.time * 1.7 + 1.3) * calm));
         const liveA = phase === 'beaming' ? 0.06 * wakeEase : 0.03;
         this._basinHaloMat.opacity = liveA * flashCalm * (phase === 'launching' ? windFade : 1);
         this._basinHalo.visible = true;
@@ -1255,6 +1266,9 @@ export class GyreSnarePresentation {
       const bs = Math.hypot(finite(mirror.ballVx), finite(mirror.ballVz));
       spinRate = 2.6 * Math.max(0.15, Math.min(1, bs / (GYRE_SNARE.launchSpeed || 520)));
     }
+    // The swirl's chirality for lump fly-ins: meals arrive spiralling the same
+    // way the rubble tumbles, so their rim entry tilts along the group spin.
+    this._swirlDir = spinRate < 0 ? -1 : 1;
 
     // The flying ball's grave is tracked off ballPos only — a newly held core must
     // never poison where the OLD ball died (previously cx could be the held core).

@@ -1705,10 +1705,11 @@ test('strain cue latches once above 0.4 and re-arms below 0.25', async () => {
   for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.coreId, core.id);
   // Strain measures distance to the MAW (player+mawDist along the nose), not the
-  // ship: pin the core at mawDist+560 so strain = (560-480)/160 = 0.5 > 0.4 while
-  // staying under the 640 wu break — a held excursion across the +30-tick sustain.
+  // ship: pin the core at mawDist+520 so strain = sqrt(40/160) = 0.5 > 0.4 under
+  // the eased ramp while staying under the 640 wu break — a held excursion
+  // across the +30-tick sustain.
   for (let i = 0; i < 40; i++) {
-    core.pos.x = t.player.pos.x + T.mawDist + 560; core.pos.z = t.player.pos.z;
+    core.pos.x = t.player.pos.x + T.mawDist + 520; core.pos.z = t.player.pos.z;
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
   const strains = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain');
@@ -1722,7 +1723,7 @@ test('strain cue latches once above 0.4 and re-arms below 0.25', async () => {
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
   for (let i = 0; i < 5; i++) {
-    core.pos.x = t.player.pos.x + T.mawDist + 560; core.pos.z = t.player.pos.z;
+    core.pos.x = t.player.pos.x + T.mawDist + 520; core.pos.z = t.player.pos.z;
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
   const strains2 = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain');
@@ -2768,8 +2769,8 @@ test('a lagging clump shades strain01 via the spring residual — never the tear
 
 test('non-absorbable loot under tow publishes towCount — TOWING answers "why no snag"', async () => {
   const t = await bootPhysics();
-  rock(t.sim, T.mawDist + 30, 10, 6, 4, 'pickup');   // absorbable? no — dragged only
-  rock(t.sim, T.mawDist + 55, -18, 8, 5, 'mine');
+  const towA = rock(t.sim, T.mawDist + 30, 10, 6, 4, 'pickup');   // absorbable? no — dragged only
+  const towB = rock(t.sim, T.mawDist + 55, -18, 8, 5, 'mine');
   rock(t.sim, T.mawDist + 45, 14, 1, 2, 'projectile'); // point-defense tug: not "loot"
   hold(t);
   t.sim.step();
@@ -2777,6 +2778,21 @@ test('non-absorbable loot under tow publishes towCount — TOWING answers "why n
   assert.equal(t.state.gyreSnare.basinCount, 0, 'loot never counts as the next meal');
   assert.equal(t.state.gyreSnare.towCount, 2,
     `tugged bullets don't inflate the retrievable read (got ${t.state.gyreSnare.towCount})`);
+  // The 0->1 tow edge has ears — a hushed catch variant ONCE per fill, at the
+  // maw where the basin lane counted it (the last silent arrival class).
+  const towTicks = () => t.events.filter((e) => e.name === 'audio:cue'
+    && e.p.id === 'gyre_snare_catch' && e.p.rate === 0.8);
+  for (let i = 0; i < 3; i++) t.sim.step();
+  assert.equal(towTicks().length, 1, 'the first towed body lands its quiet edge once');
+  assert.ok(Math.abs(towTicks()[0].p.gain - 0.2) < 1e-6, 'whisper gain, not the catch tick');
+  // Empty the wedge — the latch re-arms and a fresh tow speaks again.
+  towA.alive = false; towB.alive = false;
+  t.sim.step();
+  assert.equal(t.sys._rt.towCount, 0, 'the tow emptied');
+  rock(t.sim, T.mawDist + 30, 10, 6, 4, 'pickup');
+  t.sim.step(); // a mid-tick spawn reaches the physics-backed query next step
+  t.sim.step();
+  assert.equal(towTicks().length, 2, 'a re-armed latch re-speaks on the next fill');
   t.cleanup();
 });
 
@@ -3649,12 +3665,12 @@ test('a core parked in the strain band publishes strain01 without dropping', asy
   assert.equal(t.sys._rt.phase, 'holding');
   // Park inside (holdStrainDist, holdBreakDist): the lash groans but never tears —
   // the band itself was previously only covered by its break-side edge.
-  core.pos.x = T.mawDist + T.holdStrainDist + 80; // 560 wu off the maw → strain 0.5
+  core.pos.x = T.mawDist + T.holdStrainDist + 40; // 520 wu off the maw → sqrt(0.25) = 0.5
   core.pos.z = 0;
   core.vel.x = 0; core.vel.z = 0;
   t.state.input.actions.gyreSnare = true; t.sim.step();
   const s = t.state.gyreSnare.strain01;
-  assert.ok(s > 0.3 && s < 0.7, `in-band strain reads ~0.5 (got ${s.toFixed(2)})`);
+  assert.ok(s > 0.3 && s < 0.7, `in-band strain reads ~0.5 under the eased ramp (got ${s.toFixed(2)})`);
   assert.equal(t.sys._rt.phase, 'holding', 'the band strains without tearing');
   assert.ok(!t.events.some((e) => e.name === 'gyre:dropped'), 'no drop inside the band');
   assert.equal(t.sys._rt.coreId, core.id, 'the clump is still tethered');

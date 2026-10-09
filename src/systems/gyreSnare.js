@@ -166,6 +166,8 @@ function freshRuntime() {
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
     basinSpots: [],        // bounded {x,z,r,k} of bodies actually being dragged — the victim-side pull glow
     towCount: 0,           // non-absorbable bodies under tow this tick — loot the beam drags but never eats
+    towLatched: false,     // the 0->1 tow edge ticks once — the last silent arrival class
+    towLane: null,         // 'basin' | 'suck' — positions the tick where the tow was counted
     tooHeavyCount: 0,      // whole bodies that cannot fit; never promise them as the next meal
     holdLag: 0,            // wu — core's distance off its orbit slot: the spring's residual error,
                            // a mild second-order tension read for ordinary dragging (strained only
@@ -326,6 +328,8 @@ export const gyreSnare = {
     rt.basinCatchLatched = false;
     rt.tooHeavyLatched = false;
     rt.tooHeavyLane = null;
+    rt.towLatched = false;
+    rt.towLane = null;
     rt.catchTickPeak = 0;   // the escalation ratchet dies with the beam ledger
     rt.prevBasinN = 0; rt.prevSuckN = 0; // and the prev-count ledgers with it —
     // the re-seed sits below the OFF early-return, so a re-opened beam would
@@ -974,7 +978,10 @@ export const gyreSnare = {
       // can answer "why won't it snag?" with TOWING N instead of bare SEARCHING.
       // Projectiles excluded: fire streaking through the wedge gets the point-defense
       // tug, but a bullet isn't "loot in tow" — it would fake the retrievable count.
-      if (!absorbable && admission !== 'too-heavy' && e.type !== 'projectile' && pullK > 0.05) this._rt.towCount += 1;
+      if (!absorbable && admission !== 'too-heavy' && e.type !== 'projectile' && pullK > 0.05) {
+        this._rt.towCount += 1;
+        this._rt.towLane = 'basin';
+      }
       // The gravity edge moves at the cone's own projection speed: the glass
       // takes ~150 ms to reach the maw, so the pull eases in over the same ramp
       // — a parked body no longer starts sliding before the cone visibly arrives.
@@ -1270,7 +1277,10 @@ export const gyreSnare = {
           // Same towCount the basin lane publishes — loot riding the annulus is still
           // under tow (the projectile exclusion matches _pullPass: a bullet isn't loot).
           // Without it TOWING drops to 0 exactly while the dragged mass is closest.
-          if (e.type !== 'projectile' && tugK > 0.05) rt.towCount += 1;
+          if (e.type !== 'projectile' && tugK > 0.05) {
+            rt.towCount += 1;
+            rt.towLane = 'suck'; // the 0->1 tick speaks where the tow was grabbed
+          }
           // Tugged mass inside the annulus glows at its discounted share too —
           // abs:false: courtesy tows can never be caught, so they never get the hot seat.
           if (this._spotScratch.length < D.basinSpotMax * 4) {
@@ -1641,6 +1651,8 @@ export const gyreSnare = {
     rt.basinCatchLatched = false;
     rt.tooHeavyLatched = false;
     rt.tooHeavyLane = null;
+    rt.towLatched = false;
+    rt.towLane = null;
     rt.catchTickPeak = 0;         // drop/finishLaunch reset symmetry — the ratchet
     // dies with the funnel: _publish's latch clear covers non-BEAM ticks anyway
     rt.prevBasinN = 0; rt.prevSuckN = 0; // and the prev-count ledgers — a re-beam
@@ -2109,6 +2121,21 @@ export const gyreSnare = {
           position: { x: heavyAt.x, z: heavyAt.z },
         });
       } else if (!heavy) rt.tooHeavyLatched = false;
+      // "It's dragging but won't stick": a non-absorbable entering tow was the
+      // last silent arrival class — absorbables tick, too-heavy drops, a towed
+      // hulk riding the wedge was eyes-only (TOWING ×N). A hushed catch variant
+      // on the 0->1 edge answers "is it doing anything?" — latch symmetry with
+      // its siblings (re-arms when the tow empties), same position rule.
+      const towing = (rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && rt.towCount > 0;
+      if (towing && !rt.towLatched) {
+        rt.towLatched = true;
+        const towAt = rt.towLane === 'suck'
+          ? (core && core.pos ? core.pos : pub.corePos) : maw;
+        this.bus.emit('audio:cue', {
+          id: 'gyre_snare_catch', gain: 0.2, rate: 0.8,
+          position: { x: towAt.x, z: towAt.z },
+        });
+      } else if (!towing) rt.towLatched = false;
       // The appetite has a voice while it builds: the shown +N (basin fold +
       // annulus arrivals during HOLD) used to climb eyes-only. A quieter
       // count-graded re-tick on each new peak lets the funnel stack be heard
@@ -2189,11 +2216,15 @@ export const gyreSnare = {
       // (cleared at _finishLaunch), so a clump released already-strained would publish a
       // phantom "beam tearing" beat on a deliberate bowl. LAUNCH reports zero like BEAM.
       pub.strain01 = rt.phase === PHASE.HOLD ? Math.max(
-        clamp(
+        // sqrt ease: the raw (dist-480)/160 ramp reads zero for 480 wu then
+        // sprints a hard 160 wu to break — the warn appears only as it screams.
+        // The eased curve breathes from the band's lip (≈0.3 at 20 wu in) and
+        // still saturates at the tear edge, so the groan telegraphs earlier.
+        Math.sqrt(clamp(
           (Math.hypot(core.pos.x - maw.x, core.pos.z - maw.z) - D.holdStrainDist)
             / Math.max(1, D.holdBreakDist - D.holdStrainDist),
           0, 1,
-        ),
+        )),
         // Mild second-order read: the orbit spring's residual lag shades the glass
         // while the ship drags the clump behind. The ceiling scales with payload —
         // a pebble's lag stays sub-warn, but hauling a capped katamari hard can
