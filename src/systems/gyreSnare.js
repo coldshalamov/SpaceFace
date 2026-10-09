@@ -1608,8 +1608,13 @@ export const gyreSnare = {
     // existing first. "unwatched ⇒ disarmed" runs on the very first tick.
     const pub = this._ensurePub(state);
     // The torn-core follow window counts down HERE — _publish only reads the
-    // track, so sim bookkeeping stays out of the read-only publish pass.
-    if (rt.tornTrack && (rt.tornTrack.ticks -= 1) <= 0) rt.tornTrack = null;
+    // track, so sim bookkeeping stays out of the read-only publish pass. The
+    // dead-entity clear lives here too: an expired corpse ends the follow on
+    // the same tick the countdown would have anyway.
+    if (rt.tornTrack) {
+      const torn = state.entities ? state.entities.get(rt.tornTrack.id) : null;
+      if ((rt.tornTrack.ticks -= 1) <= 0 || !torn || torn.alive === false || !torn.pos) rt.tornTrack = null;
+    }
     // Default each tick: the grave ring only blooms when the ball actually DIES — an
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
     // launchedId without a grave, and must not shatter under a still-live body.
@@ -1874,7 +1879,7 @@ export const gyreSnare = {
         pub.tornId = rt.tornTrack.id;
         pub.tornPos.x = torn.pos.x; pub.tornPos.z = torn.pos.z;
         if (rt.tornTrack.dir) { pub.tornDir.x = rt.tornTrack.dir.x; pub.tornDir.z = rt.tornTrack.dir.z; }
-      } else { rt.tornTrack = null; pub.tornId = null; }
+      } else pub.tornId = null; // dead/expired read — _sweepBallWatch owns the rt clear
     } else pub.tornId = null;
     // The funnel's drawn spiral + the clump's float phase ride the same eased stir /
     // orbit seed the sim uses — a -1 snag re-stirs the GLASS too, not just the pull.

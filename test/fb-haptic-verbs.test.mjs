@@ -277,6 +277,7 @@ test('gyre vocabulary routes through the pulse table — torn/dropped/droppedEmp
     ['gyre:full', {}, 'gyre:full'],
     ['gyre:fuseLow', {}, 'gyre:fuseLow'],
     ['gyre:ballGrave', {}, 'gyre:ballGrave'],
+    ['gyre:caught', {}, 'gyre:caught'],
     ['gyre:strained', {}, 'gyre:strained'],
     ['gyre:dropped', { reason: 'strained', coreId: null }, 'gyre:torn'],
     // A clump destroyed in the grip is a shatter — the same 'gyre:torn' pulse a
