@@ -763,22 +763,34 @@ export function roundTripSavePortrait(source) {
   return { first, second, ok: JSON.stringify(first) === JSON.stringify(second) };
 }
 
+// Single-entry memo keyed on the save store's generation signature: 'gen:' equality already
+// implies byte-identical slot bytes for every tracked writer, so a same-generation stage
+// re-render or re-pick reuses {raw, data} instead of paying another getItem + full multi-MB
+// parse per selection. A write bumps the generation and the next read falls through.
+let _slotDataMemo = null;
+
 function readSlotSaveData(ctx, slot) {
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  const sig = sys && typeof sys.saveStoreSignature === 'function' ? sys.saveStoreSignature() : null;
+  if (_slotDataMemo && _slotDataMemo.slot === slot && sig && _slotDataMemo.sig === sig) {
+    return _slotDataMemo;
+  }
+  let raw = null;
+  let data = null;
   try {
     if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(LS_PREFIX + slot);
-      const data = unwrapSaveData(raw ? JSON.parse(raw) : null);
-      if (data) return data;
+      raw = localStorage.getItem(LS_PREFIX + slot);
+      data = unwrapSaveData(raw ? JSON.parse(raw) : null);
     }
   } catch (e) {}
-  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
-  if (sys && typeof sys.peekSlot === 'function') {
+  if (!data && sys && typeof sys.peekSlot === 'function') {
     try {
       const peeked = unwrapSaveData(sys.peekSlot(slot));
-      if (peeked) return peeked;
+      if (peeked) data = peeked;
     } catch (e) {}
   }
-  return null;
+  _slotDataMemo = { sig, slot, raw, data };
+  return _slotDataMemo;
 }
 
 function shipDisplayName(ctx, defId) {
@@ -1133,12 +1145,19 @@ export const saveLoadScreen = {
     }
     if (this._film) this._film.choose(id);
     if (!quiet) cue('move');
-    // The row under the cursor is the slot Enter is about to load — arm its envelope decode
-    // during the dwell (saveSystem self-gates to frozen/menu and to occupied slots).
-    if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
-      ctx.bus.emit('save:loadSpeculationTarget', { slot: id });
-    }
     this._renderStage(ctx);
+    // The row under the cursor is the slot Enter is about to load — arm its envelope decode
+    // during the dwell (saveSystem self-gates to frozen/menu and to occupied slots). The
+    // stage read already materialized the bytes this generation, so the arm rides the memo's
+    // raw instead of a second getItem on the same click task.
+    if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+      const picked = _slotDataMemo && _slotDataMemo.slot === id ? _slotDataMemo : null;
+      ctx.bus.emit('save:loadSpeculationTarget', {
+        slot: id,
+        raw: picked && picked.raw,
+        sig: picked && picked.sig,
+      });
+    }
   },
 
   _renderStage(ctx) {
@@ -1147,7 +1166,8 @@ export const saveLoadScreen = {
     const meta = refs.slots[id];
     const occupied = isOccupied(meta);
     const saveAllowed = refs.saveAllowed;
-    const saveData = occupied ? readSlotSaveData(ctx, id) : null;
+    const saved = occupied ? readSlotSaveData(ctx, id) : null;
+    const saveData = saved && saved.data;
     const currentSlot = ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot;
     const portrait = occupied
       ? buildSavePortrait({

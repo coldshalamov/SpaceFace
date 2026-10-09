@@ -300,11 +300,13 @@ function handleSaveWorkerRequestCore(request, { asyncFinal } = {}) {
       result = { ok: false, reason: 'load_failed' };
     }
     // Meta lane: the caller only wants the verdict — the multi-MB envelope clone must not
-    // cross postMessage for a slot nobody will load.
+    // cross postMessage for a slot nobody will load. The ~1 KB cardEnv projection still
+    // crosses so the index consult builds the display card without re-parsing the blob.
     if (result && typeof result === 'object' && 'env' in result) {
+      const cardEnv = cardEnvFromEnvelope(result.env);
       const { env: _env, ...meta } = result;
       void _env;
-      result = meta;
+      result = cardEnv ? Object.assign(meta, { cardEnv }) : meta;
     }
     return { id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started };
   }
@@ -378,6 +380,48 @@ function workerNow() {
   // observable; main-thread blocking is reported independently by saveSystem.
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now();
+}
+
+// Card-lane projection of a prepared envelope: exactly the fields slotCardFromEnvelopeData
+// reads — fmt/version/savedAt/playtimeS/label/thumbnail plus the player ship pick, the current
+// sector's name row, and meta/missions/story/nav — minus the multi-MB remainder (entities, the
+// other world.sectors rows). Posted with the meta verdict so the slot-index consult builds its
+// display card off the worker's parse instead of re-parsing the blob on the main thread.
+export function cardEnvFromEnvelope(env) {
+  const data = env && env.data;
+  if (!env || typeof env !== 'object' || !data || typeof data !== 'object') return null;
+  const player = data.player && typeof data.player === 'object' ? data.player : {};
+  const ships = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const world = data.world && typeof data.world === 'object' ? data.world : {};
+  const sectorId = typeof world.currentSectorId === 'string' ? world.currentSectorId : '';
+  const sector = sectorId && world.sectors && typeof world.sectors === 'object'
+    ? world.sectors[sectorId] : null;
+  const liteSectors = {};
+  if (sectorId && sector && typeof sector === 'object') {
+    liteSectors[sectorId] = { name: sector.name, id: sector.id };
+  }
+  return {
+    fmt: env.fmt,
+    version: env.version,
+    savedAt: env.savedAt,
+    playtimeS: env.playtimeS,
+    label: env.label,
+    thumbnail: env.thumbnail,
+    data: {
+      player: {
+        credits: player.credits,
+        activeShipIndex: player.activeShipIndex,
+        ownedShips: ships.map((ship) => (
+          ship && typeof ship === 'object' ? { defId: ship.defId } : ship
+        )),
+      },
+      world: { currentSectorId: sectorId, sectors: liteSectors },
+      meta: data.meta,
+      missions: data.missions,
+      story: data.story,
+      nav: data.nav,
+    },
+  };
 }
 
 // Blob-backed source keeps browser, minified bundle, and Electron on one path. This literal is
@@ -607,6 +651,45 @@ function now() {
   // their scheduler-quantized readings hide ordinary sub-15 ms encodes as zero.
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
 }
+// Import-free twin of the host-side cardEnvFromEnvelope: exactly the envelope fields the slot
+// card builder reads, posted with the meta verdict so the index consult builds its card off
+// this parse instead of re-parsing the blob on the main thread.
+function cardEnvFromEnvelope(env) {
+  var data = env && env.data;
+  if (!env || typeof env !== 'object' || !data || typeof data !== 'object') return null;
+  var player = data.player && typeof data.player === 'object' ? data.player : {};
+  var ships = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  var world = data.world && typeof data.world === 'object' ? data.world : {};
+  var sectorId = typeof world.currentSectorId === 'string' ? world.currentSectorId : '';
+  var sector = sectorId && world.sectors && typeof world.sectors === 'object'
+    ? world.sectors[sectorId] : null;
+  var liteSectors = {};
+  if (sectorId && sector && typeof sector === 'object') {
+    liteSectors[sectorId] = { name: sector.name, id: sector.id };
+  }
+  return {
+    fmt: env.fmt,
+    version: env.version,
+    savedAt: env.savedAt,
+    playtimeS: env.playtimeS,
+    label: env.label,
+    thumbnail: env.thumbnail,
+    data: {
+      player: {
+        credits: player.credits,
+        activeShipIndex: player.activeShipIndex,
+        ownedShips: ships.map(function (ship) {
+          return ship && typeof ship === 'object' ? { defId: ship.defId } : ship;
+        }),
+      },
+      world: { currentSectorId: sectorId, sectors: liteSectors },
+      meta: data.meta,
+      missions: data.missions,
+      story: data.story,
+      nav: data.nav,
+    },
+  };
+}
 self.addEventListener('message', function (event) {
   const request = event.data || {};
   try {
@@ -670,14 +753,16 @@ self.addEventListener('message', function (event) {
       ).then(function (prepared) {
         var result = prepared;
         // Meta lane: verdict only — the multi-MB envelope clone must not cross postMessage for a
-        // slot nobody will load.
+        // slot nobody will load. The ~1 KB cardEnv projection still crosses so the consult
+        // builds the display card without re-parsing the blob on the main thread.
         if (request.type === 'restore_prepare_meta'
             && prepared && typeof prepared === 'object' && prepared.env !== undefined) {
           var meta = {};
           for (var mk in prepared) {
             if (mk !== 'env') meta[mk] = prepared[mk];
           }
-          result = meta;
+          var cardEnv = cardEnvFromEnvelope(prepared.env);
+          result = cardEnv ? Object.assign(meta, { cardEnv: cardEnv }) : meta;
         }
         self.postMessage({
           id: request.id,

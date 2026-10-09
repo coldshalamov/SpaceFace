@@ -101,6 +101,10 @@ const INDEX_KEY = LS_PREFIX + 'index';
 // worst consequence is a stale slot card — never hidden corruption, because a real load
 // re-validates every byte of the envelope.
 let _saveStoreGeneration = 0;
+// >0 while a boot-reconcile apply writes through the silenced facade: its own writes make
+// storage match the merged map by construction, so they must not bump the generation the
+// post-apply cache stamp compares. Foreign writes still bump — they arrive outside the flag.
+let _saveStoreApplySilenced = 0;
 let _saveStoreTrackedObject = null;
 // Optional subscriber for save-store writes — the save system installs its speculative
 // re-arm here so a mid-dwell write can refresh an armed generation instead of letting
@@ -108,6 +112,7 @@ let _saveStoreTrackedObject = null;
 let _onSaveStoreBump = null;
 
 function bumpSaveStoreGeneration(key) {
+  if (_saveStoreApplySilenced > 0) return;
   if (key != null) {
     const k = String(key);
     // sf.settings.* rows ride the shared-store mirror too; an untracked settings write
@@ -361,7 +366,7 @@ export const save = {
     // envelope can start decoding during dwell — pause arms 'quick' (the F9 target), the
     // save/load page arms the row under the cursor.
     bus.on('save:loadSpeculationTarget', (p) => {
-      try { this.speculateLoadPrepare(p && p.slot); } catch (err) { /* best-effort */ }
+      try { this.speculateLoadPrepare(p && p.slot, p); } catch (err) { /* best-effort */ }
     });
     // An autosave landing mid-dwell (e.g. behind the after-action sheet) invalidates the
     // armed spec's generation sig — re-arm for the same slot so the click still consumes
@@ -537,18 +542,39 @@ export const save = {
       const localNow = genAtCollect === _saveStoreGeneration
         ? local : await this._collectSharedStoreKeysChunked();
       const merged = mergeSharedStoreKeys(localNow, remote || {});
+      // The apply's own setItem/removeItem calls ride the wrapped store and would bump the
+      // generation — silence them behind this facade so a bump inside the window can only
+      // come from a foreign write (a storage event or a reentrant tracked setItem), which
+      // then voids the cache stamp below instead of being claimed by it.
+      const silencedStore = {
+        get length() { return globalThis.localStorage.length; },
+        key: (index) => globalThis.localStorage.key(index),
+        getItem: (key) => globalThis.localStorage.getItem(key),
+        setItem: (key, value) => {
+          _saveStoreApplySilenced++;
+          try { globalThis.localStorage.setItem(key, value); } finally { _saveStoreApplySilenced--; }
+        },
+        removeItem: (key) => {
+          _saveStoreApplySilenced++;
+          try { globalThis.localStorage.removeItem(key); } finally { _saveStoreApplySilenced--; }
+        },
+      };
       // Chunked: the getItem-compare + setItem pass was the last multi-MB atomic
       // leg in the boot reconcile — same semantics, the task queue yields between batches.
-      await applySharedStoreKeysChunked(merged, globalThis.localStorage, {
+      await applySharedStoreKeysChunked(merged, silencedStore, {
         yieldQueue: () => this._restoreFrameYield(),
       });
       // Post-apply storage == merged for every shared key (skipped writes were identical by
       // construction) — hand the materialized map to the slot signature so the first menu scan
-      // doesn't getItem the same megabytes a second time.
-      this._sharedStoreCollectCache = {
-        gen: _saveStoreGeneration,
-        raws: new Map(Object.entries(merged)),
-      };
+      // doesn't getItem the same megabytes a second time. Only stamp it when no foreign write
+      // landed inside the apply's yield windows: merged predates such a write, and a stale
+      // stamp would serve it to one consult as if current until the next bump.
+      if (_saveStoreGeneration === genAtCollect) {
+        this._sharedStoreCollectCache = {
+          gen: _saveStoreGeneration,
+          raws: new Map(Object.entries(merged)),
+        };
+      }
       if (remote != null || Object.keys(local).length > 0) {
         // Only ship what the merge actually changed — an already-mirrored store keeps the
         // ~220 KB envelope PUT off the boot path entirely.
@@ -2248,7 +2274,13 @@ export const save = {
       // No publish means the generation moved mid-ride — re-sign so the walk below
       // reads current bytes instead of the stale collect.
       const fresh = await this._slotStoreSignatureAsync();
-      if (fresh.sig !== sig) return this._slotIndexWithFallbackAsync(burst || null);
+      if (fresh.sig !== sig) {
+        // Stamp the fresh collect into the burst before recursing — the re-entry consults
+        // burst.sig, so discarding `fresh` here used to make a mid-ride slot write invisible
+        // to this consult until the next generation bump.
+        if (burst) Object.assign(burst, fresh);
+        return this._slotIndexWithFallbackAsync(burst || null);
+      }
     }
     // The signature collect above already paid its getItem walk on this task — break
     // before the scans so the miss can't fuse the whole store read into one frame.
@@ -2345,6 +2377,7 @@ export const save = {
         await this._restoreFrameYield();
         const indexed = normalizeSlotIndex(this._readIndex());
         const verdicts = {};
+        const cardEnvs = {};
         const primaryRaws = new Map();
         const collected = this._sharedStoreCollectCache;
         const collectedRaws = collected && collected.gen === _saveStoreGeneration
@@ -2378,11 +2411,18 @@ export const save = {
           }
           jobs.push(Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((v) => {
             verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: !!(v && v.ok) });
+            if (v && v.cardEnv) cardEnvs[slot] = v.cardEnv;
           }).catch(() => {
             verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: false });
           }));
         }
-        await Promise.all(jobs);
+        // Same bounded fan-out the scan consults use — K untrusted blobs used to dispatch K
+        // simultaneous worker requests (each a spawn-per-request checkout plus its postMessage
+        // hand-off); slices of four overlap the roundtrips without the burst.
+        for (let i = 0; i < jobs.length; i += 4) {
+          await Promise.all(jobs.slice(i, i + 4));
+          if (i + 4 < jobs.length) await this._restoreFrameYield();
+        }
         // A newer write generation may have landed while the worker walked — republish under
         // the current signature only if it is still the one this pass validated.
         installSaveStoreWriteTracking();
@@ -2400,8 +2440,9 @@ export const save = {
             merged[slot] = clean;
           } else if (v.primary) {
             // Verified blob with no index card (foreign write): the meta verdict already
-            // proved it restorable, so this re-parse only rebuilds the display card.
-            const env = this._prepareEnvelopeMeta(primaryRaws.get(LS_PREFIX + slot));
+            // proved it restorable and carries the worker's card-env projection — the sync
+            // re-parse below only runs when the verdict could not produce one.
+            const env = cardEnvs[slot] || this._prepareEnvelopeMeta(primaryRaws.get(LS_PREFIX + slot));
             const meta = env && slotCardFromEnvelopeData(slot, env, null);
             if (meta) merged[slot] = meta;
           } else if (v.primary === false) {
@@ -2475,6 +2516,13 @@ export const save = {
     });
   },
 
+  // The same generation signature the speculation lane arms on: 'gen:' equality implies
+  // byte-identical slot bytes for every tracked writer (installSaveStoreWriteTracking).
+  saveStoreSignature() {
+    installSaveStoreWriteTracking();
+    return 'gen:' + _saveStoreGeneration;
+  },
+
   /**
    * Arms the same speculative prepare as the menu Continue scan, but for a slot a screen
    * names ahead of the click — pause arms 'quick' (the F9 target), save/load arms the row
@@ -2482,7 +2530,7 @@ export const save = {
    * live ticks (still correct — the generation sig rejects drift — but wasted disk/worker
    * work), so it stays off there.
    */
-  speculateLoadPrepare(slot) {
+  speculateLoadPrepare(slot, provided) {
     try {
       if (typeof Worker !== 'function' || typeof slot !== 'string' || !slot) return;
       const state = this.state;
@@ -2491,7 +2539,11 @@ export const save = {
       const sig = 'gen:' + _saveStoreGeneration;
       const prior = this._speculativeContinuePrepare;
       if (prior && prior.sig === sig && prior.slot === slot) return;
-      const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null;
+      // A caller that already materialized this slot's bytes under this generation (the
+      // save/load row pick) hands them over — the arm then skips its own getItem.
+      const raw = provided && provided.sig === sig && typeof provided.raw === 'string' && provided.raw
+        ? provided.raw
+        : ((typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null);
       if (typeof raw !== 'string' || !raw) return;
       this._armSpeculativePrepare(slot, raw, sig);
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
@@ -2616,10 +2668,12 @@ export const save = {
       for (let i = 0; i < pendingVerdicts.length; i += 4) {
         await Promise.all(pendingVerdicts.slice(i, i + 4).map(({ slot, raw }) =>
           Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((verdict) => {
-            const env = verdict && verdict.ok ? this._prepareEnvelopeMeta(raw) : null;
+            const env = verdict && verdict.ok
+              ? (verdict.cardEnv || this._prepareEnvelopeMeta(raw)) : null;
             if (env) {
               // Card straight off the envelope, same as the sync twin — the checksum already
-              // ran inside the meta, so the post-migration re-verify can never misfire.
+              // ran inside the meta, so the post-migration re-verify can never misfire. The
+              // worker's cardEnv projection carries the card fields without a second parse.
               const meta = slotCardFromEnvelopeData(slot, env, null);
               if (meta) out[slot] = meta;
             } else {
@@ -2708,7 +2762,8 @@ export const save = {
       for (let i = 0; i < pendingVerdicts.length; i += 4) {
         await Promise.all(pendingVerdicts.slice(i, i + 4).map(({ slot, raw }) =>
           Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((verdict) => {
-            const env = verdict && verdict.ok ? this._prepareEnvelopeMeta(raw) : null;
+            const env = verdict && verdict.ok
+              ? (verdict.cardEnv || this._prepareEnvelopeMeta(raw)) : null;
             if (env) {
               const meta = slotCardFromEnvelopeData(slot, env, null);
               if (meta) out[slot] = meta;
@@ -4769,7 +4824,7 @@ export const save = {
     }
     if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
       const meta = this._prepareEnvelopeMeta(raw);
-      return Promise.resolve(meta ? { ok: true } : { ok: false, reason: 'load_failed' });
+      return Promise.resolve(meta ? { ok: true, cardEnv: meta } : { ok: false, reason: 'load_failed' });
     }
     return new Promise((resolve) => {
       let settled = false;
@@ -4786,11 +4841,13 @@ export const save = {
       if (!accepted) settle(null);
     }).then((prepared) => {
       if (!prepared) {
+        // Timeout/wedged-worker fallback: keep the env this parse already paid for — the
+        // card consult consumes cardEnv instead of re-parsing the same multi-MB blob.
         const meta = this._prepareEnvelopeMeta(raw);
-        return meta ? { ok: true } : { ok: false, reason: 'load_failed' };
+        return meta ? { ok: true, cardEnv: meta } : { ok: false, reason: 'load_failed' };
       }
       if (!prepared.ok) return { ok: false, reason: prepared.reason || 'load_failed' };
-      return { ok: true };
+      return { ok: true, cardEnv: prepared.cardEnv || null };
     });
   },
 
@@ -5482,11 +5539,17 @@ export const save = {
       return { restored: false, superseded: true, stale: true, slot };
     }
 
-    const s = this._openRestoreSession(data, slot, options);
-    if (options.rollbackSnapshot && options.rollbackSnapshot.deferred === true) {
-      // The sync drive can't pace the capture across frames — the identical atomic
-      // capture still lands inside the frozen session, before the first destructive chunk.
-      const marker = options.rollbackSnapshot;
+    const deferredMarker = options.rollbackSnapshot && options.rollbackSnapshot.deferred === true
+      ? options.rollbackSnapshot : null;
+    const s = this._openRestoreSession(data, slot, deferredMarker
+      ? Object.assign({}, options, { deferRestoringEmit: true }) : options);
+    if (deferredMarker) {
+      // The capture must serialize live state BEFORE the session's save:restoring emit —
+      // its listeners wipe tensionDirector.policy, predation bindings, and free-id order,
+      // and a rollback that snapshots after them restores the post-wipe world. The sync
+      // drive can't pace the capture across frames — the identical atomic capture still
+      // lands inside the frozen session, before the first destructive chunk.
+      const marker = deferredMarker;
       try {
         marker.resolved = this._captureRollbackSnapshot();
         options.rollbackSnapshot = marker.resolved;
@@ -5495,6 +5558,7 @@ export const save = {
         options.rollbackSnapshot = null;
         return this._closeRestoreSession(s, error);
       }
+      this._firePendingRestoringEmit(s);
     }
     const it = this._restoreChunks(s);
     let restoreError = null;
@@ -5539,15 +5603,21 @@ export const save = {
       return { restored: false, superseded: true, stale: true, slot };
     }
 
-    const s = this._openRestoreSession(data, slot, options);
-    if (options.rollbackSnapshot && options.rollbackSnapshot.deferred === true) {
+    const deferredMarker = options.rollbackSnapshot && options.rollbackSnapshot.deferred === true
+      ? options.rollbackSnapshot : null;
+    const s = this._openRestoreSession(data, slot, deferredMarker
+      ? Object.assign({}, options, { deferRestoringEmit: true }) : options);
+    if (deferredMarker) {
       // A live-sim caller deferred its O(world) rollback capture to this point — the
       // session's scale-0 freeze + _restoring-gated writes hold the sim still between
       // yields, so the same sliced walk pays it across frames and still completes before
-      // the first destructive chunk. The marker must resolve to real snapshot data (or a
-      // refusal) before the generator runs, or a later chunk failure would consume the
-      // marker itself as rollback data.
-      const marker = options.rollbackSnapshot;
+      // the first destructive chunk. It must also land BEFORE the session's save:restoring
+      // emit: that event's listeners mutate exactly the fields the capture serializes
+      // (tensionDirector.policy, ai predation bindings, free-id order), so a snapshot
+      // taken after it restores the post-wipe world, not the one the player left.
+      // The marker must resolve to real snapshot data (or a refusal) before the generator
+      // runs, or a later chunk failure would consume the marker itself as rollback data.
+      const marker = deferredMarker;
       try {
         marker.resolved = await this._captureRollbackSnapshotAsync(() => this._restoring === true);
         options.rollbackSnapshot = marker.resolved;
@@ -5556,6 +5626,7 @@ export const save = {
         options.rollbackSnapshot = null;
         return this._closeRestoreSession(s, error);
       }
+      this._firePendingRestoringEmit(s);
     }
     const it = this._restoreChunks(s);
     let restoreError = null;
@@ -5652,7 +5723,16 @@ export const save = {
     // world object itself survives deserialize; only its bags are reset).
     state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
     if (state.world && typeof state.world === 'object') state.world.enterSerial = state.enterSerialSeq;
-    this.bus.emit('save:restoring', { slot, source: restoreSource });
+    let pendingRestoringEmit = null;
+    if (options && options.deferRestoringEmit === true) {
+      // A deferred rollback capture is about to serialize live state inside this frozen
+      // session — hold the emit until it resolves: save:restoring listeners wipe exactly
+      // the fields the capture reads. The caller fires it via _firePendingRestoringEmit
+      // before the first restore chunk; a capture failure closes without it.
+      pendingRestoringEmit = { slot, source: restoreSource };
+    } else {
+      this.bus.emit('save:restoring', { slot, source: restoreSource });
+    }
     // sector:exit slicing is restore-scoped: the world-restore chunk's departure emit
     // parks its listener tail on the bus and the restore's own yields + frame-leftover
     // drains retire it across painted beats. Inside a restore the sim is frozen and
@@ -5689,8 +5769,19 @@ export const save = {
     return {
       data, slot, options, state, timeEffects, restoreSource,
       entityIdRemap, finalizeLoadedGame, transitionToken,
+      pendingRestoringEmit,
       finalizerPending: false,
     };
+  },
+
+  // Fires a save:restoring emit _openRestoreSession held for a deferred rollback capture —
+  // the listeners' pre-wipe mutations then run between the capture and the first restore
+  // chunk, exactly where the eager path always had them.
+  _firePendingRestoringEmit(s) {
+    if (!s || !s.pendingRestoringEmit) return;
+    const pending = s.pendingRestoringEmit;
+    s.pendingRestoringEmit = null;
+    this.bus.emit('save:restoring', pending);
   },
 
   // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):

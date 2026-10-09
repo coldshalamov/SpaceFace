@@ -313,7 +313,7 @@ function captureDematerialized(state, entity, simTime, abstractTier) {
   return captured;
 }
 
-function catchUpEntity(entity, rec, simTime) {
+function catchUpEntity(entity, rec, simTime, runtime) {
   if (!entity || !entity.pos) return;
   if (entity.type === 'projectile' || entity.type === 'fx') return;
   if (entity.alive === false) return;
@@ -322,6 +322,13 @@ function catchUpEntity(entity, rec, simTime) {
   const next = ballisticDrift(entity.pos, entity.vel, entity.rot, entity.angVel, dt);
   entity.pos.x = next.pos.x;
   entity.pos.z = next.pos.z;
+  // This in-place pos write bumps no index version — the shelved-discovery cell map would
+  // keep the member in its stale cell until the audit pass. Mark partition-0 members so each
+  // classify pass envelope-tests them directly until the next map rebuild folds them back in.
+  if (runtime && entity._physicsPartition !== 1 && entity._physicsPartition !== 2) {
+    const moved = runtime.shelvedDiscoveryMoved || (runtime.shelvedDiscoveryMoved = new Set());
+    moved.add(entity);
+  }
   if (!entity.vel || typeof entity.vel !== 'object') entity.vel = { x: next.vel.x, z: next.vel.z };
   else {
     entity.vel.x = next.vel.x;
@@ -456,7 +463,7 @@ function attachStamp(entity, rec) {
   return rec;
 }
 
-function applyStamp(entity, classified, simTime) {
+function applyStamp(entity, classified, simTime, runtime) {
   let rec = entity.activity;
   if (!rec) {
     rec = makeStamp(classified, simTime);
@@ -480,7 +487,7 @@ function applyStamp(entity, classified, simTime) {
     }
   } else if (nowExact) {
     if (!wasExact && rec.lastExactT >= 0 && simTime > rec.lastExactT + 1e-4) {
-      catchUpEntity(entity, rec, simTime);
+      catchUpEntity(entity, rec, simTime, runtime);
     }
     rec.lastExactT = simTime;
     rec.graceUntilT = -1;
@@ -1010,6 +1017,8 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
       shelved.maxPresence = maxPresence;
       shelved.epoch = PHYSICS_PARTITION_EPOCH;
       shelved.indexVersion = indexVersion;
+      // The rebuilt cells index every member's live pos — any silent-write marks retire here.
+      if (runtime.shelvedDiscoveryMoved) runtime.shelvedDiscoveryMoved.clear();
     } else {
       shelved.queries += 1;
       // The pad carries the largest presence seen at build time, so a big-hulled member
@@ -1031,6 +1040,17 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
             const dz = finite(entity.pos.z) - origin.z;
             if (dx * dx + dz * dz <= limit * limit) add(entity);
           }
+        }
+      }
+      // Members moved by a silent pos write (catchUp drift) sit in stale cells the band query
+      // can't reach — envelope-test them directly until the audit rebuild re-buckets them.
+      if (runtime.shelvedDiscoveryMoved) {
+        for (const entity of runtime.shelvedDiscoveryMoved) {
+          if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
+          const limit = discover + entityPresenceRadius(entity);
+          const dx = finite(entity.pos.x) - origin.x;
+          const dz = finite(entity.pos.z) - origin.z;
+          if (dx * dx + dz * dz <= limit * limit) add(entity);
         }
       }
     }
@@ -1809,7 +1829,7 @@ function classifyWorld(state, runtime) {
     const classified = classifyActivity(entity, ctx);
     const priorTier = entity.activity && entity.activity.simTier;
     classified.pins = reusablePins(runtime, entity.id, classified.pins);
-    const stamp = applyStamp(entity, classified, simTime);
+    const stamp = applyStamp(entity, classified, simTime, runtime);
     if (worldRec && Number.isFinite(worldRec.nextEventAtT)) {
       stamp.nextEventAtT = worldRec.nextEventAtT;
     }
