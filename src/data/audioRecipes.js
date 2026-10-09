@@ -3115,7 +3115,9 @@ export const RECIPES = [
     id: 'sfx_gyre_launch',
     category: 'weapon',
     type: 'layered',
-    layers: ['sfx_gyre_launch_crack', 'sfx_gyre_launch_body', 'sfx_gyre_ball_whoosh'],
+    // The flight whoosh is its own emit (gyre_snare_whoosh) — a layer shares one
+    // rate across the stack, but the tail's shape must grade by payload alone.
+    layers: ['sfx_gyre_launch_crack', 'sfx_gyre_launch_body'],
     gainMult: 1.0,
     pitchRange: [0.92, 1.05],
   },

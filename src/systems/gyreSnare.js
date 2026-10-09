@@ -1001,7 +1001,7 @@ export const gyreSnare = {
         // heavy rides through to the victim-glow lane — a body it can never eat
         // reads refusal on the rock itself, not identical to towed loot.
         this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e), k: pullK,
-          abs: absorbable, heavy: admission === 'too-heavy' });
+          abs: absorbable, heavy: admission === 'too-heavy', hostile: e.type === 'projectile' });
       }
       // Loot in tow: non-absorbable dynamics the beam drags but never eats — the HUD
       // can answer "why won't it snag?" with TOWING N instead of bare SEARCHING.
@@ -1337,7 +1337,7 @@ export const gyreSnare = {
           // abs:false: courtesy tows can never be caught, so they never get the hot seat.
           if (this._spotScratch.length < D.basinSpotMax * 4) {
             this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: tugK,
-              abs: false, heavy: admission === 'too-heavy' });
+              abs: false, heavy: admission === 'too-heavy', hostile: e.type === 'projectile' });
           }
         }
         continue;
@@ -2606,6 +2606,16 @@ export const gyreSnare = {
               position: { x: core.pos.x, z: core.pos.z },
               rate: 1.05 - 0.45 * launchFrac,
               gain: 0.7 + 0.5 * launchFrac,
+            });
+            // The flight whoosh grades its own shape by payload: emitted beside the
+            // launch layer (not inside it) so its playback rate can sink deeper — a
+            // capped moon's tail stretches ~1.9x and darkens, a pebble keeps a short
+            // bright whoosh. Inside the layer the whole stack shared one rate.
+            this.bus.emit('audio:cue', {
+              id: 'gyre_snare_whoosh',
+              position: { x: core.pos.x, z: core.pos.z },
+              rate: 1.1 - 0.55 * launchFrac,
+              gain: 0.5 + 0.4 * launchFrac,
             });
           }
           // Newton: throwing a small moon pushes back. A gentle mass-scaled counter-Δv

@@ -1584,6 +1584,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   gyre_snare_tear: 'sfx_gyre_tear',
   gyre_snare_full: 'sfx_gyre_full',
   gyre_snare_fuse_low: 'sfx_gyre_fuse_low', gyre_snare_windup: 'sfx_gyre_windup',
+  // The flight whoosh emits beside the launch stack (not in it) — the tail's
+  // shape grades by payload alone, and a layer shares the parent's single rate.
+  gyre_snare_whoosh: 'sfx_gyre_ball_whoosh',
   // Rung-10 threat warning (massline.threat / massline.counter_tether.* presentation cues): the
   // low growl authored beside the other massline recipes — a live line under load, not a break.
   'presentation.massline.threat': 'sfx_massline_threat',

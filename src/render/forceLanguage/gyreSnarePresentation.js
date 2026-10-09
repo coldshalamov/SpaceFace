@@ -35,6 +35,7 @@ const LUMP_TINT = Object.freeze({
 const CONE_VERT = /* glsl */`
 uniform float uTime;
 uniform float uPulse;
+uniform float uMass;      // 0..1 payload frac — the loaded lash's shimmer reads heavier
 uniform float uCalm;      // 0 = reduced motion: silhouette stays, ripple displacement off
 uniform float uStrain;    // 0..1 — clump strain: WARNS the hue (chromatic, not motion — NOT calm-gated)
 uniform float uTremble;   // 0..1 — strain * calm: the high-frequency shiver (motion — calm-gated)
@@ -56,7 +57,7 @@ void main() {
                // strain tremble: a high-frequency shiver layered on the metronome
                // waves — under load the GLASS itself reads stressed, not just brighter.
                + uTremble * 0.6 * sin(uv.y * 110.0 - uTime * 60.0 + ang * 6.0);
-  float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * uCalm;
+  float amp = (0.014 + 0.05 * uv.y) * (1.0 + uPulse * 1.6) * (1.0 + uMass * 0.3) * uCalm;
   vec2 radial = p.xz;
   float rl = max(length(radial), 1e-4);
   p.xz += (radial / rl) * ripple * amp;
@@ -284,7 +285,7 @@ export class GyreSnarePresentation {
     this._coneMat = new THREE.ShaderMaterial({
       vertexShader: CONE_VERT, fragmentShader: CONE_FRAG,
       uniforms: {
-        uTime: { value: 0 }, uPulse: { value: 0 }, uCalm: { value: 1 }, uStrain: { value: 0 }, uTremble: { value: 0 },
+        uTime: { value: 0 }, uPulse: { value: 0 }, uMass: { value: 0 }, uCalm: { value: 1 }, uStrain: { value: 0 }, uTremble: { value: 0 },
         uLeanZ: { value: 0 },
         uColWarn: { value: new THREE.Color(P.warn) },
         uColGlass: { value: new THREE.Color(glass) },
@@ -978,6 +979,10 @@ export class GyreSnarePresentation {
       // (vertex shiver) is the motion term — that one IS calm-gated.
       this._coneMat.uniforms.uStrain.value = strainW;
       this._coneMat.uniforms.uTremble.value = strainW * calm;
+      // The cone's own motion grades by payload too — ripple amp fattens up to
+      // +30% on a capped moon (the shimmer reads heavier, matching the pulse
+      // floor's massFrac*0.1). Eased both ways so the launch close can't pop it.
+      this._coneMat.uniforms.uMass.value += (massFrac - this._coneMat.uniforms.uMass.value) * Math.min(1, sdt * 8);
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
@@ -1406,9 +1411,13 @@ export class GyreSnarePresentation {
       if (s.abs === false) {
         // heavy: a body the net can never eat reads refusal on the rock itself —
         // amber-lean, not the pale tow tint it shares with retrievable loot.
+        // refuse: heavy (won't ever fit) or hostile (a projectile being bent
+        // into the maw — the beam's only defensive payoff) reads warn-lean on
+        // the body; a plain towed pickup keeps the cool maw channel.
+        const refuse = s.heavy === true || s.hostile === true;
         g.material.color.copy(this._colGlass).lerp(
-          s.heavy ? this._colWarn : this._colMaw,
-          Math.min(1, finite(s.k, 0.5) * (s.heavy ? 0.55 : 0.8)));
+          refuse ? this._colWarn : this._colMaw,
+          Math.min(1, finite(s.k, 0.5) * (refuse ? 0.55 : 0.8)));
       } else {
         g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
       }
@@ -1568,7 +1577,11 @@ export class GyreSnarePresentation {
       // payload itself, not just the pill (0 off HOLD: flying balls ride armed).
       this._launchKick *= Math.exp(-sdt * 4);
       const armed = Math.min(1, this._launchKick);
-      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow + armed * 0.1 + massFrac * 0.04) * flashCalm;
+      // The armed surge is hold-gated like lumpArmed's sibling channel below:
+      // a re-snag mid-flight must not dress the fresh core's veil in the old
+      // ball's launch-armed flash for the residual ~0.7 s.
+      const veilArmed = phase === 'holding' ? 0 : armed;
+      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow + veilArmed * 0.1 + massFrac * 0.04) * flashCalm;
       // Warn reaches the veil too — the ball is the object the player is actually
       // watching when strain climbs; cone/maw/disc already warm (strain * 0.6).
       this._veilMat.color.copy(this._colGlass).lerp(this._colWarn, clamp01(finite(mirror.strain01)) * 0.4)
