@@ -686,14 +686,19 @@ export class GyreSnarePresentation {
       if (!l.used || !l.basePos) continue;
       const stag = ((l.bobPhase || 0) % 1.5) / 1.5 * 0.4;
       const tt = Math.min(1, Math.max(0, e * 1.4 - stag));
-      const bl = Math.hypot(l.basePos.x, l.basePos.z) || 1;
+      // Fling from where the lump IS, not its ledger seat — a lump still mid
+      // fly-in (~150 ms window) or mid rebuild-stagger would otherwise snap to
+      // its seat for one frame before scattering: a positional pop on a death
+      // mid-feed. Radial direction reads the live position too.
+      const px = l.mesh.position.x, py = l.mesh.position.y, pz = l.mesh.position.z;
+      const bl = Math.hypot(px, pz) || 1;
       // Floor + scale: a small ball still flings its rubble ~1.3 clump-radii clear
       // of the silhouette (16 wu min) — a capped moon scatters ~78 wu.
       const out = tt * Math.max(16, finite(this._clumpRadius, 8) * 1.3);
       l.mesh.position.set(
-        l.basePos.x + (l.basePos.x / bl) * out,
-        l.basePos.y + tt * 2.5,
-        l.basePos.z + (l.basePos.z / bl) * out);
+        px + (px / bl) * out,
+        py + tt * 2.5,
+        pz + (pz / bl) * out);
       l.mesh.scale.setScalar(Math.max(0.001, (l.baseScale || 1) * (1 - tt * 0.7)));
     }
   }

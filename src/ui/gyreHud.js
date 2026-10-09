@@ -268,7 +268,7 @@ export const gyreHud = {
       const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : bowlMass);
       // Mass text reads the frozen payload too — one row, one ball.
       const bowlT = Math.round(g.ballMass != null ? g.ballMass : bowlMass);
-      return { text: `GYRE — BOWL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}`, cls: 'gyre-launched', fuse: fuseS };
+      return { text: `GYRE — BOWL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;
@@ -288,14 +288,14 @@ export const gyreHud = {
       // of burn the readout appends the countdown and the top fuse bar drains with it.
       const fuse = fuseS;
       if (this._strainOn) {
-        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-strain', strain: s, fuse };
+        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-strain', strain: s, fuse };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
       const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;
       if (full) {
-        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-full', strain: s, fuse };
+        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-full', strain: s, fuse };
       }
-      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-holding', strain: s, fuse };
+      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', strain: s, fuse };
     }
     // Net anticipation: material already inside the cone names the catch before it
     // lands — "×N IN NET" instead of a bare SEARCHING sweep. A beam towing only
@@ -338,8 +338,9 @@ export const gyreHud = {
     dom.fill.style.width = `${Math.round(s * 100)}%`;
     dom.fill.style.display = s > 0.02 ? 'block' : 'none';
     // Fuse bar (top edge): cap ÷ current drain, clamped to an 8 s window — a shrinking
-    // countdown. Only the hold family carries it; a beaming-empty fuse is long and the
-    // constant bar would be noise.
+    // countdown. Every row carries it once fuse < fuseWarnVisS (all _resolve branches
+    // return fuseS); a healthy burn pins the draw gate below instead, so the bar
+    // appearing at all already means "low".
     const f = Number.isFinite(fuse) ? Math.max(0, Math.min(1, fuse / GYRE_SNARE.fuseWarnVisS)) : 0;
     dom.fuse.style.width = `${Math.round(f * 100)}%`;
     // Only the last fuseWarnVisS s draw: a healthy burn pinning the bar at 100% is

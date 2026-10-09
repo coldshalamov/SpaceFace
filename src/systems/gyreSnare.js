@@ -1784,6 +1784,20 @@ export const gyreSnare = {
       const torn = state.entities ? state.entities.get(rt.tornTrack.id) : null;
       if ((rt.tornTrack.ticks -= 1) <= 0 || !torn || torn.alive === false || !torn.pos) rt.tornTrack = null;
     }
+    // The overflow tail isn't tracked by name — recount it ~2x/s against the live
+    // entity map instead of letting a quiet overflow death pin `· +N` for its whole
+    // ~9 s TTL. _trackBall's increment keeps the count instant on eviction; this
+    // reconcile drops it as unwatched balls die. Marked-and-not-watched IS the tail:
+    // every gyreLaunched body was tracked at launch or re-watched at init.
+    rt.overflowSweepT = (rt.overflowSweepT || 0) + 1;
+    if (rt.overflowSweepT >= 30) {
+      rt.overflowSweepT = 0;
+      let n = 0;
+      if (state.entities) for (const [id, e] of state.entities) {
+        if (e && e.alive !== false && e.data && e.data.gyreLaunched && rt.ballIds.indexOf(id) === -1) n++;
+      }
+      rt.ballOverflow = n;
+    }
     // Default each tick: the grave ring only blooms when the ball actually DIES — an
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
     // launchedId without a grave, and must not shatter under a still-live body.
