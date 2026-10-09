@@ -2905,10 +2905,12 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     fallbackRoot.visible = true;
   }
   // The sim-side lock gate cannot see the scene; publish whether this hull carries a real
-  // procedural body under the boundary. A resolving marker is explicitly not one — for a
-  // required hull the marker is all that drew, and a terminal 'unavailable' still means
-  // empty air. A non-required hull's fallback stays drawn through failure, so its settled
-  // 'unavailable' verdict leaves a visible ship that must stay lockable.
+  // procedural body under the boundary. A resolving marker is explicitly not one — this is the
+  // pending-window stamp only. syncResolvingMarker republishes it from the drawn truth once the
+  // verdict is terminal: the ship's own stand-in hull counts as a real body, a mission-critical
+  // required hull may still publish its procedural body, and a bare octahedron stays empty air.
+  // A non-required hull's fallback stays drawn through failure, so its settled 'unavailable'
+  // verdict leaves a visible ship that must stay lockable.
   entity.presentationFallbackVisible = fallbackRoot.visible === true
     && !(fallbackRoot.userData && fallbackRoot.userData.authoredResolvingMarker === true);
 
