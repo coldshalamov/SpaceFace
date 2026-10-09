@@ -2398,6 +2398,13 @@ Campaign-contract change this wave (owner directive): three-level evidence label
 - Test contract modernization (same strength, async shape): `fb-export-bundles-medals` awaits the now-async plain import and stubs `_restoreAsync` on the same recording seam; `save-rejected-candidate` awaits the queued drain (the deferred closure re-enters the async lane); `recovery-encounter` re-pins its seam regex to `_callDeserializeChunked`.
 - Golden `0b33dde` bit-identical after both batches; ~100 focused save/event tests green.
 
-### in-flight-hitches / blind global / skeptic — lanes in flight at land time
+### in-flight-hitches — `saturated: true` (F1+F2 landed `f73cf6268`; F3 documented contract)
 
-Reports pending; their findings land as the next W121 batch. Saturation verdicts recorded in scoreboard.json when they report.
+- **hitches F1 (L, MECHANISM_VERIFIED — warn-volume relief, not frame-relief)** — all three suppressed-count heartbeats paid a flat ~1 console.warn+stack-serialize per second per faulting site forever: `warnDedup`, `laneWarn`, and `noteBusHandlerError` now double 1 s→30 s per beat (the tryPresentedCall `retryAt` shape); warnDedup/busError rows re-arm the short cadence after a >60 s quiet gap (heal proxy); laneWarn resets on epoch flip. Probe-verified: 8 verbatim then beats at ~1,+2,+4,+8,+16,+30,+30 s.
+- **hitches F2 (L, MECHANISM_VERIFIED)** — `afterBrowserPaint` second hop nested `requestAnimationFrame(callback)` inside a scheduled task, landing the callback pre-present inside the next frame's rAF task: now routes through `postTaskAtBackgroundPriorityBounded` (the last inner-rAF seam; consumers are one-shot opening-window paths already ledgered downstream).
+- **hitches F3 — DOCUMENTED, no in-scope fix**: a persistently-faulting bus listener still pays its own Error mint + stack capture per emit — dedup suppresses logs, never delivery (semantic contract: "the next payload can be valid"). Correct remediation is thrower-side per-bug; `busFaultSummary` already surfaces the stormers.
+- Lane verdict: `saturated: true` — the W120 resume-seam machinery holds; 17 dispatch sites enumerated closed. Second saturated lane report this wave (streak 2/4 lanes).
+
+### blind global / skeptic — lanes in flight at land time
+
+Reports pending; their verdicts land as the final W121 batch.

@@ -101,9 +101,9 @@
         "lod-in-frame": { "saturated": true, "findings": 0, "landed": 0, "commits": [], "headline": "FIRST saturated lane report under either contract — only L-class residuals remain in scope (saturation streak 1/3)" },
         "popin-admission": { "saturated": false, "findings": 5, "landed": 5, "commits": ["0917823d6"], "headline": "sectorOwnerIndex + owner-membership counters (O(sector) boundary legs), deferred diagnostics publish, live-maintained activePendingKeys set (cancel burst 8.09→0.66ms), byte ledgers O(1) + blockedRows fold (enforceBudget over-ceiling −46%), fault-path enforceBudgetSteps chain" },
         "boot-loading": { "saturated": false, "findings": 5, "landed": 4, "declined": 1, "commits": ["d37b0fab6"], "headline": "import lane rides sliced async restore (F1 H — production-path veil brick closed), mode:changed restore-scoped emit slice, preflight yield move, recoveryEncounter/aceMemory deserializeChunked twins; F4 declined — all 9 afterContinue bodies bounded by construction" },
-        "in-flight-hitches": { "saturated": null, "findings": null, "commits": [], "headline": "audit in flight at land time" },
-        "blind-global": { "saturated": null, "findings": null, "commits": [], "headline": "first 10-wave blind global review commissioned (incl. devin/s1-sim-worker-spike adjudication)" },
-        "skeptic": { "saturated": null, "findings": null, "commits": [], "headline": "first disprove-the-gains review commissioned" }
+        "in-flight-hitches": { "saturated": true, "findings": 3, "landed": 2, "documented": 1, "commits": ["f73cf6268"], "headline": "SECOND saturated lane report — W120 resume-seam machinery holds (17 dispatch sites closed); exponential dedup-heartbeat backoff 1s→30s on all 3 suppressed-count ledgers + heal proxy; last inner-rAF seam (afterBrowserPaint) closed; F3 per-emit throw mint documented contract" },
+        "blind-global": { "saturated": null, "findings": null, "commits": [], "headline": "first 10-wave blind global review commissioned (incl. devin/s1-sim-worker-spike adjudication) — lane 46764531 running" },
+        "skeptic": { "saturated": null, "findings": null, "commits": [], "headline": "first disprove-the-gains review commissioned — spawn blocked on SWE-2 session cap, queued" }
       },
       "evidence": {
         "goldenHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
