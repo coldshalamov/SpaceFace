@@ -899,6 +899,12 @@ export class GyreSnarePresentation {
       const lagLean = Math.max(-leanCap, Math.min(leanCap, (this._leanZ || 0) * 0.10));
       this._maw.position.z += lagLean;
       this._disc.position.z += lagLean;
+      // And the rim YAWS to meet it: at max lean the mouth would otherwise sit
+      // ~5° off facing the payload it reaches for — the plane stays normal to
+      // the seat direction, same signal, same cap.
+      const leanYaw = Math.atan2(lagLean, Math.max(1e-4, drawLen - coilBack));
+      this._maw.rotation.y = Math.PI / 2 - leanYaw;
+      this._disc.rotation.y = Math.PI / 2 - leanYaw;
       // The GLASS flexes to reach that seat — uLeanZ is the same lean in cone-local
       // units (divided by the mesh's z scale) so the rim's drawn offset equals the
       // mouth's exactly; the skin carries it via its own material hook.

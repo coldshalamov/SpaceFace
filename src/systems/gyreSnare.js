@@ -1296,7 +1296,14 @@ export const gyreSnare = {
         if (dist > 1e-4 && rt.clumpMass < D.maxClumpMass) {
           const tugK = D.nonAbsorbablePull * couplingScale(this._profile(e));
           const tug = D.suckAccel * tugK;
-          this._queueAccel(e, (dx / dist) * tug, (dz / dist) * tug, entityMass(e), dt, state);
+          // The courtesy tow keeps the funnel's chirality too — the absorbable
+          // suck lane corkscrews at suckSwirlFrac·swirlBlend; a towed pickup
+          // spiraling the basin then ray-shooting straight inside the annulus
+          // broke the vocabulary at exactly the most readable range.
+          this._queueAccel(e,
+            (dx / dist) * tug + (-dz / dist) * tug * D.suckSwirlFrac * rt.swirlBlend,
+            (dz / dist) * tug + (dx / dist) * tug * D.suckSwirlFrac * rt.swirlBlend,
+            entityMass(e), dt, state);
           // Same towCount the basin lane publishes — loot riding the annulus is still
           // under tow (the exclusions match _pullPass: a bullet isn't loot, and a
           // too-heavy body already fills TOO HEAVY — without it the same rock counted
