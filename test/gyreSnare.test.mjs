@@ -414,6 +414,37 @@ test('a held denied key auto-grants the wake when the cap crosses the arm floor'
   t.cleanup();
 });
 
+test('the deferred grant stays armed under a live modal and lands on the first visible tick', async () => {
+  const t = await bootPhysics();
+  t.player.cap = T.capActivateMin - 2;
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // denied while held
+  t.state.input.blocked = true; // a screen the player can't see is up
+  t.player.cap = T.capActivateMin + 1;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off', 'no wake committed behind the modal');
+  t.state.input.blocked = false;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'beaming', 'the armed grant lands on the first visible tick');
+  assert.equal(t.events.filter((e) => e.name === 'gyre:beamOn').length, 1);
+  t.cleanup();
+});
+
+test('a denied key held through a boundary re-arms like everyone else', async () => {
+  const t = await bootPhysics();
+  t.player.cap = T.capActivateMin - 2;
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // denied while held
+  assert.equal(t.sys._rt.dryDenyDone, true);
+  t.bus.emit('sector:exit', {}); // boundary while still held
+  t.player.cap = T.capActivateMin + 1;
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'off',
+    'the boundary reset spends the deferred grant — the fresh context wants a fresh edge');
+  t.state.input.actions.gyreSnare = false; t.sim.step();
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.sys._rt.phase, 'beaming', 'release + re-press wakes in the new sector');
+  t.cleanup();
+});
+
 test('a dry capacitor mid-hold auto-bowls the clump', async () => {
   const t = await bootPhysics();
   const body = rock(t.sim, T.mawDist, 0);

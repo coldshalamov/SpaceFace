@@ -350,6 +350,9 @@ export const gyreSnare = {
       // that aliases a live gyreLaunched entity in the post-load map would eat an
       // overflow _handBack and strip a legit serialized ball's mark + pull immunity.
       rt.ballIds.length = 0;
+      // The denial latch joins the reset like every sibling: a drained/denied holder
+      // re-arms identically to everyone else in the fresh context (release + re-press).
+      rt.dryDenyDone = false;
       this._sweepBoundaryResidue();
     }
     // Cue/haptic gates reset on EVERY drop: simTime restarts at 0 on a fresh run (a stale
