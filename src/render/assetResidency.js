@@ -12,6 +12,8 @@ import {
   governorEntryBlockReasons,
   isGovernorEntryEvictable,
   isGovernorOwnerEvictable,
+  memoryUnitList,
+  numericBytes,
 } from './resourceGovernor.js';
 export { residencyEvictionCeiling };
 import * as THREE from 'three';
@@ -1711,11 +1713,13 @@ export function createAssetResidencyRegistry(options = {}) {
   }
 
   // Deferred twin of rotateSector: the cheap paths still apply synchronously
-  // (returns null when already applied); a real warm mint snapshots its rows
-  // eagerly and returns an iterator that paces the release/retain/coverage work.
+  // (returns null when the rotation applied inline — callers should still report
+  // rotated=true, and `false` when the sector was already current, mirroring the
+  // sync rotate's boolean); a real warm mint snapshots its rows eagerly and
+  // returns an iterator that paces the release/retain/coverage work.
   function rotateSectorDeferred(nextSectorId) {
     const exactNext = nextSectorId == null ? null : String(nextSectorId);
-    if (exactNext === currentSectorId) return null;
+    if (exactNext === currentSectorId) return false;
     if (warmOwner && warmSectorId === currentSectorId) {
       currentSectorId = exactNext;
       emit('sector-rotated', { currentSectorId, warmSectorId });
@@ -1987,12 +1991,12 @@ export function createAssetResidencyRegistry(options = {}) {
     return row;
   }
 
-  function blockedBreakdown(entries) {
+  function blockedBreakdown(entries, reasonsByRow = null) {
     const kind = entries[0]?.kind === 'cpu' ? 'cpu' : 'gpu';
     const unitsByReason = new Map();
     for (const entry of entries) {
       if (isGovernorEntryEvictable(entry)) continue;
-      const reasons = governorEntryBlockReasons(entry);
+      const reasons = (reasonsByRow && reasonsByRow.get(entry)) || governorEntryBlockReasons(entry);
       const fallback = reasons.length > 0 ? reasons : ['protected'];
       for (const reason of fallback) {
         let units = unitsByReason.get(reason);
@@ -2033,19 +2037,49 @@ export function createAssetResidencyRegistry(options = {}) {
     // the inline per-entry scan was O(assets x requests) and ran twice (before + after
     // entries). The per-candidate re-check below still consults live requests through the
     // default governorEntry path, so a plan can never outrace a decode completing mid-call.
+    const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
+    const overBudgetKnown = initialResidentBytes > governorCapBytes;
     const activePendingKeys = activePendingKeySet();
     const entries = [];
     // Blocked rows are collected inside the same census walk — a planned evict
     // can only remove evictable rows, so the blocked set survives to the
     // after-table unchanged; the membership filter below stays for mutations
-    // that raced the census itself.
+    // that raced the census itself. Each blocked row's reasons mint on this pass
+    // too: the planner consumes them (plus the unit-owner index) as option
+    // projections, and the after-table breakdown reuses them — the blocked set
+    // is walked once, not three times. Under the cap the plan can only be
+    // evict:[], so the entries list and unit-owner index are skipped outright.
     const blockedRows = [];
+    const blockedReasons = new Map();
+    const unitOwners = overBudgetKnown ? new Map() : null;
+    let hasMemoryModel = false;
     for (const entry of assets.values()) {
       const row = governorEntry(entry, kind, activePendingKeys);
-      if (!isGovernorEntryEvictable(row)) blockedRows.push(row);
+      if (!isGovernorEntryEvictable(row)) {
+        blockedRows.push(row);
+        blockedReasons.set(row, governorEntryBlockReasons(row));
+      }
+      if (!overBudgetKnown) continue;
+      const index = entries.length;
       entries.push(row);
+      if (Array.isArray(row.memoryUnits)) hasMemoryModel = true;
+      const units = memoryUnitList(row);
+      const effective = units && units.length > 0
+        ? units
+        : [{ identity: row, bytes: numericBytes(row, kind) }];
+      for (const unit of effective) {
+        if (!unit || unit.bytes <= 0) continue;
+        let record = unitOwners.get(unit.identity);
+        if (!record) {
+          record = { bytes: unit.bytes, entryIndexes: new Set() };
+          unitOwners.set(unit.identity, record);
+        } else {
+          record.bytes = Math.max(record.bytes, unit.bytes);
+        }
+        record.entryIndexes.add(index);
+      }
     }
-    const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
+    const memoryUnitOwners = hasMemoryModel ? unitOwners : null;
     // Under the named ceiling the planner can only return evict:[] — selectEvictions
     // takes its early-out before touching evictions — so the spread/sort/index build
     // is skipped outright; the receipt still carries the same fields, and the blocked
@@ -2066,7 +2100,7 @@ export function createAssetResidencyRegistry(options = {}) {
         blockedBytesByReason: Object.freeze({}),
         evict: Object.freeze([]),
       }
-      : governor.plan(entries, kind, { initialResidentBytes });
+      : governor.plan(entries, kind, { initialResidentBytes, blockedRows, blockedReasons, memoryUnitOwners });
     const evicted = [];
     for (const key of plan.evict) {
       const entry = assets.get(String(key || ''));
@@ -2101,7 +2135,7 @@ export function createAssetResidencyRegistry(options = {}) {
     const beforeBytes = Number(kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes) || 0;
     const remainingBytes = Number(kind === 'cpu' ? after.cpuPackageBytes : after.gpuResidentBytes) || 0;
     const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
-    const blocked = blockedBreakdown(afterBlockedRows);
+    const blocked = blockedBreakdown(afterBlockedRows, blockedReasons);
     const budgetBytes = Number(plan.budgetBytes);
     const gpuAccountingAuthoritative = kind !== 'gpu' || after.unaccountedResources === 0;
     const indeterminate = !gpuAccountingAuthoritative;
@@ -2134,17 +2168,48 @@ export function createAssetResidencyRegistry(options = {}) {
   function* enforceBudgetSteps(kind = 'gpu', batchEntries = 256) {
     const before = budgetTotals();
     const initialResidentBytes = kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes;
+    const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
+    const overBudgetKnown = initialResidentBytes > governorCapBytes;
     const activePendingKeys = activePendingKeySet();
     const entries = [];
     const blockedRows = [];
+    // Same single-fold census as the sync twin: blocked reasons mint once here and serve both
+    // the planner's blocked loop and the after-table breakdown; the entries list and unit-owner
+    // index mint only when the ledger is already over the cap (the plan can only be evict:[]
+    // otherwise). Yield cadence keeps its O(assets)/batchEntries contract.
+    const blockedReasons = new Map();
+    const unitOwners = overBudgetKnown ? new Map() : null;
+    let hasMemoryModel = false;
     let visited = 0;
     for (const entry of assets.values()) {
       const row = governorEntry(entry, kind, activePendingKeys);
-      if (!isGovernorEntryEvictable(row)) blockedRows.push(row);
-      entries.push(row);
+      if (!isGovernorEntryEvictable(row)) {
+        blockedRows.push(row);
+        blockedReasons.set(row, governorEntryBlockReasons(row));
+      }
+      if (overBudgetKnown) {
+        const index = entries.length;
+        entries.push(row);
+        if (Array.isArray(row.memoryUnits)) hasMemoryModel = true;
+        const units = memoryUnitList(row);
+        const effective = units && units.length > 0
+          ? units
+          : [{ identity: row, bytes: numericBytes(row, kind) }];
+        for (const unit of effective) {
+          if (!unit || unit.bytes <= 0) continue;
+          let record = unitOwners.get(unit.identity);
+          if (!record) {
+            record = { bytes: unit.bytes, entryIndexes: new Set() };
+            unitOwners.set(unit.identity, record);
+          } else {
+            record.bytes = Math.max(record.bytes, unit.bytes);
+          }
+          record.entryIndexes.add(index);
+        }
+      }
       if (++visited % batchEntries === 0) yield;
     }
-    const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
+    const memoryUnitOwners = hasMemoryModel ? unitOwners : null;
     const plan = initialResidentBytes <= governorCapBytes
       ? {
         overBudget: false,
@@ -2161,7 +2226,7 @@ export function createAssetResidencyRegistry(options = {}) {
         blockedBytesByReason: Object.freeze({}),
         evict: Object.freeze([]),
       }
-      : governor.plan(entries, kind, { initialResidentBytes });
+      : governor.plan(entries, kind, { initialResidentBytes, blockedRows, blockedReasons, memoryUnitOwners });
     const evicted = [];
     for (const key of plan.evict) {
       if (++visited % batchEntries === 0) yield;
@@ -2192,7 +2257,7 @@ export function createAssetResidencyRegistry(options = {}) {
     const beforeBytes = Number(kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes) || 0;
     const remainingBytes = Number(kind === 'cpu' ? after.cpuPackageBytes : after.gpuResidentBytes) || 0;
     const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
-    const blocked = blockedBreakdown(afterBlockedRows);
+    const blocked = blockedBreakdown(afterBlockedRows, blockedReasons);
     const budgetBytes = Number(plan.budgetBytes);
     const gpuAccountingAuthoritative = kind !== 'gpu' || after.unaccountedResources === 0;
     const indeterminate = !gpuAccountingAuthoritative;

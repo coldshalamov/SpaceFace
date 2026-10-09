@@ -70,7 +70,7 @@ export const GOVERNOR_EVICTABLE_ROLES = Object.freeze(new Set([
   'r3-unloaded',
 ]));
 
-function numericBytes(entry, kind = 'gpu') {
+export function numericBytes(entry, kind = 'gpu') {
   if (kind === 'cpu') {
     const preferred = entry && (entry.cpuBytes ?? entry.cpuPackageBytes);
     // CPU package accounting has no valid fallback to the GPU compatibility alias. An omitted
@@ -81,7 +81,7 @@ function numericBytes(entry, kind = 'gpu') {
   return Number.isFinite(Number(preferred)) && Number(preferred) >= 0 ? Number(preferred) : 0;
 }
 
-function memoryUnitList(entry = {}) {
+export function memoryUnitList(entry = {}) {
   if (!Array.isArray(entry.memoryUnits)) return null;
   const seen = new Set();
   const units = [];
@@ -313,17 +313,25 @@ export function selectEvictions(entries, options = {}) {
   }));
   let summedEntryBytes = 0;
   for (const entry of list) summedEntryBytes += Number(entry.bytes) || 0;
-  const memoryUnitOwners = buildMemoryUnitOwners(list, kind);
+  // Callers that already walked the same census (e.g. assetResidency's enforceBudget) may pass
+  // its projections through `options`: the unit-owner index, the blocked-row subset, and the
+  // per-row reasons those rows minted — selectEvictions then skips re-deriving all three. The
+  // defaults recompute everything so direct callers keep the self-contained contract.
+  const memoryUnitOwners = options.memoryUnitOwners instanceof Map || options.memoryUnitOwners === null
+    ? options.memoryUnitOwners
+    : buildMemoryUnitOwners(list, kind);
   const initialResidentBytes = Number.isFinite(Number(options.initialResidentBytes))
     ? Math.max(0, Number(options.initialResidentBytes))
     : residentBytesFromMemoryUnits(memoryUnitOwners, summedEntryBytes);
   let total = initialResidentBytes;
   const blockedBytesByRole = {};
   const blockedBytesByReason = {};
-  for (const entry of list) {
+  const blockedSource = Array.isArray(options.blockedRows) ? options.blockedRows : list;
+  const suppliedReasons = options.blockedReasons instanceof Map ? options.blockedReasons : null;
+  for (const entry of blockedSource) {
     if (isGovernorEntryEvictable(entry)) continue;
     const bytes = numericBytes(entry, kind);
-    const reasons = governorEntryBlockReasons(entry);
+    const reasons = suppliedReasons ? (suppliedReasons.get(entry) || governorEntryBlockReasons(entry)) : governorEntryBlockReasons(entry);
     const fallback = reasons.length > 0 ? reasons : ['protected'];
     for (const reason of fallback) {
       const role = reason.startsWith('role:') ? reason.slice(5) : reason;

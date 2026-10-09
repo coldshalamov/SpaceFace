@@ -994,8 +994,21 @@ export async function prepareSectorEntry(renderer, sectorId, requestsOrUrls, opt
     if (!isEntryActive()) return cancelled();
 
     // Swap last. Everything above is the "prepare"; this single call is the "then swap".
+    // The deferred rotate still snaps currentSectorId and mints the warm-mint plan here, but
+    // hands its paced release/retain/coverage legs to the caller's drain (queueWarmMint) instead
+    // of paying them atomically inside this presented-frame seam — the same trade the exit
+    // path's prepareSectorExitDeferred already made.
     failureReason = 'sector-prewarm-rotate-failed';
-    const rotated = residency ? residency.rotateSector(exactSectorId) : false;
+    let rotated = false;
+    if (residency) {
+      if (typeof options.queueWarmMint === 'function' && typeof residency.rotateSectorDeferred === 'function') {
+        const mintIter = residency.rotateSectorDeferred(exactSectorId);
+        if (mintIter && typeof mintIter.next === 'function') options.queueWarmMint(mintIter);
+        rotated = mintIter !== false;
+      } else {
+        rotated = residency.rotateSector(exactSectorId);
+      }
+    }
     return Object.freeze({
       schema: 'spaceface.sectorPrepare.v1',
       sectorId: exactSectorId,

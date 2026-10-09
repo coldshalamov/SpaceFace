@@ -19792,6 +19792,17 @@ export const render = {
         return prepareSectorEntry(renderer, exactSectorId, prewarm.requests.slice(), {
           owner: prewarm.owner,
           residency: this._assetResidency,
+          // The entry seam's deferred rotate hands its paced legs back through this hook —
+          // chain them behind the sector-exit cleanup drive FIFO, exactly like the exit path's
+          // own warm mints, so the swap reports rotated immediately while the release/retain/
+          // coverage work drains on the paced slice clock.
+          queueWarmMint: (mintIter) => {
+            const self = this;
+            const existing = self._sectorExitCleanupIter;
+            self._sectorExitCleanupIter = existing
+              ? (function* () { yield* existing; yield* mintIter; })()
+              : mintIter;
+          },
           isEntryActive: () => prewarm.active === true
             && state.world
             && state.world.currentSectorId === exactSectorId
