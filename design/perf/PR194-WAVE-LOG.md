@@ -2633,3 +2633,16 @@ Wave 128 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches **CLOSED**
 ## Regression watch — `pq146-save-roundtrip` adjudicated: NOT a campaign regression
 
 Bisected W120–W127: merge base `e261ae275` is itself bad — the failure predates the branch. The fix lives on master as `0b5608be1 fix(save): retain combat state for pending stunt bodies`, landed after this branch diverged. pq146 goes green on merge; no action needed here. Full sweep adjudication for W128: pq136/cargo-capsule/save-growth-dock canon on clean master, retail-gltfloader a parallel-run flake (green solo both branches), pq146 = upstream-fix-pending.
+
+## Wave 129 (in progress — HEAD e6e0e8b6e)
+
+### popin-admission — `saturated: false` (F1+F2 landed `e6e0e8b6e`)
+
+- **popin F1 (S, MECHANISM VERIFIED) — sector-scoped warm latches are session-scoped and never re-arm after demote**: `_wantedTierWarmSectors` (bare sectorId key), `_modularPoolWarmSectors` (sectorId\0role\0armKey) and `_gateWingWarmKeys` (sectorId|gate|day|ctx) never cleared — demotion destroys the warm cohort (extras strip on any FULL demotion, RECORD_ONLY despawns the rest) yet every later visit read "already warmed" and skipped the speculative decode. Second-visit spawn arms (wanted-tier post, intervention guard, gate approach wing) paid cold decode/mint inside presented frames. The `world:residency` listener now drops the demoted sector's keys from all three Sets for any tier !== 'FULL' (`clearSectorWarmLatchKeys`, renderer.js:6088) — worst case is one redundant bounded warm per re-entry, the intended trade.
+- **popin F2 (M, MECHANISM VERIFIED) — `_sessionLiveSectorCookedId` survived demotion → keep-GPU recook skipped coverage on re-materialized sectors**: second loading-mode entry recomputed `_sessionRecookKeepGpu` from the stale stamp → early return skipped both `!recook` coverage censuses and `requestDecodeRunwayPromote`; coverage fell to the paced ~4ms/frame reconcile with nothing gating the veil on its completion — a dense re-materialized cohort's tail drained into early presented flight (deferred pop-in). The same residency emit now clears the cooked stamp + keepGpu + the state.render mirror when the cooked sector leaves FULL, so a re-materialized sector re-runs the real cook with censuses (option (b) per the lane — restores first-entry coverage parity).
+- F3 (observed, non-material): liveGeometryAdmission.pickNextWhere re-grades O(Q) per pick — ambient lane stays small post-throttling; flagged only if the urgent lane grows it.
+- Scanned clean: all drains ride maintained head indices/FIFO slices under shared budgets; boundary-record identity checks fail closed and re-mint on replaced entities (the s1 defect class is absent); index rows append atomically inside spawn — no mid-present minting.
+- Regression block: all four W128 blocks PASS verified concretely (`sectorPrewarmEligiblePool` key parity entitySectorId≡entitySectorIndexKey + null-key global-bucket semantics; `uvulaHold` O(1) with fallback pinned; deferred rollback capture arms sync+async identical bytes + failure receipt; 'latest' worker-backed scan 16-entry yields + in-flight validation join).
+- Golden `0b33dde` bit-identical; 85/86 + 23/25 focused green (3 reds reproduce byte-identical on clean HEAD — canon).
+
+Wave 129 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches CLOSED.
