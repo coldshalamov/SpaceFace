@@ -6265,6 +6265,7 @@ export function createHud(ctx, alerts) {
       if (clusterSizeObserver) clusterSizeObserver.disconnect();
       if (typeof window !== 'undefined' && window.removeEventListener) {
         window.removeEventListener('resize', publishClusterReserve);
+        window.removeEventListener('resize', invalidateObjectiveEdgeBoxes);
       }
     },
   };

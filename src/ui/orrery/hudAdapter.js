@@ -220,6 +220,20 @@ export function mountOrreryCluster(root, state, { bindings = null, bus = null } 
   const syncLegend = (liveState = state, livePlayer = liveState?.entities?.get?.(liveState.playerId)) => {
     cluster.setRingLegend(readActiveHullLegend(liveState, livePlayer));
   };
+  // The cluster bakes the hull poster at create; a hull swap after mount (shipworks "Make active",
+  // a save whose active hull differs) must restamp it or the HUD names the wrong ship all session.
+  let syncedHullId = defId;
+  const syncHull = (liveState = state, livePlayer = liveState?.entities?.get?.(liveState.playerId)) => {
+    const liveDefId = (livePlayer && livePlayer.data && (livePlayer.data.defId || livePlayer.data.shipId)) || 'ship_kestrel';
+    if (liveDefId === syncedHullId) return;
+    syncedHullId = liveDefId;
+    const liveDef = SHIP_BY_ID.get(liveDefId);
+    cluster.setHull({
+      shipId: liveDefId,
+      name: customNameForActiveHull(liveState) || (liveDef && liveDef.name) || 'Hull',
+      classLine: `${liveDef && liveDef.role ? liveDef.role : 'hull'} · tier ${liveDef && Number.isFinite(liveDef.tier) ? liveDef.tier : 0}`,
+    });
+  };
   let offName = null;
   if (bus && typeof bus.on === 'function' && typeof cluster.setRingLegend === 'function') {
     offName = bus.on('ship:nameChanged', (payload = {}) => {
@@ -232,6 +246,7 @@ export function mountOrreryCluster(root, state, { bindings = null, bus = null } 
     host,
     update(liveState, p, slow) {
       if (slow && typeof cluster.setRingLegend === 'function') syncLegend(liveState, p);
+      if (slow && typeof cluster.setHull === 'function') syncHull(liveState, p);
       if (!p) return;
       if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker, bindings);
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);

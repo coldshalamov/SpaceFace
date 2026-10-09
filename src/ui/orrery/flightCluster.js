@@ -220,7 +220,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
 
   // ---- the hull at the pivot ----------------------------------------------------------------------
   const glyphUrl = hullPosterUrl(shipId, 'holo');
-  if (glyphUrl) s.appendChild(svg('image', { class: 'orr-cluster__glyph', href: glyphUrl, x: P.x - 82, y: P.y - 96, width: 164, height: 164, preserveAspectRatio: 'xMidYMid meet' }));
+  let glyphImage = null;
+  if (glyphUrl) {
+    glyphImage = svg('image', { class: 'orr-cluster__glyph', href: glyphUrl, x: P.x - 82, y: P.y - 96, width: 164, height: 164, preserveAspectRatio: 'xMidYMid meet' });
+    s.appendChild(glyphImage);
+  }
 
   // ---- lower-left flank: heat (lower) and energy (upper) --------------------------------------------
   const heat = arcGauge({ cx: P.x, cy: P.y, r: R.flank, from: 198, to: 232, width: 3, tone: 'hi', ghost: false });
@@ -514,11 +518,27 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     return text;
   }
 
+  // The cluster outlives hull swaps ("Make active" in shipworks, a save whose active hull
+  // differs): restamp the poster glyph and the legend defaults, then let the legend short-
+  // circuit skip the write when nothing actually changed.
+  function setHull(next = {}) {
+    const nextShipId = next.shipId != null ? next.shipId : shipId;
+    if (nextShipId !== shipId) {
+      shipId = nextShipId;
+      const url = hullPosterUrl(shipId, 'holo');
+      if (glyphImage && url) glyphImage.setAttribute('href', url);
+    }
+    if (next.name != null) name = next.name;
+    if (next.classLine != null) classLine = next.classLine;
+    return setRingLegend({ defName: name, classLine });
+  }
+
   return {
     el: root,
     update,
     arrive,
     setRingLegend,
+    setHull,
     dispose() {
       for (const g of [shield, armor, hull, energy, heat, strain, dial]) g.dispose();
       handSpring.stop();

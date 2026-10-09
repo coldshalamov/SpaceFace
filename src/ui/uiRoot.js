@@ -431,8 +431,10 @@ function saveErrorReasonText(payload = {}) {
   }
 }
 
+const saveFeedbackWired = new WeakSet();
 function wireSaveFeedback(bus) {
-  if (!bus || !bus.on) return;
+  if (!bus || !bus.on || saveFeedbackWired.has(bus)) return;
+  saveFeedbackWired.add(bus);
   // No 'Saving …' receipt: the write lands in milliseconds and 'Saved …' follows, so two toasts
   // for one press only crowded the lane.
   bus.on('save:completed', ({ slot } = {}) => {
@@ -538,8 +540,10 @@ export const ui = {
     wireSaveFeedback(this.bus);
     // INF-092: the mirror status is truthful — pending stays pending, a failed mirror says
     // which store is durable, and a later landed write clears the warning. Toasts only; no
-    // duplicate save and no transition rides on this path.
-    this.bus.on('save:store-synced', (payload = {}) => {
+    // duplicate save and no transition rides on this path. Re-init replaces the handler
+    // instead of stacking a second one onto the same bus.
+    if (typeof this._storeSyncedOff === 'function') { try { this._storeSyncedOff(); } catch (_) {} }
+    this._storeSyncedOff = this.bus.on('save:store-synced', (payload = {}) => {
       if (this.screenManager && typeof this.screenManager.refreshTop === 'function') {
         try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
       }
