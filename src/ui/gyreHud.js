@@ -263,7 +263,9 @@ export const gyreHud = {
     // the "why won't it snag?" read instead of silence.
     const net = g.basinCount || 0;
     if (net > 0) {
-      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
+      // A mixed net carries the warm face + the refusal count too — an uneatable
+      // body inside is the actionable read, same as the tow branch's own rule.
+      return { text: `GYRE — ×${net} IN NET${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${handlingTxt}${fuseTxt}${ballTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
     }
     if (tow > 0) {
       // The too-heavy read is the actionable half of the line — carry the warm
