@@ -1117,11 +1117,14 @@ export class GyreSnarePresentation {
       this._fuseDim = fuseDim; // basin glows run outside this branch — they read the cached dim
       // The verb's face reads the payload too: a 2000 t moon loads the mouth + glass
       // brighter than a 6 t pebble — escalation lands before FULL ever fires.
-      // HOLD-gated: pub.clumpMass also carries a still-FLYING ball's frozen mass
-      // (the ridingBall publish feeds HUD/lumps through a fresh BEAM), so without
-      // the gate a searching funnel would thrum as if loaded. The LAUNCH dim already
-      // spends the glass — only a held payload earns the loaded read.
-      const massFrac = holding ? Math.min(1, finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1))) : 0;
+      // TENSE-gated (holding || launching): pub.clumpMass also carries a
+      // still-FLYING ball's frozen mass (the ridingBall publish feeds HUD/lumps
+      // through a fresh BEAM), so searching must not thrum as if loaded — but the
+      // coil DOES still hold the payload, and a `holding`-only gate stepped every
+      // mass-graded channel to floor for the ~100-180 ms coil on the tautest
+      // beat. Same gate the audio mass ledger keeps (fieldAudio: holding ||
+      // launching); the eased uMass already rides the far side's transition out.
+      const massFrac = tense ? Math.min(1, finite(mirror.clumpMass) / Math.max(1, finite(mirror.maxClumpMass, 1))) : 0;
       this._coneMat.uniforms.uTime.value = this.time;
       this._coneMat.uniforms.uCalm.value = calm;
       // A thrown lash is SPENT glass: during the burst no pull lane runs, so the
@@ -1803,7 +1806,9 @@ export class GyreSnarePresentation {
       // Saturated payload: at cap the suck halo deliberately fades out, so the ball
       // itself carries the FULL read — the veil hot-pulses and the rubble's emissive
       // climbs, landing the cap on the thing the player is watching, not just the pill.
-      const fullGlow = holding && finite(mirror.clumpMass) >= Math.max(1, finite(mirror.maxClumpMass, 1))
+      // Same tense gate as massFrac — the payload is still at cap through the
+      // coil, so the ball's FULL pulse must not drop for the windup either.
+      const fullGlow = tense && finite(mirror.clumpMass) >= Math.max(1, finite(mirror.maxClumpMass, 1))
         ? 0.05 + 0.02 * Math.sin(this.time * 3.4) * calm : 0;
       // The thrown ball reads ARMED, not just a rock + ribbon: an ~0.7 s surge
       // off the thrownBeat latch brightens the veil and warms it toward rim-hot
@@ -1823,7 +1828,7 @@ export class GyreSnarePresentation {
       // Warn reaches the veil too — the ball is the object the player is actually
       // watching when strain climbs; cone/maw/disc already warm (strain * 0.6).
       this._veilMat.color.copy(this._colGlass).lerp(this._colWarn, clamp01(finite(mirror.strain01)) * 0.4)
-        .lerp(this._colHot, armed * 0.6);
+        .lerp(this._colHot, veilArmed * 0.6);
       this._veil.visible = this._veilMat.opacity > 0.004;
       // Strain tremble: under load the held rubble visibly quivers — the core mesh
       // stays physics-true while its swarm shakes, which is exactly "about to slip".
