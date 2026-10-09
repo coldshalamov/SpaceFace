@@ -1668,6 +1668,30 @@ test('a mid-hold save on a timed body restores its authored deadlines, not immor
   t2.cleanup();
 });
 
+// -- coverage: a non-finite stash serializes as null/0 — absent, not insta-kill --
+test('a serialized non-finite lifetime stash restores absent — never a 0-deadline kill', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  core.data.despawnAt = Infinity; // authored non-finite — the write normalizes to null
+  core.ttl = Infinity;
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'core gripped');
+  // clonePlain maps non-finite to 0, not null — a pre-normalization or foreign
+  // stash round-trips as 0, which used to write despawnAt/ttl = 0 (insta-kill).
+  core.data.gyrePrevDespawnAt = 0;
+  core.data.gyrePrevTtl = 0;
+  t.sys._drop('released');
+  assert.equal(core.data.despawnAt, undefined,
+    'a zeroed despawnAt stash restores absent — not an insta-kill deadline');
+  assert.equal(core.ttl, undefined, 'the zeroed ttl stash restores absent too');
+  assert.equal(core.data.gyrePrevDespawnAt, undefined, 'the stash is consumed');
+  assert.equal(core.data.gyrePrevTtl, undefined, 'the ttl stash is consumed');
+  for (let i = 0; i < 40; i++) t.sim.step(); // let lifetime sweeps run
+  assert.equal(core.alive, true, 'the body survives the sweeps — no corpse deadline planted');
+  t.cleanup();
+});
+
 // -- coverage: fast-translation chase — the frame-damped spring tracks a boosting ship --
 test('a held core tracks a fast-translating ship without slipping the beam', async () => {
   const t = await bootPhysics();

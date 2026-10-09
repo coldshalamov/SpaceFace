@@ -476,9 +476,11 @@ export const gyreSnare = {
     // must restore ABSENT (and still consume the stash key) — otherwise every freed
     // core that had no authored deadline carries a dead residue key forever.
     if ('gyrePrevDespawnAt' in e.data) {
-      // '== null' not '=== undefined': a stash that round-tripped a real save
-      // serializes Infinity/NaN/undefined as null — still "no authored deadline".
-      if (e.data.gyrePrevDespawnAt == null) {
+      // '!(v > 0)' not '== null': a serialized stash that was non-finite at
+      // write round-trips as null, and a legacy/foreign 0 stash is the same
+      // absent contract — restoring despawnAt = 0 would be an insta-kill, not
+      // an authored deadline.
+      if (!(e.data.gyrePrevDespawnAt > 0)) {
         if (!futureOnly) delete e.data.despawnAt; // absent authored → restore absent
         // futureOnly: a foreign owner's own deadline (if any) wins — leave it.
         delete e.data.gyrePrevDespawnAt;
@@ -519,10 +521,12 @@ export const gyreSnare = {
         }
         delete e.data.gyrePrevTtl;
       } else {
-        // '== null' too: a serialized null stash (authored ttl was Infinity)
-        // must restore ABSENT — writing e.ttl = null would decrement a corpse
-        // deadline into the body and kill it on the next lifetime tick.
-        if (e.data.gyrePrevTtl == null) delete e.ttl;
+        // Same '!(v > 0)' absent contract as the despawnAt branch: a null or
+        // non-positive stash (absent authored, or a serialized non-finite that
+        // round-tripped as 0 before the write-side normalization) restores
+        // ABSENT — writing e.ttl = 0 would decrement a corpse deadline into
+        // the body and kill it on the next lifetime tick.
+        if (!(e.data.gyrePrevTtl > 0)) delete e.ttl;
         else e.ttl = e.data.gyrePrevTtl;
         delete e.data.gyrePrevTtl;
       }
@@ -1133,8 +1137,13 @@ export const gyreSnare = {
     // data.despawnAt (the data-table deadline) and entity.ttl (the sibling sweep at
     // coreSystem). A non-launch drop restores them — a strained-off core resumes its
     // authored cleanup deadline rather than becoming a permanent free body.
-    best.data.gyrePrevDespawnAt = best.data.despawnAt;
-    best.data.gyrePrevTtl = best.ttl;
+    // Normalize the stash: the serializer's clonePlain maps non-finite to 0,
+    // NOT null — a raw Infinity despawnAt/ttl would round-trip as a 0 stash,
+    // fail the absent check on restore, and insta-kill the body. Absent and
+    // non-finite authored values stash as null (deadline-free), positive
+    // finite values stash verbatim.
+    best.data.gyrePrevDespawnAt = Number.isFinite(best.data.despawnAt) ? best.data.despawnAt : null;
+    best.data.gyrePrevTtl = Number.isFinite(best.ttl) ? best.ttl : null;
     delete best.data.despawnAt;
     // Acknowledged foreign-field ride: `ttl` belongs to the lifetime sweep, outside
     // the declared data.* namespace — stashed and restored symmetrically on both
