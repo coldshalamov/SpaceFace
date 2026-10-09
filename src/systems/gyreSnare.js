@@ -1108,12 +1108,20 @@ export const gyreSnare = {
       this._spotScratch.length = 0;
     }
     // Belt gravel: any field rock inside the basin promotes into a real body so the beam
-    // can catch it (same promotion path the tether uses).
+    // can catch it (same promotion path the tether uses). Top-4 nearest to the maw per
+    // tick bounds the first-tick spawn burst on a dense belt — resolveAdmitOverlap only
+    // de-collides vs ships, so an unbounded promote is a one-shot physics-record churn.
+    // The basin is the primary catch zone so it reifies hungrier than the suck lane's 2.
     const rocks = queryAsteroidField(state, maw, D.basinRadius, this._fieldRocks);
-    for (let i = 0; i < rocks.length; i++) {
+    if (rocks.length > 4) rocks.sort((a, b) =>
+      ((a.pos.x - maw.x) * (a.pos.x - maw.x) + (a.pos.z - maw.z) * (a.pos.z - maw.z))
+      - ((b.pos.x - maw.x) * (b.pos.x - maw.x) + (b.pos.z - maw.z) * (b.pos.z - maw.z)));
+    let promoted = 0;
+    for (let i = 0; i < rocks.length && promoted < 4; i++) {
       const rec = rocks[i];
       if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
       promoteAsteroidFieldRock(state, rec.id, this.helpers, 'gyre_snare');
+      promoted++;
     }
     this._fieldRocks.length = 0;
   },

@@ -1284,6 +1284,28 @@ test('a belt-field rock inside the basin promotes into a live body the beam can 
   t.cleanup();
 });
 
+test('the basin lane reifies at most 4 rocks a tick, nearest to the maw first', async () => {
+  const { insertAsteroidFieldRock } = await import('../src/world/asteroidField.js');
+  const t = await bootPhysics();
+  const near = insertAsteroidFieldRock(t.state, { pos: { x: 212, z: 8 }, radius: 6, mass: 5 });
+  const rest = [];
+  for (let i = 0; i < 8; i++) {
+    rest.push(insertAsteroidFieldRock(t.state, { pos: { x: 240 + i * 5, z: 30 }, radius: 6, mass: 5 }));
+  }
+  const liveCount = () => [near, ...rest].filter((r) => {
+    const e = t.state.entities.get(r.id);
+    return e && e.alive !== false;
+  }).length;
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // first beam tick
+  assert.ok(liveCount() <= 4, 'the first tick bounds the spawn burst');
+  assert.ok(t.state.entities.get(near.id), 'the maw-closest record materializes first');
+  for (let i = 0; i < 4 && liveCount() < 9; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.ok(liveCount() >= 8, 'the lane keeps feeding the funnel across ticks');
+  t.cleanup();
+});
+
 test('a belt-field rock inside the suck annulus promotes too — the halo never fakes reach', async () => {
   const { insertAsteroidFieldRock } = await import('../src/world/asteroidField.js');
   const t = await bootPhysics();
