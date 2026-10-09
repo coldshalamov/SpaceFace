@@ -1686,9 +1686,12 @@ export const gyreSnare = {
             this.bus.emit(GYRE_EVENTS.ballGrave, { id: e.id, tick: state && state.tick });
           }
           // Ring for the HUD mirror too: a retired non-primary ball still deserves a
-          // visual grave — the lane's quiet-TTL shatter was audio-only.
+          // visual grave — the lane's quiet-TTL shatter was audio-only. The id
+          // rides along so the secondary overlay can tell a real death from an
+          // adoption (which never publishes a grave — the body lives on).
           const meta = e.data.gyreLaunchMeta;
           pub.graves.push({
+            id: e.id,
             x: e.pos.x, z: e.pos.z,
             // Symmetry with the balls[] lane (:1843): a pre-meta serialized ball
             // rings at its real collider size, not the 6 wu floor.
@@ -1720,6 +1723,7 @@ export const gyreSnare = {
             && rt.ballIds[i] !== rt.ballId) {
             const gMeta = e.data.gyreLaunchMeta;
             pub.graves.push({
+              id: e.id,
               x: e.pos.x, z: e.pos.z,
               r: gMeta && Number.isFinite(gMeta.clumpRadius) ? gMeta.clumpRadius : entityRadius(e),
             });

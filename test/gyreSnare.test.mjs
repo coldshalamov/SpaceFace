@@ -2835,6 +2835,8 @@ test('two balls expiring on the same tick each get a grave — primary ring + wa
   t.sim.step();
   assert.equal(t.state.gyreSnare.ballGrave, true, 'the primary ball bloomed its ring');
   assert.equal(t.state.gyreSnare.graves.length, 1, 'the watched ball published its grave spot');
+  assert.equal(t.state.gyreSnare.graves[0].id, a.id,
+    'the grave names who died — the overlay gates its scatter on this id');
   assert.equal(
     t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_ball_death').length - deaths0,
     2, 'each ball sang its own shatter',

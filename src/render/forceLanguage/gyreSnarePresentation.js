@@ -944,7 +944,9 @@ export class GyreSnarePresentation {
         this._moteKick = Math.min(2.0, this._moteKick + mealK);
         // The swallow ripples up the WHOLE glass, not just the mouth: a floor bump
         // on the shared pulse so each meal visibly travels the cone's surface.
-        this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.2);
+        // The floor grades by meal size like the three kicks beside it — a pebble
+        // shouldn't swell the cone like a wreck (0.12–0.3 across mealK's range).
+        this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.2 * mealK);
         // The gulp lands on the side the mass actually hit — the member ledger's
         // approach direction (world frame) biases the funnel's aim while the kick lasts.
         this._gulpDirX = finite(mirror.absorbDir && mirror.absorbDir.x);
@@ -1002,7 +1004,7 @@ export class GyreSnarePresentation {
       // anticipation owns that brighter read). BEAM-only: the coil borrows this
       // formula through 'launching', and a breathing idle shimmer through the
       // draw would fight the windup swell + spent dim.
-      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (tense ? 0.9 : 0.55 + net * 0.12 + (net === 0 && phase === 'beaming' ? 0.05 * Math.sin(this.time * 5.03) : 0)) + this._discKick * 0.5) * spent * flashCalm * fuseDim * wakeEase;
+      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (tense ? 0.9 : 0.55 + net * 0.12 + (net === 0 && phase === 'beaming' ? 0.05 * Math.sin(this.time * 5.03) * calm : 0)) + this._discKick * 0.5) * spent * flashCalm * fuseDim * wakeEase;
       // Reduced-motion keeps a STATIC mote scatter instead of hiding the funnel
       // outright — the frozen motes still read "matter is being pulled" where
       // visible=false left the cone with no suction signifier at all.
@@ -1781,11 +1783,25 @@ export class GyreSnarePresentation {
       } else if (this._secGroup.visible && this._secGraveT == null) {
         // Same grave language as the primary clump: a brief scatter before the
         // de-rez — a second katamari shouldn't vanish the frame its ring blooms.
-        this._secGraveT = 0.15;
-        for (const lm of this._secLumps) {
-          const bl = Math.hypot(lm.position.x, lm.position.z) || 1;
-          lm.userData.scatX = lm.position.x / bl;
-          lm.userData.scatZ = lm.position.z / bl;
+        // But ONLY on a real death — a ball adopted alive out of the lane (mark
+        // stripped → sb null) is the secondary's ballGrave === false case: it
+        // must leave quietly like the primary's adoption path, not fake a
+        // shatter under a body that still lives for its new owner. The graves
+        // ledger now carries each dead ball's id; a displaced PRIMARY's death
+        // reports on ballGrave instead (its lane never pushes a graves entry).
+        const died = this._secId != null && (
+          (Array.isArray(mirror.graves) && mirror.graves.some((g) => g && g.id === this._secId))
+          || mirror.ballGrave === true);
+        if (died) {
+          this._secGraveT = 0.15;
+          for (const lm of this._secLumps) {
+            const bl = Math.hypot(lm.position.x, lm.position.z) || 1;
+            lm.userData.scatX = lm.position.x / bl;
+            lm.userData.scatZ = lm.position.z / bl;
+          }
+        } else {
+          this._secGroup.visible = false;
+          this._secId = null;
         }
       }
       // Secondary grave scatter — decays independent of whether a new ball
