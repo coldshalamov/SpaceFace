@@ -1,0 +1,154 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "red_kite_courier_controls",
+  "sourceAssetId": "SF_SHIP_RED_KITE",
+  "sourceGlbSha256": "1688cf6f0c0f6250d175ebb9a6f7ce85d4b1b124bf6887caf1976f3c7c2a2952",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "red_kite_flap",
+      "node": "MOTION_RED_KITE_FLAP",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -1.5,
+          0.8299999833106995,
+          -5.800000190734863
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "red_kite_clamp_port",
+      "node": "MOTION_RED_KITE_CLAMP_PORT",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -2.5999999046325684,
+          1.25,
+          -0.7699999809265137
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "red_kite_clamp_starboard",
+      "node": "MOTION_RED_KITE_CLAMP_STARBOARD",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -2.5999999046325684,
+          1.25,
+          0.7699999809265137
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "red_kite_flap",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "red_kite_clamp_port",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "red_kite_clamp_starboard",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

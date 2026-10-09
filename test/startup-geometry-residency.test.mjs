@@ -262,7 +262,9 @@ test('startup residency uploads exact geometry through an isolated 1x1 pass and 
     'one ordinary duplicate is removed while both shared instanced buffers remain work');
   assert.equal(result.geometryResidency.geometries, 2);
   assert.equal(result.geometryResidency.newGeometries, 2);
-  assert.deepEqual(timeline, ['yield', 'texture', 'yield', 'yield']);
+  // The geometry leg's work-mint and partition boundary yields sit between the
+  // texture leg and the batch drive.
+  assert.deepEqual(timeline, ['yield', 'texture', 'yield', 'yield', 'yield', 'yield']);
   assert.deepEqual(slices.map((slice) => slice.kind), [
     'gpuResidencyUpload',
     'gpuGeometryResidency',
@@ -416,7 +418,8 @@ test('startup geometry residency slices admission into bounded batches with a br
   });
 
   assert.deepEqual(batchSizes, [2, 2, 1]);
-  assert.deepEqual(timeline, ['yield', 'render', 'yield', 'render', 'yield', 'render']);
+  // The work-mint + partition boundary yields precede the first batch drive.
+  assert.deepEqual(timeline, ['yield', 'yield', 'yield', 'render', 'yield', 'render', 'yield', 'render']);
   assert.equal(result.batches.length, 3);
   assert.deepEqual(result.batches.map((batch) => batch.durationMs), [6, 6, 3]);
   assert.deepEqual(slices.map((slice) => slice.success), [true, true, true]);

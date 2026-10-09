@@ -55,6 +55,46 @@ const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload', 'mine']);
 //   fuze    — craft only (unchanged, _findTriggerVictim): a drifting grazer must not cook the
 //             player's own bay.
 const faunaBlastEligible = (e) => e?.type === 'fauna';
+
+/**
+ * SFQ-B032 — one verdict for every class the packet names. Machine is an explicit
+ * no: precursor machines are scripted, physicsBody false, and authored to ignore
+ * stray fire. Silence (not in the scan, not in a predicate) was the hole.
+ * Blast damage does not team-filter — the packet sets ignoreFriendlyFire — so an
+ * ally hull and the owner's own hull are damage-eligible. Proximity fuze is not:
+ * the owner and the bomb's team never cook the bay.
+ */
+export function ordnanceClassVerdict(entity) {
+  if (!entity || typeof entity !== 'object') {
+    return { class: 'none', damage: false, shove: false, status: false, trigger: false, reason: 'missing' };
+  }
+  if (entity.type === 'machine') {
+    return { class: 'machine', damage: false, shove: false, status: false, trigger: false, reason: 'scripted_kinematic' };
+  }
+  const cls = entity.type === 'ship' || entity.type === 'drone' ? 'craft'
+    : entity.type === 'station' ? 'station'
+    : entity.type === 'wreck' ? 'wreck'
+    : entity.type === 'pickup' ? 'pickup'
+    : entity.type === 'fauna' ? 'fauna'
+    : entity.type === 'asteroid' ? 'asteroid'
+    : entity.type || 'other';
+  return {
+    class: cls,
+    damage: DAMAGE_TYPES.has(entity.type) || faunaBlastEligible(entity),
+    shove: blastShoveEligible(entity),
+    status: DAMAGE_TYPES.has(entity.type),
+    trigger: craft(entity),
+    reason: null,
+  };
+}
+
+/** Fuze law: craft only, never the dropper, never the bomb's own team. */
+export function proximityTriggerEligible(victim, bomb, ownerId) {
+  if (!victim || victim.alive === false || !craft(victim)) return false;
+  if (ownerId != null && victim.id === ownerId) return false;
+  if (bomb && bomb.team != null && victim.team != null && victim.team === bomb.team) return false;
+  return true;
+}
 // Same rule hullBurst applies to its tells: either accessibility flag drops the wave's
 // own cue to the reduced variant downstream.
 function flashReduced(state) {
@@ -161,6 +201,8 @@ function bombTargetBuckets(index) {
   return buckets;
 }
 function pushBombTarget(out, e) {
+  // Machine is a named refusal, not a type the scan forgot. See ordnanceClassVerdict.
+  if (e?.type === 'machine') return;
   if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e) || faunaBlastEligible(e))) out.push(e);
 }
 // Shockwave-sweep eligibility: the loose DYNAMIC matter a wave can actually move (the
@@ -1170,7 +1212,7 @@ export const bombs = {
     let best = null, bestT = Infinity;
     const def = bombDef(d.bombId);
     for (const e of this._targets) {
-      if (!e.alive || !craft(e) || e.id === d.ownerId || (bomb.team != null && e.team != null && e.team === bomb.team)) continue;
+      if (!proximityTriggerEligible(e, bomb, d.ownerId)) continue;
       const t = sweptBombContact(e.pos.x - x0, e.pos.z - z0,
         e.pos.x + (e.vel?.x || 0) * dt - bomb.pos.x,
         e.pos.z + (e.vel?.z || 0) * dt - bomb.pos.z,
@@ -1520,7 +1562,12 @@ export const bombs = {
       }
       if (covered) continue;
       const runtime = combatEntities[String(ent.id)];
-      if (runtime) kernel.statuses.clear(ent, runtime, 'status_goo');
+      if (runtime && kernel.statuses.clear(ent, runtime, 'status_goo')) {
+        // clear() does not emit. The callout and the tar loop both listen for expiry.
+        this.bus?.emit('combat:statusExpired', {
+          targetId: ent.id, statusId: 'status_goo', data: null, reason: 'field_shed',
+        });
+      }
     }
   },
   // SFQ-B035: the blast hands the physics authority its surface contact point and the def's

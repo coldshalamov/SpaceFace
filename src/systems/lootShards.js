@@ -1050,6 +1050,8 @@ export const lootShards = {
     if (type !== 'ship' && type !== 'drone') return;
     if (payload.id === state.playerId) return;
     if (!victim) return;
+    // The Unclosed pays an inertial datum, not the hostile-drone scrap burst.
+    if (victim.data && victim.data.foldAberrant) return;
     // Contracts own contract-target rewards. Fail closed for mission hulls.
     if (missionOwnsReward(victim)) return;
     // Survival bodies drop their own run-wallet chip through survivalRewards. A second campaign

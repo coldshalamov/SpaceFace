@@ -69,7 +69,7 @@ export const LANE_HELIOS_TETHYS = Object.freeze({
    * The scripted disruption (D8: "ONE damaged/disabled segment"). Index into the segment list, where
    * segment i spans beacon i → beacon i+1.
    *
-   * Segment 4 is chosen for a reason worth recording: it sits ~5.6k WU along a ~14.8k WU chord, so
+   * Segment 4 is chosen for a reason worth recording: it sits ~4.6k WU along a ~14.8k WU chord, so
    * it is unambiguously inside the Helios Voronoi cell rather than near the bisector. A dead segment
    * straddling the boundary would make `sectorMembershipAtGlobal` a coin-flip between two cells, and
    * `encounterDirector.requestAuthoredEncounter` hard-rejects with `wrong_sector` when the sector it

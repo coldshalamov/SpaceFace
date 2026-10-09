@@ -36,6 +36,7 @@ export const SECTOR_PHYSICAL = Object.freeze({
   sector_eunomia_gulf: ROW(1, 0.84, 1, 1),
   sector_sedna_dark: ROW(1, 1, 0.58, 1),
   sector_dione_lane: ROW(1, 1.15, 1, 1),
+  sector_the_bolus: ROW(1, 1, 1, 0.55),
 });
 
 /** The six sectors the row names, in chart order. Helios is the comparison, not a member. */

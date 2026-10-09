@@ -424,8 +424,13 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .s
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial::before { background:radial-gradient(circle at 67% 44%, rgb(4 6 9 / .5), rgb(4 6 9 / .78) 55%, rgb(4 6 9 / .9) 100%) !important; }
 /* the left column spreads over the instrument's height — "safe" so an overflowing story stays
    top-aligned and scrolls to its first band instead of clipping it above the visible edge */
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { display:flex; flex-direction:column; justify-content:flex-start; justify-content:safe space-evenly; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story { display:flex; flex-direction:column; justify-content:flex-start; justify-content:safe space-evenly;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__ledger { padding-bottom:22px !important;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__story > .sf-crres__band + .sf-crres__band { margin-top:0; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results:has(> .sf-crres-celebrate) { grid-template-areas:"title" "take" "stage" "foot" !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results > .sf-crres-celebrate { grid-area:take; max-width:min(600px, 46vw); margin:0 !important; }
 /* the build: the draft it converged on stands solid */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__step:last-child::before { background:rgb(246 241 230);
   box-shadow:0 0 0 2px rgb(246 241 230 / .3), 0 0 12px rgb(236 230 216 / .35); }
@@ -466,6 +471,8 @@ html body #screens > .k-screen.orr-demo-end .k-foot .k-word.k-word--primary::aft
   transform:none !important; width:auto !important; height:17px !important; margin-left:12px; padding:0 5px; vertical-align:4px;
   box-shadow:inset 0 0 0 1px rgb(236 230 216 / .42) !important; border-radius:3px; background:none !important;
   font-family:var(--dp-face-label, "Archivo"); font-size: 12px !important; letter-spacing:.08em; color:rgb(236 230 216 / .78) !important; text-shadow:none; }
+html body #screens > .k-screen:is(.orr-demo-end, .sf-crucible-results) .k-foot .k-word.k-word--primary.orr-lampkey::after { color:rgb(28 20 6 / .66) !important;
+  box-shadow:inset 0 0 0 1px rgb(28 20 6 / .4) !important; }
 
 /* armory: the offers on a rail at the left, one line each (the verb, the name, the price); the one
    under the pointer or focus is read out at the right -- its words, where it goes on the ship, how it

@@ -37,6 +37,9 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   // key fail-closed every live brawler shot even while the snapshot said the guns were hot.
   brawler_commit: new Set(['commit']),
   ranged_disengager: new Set(['fire_window']),
+  // Quiet Ghost uses the same gun window as the disengager. enter() sets fireWindow on
+  // fire_window for both; a missing key fail-closes the stalker after it telegraphs.
+  ranged_stalker: new Set(['fire_window']),
   tether_control_raider: new Set(),
   // The anchor's guns are live only while it is committed to its drag-field hold. Its authored
   // hull carries a non-defensive autocannon and roe weapons_free; without this entry the label
@@ -460,6 +463,9 @@ export function isHostileForAI(state, self, other) {
   // exposed to team-mismatch hostility while the clean player was ignored.
   if (selfIsPlayer) return lawfulAwareHostileToPlayer(other, self.team, state);
   if (otherIsPlayer) return lawfulAwareHostileToPlayer(self, other.team, state);
+  // The fold is the player's category error, not the sector's. Wingmen and civilians
+  // do not inherit it; the player already answered above.
+  if ((selfData && selfData.foldAberrant) || (otherData && otherData.foldAberrant)) return false;
   const selfIsPlayerSide = self.team === 0;
   const otherIsPlayerSide = other.team === 0;
 

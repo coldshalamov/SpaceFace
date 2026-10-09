@@ -21,7 +21,7 @@ import { FRONTIER_SECTOR_IDS } from '../src/data/frontierRegions/index.js';
 
 export { FRONTIER_SECTOR_IDS };
 
-export const EXPECTED_TOTAL_SECTORS = 24;
+export const EXPECTED_TOTAL_SECTORS = 25;
 export const EXPECTED_STORY_COUNT = 10;
 export const EXPECTED_FRONTIER_COUNT = 14;
 export const HELIOS_SECTOR_ID = 'sector_helios_prime';

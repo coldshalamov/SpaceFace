@@ -340,6 +340,15 @@ export const SUBSYSTEM_DEFS = Object.freeze([
     // Field-unrepairable by design: a clamp bolt is either whole or gone.
     repair: { fieldRatePerTick: 0, dockRatePerTick: 2 }, cueId: 'combat.subsystem.clamp.disabled',
   },
+  {
+    // SF20-09: the visible front clamp. Its loss releases the existing constraint only.
+    id: 'subsystem_pallet_jack_clamp', version: 1, tags: ['transport_clamp'],
+    volume: { shape: 'box', space: 'normalized', center: [.35, 0], halfExtents: [.24, .43] },
+    health: 26, armor: { flat: 0, multipliers: { kinetic: 1, thermal: 1, ion: 1.15, plasma: 1, phase: 1 } },
+    dependencies: ['subsystem_power'],
+    disabledBehavior: { capabilities: { transport_clamp: false }, breakOwnedAttachments: true },
+    repair: { fieldRatePerTick: 0, dockRatePerTick: 2 }, cueId: 'combat.subsystem.clamp.disabled',
+  },
 ]);
 
 export const ATTACHMENT_DEFS = Object.freeze([
@@ -537,6 +546,16 @@ export const COMBAT_PROFILES = Object.freeze([
       { id: 'socket_transport_clamp', tags: ['transport_clamp'], localPos: [-0.62, 0], maxAttachments: 1 },
     ],
     capabilities: { drive: true, weapon: true, sensor: true, tether: true, power: true, transport_clamp: true },
+  },
+  {
+    id: 'combat_profile_pallet_jack', version: 1, entityTypes: ['ship'],
+    heat: { max: 100, dissipationPerTick: .5 }, immunityTags: [],
+    subsystemIds: ['subsystem_drive', 'subsystem_sensor', 'subsystem_tether_spool', 'subsystem_power', 'subsystem_pallet_jack_clamp'],
+    sockets: [
+      { id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 4 },
+      { id: 'socket_tether_spool', tags: ['tether_spool'], localPos: [-.5, 0], maxAttachments: 1 },
+      { id: 'socket_pallet_clamp', tags: ['transport_clamp'], localPos: [.35, 0], maxAttachments: 1 },
+    ], capabilities: { drive: true, weapon: false, sensor: true, tether: true, power: true, transport_clamp: true },
   },
 ]);
 

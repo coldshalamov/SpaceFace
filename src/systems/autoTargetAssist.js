@@ -48,30 +48,39 @@ function modalInputActive() {
 // combat-stick mode on, in pure flight. Anywhere else the OS cursor must come back —
 // outside pure flight there is no software reticle to take its place.
 export function inPureFlightForLock(state) {
-  return !!state && state.mode === 'flight' && !modalInputActive();
+  if (shouldNeutralizeFlightInput(state, modalInputActive())) return false;
+  if (typeof document !== 'undefined'
+    && (document.hidden === true || (typeof document.hasFocus === 'function' && !document.hasFocus()))) return false;
+  return true;
 }
 
 export function pointerLockIsLegitimate(state, pureFlight) {
-  return !!pureFlight && !!state && !!state.input && state.input.autoFire === true;
+  return !!pureFlight && inPureFlightForLock(state) && state?.input?.autoFire === true;
 }
 
 function isAutoFireCode(state, code) {
   return !!code && binding(state, 'autoFire').includes(code);
 }
 
-function setPointerLock(enabled) {
+function setPointerLock(enabled, state) {
   if (typeof document === 'undefined') return;
   const canvas = document.getElementById && document.getElementById('gl-canvas');
   if (enabled) {
     if (!canvas || document.pointerLockElement === canvas || typeof canvas.requestPointerLock !== 'function') return;
     try {
       const request = canvas.requestPointerLock();
-      if (request && typeof request.catch === 'function') request.catch(() => {});
+      if (request && typeof request.then === 'function') {
+        // A pending grant can finish after destroy() removes pointerlockchange. Keep the
+        // completion tied to the requesting state so teardown cannot leave the cursor hidden.
+        request.then(() => {
+          if (!pointerLockIsLegitimate(state, true)) setPointerLock(false);
+        }, () => {});
+      }
     } catch { /* Unlocked relative mouse motion remains a supported path. */ }
     return;
   }
   if (canvas && document.pointerLockElement === canvas && typeof document.exitPointerLock === 'function') {
-    document.exitPointerLock();
+    try { document.exitPointerLock(); } catch { /* The UI watchdog retries on the next frame. */ }
   }
 }
 
@@ -119,12 +128,16 @@ export const autoTargetAssist = {
     // (capture) runs before the fire handler and does not consume the event.
     this._onPointerDown = (e) => {
       if (!this.state?.input?.autoFire || this._pointerLockAcquired
-        || shouldNeutralizeFlightInput(this.state, modalInputActive()) || isUiCommandTarget(e?.target)) return;
-      setPointerLock(true);
+        || !inPureFlightForLock(this.state) || isUiCommandTarget(e?.target)) return;
+      setPointerLock(true, this.state);
+    };
+    this._onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.hidden === true) this._onBlur?.();
     };
     if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
       document.addEventListener('pointerlockchange', this._onPointerLockChange);
       document.addEventListener('mousedown', this._onPointerDown, { capture: true });
+      document.addEventListener('visibilitychange', this._onVisibilityChange);
     }
     this._unsubMode = this.bus && this.bus.on
       ? this.bus.on('mode:changed', ({ mode } = {}) => {
@@ -157,7 +170,7 @@ export const autoTargetAssist = {
       : null;
 
     this._onKeyDown = (e) => {
-      if (shouldNeutralizeFlightInput(this.state, modalInputActive())
+      if (!inPureFlightForLock(this.state)
         || isTextEntryTarget(e.target) || isUiCommandTarget(e.target)) return;
       const code = eventCode(e);
       if (!isAutoFireCode(this.state, code)) return;
@@ -166,7 +179,7 @@ export const autoTargetAssist = {
       if (e.repeat) return;
       if (!this._gHeld) {
         const enabled = toggleAutoTarget(this.state, this.bus, this._runtime);
-        setPointerLock(enabled);
+        setPointerLock(enabled, this.state);
         if (enabled && typeof document !== 'undefined') {
           const canvas = document.getElementById && document.getElementById('gl-canvas');
           this._pointerLockAcquired = !!(canvas && document.pointerLockElement === canvas);
@@ -195,6 +208,7 @@ export const autoTargetAssist = {
       addEventListener('keydown', this._onKeyDown, { capture: true });
       addEventListener('keyup', this._onKeyUp, { capture: true });
       addEventListener('blur', this._onBlur);
+      addEventListener('pagehide', this._onBlur);
     }
   },
 
@@ -225,6 +239,7 @@ export const autoTargetAssist = {
       if (this._onPointerDown) {
         document.removeEventListener('mousedown', this._onPointerDown, { capture: true });
       }
+      if (this._onVisibilityChange) document.removeEventListener('visibilitychange', this._onVisibilityChange);
     }
     if (this._unsubMode) this._unsubMode();
     if (this._unsubDock) this._unsubDock();
@@ -235,12 +250,14 @@ export const autoTargetAssist = {
       if (this._onKeyDown) removeEventListener('keydown', this._onKeyDown, { capture: true });
       if (this._onKeyUp) removeEventListener('keyup', this._onKeyUp, { capture: true });
       if (this._onBlur) removeEventListener('blur', this._onBlur);
+      if (this._onBlur) removeEventListener('pagehide', this._onBlur);
     }
     this._onKeyDown = null;
     this._onKeyUp = null;
     this._onBlur = null;
     this._onPointerLockChange = null;
     this._onPointerDown = null;
+    this._onVisibilityChange = null;
     this._unsubMode = null;
     this._unsubDock = null;
     this._unsubSaveRestoring = null;
@@ -251,7 +268,7 @@ export const autoTargetAssist = {
 
   update(dt, state) {
     const live = state || this.state;
-    if (shouldNeutralizeFlightInput(live, modalInputActive())) {
+    if (!inPureFlightForLock(live)) {
       if (live?.input?.drawFlight) delete live.input.drawFlight;
       if (live?.input?.autoAim) live.input.autoAim = null;
       if (live?.input?.autoTargetPath) live.input.autoTargetPath.active = false;

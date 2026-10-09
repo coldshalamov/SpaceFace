@@ -46,7 +46,7 @@ test('an accepted theft receipt convicts with a traceable record', () => {
   assert.ok(harness.state.player.heat > 0, 'heat rose on the validated receipt');
   const inc = harness.state.player.heatLastIncident;
   assert.equal(inc.kind, 'payload_theft', 'kind kept');
-  assert.equal(inc.affected, 'pq077_capsule', 'affected party kept');
+  assert.equal(inc.affected, 'pq077_capsule', 'affected handle kept for traceability');
   assert.equal(inc.witnessCount, 2, 'witness count kept');
   assert.equal(inc.jurisdiction, 'station_tethys_customs', 'jurisdiction kept');
   assert.equal(inc.incidentReceiptId, 'law:incident:test077theft', 'receipt id kept');
@@ -54,8 +54,8 @@ test('an accepted theft receipt convicts with a traceable record', () => {
   assert.deepEqual(packet.incident, inc, 'heat:changed carries the same incident');
   assert.equal(
     wantedReasonText(packet, harness.state.player),
-    ' · CARGO THEFT · pq077_capsule · 2 WITNESSES · station_tethys_customs',
-    'the alert traces incident, party, witnesses, jurisdiction',
+    ' · CARGO THEFT · 2 WITNESSES · TETHYS CUSTOMS',
+    'the alert prints no raw id: a payload handle is not a party, the station humanizes',
   );
 });
 
@@ -79,10 +79,49 @@ test('an accepted kill receipt names the victim with a singular witness', () => 
   });
   const inc = harness.state.player.heatLastIncident;
   assert.equal(inc.affected, 'hauler_7', 'victim preferred over class');
+  assert.equal(inc.affectedLabel, 'hauler', 'the class humanizes to the party the alert may say');
   assert.equal(
     wantedReasonText(harness.changes.at(-1), harness.state.player),
-    ' · KILL · hauler_7 · 1 WITNESS',
-    'singular witness, no jurisdiction invented',
+    ' · KILL · HAULER · 1 WITNESS',
+    'singular witness, no jurisdiction invented, no raw id printed',
+  );
+});
+
+test('a live victim is named and a known station prints its name', () => {
+  const harness = boot();
+  const victim = { id: 379, alive: false, type: 'ship', pos: { x: 0, z: 0 }, data: { name: 'Rook Nine', defId: 'ship_wasp' } };
+  harness.state.entities.set(victim.id, victim);
+  harness.bus.emit('law:reportIncidentReceipt', {
+    accepted: true,
+    incidentReceiptId: 'law:kill:test077named',
+    reportId: 'kill:entity_379',
+    kind: 'unlawful_kill',
+    offenderStableId: 'player',
+    victimStableId: 'entity:379',
+    victimEntityId: 379,
+    victimClass: 'ship',
+    causalTick: 9,
+    stationId: 'station_ceres',
+    witnessCount: 3,
+    witnessStableIds: ['wit_c'],
+    validatedCrime: true,
+    source: 'lawSecurity',
+  });
+  const inc = harness.state.player.heatLastIncident;
+  assert.equal(inc.affected, 'entity:379', 'the handle stays on the record');
+  assert.equal(inc.affectedLabel, 'Rook Nine', 'the live victim names the party');
+  assert.equal(
+    wantedReasonText(harness.changes.at(-1), harness.state.player),
+    ' · KILL · ROOK NINE · 3 WITNESSES · CERES REFINERY',
+    'the alert says the name and the station, never the ids',
+  );
+});
+
+test('a party with no label renders nothing — the raw handle is never printed', () => {
+  assert.equal(
+    wantedReasonText({ incident: { kind: 'unlawful_kill', incidentReceiptId: 'x', affected: 'entity:379', witnessCount: 1 } }, null),
+    ' · KILL · 1 WITNESS',
+    'an entity handle with no label is not a party',
   );
 });
 
@@ -136,7 +175,7 @@ test('a baseless record renders the kind alone, never an invented witness', () =
   );
   assert.equal(
     wantedReasonText({ incident: { kind: 'payload_theft', incidentReceiptId: 'x', witnessCount: 0, jurisdiction: 'station_y' } }, null),
-    ' · CARGO THEFT · station_y',
-    'jurisdiction alone is a jurisdiction claim, not a witness claim',
+    ' · CARGO THEFT · Y',
+    'jurisdiction alone is a jurisdiction claim, not a witness claim — and never a raw id',
   );
 });

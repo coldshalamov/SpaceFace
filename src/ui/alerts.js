@@ -16,6 +16,16 @@
 //
 import { BINDINGS, promptLabel } from './bindings.js';
 import { stationName } from './sectorLawPresenter.js';
+import { hazardLanguageFor } from '../data/hazardLanguage.js';
+import {
+  WORLD_FEEL_SEAM_IDS,
+  admitWorldFeelSeam,
+  createWorldFeelBook,
+  worldFeelRelevant,
+  copySweptHullFeel,
+  worldFeelTick,
+  worldFeelVoice,
+} from '../audio/worldFeelSeams.js';
 
 // The dock prompt is special: `dock:range {stationId,inRange}` shows/clears a persistent
 // binding-sourced dock alert (no ttl). The dock key handling lives in input.js.
@@ -76,6 +86,14 @@ const HAZARD_ALERT_TEXT = Object.freeze({
   nebula: 'NEBULA',
 });
 
+/** The authored language says what the field burns — the pill carried only the type name until
+ *  now, so "radiation cooks cargo too" never reached the player. Suffix the damage tag. */
+function hazardDamageSuffix(type) {
+  const entry = hazardLanguageFor(type);
+  const damages = entry && entry.damages;
+  return Array.isArray(damages) && damages.length ? ' · ' + damages.join('+').toUpperCase() : '';
+}
+
 /** WORLD-25: one persistent HUD alert on hazard entry, cleared on exit.
  *  Radiation and nebula only. Boss intensity changes are not an entry. */
 export function hazardAlertCommand(payload) {
@@ -92,7 +110,7 @@ export function hazardAlertCommand(payload) {
     action: 'raise',
     key,
     sev: type === 'radiation' ? 'danger' : 'warn',
-    text: HAZARD_ALERT_TEXT[type],
+    text: HAZARD_ALERT_TEXT[type] + hazardDamageSuffix(type),
     ttl: Infinity,
   };
 }
@@ -494,7 +512,7 @@ export function createAlerts(ctx) {
     raise({
       key: `hazard:${type}`,
       sev: HAZARD_SEV[type] || 'info',
-      text: `${type.replace(/_/g, ' ').toUpperCase()} FIELD`,
+      text: `${type.replace(/_/g, ' ').toUpperCase()} FIELD${hazardDamageSuffix(type)}`,
       ttl: Infinity,
     });
   });
@@ -541,6 +559,19 @@ export function createAlerts(ctx) {
   // are untouched. Tutorial longform ("Cargo hold full! Dock…") stays on the tutorial channel.
   bus.on('cargo:full', () => announce({ key: 'cargo-full', sev: 'warn', text: 'CARGO HOLD FULL', ttl: 2.5 }));
   bus.on('fuel:empty', () => announce({ key: 'fuel', sev: 'danger', text: 'OUT OF FUEL', ttl: 4 }));
+
+  // Worldfeel — developed rock, a hull skim, and a volatile stage. Each admits on sim tick
+  // so a held beam does not refresh the floor every frame. Stable cargo is not a voice.
+  const worldFeelVoiceBook = createWorldFeelBook(bus);
+  for (const eventName of WORLD_FEEL_SEAM_IDS) {
+    bus.on(eventName, (payload) => {
+      const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;
+      if (!worldFeelRelevant(ctx.state, eventName, snap)) return;
+      if (!admitWorldFeelSeam(worldFeelVoiceBook, eventName, snap, worldFeelTick(ctx.state))) return;
+      const voice = worldFeelVoice(eventName, snap);
+      if (voice) announce(voice);
+    });
+  }
 
   // Hazard entry is a condition light, like missile lock: it stays while you are inside
   // and clears when you leave. Not a new bar, and not a one-shot voice.

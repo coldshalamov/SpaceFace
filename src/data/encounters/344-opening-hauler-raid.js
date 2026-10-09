@@ -7,6 +7,36 @@
 import { deepFreeze, defineEncounter } from './catalog.js';
 
 export const encounterOrder = 344;
+
+/** What the player hears when the opening raid ends on a choice other than the paid assist. */
+export function openingRaidConsequence(outcome) {
+  switch (outcome) {
+    case 'robbed':
+      return {
+        from: 'MTS HAULER',
+        text: 'The thief left with the cells. You did not stop them.',
+      };
+    case 'hauler_destroyed':
+      return {
+        from: 'LANE CONTROL',
+        text: 'Hauler destroyed. No hazard pay — the corridor lost the ship.',
+      };
+    case 'raid_over':
+      return {
+        from: 'MTS HAULER',
+        text: 'You flew on. The hauler and the raiders are still out here.',
+      };
+    default:
+      return null;
+  }
+}
+
+function sayOpeningConsequence(d, outcome) {
+  const line = openingRaidConsequence(outcome);
+  if (!line || !d || typeof d.emit !== 'function') return;
+  d.emit('comms:log', { from: line.from, text: line.text, kind: 'encounter' });
+}
+
 export const trigger = deepFreeze({
   id: 'opening_hauler_raid',
   tier: 'minor',
@@ -115,7 +145,9 @@ export const runtime = Object.freeze({
     if (!haulerAlive) {
       if (custodyOpen) return;
       d.despawnAll(live, 12);
-      return d.resolve(live, custody && custody.raiderEscaped ? 'robbed' : 'hauler_destroyed', { speak: false });
+      const outcome = custody && custody.raiderEscaped ? 'robbed' : 'hauler_destroyed';
+      sayOpeningConsequence(d, outcome);
+      return d.resolve(live, outcome, { speak: false });
     }
 
     if (!raidersAlive) {
@@ -123,6 +155,7 @@ export const runtime = Object.freeze({
       if (custody && custody.raiderEscaped) {
         // The winner already left reach with the pod — there is no rescue left to pay for.
         d.despawnAll(live, 15, 'hauler');
+        sayOpeningConsequence(d, 'robbed');
         return d.resolve(live, 'robbed', { speak: false });
       }
       d.grant(250, 'convoy:guard');
@@ -144,6 +177,7 @@ export const runtime = Object.freeze({
       // record, the hauler keeps flying and the raiders keep being pirates as ordinary world
       // entities the player can still fight, save, or rob after the encounter has ended.
       releaseSquadToWorld(live);
+      sayOpeningConsequence(d, 'raid_over');
       return d.resolve(live, 'raid_over', { speak: false });
     }
   },

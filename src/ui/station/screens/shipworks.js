@@ -60,6 +60,8 @@ import {
   stationShopOffer,
 } from '../../../systems/ships.js';
 import { classifyBuildIdentity } from '../../../systems/buildIdentity.js';
+import { sableVennServiceAvailable } from '../../../data/sableVenn.js';
+import { mountSableDemo, sablePreviewStamp, sablePreviewMatches } from '../../orrery/sableDemo.js';
 import { instanceIdentityText } from '../../../systems/shipLedger.js';
 import { hullNameForOwnedShip, SHIP_NAME_MAX } from '../../../data/hullIdentity.js';
 import { buildParkedHoldModel } from '../../navigation/cargoDeck.js';
@@ -104,6 +106,7 @@ import {
 import {
   buildLoadoutPresetRailModel,
   sanitizePresetSelectionMap,
+  applyPresetRejection,
 } from '../../ship/loadoutPresets.js';
 import { fitHullInk, layoutHullCallouts, pointsBox, separateBeads } from '../../ship/calloutLayout.js';
 import { createStagePoster, loadHullPosterManifest } from '../../ship/hullPoster.js';
@@ -631,6 +634,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let selectedBand = 'handling'; // which of the four foot heroes explains itself beneath
   let rangeIntentUnsub = null;
   let appearanceSavedUnsub = null;
+  let presetRejectedUnsub = null;
+  let presetAppliedUnsub = null;
+  let pendingPresetRejection = null;
+  let stageShown = false;
+  let sableDemo = null, sableSelection = null, sableStamp = null;
+  const clearSableDemo = () => { sableDemo?.dispose(); sableDemo = null; sableStamp = null; };
+  const sableLifecycleUnsubs = ['save:restoring', 'game:newGame'].map(event => ctx.bus?.on(event, clearSableDemo)).filter(Boolean);
   const handlingDomain = handlingProfileDomain();
   const powerBeam = createRouteBeam(powerOverlayEl, { width: 400, height: 240 });
   const gaugeByKey = {};
@@ -738,6 +748,34 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (!viewed || !owned().length) return;
       if (Number.isFinite(index) && index !== owned().indexOf(viewed)) return;
       refreshPaintedPreview();
+    });
+  }
+
+  // ship:loadoutPresetApplyRejected already toasts. The instrument still has to say the
+  // rack-specific reason on the build that failed, and keep that sentence after the
+  // apply path's refresh rebuilds the rail.
+  function paintPendingPresetRejection() {
+    if (!pendingPresetRejection || !el || typeof el.querySelector !== 'function') return;
+    const id = pendingPresetRejection.presetId;
+    if (!id || /["'\\]/.test(id)) return;
+    const button = el.querySelector(`button.sx-sw-preset[data-loadout-preset-id="${id}"]:not([data-loadout-preset-save])`);
+    if (button) {
+      applyPresetRejection(button, pendingPresetRejection.reason, { focus: stageShown && !pendingPresetRejection.focused });
+      if (stageShown) pendingPresetRejection.focused = true;
+    }
+  }
+
+  function ensurePresetRejectedHandler() {
+    if (presetRejectedUnsub || !ctx.bus || typeof ctx.bus.on !== 'function') return;
+    presetRejectedUnsub = ctx.bus.on('ship:loadoutPresetApplyRejected', (payload = {}) => {
+      const presetId = payload && payload.presetId;
+      if (!presetId) return;
+      pendingPresetRejection = { presetId: String(presetId), reason: payload.reason };
+      paintPendingPresetRejection();
+    });
+    presetAppliedUnsub = ctx.bus.on('ship:loadoutPresetApplied', (payload = {}) => {
+      if (!pendingPresetRejection) return;
+      if (!payload || payload.presetId === pendingPresetRejection.presetId) pendingPresetRejection = null;
     });
   }
 
@@ -1415,7 +1453,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const nameInput = model.hullIndex != null
       ? `<input class="k-input sx-sw__nameEdit" type="text" data-ship-name maxlength="${SHIP_NAME_MAX}" ` +
           `value="${escapeHtml(model.ownedShip && typeof model.ownedShip.name === 'string' ? model.ownedShip.name : '')}" ` +
-          `placeholder="${escapeHtml(model.hullName)}" aria-label="Name this hull" spellcheck="false" autocomplete="off"/>`
+          `placeholder="Name this hull" aria-label="Name this hull" spellcheck="false" autocomplete="off"/>`
       : '';
     nameplateEl.innerHTML =
       `<div class="sx-sw__crestLine">` +
@@ -1723,6 +1761,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         ? `<section class="sx-sw-record"><p class="k-caps sx-sw-band__label">Record</p><ul class="k-rows sx-sw-record__grid">${recordRowsHtml(model)}</ul></section>`
         : '');
     dressApron();
+    paintPendingPresetRejection();
   }
 
   // The hull's systems round the dial: each slot type once, how many of its slots are fitted, and
@@ -1787,6 +1826,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function restoreCurrentPreview() {
+    clearSableDemo(); sableSelection = null;
     if (!explodeLockSeat) explodeSeat(false);
     for (const n of jigHost ? jigHost.querySelectorAll('.orr-sw-node.is-preview') : []) n.classList.remove('is-preview');
     { const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null; if (def) syncPowerGhost(def, null); }
@@ -2794,6 +2834,43 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const shift = cx - (ink.left + ink.right) / 2;
       if (Math.abs(shift) >= 1) { const r = rack.getBoundingClientRect(); placeFixed(rack, r.left + shift, r.top); }
     }
+    clearVerbsOfCallouts(rack, sr);
+  }
+  function clearVerbsOfCallouts(rack, sr) {
+    const labels = [...stageEl.querySelectorAll('.orr-sw-node.orr-hull__label'), ...el.querySelectorAll('.sx-sw__stats')]
+      .map((n) => n.getBoundingClientRect())
+      .filter((b) => b.width > 0 && b.height > 0);
+    const reach = Math.max(sr.right, el.getBoundingClientRect().right - 8);
+    if (!labels.length) return;
+    const hits = (r) => labels.filter((b) => b.left < r.right + 6 && b.right > r.left - 6
+      && b.top < r.bottom + 4 && b.bottom > r.top - 4);
+    const r = rack.getBoundingClientRect();
+    const blocking = hits(r);
+    if (!blocking.length) return;
+    const below = Math.max(...blocking.map((b) => b.bottom)) + 8;
+    if (below + r.height <= sr.bottom - 2
+      && !hits({ left: r.left, right: r.right, top: below, bottom: below + r.height }).length) {
+      placeFixed(rack, r.left, below);
+      return;
+    }
+    const mid = (r.left + r.right) / 2;
+    const left = blocking.filter((b) => (b.left + b.right) / 2 < mid);
+    const right = blocking.filter((b) => (b.left + b.right) / 2 >= mid);
+    if (left.length && right.length) return;
+    const seatBeside = (w) => {
+      const x = left.length
+        ? Math.max(...left.map((b) => b.right)) + 12
+        : Math.min(...right.map((b) => b.left)) - 12 - w;
+      if (x < sr.left + 4 || x + w > reach - 4) return null;
+      return hits({ left: x, right: x + w, top: r.top, bottom: r.bottom }).length ? null : x;
+    };
+    let x = seatBeside(r.width);
+    if (x == null) {
+      rack.style.setProperty('column-gap', '8px', 'important');
+      x = seatBeside(rack.getBoundingClientRect().width);
+      if (x == null) { rack.style.removeProperty('column-gap'); return; }
+    }
+    placeFixed(rack, x, r.top);
   }
   // the stage's scale on screen (the station scales its whole layout to fit a large screen)
   function stageScale() {
@@ -3737,6 +3814,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (def.mods && def.mods.countermeasure) return 'Defensive countermeasure';
     if (def.mods && (def.mods.tetherSpoolMult || def.mods.tetherReelRateMult)) return 'Massline handling system';
     if (def.mods && def.mods.swingDrive) return 'Dash swings around a taut line';
+    if (def.mods && def.mods.phaseBlink) return 'Hold Shift, release to step into the shadow';
     return 'Utility support system';
   }
 
@@ -3852,6 +3930,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   // ---------- slot chooser (the compatible modules take the hang column) ----------
   function openChooser(slotIndex, anchorEl, opts = {}) {
+    clearSableDemo(); sableSelection = null;
     const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) return;
     if (selectedPresetIdForHull(def.id)) {
@@ -3908,6 +3987,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
     const researched = (ctx.state.player && Array.isArray(ctx.state.player.researchedNodes))
       ? ctx.state.player.researchedNodes : [];
+    const sableTrialButton = d => sableVennServiceAvailable(ctx.state)
+      ? `<button type="button" class="k-word k-word--fine" data-sable-demo="${escapeHtml(d.id)}" data-sable-slot="${slotIndex}" aria-label="Sable Venn: demonstrate ${escapeHtml(d.name)}">Demonstrate</button>` : '';
     const holdRowHtml = ({ d, count, instanceId, instText, mountBlock }) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const prospective = fittings.slice();
@@ -3939,7 +4020,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             (instText ? `<span class="k-row__sub k-38 sx-modrow__instance">This unit: ${escapeHtml(instText)}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role"${blocked ? ' data-refusal' : ''}>${blocked ? escapeHtml(blockedText) : 'Already paid for — fits this slot.'}</span>` +
-          `<span class="k-row__num sx-modrow__act">${btn}</span>` +
+          `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
         `</li>`
       );
     };
@@ -3997,7 +4078,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (d.sentence ? `<span class="sx-modrow__sentence">${escapeHtml(d.sentence)}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
-          `<span class="k-row__num sx-modrow__act">${btn}</span>` +
+          `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
         `</li>`
       );
     }).join('');
@@ -4071,6 +4152,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function closeChooser(opts = {}) {
+    clearSableDemo(); sableSelection = null;
     if (chooserEl.hidden && !chooserEl.classList.contains('is-open')) return;
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
     if (!opts.silent) emitUiCue(UI_DRAWER_LATCH_CUE);
@@ -4193,6 +4275,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       player: ctx.state.player,
     });
     if (!ghost.ok || !Array.isArray(ghost.afterFittings)) return;
+    const selection = `${moduleId}:${ghost.slotIndex}`;
+    if (selection !== sableSelection) { clearSableDemo(); sableSelection = selection; }
     ghostActive = true;
     ghostSource = 'module';
     explodeSeat(true, ghost.moduleId || moduleId);
@@ -4934,6 +5018,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   let buyConfirmBusy = false;
   chooserEl.addEventListener('click', async (ev) => {
+    const trial = ev.target.closest('[data-sable-demo]');
+    if (trial) {
+      if (!sableVennServiceAvailable(ctx.state)) { clearSableDemo(); ctx.bus?.emit('toast',{text:'Patchwork is unavailable. Your current fit is unchanged.',kind:'info',ttl:3}); return; }
+      const ship = viewedShip(), moduleId = trial.getAttribute('data-sable-demo'), slotIndex = Number(trial.getAttribute('data-sable-slot'));
+      const ghost = presentModuleFitPreview({defId:ship.defId,fittings:ship.fittings,moduleId,slotIndex,player:ctx.state.player});
+      if (!ghost.ok) { ctx.bus?.emit('toast',{text:ghost.reason || 'This mount cannot carry the proposed fit.',kind:'error',ttl:3}); return; }
+      clearSableDemo(); sableSelection = `${moduleId}:${slotIndex}`;
+      const stamp = sablePreviewStamp(ctx.state,ship,moduleId,slotIndex); sableStamp = stamp;
+      sableDemo = mountSableDemo(chooserEl.querySelector('.sx-chooser__sheet') || chooserEl,{state:ctx.state,owned:ship,moduleId,slotIndex,afterFittings:ghost.afterFittings,
+        stillCurrent:()=>sableStamp===stamp && sableVennServiceAvailable(ctx.state) && sableSelection===`${moduleId}:${slotIndex}`
+          && sablePreviewMatches(stamp,ctx.state,viewedShip(),moduleId,slotIndex),
+        onClose:()=>{clearSableDemo(); if(trial.isConnected){trial.closest('[data-preview-module]')?.focus({preventScroll:true});trial.focus({preventScroll:true});}},
+        onMeasured:()=>ctx.bus?.emit('sable:demonstrated',{moduleId}),reducedMotion:prefersReducedMotion()});
+      return;
+    }
     if (ev.target.closest('[data-close]')) { closeChooser(); return; }
     // Ordnance verbs (PQ-205.03): every click is an intent to the bombs system — the rack
     // owner applies it, the economy owner moves the credits. The chooser stays open and
@@ -5149,6 +5248,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   });
 
   function refresh(periodicCtx) {
+    if (sableStamp && (!sableVennServiceAvailable(ctx.state) || !sablePreviewMatches(sableStamp,ctx.state,viewedShip(),sableStamp.moduleId,sableStamp.slotIndex))) clearSableDemo();
     if (host === 'flight') {
       // Flight host: no station bay behind the hull — the screen's own backdrop shows instead.
       if (mount && typeof mount.setDockId === 'function') mount.setDockId(null);
@@ -5169,14 +5269,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     setHost,
     get host() { return host; },
     onShow() {
+      stageShown = true;
       restoreShipView();
       ensureRangeIntentHandler();
       ensureAppearanceSavedHandler();
+      ensurePresetRejectedHandler();
       refresh();
       if (mount) mount.setActive(true);
       powerBeam.setActive(true);
     },
     onHide() {
+      stageShown = false;
+      pendingPresetRejection = null;
+      clearSableDemo(); sableSelection = null;
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       previewSettleTimer = 0;
       restoreSharedStageHull();
@@ -5185,10 +5290,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }, // stop the render loop when leaving (perf)
     refresh,
     dispose() {
+      clearSableDemo(); for (const off of sableLifecycleUnsubs) off();
       if (chooserCloseTimer) clearTimeout(chooserCloseTimer);
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       if (projectionFrame) cancelAnimationFrame(projectionFrame);
       if (appearanceSavedUnsub) { try { appearanceSavedUnsub(); } catch (_) {} appearanceSavedUnsub = null; }
+      if (presetRejectedUnsub) { try { presetRejectedUnsub(); } catch (_) {} presetRejectedUnsub = null; }
+      if (presetAppliedUnsub) { try { presetAppliedUnsub(); } catch (_) {} presetAppliedUnsub = null; }
       if (stageResizeObserver) stageResizeObserver.disconnect();
       if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
       rangeIntentUnsub = null;

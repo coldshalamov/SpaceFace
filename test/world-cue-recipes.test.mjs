@@ -12,8 +12,8 @@ function fixture(){return {simTime:1,playerId:1,entities:new Map([
 ]),settings:{video:{}}};}
 function cue(id,extra={}){return {id,sourceId:1,targetId:2,position:{x:137,y:2,z:28},...extra};}
 
-test('whitelist covers thirty-two work cues and nine composed travel handoffs',()=>{
-  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,41);
+test('whitelist covers thirty-three work cues and nine composed travel handoffs',()=>{
+  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,42);
   // PIC-26/27/28 and FB-142 planet cues arrive as complete presentation:cue envelopes — the
   // world-cue variant IS the recipe, so they deliberately carry no PRESENTATION_RECIPES lane
   // row (the planet verbs' audio rides the dedicated planet:* routes). Every other admitted

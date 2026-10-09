@@ -92,7 +92,7 @@ export function boardReport(board = readBoard()) {
   return {
     legacyQueue: 'drained-or-not-this-command',
     work: 'build_map.md §1C seams',
-    rule: 'Claim a free seam and do its open rows. An empty packet queue is not an empty plan and is not the inference catalog.',
+    rule: 'Claim a free seam and do its open rows. An empty packet queue is not an empty plan and is not the inference catalog. When every seam is done, the §M reservoir-admission rows are the remaining plan.',
     free,
     claimed,
     orphans: board.orphans.map((row) => row.number),
@@ -104,6 +104,7 @@ export function boardReport(board = readBoard()) {
 function printHuman(report) {
   console.log('Board seams. A drained packet queue is this list, not an empty plan.');
   console.log('Claim a free seam in build_map.md §1C, then do its open rows.');
+  console.log('All seams done? The §M reservoir-admission rows are the remaining plan.');
   console.log('Do not switch to the inference catalog unless the owner said INFERENCE.');
   console.log('');
   console.log('Free:');

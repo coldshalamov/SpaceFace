@@ -1,3 +1,13 @@
+import {
+  WORLD_FEEL_SEAM_IDS,
+  admitWorldFeelSeam,
+  createWorldFeelBook,
+  worldFeelRelevant,
+  copySweptHullFeel,
+  worldFeelHaptic,
+  worldFeelTick,
+} from '../audio/worldFeelSeams.js';
+
 // Gamepad polling layer (goal P1-12).
 //
 // Polls navigator.getGamepads() once per tick and exposes normalized, deadzoned axes plus
@@ -777,6 +787,13 @@ function readButton(pad, name) {
   };
 }
 
+const ignoreHapticFailure = () => {};
+function observeHapticCompletion(request) {
+  // Browser actuators can reject asynchronously on disconnect or unsupported effects.
+  // Optional rumble must not become an unhandled runtime error.
+  if (request && typeof request.catch === 'function') request.catch(ignoreHapticFailure);
+}
+
 export function createGamepad(ctx) {
   const bus = ctx && ctx.bus;
   const state = ctx && ctx.state;
@@ -882,6 +899,18 @@ export function createGamepad(ctx) {
     bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
     bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));
     bus.on('gyre:caught', () => startPulse(HAPTIC_VERB_PULSES['gyre:caught'], 'gyre:caught'));
+    // Worldfeel seams: a developed rock, a grazing face, a volatile stage. Own admit book so a
+    // held beam cannot turn the pad into a buzz. The pulse still shares the one-live-pulse gate.
+    const worldFeelBook = createWorldFeelBook(bus);
+    for (const eventName of WORLD_FEEL_SEAM_IDS) {
+      bus.on(eventName, (payload) => {
+        const snap = eventName === 'flight:sweptHull' ? copySweptHullFeel(payload) : payload;
+        if (!worldFeelRelevant(state, eventName, snap)) return;
+        if (!admitWorldFeelSeam(worldFeelBook, eventName, snap, worldFeelTick(state))) return;
+        const spec = worldFeelHaptic(eventName, snap);
+        if (spec) startPulse(spec, eventName);
+      });
+    }
     bus.on('gyre:absorbTick', (payload) => {
       // Meal size in the hands: a pebble stays the authored flick, a wreck lands near the
       // drop thud — lerped on min(1, mass/80) so katamari escalation is felt, not just seen.
@@ -1322,7 +1351,7 @@ export function createGamepad(ctx) {
       const active = !!(frame && frame.enabled && (frame.strong > 0.001 || frame.weak > 0.001));
       if (!active) {
         if (this._hapticActive && typeof actuator.reset === 'function') {
-          try { actuator.reset(); } catch (_) { /* haptics are best-effort */ }
+          try { observeHapticCompletion(actuator.reset()); } catch (_) { /* haptics are best-effort */ }
         }
         this._hapticActive = false;
         return;
@@ -1330,14 +1359,14 @@ export function createGamepad(ctx) {
       this._hapticActive = true;
       try {
         if (typeof actuator.playEffect === 'function') {
-          actuator.playEffect('dual-rumble', {
+          observeHapticCompletion(actuator.playEffect('dual-rumble', {
             startDelay: 0,
             duration: HAPTIC_RUMBLE_MS,
             weakMagnitude: frame.weak,
             strongMagnitude: frame.strong,
-          });
+          }));
         } else if (typeof actuator.pulse === 'function') {
-          actuator.pulse(frame.strong, HAPTIC_RUMBLE_MS);
+          observeHapticCompletion(actuator.pulse(frame.strong, HAPTIC_RUMBLE_MS));
         }
       } catch (_) { /* haptics are best-effort */ }
     },

@@ -3,7 +3,7 @@
 //
 // Proves on the normal player route (default backends + authored assets):
 //   1. New Game → Launch boots flight with flightV3 / sg06-tactical / rapier-dynamic
-//   2. Live canonical SECTORS graph has 24 region IDs; every reciprocal edge is exercised
+//   2. Live canonical SECTORS graph has 25 region IDs; every reciprocal edge is exercised
 //   3. Global player pose stays continuous across intentional gate hops; frameOrigin is not
 //      force-reset at enterSector (only fixed-tick membrane rebase); no global wipe
 //   4. Residency materialization is hard-capped; FULL / REDUCED / RECORD_ONLY records persist
@@ -44,7 +44,7 @@ const REPORT_PATH = path.join(OUT_DIR, 'm2b-galaxy-live.json');
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 const SAVE_SLOT_A = 'm2b-galaxy-mode-a';
 const SAVE_SLOT_B = 'm2b-galaxy-mode-b';
-const EXPECTED_SECTOR_COUNT = 24;
+const EXPECTED_SECTOR_COUNT = 25;
 const LOCAL_BOUND = 8_192;
 const POSE_TOL_WU = 4;
 const ROUTE_TIMEOUT_MS = 18 * 60_000;

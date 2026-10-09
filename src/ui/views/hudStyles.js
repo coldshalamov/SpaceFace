@@ -22,13 +22,16 @@ export function injectHudCss() {
   body.ui-modal-open #alerts,
   body.ui-modal-open #toasts { opacity:0 !important; pointer-events:none !important; }
 
-  /* Reticle reflects aim mode: amber tint + slight pulse when auto-target is tracking hostiles,
-     cyan when the pilot aims/fires manually (Phase 2). */
+  /* Aim feedback follows the mouse; the labeled combat-stick sight stays at center. */
   #aim-reticle { transition:none; }
   #aim-reticle svg * { filter:none !important; }
   #aim-reticle .sf-reticle-shape--bracket { display:none; }
   #aim-reticle[data-mode="auto"] .sf-reticle-shape--open { display:none; }
   #aim-reticle[data-mode="auto"] .sf-reticle-shape--bracket { display:block; }
+  .sf-reticle-mode-label { display:none; position:absolute; top:100%; left:50%;
+    transform:translateX(-50%); white-space:nowrap; font-family:var(--dp-face-etch);
+    font-size:var(--dp-fs-etch); color:var(--dp-ink); background:var(--dp-void); padding:2px 6px; }
+  #aim-reticle[data-mode="auto"] .sf-reticle-mode-label { display:block; }
   #aim-reticle.autofire > svg { animation:sf-reticlepulse 1.4s ease-in-out infinite alternate; }
   @keyframes sf-reticlepulse { from { opacity:.88; } to { opacity:1; } }
 
@@ -173,7 +176,7 @@ export function injectHudCss() {
   .sf-rightdock { position:absolute; right:calc(22px + var(--sf-safe-inset-x, 0px)); bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;
     contain:layout paint style; }
   .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; contain:layout paint style; }
-  .sf-radar { position:relative; width:var(--sf-radar-size, 188px); height:var(--sf-radar-size, 188px); border-radius:50%; overflow:hidden; cursor:pointer;
+  .sf-radar { position:relative; width:var(--sf-radar-size, 208px); height:var(--sf-radar-size, 208px); border-radius:50%; overflow:hidden; cursor:pointer;
     contain:layout paint style; }
   .sf-radar--expanded { width:290px !important; height:290px !important; }
   /* Canvas is centered so compact/expanded size changes stay anchored on the player marker. */
@@ -263,6 +266,10 @@ export function injectHudCss() {
   body.ui-modal-open .sf-toast { pointer-events:none; cursor:default; }
   .sf-toast--in { transform:none; opacity:1; }
   .sf-toast--out { transform:none; opacity:0; }
+  /* While tick()'s JS tail-fade owns opacity (last 300ms), the CSS transition fights it — each
+     per-frame write started a new .16s ease toward an already-stale target. The class is toggled
+     by toasts.js at fade start and cleared on dismiss/regroup so --out keeps its exit beat. */
+  .sf-toast--jsfade { transition:none; }
   /* The card is a dismiss control (role=button, tabindex=0): keyboard arrivals need a visible
      ring, and pointer hover brightens the line so clickability reads before the click. */
   .sf-toast:hover .sf-toast__text { text-shadow:0 0 10px rgb(255 255 255 / .28); }
@@ -332,11 +339,12 @@ export function injectHudCss() {
      ring, the cooldown-ring dasharray progress arc, four corner brackets that close on lock, a
      centre pip. Light only, no boxes. States are the ORRERY voice — warm bone at rest, paper
      readings while tracking, the Hand amber when locked; red stays threat-only, never cyan. */
-  .sf-lockring { display:none; position:absolute; left:50%; top:50%; width:72px; height:72px;
+  .sf-lockring { position:absolute; left:50%; top:50%; width:72px; height:72px;
     transform:translate(-50%,-50%) scale(1); transform-origin:50% 50%;
     pointer-events:none; z-index:14; opacity:0; will-change:transform;
-    transition:opacity .15s ease; }
-  .sf-lockring.active { display:block; opacity:1; }
+    visibility:hidden;
+    transition:opacity .15s ease, visibility 0s linear .15s; }
+  .sf-lockring.active { visibility:visible; opacity:1; transition:opacity .15s ease; }
   .sf-lockring.sf-lockring--latch { animation:sf-lockring-latch 160ms cubic-bezier(.2,.7,.2,1) 1; }
   .sf-lockring svg { display:block; width:100%; height:100%; overflow:visible; }
   .sf-lockring .sf-lockring__scale { fill:none; stroke:var(--k-hair); stroke-width:1;
@@ -420,9 +428,10 @@ export function injectHudCss() {
      cargo eight-point star. data-shape (targetBracketShape) picks the emblem; colour is the
      state voice — warm bone at rest, paper while tracking, the Hand when locked, red only for
      an actual missile threat. Shape carries the class, so the mark stays legible greyscale. */
-  .sf-lockdiamond { display:none; position:absolute; left:0; top:0; width:32px; height:32px; pointer-events:none; z-index:13;
-    opacity:0; transition:opacity .12s ease; will-change:transform; }
-  .sf-lockdiamond.visible { display:block; opacity:1; }
+  .sf-lockdiamond { position:absolute; left:0; top:0; width:32px; height:32px; pointer-events:none; z-index:13;
+    opacity:0; visibility:hidden; will-change:transform;
+    transition:opacity .12s ease, visibility 0s linear .12s; }
+  .sf-lockdiamond.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
   .sf-lockdiamond__inner { position:absolute; inset:2px; color:var(--k-bone-62); will-change:transform; }
   .sf-lockdiamond__inner svg { display:block; width:100%; height:100%; overflow:visible;
     fill:none; stroke:currentColor; stroke-width:1.5; stroke-linejoin:round;
@@ -466,9 +475,10 @@ export function injectHudCss() {
   .sf-hud-glitch-overlay.active { display:block; opacity:.85; }
 
   /* Gravity Mark — a persistent world-space contracting well read, independent of selection. */
-  .sf-gravity-mark { display:none; position:absolute; left:0; top:0; width:46px; height:46px;
-    pointer-events:none; z-index:12; opacity:0; transition:opacity .12s ease; will-change:transform; }
-  .sf-gravity-mark.visible { display:block; opacity:1; }
+  .sf-gravity-mark { position:absolute; left:0; top:0; width:46px; height:46px;
+    pointer-events:none; z-index:12; opacity:0; visibility:hidden; will-change:transform;
+    transition:opacity .12s ease, visibility 0s linear .12s; }
+  .sf-gravity-mark.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
   .sf-gravity-mark__ring { position:absolute; inset:3px; border:2px solid var(--hud-paper);
     border-radius:50%;
     animation:sf-gravity-mark-contract .9s cubic-bezier(.4,0,.2,1) infinite; }
@@ -482,9 +492,10 @@ export function injectHudCss() {
   }
 
   /* Momentum Sink — static opposing brackets name the player's moving reference frame. */
-  .sf-momentum-sink { display:none; position:absolute; left:0; top:0; width:58px; height:58px;
-    pointer-events:none; z-index:12; opacity:0; transition:opacity .12s ease; will-change:transform; }
-  .sf-momentum-sink.visible { display:block; opacity:1; }
+  .sf-momentum-sink { position:absolute; left:0; top:0; width:58px; height:58px;
+    pointer-events:none; z-index:12; opacity:0; visibility:hidden; will-change:transform;
+    transition:opacity .12s ease, visibility 0s linear .12s; }
+  .sf-momentum-sink.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
   .sf-momentum-sink__bracket { position:absolute; inset:5px; border-left:1px solid var(--k-hair);
     border-right:3px solid var(--hud-amber); }
   .sf-momentum-sink__bracket::before, .sf-momentum-sink__bracket::after {
@@ -503,10 +514,11 @@ export function injectHudCss() {
   /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
      intercepts the moving target. A hollow reticle-ring the player walks their crosshair onto. Tints
      amber→green as the crosshair converges (solved via the SAME lead solver the guns use). */
-  .sf-leadpip { display:none; position:absolute; left:0; top:0; width:22px; height:22px; pointer-events:none; z-index:13;
-    opacity:0; transition:opacity .1s ease; will-change:transform;
+  .sf-leadpip { position:absolute; left:0; top:0; width:22px; height:22px; pointer-events:none; z-index:13;
+    opacity:0; visibility:hidden; will-change:transform;
+    transition:opacity .1s ease, visibility 0s linear .1s;
     --pip-glow:255,196,84; }
-  .sf-leadpip.visible { display:block; opacity:.92; }
+  .sf-leadpip.visible { visibility:visible; opacity:.92; transition:opacity .1s ease; }
   .sf-leadpip.on-solution { --pip-glow:120,240,150; }
   .sf-leadpip__svg { width:100%; height:100%; overflow:visible; }
   .sf-leadpip__full, .sf-leadpip__arc {
@@ -1115,8 +1127,8 @@ export function injectHudCss() {
      decides the column, and --sf-radar-size is pinned to radar.js COMPACT_SIZE by
      test/j07-hud-contract.test.mjs so the canvas can never drift from its dial again. */
   #hud {
-    --sf-dock-w:188px;
-    --sf-radar-size:188px;
+    --sf-dock-w:208px;
+    --sf-radar-size:208px;
     --sf-brk-col:var(--hud-cyan);
   }
   .sf-rightdock { right:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:12px; width:var(--sf-dock-w); align-items:stretch; gap:9px; }
@@ -1821,21 +1833,21 @@ export function injectHudCss() {
   .sf-radar-wrap.sf-kit-radar {
     --sf-kit-radar-rim:24px;
     position:relative;
-    width:calc(var(--sf-radar-size, 188px) + var(--sf-kit-radar-rim) * 2);
-    min-height:calc(var(--sf-radar-size, 188px) + var(--sf-kit-radar-rim) * 2);
+    width:calc(var(--sf-radar-size, 208px) + var(--sf-kit-radar-rim) * 2);
+    min-height:calc(var(--sf-radar-size, 208px) + var(--sf-kit-radar-rim) * 2);
     padding:0; contain:layout style; background:none;
   }
   .sf-kit-radar__bezel,
   .sf-kit-radar__face,
   .sf-kit-radar__n { position:absolute; pointer-events:none; }
   .sf-kit-radar__bezel {
-    left:50%; top:0; width:100%; height:calc(var(--sf-radar-size, 188px) + var(--sf-kit-radar-rim) * 2);
+    left:50%; top:0; width:100%; height:calc(var(--sf-radar-size, 208px) + var(--sf-kit-radar-rim) * 2);
     transform:translateX(-50%);
     background:none center / contain no-repeat;
     z-index:0;
   }
   .sf-kit-radar__face {
-    left:50%; top:var(--sf-kit-radar-rim); width:var(--sf-radar-size, 188px); height:var(--sf-radar-size, 188px);
+    left:50%; top:var(--sf-kit-radar-rim); width:var(--sf-radar-size, 208px); height:var(--sf-radar-size, 208px);
     transform:translateX(-50%); border-radius:50%;
     background:none center / contain no-repeat;
     z-index:1;
@@ -1979,12 +1991,12 @@ export function injectHudCss() {
   .sf-bars .sf-bar.sf-kit-bar, .sf-kit-bar { min-width:0; }
   .sf-kit-seg { flex:1 1 0; min-width:0; max-width:12px; background-size:contain; }
 
-  /* The kit radar is a 188 px face inside a 24 px machined rim, so its box is 236 px — but the dock
+  /* The kit radar is a 208 px face inside a 24 px machined rim, so its box is 256 px — but the dock
      column it lives in was still the pre-kit 188 px, and the wrap is left-aligned in it. Measured on
      the default route: the bezel's right edge landed at 1964 in a 1920 viewport, so the dial was cut
      off by the screen edge at every default size. The column owns the width (J07), so the column is
      what moves; --sf-radar-size stays pinned to radar.js COMPACT_SIZE. */
-  #hud { --sf-dock-w:236px; }
+  #hud { --sf-dock-w:256px; }
   /* Small viewports. The instrument keeps its whole box — bezel, window, needle pivot — and only
      the factor moves, so nothing can come apart. The reserve the left column has to clear comes
      down with it. These replace the retired 1180/760 breakpoints that resized the bezel alone. */
@@ -2802,8 +2814,12 @@ export function injectHudCss() {
      the viewport height, so the ring is sized in vmin to clear the silhouette at every resolution.
      Strokes are in the 120-unit viewBox (x ~2.5 on screen). */
   #hud .sf-threat-ring {
+    display:none;
     width:clamp(220px, 30vmin, 420px); height:clamp(220px, 30vmin, 420px); margin:0; transform:translate(-50%, -50%);
   }
+  /* The large center instrument reads as a gunsight. Reserve it for the explicitly
+     toggled combat stick; ordinary mouse flight has only its real target cursor. */
+  body.sf-flight-cursor #hud .sf-threat-ring { display:block; }
   #hud .sf-threat-ring__arc { stroke-width:1.6; }
   #hud:is([data-tether="ready"], [data-tether="latched"], [data-tether="strain"]) .sf-threat-ring { opacity:1; }
   /* the halo: a hairline ring with four bearing ticks, so the arcs read as marks on one instrument */

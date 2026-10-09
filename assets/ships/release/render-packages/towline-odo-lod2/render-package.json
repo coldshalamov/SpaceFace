@@ -1,0 +1,2188 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.towline-odo-lod2.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.199999809265137,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.199999809265137,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.anchor.socket-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.4000000059604645,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.towline-odo-lod2",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "5d0eefb99623c006d70612d434a61f8331c653a0d539b536a5e732e19f18355c",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-armor"
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-livery"
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-mechanicaldark"
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.motion-towline-winch.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.towline-odo-lod2.node.motion-towline-winch"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          11.999493598937988,
+          2.1005160808563232,
+          2.799955368041992
+        ],
+        "min": [
+          -12.999452590942383,
+          -1.5005161762237549,
+          -2.799955368041992
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2d236ec519ff08a4dd57165613969afbd3ccd79be91a8f8e6220d0ed4ed1d6da",
+      "id": "sf.render.towline-odo-lod2.node.collision-towline-odo-core.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_TOWLINE_ODO_CORE",
+      "nodeId": "sf.render.towline-odo-lod2.node.collision-towline-odo-core",
+      "primitiveIndex": 0,
+      "vertexCount": 858
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.099978446960449,
+          2.3248391151428223,
+          3
+        ],
+        "min": [
+          -10.90002155303955,
+          1.6751610040664673,
+          -3
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "914da1e5a430f7e3549650c5f4fc7db51068de8877b55ddf92add009f141dcc6",
+      "id": "sf.render.towline-odo-lod2.node.collision-towline-odo-drum-bed.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_TOWLINE_ODO_DRUM_BED",
+      "nodeId": "sf.render.towline-odo-lod2.node.collision-towline-odo-drum-bed",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          9.587797164916992,
+          1.537352442741394,
+          1.862382173538208
+        ],
+        "min": [
+          8.412203788757324,
+          0.9643911719322205,
+          -1.8626619577407837
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4fa610938d4775b075553de18f73879c163ab821750432207b834457a3ea26bb",
+      "id": "sf.render.towline-odo-lod2.node.lod2-armor.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "7d5a220262736e3f84aacac6a6fdee51aabf659d576b9e3157d066cb28bef057",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 123
+    },
+    {
+      "bounds": {
+        "max": [
+          -12.815857887268066,
+          0.8229129314422607,
+          2.3076388835906982
+        ],
+        "min": [
+          -13.120659828186035,
+          -1.2201365232467651,
+          -2.3076388835906982
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4a55b12e5713e5708d4b191c4cb88470e4f105932365e298691c8ee2649ff997",
+      "id": "sf.render.towline-odo-lod2.node.lod2-hook-drive-core.primitive.0",
+      "indexCount": 258,
+      "indexed": true,
+      "materialHash": "57389ed4946f5598885af1092a1cb82c83ff7d828b986fd0447ec327312cfbe8",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 106
+    },
+    {
+      "bounds": {
+        "max": [
+          11.993016242980957,
+          2.0993058681488037,
+          2.78788161277771
+        ],
+        "min": [
+          -12.994524955749512,
+          -1.1889500617980957,
+          -2.785071611404419
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "abbb0ee0dd49149c1c42d101cbb17770979ab802e0a058b428c238707551be1e",
+      "id": "sf.render.towline-odo-lod2.node.lod2-hull.primitive.0",
+      "indexCount": 381,
+      "indexed": true,
+      "materialHash": "af166484f5f831557bfa49bfc68e38ce90b0f606de4b844de22711f58007240f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 115
+    },
+    {
+      "bounds": {
+        "max": [
+          5.869284629821777,
+          2.2541608810424805,
+          0.744170606136322
+        ],
+        "min": [
+          5.330716133117676,
+          2.1958389282226562,
+          -0.744170606136322
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "09c7f9151b2b9ed3f29a80a831aa6da895e271944b7c4b6cad5e94ddb91c1bde",
+      "id": "sf.render.towline-odo-lod2.node.lod2-lights-warm.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "6ffa1c89a2535b9be6b18ae340dfee7debe1a4f9d7c12731b07c276cb7389b27",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Warm",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5983803272247314,
+          2.218482255935669,
+          1.7435733079910278
+        ],
+        "min": [
+          -3.1305975914001465,
+          2.1815176010131836,
+          -1.8760732412338257
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c6bdd792c06a67bee134b5eeea0229e03b3266f7467761fa6c1c901b0bef7c1",
+      "id": "sf.render.towline-odo-lod2.node.lod2-livery.primitive.0",
+      "indexCount": 126,
+      "indexed": true,
+      "materialHash": "4d38a4deacf048f5c0f7e15b5e4865c218bb63318456528ad3d8fc2abcccd5fa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 86
+    },
+    {
+      "bounds": {
+        "max": [
+          11.991928100585938,
+          2.3110153675079346,
+          2.9803829193115234
+        ],
+        "min": [
+          -13.120811462402344,
+          -1.4964767694473267,
+          -2.9853012561798096
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4b46b2434787c0057b16035975a21b550f54942a10ea6d95d40b77c0889bdc9f",
+      "id": "sf.render.towline-odo-lod2.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 789,
+      "indexed": true,
+      "materialHash": "d7a05d855847234bf2b143b195780b9965ca1bf22bd4cb09fa196ab723b0847f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 324
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.602628737688065,
+          5.647242546081543,
+          1.7480913351190195
+        ],
+        "min": [
+          -10.397113770246506,
+          0.8527575135231018,
+          -1.7480915735375986
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cd842a923cbbafe5ed42a64ac356ffae52382f45a98265f7aa8ba63ee890017b",
+      "id": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-armor.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "7d5a220262736e3f84aacac6a6fdee51aabf659d576b9e3157d066cb28bef057",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_TOWLINE_WINCH_Armor",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.393000671409304,
+          4.854774966172479,
+          1.8729515075683594
+        ],
+        "min": [
+          -9.608004501320188,
+          1.6420575237948671,
+          -1.8729515075683594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "83857b98fb9b2efaeaebd19a47e3b3d3ee1de6e05d5cbd67570e2f317cecbcb3",
+      "id": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-livery.primitive.0",
+      "indexCount": 306,
+      "indexed": true,
+      "materialHash": "4d38a4deacf048f5c0f7e15b5e4865c218bb63318456528ad3d8fc2abcccd5fa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_TOWLINE_WINCH_Livery",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 146
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.602628737688065,
+          5.647242546081543,
+          1.7480913351190195
+        ],
+        "min": [
+          -10.397113770246506,
+          0.8527575135231018,
+          -1.7480915735375986
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b286f7301f0e034c7895ae7bb6a022a9b799ceb2da1d06fe6ae9c0150d2c7139",
+      "id": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-mechanicaldark.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "d7a05d855847234bf2b143b195780b9965ca1bf22bd4cb09fa196ab723b0847f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_TOWLINE_WINCH_MechanicalDark",
+      "nodeId": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "4d38a4deacf048f5c0f7e15b5e4865c218bb63318456528ad3d8fc2abcccd5fa",
+      "id": "material:4d38a4deacf048f5c0f7e15b",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "57389ed4946f5598885af1092a1cb82c83ff7d828b986fd0447ec327312cfbe8",
+      "id": "material:57389ed4946f5598885af109",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6ffa1c89a2535b9be6b18ae340dfee7debe1a4f9d7c12731b07c276cb7389b27",
+      "id": "material:6ffa1c89a2535b9be6b18ae3",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7d5a220262736e3f84aacac6a6fdee51aabf659d576b9e3157d066cb28bef057",
+      "id": "material:7d5a220262736e3f84aacac6",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "af166484f5f831557bfa49bfc68e38ce90b0f606de4b844de22711f58007240f",
+      "id": "material:af166484f5f831557bfa49bf",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d7a05d855847234bf2b143b195780b9965ca1bf22bd4cb09fa196ab723b0847f",
+      "id": "material:d7a05d855847234bf2b143b1",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.towline-odo-lod2.node.collision-towline-odo-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_TOWLINE_ODO_CORE",
+      "nodeName": "COLLISION_TOWLINE_ODO_CORE",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.collision-towline-odo-drum-bed",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_TOWLINE_ODO_DRUM_BED",
+      "nodeName": "COLLISION_TOWLINE_ODO_DRUM_BED",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-hook-drive-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Warm",
+      "nodeName": "LOD2_Lights_Warm",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-armor",
+      "localTransform": [
+        2.3972425162792206,
+        0,
+        0,
+        0,
+        0,
+        2.3972425162792206,
+        0,
+        0,
+        0,
+        0,
+        2.3972425162792206,
+        0,
+        0.00012874603271484375,
+        2.9802322387695312e-8,
+        -1.1920928955078125e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_TOWLINE_WINCH_Armor",
+      "nodeName": "LOD2_MOTION_TOWLINE_WINCH_Armor",
+      "nodePath": [
+        0,
+        8,
+        0
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.motion-towline-winch",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        2.3972425162792206,
+        0,
+        0,
+        0,
+        0,
+        2.3972425162792206,
+        0,
+        0,
+        0,
+        0,
+        2.3972425162792206,
+        0,
+        -7.999871253967285,
+        3.2500000298023224,
+        -1.1920928955078125e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-livery",
+      "localTransform": [
+        1.8729515075683594,
+        0,
+        0,
+        0,
+        0,
+        1.8729515075683594,
+        0,
+        0,
+        0,
+        0,
+        1.8729515075683594,
+        0,
+        -0.0005025863647460938,
+        -0.0015837550163269043,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_TOWLINE_WINCH_Livery",
+      "nodeName": "LOD2_MOTION_TOWLINE_WINCH_Livery",
+      "nodePath": [
+        0,
+        8,
+        1
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.motion-towline-winch",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1.8729515075683594,
+        0,
+        0,
+        0,
+        0,
+        1.8729515075683594,
+        0,
+        0,
+        0,
+        0,
+        1.8729515075683594,
+        0,
+        -8.000502586364746,
+        3.248416244983673,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-mechanicaldark",
+      "localTransform": [
+        2.3972425162792206,
+        0,
+        0,
+        0,
+        0,
+        2.3972425162792206,
+        0,
+        0,
+        0,
+        0,
+        2.3972425162792206,
+        0,
+        0.00012874603271484375,
+        2.9802322387695312e-8,
+        -1.1920928955078125e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_TOWLINE_WINCH_MechanicalDark",
+      "nodeName": "LOD2_MOTION_TOWLINE_WINCH_MechanicalDark",
+      "nodePath": [
+        0,
+        8,
+        2
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.motion-towline-winch",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        2.3972425162792206,
+        0,
+        0,
+        0,
+        0,
+        2.3972425162792206,
+        0,
+        0,
+        0,
+        0,
+        2.3972425162792206,
+        0,
+        -7.999871253967285,
+        3.2500000298023224,
+        -1.1920928955078125e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.motion-towline-winch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        3.25,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_TOWLINE_WINCH",
+      "nodeName": "MOTION_TOWLINE_WINCH",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        3.25,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_SHIP_TOWLINE_ODO_ROOT",
+      "nodeName": "SF_SHIP_TOWLINE_ODO_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.199999809265137,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.199999809265137,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.socket-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.4000000059604645,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Massline",
+      "nodeName": "SOCKET_Massline",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.4000000059604645,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.towline-odo-lod2.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.towline-odo-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.300000190734863,
+        -0.20000000298023224,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "2424954e30f8358d8941b9388bfc53bb56dc4044e3081a2f0546c2c05dec168c"
+    },
+    "sourceGlb": {
+      "bytes": 348880,
+      "sha256": "045a20eed22b0939583ea4b5ae01dcf62b7e372b9fe2626020f7f1fb892a028c",
+      "uri": "towline_odo_lod2.glb"
+    },
+    "sourceManifest": {
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 379752,
+    "sha256": "8cc90508ce3674b2668c906f93b01dc5ca930403d89065811b2abe920e595f00",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.5606589317321777,
+        2.073363184928894,
+        0
+      ],
+      "max": [
+        11.999493598937988,
+        5.647242546081543,
+        3
+      ],
+      "min": [
+        -13.120811462402344,
+        -1.5005161762237549,
+        -3
+      ],
+      "size": [
+        25.120305061340332,
+        7.147758722305298,
+        6
+      ]
+    },
+    "hidden": [
+      2,
+      3
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8,
+          3.25,
+          0,
+          1
+        ],
+        "name": "MOTION_TOWLINE_WINCH",
+        "planIndex": 10,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "towline_winch",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -8
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              3.25
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_TOWLINE_WINCH",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "towline_winch"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_TOWLINE_WINCH",
+            "recordIds": [
+              "sf.render.towline-odo-lod2.node.motion-towline-winch"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1.100000023841858,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.towline-odo-lod2.anchor.socket-camera-focus",
+              "sf.render.towline-odo-lod2.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.199999809265137,
+          -0.20000000298023224,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.towline-odo-lod2.anchor.socket-engine-main",
+              "sf.render.towline-odo-lod2.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.199999809265137,
+          -0.4000000059604645,
+          0,
+          1
+        ],
+        "name": "SOCKET_Massline",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Massline",
+            "recordIds": [
+              "sf.render.towline-odo-lod2.anchor.socket-massline",
+              "sf.render.towline-odo-lod2.node.socket-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.300000190734863,
+          -0.20000000298023224,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.towline-odo-lod2.anchor.socket-trail-main",
+              "sf.render.towline-odo-lod2.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "drive": 1,
+      "hull": 5,
+      "mechanical": 2,
+      "signal": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      }
+    ],
+    "motionBank": {
+      "bytes": 1181,
+      "rigId": "towline_odo_controls",
+      "sha256": "93be3ea9d537bd3e426876cdc48a55f0b96a666ec1fb93b7c9d6a42b89baaf4b",
+      "uri": "assets/ships/motions/towline-odo.motion.json"
+    },
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_CORE",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Lights_Warm",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.3972425162792206,
+          0,
+          0,
+          0,
+          0,
+          2.3972425162792206,
+          0,
+          0,
+          0,
+          0,
+          2.3972425162792206,
+          0,
+          -7.999871253967285,
+          3.2500000298023224,
+          -1.1920928955078125e-7,
+          1
+        ],
+        "name": "LOD2_MOTION_TOWLINE_WINCH_Armor",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.8729515075683594,
+          0,
+          0,
+          0,
+          0,
+          1.8729515075683594,
+          0,
+          0,
+          0,
+          0,
+          1.8729515075683594,
+          0,
+          -8.000502586364746,
+          3.248416244983673,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_TOWLINE_WINCH_Livery",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.3972425162792206,
+          0,
+          0,
+          0,
+          0,
+          2.3972425162792206,
+          0,
+          0,
+          0,
+          0,
+          2.3972425162792206,
+          0,
+          -7.999871253967285,
+          3.2500000298023224,
+          -1.1920928955078125e-7,
+          1
+        ],
+        "name": "LOD2_MOTION_TOWLINE_WINCH_MechanicalDark",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/towline_odo_lod2.glb"
+  },
+  "runtimeHash": "846b7dbeefef437ee78942f6b0a20996bcfd48e0c390c636e1e888024a555b04",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          11.999493598937988,
+          5.647242546081543,
+          3
+        ],
+        "min": [
+          -13.120811462402344,
+          -1.5005161762237549,
+          -3
+        ]
+      },
+      "id": "sf.render.towline-odo-lod2.body",
+      "nodeIds": [
+        "sf.render.towline-odo-lod2.node.collision-towline-odo-core",
+        "sf.render.towline-odo-lod2.node.collision-towline-odo-drum-bed",
+        "sf.render.towline-odo-lod2.node.lod2-armor",
+        "sf.render.towline-odo-lod2.node.lod2-hook-drive-core",
+        "sf.render.towline-odo-lod2.node.lod2-hull",
+        "sf.render.towline-odo-lod2.node.lod2-lights-warm",
+        "sf.render.towline-odo-lod2.node.lod2-livery",
+        "sf.render.towline-odo-lod2.node.lod2-mechanicaldark",
+        "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-armor",
+        "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-livery",
+        "sf.render.towline-odo-lod2.node.lod2-motion-towline-winch-mechanicaldark",
+        "sf.render.towline-odo-lod2.node.motion-towline-winch",
+        "sf.render.towline-odo-lod2.node.sf-ship-towline-odo-root",
+        "sf.render.towline-odo-lod2.node.socket-camera-focus",
+        "sf.render.towline-odo-lod2.node.socket-engine-main",
+        "sf.render.towline-odo-lod2.node.socket-massline",
+        "sf.render.towline-odo-lod2.node.socket-trail-main"
+      ]
+    }
+  ]
+}

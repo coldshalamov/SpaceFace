@@ -176,6 +176,48 @@ function materialCanCastShadow(material) {
   return true;
 }
 
+/**
+ * Can a withheld member still mint (or regain) a current depth mark under the
+ * given root? A member that is detached without an unbind — its ancestor walk
+ * never reaches the withheld root — or structurally signature-incapable (not
+ * a drawable kind, a never-cast userData marker, or no castable material: the
+ * same verdicts collectPotentialShadowCastSubjects applies) can never mint
+ * one, so a withheld-set member prune drops it rather than letting a corpse
+ * veto a rescue/restore for the whole root. A live-but-unmarked member is NOT
+ * dead — it must still veto. A member that regains capability re-joins
+ * through the next subtree collect's union-add.
+ */
+export function withheldDepthCasterProvablyDead(mesh, root) {
+  if (!mesh) return true;
+  const drawable = mesh.isMesh === true
+    || mesh.isSkinnedMesh === true
+    || mesh.isInstancedMesh === true;
+  if (!drawable) return true;
+  // Same verdict collectPotentialShadowCastSubjects applies: a stub with no
+  // geometry can never draw — and the collect can never re-offer it — so a
+  // live reading vetoes the rescue forever (geometryPending rebuild-bridge
+  // parks, GL dispose drains clearing mesh.geometry).
+  if ('geometry' in mesh && mesh.geometry == null) return true;
+  const ud = mesh.userData || {};
+  if (ud.spacefaceNoShadow === true
+    || ud.sharedContactShadow === true
+    || ud.authoredReadableFallbackLayer === true) return true;
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  if (!materials.some(materialCanCastShadow)) return true;
+  for (let p = mesh; p; p = p.parent) {
+    if (p === root) return false;
+    // An invisible intermediate ancestor masks this member out of every pass
+    // the depth stage renders — it can never draw and never mint a mark, so
+    // letting it veto pins the whole root withheld forever (authoredLod layer
+    // flips, pool shelves). A re-shown ancestor re-joins through the union-add
+    // like any re-attach. The root's own visibility is deliberately not
+    // consulted: an invisible root renders no shadows at all, and its members
+    // keep honest coverage for the re-show.
+    if (p.visible === false) return true;
+  }
+  return true;
+}
+
 // Exported for the settings OFF→ON path: a flag-only whole-scene enumeration
 // that skips the signature-string mints + staged-set probes
 // collectUnstagedShadowCasters pays per caster — the arm's per-slice recollect
@@ -353,6 +395,20 @@ export function casterDepthMarkCurrent(caster, lightSig, camera = null) {
     i += 2;
   }
   return i === mark.a.length;
+}
+
+/**
+ * Same certificate check without the light-signature clause: a mark minted mid-drive
+ * under an intermediate census — the arm pinned one sig, the drive's retry minted
+ * under a second, the live memo already serves a third — is unwitnessed by either
+ * verdict sig but still proves the caster staged. The discriminant fields re-prove
+ * the live state, so a mark internally current under its OWN sig keeps the verdict
+ * sound when no minted witness names its census.
+ */
+export function casterDepthMarkAnyCurrent(caster, camera = null) {
+  const mark = caster && caster.userData ? caster.userData[DEPTH_MARK_KEY] : null;
+  if (!mark) return false;
+  return casterDepthMarkCurrent(caster, mark.l, camera);
 }
 
 /**
@@ -558,6 +614,113 @@ export function collectUnstagedShadowCasters(renderer, subjects, lightingScene, 
     if (signatures.some((signature) => !staged.has(signature))) unstaged.push(caster);
   }
   return unstaged;
+}
+
+/**
+ * Bulk twin of collectUnstagedShadowCasters: `roots` bounds scene membership, while
+ * one stepped DFS visits only the reachable pending forest. Nested pending roots
+ * share a walk; unrelated scene branches never spend the collection budget.
+ * Subject verdicts and the staged-signature compare mirror the per-root variant
+ * exactly: a caster incapable of minting signatures is skipped (identical to the
+ * signatures.length===0 path), and an empty staged set unstages every castable
+ * (the early-return shape). `pendingSet` membership rides an ancestor climb per
+ * caster — a mesh nested inside two pending roots attributes to both, matching the
+ * union of two per-root collects.
+ *
+ * Budget exhaustion is a partial result, not an abort: `completedRoots` only names
+ * roots whose 'exit' marker popped (their whole subtree walked), so the caller
+ * trusts a completed root's set wholesale and runs the ordinary collect for any
+ * root the walk never finished — no torn-subtree reads.
+ */
+export function* collectUnstagedShadowCastersBulkSteps(roots, pendingSet, renderer, lightSig, nodeBudget = null, yieldEvery = 512) {
+  const list = Array.isArray(roots) ? roots : [roots];
+  const boundaries = new Set(list);
+  const reachable = new Set();
+  for (const root of pendingSet) {
+    for (let ancestor = root; ancestor; ancestor = ancestor.parent) {
+      if (boundaries.has(ancestor)) {
+        reachable.add(root);
+        break;
+      }
+    }
+  }
+  const forest = [];
+  for (const root of reachable) {
+    let covered = false;
+    for (let ancestor = root.parent; ancestor; ancestor = ancestor.parent) {
+      if (reachable.has(ancestor)) {
+        covered = true;
+        break;
+      }
+    }
+    if (!covered) forest.push(root);
+  }
+  const seen = new Set();
+  const unstagedByRoot = new Map();
+  const completedRoots = new Set();
+  const staged = _stagedDepthSignatures.get(renderer);
+  const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+  let visited = 0;
+  const stack = [];
+  for (let i = forest.length - 1; i >= 0; i -= 1) {
+    stack.push([forest[i], 'enter']);
+  }
+  while (stack.length > 0) {
+    const entry = stack.pop();
+    const object = entry[0];
+    if (entry[1] === 'exit') {
+      if (pendingSet.has(object)) completedRoots.add(object);
+      continue;
+    }
+    if (object) {
+      if (pendingSet.has(object)) stack.push([object, 'exit']);
+      const drawable = object.isMesh === true
+        || object.isSkinnedMesh === true
+        || object.isInstancedMesh === true;
+      if (drawable && !seen.has(object)) {
+        seen.add(object);
+        // Identical verdict chain to collectPotentialShadowCastSubjectsSteps.
+        if (!('geometry' in object && object.geometry == null)) {
+          const ud = object.userData || {};
+          if (!(ud.spacefaceNoShadow === true
+            || ud.sharedContactShadow === true
+            || ud.authoredReadableFallbackLayer === true)) {
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            if (materials.some(materialCanCastShadow)) {
+              let unstagedMesh = false;
+              if (!staged || staged.size === 0) {
+                unstagedMesh = true;
+              } else {
+                const signatures = casterDepthSignatures(object, lightSig);
+                unstagedMesh = signatures.length > 0
+                  && signatures.some((signature) => !staged.has(signature));
+              }
+              if (unstagedMesh) {
+                // The climb visits every pending ancestor — a mesh inside nested pending
+                // roots joins each root's set, the same union two per-root collects mint.
+                for (let p = object; p; p = p.parent) {
+                  if (pendingSet.has(p)) {
+                    let set = unstagedByRoot.get(p);
+                    if (!set) unstagedByRoot.set(p, (set = []));
+                    set.push(object);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      const children = object.children;
+      if (children) {
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push([children[i], 'enter']);
+      }
+    }
+    if (nodeBudget && (nodeBudget.remaining -= 1) < 0) {
+      return { unstagedByRoot, completedRoots, partial: true };
+    }
+    if (++visited % every === 0) yield;
+  }
+  return { unstagedByRoot, completedRoots, partial: false };
 }
 
 function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects = null, camera = null, lightSigOverride = undefined) {
@@ -802,6 +965,9 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
     // link on a listed name proves the program key drifted, an absent name proves it never drew.
     stagedNames: sliced.stagedNames || [],
     stagedKeys: sliced.stagedKeys || [],
+    // Offered casters that actually drew in the staged ortho (null when the
+    // draw couldn't be witnessed) — the caller mints drawability evidence.
+    drawn: sliced.drawn || null,
   };
 }
 
@@ -1031,6 +1197,11 @@ export function createShadowDepthStagingSession(options = {}) {
           stagedNames: [...sliceNames]
             .filter((name) => /CommonRockInstances|LivingHull|InstancePool|Wreck_Batch/.test(name)),
           stagedKeys: [...sliceKeys],
+          // The casters that actually drew in the staged ortho — an offered
+          // subject absent from this set can never mint a mark under this
+          // census. null when the draw couldn't be witnessed (no
+          // renderBufferDirect to intercept) so consumers mint no evidence.
+          drawn: originalRenderBufferDirect ? [...sliceDrawn] : null,
         };
       } finally {
         if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
@@ -1068,6 +1239,11 @@ export function createShadowDepthStagingSession(options = {}) {
       const names = new Set();
       const sKeys = new Set();
       const failures = [];
+      const drawnUnion = new Set();
+      // Evidence availability is all-or-nothing across sub-batches: a batch
+      // that couldn't witness draws would brand its casters undrawn in a
+      // partial union.
+      let drawnWitnessed = true;
       let subjects = 0;
       for (let i = 0; i < casting.length; i += 32) {
         if (sliceOpts && typeof sliceOpts.stale === 'function' && sliceOpts.stale()) {
@@ -1079,6 +1255,8 @@ export function createShadowDepthStagingSession(options = {}) {
         for (const k of r.programCacheKeys || []) keys.add(k);
         for (const n of r.stagedNames || []) names.add(n);
         for (const k of r.stagedKeys || []) sKeys.add(k);
+        if (Array.isArray(r.drawn)) for (const d of r.drawn) drawnUnion.add(d);
+        else drawnWitnessed = false;
         if (Array.isArray(r.programBindingFailures)) failures.push(...r.programBindingFailures);
         if (i + 32 < casting.length) yield;
       }
@@ -1089,6 +1267,7 @@ export function createShadowDepthStagingSession(options = {}) {
         programBindingFailures: failures,
         stagedNames: [...names],
         stagedKeys: [...sKeys],
+        drawn: drawnWitnessed ? [...drawnUnion] : null,
       };
     },
     close() {

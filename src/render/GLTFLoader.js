@@ -12,6 +12,7 @@ import {
   imageSourceKeyAsync,
   sharedImageTextureFor,
 } from './imageSourceDedupe.js';
+import { dedupError } from '../core/warnDedup.js';
 
 const COMPONENT = Object.freeze({
   5120: Int8Array,
@@ -290,7 +291,7 @@ export class GLTFLoader {
   load(url, onLoad, onProgress, onError) {
     this.loadAsync(url, onProgress).then(onLoad).catch((error) => {
       if (onError) onError(error);
-      else console.error(error);
+      else dedupError('gltf:loader-load-failed', error);
     });
   }
 

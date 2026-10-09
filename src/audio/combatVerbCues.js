@@ -74,7 +74,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'mining:tick': 'sfx_mining_impact',
   'mining:yield': SILENT('Ore yield is the semantic mining voice (mining.yield.collected); a verb-cue play would double it.'),
   'mining:seamHit': SILENT('A seam reward is the semantic mining voice (mining.seam.reward); a verb-cue play would double it.'),
-  'mining:beamLocked': 'sfx_mining_beam',
+  'mining:beamLocked': 'sfx_mining_cutter_lock',
   'mining:heatChanged': SILENT('Heat is a meter, not a sting; the WANTED crossing already has its own heat voice.'),
   // mining:ventReady row lives in the packet-C block at the foot of this table
   // (sfx_vent_chime, shared with the presentation route); it is not duplicated here.
@@ -269,7 +269,7 @@ export const VERB_CUE_OWNED_BY = Object.freeze({
   shieldRestored: 'audioSystem shieldRestored',
   'mining:start': 'audioSystem._onMiningStart',
   'mining:tick': 'audioSystem._onMiningTick',
-  'mining:beamLocked': 'mining beam loop (mining:start)',
+  'mining:beamLocked': 'worldFeelSeams',
   'mining:richCoreChargeStart': 'mining beam loop (mining:start)',
   'mining:ventReady': 'presentation.mining.vent.ready',
   'ship:boostStart': 'audioSystem ship:boostStart',

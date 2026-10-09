@@ -46,9 +46,20 @@ export function hasExplicitAuthoredGeologyPresentation(entity) {
  * PQ-195.00: the SP-07 flywheel assembly opts into its own exact authored spindle the same way.
  */
 export function hasExplicitAuthoredPayloadPresentation(entity) {
+  if (entity?.alive !== false && entity?.type === 'wreck'
+    && entity.data?.persistenceOwner === 'borrowedVoice' && entity.data.borrowedVoiceKind === 'ring'
+    && entity.data.authoredPayloadAssetId === 'SF_PLACE_BORROWED_VOICE_RING') return true;
   if (!entity || entity.alive === false || entity.type !== 'payload') return false;
   const assetId = entity.data?.authoredPayloadAssetId;
-  return assetId === 'pod_cargo_container' || assetId === 'place_breakaway_sp07';
+  return assetId === 'pod_cargo_container' || assetId === 'place_breakaway_sp07'
+    || (assetId === 'SF_PROP_KILNBACK_CASK' && entity.data?.persistenceOwner === 'kilnback')
+    || (assetId === 'SF_PROP_TOWLINE_DEBRIS' && entity.data?.persistenceOwner === 'towlineTable')
+    || (assetId === 'SF_PROP_MOTHLIGHT_LAMP' && entity.data?.persistenceOwner === 'mothlight'
+      && /^lamp_[1-4]$/.test(entity.data.mothlightLampId || ''))
+    || (assetId === 'SF_PROP_ILEX_VAULT' && entity.data?.persistenceOwner === 'ilexArk')
+    || (entity.data?.persistenceOwner === 'borrowedVoice' && entity.data.borrowedVoiceKind === 'recorder'
+      && ['a','b','c'].includes(entity.data.borrowedVoiceRecorderId)
+      && assetId === `SF_PROP_BORROWED_VOICE_${entity.data.borrowedVoiceRecorderId.toUpperCase()}`);
 }
 
 export function entityRequiresAuthoredPresentation(entity) {
@@ -111,6 +122,31 @@ export function presentationOwnerIsAdmitted(admission) {
     || admission === PRESENTATION_OWNER_ADMISSION.ready;
 }
 
+/**
+ * Whether an entity is a mission target whose lock the renderer must keep serviceable even when
+ * its authored hull never publishes: a terminal 'unavailable' on a required-whole-ship mission
+ * hostile may still mount a drawn body (its resident stand-in or the procedural fallback) so the
+ * warrant can be closed — authored-or-nothing never wins over a completable mission.
+ * Identity arrives two ways: stamped on the record (missionTag / storyTarget) or by membership in
+ * a live mission's target list. Guard every access — a save restore can leave either side
+ * partially populated, and the renderer polls this on a real frame path.
+ */
+export function entityIsMissionCritical(entity, state) {
+  const data = entity && entity.data;
+  if (data) {
+    if (data.missionTag != null) return true;
+    if (data.storyTarget) return true;
+  }
+  if (!entity || entity.id == null) return false;
+  const active = state && state.missions && state.missions.active;
+  if (!Array.isArray(active)) return false;
+  for (const mission of active) {
+    const ids = mission && mission.targetEntityIds;
+    if (Array.isArray(ids) && ids.includes(entity.id)) return true;
+  }
+  return false;
+}
+
 export function presentationAllowsPlayerFacingAction(entity, state) {
   if (isPhysicalMachinery(entity)) return machineryHasEffectivePresentation(entity, state);
   const indirect = entity && entity.data && entity.data.presentationOwnerWorldRecordId;
@@ -126,7 +162,12 @@ export function presentationAllowsPlayerFacingAction(entity, state) {
 /**
  * Targeting must not sit on empty air. A required hull whose authored identity is still pending
  * stays off the lock until that same complete body publishes. Headless sim and contacts that never
- * entered the authored path remain lockable.
+ * entered the authored path remain lockable. A terminal 'unavailable' verdict is not empty air by
+ * itself: `presentationFallbackVisible` describes what the boundary actually draws at terminal —
+ * the procedural fallback for non-required hulls, the ship's own resident stand-in hull, or the
+ * procedural body the renderer publishes for a mission-critical required hull (see
+ * entityIsMissionCritical). Only a verdict still drawing the abstract resolving marker — or
+ * nothing — keeps the lock refused.
  */
 export function presentationAllowsTargetLock(entity, state) {
   if (!entity || entity.alive === false) return false;
@@ -137,5 +178,8 @@ export function presentationAllowsTargetLock(entity, state) {
   if (entity.type !== 'ship') return true;
   const admission = entity.presentationAdmission;
   if (admission == null) return true;
+  if (admission === PRESENTATION_ADMISSION.unavailable) {
+    return entity.presentationFallbackVisible === true;
+  }
   return admission === PRESENTATION_ADMISSION.ready;
 }

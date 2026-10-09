@@ -580,6 +580,7 @@ class HudDocument {
     this.activeElement = this.body;
   }
   createElement(tagName) { return new HudElement(this, tagName); }
+  createTextNode(text) { return new HudText(String(text)); }
   createElementNS(_ns, tagName) { return this.createElement(tagName); }
   getElementById(id) { return findElement([this.head, this.body], (node) => node.id === id); }
   querySelector(selector) { return this.head.querySelector(selector) || this.body.querySelector(selector); }

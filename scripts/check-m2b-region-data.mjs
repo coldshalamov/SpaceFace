@@ -14,9 +14,9 @@ const STORY_IDS = Object.freeze([
   'sector_pallas_drift', 'sector_io_reach', 'sector_charon_expanse', 'sector_sker_haven',
   'sector_veil_nebula', 'sector_ashfall_reach',
 ]);
-// 5deb04e6…: helios's anchor pois gained the authored cache poi_helios_bay7 (Helios Bay 7,
-// 023131944). Previous pin 2766ef05… covered ashfall's poi_vault_maw (INFERENCE 10/10, 752da2f6).
-const EXPECTED_STORY_ANCHOR_HASH = '5deb04e6cbc69b76de03a9335744b8b3df0860d2cb35ffcf27806cec377c5b8f';
+// 02ad71a5…: live story anchors on master already (the previous 5deb04e6… pin had
+// drifted before the Bolus). Gate patches add gates only; stations/fields/pois stay.
+const EXPECTED_STORY_ANCHOR_HASH = '02ad71a5f54cf2660e961e9f047a3a97a8edb977aa99daa690cc27bb6bf2b435';
 const REQUIRED_FRONTIER_IDS = new Set(FRONTIER_SECTOR_IDS);
 const FACTIONS = new Set(FACTION_META.map((entry) => entry.id));
 const ZONES = new Set(Object.keys(ZONE_TYPES));
@@ -40,8 +40,8 @@ function storyAnchorFingerprint() {
 
 function main() {
   assert.equal(SECTOR_ORIGIN_LATTICE_WU, 4096);
-  assert.equal(SECTORS.length, 24);
-  assert.equal(new Set(SECTORS.map((sector) => sector.id)).size, 24);
+  assert.equal(SECTORS.length, 25);
+  assert.equal(new Set(SECTORS.map((sector) => sector.id)).size, 25);
   assert.equal(STORY_IDS.length, 10);
   assert.equal(REQUIRED_FRONTIER_IDS.size, 14);
   assert.equal(storyAnchorFingerprint(), EXPECTED_STORY_ANCHOR_HASH, 'original story anchor XZ drift');

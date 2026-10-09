@@ -23,6 +23,10 @@ import {
   createStuntCallout,
   ensureStuntCallout,
   releaseStuntCallout,
+  SPEED_DIAL_CLEARANCE_PX,
+  SPEED_DIAL_SELECTOR,
+  STABLE_LOAD_CLEARANCE_PX,
+  STABLE_LOAD_SELECTOR,
   trickCalloutName,
   trickSpokenText,
 } from '../src/ui/stuntCallout.js';
@@ -357,4 +361,33 @@ test('the mount is node-inert and the singleton release is safe without a docume
   assert.equal(held.root, null, 'node tests hold an inert mount');
   assert.doesNotThrow(() => releaseStuntCallout());
   assert.doesNotThrow(() => releaseStuntCallout(), 'release is idempotent');
+});
+
+test('the callout column seats itself above the HUD speed dial it shares the left edge with', () => {
+  const seat = (dialRect, stableLoadRect = null) => {
+    const doc = fakeDocument();
+    doc.defaultView = { innerHeight: 1080 };
+    doc.querySelector = (selector) => {
+      if (selector === SPEED_DIAL_SELECTOR) return { getBoundingClientRect: () => dialRect };
+      if (selector === STABLE_LOAD_SELECTOR && stableLoadRect) return { getBoundingClientRect: () => stableLoadRect };
+      return null;
+    };
+    const bus = fakeBus();
+    const owner = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+    owner.root.getBoundingClientRect = () => ({ left: 16, right: 134, top: 0, bottom: 0, height: 14 });
+    bus.emit('stunt:trickDetected', trickFor());
+    owner.update(0);
+    assert.equal(owner.root.hidden, false, 'the act is on the glass');
+    const bottom = owner.root.style.bottom;
+    owner.destroy();
+    return bottom;
+  };
+  assert.equal(seat({ left: 18, right: 225, top: 607, bottom: 815, height: 208 }),
+    `max(32vh, ${1080 - 607 + SPEED_DIAL_CLEARANCE_PX}px)`,
+    'a dial under the column lifts it clear of the dial top');
+  assert.equal(seat({ left: 760, right: 960, top: 860, bottom: 1060, height: 200 }), '',
+    'a dial elsewhere leaves the authored seat alone');
+  assert.equal(seat({ left: 18, right: 225, top: 607, bottom: 815, height: 208 }, { left: 22, right: 160, top: 540, bottom: 556, height: 16 }),
+    `max(32vh, ${1080 - (540 - STABLE_LOAD_CLEARANCE_PX)}px)`,
+    'a showing STABLE LOAD line above the dial stacks the column above it too');
 });

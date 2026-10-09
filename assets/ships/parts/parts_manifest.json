@@ -9519,7 +9519,13 @@
         "mechanical": "Material_Mechanical"
       },
       "hooks": [],
-      "sockets": [],
+      "sockets": [
+        "SOCKET_CLAIM_CRADLE",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Engine_Main",
+        "SOCKET_TALLY_SCAN",
+        "SOCKET_TALLY_STAMP"
+      ],
       "mount": "origin",
       "triangleMetric": "lod0",
       "bounds": {
@@ -9532,6 +9538,11 @@
           11.175684,
           4.21171,
           5.117123
+        ],
+        "dimensionsM": [
+          21.86007308959961,
+          5.621710419654846,
+          10.756716251373291
         ]
       },
       "note": "Tally-3 claim assessor: authored origin at one metre per WU. Arms, scan aperture and receipt press are noncolliding presentation instruments; pressure spine owns native contact."

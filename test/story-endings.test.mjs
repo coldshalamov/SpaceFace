@@ -614,7 +614,7 @@ check('live: endings and sandbox advance distinct replay hooks while preserving 
     assert.ok(h.state.story.campaign47a.receipts.some((receipt) => receipt.id === h.state.story.postEnding.receiptId),
       choice + ' stores replay receipt in campaign history');
     assert.equal(JSON.stringify(h.state.world), worldBefore, choice + ' continuity never rewrites the world');
-    assert.equal(Object.keys(h.state.world.sectors).length, 24, choice + ' preserves the full sandbox');
+    assert.equal(Object.keys(h.state.world.sectors).length, 25, choice + ' preserves the full sandbox');
   }
   assert.equal(seenHooks.size, 6, 'each resolution opens a different replay hook');
 });

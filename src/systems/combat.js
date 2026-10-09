@@ -4,6 +4,14 @@
 import { WEAPONS } from '../data/weapons.js';
 import { KillCause, KillSurface } from '../combat/killCausality.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
+import { dedupWarn } from '../core/warnDedup.js';
+import { kilnbackPhysicalBody } from '../data/kilnbackBody.js';
+import { kilnbackFlightModel } from '../data/kilnback.js';
+import { mothlightPhysicalBody } from '../data/mothlightBody.js';
+import { mothlightFlightModel } from '../data/mothlight.js';
+import { palletJackPhysicalBody } from '../data/palletJackBody.js';
+import { palletJackFlightModel } from '../data/palletJack.js';
+import { scissorwakePhysicalBody } from '../data/scissorwakeBody.js';
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
 import { makeShipEntitySpec, fittingsFromWeapons } from './ships.js';
@@ -233,7 +241,8 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     // shipped as a real body with no trail. Keep the safe fallback (a spawn that never throws,
     // so callers that reserved a slot still get a body) but make it loud and inspectable.
     def = ENEMY_TYPES[0];
-    console.warn(`[combat] makeEnemySpawnSpec: unknown enemyTypeId ${JSON.stringify(enemyTypeId)} — spawning fallback ${JSON.stringify(def.id)}`);
+    dedupWarn('combat/unknown-enemyTypeId',
+      '[combat] makeEnemySpawnSpec: unknown enemyTypeId — spawning fallback', enemyTypeId, def.id);
     opts = { ...opts, spawnFallbackFor: enemyTypeId };
   }
   level = level || (def.levelRange ? def.levelRange[0] : 1);
@@ -411,6 +420,35 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     }
   }
   spec.factionId = factionId;
+  if (def.id === 'kilnback' || def.id === 'scissorwake' || def.id === 'mothlight') {
+    const body = def.id === 'kilnback' ? kilnbackPhysicalBody() : def.id === 'mothlight' ? mothlightPhysicalBody() : scissorwakePhysicalBody();
+    spec.physicsBody = body; spec.mass = body.mass; spec.radius = body.radius;
+    spec.visualRadius = body.radius;
+    spec.data.authoredAssetId = def.id === 'kilnback' ? 'SF_SHIP_KILNBACK' : def.id === 'mothlight' ? 'SF_SHIP_MOTHLIGHT_TENDER' : 'SF_SHIP_SCISSORWAKE';
+    if (def.id === 'mothlight') {
+      spec.data.persistenceOwner = 'mothlight';
+      spec.flightModel = mothlightFlightModel(body, spec.flightModel);
+      if (spec.data.derived) spec.data.derived.flightModel = mothlightFlightModel(body, spec.data.derived.flightModel);
+    }
+    if (def.id === 'kilnback') spec.data.persistenceOwner = 'kilnback';
+    if (def.id === 'kilnback') {
+      spec.flightModel = kilnbackFlightModel(body, spec.flightModel);
+      if (spec.data.derived) spec.data.derived.flightModel = kilnbackFlightModel(body, spec.data.derived.flightModel);
+    }
+    for (const model of [spec.flightModel, spec.data.derived?.flightModel]) {
+      if (model) { model.mass = body.mass; model.inertia = body.inertiaY; }
+    }
+  }
+  if (def.id === 'pallet_jack') {
+    const body = palletJackPhysicalBody();
+    spec.physicsBody = body; spec.mass = body.mass; spec.radius = body.radius;
+    spec.visualRadius = body.radius;
+    spec.data.authoredAssetId = 'SF_SHIP_PALLET_JACK';
+    spec.data.persistenceOwner = 'palletJack';
+    spec.data.combatProfileId = 'combat_profile_pallet_jack';
+    spec.flightModel = palletJackFlightModel(body, spec.flightModel);
+    if (spec.data.derived) spec.data.derived.flightModel = palletJackFlightModel(body, spec.data.derived.flightModel);
+  }
   return spec;
 }
 
@@ -693,7 +731,7 @@ export const combat = {
     };
     ctx.bus.on('game:started', clearPendingDefeat);
     ctx.bus.on('save:loaded', clearPendingDefeat);
-    ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state); });
+    ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state, this.bus); });
     ctx.bus.on('debug:invulnerable', (p) => { wakeQuiet(); setLabInvulnerable(this.state, p || {}); });
   },
 
@@ -1439,7 +1477,7 @@ function labPlayerEntity(state) {
   return state.entities.get(state.playerId) || null;
 }
 
-function refillLabPlayer(state) {
+function refillLabPlayer(state, bus) {
   const player = labPlayerEntity(state);
   if (!player) return;
   // Same pool restore as the live recovery path (restorePlayerAtRecoveryDock) — pools to full,
@@ -1448,7 +1486,8 @@ function refillLabPlayer(state) {
   if (Number.isFinite(player.armorMax)) player.armorHp = player.armorMax;
   if (Number.isFinite(player.shieldMax)) player.shield = player.shieldMax;
   if (Number.isFinite(player.capMax)) player.cap = player.capMax;
-  if (Number.isFinite(player.heat)) player.heat = 0;
+  // heat.js is the sole writer of player.heat — clear through its bus path, never directly.
+  if (Number.isFinite(player.heat) && bus) bus.emit('heat:clear', { reason: 'lab refill' });
 }
 
 function setLabInvulnerable(state, payload) {

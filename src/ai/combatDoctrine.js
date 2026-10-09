@@ -15,6 +15,7 @@ import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 import { CAPITAL_BOSS_CHOREOGRAPHY } from '../data/combatDefs.js';
 import { capitalOpeningAnnouncement, resolveCapitalOpening } from '../combat/subsystems.js';
 import { SCISSORWAKE } from '../data/scissorwake.js';
+import { validMothlightGunCadence } from '../data/mothlight.js';
 
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
@@ -886,6 +887,31 @@ function updateRanged(record, tick, self, target, distance) {
       // re-entering broadside_charge.
       record.flightPoint = null;
       enter(record, 'outer_standoff', tick, null);
+    }
+    return;
+  }
+  // Mothlight's iris is the sole warning clock. Keep the ordinary ranged press/retreat,
+  // pressure, target and action gates, but do not race a second autonomous volley timer.
+  const iris = self?.mothlightGunCadence;
+  if (iris && !stalker) {
+    if (!validMothlightGunCadence(iris, self, tick) || iris.targetId !== target.id
+      || (target.occupantGeneration != null && iris.targetLife !== target.occupantGeneration)) {
+      enter(record, 'reset', tick, null); return;
+    }
+    if (iris.phase === 'true_charge') {
+      const firing = tick === iris.nextAttackTick;
+      if (record.mothlightChargeStart !== iris.phaseStartTick) {
+        record.mothlightChargeStart = iris.phaseStartTick;
+        enter(record, 'charge_cue', iris.phaseStartTick, 'weapon_charge');
+        record.telegraph = Object.freeze({ kind: 'weapon_charge', startedTick: iris.phaseStartTick,
+          durationTicks: iris.nextAttackTick - iris.phaseStartTick });
+        record.aimCommitBearing = corridorBearing(self, target);
+      }
+      if (firing) enter(record, 'fire_window', tick, null);
+      else if (tick > iris.nextAttackTick) enter(record, 'reset', tick, null);
+    } else {
+      record.mothlightChargeStart = null;
+      enter(record, iris.phase === 'retreat' || iris.phase === 'lost' ? 'retreat' : 'outer_standoff', tick, null);
     }
     return;
   }

@@ -8,6 +8,7 @@
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
+import { mothlightAllowsFire } from '../data/mothlight.js';
 import {
   modelTruthBoltRadius,
   modelTruthFlashOrigin,
@@ -567,7 +568,8 @@ export const weapons = {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
       const firing = !!(intent && intent.fire)
-        && presentationAllowsPlayerFacingAction(e, state);
+        && presentationAllowsPlayerFacingAction(e, state)
+        && mothlightAllowsFire(state, e);
       if (e.physicsSleeping === true && !firing) continue;
       // NPC aim = its intent aimAngle (already a lead/intercept angle from ai.js). fall back to nose.
       const aimAngle = (intent && intent.aimAngle != null) ? intent.aimAngle : e.rot;

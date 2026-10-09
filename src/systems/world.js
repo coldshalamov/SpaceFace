@@ -23,6 +23,7 @@
 //   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
 //   vitals order and may kill.
 import { playerBearingLetter } from '../core/playerCompass.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
@@ -196,11 +197,21 @@ import {
   deserializeAlienEcologyState,
 } from './alienEcology.js'; // Alien Ecology program (doc 08): world-owned library, not a registered system
 import {
+  materializeBolus,
+  tickBolus,
+} from './theBolus.js';
+import {
   materializeMachineLayer,
   tickMachineLayer,
   machineRouteOpen,
   handleMachinePickupCollected,
 } from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
+import {
+  materializeFoldAberrant,
+  tickFoldAberrant,
+  noteFoldAberrantKilled,
+  noteFoldSplinterCollected,
+} from './foldAberrant.js'; // The Unclosed (doc 16): damaged containment instrument, not a machine kind
 import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
 import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { removeCargo } from './cargo.js';
@@ -263,6 +274,9 @@ function applySameSectorPlayerRelocation(state, entryPoint) {
 // ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
 const DEFAULT_WORLD_RADIUS = 4000;
 const EMPTY_ONE_OFF_PARTS = []; // no-cluster one-offs iterate this (no allocation per spawn)
+// Sealed cache payoffs (_spawnCachePayoffs): fixed sector-local offset from the opened cache
+// marker, sized like the Kettle strongbox's authored offset so the pod reads beside the cache.
+const CACHE_PAYOFF_OFFSET = Object.freeze({ x: 26, z: -18 });
 const BASE_FUEL = 4;            // fuel units per lightyear
 // FB-111 — a wedged hull gets a paid door, not a silent reload. Thrust held, the ship
 // producing no displacement and no speed for STUCK_OFFER_S ⇒ one tow offer per wedge
@@ -598,6 +612,7 @@ export const world = {
     // SFQ-B141: a committed pickup receipt is the courier token's custody transfer — the
     // machine layer settles intercept/stolen on the same receipt cargo's listener wrote.
     bus.on('pickup:collected', (p) => handleMachinePickupCollected(this, p || {}));
+    bus.on('pickup:collected', (p) => noteFoldSplinterCollected(this, p || {}));
     bus.on('save:restoring', () => {
       this._vestaDecisionSignature = null;
       this._pallasDecisionSignature = null;
@@ -634,6 +649,7 @@ export const world = {
       this._onBossKilled(p || {});
       this._onDurableEntityKilled(p || {});
       handleAlienEcologyEvent(this, 'entity:killed', p || {});
+      noteFoldAberrantKilled(this, p || {});
     });
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
     // sectorSim's intel/reconcile channels were emitted and dropped before this binding — the
@@ -652,6 +668,8 @@ export const world = {
     // against live sites teach the taxonomy ladder.
     bus.on('sectorsim:impulse', (p) => handleAlienEcologyEvent(this, 'sectorsim:impulse', p));
     bus.on('scan:completed', (p) => handleAlienEcologyEvent(this, 'scan:completed', p));
+    bus.on('scan:pulse', (p) => handleAlienEcologyEvent(this, 'scan:pulse', p));
+    bus.on('combat:fire', (p) => handleAlienEcologyEvent(this, 'combat:fire', p));
     // AE-124/125/138/139 + AE-167: lures, dock purge, custody outcomes, and cradle capture.
     bus.on('alienEcology:lureDropped', (p) => handleAlienEcologyEvent(this, 'alienEcology:lureDropped', p));
     bus.on('dock:docked', (p) => handleAlienEcologyEvent(this, 'dock:docked', p));
@@ -958,7 +976,7 @@ export const world = {
   *enterSectorChunked(sectorId, opts = {}) {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
-    if (!sector) { console.warn('[world] enterSector: unknown sector', sectorId); return null; }
+    if (!sector) { dedupWarn('world/unknown-sector', '[world] enterSector: unknown sector', sectorId); return null; }
 
     this._ensureResidencyState();
     const fromSectorId = opts.fromSectorId != null ? opts.fromSectorId : (state.world.currentSectorId || null);
@@ -2462,6 +2480,19 @@ export const world = {
    * inside a big field. The sync wrapper drains inline — identical rng draws and spawn order.
    */
   *_spawnFieldsChunks(sector, active, disc, rng) {
+    if (sector && sector.interiorHost) {
+      for (const fdef of sector.fields || []) {
+        const centerLocal = fdef.center || { x: 0, z: 0 };
+        const center = this._toGlobal(centerLocal, sector.id);
+        active.fields.push({
+          id: fdef.id,
+          type: fdef.type,
+          center: { x: center.x, z: center.z },
+          asteroidIds: [],
+        });
+      }
+      return;
+    }
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const baseParams = FIELDS[sector.tier] || FIELDS[3] || FIELDS[1];
     // Shallow copy so we can attach homeSectorId without mutating the shared FIELDS catalog.
@@ -3012,6 +3043,11 @@ export const world = {
    * spawn order.
    */
   *_spawnDressingChunks(sector, active, rng) {
+    if (sector && sector.interiorHost) {
+      materializeBolus(this, sector, active);
+      yield 'materialize:bolus';
+      return;
+    }
     const arranger = this._arrangerForSector(sector, active);
     const paletteClass = paletteClassForSector(sector);
     if (paletteClass === 'core') {
@@ -3038,6 +3074,9 @@ export const world = {
     // Verge-Layer machine layer (AE-100..108): machine structures + kinematic machine
     // entities, same deterministic seam, same dressing substrate.
     materializeMachineLayer(this, sector, active);
+    // The Unclosed sits in the ossuary's empty slot. Same dressing pass, after the
+    // sane machines, so a second _spawnDressing drain cannot double-spawn it.
+    materializeFoldAberrant(this, sector, active);
   },
 
   // PQ-143.02 "six texture one-offs": memorable, non-systemic set pieces from
@@ -3151,6 +3190,7 @@ export const world = {
     }
     this._spawnHeliosRopeCache(sector, active);
     this._spawnKettleLinePayoff(sector, active);
+    this._spawnCachePayoffs(sector, active);
     this._spawnFactionBerths(sector, active);
   },
 
@@ -3287,6 +3327,65 @@ export const world = {
     const sector = worldBag && worldBag.sectors && worldBag.sectors[KETTLE_LINE.sectorId];
     if (!active || !sector || worldBag.currentSectorId !== KETTLE_LINE.sectorId) return false;
     this._spawnKettleLinePayoff(sector, active);
+    return true;
+  },
+
+  // Sealed cache payoffs (src/data/sectors.js, src/data/frontierRegions/north.js): a plain
+  // unowned cache may carry a frozen `contents` lot. Investigating the cache pops that lot as
+  // a real anchored pod beside the marker — the same ropeable, splittable treatment as the
+  // Kettle Line strongbox above — and this residency tail respawns the lot on re-entry from
+  // the per-POI investigated record. `active.cachePayoffIds` is the spawn-slot guard, exactly
+  // the kettle payoff's idiom, so an already-spawned pod is never duplicated. No rng: the
+  // fixed offset keeps every opened pod clear of its marker body.
+  _spawnCachePayoffs(sector, active) {
+    if (!sector || !active || !Array.isArray(sector.pois)) return;
+    // Data-only harnesses drive _spawnWorldOneOffs without a world bag; a sealed site
+    // simply has nothing to spawn there.
+    if (!this.state || !this.state.world || !this.state.world.discovery) return;
+    const disc = this._discoveryFor(sector.id);
+    for (const poi of sector.pois) {
+      const contents = poi && poi.contents;
+      if (!contents || !contents.commodityId || !(contents.amount > 0)) continue;
+      const rec = disc.pois && disc.pois[poi.id];
+      if (!rec || !rec.investigated) continue;
+      if (!active.cachePayoffIds) active.cachePayoffIds = {};
+      const priorId = active.cachePayoffIds[poi.id];
+      const prior = priorId != null && this.state.entities && this.state.entities.get
+        ? this.state.entities.get(priorId)
+        : null;
+      if (prior) continue;
+      const row = (active.pois || []).find((entry) => entry && entry.poiId === poi.id);
+      if (!row || !row.pos) continue;
+      const pos = { x: row.pos.x + CACHE_PAYOFF_OFFSET.x, z: row.pos.z + CACHE_PAYOFF_OFFSET.z };
+      const pod = spawnJettisonedCargoPod(this.state, {
+        commodityId: contents.commodityId,
+        amount: contents.amount,
+        pos,
+        vel: { x: 0, z: 0 },
+        radius: 8,
+        ownerId: poi.id,
+        originId: poi.id,
+        factionId: poi.factionId || sector.factionId || 'faction_scn',
+      }, this.helpers);
+      if (!pod) continue;
+      pod.data.placeId = 'place_cargo_pod_standard';
+      pod.data.name = `${poi.name || poi.id} — opened`;
+      pod.data.cachePayoff = true;
+      pod.data.anchored = true;
+      pod.data.packagedPropFile = 'places/place_cargo_pod_standard.glb';
+      pod.data.packagedPropSlot = 'place';
+      pod.flags = Object.assign({}, pod.flags, { persistent: false });
+      this._stampHomeSector(pod, sector.id);
+      active.cachePayoffIds[poi.id] = pod.id;
+    }
+  },
+
+  _onCachePayoffsSignalInvestigated(payload) {
+    const worldBag = this.state && this.state.world;
+    const active = worldBag && worldBag.activeSector;
+    const sector = worldBag && worldBag.sectors && worldBag.sectors[payload.sectorId];
+    if (!active || !sector || worldBag.currentSectorId !== payload.sectorId) return false;
+    this._spawnCachePayoffs(sector, active);
     return true;
   },
 
@@ -4388,7 +4487,9 @@ export const world = {
       gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
     }
     tickAlienEcology(this, dt);
+    tickBolus(this, dt);
     tickMachineLayer(this, dt);
+    tickFoldAberrant(this, dt);
     tickFarActors(state, this.helpers, this.bus);
     // Optic lattices: field-resident until decode-disc approach, then shelve past exit.
     tickOpticFieldRocks(state, this.helpers);
@@ -6254,6 +6355,7 @@ export const world = {
     this._onVestaOreCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._onPallasHiddenCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._onKettleLineSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onCachePayoffsSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
     return true;
   },

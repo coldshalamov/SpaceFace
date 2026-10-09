@@ -648,7 +648,7 @@ const SAMPLES = [
   ...['sector_nyx_march', 'sector_hyperion_cut', 'sector_kepler_scar', 'sector_orcus_shadow',
     'sector_rhea_cinder', 'sector_haumea_rift', 'sector_eris_margin', 'sector_phoebe_echo',
     'sector_nereid_shoal', 'sector_proteus_well', 'sector_triton_wake', 'sector_eunomia_gulf',
-    'sector_sedna_dark', 'sector_dione_lane'].map((id) => {
+    'sector_sedna_dark', 'sector_dione_lane', 'sector_the_bolus'].map((id) => {
     let h = 0x811c9dc5;
     for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193) >>> 0;
     const root = 48 + (h % 80);
@@ -658,7 +658,7 @@ const SAMPLES = [
       sector_orcus_shadow: 'anomaly', sector_rhea_cinder: 'belt', sector_haumea_rift: 'fringe',
       sector_eris_margin: 'fringe', sector_phoebe_echo: 'anomaly', sector_nereid_shoal: 'fringe',
       sector_proteus_well: 'fringe', sector_triton_wake: 'anomaly', sector_eunomia_gulf: 'fringe',
-      sector_sedna_dark: 'anomaly', sector_dione_lane: 'core',
+      sector_sedna_dark: 'anomaly', sector_dione_lane: 'core', sector_the_bolus: 'anomaly',
     }[id];
     const spec = { id: `arrival_${id.slice('sector_'.length)}`, family: 'arrival', tier: 1 };
     if (CLASS === 'fringe') {
@@ -693,10 +693,13 @@ const SAMPLES = [
 
 const argv = process.argv.slice(2);
 const checkOnly = argv.includes('--check');
+const onlyArg = argv.find((arg) => arg.startsWith('--only='));
+const onlyId = onlyArg ? onlyArg.slice('--only='.length) : null;
 
 const results = [];
 let mismatches = [];
 for (const spec of SAMPLES) {
+  if (onlyId && spec.id !== onlyId) continue;
   const rel = `${spec.family}/${spec.id}.wav`;
   const file = path.join(OUT_ROOT, rel);
   const bytes = wavBytes(renderSample(spec));

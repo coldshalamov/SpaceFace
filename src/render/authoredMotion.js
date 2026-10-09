@@ -1,5 +1,22 @@
+import { dedupWarn, noteLaneFault } from '../core/warnDedup.js';
 import { isLatchActor, createLatchNineVisualDriver } from './latchNineVisuals.js';
 import { isTallyThreeAssessor, createTallyThreeVisualDriver } from './tallyThreeVisuals.js';
+import { isRedKiteCourier, createRedKiteVisualDriver } from './redKiteVisuals.js';
+import { isSableVennWorkshop, createSableVennVisualDriver } from './sableVennVisuals.js';
+import { isIlexArkEntity } from '../data/ilexArkBody.js';
+import { createIlexArkVisualDriver } from './ilexArkVisuals.js';
+import { isKilnbackEntity, createKilnbackVisualDriver } from './kilnbackVisuals.js';
+import { isScissorwakeEntity } from '../data/scissorwakeBody.js';
+import { createScissorwakeVisualDriver } from './scissorwakeVisuals.js';
+import { isTowlineCrewEntity } from '../data/towlineTableBodies.js';
+import { createTowlineTableVisualDriver } from './towlineTableVisuals.js';
+import { isBorrowedVoiceRing, isBorrowedVoiceRecorder } from '../data/borrowedVoiceBody.js';
+import { createBorrowedVoiceVisualDriver } from './borrowedVoiceVisuals.js';
+import { isPalletJackEntity } from '../data/palletJackBody.js';
+import { isMothlightTender, isMothlightLamp } from '../data/mothlightBody.js';
+import { createPalletJackVisualDriver } from './palletJackVisuals.js';
+import { createMothlightVisualDriver } from './mothlightVisuals.js';
+import { createSecondRinseVisualDriver, isSecondRinse } from './secondRinseVisuals.js';
 import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
 // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
 //
@@ -22,6 +39,43 @@ const ACCEPTED_SCAN_SOURCE = 'player-scanner';
 
 // entityId -> Set<controller>. entity.id is the durable join key the scanner payload carries.
 const registry = new Map();
+
+// A persistently-throwing controller on a hot event (scan:pulse, killed,
+// m:event) used to warn per dispatch for the session's life — warn rate ==
+// event rate. First few faults per key log verbatim; the storm folds into a
+// suppressed count re-summarized on a >=1 s heartbeat. The key set is bounded
+// (entity churn over a very long session could still grow it) by a cap reset.
+const AUTHORED_WARN_VERBATIM = 8;
+const AUTHORED_WARN_CAP = 512;
+const authoredWarnLog = new Map();
+
+function noteAuthoredWarn(key, message, error) {
+  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now() : Date.now();
+  let entry = authoredWarnLog.get(key);
+  if (!entry) {
+    if (authoredWarnLog.size >= AUTHORED_WARN_CAP) {
+      // Oldest-row evict, not clear(): a cap-hit wipe re-armed every storming
+      // key's verbatim budget at once (a burst landing mid-storm) and erased
+      // accrued suppressed counts before the heartbeat could report them.
+      const oldest = authoredWarnLog.keys().next();
+      if (!oldest.done) authoredWarnLog.delete(oldest.value);
+    }
+    entry = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
+    authoredWarnLog.set(key, entry);
+  }
+  if (entry.logged < AUTHORED_WARN_VERBATIM) {
+    entry.logged += 1;
+    console.warn(message, error);
+    return;
+  }
+  entry.suppressed += 1;
+  if (now - entry.lastWarnAt >= 1000) {
+    entry.lastWarnAt = now;
+    console.warn(`${message} — ${entry.suppressed} further rejection(s) suppressed; latest:`, error);
+    entry.suppressed = 0;
+  }
+}
 
 export function registerAuthoredMotionController(entityId, controller) {
   if (entityId == null || !controller) return;
@@ -97,16 +151,74 @@ export function createAuthoredClock({ simNow, wallNow } = {}) {
  * ship rebuild must not leak entity-keyed controller registrations).
  */
 export function attachAuthoredMotionDriver(root, entity, controllers) {
+  const steps = attachAuthoredMotionDriverSteps(root, entity, controllers);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Steps twin: each driver construction pays an O(subtree) named-node traverse —
+// yields between them pace the attach across the composed-build's own budget.
+export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   const entityId = entity && entity.id;
   const live = (controllers || []).filter(Boolean);
   const workfleetRole=ceresWorkfleetRole(entity);
   const workfleet=!!workfleetRole;
   const latch=isLatchActor(entity);
   const tally=isTallyThreeAssessor(entity);
-  if (!root || (!live.length && !workfleet && !latch && !tally)) return null;
-  const tallyDriver=tally?createTallyThreeVisualDriver(root,entity):null;
+  const redKite=isRedKiteCourier(entity);
+  const sable=isSableVennWorkshop(entity);
+  const ilex=isIlexArkEntity(entity);
+  const kilnback=isKilnbackEntity(entity);
+  const scissorwake=isScissorwakeEntity(entity);
+  const towline=isTowlineCrewEntity(entity);
+  const borrowedVoice=isBorrowedVoiceRing(entity)||isBorrowedVoiceRecorder(entity);
+  const palletJack=isPalletJackEntity(entity),mothlight=isMothlightTender(entity)||isMothlightLamp(entity);
+  const hasp=isSecondRinse(entity);
+  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight && !hasp)) return null;
+  // Abandon bank: a suspended attach (generator .return() mid-yield) used to
+  // leak every driver already constructed — the detach closure does not exist
+  // yet, so nothing owns their disposes. A normal completion transfers the
+  // bank to detach below; an abandoned run disposes it in the finally.
+  let tallyDriver=null,redKiteDriver=null,sableDriver=null,ilexDriver=null,kilnbackDriver=null,
+    scissorwakeDriver=null,towlineDriver=null,borrowedVoiceDriver=null,palletJackDriver=null,
+    mothlightDriver=null,propulsion=null,haspDriver=null;
+  const driverBank=[];
+  const bankDriver=(flag,create)=>{
+    const driver=flag?create(root,entity):null;
+    if(driver)driverBank.push(driver);
+    return driver;
+  };
+  let bankTransferred=false;
+  // Hoisted so the finally can see a post-activation abandon: detach's
+  // teardown grammar owns the registry/userData rollback the raw bank
+  // dispose below cannot reach. Both bindings live in the try below.
+  let registered=false,detach=null;
+  try {
+  tallyDriver=bankDriver(tally,createTallyThreeVisualDriver);
+  yield;
+  redKiteDriver=bankDriver(redKite,createRedKiteVisualDriver);
+  yield;
+  sableDriver=bankDriver(sable,createSableVennVisualDriver);
+  yield;
+  ilexDriver=bankDriver(ilex,createIlexArkVisualDriver);
+  yield;
+  kilnbackDriver=bankDriver(kilnback,createKilnbackVisualDriver);
+  yield;
+  scissorwakeDriver=bankDriver(scissorwake,createScissorwakeVisualDriver);
+  yield;
+  towlineDriver=bankDriver(towline,createTowlineTableVisualDriver);
+  yield;
+  borrowedVoiceDriver=bankDriver(borrowedVoice,createBorrowedVoiceVisualDriver);
+  yield;
+  palletJackDriver=bankDriver(palletJack,createPalletJackVisualDriver);
+  yield;
+  mothlightDriver=bankDriver(mothlight,createMothlightVisualDriver);
+  yield;
+  haspDriver=bankDriver(hasp,createSecondRinseVisualDriver);
+  yield;
   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
-  const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):latch?createLatchNineVisualDriver(root,entity):null;
+  propulsion=bankDriver(workfleet||latch,workfleet?createCeresWorkfleetPropulsionDriver:createLatchNineVisualDriver);
   const priorDriveUpdate=root.userData.updateDriveState;
   const updatePropulsion=propulsion ? function updateCeresPropulsion(liveEntity,simNow) {
     priorDriveUpdate?.(liveEntity,simNow);
@@ -122,11 +234,18 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   // A hidden appearance candidate owns controllers, but cannot steal the retained body's
   // event registration before its GPU/publication gate succeeds. Ordinary builds bind now.
   const aliasKeys = [];
-  let registered = false;
   let retired = false;
   const activate = (liveEntity = entity) => {
-    if (registered || retired) return false;
-    if (propulsion && !propulsion.activate(liveEntity)) return false;
+    if (registered || retired) {
+      // A retired controller's decline is permanent — the deferred-activate
+      // walk surfaces it as a lane fault rather than silently never running.
+      if (retired) root.userData.__authoredMotionDeclined = true;
+      return false;
+    }
+    if (propulsion && !propulsion.activate(liveEntity)) {
+      root.userData.__authoredMotionDeclined = true;
+      return false;
+    }
     registered = true;
     registry.set(entityId, new Set(live));
     for (const key of [liveEntity?.data?.siteId, liveEntity?.data?.siteBeacon]) {
@@ -139,14 +258,35 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     }
     return true;
   };
-  if (entity?.deferAuthoredMotionRegistration !== true) activate();
-  root.userData.activateAuthoredMotionRegistration = activate;
-
-  const detach = function detachAuthoredMotionDriver() {
+  // Establish rollback before the first registration/hook yield. A caller can
+  // abandon this generator at any suspension, including deferred activation.
+  detach = function detachAuthoredMotionDriver(state = null) {
+    if (retired) return;
     retired = true;
     if (root.userData.updateCeresPhysicalState === updatePhysical) delete root.userData.updateCeresPhysicalState;
-    propulsion?.dispose();
-    tallyDriver?.dispose();
+    // Per-driver fencing: one throwing driver must not skip the remaining
+    // disposes or the unregister pass below — controllers would stay
+    // registered for a dead entity forever.
+    const detachDriver = (driver) => {
+      if (!driver) return;
+      try { driver.dispose(); }
+      catch (error) {
+        noteLaneFault(state, 'teardown.authoredMotion.driverDispose');
+        dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error);
+      }
+    };
+    detachDriver(propulsion);
+    detachDriver(tallyDriver);
+    detachDriver(redKiteDriver);
+    detachDriver(ilexDriver);
+    detachDriver(kilnbackDriver);
+    detachDriver(scissorwakeDriver);
+    detachDriver(towlineDriver);
+    detachDriver(borrowedVoiceDriver);
+    detachDriver(palletJackDriver);
+    detachDriver(mothlightDriver);
+    detachDriver(haspDriver);
+    detachDriver(sableDriver);
     if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
       if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
       else delete root.userData.updateDriveState;
@@ -173,6 +313,10 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     }
   };
 
+  yield;
+  if (entity?.deferAuthoredMotionRegistration !== true) activate();
+  yield;
+  root.userData.activateAuthoredMotionRegistration = activate;
   root.userData.authoredMotionControllers = live;
   // Max authored travel each bound pivot can impart, per binding — the cull envelope folds
   // this in lazily (world-space subtree radius at first query, post-fit) so an animated arm
@@ -187,8 +331,12 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   else delete root.userData.authoredMotionPadSpec;
   delete root.userData.__authoredMotionPad;
   // A graft landing on an already-mounted row would otherwise pay the pad's
-  // first-mint subtree walk inside the next cull consult.
-  if (motionPadSpec.length) primeMotionTravelPad(root);
+  // first-mint subtree walk inside the next cull consult. Its own yield keeps
+  // the O(subtree) mint off the attach leg's frame.
+  if (motionPadSpec.length) {
+    yield;
+    primeMotionTravelPad(root);
+  }
   // Ambient/attach clips arm on the first update so their anchor lands on the real clock.
   let attachFired = false;
   root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow, a11y, state = null) {
@@ -199,6 +347,16 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
     for (const controller of live) controller.update(simNow, a11y);
     updatePhysical?.(liveEntity, a11y);
     tallyDriver?.update(liveEntity, simNow, a11y, state);
+    redKiteDriver?.update(liveEntity, simNow, a11y, state);
+    ilexDriver?.update(liveEntity, simNow, a11y, state);
+    kilnbackDriver?.update(liveEntity, simNow, a11y, state);
+    borrowedVoiceDriver?.update(liveEntity, simNow, a11y, state);
+    palletJackDriver?.update(liveEntity, simNow, a11y, state);
+    mothlightDriver?.update(liveEntity, simNow, a11y, state);
+    haspDriver?.update(liveEntity, simNow, a11y, state);
+    scissorwakeDriver?.update(liveEntity, simNow, a11y, state);
+    towlineDriver?.update(liveEntity, simNow, a11y, state);
+    sableDriver?.update(liveEntity, simNow, a11y, state);
 
   };
   root.userData.authoredMotionEvent = function authoredMotionEvent(type, payload, simNow) {
@@ -208,7 +366,25 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   // (disposeWorldSitePresentation, releaseAuthoredAssetResidency, ...).
   root.userData.detachAuthoredMotion = detach;
 
+  // detach owns driver disposal from here — any abandon before this line
+  // falls to the finally bank below; nothing yields after it.
+  bankTransferred = true;
   return detach;
+  } finally {
+    if (!bankTransferred) {
+      // detach also rolls back pre-activation root hooks. Earlier construction
+      // yields have only the driver bank; never dispose the same bank twice.
+      if (typeof detach === 'function') {
+        try { detach(); }
+        catch (error) { dedupWarn('authoredMotion:abandonDetach', '[authoredMotion] abandon detach failed', error); }
+      } else {
+        for (const driver of driverBank) {
+          try { driver?.dispose?.(); }
+          catch (error) { dedupWarn('authoredMotion:driverDispose', '[authoredMotion] driver dispose failed', error); }
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -246,7 +422,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
         controller.handleEvent?.(type, payload, anchor);
         hits += 1;
       } catch (error) {
-        console.warn(`[authoredMotion] ${type} rejected by controller`, error);
+        noteAuthoredWarn(`dispatch:${type}:${entityId}`, `[authoredMotion] ${type} rejected by controller`, error);
       }
     }
     return hits;
@@ -367,7 +543,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.settleGroups?.(durationS, simNow(), SERVICE_GROUPS);
       } catch (error) {
-        console.warn('[authoredMotion] service-rig settle rejected', error);
+        noteAuthoredWarn(`service-settle:${id}`, '[authoredMotion] service-rig settle rejected', error);
       }
     }
   };
@@ -445,7 +621,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.handleEvent?.(type, payload, anchor);
       } catch (error) {
-        console.warn(`[authoredMotion] ${type} rejected by nav_buoy controller`, error);
+        noteAuthoredWarn(`nav-buoy:${type}`, `[authoredMotion] ${type} rejected by nav_buoy controller`, error);
       }
     }
   };
@@ -472,7 +648,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.settleGroups?.(0.9, anchorS(payload), ['mast_beam', 'mast_rod']);
       } catch (error) {
-        console.warn('[authoredMotion] site machine settle rejected', error);
+        noteAuthoredWarn(`site-settle:${payload.siteId}`, '[authoredMotion] site machine settle rejected', error);
       }
     }
   };
@@ -491,7 +667,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.settleGroups?.(0.9, anchorS(payload), ['mast_beam', 'mast_rod']);
       } catch (error) {
-        console.warn('[authoredMotion] planet collector settle rejected', error);
+        noteAuthoredWarn(`planet-collector:${payload.siteId}`, '[authoredMotion] planet collector settle rejected', error);
       }
     }
   };
@@ -540,7 +716,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
           controller.settleGroups?.(0.9, now, ['snare_core']);
         }
       } catch (error) {
-        console.warn('[authoredMotion] cruise:dropped rejected by interdiction_buoy', error);
+        noteAuthoredWarn('cruise-dropped', '[authoredMotion] cruise:dropped rejected by interdiction_buoy', error);
       }
     }
   };
@@ -628,7 +804,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
       try {
         controller.handleEvent?.(type, payload, anchor);
       } catch (error) {
-        console.warn(`[authoredMotion] ${type} rejected by ${rigId} controller`, error);
+        noteAuthoredWarn(`fanout:${type}:${rigId}`, `[authoredMotion] ${type} rejected by ${rigId} controller`, error);
       }
     }
   };
@@ -749,7 +925,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
             settled = controller.settleGroups?.(0.8, simNow(), STRUT_GROUPS) || settled;
           }
         } catch (error) {
-          console.warn('[authoredMotion] kestrel:strutsStow rejected', error);
+          noteAuthoredWarn(`kestrel-struts:${id}`, '[authoredMotion] kestrel:strutsStow rejected', error);
         }
       }
       if (!settled) dispatch('kestrel:strutsStow', id, payload, () => true);
@@ -788,7 +964,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
         try {
           controller.settleGroups?.(0.7, simNow(), CAP_GROUPS);
         } catch (error) {
-          console.warn('[authoredMotion] armorFix settle rejected', error);
+          noteAuthoredWarn(`armor-fix:${id}`, '[authoredMotion] armorFix settle rejected', error);
         }
       }
       return;
@@ -855,7 +1031,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
           controller.handleEvent?.('mining:stop', payload, simTime);
         }
       } catch (error) {
-        console.warn('[authoredMotion] pod seal rejected by controller', error);
+        noteAuthoredWarn(`pod-seal:${payload.targetId}`, '[authoredMotion] pod seal rejected by controller', error);
       }
     }
   };
@@ -886,7 +1062,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
           }
         }
       } catch (error) {
-        console.warn('[authoredMotion] fab queue receipt rejected by controller', error);
+        noteAuthoredWarn(`fab-queue:${entityId}`, '[authoredMotion] fab queue receipt rejected by controller', error);
       }
     }
   };

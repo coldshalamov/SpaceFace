@@ -312,8 +312,9 @@ function routeNextText(mapAction) {
 
 function slotLabel(id) {
   if (!id) return '';
-  if (id === 'quick' || id === 'autosave' || id === 'auto') return id.charAt(0).toUpperCase() + id.slice(1);
-  return 'Slot ' + id;
+  if (id === 'quick') return 'the quick slot';
+  if (id === 'autosave' || id === 'auto') return 'autosave';
+  return 'slot ' + id;
 }
 
 function fmtSavedAt(value) {
@@ -328,7 +329,7 @@ function fmtSavedAt(value) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-function saveLine(state) {
+export function saveLine(state) {
   // A Crucible run is ephemeral by contract and saving is refused for it (PQ-133 ruling 2).
   // Telling the player to press F5 here would be instructing them to attempt the one thing the
   // save system now blocks.
@@ -942,6 +943,7 @@ export const pauseScreen = {
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
     mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
+    mk('Statistics', () => nav(ctx, 'pushScreen', 'statistics'), { group: 'Reference', bank: true, icon: 'info' });
     // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
     // assets; filters off by default. Esc returns here. Do not restyle this sheet.
     mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', bank: true, icon: 'scan' });

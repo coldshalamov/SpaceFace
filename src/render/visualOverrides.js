@@ -342,6 +342,9 @@ function lodStandInFor(entity, record, target = null) {
   }
   group.userData.spacefaceSharedAsset = true;
   group.userData.authoredResolvingMarker = true;
+  // A stand-in is the ship's own hull shape, not the abstract marker — the terminal admission
+  // verdict may publish it as the lockable drawn body (syncResolvingMarker).
+  group.userData.admissionStandInHull = true;
   return group;
 }
 
@@ -717,12 +720,13 @@ export function releaseAdmissionStandInFallback(boundary) {
   return true;
 }
 
-function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveRecord = null, proceduralFallback = null) {
+function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveRecord = null, proceduralFallback = null, proceduralFallbackMissionOnly = false) {
   const root = new THREE.Group();
   root.name = `${entity && entity.data && entity.data.defId || 'ship'}_DirectAuthoredAdmission`;
   root.visible = false;
   root.userData.kind = 'ship';
   root.userData.authoredAdmissionSubstrate = true;
+  root.userData.admissionEntity = entity;
   const standIn = standInRecord ? lodStandInFor(entity, standInRecord) : null;
   let marker;
   if (standIn) {
@@ -745,7 +749,6 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
       root.userData.resolvingMarkerFallbackReason = 'no-resident-record';
       root.userData.admissionStandInPending = true;
     }
-    root.userData.admissionEntity = entity;
     root.userData.admissionStandInResolver = resolveRecord;
     // Detach paths that never see a terminal marker sync (despawn mid-pending, teardown) still
     // release the gauge — disposeDetachedObject invokes this hook on the substrate root.
@@ -758,9 +761,15 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
   root.add(marker);
   root.userData.resolvingMarker = marker;
   // A retry-exhausted non-required ship builds the sanctioned procedural body instead of
-  // keeping the octahedron forever; required ships stay authored-or-nothing (no thunk).
+  // keeping the octahedron forever. Required ships stay authored-or-nothing EXCEPT a mission
+  // target: their thunk is flagged mission-only, and syncResolvingMarker consumes it only when
+  // the entity is mission-critical AND still on the abstract marker — a drawn stand-in hull is
+  // already the ship's own identity and keeps it.
   if (typeof proceduralFallback === 'function') {
     root.userData.admissionProceduralFallback = proceduralFallback;
+    if (proceduralFallbackMissionOnly === true) {
+      root.userData.admissionProceduralFallbackMissionOnly = true;
+    }
   }
   root.userData.authoredResolvingMarker = true;
   root.userData.authoredAdmissionTemporaryDrawables = Math.max(1, marker.isMesh ? 1 : marker.children.length);
@@ -1398,13 +1407,12 @@ export function installVisualOverrides(factory, options = {}) {
       try { standInRecord = admissionStandInRecord(entity); }
       catch (error) { reportVisualWarning(options, '[visualOverrides] admission stand-in lookup failed', error); }
       visual = directAuthoredAdmissionSubstrate(entity, standInRecord, admissionStandInRecord,
-        requiredWholeShip
-          ? null
-          : () => {
-            const fallback = fallbackBuild(entity);
-            configureTransparentSinglePassSurfaces(fallback);
-            return fallback;
-          });
+        () => {
+          const fallback = fallbackBuild(entity);
+          configureTransparentSinglePassSurfaces(fallback);
+          return fallback;
+        },
+        requiredWholeShip);
     } else if (isWorldPlaceProp(entity)) {
       const geologyFallback = hasExplicitAuthoredGeologyPresentation(entity)
         ? fallbackBuild(entity)

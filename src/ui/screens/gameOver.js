@@ -26,7 +26,7 @@ import { injectSaveLayouts } from '../orrery/saveLayouts.js';
 import { svg, arcD, polar, ticksD } from '../orrery/svg.js';
 import { decrypt, rollTo } from '../orrery/text.js';
 import { createSortieTape, fmtSortieTime } from '../orrery/saveSortieTape.js';
-import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
+import { entitySpanHtml, decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { NEW_GAME, DEFAULT_STARTER_ID, starterById } from '../../data/newGameDefaults.js';
 import { escapeHtml } from '../comms.js';
@@ -110,6 +110,10 @@ function fmtMs(ms) {
   return fmtTime(s);
 }
 
+function catalogLabel(kind, id) {
+  return (id && entityLabel(kind + ':' + id)) || prettyLabel(id);
+}
+
 function prettyLabel(value) {
   return String(value || 'unknown')
     .replace(/^(faction|ship|sector|station)_/, '')
@@ -147,7 +151,7 @@ export function deathCauseLabel(entry = null) {
   if (cause.startsWith('ship:')) {
     const named = typeof entry.killerName === 'string' ? entry.killerName.trim() : '';
     const killer = named || prettyLabel(entry.killerType || cause.slice('ship:'.length));
-    const faction = entry.killerFaction ? ' (' + prettyLabel(entry.killerFaction) + ')' : '';
+    const faction = entry.killerFaction ? ' (' + catalogLabel('faction', entry.killerFaction) + ')' : '';
     return 'Destroyed by ' + killer + faction;
   }
   return cause === 'unknown' ? 'Unknown loss' : prettyLabel(cause);
@@ -207,11 +211,11 @@ export function sortieRecord(ctx = {}) {
     const d = e.data || {};
     kind = e.type;
     switch (e.type) {
-      case 'dock:docked': push(e.atMs, 'Docked' + (d.stationId ? ' · ' + prettyLabel(d.stationId) : '')); break;
-      case 'jump:arrive': push(e.atMs, d.interdicted ? 'Interdicted' : 'Jumped' + (d.sectorId ? ' · ' + prettyLabel(d.sectorId) : ''), !!d.interdicted); break;
+      case 'dock:docked': push(e.atMs, 'Docked' + (d.stationId ? ' · ' + catalogLabel('station', d.stationId) : '')); break;
+      case 'jump:arrive': push(e.atMs, d.interdicted ? 'Interdicted' : 'Jumped' + (d.sectorId ? ' · ' + catalogLabel('sector', d.sectorId) : ''), !!d.interdicted); break;
       case 'entity:killed': push(e.atMs, 'Kill' + (d.victimClass ? ' · ' + prettyLabel(d.victimClass) : '')); break;
       case 'economy:tradeCompleted': push(e.atMs, d.side === 'sell' ? 'Sold cargo' : 'Bought cargo'); break;
-      case 'mining:yield': push(e.atMs, 'Mined' + (d.commodityId ? ' · ' + prettyLabel(d.commodityId) : '')); break;
+      case 'mining:yield': push(e.atMs, 'Mined' + (d.commodityId ? ' · ' + catalogLabel('commodity', d.commodityId) : '')); break;
       case 'mission:accepted': push(e.atMs, 'Contract taken'); break;
       case 'mission:completed': push(e.atMs, 'Contract done'); break;
       case 'mission:failed': push(e.atMs, 'Contract failed', true); break;

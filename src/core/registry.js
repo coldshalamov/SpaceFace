@@ -34,6 +34,21 @@ import { scissorwake } from '../systems/scissorwake.js';
 import { tallyThree } from '../systems/tallyThree.js';
 import { lastShift } from '../systems/lastShift.js';
 import { lastShiftPrompt } from '../ui/lastShiftPrompt.js';
+import { redKite } from '../systems/redKite.js';
+import { redKitePrompt } from '../ui/redKitePrompt.js';
+import { sableVenn } from '../systems/sableVenn.js';
+import { ilexArk } from '../systems/ilexArk.js';
+import { ilexArkPrompt } from '../ui/ilexArkPrompt.js';
+import { kilnback } from '../systems/kilnback.js';
+import { mothlight } from '../systems/mothlight.js';
+import { mothlightPrompt } from '../ui/mothlightPrompt.js';
+import { palletJack } from '../systems/palletJack.js';
+import { palletJackPrompt } from '../ui/palletJackPrompt.js';
+import { secondRinse } from '../systems/secondRinse.js';
+import { towlineTable } from '../systems/towlineTable.js';
+import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
+import { borrowedVoice } from '../systems/borrowedVoice.js';
+import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
@@ -149,6 +164,7 @@ import { ravel } from '../systems/ravel.js';
 import { solstice } from '../systems/solstice.js';
 import { rubric } from '../systems/rubric.js';
 import { ruckus } from '../systems/ruckus.js';
+import { ruud } from '../systems/ruud.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -156,7 +172,7 @@ import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voi
 import { sectorPostcard } from '../ui/sectorPostcard.js';             // A1: arrival identity card + one 'news' rumor line
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';             // A3: dockDeny.js surfaced — scan line + one 'comms' denial
 import { stationBroadcast } from '../systems/stationBroadcast.js';    // A5: ambient station flavor (window-timer only; lowest voice priority)
-import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type 'warn' counterplay hint + state.ui.hazardRead
+import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type counterplay hint (tutorial channel) + state.ui.hazardRead
 import { noFireAdvisory } from '../data/stationBubbles.js';            // BP-11 A2: station no-fire ring 'warn' advisory on player fire
 import { bulkHaulTag } from '../ui/prompts/bulkHaulTag.js';             // T3-17: TOW-THE-CHUNK oversized mining chunk prompt
 import { dangerGradient } from '../ui/dangerGradient.js';              // A9: dangerTier tint+badge overlay on existing starmap nodes (guarded applier)
@@ -466,6 +482,21 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['tallyThree', tallyThree],
     ['lastShift', lastShift],
     ['lastShiftPrompt', lastShiftPrompt],
+    ['redKite', redKite],
+    ['redKitePrompt', redKitePrompt],
+    ['sableVenn', sableVenn],
+    ['ilexArk', ilexArk],
+    ['ilexArkPrompt', ilexArkPrompt],
+    ['kilnback', kilnback],
+    ['mothlight', mothlight],
+    ['mothlightPrompt', mothlightPrompt],
+    ['palletJack', palletJack],
+    ['palletJackPrompt', palletJackPrompt],
+    ['secondRinse', secondRinse],
+    ['towlineTable', towlineTable],
+    ['towlineTablePrompt', towlineTablePrompt],
+    ['borrowedVoice', borrowedVoice],
+    ['borrowedVoicePrompt', borrowedVoicePrompt],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],
@@ -533,6 +564,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['solstice', solstice],
     ['rubric', rubric],
     ['ruckus', ruckus],
+    ['ruud', ruud],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

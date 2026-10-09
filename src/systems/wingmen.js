@@ -259,6 +259,12 @@ export const wingmen = {
     for (const fs of fleet) {
       if (fs._liveId && state.entities) {
         const e = state.entities.get(fs._liveId);
+        // Capture the last hit even when a hard transition lands before our next update.
+        // This is the same persisted fraction used by the normal live synchronization.
+        if (e && e.hullMax > 0) {
+          fs.hullPct = Math.max(0, Math.min(1, e.hull / e.hullMax));
+          fs.hp = fs.hullPct;
+        }
         // Core lifetimeSweep owns entity removal, index/allocator bookkeeping, presentation, and
         // the queued entity:destroyed receipt. Wingmen only mark the body dead and clear ledger
         // membership here so the canonical sweep publishes exactly one lifecycle notification.
@@ -290,6 +296,11 @@ export const wingmen = {
         combatDoctrineId: 'interceptor_flyby',
       },
     });
+    // The fleet ledger survives hard jumps and Continue; materializing a new entity must
+    // retain its damage instead of granting the builder's fresh full-health hull.
+    const hullPct = Number.isFinite(fs.hullPct) ? fs.hullPct
+      : (Number.isFinite(fs.hp) ? fs.hp : 1);
+    spec.hull = spec.hullMax * Math.max(0, Math.min(1, hullPct));
     // Wingmen carry a basic weapon loadout from their ship def (makeShipEntitySpec builds it from
     // the hull's default fittings). They don't use the player's module inventory.
     spec.data = spec.data || {};
@@ -491,7 +502,11 @@ export const wingmen = {
       this._applyWingOrder(fs, entity, player, 0, 1);
       return;
     }
-    if (fs._mineRockId !== rock.id) {
+    const changedRock = fs._mineRockId !== rock.id;
+    const previousActivity = entity.data && entity.data.ai && entity.data.ai.activity;
+    const anchor = previousActivity && previousActivity.anchor;
+    if (changedRock || !previousActivity || previousActivity.reason !== 'wing_order:mine'
+      || !anchor || anchor.x !== rock.pos.x || anchor.z !== rock.pos.z) {
       fs._mineRockId = rock.id;
       setEntityDoctrine(entity, {
         activity: {
@@ -501,12 +516,15 @@ export const wingmen = {
           leashRadius: WINGMAN_MINE_ANCHOR_LEASH,
           preferredRange: WINGMAN_MINE_ANCHOR_LEASH,
           targetId: null,
-          startedTick: Number.isInteger(state.tick) ? state.tick : 0,
+          startedTick: !changedRock && previousActivity && Number.isInteger(previousActivity.startedTick)
+            ? previousActivity.startedTick : (Number.isInteger(state.tick) ? state.tick : 0),
         },
         roe: 'defensive',
       });
-      this._orderRuntime.delete(fs.id);
-      this._mineToast(fs, 'rock', 'Stripping rock — scoop what falls.', true);
+      if (changedRock) {
+        this._orderRuntime.delete(fs.id);
+        this._mineToast(fs, 'rock', 'Stripping rock — scoop what falls.', true);
+      }
     }
     const ai = entity.data && entity.data.ai;
     if (ai && (ai.forceFlee === true || ai.fsm === 'flee')) {

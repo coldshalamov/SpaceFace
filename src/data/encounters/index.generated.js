@@ -83,6 +83,205 @@ import * as encounter079 from './365-the-grandee.js';
 import * as encounter080 from './366-the-counting-relay.js';
 import * as encounter081 from './367-the-salvage-tail.js';
 import * as encounter082 from './368-scissorwake.js';
+import * as encounter083 from './369-kilnback.js';
+import * as encounter084 from './370-mothlight.js';
+import * as encounter085 from './371-pallet-jack.js';
+import * as encounter086 from './372-the-kettle-hold.js';
+import * as encounter087 from './373-the-berth-vows.js';
+import * as encounter088 from './374-the-ash-casket.js';
+import * as encounter089 from './375-the-name-plate.js';
+import * as encounter090 from './376-the-relief-lamp.js';
+import * as encounter091 from './377-the-invoice-fight.js';
+import * as encounter092 from './378-the-tin-hymn.js';
+import * as encounter093 from './379-the-loose-cat.js';
+import * as encounter094 from './380-the-harvest-orbit.js';
+import * as encounter095 from './381-the-dark-cones.js';
+import * as encounter096 from './382-the-skiff-saturday.js';
+import * as encounter097 from './383-the-boot-whistle.js';
+import * as encounter098 from './384-the-rehearsed-scan.js';
+import * as encounter099 from './385-the-courtesy-honk.js';
+import * as encounter100 from './386-the-twelve-degrees.js';
+import * as encounter101 from './387-the-variance-apron.js';
+import * as encounter102 from './388-the-file-closed.js';
+import * as encounter103 from './389-the-veil-walk.js';
+import * as encounter104 from './390-the-wrong-berth.js';
+import * as encounter105 from './391-lived-civilian-core-toll-choir-none.js';
+import * as encounter106 from './392-lived-trade-lane-toll-choir-named.js';
+import * as encounter107 from './393-lived-patrol-corridor-toll-choir-k1.js';
+import * as encounter108 from './394-lived-border-checkpoint-toll-choir-none.js';
+import * as encounter109 from './395-lived-refinery-approach-toll-choir-named.js';
+import * as encounter110 from './396-lived-mining-belt-toll-choir-k1.js';
+import * as encounter111 from './397-lived-colony-toll-choir-none.js';
+import * as encounter112 from './398-lived-derelict-field-toll-choir-named.js';
+import * as encounter113 from './399-lived-outlaw-zone-toll-choir-k1.js';
+import * as encounter114 from './400-lived-radiation-field-toll-choir-none.js';
+import * as encounter115 from './401-lived-nebula-fog-toll-choir-named.js';
+import * as encounter116 from './402-lived-ambush-lane-toll-choir-k1.js';
+import * as encounter117 from './403-lived-anomaly-deep-toll-choir-none.js';
+import * as encounter118 from './404-lived-planetary-mass-toll-choir-named.js';
+import * as encounter119 from './405-lived-civilian-core-toll-choir-depth.js';
+import * as encounter120 from './406-lived-trade-lane-toll-choir-logic.js';
+import * as encounter121 from './407-lived-patrol-corridor-toll-choir-literalized.js';
+import * as encounter122 from './408-lived-border-checkpoint-toll-choir-depth.js';
+import * as encounter123 from './409-lived-refinery-approach-toll-choir-logic.js';
+import * as encounter124 from './410-lived-mining-belt-toll-choir-literalized.js';
+import * as encounter125 from './411-lived-colony-toll-choir-depth.js';
+import * as encounter126 from './412-lived-derelict-field-toll-choir-logic.js';
+import * as encounter127 from './413-lived-outlaw-zone-toll-choir-literalized.js';
+import * as encounter128 from './414-lived-radiation-field-toll-choir-depth.js';
+import * as encounter129 from './415-lived-nebula-fog-toll-choir-logic.js';
+import * as encounter130 from './416-lived-ambush-lane-toll-choir-literalized.js';
+import * as encounter131 from './417-lived-anomaly-deep-toll-choir-depth.js';
+import * as encounter132 from './418-lived-planetary-mass-toll-choir-logic.js';
+import * as encounter133 from './419-lived-civilian-core-toll-choir-admirers.js';
+import * as encounter134 from './420-lived-trade-lane-toll-choir-follow-on.js';
+import * as encounter135 from './421-lived-patrol-corridor-toll-free-none.js';
+import * as encounter136 from './422-lived-border-checkpoint-toll-choir-admirers.js';
+import * as encounter137 from './423-lived-refinery-approach-toll-choir-follow-on.js';
+import * as encounter138 from './424-lived-mining-belt-toll-free-none.js';
+import * as encounter139 from './425-lived-colony-toll-choir-admirers.js';
+import * as encounter140 from './426-lived-derelict-field-toll-choir-follow-on.js';
+import * as encounter141 from './427-lived-outlaw-zone-toll-free-none.js';
+import * as encounter142 from './428-lived-radiation-field-toll-choir-admirers.js';
+import * as encounter143 from './429-lived-nebula-fog-toll-choir-follow-on.js';
+import * as encounter144 from './430-lived-ambush-lane-toll-free-none.js';
+import * as encounter145 from './431-lived-anomaly-deep-toll-choir-admirers.js';
+import * as encounter146 from './432-lived-planetary-mass-toll-choir-follow-on.js';
+import * as encounter147 from './433-lived-civilian-core-toll-free-named.js';
+import * as encounter148 from './434-lived-trade-lane-toll-free-k1.js';
+import * as encounter149 from './435-lived-patrol-corridor-toll-free-depth.js';
+import * as encounter150 from './436-lived-border-checkpoint-toll-free-named.js';
+import * as encounter151 from './437-lived-refinery-approach-toll-free-k1.js';
+import * as encounter152 from './438-lived-mining-belt-toll-free-depth.js';
+import * as encounter153 from './439-lived-colony-toll-free-named.js';
+import * as encounter154 from './440-lived-derelict-field-toll-free-k1.js';
+import * as encounter155 from './441-lived-outlaw-zone-toll-free-depth.js';
+import * as encounter156 from './442-lived-radiation-field-toll-free-named.js';
+import * as encounter157 from './443-lived-nebula-fog-toll-free-k1.js';
+import * as encounter158 from './444-lived-ambush-lane-toll-free-depth.js';
+import * as encounter159 from './445-lived-anomaly-deep-toll-free-named.js';
+import * as encounter160 from './446-lived-planetary-mass-toll-free-k1.js';
+import * as encounter161 from './447-lived-civilian-core-toll-free-logic.js';
+import * as encounter162 from './448-lived-trade-lane-toll-free-literalized.js';
+import * as encounter163 from './449-lived-patrol-corridor-toll-free-admirers.js';
+import * as encounter164 from './450-lived-border-checkpoint-toll-free-logic.js';
+import * as encounter165 from './451-lived-refinery-approach-toll-free-literalized.js';
+import * as encounter166 from './452-lived-mining-belt-toll-free-admirers.js';
+import * as encounter167 from './453-lived-colony-toll-free-logic.js';
+import * as encounter168 from './454-lived-derelict-field-toll-free-literalized.js';
+import * as encounter169 from './455-lived-outlaw-zone-toll-free-admirers.js';
+import * as encounter170 from './456-lived-radiation-field-toll-free-logic.js';
+import * as encounter171 from './457-lived-nebula-fog-toll-free-literalized.js';
+import * as encounter172 from './458-lived-ambush-lane-toll-free-admirers.js';
+import * as encounter173 from './459-lived-anomaly-deep-toll-free-logic.js';
+import * as encounter174 from './460-lived-planetary-mass-toll-free-literalized.js';
+import * as encounter175 from './461-lived-civilian-core-toll-free-follow-on.js';
+import * as encounter176 from './462-lived-trade-lane-toll-dmc-none.js';
+import * as encounter177 from './463-lived-patrol-corridor-toll-dmc-named.js';
+import * as encounter178 from './464-lived-border-checkpoint-toll-free-follow-on.js';
+import * as encounter179 from './465-lived-refinery-approach-toll-dmc-none.js';
+import * as encounter180 from './466-lived-mining-belt-toll-dmc-named.js';
+import * as encounter181 from './467-lived-colony-toll-free-follow-on.js';
+import * as encounter182 from './468-lived-derelict-field-toll-dmc-none.js';
+import * as encounter183 from './469-lived-outlaw-zone-toll-dmc-named.js';
+import * as encounter184 from './470-lived-radiation-field-toll-free-follow-on.js';
+import * as encounter185 from './471-lived-nebula-fog-toll-dmc-none.js';
+import * as encounter186 from './472-lived-ambush-lane-toll-dmc-named.js';
+import * as encounter187 from './473-lived-anomaly-deep-toll-free-follow-on.js';
+import * as encounter188 from './474-lived-planetary-mass-toll-dmc-none.js';
+import * as encounter189 from './475-lived-civilian-core-toll-dmc-k1.js';
+import * as encounter190 from './476-lived-trade-lane-toll-dmc-depth.js';
+import * as encounter191 from './477-lived-patrol-corridor-toll-dmc-logic.js';
+import * as encounter192 from './478-lived-border-checkpoint-toll-dmc-k1.js';
+import * as encounter193 from './479-lived-refinery-approach-toll-dmc-depth.js';
+import * as encounter194 from './480-lived-mining-belt-toll-dmc-logic.js';
+import * as encounter195 from './481-lived-colony-toll-dmc-k1.js';
+import * as encounter196 from './482-lived-derelict-field-toll-dmc-depth.js';
+import * as encounter197 from './483-lived-outlaw-zone-toll-dmc-logic.js';
+import * as encounter198 from './484-lived-radiation-field-toll-dmc-k1.js';
+import * as encounter199 from './485-lived-nebula-fog-toll-dmc-depth.js';
+import * as encounter200 from './486-lived-ambush-lane-toll-dmc-logic.js';
+import * as encounter201 from './487-lived-anomaly-deep-toll-dmc-k1.js';
+import * as encounter202 from './488-lived-planetary-mass-toll-dmc-depth.js';
+import * as encounter203 from './489-lived-civilian-core-toll-dmc-literalized.js';
+import * as encounter204 from './490-lived-trade-lane-toll-dmc-admirers.js';
+import * as encounter205 from './491-lived-patrol-corridor-toll-dmc-follow-on.js';
+import * as encounter206 from './492-lived-border-checkpoint-toll-dmc-literalized.js';
+import * as encounter207 from './493-lived-refinery-approach-toll-dmc-admirers.js';
+import * as encounter208 from './494-lived-mining-belt-toll-dmc-follow-on.js';
+import * as encounter209 from './495-lived-colony-toll-dmc-literalized.js';
+import * as encounter210 from './496-lived-derelict-field-toll-dmc-admirers.js';
+import * as encounter211 from './497-lived-outlaw-zone-toll-dmc-follow-on.js';
+import * as encounter212 from './498-lived-radiation-field-toll-dmc-literalized.js';
+import * as encounter213 from './499-lived-nebula-fog-toll-dmc-admirers.js';
+import * as encounter214 from './500-lived-ambush-lane-toll-dmc-follow-on.js';
+import * as encounter215 from './501-lived-anomaly-deep-toll-dmc-literalized.js';
+import * as encounter216 from './502-lived-planetary-mass-toll-dmc-admirers.js';
+import * as encounter217 from './503-lived-civilian-core-toll-archive-none.js';
+import * as encounter218 from './504-lived-trade-lane-toll-archive-named.js';
+import * as encounter219 from './505-lived-patrol-corridor-toll-archive-k1.js';
+import * as encounter220 from './506-lived-border-checkpoint-toll-archive-none.js';
+import * as encounter221 from './507-lived-refinery-approach-toll-archive-named.js';
+import * as encounter222 from './508-lived-mining-belt-toll-archive-k1.js';
+import * as encounter223 from './509-lived-colony-toll-archive-none.js';
+import * as encounter224 from './510-lived-derelict-field-toll-archive-named.js';
+import * as encounter225 from './511-lived-outlaw-zone-toll-archive-k1.js';
+import * as encounter226 from './512-lived-radiation-field-toll-archive-none.js';
+import * as encounter227 from './513-lived-nebula-fog-toll-archive-named.js';
+import * as encounter228 from './514-lived-ambush-lane-toll-archive-k1.js';
+import * as encounter229 from './515-lived-anomaly-deep-toll-archive-none.js';
+import * as encounter230 from './516-lived-planetary-mass-toll-archive-named.js';
+import * as encounter231 from './517-lived-civilian-core-toll-archive-depth.js';
+import * as encounter232 from './518-lived-trade-lane-toll-archive-logic.js';
+import * as encounter233 from './519-lived-patrol-corridor-toll-archive-literalized.js';
+import * as encounter234 from './520-lived-border-checkpoint-toll-archive-depth.js';
+import * as encounter235 from './521-lived-refinery-approach-toll-archive-logic.js';
+import * as encounter236 from './522-lived-mining-belt-toll-archive-literalized.js';
+import * as encounter237 from './523-lived-colony-toll-archive-depth.js';
+import * as encounter238 from './524-lived-derelict-field-toll-archive-logic.js';
+import * as encounter239 from './525-lived-outlaw-zone-toll-archive-literalized.js';
+import * as encounter240 from './526-lived-radiation-field-toll-archive-depth.js';
+import * as encounter241 from './527-lived-nebula-fog-toll-archive-logic.js';
+import * as encounter242 from './528-lived-ambush-lane-toll-archive-literalized.js';
+import * as encounter243 from './529-lived-anomaly-deep-toll-archive-depth.js';
+import * as encounter244 from './530-lived-planetary-mass-toll-archive-logic.js';
+import * as encounter245 from './531-lived-civilian-core-toll-archive-admirers.js';
+import * as encounter246 from './532-lived-trade-lane-toll-archive-follow-on.js';
+import * as encounter247 from './533-lived-patrol-corridor-toll-helix-none.js';
+import * as encounter248 from './534-lived-border-checkpoint-toll-archive-admirers.js';
+import * as encounter249 from './535-lived-refinery-approach-toll-archive-follow-on.js';
+import * as encounter250 from './536-lived-mining-belt-toll-helix-none.js';
+import * as encounter251 from './537-lived-colony-toll-archive-admirers.js';
+import * as encounter252 from './538-lived-derelict-field-toll-archive-follow-on.js';
+import * as encounter253 from './539-lived-outlaw-zone-toll-helix-none.js';
+import * as encounter254 from './540-lived-radiation-field-toll-archive-admirers.js';
+import * as encounter255 from './541-lived-nebula-fog-toll-archive-follow-on.js';
+import * as encounter256 from './542-lived-ambush-lane-toll-helix-none.js';
+import * as encounter257 from './543-lived-anomaly-deep-toll-archive-admirers.js';
+import * as encounter258 from './544-lived-planetary-mass-toll-archive-follow-on.js';
+import * as encounter259 from './545-lived-civilian-core-toll-helix-named.js';
+import * as encounter260 from './546-lived-trade-lane-toll-helix-k1.js';
+import * as encounter261 from './547-lived-patrol-corridor-toll-helix-depth.js';
+import * as encounter262 from './548-lived-border-checkpoint-toll-helix-named.js';
+import * as encounter263 from './549-lived-refinery-approach-toll-helix-k1.js';
+import * as encounter264 from './550-lived-mining-belt-toll-helix-depth.js';
+import * as encounter265 from './551-lived-colony-toll-helix-named.js';
+import * as encounter266 from './552-lived-derelict-field-toll-helix-k1.js';
+import * as encounter267 from './553-lived-outlaw-zone-toll-helix-depth.js';
+import * as encounter268 from './554-lived-radiation-field-toll-helix-named.js';
+import * as encounter269 from './555-lived-nebula-fog-toll-helix-k1.js';
+import * as encounter270 from './556-lived-ambush-lane-toll-helix-depth.js';
+import * as encounter271 from './557-lived-anomaly-deep-toll-helix-named.js';
+import * as encounter272 from './558-lived-planetary-mass-toll-helix-k1.js';
+import * as encounter273 from './559-lived-civilian-core-toll-helix-logic.js';
+import * as encounter274 from './560-lived-trade-lane-toll-helix-literalized.js';
+import * as encounter275 from './561-lived-patrol-corridor-toll-helix-admirers.js';
+import * as encounter276 from './562-lived-border-checkpoint-toll-helix-logic.js';
+import * as encounter277 from './563-lived-refinery-approach-toll-helix-literalized.js';
+import * as encounter278 from './564-lived-mining-belt-toll-helix-admirers.js';
+import * as encounter279 from './565-lived-colony-toll-helix-logic.js';
+import * as encounter280 from './566-lived-derelict-field-toll-helix-literalized.js';
+import * as encounter281 from './567-second-rinse.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -167,5 +366,204 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter080,
   encounter081,
   encounter082,
+  encounter083,
+  encounter084,
+  encounter085,
+  encounter086,
+  encounter087,
+  encounter088,
+  encounter089,
+  encounter090,
+  encounter091,
+  encounter092,
+  encounter093,
+  encounter094,
+  encounter095,
+  encounter096,
+  encounter097,
+  encounter098,
+  encounter099,
+  encounter100,
+  encounter101,
+  encounter102,
+  encounter103,
+  encounter104,
+  encounter105,
+  encounter106,
+  encounter107,
+  encounter108,
+  encounter109,
+  encounter110,
+  encounter111,
+  encounter112,
+  encounter113,
+  encounter114,
+  encounter115,
+  encounter116,
+  encounter117,
+  encounter118,
+  encounter119,
+  encounter120,
+  encounter121,
+  encounter122,
+  encounter123,
+  encounter124,
+  encounter125,
+  encounter126,
+  encounter127,
+  encounter128,
+  encounter129,
+  encounter130,
+  encounter131,
+  encounter132,
+  encounter133,
+  encounter134,
+  encounter135,
+  encounter136,
+  encounter137,
+  encounter138,
+  encounter139,
+  encounter140,
+  encounter141,
+  encounter142,
+  encounter143,
+  encounter144,
+  encounter145,
+  encounter146,
+  encounter147,
+  encounter148,
+  encounter149,
+  encounter150,
+  encounter151,
+  encounter152,
+  encounter153,
+  encounter154,
+  encounter155,
+  encounter156,
+  encounter157,
+  encounter158,
+  encounter159,
+  encounter160,
+  encounter161,
+  encounter162,
+  encounter163,
+  encounter164,
+  encounter165,
+  encounter166,
+  encounter167,
+  encounter168,
+  encounter169,
+  encounter170,
+  encounter171,
+  encounter172,
+  encounter173,
+  encounter174,
+  encounter175,
+  encounter176,
+  encounter177,
+  encounter178,
+  encounter179,
+  encounter180,
+  encounter181,
+  encounter182,
+  encounter183,
+  encounter184,
+  encounter185,
+  encounter186,
+  encounter187,
+  encounter188,
+  encounter189,
+  encounter190,
+  encounter191,
+  encounter192,
+  encounter193,
+  encounter194,
+  encounter195,
+  encounter196,
+  encounter197,
+  encounter198,
+  encounter199,
+  encounter200,
+  encounter201,
+  encounter202,
+  encounter203,
+  encounter204,
+  encounter205,
+  encounter206,
+  encounter207,
+  encounter208,
+  encounter209,
+  encounter210,
+  encounter211,
+  encounter212,
+  encounter213,
+  encounter214,
+  encounter215,
+  encounter216,
+  encounter217,
+  encounter218,
+  encounter219,
+  encounter220,
+  encounter221,
+  encounter222,
+  encounter223,
+  encounter224,
+  encounter225,
+  encounter226,
+  encounter227,
+  encounter228,
+  encounter229,
+  encounter230,
+  encounter231,
+  encounter232,
+  encounter233,
+  encounter234,
+  encounter235,
+  encounter236,
+  encounter237,
+  encounter238,
+  encounter239,
+  encounter240,
+  encounter241,
+  encounter242,
+  encounter243,
+  encounter244,
+  encounter245,
+  encounter246,
+  encounter247,
+  encounter248,
+  encounter249,
+  encounter250,
+  encounter251,
+  encounter252,
+  encounter253,
+  encounter254,
+  encounter255,
+  encounter256,
+  encounter257,
+  encounter258,
+  encounter259,
+  encounter260,
+  encounter261,
+  encounter262,
+  encounter263,
+  encounter264,
+  encounter265,
+  encounter266,
+  encounter267,
+  encounter268,
+  encounter269,
+  encounter270,
+  encounter271,
+  encounter272,
+  encounter273,
+  encounter274,
+  encounter275,
+  encounter276,
+  encounter277,
+  encounter278,
+  encounter279,
+  encounter280,
+  encounter281,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

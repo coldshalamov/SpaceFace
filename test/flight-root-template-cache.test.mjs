@@ -38,6 +38,7 @@ test('Kestrel package-path template hits rehydrate bindings and close ownership'
     visibleParity: true,
     packageCreates: true,
     packageDisposals: true,
+    abandonedCacheHitReleased: true,
     releaseWasIdempotent: true,
     mutableMaterialIsolation: true,
     closureIsolation: true,

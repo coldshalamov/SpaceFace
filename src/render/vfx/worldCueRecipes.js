@@ -14,6 +14,10 @@ const travelVariants=Object.freeze({
 });
 export const isComposedTravelCue=id=>Object.hasOwn(travelVariants,id);
 const miningVariants=Object.freeze({
+  // A short cut settles onto the rock's surface at beam admission. Survey is a
+  // spatial return, this is a local groove, and yield deposits material: three
+  // causal constructions on the shared geometry owner, without sprite overlays.
+  'mining.extraction.locked':{...recipe('grind','deposition',0xe7b779,.36),surfaceWork:true},
   'mining.fracture.anticipation':{...recipe('grind','deposition',0xe7b779,.8),surfaceWork:true},
   'mining.fracture.released':{...recipe('harvest','deposition',0xd5c8a6,.95),surfaceWork:true},
   'mining.rich_core.exposed':{...recipe('repair','deposition',0xbda3ff,1.05),surfaceWork:true},
@@ -21,7 +25,7 @@ const miningVariants=Object.freeze({
   'mining.chunk.tether_required':{...recipe('catch','capture',0xe6ba7c,.95),surfaceWork:true,surfaceCapture:true},
   'mining.yield.collected':{...recipe('harvest','deposition',0xd4dcad,.78),surfaceWork:true},
 });
-export const isComposedMiningCue=id=>Object.hasOwn(miningVariants,id);
+export const isComposedMiningCue=id=>typeof id==='string'&&id.startsWith('mining.')&&Object.hasOwn(variants,id);
 // FB-142 — the planet verbs have a shape. The collector mouth opening (skim intake), the
 // settled yield depositing into the hold, a refused deposit priming on the closed hold (the
 // mining.cargo.full register — a capacity warning, never a success), the plunge ring advancing

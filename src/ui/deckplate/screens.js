@@ -1338,4 +1338,37 @@ ${NS} ::-webkit-scrollbar-corner, ${NS}::-webkit-scrollbar-corner { background:t
 ${NS} .k-words--row .fh-key.fh-key--legend::before { display:none; }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + CRUCIBLE_RESULTS + LEGACY + ARCHIVE_SCREENS + FINISH;
+
+// Racing surfaces: placement only, on the existing Deckplate materials and tokens.
+const RACING = `
+.race-tape { position:fixed; z-index:11; top:calc(env(safe-area-inset-top,0px) + 68px); left:50%; transform:translateX(-50%); display:grid; grid-template-columns:110px minmax(0,1fr); width:min(480px,calc(100vw - 24px)); box-sizing:border-box; gap:var(--dp-pad); padding:var(--dp-pad); color:var(--dp-ink); font:12px/1.45 var(--dp-font-mono,monospace); pointer-events:none; }
+.race-tape[hidden] { display:none; }
+.race-tape[data-compact="true"] { left:auto; right:max(12px,env(safe-area-inset-right,0px)); transform:none; width:auto; grid-template-columns:1fr; }
+.race-tape-map { align-self:center; }
+.race-map { display:block; width:100%; height:auto; overflow:visible; }
+.race-tape-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dp-lamp); }
+.race-tape-hint { min-height:1.45em; color:var(--dp-ink-dim); }
+.race-tape-actions { grid-column:1/-1; display:flex; flex-wrap:wrap; justify-content:center; gap:4px; pointer-events:auto; }
+.race-tape-actions .k-word { min-height:44px; padding:6px 10px; font:inherit; color:var(--dp-ink); background:transparent; border:1px solid var(--dp-metal-hi); cursor:pointer; }
+.race-tape-actions .k-word:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:2px; }
+.race-tape-actions .k-word:disabled { cursor:default; color:var(--dp-ink-dim); }
+.race-tape [hidden] { display:none; }
+.race-sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.race-board { overflow-y:auto; }
+.race-board-tools { display:flex; gap:var(--dp-pad); flex-wrap:wrap; margin-block:var(--dp-pad); }
+.race-board-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:calc(var(--dp-pad) * 2); }
+.race-board-course,.race-board-result { padding:calc(var(--dp-pad) * 2); }
+.race-board-course .race-map { max-height:190px; margin-block:var(--dp-pad); }
+.race-board-contract { padding-block:var(--dp-pad); }
+.race-board-result { margin-bottom:calc(var(--dp-pad) * 2); }
+@media(max-width:600px) {
+  .race-tape { top:calc(env(safe-area-inset-top,0px) + 50px); grid-template-columns:68px minmax(0,1fr); gap:4px; padding:6px; }
+  .race-tape-actions .k-word { padding-inline:7px; }
+}
+@media(forced-colors:active) {
+  .race-map polyline,.race-map circle { stroke:CanvasText; }
+  .race-map rect,.race-map path { fill:CanvasText; }
+}
+`;
+
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + CRUCIBLE_RESULTS + LEGACY + ARCHIVE_SCREENS + FINISH + RACING;

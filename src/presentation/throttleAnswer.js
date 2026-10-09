@@ -37,7 +37,7 @@ export function engineIdleCue({ undockIdle = false, throttle = 0, gain = 0.5, dt
     play: false,
     db: null,
     silent: inFlightSilent,
-    gain: inFlightSilent ? stepped.gain : stepped.gain,
+    gain: stepped.gain,
   };
 }
 

@@ -277,7 +277,10 @@ export async function runM6({ seed = MOTION_LAB_SEED } = {}) {
             passHeading[w] = Math.atan2(ship.vel.z || 0, ship.vel.x || 0);
           } else if (passHeading[w] != null) {
             const along = (ship.vel.x || 0) * Math.cos(passHeading[w]) + (ship.vel.z || 0) * Math.sin(passHeading[w]);
-            if (along < -12) reverseAfterPass[w] = true;
+            if (along < -12) {
+              if (!reverseAfterPass[w]) console.log(`[m6probe] turnback w=${w} role=${wing[w].data.ai.squadSocket} tick=${tick} closest=${closest[w].toFixed(1)}@${closestTick[w]} dist=${dist.toFixed(1)}`);
+              reverseAfterPass[w] = true;
+            }
           }
         }
         const intent = ship.data && ship.data.intent;
@@ -302,6 +305,12 @@ export async function runM6({ seed = MOTION_LAB_SEED } = {}) {
         maybePushSample(trace, sample, TRACE_STRIDE);
       }
       if (simultaneous > maxSimultaneousAttackers) maxSimultaneousAttackers = simultaneous;
+      if (process.env.M6_TRACE && tick % 60 === 0) {
+        const s0 = wing.find((e) => e && e.alive !== false);
+        const stamp0 = s0 && s0.data && s0.data.ai && s0.data.ai.squadFrame;
+        const tspeed = Math.hypot(target.vel.x || 0, target.vel.z || 0);
+        console.log(`[m6trace] t=${(tick / 60).toFixed(2)} tick=${tick} tdist=${Math.hypot(tpos.x - s0.pos.x, tpos.z - s0.pos.z).toFixed(0)} phase=${stamp0 && stamp0.phase} tspd=${tspeed.toFixed(1)} tpos=(${tpos.x.toFixed(0)},${tpos.z.toFixed(0)}) ship0=(${s0.pos.x.toFixed(0)},${s0.pos.z.toFixed(0)}) s0spd=${Math.hypot(s0.vel.x, s0.vel.z).toFixed(1)}`);
+      }
       const pairMin = minPairDistance(positions);
       if (pairMin != null && pairMin < minFriendly) minFriendly = pairMin;
       laneConflicts += countLaneConflicts(wing, target);
@@ -317,6 +326,13 @@ export async function runM6({ seed = MOTION_LAB_SEED } = {}) {
       }), TRACE_STRIDE);
     }
     contacts.unbind();
+    for (let w = 0; w < wing.length; w++) {
+      const ship = wing[w];
+      console.log(`[m6probe] ship w=${w} role=${ship && ship.data.ai.squadSocket} closest=${Number.isFinite(closest[w]) ? closest[w].toFixed(1) : 'inf'}@${closestTick[w]} passed=${passed[w]} turnback=${reverseAfterPass[w]} alive=${ship && ship.alive !== false}`);
+    }
+    console.log('[m6probe] conflict histogram:', JSON.stringify([...globalThis.__m6ConflictHist.entries()]));
+    console.log('[m6probe] contact ticks:', JSON.stringify((trace.contacts || []).map((c) => `${c.tick}:${c.a}%${c.b}`)));
+    globalThis.__m6ConflictHist = new Map();
     const entries = entryTick.filter((v) => v != null);
     const shots = firstShotTick.filter((v) => v != null);
     const reformTick = reformDoneTick == null || firstPassTick == null
@@ -998,6 +1014,10 @@ async function runSwarmCohort(seed, opts) {
       }
     }
     contacts.unbind();
+    if (process.env.M11_TRACE) {
+      const idShip = new Map(ships.map((e) => [e.id, e]));
+      console.log(`[m11probe] ${squadId} contacts:`, JSON.stringify(trace.contacts.map((c) => `${c.tick}:${idShip.get(c.a) && idShip.get(c.a).data.ai.cohortRecipe ? 's' : ''}${c.a}%${c.b}`)));
+    }
     const live = ships.filter((e) => e && e.alive !== false);
     const positions = live.map((e) => ({ x: e.pos.x, z: e.pos.z }));
     const velocities = live.map((e) => e.vel);
@@ -1679,6 +1699,8 @@ function lastSlotError(samples) {
 
 function countLaneConflicts(wing, target) {
   let conflicts = 0;
+  if (!globalThis.__m6ConflictHist) globalThis.__m6ConflictHist = new Map();
+  const conflictHist = globalThis.__m6ConflictHist;
   const bearings = [];
   for (const ship of wing) {
     if (!ship || ship.alive === false) continue;
@@ -1686,13 +1708,19 @@ function countLaneConflicts(wing, target) {
     const dz = target.pos.z - ship.pos.z;
     const dist = Math.hypot(dx, dz);
     if (dist < 20 || dist > 420) continue;
-    bearings.push({ id: ship.id, heading: Math.atan2(dz, dx), dist });
+    bearings.push({ id: ship.id, heading: Math.atan2(dz, dx), dist, socket: ship.data.ai.squadSocket, phase: ship.data.ai.squadFrame && ship.data.ai.squadFrame.phase });
   }
   for (let i = 0; i < bearings.length; i++) {
     for (let j = i + 1; j < bearings.length; j++) {
       const dHead = Math.abs(wrapAngle(bearings[i].heading - bearings[j].heading));
       const dDist = Math.abs(bearings[i].dist - bearings[j].dist);
-      if (dHead < 0.22 && dDist < 70) conflicts++;
+      if (dHead < 0.22 && dDist < 70) {
+        conflicts++;
+        const key = `${bearings[i].socket}|${bearings[j].socket}|${bearings[i].phase}`;
+        conflictHist.set(key, (conflictHist.get(key) || 0) + 1);
+        const seen = conflictHist.get(key);
+        if (process.env.M6_TRACE && seen <= 6) console.log(`[m6probe] pair ${key} #${seen} dHead=${dHead.toFixed(3)} dDist=${dDist.toFixed(1)} dists=${bearings[i].dist.toFixed(0)}/${bearings[j].dist.toFixed(0)}`);
+      }
     }
   }
   return conflicts;

@@ -30,6 +30,7 @@
 
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
+import { bombPrimeLine, statusPayoffLine } from '../data/statusPayoffs.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { onFrame } from './orrery/motion.js';
 
@@ -41,6 +42,10 @@ export const MAX_CALLOUT_LINES = 3;
 export const MAX_LINE_NAMES = 3;
 /** Style-sheet id for the layer's namespaced sheet. */
 export const STUNT_CALLOUT_STYLE_ID = 'sf-stuntcall-css';
+export const SPEED_DIAL_SELECTOR = '.orr-speeddial';
+export const SPEED_DIAL_CLEARANCE_PX = 48;
+export const STABLE_LOAD_SELECTOR = '.sf-stableload--visible';
+export const STABLE_LOAD_CLEARANCE_PX = 12;
 
 const BONE = '236 230 216';
 
@@ -90,6 +95,88 @@ function injectStyle(doc) {
 
 /* --- pure builders. Everything the layer says is decided here, DOM-free. --------------------- */
 
+/**
+ * Four event seams that were emitted and never subscribed by a player sense.
+ * Open release-window already speaks through audio:cue massline.solutionLock;
+ * the close did not. A ride, a cleared snag, and a throw named themselves
+ * nowhere this event could reach.
+ * Returns null when the edge should stay quiet.
+ */
+export function handlineSenseLine(eventName, payload) {
+  const p = payload || {};
+  if (eventName === 'massline:releaseWindow') {
+    if (p.open === true) return null;
+    return { key: 'window-shut', name: 'WINDOW CLOSED', detail: '' };
+  }
+  if (eventName === 'massline:rideStarted') {
+    const spd = Number.isFinite(p.anchorSpeed) ? Math.round(p.anchorSpeed) : null;
+    return { key: 'ride-started', name: 'RIDE', detail: spd == null ? '' : String(spd) };
+  }
+  if (eventName === 'tether:snagCleared') {
+    return { key: 'line-clear', name: 'LINE CLEAR', detail: '' };
+  }
+  if (eventName === 'massline:throw') {
+    const spd = Number.isFinite(p.payloadSpeed) ? Math.round(p.payloadSpeed) : null;
+    const id = p.releaseId != null ? String(p.releaseId) : 'throw';
+    return { key: `throw:${id}`, name: 'THROWN', detail: spd == null ? '' : String(spd) };
+  }
+  // The latch click and the capture picture do not say whether the snag was clean.
+  if (eventName === 'tether:snapCatch') {
+    const name = p.rating === 'clean' ? 'CLEAN SNAG'
+      : p.rating === 'good' ? 'GOOD SNAG'
+      : p.rating === 'rough' ? 'ROUGH SNAG'
+      : null;
+    if (!name) return null;
+    const kept = Number.isFinite(p.landTangentialSpeed) ? Math.round(p.landTangentialSpeed) : null;
+    return { key: 'snap-catch', name, detail: kept == null ? '' : String(kept) };
+  }
+  // A low or medium pump is the winch. Only the snap-risk stroke gets a word.
+  if (eventName === 'tether:reelPump') {
+    if (p.risk !== 'high') return null;
+    return { key: 'pump-hot', name: 'PUMP HOT', detail: '' };
+  }
+  // Three seams that were emitted and never reached a player sense.
+  if (eventName === 'massline:bridleCut') {
+    return { key: 'bridle-cut', name: 'BRIDLE CUT', detail: '' };
+  }
+  if (eventName === 'well:fling') {
+    if (p.primed !== true) return null;
+    return { key: 'well-fling', name: 'FLING', detail: '' };
+  }
+  if (eventName === 'weapons:inertialShunt') {
+    const dv = Number.isFinite(p.targetDeltaV) ? Math.round(p.targetDeltaV) : null;
+    const id = p.targetId != null ? String(p.targetId) : 'shunt';
+    return { key: `shunt:${id}`, name: 'SHUNT', detail: dv == null ? '' : String(dv) };
+  }
+  return impactGradeLine(eventName, p);
+}
+
+/**
+ * A whip or a sweep already rates glance, solid, or crushing and then says
+ * only "impact". The callout names the grade. An unrated contact stays quiet.
+ * The number is the speed the receipt already carried.
+ */
+export function impactGradeLine(eventName, payload) {
+  const sweep = eventName === 'massline:sweepImpact';
+  const whip = eventName === 'tether:whipImpact';
+  if (!sweep && !whip) return null;
+  const p = payload || {};
+  const name = p.rating === 'crushing' ? (sweep ? 'CRUSHING SWEEP' : 'CRUSHING HIT')
+    : p.rating === 'solid' ? (sweep ? 'SOLID SWEEP' : 'SOLID HIT')
+    : p.rating === 'glance' ? (sweep ? 'GLANCE SWEEP' : 'GLANCE')
+    : null;
+  if (!name) return null;
+  const raw = sweep ? p.transverseSpeed : p.relSpeed;
+  const spd = Number.isFinite(raw) ? Math.round(raw) : null;
+  const id = p.victimId != null ? String(p.victimId) : 'hit';
+  const tick = p.tick != null ? String(p.tick) : '0';
+  return {
+    key: `${sweep ? 'sweep' : 'whip'}:${id}:${tick}`,
+    name,
+    detail: spd == null ? '' : String(spd),
+  };
+}
+
 function trickBaseName(trick) {
   if (trick && typeof trick.name === 'string' && trick.name) return trick.name;
   const def = trick && TRICK_DEFINITIONS[trick.trickId];
@@ -119,6 +206,20 @@ export function trickCalloutName(trick) {
   if (collateral > 1) parts.push(`Collateral ×${collateral}`);
   if (mods.closeShave === true && trick.trickId !== 'needle_thread') parts.push('Close Shave');
   return parts.join(' · ');
+}
+
+/**
+ * The momentum figure beside a named act. Not a score: available momentum first,
+ * then a raw momentum, then the useful delta-v the receipt already carried.
+ * Zero and missing stay blank so a nameless ordinary kill cannot grow a number.
+ */
+export function trickMomentumText(trick) {
+  const metrics = trick && trick.metrics;
+  if (!metrics || typeof metrics !== 'object') return '';
+  const raw = [metrics.availableMomentum, metrics.momentum, metrics.usefulDeltaV]
+    .find((n) => Number.isFinite(n) && n > 0);
+  if (raw == null) return '';
+  return String(Math.round(raw));
 }
 
 const clamp01 = (x) => Math.min(1, Math.max(0, Number(x) || 0));
@@ -169,6 +270,30 @@ export function comboReadout(combo, nowTick) {
 export function selfSlingCalloutText(bonusDv) {
   const whole = Math.round(Number(bonusDv) || 0);
   return `SELF-SLING +${whole}`;
+}
+
+/**
+ * FB-007 — the completed stroke's band, named the way a release is named.
+ * The number beside it is the peak speed the grader already measured.
+ * A missing or unknown band stays quiet. Zero speed stays blank.
+ */
+export function strokeGradeLine(stroke) {
+  if (!stroke || typeof stroke !== 'object') return null;
+  const name = stroke.band === 'razor' ? 'RAZOR STROKE'
+    : stroke.band === 'clean' ? 'CLEAN STROKE'
+    : stroke.band === 'good' ? 'GOOD STROKE'
+    : stroke.band === 'messy' ? 'MESSY STROKE'
+    : null;
+  if (!name) return null;
+  const spd = Number.isFinite(stroke.peakSpeed) && stroke.peakSpeed > 0
+    ? Math.round(stroke.peakSpeed) : null;
+  const dist = Number.isFinite(stroke.distanceWu) ? stroke.distanceWu : 0;
+  const time = Number.isFinite(stroke.timeOnPathS) ? stroke.timeOnPathS : 0;
+  return {
+    key: `stroke:${stroke.band}:${dist}:${time}`,
+    name,
+    detail: spd == null ? '' : String(spd),
+  };
 }
 
 /**
@@ -252,11 +377,12 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   injectStyle(doc);
 
   const root = mk(doc, 'div', 'sf-stuntcall');
-  root.setAttribute('aria-hidden', 'true');
   root.hidden = true;
   const lines = mk(doc, 'div', 'sf-stuntcall__lines');
+  lines.setAttribute('aria-hidden', 'true');
   root.appendChild(lines);
   const meter = mk(doc, 'div', 'sf-stuntcall__meter');
+  meter.setAttribute('aria-hidden', 'true');
   meter.hidden = true;
   const rowTop = mk(doc, 'div', 'sf-stuntcall__rowtop');
   const mult = mk(doc, 'span', 'sf-stuntcall__mult', '');
@@ -292,6 +418,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   let spoken = '';
   let frameOff = null;
   let destroyed = false;
+  const heardStatuses = new Map();
 
   const getState = () => state;
 
@@ -337,6 +464,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function addLine(key, nameText, ptsText, now, ttl, isBank) {
     const existing = key != null ? lineNodes.get(key) : null;
     if (existing) {
+      existing.name.textContent = nameText;
       existing.pts.textContent = ptsText;
       existing.until = now + ttl;
       return;
@@ -349,8 +477,39 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     node.appendChild(pts);
     lines.appendChild(node);
     const storedKey = key ?? `anon-${lineOrder + 1}`;
-    lineNodes.set(storedKey, { key: storedKey, node, pts, until: now + ttl, order: ++lineOrder });
+    lineNodes.set(storedKey, { key: storedKey, node, name, pts, until: now + ttl, order: ++lineOrder });
     pruneLines(now);
+  }
+
+  function dismissLine(key, fallbackName = '') {
+    let name = fallbackName;
+    // Opposite statuses consume each other. Clear onset memory even after their
+    // transient line faded, so a fresh application remains audible.
+    for (const statusId of heardStatuses.keys()) {
+      const line = statusPayoffLine(statusId);
+      if (line?.key !== key) continue;
+      name = line.name;
+      heardStatuses.delete(statusId);
+    }
+    const entry = key != null ? lineNodes.get(key) : null;
+    if (entry) {
+      name = entry.name && entry.name.textContent || name;
+      if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
+      lineNodes.delete(key);
+    }
+    // The live region still has the sentence speak() wrote. Dropping the line
+    // without rewriting it leaves a screen reader on a status the hull no longer wears.
+    if (!name || !spoken || spoken.indexOf(name.toLowerCase()) < 0) return;
+    const bits = [];
+    for (const left of lineNodes.values()) {
+      const n = left.name && left.name.textContent || '';
+      const p = left.pts && left.pts.textContent || '';
+      const bit = `${n} ${p}`.trim();
+      if (bit) bits.push(bit);
+    }
+    const next = bits.join(' ');
+    spoken = next.toLowerCase();
+    sr.textContent = next;
   }
 
   function onTrick(trick) {
@@ -364,8 +523,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     if (!name) return;
     const now = wallNow();
     const key = `ep:${trick.episodeId ?? trick.trickId}`;
-    addLine(key, name, '', now, CALLOUT_TTL_MS, false);
+    const mom = trickMomentumText(trick);
+    addLine(key, name, mom, now, CALLOUT_TTL_MS, false);
     spoken = trickSpokenText(trick);
+    if (mom) spoken = `${spoken}, ${mom}`;
     sr.textContent = spoken;
     wake();
   }
@@ -486,10 +647,27 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const readout = comboReadout(combo, st.tick);
     pruneLines(Number.isFinite(Number(now)) ? Number(now) : wallNow());
     const hasLines = lineNodes.size > 0;
+    const wasHidden = root.hidden;
     root.hidden = !hasLines && !readout;
     if (root.hidden) return false;
+    if (wasHidden) seatClearOfSpeedDial();
     renderMeter(readout);
     return true;
+  }
+
+  function seatClearOfSpeedDial() {
+    const view = doc.defaultView;
+    if (!view || typeof doc.querySelector !== 'function' || typeof root.getBoundingClientRect !== 'function') return;
+    const ownRect = root.getBoundingClientRect();
+    let top = Infinity;
+    for (const [selector, gap] of [[SPEED_DIAL_SELECTOR, SPEED_DIAL_CLEARANCE_PX], [STABLE_LOAD_SELECTOR, STABLE_LOAD_CLEARANCE_PX]]) {
+      const node = doc.querySelector(selector);
+      if (!node || typeof node.getBoundingClientRect !== 'function') continue;
+      const rect = node.getBoundingClientRect();
+      if (!(rect.height > 0) || rect.left >= ownRect.right || rect.right <= ownRect.left) continue;
+      top = Math.min(top, rect.top - gap);
+    }
+    root.style.bottom = Number.isFinite(top) ? `max(32vh, ${Math.round(view.innerHeight - top)}px)` : '';
   }
 
   function wake() {
@@ -542,6 +720,80 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:salvageRightsClaimed', (p) => onSalvageRightsClaimed(p)));
     unsubs.push(bus.on('stunt:lineContractCompleted', (p) => onLineContract(p)));
     unsubs.push(bus.on('stunt:bridge', (p) => onBridgeTick(p)));
+    // Silent seams: the event itself had no subscriber that a pilot could see or hear.
+    const speak = (line) => {
+      if (!line) return;
+      addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
+      spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
+      sr.textContent = spoken;
+      wake();
+    };
+    const onHandlineSense = (eventName) => (payload) => {
+      if (destroyed) return;
+      if (!calloutScope(getState())) return;
+      speak(handlineSenseLine(eventName, payload));
+    };
+    const onOwnedSense = (eventName, owns) => (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st)) return;
+      if (typeof owns === 'function' && !owns(st, payload || {})) return;
+      speak(handlineSenseLine(eventName, payload));
+    };
+    unsubs.push(bus.on('massline:releaseWindow', onHandlineSense('massline:releaseWindow')));
+    unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
+    unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
+    unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
+    unsubs.push(bus.on('tether:snapCatch', onHandlineSense('tether:snapCatch')));
+    unsubs.push(bus.on('tether:reelPump', onHandlineSense('tether:reelPump')));
+    unsubs.push(bus.on('tether:whipImpact', onHandlineSense('tether:whipImpact')));
+    unsubs.push(bus.on('massline:sweepImpact', onHandlineSense('massline:sweepImpact')));
+    unsubs.push(bus.on('massline:bridleCut', onHandlineSense('massline:bridleCut')));
+    unsubs.push(bus.on('well:fling', onOwnedSense('well:fling', (st, payload) =>
+      payload.targetId === st.playerId || payload.victimId === st.playerId)));
+    unsubs.push(bus.on('weapons:inertialShunt', onOwnedSense('weapons:inertialShunt', (st, payload) =>
+      payload.shunterId === st.playerId || payload.targetId === st.playerId)));
+    // SFQ-B033 — the status the player is wearing, and a bomb they primed, say the payoff.
+    unsubs.push(bus.on('combat:statusApplied', (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || !payload || payload.targetId !== st.playerId) return;
+      const line = statusPayoffLine(payload.statusId);
+      if (!line) return;
+      if (line.clears) {
+        for (let i = 0; i < line.clears.length; i++) dismissLine(line.clears[i]);
+      }
+      const rawStacks = Number(payload.stacks);
+      const stacks = Number.isFinite(rawStacks) ? Math.max(1, Math.floor(rawStacks)) : 1;
+      const previous = heardStatuses.get(payload.statusId);
+      const tick = Number(st.tick) || 0;
+      heardStatuses.set(payload.statusId, { stacks,
+        expiresTick: Number.isFinite(payload.expiresTick) ? payload.expiresTick : tick + 60 });
+      // A refreshed field status is still the same condition. Speak onset and
+      // increased severity; never hammer the reading floor once per damage tick.
+      if (previous && previous.expiresTick > tick && previous.stacks >= stacks) return;
+      const detail = stacks > 1 ? `${line.detail} ×${stacks}` : line.detail;
+      speak(detail === line.detail ? line : { key: line.key, name: line.name, detail });
+    }));
+    unsubs.push(bus.on('combat:statusExpired', (payload) => {
+      if (destroyed || !payload || payload.targetId !== getState()?.playerId) return;
+      heardStatuses.delete(payload.statusId);
+      const line = statusPayoffLine(payload.statusId);
+      if (line) dismissLine(line.key, line.name);
+    }));
+    for (const event of ['game:newGame', 'save:loaded']) unsubs.push(bus.on(event, () => {
+      heardStatuses.clear();
+      for (const entry of lineNodes.values()) if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
+      lineNodes.clear();
+      sr.textContent = '';
+      root.hidden = true;
+    }));
+    unsubs.push(bus.on('bombs:primed', (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || !payload || payload.ownerId !== st.playerId) return;
+      speak(bombPrimeLine(payload));
+    }));
     // SWARM-03 — the physics cause tag, on the lane that already names tricks.
     unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }
@@ -550,6 +802,21 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     root,
     update,
     active: () => !destroyed && !root.hidden,
+    announceStroke(stroke) {
+      if (destroyed) return false;
+      if (!calloutScope(getState())) return false;
+      const line = strokeGradeLine(stroke);
+      if (!line) return false;
+      const now = calloutNow();
+      const seen = lineNodes.has(line.key);
+      addLine(line.key, line.name, line.detail, now, CALLOUT_TTL_MS, false);
+      if (!seen) {
+        spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
+        sr.textContent = spoken;
+      }
+      wake();
+      return true;
+    },
     destroy() {
       destroyed = true;
       if (frameOff) { frameOff(); frameOff = null; }
@@ -576,8 +843,16 @@ export function ensureStuntCallout(ctx) {
   liveCallout = createStuntCallout({
     state: ctx && ctx.state,
     bus: ctx && ctx.bus,
+    host: ctx && ctx.host,
+    doc: ctx && ctx.doc,
   });
   return liveCallout;
+}
+
+/** The massline HUD calls this the frame a completed stroke first lands. No live callout, no speech. */
+export function announceStrokeGrade(stroke) {
+  if (!liveCallout || typeof liveCallout.announceStroke !== 'function') return false;
+  return liveCallout.announceStroke(stroke);
 }
 
 /** Release the mount (results screen dispose). Dormant-after-menu sessions re-ensure on next door. */

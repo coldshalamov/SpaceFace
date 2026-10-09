@@ -4,7 +4,7 @@
 //   - bubblesFor(station) returns four rings with MONOTONIC radii (noFire < docking < patrol <
 //     traffic) for a size-L station, deterministically (same station → identical result).
 //   - Radii derive from dockRadius · multipliers · size factor (bigger size → bigger rings).
-//   - createNoFireWatch: weapon-draw INSIDE the no-fire ring → exactly one say({channel:'warn'}),
+//   - createNoFireWatch: weapon-draw INSIDE the no-fire ring → exactly one say({channel:'alert'}),
 //     debounced per ENTRY: staying inside fires once; leave + re-enter fires again; outside the
 //     ring fires nothing. No hostility coupling: the watch never changes behavior by factionId
 //     (factionId is pass-through attribution only).
@@ -80,8 +80,8 @@ function assertBarkOncePerEntry() {
 
   const hit = watch.weaponDrawn(inside, [st]);
   assert.equal(hit, 'station_helios', 'first draw inside the ring must bark and name the station');
-  assert.equal(calls.length, 1, 'exactly ONE warn bark on first weapon-draw inside the ring');
-  assert.equal(calls[0].channel, 'warn', `bark must route on the 'warn' channel; got ${calls[0].channel}`);
+  assert.equal(calls.length, 1, 'exactly ONE alert bark on first weapon-draw inside the ring');
+  assert.equal(calls[0].channel, 'alert', `bark must route on the alert channel; got ${calls[0].channel}`);
   assert.equal(calls[0].text, NO_FIRE_BARK, 'bark carries the advisory line');
 
   // Staying inside: more draws + frame updates stay silent.

@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d11cd913a94dc1d9d89bca0fa617db83c3c6237b71ce2cb88f86116eaf2cced2",
+  "contentHash": "a0eb8b2f413f64f7dade4045463dd44c47a07b605efb79d287c2069d7dfa0fb7",
   "dynamicGroups": [
     {
       "id": "sf.render.47a-rescue-capsule.node.lod0-hook-nav-port.dynamic",
@@ -2404,8 +2404,8 @@
       "uri": "place_47a_rescue_capsule.glb"
     },
     "sourceManifest": {
-      "bytes": 228237,
-      "sha256": "1b69c49c46221b1db63f9802a590b029dab2580b07d02e256102f6026b2a4503",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -3357,7 +3357,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb"
   },
-  "runtimeHash": "5e58990787c3474ca9b8a2b11d01173e85e3601a89dc84bf4c7a5d0601d603f5",
+  "runtimeHash": "df242b5974f223aec4881d4e908f8912cf6e4c305a921d6df612e7ed0e6d65e5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

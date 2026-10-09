@@ -4,9 +4,9 @@ DOM/CSS overlay. Reads state and emits gameplay intents. Narrow direct-write exc
 UI/input-owned selection such as `state.player.targetId`. Root `AGENTS.md` §6 first.
 **Deckplate (`src/ui/deckplate/`) is the design system.** Every colour, size, radius, duration, face
 and panel recipe on a player surface comes from `--dp-*` and the `.dp-*` classes; a screen assembles
-them and never restyles them. Adding a token root is the defect — this tree grew four of them
-(`--k-` 926 declarations, `--sf-` 501, `--fh-` 420, `--dp-` 112) because each programme wrote system
-number five instead of finishing system number four. The standard is
+them and never restyles them. Adding another token root is the defect. Older briefs quote census
+counts for `--k-`, `--sf-`, `--fh-`, and `--dp-` that are not the live sheets — count the file you
+are editing, do not copy those numbers. The standard is
 [`../../design/frontend/THE_BAR.md`](../../design/frontend/THE_BAR.md); progress and order are
 [`../../design/frontend/UNIFICATION_LEDGER.md`](../../design/frontend/UNIFICATION_LEDGER.md).
 

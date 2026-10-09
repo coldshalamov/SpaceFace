@@ -32,6 +32,15 @@ import { latchNine } from '../systems/latchNine.js';
 import { scissorwake } from '../systems/scissorwake.js';
 import { tallyThree } from '../systems/tallyThree.js';
 import { lastShift } from '../systems/lastShift.js';
+import { redKite } from '../systems/redKite.js';
+import { sableVenn } from '../systems/sableVenn.js';
+import { ilexArk } from '../systems/ilexArk.js';
+import { kilnback } from '../systems/kilnback.js';
+import { mothlight } from '../systems/mothlight.js';
+import { palletJack } from '../systems/palletJack.js';
+import { secondRinse } from '../systems/secondRinse.js';
+import { towlineTable } from '../systems/towlineTable.js';
+import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
@@ -148,6 +157,7 @@ import { ravel } from '../systems/ravel.js';
 import { solstice } from '../systems/solstice.js';
 import { rubric } from '../systems/rubric.js';
 import { ruckus } from '../systems/ruckus.js';
+import { ruud } from '../systems/ruud.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -162,6 +172,7 @@ import { customsPrompt } from '../ui/customsPrompt.js';
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';
 import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';
 import { wreckChoicePrompt } from '../ui/wreckChoicePrompt.js';
+import { stuckTowPrompt } from '../ui/stuckTowPrompt.js';
 import { cargoConscience } from '../ui/cargoConscience.js';
 import { securityReadoutSystem } from '../ui/securityReadout.js';
 import { priceForecastSystem } from '../ui/priceForecast.js';
@@ -266,6 +277,15 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['scissorwake', scissorwake],
     ['tallyThree', tallyThree],
     ['lastShift', lastShift],
+    ['redKite', redKite],
+    ['sableVenn', sableVenn],
+    ['ilexArk', ilexArk],
+    ['kilnback', kilnback],
+    ['mothlight', mothlight],
+    ['palletJack', palletJack],
+    ['secondRinse', secondRinse],
+    ['towlineTable', towlineTable],
+    ['borrowedVoice', borrowedVoice],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],
@@ -333,6 +353,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['solstice', solstice],
     ['rubric', rubric],
     ['ruckus', ruckus],
+    ['ruud', ruud],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
@@ -382,6 +403,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['impoundPayPrompt', impoundPayPrompt],
     ['moralTrapPrompt', moralTrapPrompt],
     ['wreckChoicePrompt', wreckChoicePrompt],
+    ['stuckTowPrompt', stuckTowPrompt],
     ['cargoConscience', cargoConscience],
     ['securityReadoutSystem', securityReadoutSystem],
     ['priceForecastSystem', priceForecastSystem],

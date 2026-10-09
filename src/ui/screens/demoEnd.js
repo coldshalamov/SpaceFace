@@ -87,12 +87,20 @@ function fmtCr(value) {
   return n.toLocaleString('en-US') + ' CR';
 }
 
-/** The card's three facts. Each is read from state/records and skipped when the record is absent. */
+/** The card's facts. Each is read from state/records and skipped when the record is absent. */
 export function demoEndFacts(state, profile) {
   const facts = [];
   const best = profile ? bestLineRows(profile)[0] : null;
   if (best) {
     facts.push({ key: 'bestLine', label: 'Best Crucible chain', text: `${best.namedLine} — ${best.points} points` });
+  } else {
+    // No banked trick line yet — a pilot who still ran the Crucible gets its lifetime best.
+    const lifetime = profile && profile.records && profile.records.lifetime;
+    if (lifetime && Number.isInteger(lifetime.runs) && lifetime.runs > 0) {
+      const deepestWave = Number.isInteger(lifetime.deepestWave) ? lifetime.deepestWave : 0;
+      const bestScore = Number.isInteger(lifetime.bestScore) ? lifetime.bestScore : 0;
+      facts.push({ key: 'crucible', label: 'Crucible best', text: `Wave ${deepestWave} · ${bestScore.toLocaleString('en-US')} points` });
+    }
   }
   const stats = state && state.player && state.player.stats;
   const credits = Math.max(0, Math.round(Number(stats && stats.creditsEarned) || 0));
@@ -138,20 +146,13 @@ export const demoEndScreen = {
     rootEl.appendChild(title);
 
     // .k-stage — the record, as a register of lit readings (dl rows kept for the ear; the eye
-    // reads etched labels over numeral values, the results plate's grammar).
+    // reads etched labels over numeral values, the results plate's grammar). The card is built
+    // at boot by the screen prewarm, when the run's numbers are still zero — the rows are a
+    // render, so onShow rebuilds them against the live state instead of trusting the prewarm's.
     const stage = el('section', 'k-stage k-panel sf-demo-end__stage');
-    let profile = null;
-    try { profile = loadCrucibleMeta(); } catch { profile = null; }
-    const facts = demoEndFacts(ctx && ctx.state, profile);
     const list = el('dl', 'sf-demo-end__facts orr-end-facts');
-    for (const fact of facts) {
-      const row = el('div', 'sf-demo-end__fact orr-end-fact');
-      row.appendChild(el('dt', 'k-caps orr-end-fact__w', fact.label));
-      const dd = el('dd', 'k-sentence orr-end-fact__n');
-      mountFactValue(dd, fact);
-      row.appendChild(dd);
-      list.appendChild(row);
-    }
+    this._factsList = list;
+    this._renderFacts(ctx);
     stage.appendChild(list);
     rootEl.appendChild(stage);
 
@@ -233,9 +234,30 @@ export const demoEndScreen = {
     }
   },
 
-  onShow() {
+  _renderFacts(ctx) {
+    const list = this._factsList;
+    if (!list) return;
+    const kids = list.children || [];
+    while (kids.length) {
+      if (typeof list.removeChild === 'function') list.removeChild(kids[kids.length - 1]);
+      else kids.pop();
+    }
+    let profile = null;
+    try { profile = loadCrucibleMeta(); } catch { profile = null; }
+    for (const fact of demoEndFacts(ctx && ctx.state, profile)) {
+      const row = el('div', 'sf-demo-end__fact orr-end-fact');
+      row.appendChild(el('dt', 'k-caps orr-end-fact__w', fact.label));
+      const dd = el('dd', 'k-sentence orr-end-fact__n');
+      mountFactValue(dd, fact);
+      row.appendChild(dd);
+      list.appendChild(row);
+    }
+  },
+
+  onShow(ctx) {
     const r = this._regions;
     if (!r) return;
+    this._renderFacts(ctx);
     cue('open');
     try {
       settle(r.title, { from: 'top', state: 'demoEnd:open' });
@@ -259,5 +281,6 @@ export const demoEndScreen = {
     this._dialFigure = null;
     this._dialTarget = null;
     this._aimDial = null;
+    this._factsList = null;
   },
 };

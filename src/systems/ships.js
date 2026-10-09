@@ -14,6 +14,7 @@ import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { SECTORS } from '../data/sectors.js';
+import { sableShipworksAvailable } from '../data/sableVenn.js';
 import {
   describeHullRole,
   flightClassForHull,
@@ -196,7 +197,9 @@ export function shipworksStationAccess(state) {
       outfitReason: 'Shipworks services unavailable at this berth',
     };
   }
-  return { ...shipworksAccessForServices(station.services), stationId: station.id };
+  const access=shipworksAccessForServices(station.services);
+  if(!access.outfit&&sableShipworksAvailable(state,station.id))return {...access,outfit:true,outfitReason:null,stationId:station.id};
+  return { ...access, stationId: station.id };
 }
 
 // Heads share the existing Massline input grammar and are mutually exclusive fittings. This fixed
@@ -1138,6 +1141,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let masslineHeadId = null;
   let swingDrive = false;
   let towFlail = false;
+  let phaseBlink = false;
   // Hull burst: ONE per hull. The higher rank wins, ties break by kind name, so a hand-edited fit
   // with two burst modules is deterministic instead of slot-ordered.
   let hullBurstKind = null;
@@ -1236,6 +1240,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     // the hull actually has (same slot-compat gate the countermeasure kinds use below).
     if (occupiesCompatibleSlot && mods.swingDrive) swingDrive = true;
     if (occupiesCompatibleSlot && mods.towFlail) towFlail = true;
+    if (occupiesCompatibleSlot && mods.phaseBlink) phaseBlink = true;
     if (occupiesCompatibleSlot && typeof mods.hullBurst === 'string' && mods.hullBurst) {
       const rank = Number.isFinite(mods.hullBurstRank) && mods.hullBurstRank > 0 ? Math.trunc(mods.hullBurstRank) : 1;
       if (rank > hullBurstRank || (rank === hullBurstRank && mods.hullBurst < hullBurstKind)) {
@@ -1386,7 +1391,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     massLoadFactor: propulsion.massLoadFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, magnetRange,
-    lootMagnetRange, swingDrive, towFlail, hullBurstKind, hullBurstRank,
+    lootMagnetRange, swingDrive, towFlail, phaseBlink, hullBurstKind, hullBurstRank,
     weaponRangePct,
     weaponDmgPct,
     weaponHeatDissipPct,
@@ -2139,7 +2144,8 @@ export const ships = {
     }
     // Charge only after an explicit Buy & Fit has succeeded, so a rejected fit cannot spend credits.
     if (price > 0) this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyModule:' + defId });
-    this.bus.emit('module:purchased', { defId, price, fitSlotIndex: equipped ? fitSlotIndex : null });
+    this.bus.emit('module:purchased', { defId, price, fitSlotIndex: equipped ? fitSlotIndex : null,
+      instanceId: item.instanceId, shipIndex: equipped ? shipIndex : null });
     this.bus.emit('toast', { text: (equipped ? 'Purchased and equipped ' : 'Purchased ') + def.name, kind: 'success', ttl: 3 });
     return true;
   },
@@ -2797,8 +2803,25 @@ export const ships = {
   },
 
   nextInstanceId() {
-    this._instSeq = (this._instSeq || 0) + 1;
-    return 'mi_' + this.state.tick + '_' + this._instSeq;
+    // Continue restores ownership and the tick, but this owner's sequence is transient.
+    // A paused berth can therefore reuse a saved id on its first purchase/reward. Reserve
+    // both loose and fitted identities (including parked hulls) before minting another.
+    const player = this.state.player || {};
+    const used = new Set();
+    for (const item of player.moduleInventory || []) {
+      if (item && item.instanceId != null) used.add(item.instanceId);
+    }
+    for (const owned of player.ownedShips || []) {
+      for (const item of Object.values((owned && owned.fittedInstances) || {})) {
+        if (item && item.instanceId != null) used.add(item.instanceId);
+      }
+    }
+    let id;
+    do {
+      this._instSeq = (this._instSeq || 0) + 1;
+      id = 'mi_' + this.state.tick + '_' + this._instSeq;
+    } while (used.has(id));
+    return id;
   },
 
   // ---- new game ---------------------------------------------------------------------------

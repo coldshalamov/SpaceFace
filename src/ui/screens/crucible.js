@@ -105,6 +105,8 @@ import {
   buyCrucibleHangarTrack,
   crucibleSwarmDepthView,
   setCruciblePerkLoadout,
+  kitBalanceBoard,
+  overconfidenceStreak,
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
@@ -135,6 +137,7 @@ import { STUNT_RULE_REVISIONS, stuntAssistProfile } from '../../combat/stuntRunR
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
 import { el, settle, stamp, cue } from '../kit/index.js';
+import { renderResultsSheet, resultsSheetModel, recordedKitId } from './resultsSheet.js';
 import { capPins, platePins, panePins, channelPins, rowPins }
   from '../kit/computedMaterial.js';
 
@@ -2827,6 +2830,28 @@ function pairRows(pairs, hook, valueClassFor) {
   return list;
 }
 
+/** Kit board + streak, both already settled by survivalRecords. A records miss is empty. */
+function crucibleSheetReadings() {
+  let history = [];
+  try {
+    const meta = loadCrucibleMeta();
+    history = meta && Array.isArray(meta.history) ? meta.history : [];
+  } catch {
+    history = [];
+  }
+  const cells = [];
+  for (const row of history) {
+    const kit = recordedKitId(row);
+    if (typeof kit !== 'string' || !kit) continue;
+    cells.push({ kit, seed: row.seed, score: row.score });
+  }
+  let board = null;
+  let streak = 0;
+  try { board = kitBalanceBoard(cells); } catch { board = null; }
+  try { streak = overconfidenceStreak(history); } catch { streak = 0; }
+  return { board, streak };
+}
+
 function renderStory(band, result) {
   const lines = storySentences(result);
   if (!lines.length) {
@@ -3260,6 +3285,21 @@ export const crucibleResultsScreen = {
       seed: result?.seed, recordRules: result?.recordRules });
     if (bestLine) story.appendChild(renderBestLineReview(bestLine));
 
+    // FB-028: the sheet prints the sim's stunt rows, the kit board, and the streak.
+    // It does not score them. A sheet failure must never take the plate down.
+    if (result) {
+      try {
+        const readings = crucibleSheetReadings();
+        ledger.appendChild(renderResultsSheet(resultsSheetModel({
+          result,
+          kitBoard: readings.board,
+          overconfidenceStreak: readings.streak,
+        })));
+      } catch {
+        // The story and the ledger already stand.
+      }
+    }
+
     // PQ-160.02: the run as a code, its ghost as a block. Sharing must never take the plate down.
     try {
       const shareBand = buildShareBand(result);
@@ -3419,6 +3459,13 @@ export const crucibleResultsScreen = {
     if (this._dial && this._dial.active() && result && result.seed != null && again.parentElement) {
       again.parentElement.appendChild(el('p', 'k-t-fine sf-crres__seed', `Seed ${result.seed}`));
     }
+    const dialHost = this._dial && this._dial.active() && rootEl.querySelector
+      ? rootEl.querySelector('.sf-crres__dial') : null;
+    if (dialHost && typeof ResizeObserver === 'function') {
+      this._dialSeat = new ResizeObserver(() => seatDialAboveFoot(dialHost, foot));
+      for (const child of [...rootEl.children]) if (child !== dialHost) this._dialSeat.observe(child);
+      this._dialSeat.observe(rootEl);
+    }
     this._regions = { title: h, story, ledger, foot, again };
     rootEl.dataset.kReady = '1';
     if (typeof again.focus === 'function') {
@@ -3461,6 +3508,8 @@ export const crucibleResultsScreen = {
   },
 
   dispose() {
+    if (this._dialSeat) this._dialSeat.disconnect();
+    this._dialSeat = null;
     if (this._dial) this._dial.dispose();
     this._dial = null;
     // PQ-146 Phase 3: the run is told — the trick callout layer goes with the plate. A retry
@@ -3468,6 +3517,22 @@ export const crucibleResultsScreen = {
     try { releaseStuntCallout(); } catch { /* release is best-effort */ }
   },
 };
+
+export const DIAL_FOOT_MIN_INSET_PX = 112;
+export const DIAL_FOOT_GAP_PX = 12;
+
+export function seatDialAboveFoot(dialHost, foot, view = globalThis) {
+  if (!dialHost || !dialHost.style || !foot) return null;
+  const parent = dialHost.offsetParent;
+  const laidOut = !!parent && foot.offsetParent === parent && parent.clientHeight > 0;
+  const top = laidOut ? foot.offsetTop
+    : (typeof foot.getBoundingClientRect === 'function' ? foot.getBoundingClientRect().top : 0);
+  const height = laidOut ? parent.clientHeight : Number(view && view.innerHeight);
+  if (!(top > 0) || !(height > 0)) return null;
+  const bottom = Math.max(DIAL_FOOT_MIN_INSET_PX, Math.ceil(height - top + DIAL_FOOT_GAP_PX));
+  dialHost.style.bottom = `${bottom}px`;
+  return bottom;
+}
 
 /**
  * SWARM-05 §7.4 — the celebration band. Built once per plate from the settled result: the
@@ -3553,8 +3618,8 @@ export function resultCelebration(result) {
       const gate = SWARM_ARENA_STAR_GATES[arenaId];
       if (!Number.isInteger(gate) || stars >= gate) continue;
       const arena = survivalArenaById(arenaId);
-      const name = arena && typeof arena.name === 'string' ? arena.name : arenaId;
-      lines.push(`${name} opens at ${gate} stars — ${gate - stars} to go.`);
+      const name = arena && (arena.label || arena.name);
+      if (typeof name === 'string' && name) lines.push(`${name} opens at ${gate} stars — ${gate - stars} to go.`);
       break;
     }
   } catch { /* the profile read is optional */ }

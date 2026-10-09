@@ -29,8 +29,20 @@ export {
   hullClearanceSpacing,
 };
 
+// Planning cap the recipe speed fractions scale. The pursuit floor below keeps the wing
+// able to actually close on modern governed cruise (see integrateFrame).
 const INTERCEPT_SPEED = 72;
-const FRAME_MAX_ACCEL = 46;
+const PURSUIT_CATCH_MULT = 2.2;
+const PURSUIT_CATCH_MARGIN = 16;
+// The approach phases are range-gated; these are the stalemate fallbacks (an unclosable
+// target must still cycle the wing instead of freezing in telegraph), not the approach
+// clock. The old phase budgets reused the morph durations (0.6-0.9 s), which burned the
+// whole telegraph→strike sequence while the frame was still 400-500 WU out (M6 attacked,
+// "passed", extended and reformed without one close pass).
+const TELEGRAPH_STALEMATE_S = 3.4;
+const COMMIT_STALEMATE_S = 2.6;
+const STRIKE_STALEMATE_S = 3.0;
+const FRAME_MAX_ACCEL = 64;
 const FRAME_MAX_YAW = 1.18;
 const SOCKET_ORDER = Object.freeze([
   SQUAD_SOCKET.LEAD,
@@ -208,6 +220,8 @@ function seedFrame(id, recipeId, recipe, members, tick, seed) {
     reformStartedTick: null,
     passTick: null,
     committedPeak: 0,
+    pursuitFloorSpeed: INTERCEPT_SPEED,
+    approach: false,
   };
 }
 
@@ -294,6 +308,9 @@ function makeMember(id, socket, recipe) {
     tracking: false,
     disrupted: false,
     disruptedUntil: -1,
+    prevSlotX: null,
+    prevSlotZ: null,
+    transitUntil: -1,
     coast: false,
     rejoinTick: null,
     fireAuthorized: false,
@@ -437,7 +454,21 @@ function detectDisruption(frame, recipe, tick, dt) {
     const quiet = frame.phase === PHASE.TELEGRAPH
       || frame.phase === PHASE.REFORM
       || frame.phase === PHASE.RECOVER;
-    const blown = !quiet && (err > deform || (rec.tracking && relV > 52 && err > spacing * 0.45));
+    // The relV blowout threshold rides the slot's own speed: a member lagging a raised-cap
+    // pursuit slot is doing its job — only flying the wrong way relative to the slot is
+    // disruption. 52 was authored when slots moved at or under 72 WU/s.
+    const slotSpeed = Math.hypot(rec.slot.vx, rec.slot.vz);
+    const relBlow = Math.max(52, slotSpeed * 0.6);
+    // A plan-announced slot jump (token/lane reassignment, command glue) is compliance, not
+    // disruption: the hull gets a bounded transit window to fly the jump down. Both tests
+    // stay suppressed only inside the window; arriving (err within a spacing) ends it, and
+    // expiry re-arms the blown tests — a member that never converges is still caught.
+    const slotJump = rec.prevSlotX == null ? 0 : Math.hypot(rec.slot.x - rec.prevSlotX, rec.slot.z - rec.prevSlotZ);
+    if (slotJump > Math.max(48, spacing * 0.8)) rec.transitUntil = tick + 240;
+    if (err <= spacing) rec.transitUntil = 0;
+    const transit = tick < rec.transitUntil;
+    const blown = !quiet && !transit
+      && (err > deform || (rec.tracking && relV > relBlow && err > spacing * 0.45));
     if (blown) {
       rec.disrupted = true;
       const extra = saturate((err - deform) / Math.max(deform, 1));
@@ -445,6 +476,8 @@ function detectDisruption(frame, recipe, tick, dt) {
       const until = tick + clamp(coastTicks, 18, 180);
       if (until > rec.disruptedUntil) rec.disruptedUntil = until;
     }
+    rec.prevSlotX = rec.slot.x;
+    rec.prevSlotZ = rec.slot.z;
     rec.coast = rec.disrupted && tick < rec.disruptedUntil;
     rec.breakFormation = rec.coast;
     if (rec.disrupted && !rec.coast && rec.rejoinTick == null && err <= spacing * 0.9) {
@@ -459,7 +492,12 @@ function detectDisruption(frame, recipe, tick, dt) {
 }
 
 function maybeAbortMorph(frame, recipe, tick) {
-  const morphing = frame.phase === PHASE.TELEGRAPH
+  // Any committed sequencing counts: a wing whose member is being tossed does not carry on
+  // morphing (or keep flying ingress) as if nothing happened — the shove owns the moment and
+  // the wing recovers. The M8 impulse lands during the ingress leg, which the old phase gate
+  // ignored entirely, so the disruption never reached the sequence.
+  const morphing = frame.phase === PHASE.INGRESS
+    || frame.phase === PHASE.TELEGRAPH
     || frame.phase === PHASE.COMMIT
     || frame.phase === PHASE.STRIKE;
   if (!morphing) return;
@@ -486,12 +524,20 @@ function advancePhase(frame, recipe, target, tick, dt) {
       enterPhase(frame, recipe, PHASE.TELEGRAPH, tick);
     }
   } else if (phase === PHASE.TELEGRAPH) {
+    // The rail keeps tracking the live bearing through the approach. The lock at telegraph
+    // entry points at where the target WAS; a governed target covers 100+ WU of curve before
+    // the crossing, and a rail aimed at the stale point sends the strikers' scissors across
+    // empty space hundreds of WU wide of the mark (M6 passed without a single close pass).
+    aimRailAtLiveTarget(frame, target);
     frame.morphU = saturate(age / recipe.morphTelegraphS);
     frame.spacingScale = 1 + 0.85 * frame.morphU;
-    if (frame.morphU >= 1 && (dist <= recipe.commitRange || age >= recipe.morphTelegraphS + 0.15)) {
+    if (frame.morphU >= 1 && (dist <= recipe.commitRange || age >= recipe.morphTelegraphS + TELEGRAPH_STALEMATE_S)) {
       enterPhase(frame, recipe, PHASE.COMMIT, tick);
     }
   } else if (phase === PHASE.COMMIT) {
+    // Still converging: the approach phases own the aim, the crossing owns the pass. The
+    // rail freezes at STRIKE so the committed scissors geometry cannot be yanked mid-cross.
+    aimRailAtLiveTarget(frame, target);
     // A recipe that names a strike shape morphs into it during commit (the gunline
     // settles into its firing line before it opens up); passing runs stay in their
     // telegraph shape, which preserves the scissors behavior bit-for-bit.
@@ -499,7 +545,7 @@ function advancePhase(frame, recipe, target, tick, dt) {
       ? saturate(age / Math.max(0.2, recipe.morphCommitS))
       : 1;
     frame.spacingScale = 1.85;
-    if (age >= recipe.morphCommitS || dist <= recipe.strikeRange) {
+    if (age >= recipe.morphCommitS + COMMIT_STALEMATE_S || dist <= recipe.strikeRange) {
       frame.strikeStartedTick = tick;
       enterPhase(frame, recipe, PHASE.STRIKE, tick);
     }
@@ -516,7 +562,7 @@ function advancePhase(frame, recipe, target, tick, dt) {
         frame.passComplete = true;
         enterPhase(frame, recipe, PHASE.EXTEND, tick);
       }
-    } else if (age >= recipe.strikeWindowS || passU > 12) {
+    } else if (age >= recipe.strikeWindowS + STRIKE_STALEMATE_S || passU > 12) {
       frame.extendStartedTick = tick;
       frame.passTick = frame.passTick == null ? tick : frame.passTick;
       frame.passComplete = true;
@@ -525,14 +571,24 @@ function advancePhase(frame, recipe, target, tick, dt) {
   } else if (phase === PHASE.EXTEND) {
     const away = passU > 40 && dist >= recipe.extendAway;
     const holdExtended = recipe.strikeMode === 'hold' && age >= recipe.extendHoldS * 0.45;
-    if ((away && age >= recipe.extendHoldS * 0.45) || age >= recipe.extendHoldS || holdExtended) {
+    // Honor the authored extend distance: the reform turn happens OUT there, not alongside
+    // the target — a close-in reform parks the re-forming wedge inside the engagement band
+    // and re-stacks the wing on one radial (M6 lane conflicts). The hard fallback still
+    // cycles a wing whose extend never opens the range.
+    const extended = dist >= recipe.extendAway * 0.8;
+    const extendFallback = age >= recipe.extendHoldS * 2.2;
+    if ((away && age >= recipe.extendHoldS * 0.45) || (extended && age >= recipe.extendHoldS) || holdExtended || extendFallback) {
       beginReform(frame, recipe, target, tick);
     }
   } else if (phase === PHASE.RECOVER) {
     if (age >= 0.45) beginReform(frame, recipe, target, tick);
   } else if (phase === PHASE.REFORM) {
     frame.morphU = saturate(age / recipe.morphReformS);
-    frame.spacingScale = 1.85 - 0.85 * frame.morphU;
+    // Hold the spread through the reform turn: decaying the spacing while the wing is still
+    // inside the engagement band stacks lead and wingman on one target radial for every
+    // recede tick (M6 reform lane conflicts). The next INGRESS tightens to wedge spacing at
+    // entry, outside the band, where the tighten transit belongs.
+    frame.spacingScale = 1.85;
     const settled = formationSettled(frame);
     if (frame.passComplete && frame.morphU >= 1) return;
     if ((frame.morphU >= 1 && settled) || age >= recipe.morphReformS + 1.6) {
@@ -591,6 +647,18 @@ function lockRail(frame, target) {
   frame.railDirZ = dz / len;
   frame.railLocked = true;
   frame.heading = Math.atan2(frame.railDirZ, frame.railDirX);
+}
+
+// Rail re-aim without the heading snap: the frame yaws onto the live bearing through its
+// own bounded rate (integrateFrame), so an approach-phase re-aim reads as a turn, not a cut.
+function aimRailAtLiveTarget(frame, target) {
+  const dx = target.x - frame.position.x;
+  const dz = target.z - frame.position.z;
+  const len = Math.hypot(dx, dz);
+  if (len < EPS) return;
+  frame.railDirX = dx / len;
+  frame.railDirZ = dz / len;
+  frame.railLocked = true;
 }
 
 function beginReform(frame, recipe, target, tick) {
@@ -692,7 +760,26 @@ function enforceDistinctLanes(holders) {
 function integrateFrame(frame, recipe, target, tick, dt) {
   if (!target) return;
   const speedFrac = speedFractionFor(frame.phase, recipe);
-  const maxSpeed = INTERCEPT_SPEED * speedFrac;
+  const authoredMax = INTERCEPT_SPEED * speedFrac;
+  let maxSpeed = authoredMax;
+  // An interceptor wing must be able to close on its target. The authored fractions ride a
+  // 72 WU/s planning cap, but a hull at a third throttle now cruises at 55-60 WU/s (fast
+  // cruise ceilings, e8d10fed7), which left the frame chasing a receding standoff point
+  // forever: no telegraph, no morph, no pass (M8 never left INGRESS; M6 passed hundreds of
+  // WU astern and turned both strikers back). The APPROACH phases ride the raised catch
+  // floor; STRIKE and EXTEND keep the authored caps — the crossing sweep is calibrated on
+  // them, and a floor-speed strike sweeps the strikers' lanes faster than their hulls can
+  // track (slot velocity 184 WU/s against a followable ~84).
+  const targetSpeed = Math.hypot(finite(target.vx), finite(target.vz));
+  const pursuitFloor = targetSpeed * PURSUIT_CATCH_MULT + PURSUIT_CATCH_MARGIN;
+  const approach = frame.phase === PHASE.INGRESS
+    || frame.phase === PHASE.TELEGRAPH
+    || frame.phase === PHASE.COMMIT;
+  if (approach) {
+    maxSpeed = Math.max(maxSpeed, pursuitFloor);
+  }
+  frame.pursuitFloorSpeed = pursuitFloor;
+  frame.approach = approach;
   const desired = desiredFrameMotion(frame, recipe, target, maxSpeed);
   const ax = clamp(0.9 * (desired.x - frame.position.x) + 1.4 * (desired.vx - frame.velocity.x), -FRAME_MAX_ACCEL, FRAME_MAX_ACCEL);
   const az = clamp(0.9 * (desired.z - frame.position.z) + 1.4 * (desired.vz - frame.velocity.z), -FRAME_MAX_ACCEL, FRAME_MAX_ACCEL);
@@ -721,7 +808,10 @@ function desiredFrameMotion(frame, recipe, target, maxSpeed) {
   if (frame.phase === PHASE.REFORM || frame.phase === PHASE.RECOVER || frame.phase === PHASE.INGRESS && !frame.railLocked) {
     const hx = Math.cos(frame.phase === PHASE.INGRESS ? Math.atan2(predZ - frame.position.z, predX - frame.position.x) : frame.reformHeading);
     const hz = Math.sin(frame.phase === PHASE.INGRESS ? Math.atan2(predZ - frame.position.z, predX - frame.position.x) : frame.reformHeading);
-    const standoff = frame.phase === PHASE.INGRESS ? recipe.telegraphRange * 0.72 : 340;
+    // The ingress hold sits just outside the engagement band: a wedge hovering inside it
+    // stacks lead and wingman on one target radial for every hover tick (M6 lane-conflict
+    // ledger). The telegraph morph is what spreads the wing angularly for the committed run.
+    const standoff = frame.phase === PHASE.INGRESS ? recipe.telegraphRange * 0.85 : 340;
     return {
       x: predX - hx * standoff,
       z: predZ - hz * standoff,
@@ -815,10 +905,17 @@ function writeSlots(frame, recipe, target, tick) {
       const start = rec.laneSide * 1.55;
       const end = -rec.laneSide * 1.45;
       right = start + (end - start) * cross;
-      forward = rec.laneSide * 0.72 - 0.08 + 0.12 * cross;
+      // The strikers hold and cross AHEAD of the frame center: the whole sweep band has to
+      // clear the reserve's pull-back radially (lead at forward -1.35) by more than a
+      // range-radial, so a sweep lagging its slot can never share the screen's target
+      // radial mid-cross (M6 commit/strike lane conflicts).
+      forward = rec.laneSide * 0.72 + 0.3 + 0.12 * cross;
     } else if (attacking && !strikeHold && rec.socket === SQUAD_SOCKET.LEAD) {
+      // The reserve hangs WELL off the collision center: the strikers' crossing band
+      // (forward ≈ -0.1) must clear it by more than a range-radial so the screen never
+      // shares the strikers' target radial mid-cross (M6 commit/strike lane conflicts).
       right = 0;
-      forward = -0.95;
+      forward = -1.35;
     } else if (attacking && !strikeHold && rec.socket === SQUAD_SOCKET.REAR) {
       right = 0;
       forward = -2.15;
@@ -853,7 +950,11 @@ function writeSlots(frame, recipe, target, tick) {
     rec.slot.heading = frame.heading;
     rec.slotError = distance2(rec.pos, rec.slot);
     rec.slotReady = true;
-    rec.speedFraction = speedFractionFor(frame.phase, recipe);
+    // Approach phases ride the frame's raised catch cap; strike/extend keep the authored
+    // fractions the crossing sweep is calibrated on; reform re-forms at wing speed.
+    rec.speedFraction = frame.approach
+      ? Math.max(speedFractionFor(frame.phase, recipe), (frame.pursuitFloorSpeed || INTERCEPT_SPEED) / INTERCEPT_SPEED)
+      : speedFractionFor(frame.phase, recipe);
     if (strikeHold) {
       // The hold IS the firing pose: every living member faces the threat, and the
       // recipe's volley token list decides which guns are cleared hot this window.

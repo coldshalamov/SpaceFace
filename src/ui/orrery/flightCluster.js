@@ -22,6 +22,8 @@ import { createSpring } from './motion.js';
 import { createCounter } from './text.js';
 import { createSpeedDial, SPEED_DIAL } from './speedDial.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import { nextFlightDecision, NEXT_DECISION_CLASS } from './nextDecision.js';
+import { ringLegendText } from './ringLegend.js';
 
 // The colour phase is decided by the displayed reading (speedDial.js owns it; the contract is pinned here).
 export { speedPhase } from './speedDial.js';
@@ -52,7 +54,7 @@ const CSS = `
 .orr-cluster > svg { position:absolute; left:0; top:0; width:${W}px; height:${H}px; overflow:visible; }
 /* free type over a live world needs a soft, edge-less shadow — never a box. Every glyph also carries
    a tight halo of the void, so a label stays legible over a bright foundry floor or a sunlit hull */
-.orr-cluster__keytag, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__payload, .orr-cluster__count {
+.orr-cluster__keytag, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__payload, .orr-cluster__count, .orr-cluster__next {
   text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 3px rgb(3 4 7 / .85), 0 0 9px rgb(3 4 7 / .6); }
 /* small type gets its own pool of shadow, sized to the words, not the block — hugging the text */
 .orr-cluster__keytag::before { content:""; position:absolute; inset:-7px -18px; z-index:-1; pointer-events:none;
@@ -66,6 +68,14 @@ const CSS = `
 .orr-cluster__legend b.is-hull i { font-style:normal; font-size:12px; font-weight:500; color:var(--dp-ink-dim, #b7b4a6); margin-left:1px; }
 .orr-cluster__legend .orr-label { font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); }
 .orr-cluster__legend .is-critical, .orr-cluster__legend .is-critical i { color:var(--dp-danger, #ff5038); }
+/* SFQ-B202 / B208 / B209 — the next decision sits under the legend, off the hull art and off
+   the arrival fade. Large text uses the same scale token as the rest of the UI. Reduced motion
+   never waits on this line: it is not an orr-cluster__fade child. */
+.orr-cluster__next { position:absolute; left:${P.x - 62}px; top:${P.y + 146}px; width:250px; margin:0;
+  font-family:var(--dp-face-label, inherit); font-weight:560; line-height:1.25;
+  font-size:max(12px, calc(13px * var(--sf-text-scale, 1))); color:var(--dp-danger, #ff5038);
+  pointer-events:none; animation:none !important; }
+.orr-cluster__next[hidden] { display:none !important; }
 .orr-cluster__read { position:absolute; display:flex; flex-direction:column; gap:3px; }
 .orr-cluster__read .orr-value { font-size:15px; }
 .orr-cluster__key { position:absolute; width:48px; height:48px; margin:-24px 0 0 -24px;
@@ -159,7 +169,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     svg('path', { d: `M ${hx} ${hy - 4.5} L ${hx} ${hy - 9} M ${hx - 4.5} ${hy} L ${hx - 8} ${hy} M ${hx + 4.5} ${hy} L ${hx + 8} ${hy}`, class: 'orr-core orr-phos', 'stroke-width': 1.2 }),
   );
   s.appendChild(driftPip);
-  s.appendChild(circularText(P.x, P.y, R.orbit + 9, `${String(name).toUpperCase()} · ${String(classLine).toUpperCase()}`, { startDeg: 160, size: 6.5, className: 'orr-micro', upright: true }));
+  const ringLegend = circularText(P.x, P.y, R.orbit + 9, ringLegendText({ defName: name, classLine }), { startDeg: 160, size: 6.5, className: 'orr-micro', upright: true });
+  s.appendChild(ringLegend);
+  let ringLegendShown = ringLegendText({ defName: name, classLine });
 
   // ---- the ring stack ----------------------------------------------------------------------------
   const shield = arcGauge({ cx: P.x, cy: P.y, r: R.shield, from: GAUGE_FROM, to: GAUGE_TO, width: 3.2, tone: 'phos', segments: 18, segmentGap: 2.4 });
@@ -208,7 +220,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
 
   // ---- the hull at the pivot ----------------------------------------------------------------------
   const glyphUrl = hullPosterUrl(shipId, 'holo');
-  if (glyphUrl) s.appendChild(svg('image', { class: 'orr-cluster__glyph', href: glyphUrl, x: P.x - 82, y: P.y - 96, width: 164, height: 164, preserveAspectRatio: 'xMidYMid meet' }));
+  let glyphImage = null;
+  if (glyphUrl) {
+    glyphImage = svg('image', { class: 'orr-cluster__glyph', href: glyphUrl, x: P.x - 82, y: P.y - 96, width: 164, height: 164, preserveAspectRatio: 'xMidYMid meet' });
+    s.appendChild(glyphImage);
+  }
 
   // ---- lower-left flank: heat (lower) and energy (upper) --------------------------------------------
   const heat = arcGauge({ cx: P.x, cy: P.y, r: R.flank, from: 198, to: 232, width: 3, tone: 'hi', ghost: false });
@@ -253,6 +269,10 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   hullRow.val.classList.add('is-hull');
   const shieldRow = legendRow('shield', 'Shield');
   const armorRow = legendRow('armor', 'Armor');
+  const nextEl = el('p', NEXT_DECISION_CLASS);
+  nextEl.setAttribute('role', 'status');
+  nextEl.setAttribute('aria-live', 'polite');
+  nextEl.hidden = true;
 
   // ---- the ordnance crescent + the Hand --------------------------------------------------------------
   const crescentTrack = svg('path', { d: '', class: 'orr-core orr-faint', 'stroke-width': 1 });
@@ -366,7 +386,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   payload.style.visibility = 'hidden';
   const massCounter = createCounter(massEl, { format: (n) => `${Math.round(n)} T` });
 
-  root.append(dial.el, energyRead, heatRead, legend, payload);
+  root.append(dial.el, energyRead, heatRead, legend, nextEl, payload);
 
   // ---- update --------------------------------------------------------------------------------------
   const last = {};
@@ -471,6 +491,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         strainEl.textContent = `STRAIN ${Math.round(st * 100)}%`;
       }
     }
+    const decision = nextFlightDecision(d);
+    if (changed('decision', decision)) {
+      nextEl.textContent = decision;
+      nextEl.hidden = decision === '';
+    }
   }
 
   function arrive() {
@@ -480,10 +505,40 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     setTimeout(() => root.classList.remove('is-arriving'), 1500);
   }
 
+  function setRingLegend(next = {}) {
+    const text = ringLegendText({
+      defName: next.defName != null ? next.defName : name,
+      classLine: next.classLine != null ? next.classLine : classLine,
+      customName: next.customName,
+    });
+    if (text === ringLegendShown) return text;
+    ringLegendShown = text;
+    const path = textPathOf(ringLegend);
+    if (path) path.textContent = text;
+    return text;
+  }
+
+  // The cluster outlives hull swaps ("Make active" in shipworks, a save whose active hull
+  // differs): restamp the poster glyph and the legend defaults, then let the legend short-
+  // circuit skip the write when nothing actually changed.
+  function setHull(next = {}) {
+    const nextShipId = next.shipId != null ? next.shipId : shipId;
+    if (nextShipId !== shipId) {
+      shipId = nextShipId;
+      const url = hullPosterUrl(shipId, 'holo');
+      if (glyphImage && url) glyphImage.setAttribute('href', url);
+    }
+    if (next.name != null) name = next.name;
+    if (next.classLine != null) classLine = next.classLine;
+    return setRingLegend({ defName: name, classLine });
+  }
+
   return {
     el: root,
     update,
     arrive,
+    setRingLegend,
+    setHull,
     dispose() {
       for (const g of [shield, armor, hull, energy, heat, strain, dial]) g.dispose();
       handSpring.stop();
@@ -493,3 +548,19 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
 }
 
 export const CLUSTER_GEOMETRY = Object.freeze({ W, H, P, R });
+
+function textPathOf(node) {
+  if (!node) return null;
+  if (typeof node.querySelector === 'function') {
+    const found = node.querySelector('textPath');
+    if (found) return found;
+  }
+  const kids = node.children || node.childNodes || [];
+  for (const child of kids) {
+    const tag = String(child.localName || child.tagName || '').toLowerCase();
+    if (tag === 'textpath') return child;
+    const nested = textPathOf(child);
+    if (nested) return nested;
+  }
+  return null;
+}

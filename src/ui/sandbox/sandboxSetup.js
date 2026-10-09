@@ -405,6 +405,12 @@ export function hasPendingSandboxLaunch() {
   return pendingConfig != null;
 }
 
+/** True only when the pending launch is the physics toy itself: a Crucible run also rides
+ *  requestSandboxGame() but carries `survivalSetup` — the scored arcade mode, never the lab. */
+export function hasPendingPhysicsToyLaunch() {
+  return pendingConfig != null && !pendingConfig.survivalSetup;
+}
+
 /** Idempotent installer for the game:started hook. Call once during UI init. Re-arms after each
  *  fire so repeated sandbox launches work without re-installing. Safe no-op if no config pending. */
 export function installSandboxGameStartedHook(bus, ctxRef) {

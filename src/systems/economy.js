@@ -24,6 +24,7 @@
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
 import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
+import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
@@ -34,6 +35,7 @@ import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { SECTORS } from '../data/sectors.js';
+import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import { effectiveDangerTierFor } from './sectorSim.js';
@@ -68,7 +70,7 @@ import {
 } from '../economy/customsRisk.js';
 import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
-import { priceModForState } from './factions.js';
+import { priceModForState, rankServiceDiscount } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { contaminationSaleMult } from '../data/alienEcology.js'; // AE-077/078 biohazard market policy
@@ -168,6 +170,7 @@ export const ECONOMY_PRICE_TUNING = Object.freeze({
 const FUEL_UNIT_CR = 6;            // cr per fuel unit
 const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
+export const AMMO_BATCH = 100;     // munitions per ammo purchase — the dock verb's default fill
 const HULL_WASH_CR = 75;           // cosmetic berth service; history survives the wash
 // PQ-155.03 sink: a Pitborn yard buys out a claimed salvage right at a premium over a medium
 // kill's chip line (2 chips × 60–120 cr). Rights stay scarce by mint, not by a cheap sink.
@@ -179,6 +182,31 @@ export const SERVICE_PRICES = Object.freeze({
   hullWashCr: HULL_WASH_CR,
   salvageRightCr: SALVAGE_RIGHT_CR,
 });
+
+/**
+ * Docked-service unit price after the standing discount — the one source the quote layer and
+ * the charge both read, so the number on the button is the number the yard takes. The rank
+ * that matters is the player's standing with the docked station's own faction; only a docked
+ * service honors it, so the off-station emergency reserve and depot running costs stay at list.
+ */
+export function serviceUnitCr(state, baseCr) {
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  const info = stationId ? stationInfo(state, stationId) : null;
+  return baseCr * (1 - rankServiceDiscount(state, info && info.factionId));
+}
+
+/**
+ * Whether the docked berth actually runs this service — the contract the yard's own
+ * enqueue gate enforces (stationServices.enqueuePlayerJob refuses a job the berth does not
+ * offer) and the quote layer is expected to mirror. A berth with no services list is read
+ * the same way the yard reads it: unknown, so the verb stays allowed.
+ */
+export function stationOffersService(state, service) {
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  const info = stationId ? stationInfo(state, stationId) : null;
+  if (!info || !Array.isArray(info.services) || !info.services.length) return true;
+  return info.services.includes(service);
+}
 
 /** Live hull-insurance defaults. The deductible is the named sink PQ-155.01 reads. */
 export const INSURANCE_DEFAULTS = Object.freeze({
@@ -1930,6 +1958,13 @@ export const economy = {
     const state = this.state;
     const markets = state.economy.markets;
     if (markets[stationId]) return markets[stationId];
+    // The Swallowed Rib is not part of the galactic price census. Building it
+    // from a Helios boot would take the shared economy stream and move every
+    // later station's cycle, including the 47-A golden. Prices exist once the
+    // player is actually in the throat.
+    if (stationId === BOLUS_STATION_ID && state.world?.currentSectorId !== BOLUS_SECTOR_ID) {
+      return null;
+    }
     const info = stationInfo(state, stationId);
     const type = stationTypeId || (info && info.type) || 'trade_hub';
     const sz = size || (info && info.size) || 'M';
@@ -2952,6 +2987,26 @@ export const economy = {
     return {ok:true,qty,quoteCr:Math.max(0,Math.floor(price*qty))};
   },
 
+  // A finite first planting from physically accepted original vaults, after its growth delay.
+  // The existing market stock authority owns the product; seeds never become player cargo.
+  applyIlexSeedHarvest(receiptId) {
+    const receipt = this.registryGet('ilexArk')?.outcomeReceipt?.(receiptId);
+    if (!validIlexOutcome(receipt)) return { ok: false, reason: 'unaccepted_seed_custody' };
+    if (this.state.simTime < receipt.harvestAt) return { ok: false, reason: 'planting_pending' };
+    const intents = ensureCommittedIntents(this.state), key = `${receipt.id}:first-harvest`, prior = intents[key];
+    if (prior) return { ok: true, duplicate: true, ...prior.result };
+    const market = this.state.economy.markets[ILEX_ARK.stationId] || this.ensureMarket(ILEX_ARK.stationId);
+    if (!market?.cmdty_food) return { ok: false, reason: 'greenhouse_receiver_pending' };
+    const qty = receipt.deliveredVaultIds.length * ILEX_ARK.provisionsPerVault;
+    const result = { receiptId: key, stationId: ILEX_ARK.stationId, commodityId: 'cmdty_food', qty,
+      deliveredVaultIds: [...receipt.deliveredVaultIds], at: this.state.simTime };
+    intents[key] = { receipt: { ...receipt, deliveredVaultIds: [...receipt.deliveredVaultIds] }, result };
+    if (qty) this.applyStockPressure(ILEX_ARK.stationId, 'cmdty_food', 'sell', qty);
+    this.bus.emit('ilexArk:harvested', { ...result, deliveredVaultIds: [...result.deliveredVaultIds] });
+    this.bus.emit('toast', { text: qty ? `Ceres greenhouse — first planting yielded ${qty}u Provisions from ${receipt.deliveredVaultIds.length}/6 seed lines.`
+      : 'Ceres greenhouse — no seed lines arrived. No planting or Provisions were created.', kind: 'info', ttl: 6 });
+    return { ok: true, duplicate: false, ...result };
+  },
   settleTallyThreeDelivery(receipt) {
     const source=tallyThreeSource(this.state),canonical=source?.delivery;
     if(!canonical||JSON.stringify(canonical)!==JSON.stringify(receipt)
@@ -3304,19 +3359,39 @@ export const economy = {
       this.bus.emit('toast', { text: 'Dock first', kind: 'error', ttl: 2 });
       return;
     }
+    // The berth's own services list is the contract: a trade post with no pump does not fill
+    // your tank, and a mining outpost with no yard does not weld your hull. Without this gate
+    // the yard refuses the job and the instant-fallback below silently becomes the pump.
+    if (type === 'refuel' || type === 'repair') {
+      const need = type === 'refuel' ? 'refuel' : 'repair';
+      if (!stationOffersService(state, need)) {
+        this.bus.emit('toast', {
+          text: need === 'refuel'
+            ? 'No fuel berth here — the yard has no pump'
+            : 'No repair yard here — the yard cannot weld',
+          kind: 'error', ttl: 3,
+        });
+        return;
+      }
+    }
     if (type === 'refuel') {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
       const want = p.amount != null ? p.amount : (fuel.max - fuel.current);
       const units = Math.max(0, Math.min(want, fuel.max - fuel.current));
-      const cost = round(units * FUEL_UNIT_CR);
-      if (units <= 0) return;
+      const fuelUnit = serviceUnitCr(state, FUEL_UNIT_CR);
+      const cost = round(units * fuelUnit);
+      if (units <= 0) {
+        // The tank is already full — the same word the repair bench gives an intact hull.
+        this.bus.emit('toast', { text: 'Tank already full', kind: 'info', ttl: 2 });
+        return;
+      }
       const credits = normalizeCredits(state.player.credits);
-      const realUnits = credits < cost ? Math.max(0, Math.min(units, Math.floor(credits / FUEL_UNIT_CR))) : units;
+      const realUnits = credits < cost ? Math.max(0, Math.min(units, Math.floor(credits / fuelUnit))) : units;
       if (realUnits <= 0) {
         // FB-101 hardship branch: a broke pilot still gets the smallest fill that can jump —
         // the berth files the unpaid units on the note instead of stranding the hull.
         const reserve = Math.min(EMERGENCY_FUEL_U, units);
-        const debtCr = this._fileDebt(Math.round(reserve * FUEL_UNIT_CR));
+        const debtCr = this._fileDebt(Math.round(reserve * fuelUnit));
         const fuelYard = this._serviceYard();
         const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
         if (fuelYard && fuelYard.enqueuePlayerJob({
@@ -3331,7 +3406,7 @@ export const economy = {
         }
         return;
       }
-      const realCost = round(realUnits * FUEL_UNIT_CR);
+      const realCost = round(realUnits * fuelUnit);
       this.chargeCredits(realCost, 'service:refuel');
       // The yard owns timed delivery when the player is on a live dock (fuel is a pump, not an
       // instant fill). Harness docks without the production latch keep the instant path below.
@@ -3360,7 +3435,8 @@ export const economy = {
       const missArmor = Math.max(0, (e.armorMax || 0) - (e.armorHp || 0));
       const totalMiss = missHull + missArmor;
       if (totalMiss <= 0.5) { this.bus.emit('toast', { text: 'Hull already intact', kind: 'info', ttl: 2 }); return; }
-      const cost = round(totalMiss * REPAIR_HP_CR);
+      const repairUnit = serviceUnitCr(state, REPAIR_HP_CR);
+      const cost = round(totalMiss * repairUnit);
       const credits = normalizeCredits(state.player.credits);
       const repairYard = this._serviceYard();
       const yardUnits = credits < cost ? totalMiss * (cost > 0 ? credits / cost : 0) : totalMiss;
@@ -3443,8 +3519,13 @@ export const economy = {
       });
       this.bus.emit('toast', { text: `Hull washed (${HULL_WASH_CR} cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'ammo') {
-      const units = Math.max(0, Math.floor(p.amount || 0));
-      if (units <= 0) return;
+      // A missing amount means "a batch, hold and wallet permitting" — the same default
+      // semantics the refuel and repair verbs carry. An explicit 0 is an answer: nothing asked.
+      const units = Math.max(0, Math.floor(p.amount != null ? p.amount : AMMO_BATCH));
+      if (units <= 0) {
+        this.bus.emit('toast', { text: 'No munitions requested', kind: 'info', ttl: 2 });
+        return;
+      }
       const cost = round(units * AMMO_UNIT_CR);
       if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for munitions', kind: 'error', ttl: 2 }); return; }
       // ammo is tracked as a cargo commodity (cmdty_munitions) so it integrates with the hold.
@@ -3475,7 +3556,11 @@ export const economy = {
         return;
       }
       const want = p.amount != null ? Math.min(held, Math.max(0, Math.floor(Number(p.amount)))) : held;
-      if (want <= 0) return;
+      if (want <= 0) {
+        // An explicit zero is an answer: the player asked to redeem nothing.
+        this.bus.emit('toast', { text: 'No rights asked for', kind: 'info', ttl: 2 });
+        return;
+      }
       player.salvageRights = held - want;
       const payout = round(want * SALVAGE_RIGHT_CR);
       this.grantCredits(payout, 'service:redeem_rights');

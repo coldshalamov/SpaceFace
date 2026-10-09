@@ -608,6 +608,8 @@ function nearestStructure(state, pos) {
 }
 
 function makeMarker(state, payload, entity) {
+  // The fold does not leave shiplike scrap. The splinter is the only drop.
+  if (entity && entity.data && entity.data.foldAberrant) return null;
   const sectorId = sectorIdFrom(state, payload);
   if (!sectorId) return null;
   const pos = posFrom(payload, entity);

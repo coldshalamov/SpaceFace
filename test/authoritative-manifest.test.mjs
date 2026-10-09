@@ -12,6 +12,7 @@ import {
   PRODUCTION_UPDATE_ORDER,
   getAuthoritativeInitOrder,
   getAuthoritativeUpdateOrder,
+  getSystemClock,
   isNodeSafeSystemId,
   validateSystemClockDeclarations,
 } from '../src/runtime/authoritativeSystemManifest.js';
@@ -96,8 +97,14 @@ test('production init + update order lengths match the live browser baseline', (
   // fieldHud) — one system each in both orders.
   // Latch Nine's physical harbor service and Scissorwake's first-encounter requester.
   // Two bounded Ceres concepts and the event-only evidence prompt.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 183);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 141);
+  // 200 init / 151 update with secondRinse (Hasp) and ruud (HOOK-LEFT).
+  // Hasp follows palletJack; HOOK-LEFT follows ruckus before physics.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 200);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 151);
+  assert.equal(PRODUCTION_INIT_ORDER.includes('stuckTowPrompt'), true);
+  assert.equal(PRODUCTION_UPDATE_ORDER.includes('stuckTowPrompt'), false);
+  assert.equal(getSystemClock('moralTrap'), 'calendar');
+  assert.equal(getSystemClock('moralTrapSystem'), 'calendar');
   assert.ok(PRODUCTION_INIT_ORDER.includes('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('bracket') < PRODUCTION_UPDATE_ORDER.indexOf('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ravel') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
@@ -138,6 +145,11 @@ test('production init + update order lengths match the live browser baseline', (
   assert.ok(PRODUCTION_INIT_ORDER.indexOf('combat')
     < PRODUCTION_INIT_ORDER.indexOf('capitalBossEncounters'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('capitalBossEncounters'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('palletJack')
+    < PRODUCTION_UPDATE_ORDER.indexOf('secondRinse'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('secondRinse')
+    < PRODUCTION_UPDATE_ORDER.indexOf('aiSlot'));
+  assert.ok(PRODUCTION_INIT_ORDER.includes('secondRinse'));
 });
 
 // J6: every system in update order must also be initialized (update ⊆ init).
@@ -263,7 +275,8 @@ test('browser production system set is unchanged vs production manifest constant
   // 177 with the Gyre Snare pair — gyreSnare (the held-verb lash itself, between
   // fields and physics) and gyreHud (DOM-guarded lane pill beside fieldHud), one
   // system in both orders each.
-  assert.equal(registry.systems.length, 183);
+  // 200 with secondRinse and ruud, each registered once in both orders.
+  assert.equal(registry.systems.length, 200);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

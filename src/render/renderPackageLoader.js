@@ -13,7 +13,7 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
-import { activeDecodeClass, regradeGltfCompile, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { activeDecodeClass, regradeGltfCompile, regradeGltfParse, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
@@ -23,6 +23,7 @@ import {
   packageDetachDiagnostics,
 } from './packageCpuDetach.js';
 import { dedupeGltfTextureSources } from './imageSourceDedupe.js';
+import { dedupWarn } from '../core/warnDedup.js';
 
 const ABSOLUTE_URL_RE = /^[a-z][a-z\d+.-]*:/i;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -234,6 +235,10 @@ export function createRenderPackageLoader(options = {}) {
       request: null,
       evicted: false,
       admission: newAdmission(`render-package:${metadata.assetId || contentHash}`),
+      // The decode's parse start keys its queued entry under this token so a
+      // later joiner can re-grade it (the parse lanes live inside
+      // scheduleGltfParse; the metadata object is unique per decode).
+      parseToken: metadata,
       refCount: 1,
       liveConsumers: typeof decodeConsumerActive === 'function'
         ? [decodeConsumerActive]
@@ -361,7 +366,7 @@ export function createRenderPackageLoader(options = {}) {
             collectResources: collectImmutableResources,
           });
         } catch (error) {
-          if (typeof console !== 'undefined') console.warn('[renderPackageLoader] cpu detach manifest failed', error);
+          dedupWarn('renderPackageLoader:cpu-detach-manifest', '[renderPackageLoader] cpu detach manifest failed', error);
         }
         return loaded;
       })();
@@ -489,7 +494,12 @@ export function createRenderPackageLoader(options = {}) {
     if (typeof metadataUrl !== 'string' || !metadataUrl) return false;
     for (const entry of cache.values()) {
       if (entry.metadataUrl === metadataUrl) {
-        return entry.promise ? regradeGltfCompile(entry.promise, joinClass) : false;
+        // Re-grade the parse start AND the compile tail — a joiner's decode
+        // still queued for its parse would otherwise sit behind every ambient
+        // warm ahead of it even after the tail promotes.
+        const parse = entry.parseToken ? regradeGltfParse(entry.parseToken, joinClass) : false;
+        const compile = entry.promise ? regradeGltfCompile(entry.promise, joinClass) : false;
+        return parse || compile;
       }
     }
     return false;
@@ -1195,7 +1205,7 @@ export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
     }
     meshoptWorkerPoolStarted = true;
   } catch (error) {
-    console.warn('[renderPackageLoader] meshopt worker decode unavailable; decoding on the present thread', error);
+    dedupWarn('renderPackageLoader:meshopt-worker-decode', '[renderPackageLoader] meshopt worker decode unavailable; decoding on the present thread', error);
   }
 }
 
@@ -1240,7 +1250,7 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
       });
     }
     if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
-    const gltf = await scheduleGltfParse(() => loader.parseAsync(buffer, resourceBaseUrl(url)));
+    const gltf = await scheduleGltfParse(() => loader.parseAsync(buffer, resourceBaseUrl(url)), metadata);
     // Cross-package image-source dedupe: embedded PNG/JPEG copies collapse onto one THREE.Source
     // per distinct byte payload; embedded KTX2 sources already dedupe inside the texture plugin.
     // Paced through the class lanes so clustered parse replies can't stack the sync walk.

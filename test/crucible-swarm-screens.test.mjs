@@ -27,7 +27,7 @@ import {
   saveCrucibleMeta,
 } from '../src/systems/survivalRecords.js';
 import { survivalHud } from '../src/ui/survivalHud.js';
-import { resultCelebration } from '../src/ui/screens/crucible.js';
+import { resultCelebration, seatDialAboveFoot, DIAL_FOOT_GAP_PX, DIAL_FOOT_MIN_INSET_PX } from '../src/ui/screens/crucible.js';
 
 const SWARM = 'swarm';
 const ARENA = 'helios_core';
@@ -391,7 +391,8 @@ test('SWARM-05: the celebration band reads the settled run, stars and all', () =
     assert.match(lines, /515 cr/);
     assert.match(lines, /Ricochet Runner/, 'the unlock id resolves to its label');
     assert.match(lines, /Round 10/);
-    assert.match(lines, /opens at 2 stars/, 'the next arena\'s gate is named');
+    assert.match(lines, /Lagrange Crucible opens at 2 stars/, 'the next arena\'s gate is named');
+    assert.doesNotMatch(lines, /lagrange_crucible/, 'the player reads the arena name, never its id');
   } finally {
     globalThis.document = previousDocument;
   }
@@ -429,4 +430,18 @@ test('SWARM-05: the boss census reads champion bodies and nothing else', () => {
   assert.equal(vitals.pct, 0.5);
   assert.equal(survivalHud._bossVitals({ entities: new Map() }), null);
   assert.equal(survivalHud._bossVitals({}), null);
+});
+
+test('the death dial seats above the results foot so its legend never prints under a way out', () => {
+  const plate = { clientHeight: 882 };
+  const host = { style: {}, offsetParent: plate };
+  assert.equal(seatDialAboveFoot(host, { offsetParent: plate, offsetTop: 736 }), 882 - 736 + DIAL_FOOT_GAP_PX);
+  assert.equal(host.style.bottom, `${882 - 736 + DIAL_FOOT_GAP_PX}px`, 'the dial ends above the foot row');
+  const low = { style: {}, offsetParent: plate };
+  assert.equal(seatDialAboveFoot(low, { offsetParent: plate, offsetTop: 860 }), DIAL_FOOT_MIN_INSET_PX,
+    'never lower than the authored inset');
+  const unlaid = { style: {}, offsetParent: null };
+  assert.equal(seatDialAboveFoot(unlaid, { offsetParent: null, getBoundingClientRect: () => ({ top: 0 }) },
+    { innerHeight: 0 }), null);
+  assert.equal(unlaid.style.bottom, undefined, 'a plate with no layout is left alone');
 });

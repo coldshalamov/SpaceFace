@@ -37,6 +37,7 @@ const SCAR_CLASS_LINE = Object.freeze({
 // Worst open scar leads. The berth tape and the dock voice both speak the first line,
 // so a graze must not bury a crushing hit.
 const SPOKEN_SCAR_BANDS = Object.freeze(['crushing', 'heavy', 'hard', 'graze']);
+const MAX_SPOKEN_SCAR_BANDS = 2;
 
 function leftoverLine(value) {
   const next = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
@@ -153,11 +154,15 @@ export function leftoverMechanicLines(state) {
     const name = hullSpokenName(state, owned);
     const classes = leftoverMechanicScarClasses(hull);
     let named = false;
+    let spoken = 0;
+    let lighter = 0;
     for (const band of SPOKEN_SCAR_BANDS) {
       if (!classes.includes(band)) continue;
+      if (spoken >= MAX_SPOKEN_SCAR_BANDS) { lighter += 1; continue; }
       const line = leftoverScarLine(hull, band, named ? null : name);
-      if (line) { lines.push(line); named = true; }
+      if (line) { lines.push(line); named = true; spoken += 1; }
     }
+    if (lighter) lines.push(lighter === 1 ? 'One lighter mark besides.' : 'Two lighter marks besides.');
     const repair = leftoverRepairLine(hull);
     if (repair) lines.push(repair);
     const rap = leftoverRapLine(state, hull);

@@ -194,11 +194,20 @@ export function placeHoverTag(el, x, y, viewW, viewH) {
   const vw = Number.isFinite(viewW) && viewW > 0 ? viewW : 1024;
   const vh = Number.isFinite(viewH) && viewH > 0 ? viewH : 768;
   if (el.hidden) el.hidden = false;
-  el.style.maxWidth = Math.max(96, vw - 24) + 'px';
+  // Cached writes only: a per-tick left/top/maxWidth write invalidates layout every pointer
+  // frame. maxWidth moves with the viewport alone.
+  const maxW = Math.max(96, vw - 24) + 'px';
+  if (el.__woiMaxW !== maxW) {
+    el.__woiMaxW = maxW;
+    el.style.maxWidth = maxW;
+  }
   const fonts = (typeof document !== 'undefined' && document.fonts && document.fonts.status) || '';
   const key = el.textContent + '|' + vw + 'x' + vh + '|' + fonts + '|' + ((el.dataset && el.dataset.bars) || '');
   let size = el.__woiSize;
   if (!size || size.key !== key) {
+    // The only offsetWidth/offsetHeight read: content, viewport, or font status actually
+    // changed, so the cached box is stale. Steady ticks reuse the cached dimensions and
+    // never force a synchronous layout.
     size = el.__woiSize = { key, w: el.offsetWidth || 0, h: el.offsetHeight || 0 };
   }
   const w = Math.min(size.w, vw - 24);
@@ -210,6 +219,12 @@ export function placeHoverTag(el, x, y, viewW, viewH) {
   const minY = h + 18;
   const maxY = Math.max(minY, vh - 8);
   const py = Math.min(Math.max(y, minY), maxY);
-  el.style.left = px + 'px';
-  el.style.top = py + 'px';
+  // Position rides the compositor: translate3d to (px,py) composed with the stylesheet
+  // centering (translate(-50%,calc(-100% - 14px))) — the box lands exactly where the old
+  // left/top writes put it, without a layout invalidation per pointer frame.
+  const tf = 'translate3d(' + px + 'px,' + py + 'px,0) translate(-50%,calc(-100% - 14px))';
+  if (el.__woiTf !== tf) {
+    el.__woiTf = tf;
+    el.style.transform = tf;
+  }
 }

@@ -18,6 +18,7 @@ import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
+import { resolveActionLabel } from '../systems/input.js';
 import { injectHudCss } from './views/hudStyles.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import {
@@ -31,10 +32,13 @@ import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 import { IS_DEV } from '../core/devMode.js';
 import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
+import { completeRacingLaunch, noteRacingNewGame } from './racingLaunch.js';
+import { mountRacingHud } from './racingHud.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { occupantGenerationOf } from '../core/entity.js';
+import { flightCursorMode, installNativeFlightCursor } from './flightCursor.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -58,6 +62,55 @@ const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/sv
     <line x1="61" y1="61" x2="69" y2="69"/>
   </g>
 </svg>`;
+
+// Presentation owns the pointer's location independently of transient gameplay input.
+// Menus, focus release and input fences clear input.pointerScreen.active without moving
+// the mouse, so that flag must never decide whether the player's target cursor exists.
+export function createFlightPointerTracker(win, doc) {
+  const pointer = { x: 0, y: 0, active: false, focused: !doc.hasFocus || doc.hasFocus() };
+  let seen = false;
+  let inside = false;
+  const refresh = () => { pointer.active = seen && inside && pointer.focused; };
+  const move = (event) => {
+    if (event.pointerType === 'touch' || doc.pointerLockElement
+      || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+    pointer.focused = !doc.hasFocus || doc.hasFocus();
+    seen = true;
+    inside = true;
+    refresh();
+  };
+  const blur = () => { pointer.focused = false; refresh(); };
+  const focus = () => { pointer.focused = true; refresh(); };
+  const leave = (event) => {
+    if (event.relatedTarget != null) return;
+    inside = false;
+    refresh();
+  };
+  const bindings = [
+    [win, 'pointermove', move, true], [win, 'mousemove', move, true], [win, 'mousedown', move, true],
+    [win, 'blur', blur, false], [win, 'focus', focus, false], [doc, 'mouseout', leave, false],
+  ];
+  for (const [target, type, listener, capture] of bindings) target.addEventListener(type, listener, capture);
+  return {
+    pointer,
+    destroy() {
+      for (const [target, type, listener, capture] of bindings) target.removeEventListener(type, listener, capture);
+    },
+  };
+}
+
+// Only the explicitly toggled combat stick centers the sight. Ordinary mouse flight
+// follows presentation's real pointer, including while gameplay pointer state is cleared.
+export function flightReticlePosition(state, width, height, visualPointer) {
+  const input = state && state.input;
+  if (input && input.autoFire) return { x: width * 0.5, y: height * 0.5 };
+  const pointer = visualPointer || (input && input.pointerScreen);
+  if (!pointer || !pointer.active || !Number.isFinite(pointer.x) || !Number.isFinite(pointer.y)
+    || pointer.x < 0 || pointer.y < 0 || pointer.x > width || pointer.y > height) return null;
+  return { x: pointer.x, y: pointer.y };
+}
 // (Removed PILOT_AVATAR_SVG — the helmet/visor pilot circle violated the standing no-visor/no-
 //  cockpit HUD rule (00_MASTER_TASTE §3). The splash now uses a clean non-diegetic signal slate.)
 import { createHud } from './hud.js';
@@ -127,10 +180,12 @@ const SCREEN_MODULES = [
   // ACHIEVEMENTS (PQ-033.03): the local achievement ledger, reached from the title's fine line and
   // from Pause. Reads the same ledger the Steam mirror sends from.
   { path: './screens/achievements.js', load: () => import('./screens/achievements.js'), name: 'achievementsScreen' },
+  { path: './screens/statistics.js', load: () => import('./screens/statistics.js'), name: 'statisticsScreen' },
   { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
   { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
   // Wave B11 — Physics lab / Sandbox toy on front door.
   { path: './screens/sandbox.js', load: () => import('./screens/sandbox.js'), name: 'sandboxScreen' },
+  { path: './screens/raceBoard.js', load: () => import('./screens/raceBoard.js'), name: 'raceBoardScreen' },
 ];
 
 // Title / pause / death must win the first parse wave. Galaxy map, station, and shipworks
@@ -415,8 +470,10 @@ function saveErrorReasonText(payload = {}) {
   }
 }
 
+const saveFeedbackWired = new WeakSet();
 function wireSaveFeedback(bus) {
-  if (!bus || !bus.on) return;
+  if (!bus || !bus.on || saveFeedbackWired.has(bus)) return;
+  saveFeedbackWired.add(bus);
   // No 'Saving …' receipt: the write lands in milliseconds and 'Saved …' follows, so two toasts
   // for one press only crowded the lane.
   bus.on('save:completed', ({ slot } = {}) => {
@@ -462,6 +519,7 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    if (this._destroyFlightCursor) this._destroyFlightCursor();
     invalidateScreenRegistrationCycle(this);
     this._screenRegistrationCycle = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
@@ -521,8 +579,10 @@ export const ui = {
     wireSaveFeedback(this.bus);
     // INF-092: the mirror status is truthful — pending stays pending, a failed mirror says
     // which store is durable, and a later landed write clears the warning. Toasts only; no
-    // duplicate save and no transition rides on this path.
-    this.bus.on('save:store-synced', (payload = {}) => {
+    // duplicate save and no transition rides on this path. Re-init replaces the handler
+    // instead of stacking a second one onto the same bus.
+    if (typeof this._storeSyncedOff === 'function') { try { this._storeSyncedOff(); } catch (_) {} }
+    this._storeSyncedOff = this.bus.on('save:store-synced', (payload = {}) => {
       if (this.screenManager && typeof this.screenManager.refreshTop === 'function') {
         try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
       }
@@ -571,6 +631,24 @@ export const ui = {
     if (IS_DEV) {
       installSandboxGameStartedHook(this.bus, () => this.ctx);
     }
+    if (typeof this._racingArmOff === 'function') {
+      try { this._racingArmOff(); } catch (_) { /* previous init */ }
+    }
+    const offRacingNew = this.bus.on('game:new', (opts) => noteRacingNewGame(opts));
+    const offRacingArm = this.bus.on('game:started', () => {
+      const result = completeRacingLaunch(this.ctx);
+      if (result && result.ok !== true) {
+        // Later game:started listeners close the launch screens. Reopen the menu after
+        // that synchronous fan-out, unless another public transition already took over.
+        queueMicrotask(() => {
+          if (this.state.mode === 'menu') this._showMainMenuWhenReady?.();
+        });
+      }
+    });
+    this._racingArmOff = () => {
+      if (typeof offRacingNew === 'function') offRacingNew();
+      if (typeof offRacingArm === 'function') offRacingArm();
+    };
 
     // Register the administrative-blackout capture fence before any interactive comms/HUD module.
     // Document capture listeners on the same target run in registration order, so constructing the
@@ -651,6 +729,19 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
     this.bandHud = createBandHud(ctx);
+    if (this.racingHud && typeof this.racingHud.dispose === 'function') {
+      try { this.racingHud.dispose(); } catch (_) { /* remount */ }
+    }
+    this.racingHud = null;
+    try {
+      const uiRootEl = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
+      this.racingHud = mountRacingHud({
+        root: uiRootEl,
+        bus: this.bus,
+        state: this.state,
+        screens: this.screenManager,
+      });
+    } catch (e) { console.warn('[ui] racing tape mount failed', e); }
 
     this.worldObject = createWorldObjectInteraction(ctx, this.screenManager);
 
@@ -669,15 +760,31 @@ export const ui = {
     // === UI: aiming reticle ===
     // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
     // this third-person chase-cam game, and it sat on every screen as an unexplained symbol.)
-    // Software-cursor aiming reticle (clean SVG crosshair).
+    // The native target cursor owns ordinary mouse flight. This independent DOM marker
+    // carries hit feedback and the centered combat-stick sight, outside HUD effects.
     const reticle = document.createElement('div');
     reticle.id = 'aim-reticle';
     reticle.dataset.mode = 'manual';
     reticle.innerHTML = RETICLE_SVG;
+    reticle.setAttribute('aria-hidden', 'true');
+    const reticleModeLabel = document.createElement('span');
+    reticleModeLabel.className = 'sf-reticle-mode-label';
+    reticle.appendChild(reticleModeLabel);
     const hudRoot = document.getElementById('hud');
-    hudRoot.appendChild(reticle);
+    document.getElementById('ui-root').appendChild(reticle);
+    const flightPointer = createFlightPointerTracker(window, document);
+    const nativeCursor = installNativeFlightCursor(document);
 
     let hitTickTimeout = null;
+    this._destroyFlightCursor = () => {
+      if (hitTickTimeout) clearTimeout(hitTickTimeout);
+      flightPointer.destroy();
+      nativeCursor.destroy();
+      document.body.classList.remove('sf-flight-cursor', 'sf-flight-pointer');
+      reticle.remove();
+      this._syncFlightCursor = null;
+      this._destroyFlightCursor = null;
+    };
     const triggerHitTick = (kind) => {
       const el = document.getElementById('aim-reticle') || reticle;
       if (!el) return;
@@ -738,23 +845,30 @@ export const ui = {
     let lastEndpointCx = null;
     let lastEndpointCy = null;
     let lastFlightPathDrawing = null;
-    let lastFlightCursorActive = null;
 
     // Bind-sheet copy lives in Help / Settings. The flight windshield no longer mounts a key laundry.
     setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
       && this.state.settings.gameplay.controlScheme);
     setPromptBindings(this.state);
+    const refreshReticleModeLabel = () => {
+      reticleModeLabel.textContent = `Combat stick · ${resolveActionLabel(this.state, 'autoFire')} to exit`;
+    };
+    refreshReticleModeLabel();
     this.bus.on('settings:changed', () => {
       setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
         && this.state.settings.gameplay.controlScheme);
       setPromptBindings(this.state);
+      refreshReticleModeLabel();
+      // Read the applied palette after the settings listeners update accessibility classes.
+      queueMicrotask(() => nativeCursor.refresh());
     });
 
     const syncFlightCursor = (visible, reticleAlive = visible) => {
       const st = this.state;
-      const pointer = st && st.input && st.input.pointerScreen;
-      const active = !!(visible && pointer && pointer.active);
       const autoTarget = !!(visible && st && st.input && st.input.autoFire);
+      const position = flightReticlePosition(st,
+        typeof innerWidth === 'number' ? innerWidth : 0,
+        typeof innerHeight === 'number' ? innerHeight : 0, flightPointer.pointer);
       const flightPath = st && st.input && st.input.autoTargetPath;
       const flightStick = st && st.input && st.input.autoTargetVector;
       const pathActive = !!(autoTarget && flightPath && flightPath.active
@@ -770,21 +884,23 @@ export const ui = {
         && typeof document.exitPointerLock === 'function') {
         try { document.exitPointerLock(); } catch (_) { /* best effort: the next frame retries */ }
       }
-      if (lastFlightCursorActive !== active) {
-        lastFlightCursorActive = active;
-        document.body.classList.toggle('sf-flight-cursor', active);
-      }
       // `reticle` created above is the only element with id 'aim-reticle': the old
       // getElementById could only ever resolve to it (or nothing) — skip the per-frame lookup.
       const reticleEl = reticle;
-      // reticleAlive keeps the aim marker readable under live (non-pausing) overlays while the
-      // cursor-hiding flight mode stays off (FRONTEND_DIRECTION §3.5: reticle + alerts survive).
-      const nextReticleDisplay = reticleAlive ? 'block' : 'none';
+      // Only combat-stick mode hides the native pointer for a centered sight. Ordinary
+      // flight always selects the native target image, even before the first mouse event
+      // or after a transient focus/input reset. Windows/browser owns its actual position.
+      const targetCursorVisible = !!(reticleAlive && position && flightPointer.pointer.focused
+        && reticleEl.isConnected);
+      const cursorMode = flightCursorMode(st, visible, targetCursorVisible);
+      document.body.classList.toggle('sf-flight-pointer', cursorMode === 'mouse');
+      document.body.classList.toggle('sf-flight-cursor', cursorMode === 'stick');
+      const nextReticleDisplay = targetCursorVisible ? 'block' : 'none';
       if (lastReticleDisplay !== nextReticleDisplay) {
         lastReticleDisplay = nextReticleDisplay;
         reticleEl.style.display = nextReticleDisplay;
       }
-      const nextReticleMode = autoTarget ? 'auto' : 'manual';
+      const nextReticleMode = st && st.input && st.input.autoFire ? 'auto' : 'manual';
       if (lastReticleMode !== nextReticleMode) {
         lastReticleMode = nextReticleMode;
         reticleEl.dataset.mode = nextReticleMode;
@@ -819,13 +935,10 @@ export const ui = {
         lastFlightPathOpacity = nextFlightPathOpacity;
         autoTargetFlightPath.style.opacity = nextFlightPathOpacity;
       }
-      if (!visible) return;
-      const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
-      const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
-      const x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
-      const y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
-      if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
-        || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
+      const x = position && position.x;
+      const y = position && position.y;
+      if (position && (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
+        || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1)) {
         const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
         if (reticleEl._sfHudTransform !== next) {
           reticleEl._sfHudTransform = next;
@@ -834,6 +947,7 @@ export const ui = {
         lastReticleX = x;
         lastReticleY = y;
       }
+      if (!visible) return;
       if (autoTarget) {
         if (!pathActive || !this.helpers || typeof this.helpers.worldToScreen !== 'function') return;
         const projectedPoints = [];
@@ -1588,8 +1702,8 @@ export const ui = {
         this.screenManager.syncHudAccessibility(modalChromeOpen || liveOverlay || docked || !st || st.mode !== 'flight');
       }
       const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
-      // Flight cursor (cursor:none) only in pure flight — over any open screen the pointer is a UI
-      // cursor. The reticle itself stays alive under live overlays (second arg).
+      // The independent target cursor owns the pointer in flight. Screens restore their
+      // native pointer; the aim marker stays alive under live overlays (second arg).
       if (this._syncFlightCursor) this._syncFlightCursor(hudVisible && !modalOpen, hudVisible);
       if (this.hud) {
         if (hudVisible) {
@@ -1608,6 +1722,7 @@ export const ui = {
         this._hudVisibleLast = hudVisible;
       }
       if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
+      if (this.racingHud && typeof this.racingHud.frame === 'function') this.racingHud.frame(st);
       // Authored capital warnings draw over the flight picture and hold still while the sim is
       // frozen; the mount clears its canvas outside flight so menus never inherit a stale warning.
       if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {
@@ -1631,6 +1746,7 @@ export const ui = {
   },
 
   destroy() {
+    if (this._destroyFlightCursor) this._destroyFlightCursor();
     // The rest of the UI is process-lifetime today, but the first-session cinematic has temporary
     // global capture listeners and timers. Re-init/destroy must remove them without marking the
     // cinematic seen or opening a menu behind the caller.

@@ -57,7 +57,7 @@ function enterSector(sector) {
 }
 
 test('FB-029 seed 4242: 24 sectors do not share one traffic mix', () => {
-  assert.equal(SECTORS.length, 24);
+  assert.equal(SECTORS.length, 25);
   const seen = new Map();
   for (const sector of SECTORS) {
     const key = mixKey(sector);
@@ -101,7 +101,7 @@ test('FB-032: every sector has one physical difference and its own arrangement',
 });
 
 test('FB-031: the way-of-life sheet is complete and the arrival card carries the sentence', () => {
-  assert.equal(SECTOR_WAY_OF_LIFE.length, 24);
+  assert.equal(SECTOR_WAY_OF_LIFE.length, 25);
   for (const sector of SECTORS) {
     const life = getSectorWayOfLife(sector.id);
     assert.ok(life, sector.id);

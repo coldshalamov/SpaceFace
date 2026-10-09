@@ -18,6 +18,9 @@ import { SAMPLE_BINDINGS, COLLISION_LADDER } from '../data/audioRecipes.js';
 import { THEME_ASSETS } from './themeCompose.js';
 
 export const SAMPLE_TIER = Object.freeze({ CORE: 0, ACTION: 1, CONTEXT: 2 });
+// A failed fetch+decode retries after this long — one flaky fetch must not blacklist a sample
+// for the whole session (acquire ages the failure out and re-enqueues).
+const FAILED_RETRY_MS = 30000;
 
 // Mirrors assets/audio/generate-samples.mjs SAMPLES[] (the generator's --check mode and
 // test/pq-158-00-sample-library.test.mjs keep the three from drifting).
@@ -167,6 +170,7 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['arrival_eunomia_gulf', { file: 'assets/audio/arrival/arrival_eunomia_gulf.wav', tier: 1, loop: false, seconds: 0.7 }],
   ['arrival_sedna_dark', { file: 'assets/audio/arrival/arrival_sedna_dark.wav', tier: 1, loop: false, seconds: 1.4 }],
   ['arrival_dione_lane', { file: 'assets/audio/arrival/arrival_dione_lane.wav', tier: 1, loop: false, seconds: 0.85 }],
+  ['arrival_the_bolus', { file: 'assets/audio/arrival/arrival_the_bolus.wav', tier: 1, loop: false, seconds: 1.4 }],
   ['ore_tick', { file: 'assets/audio/mining/ore_tick.wav', tier: 1, loop: false, seconds: 0.25 }],
   ['hopper_thock', { file: 'assets/audio/mining/hopper_thock.wav', tier: 1, loop: false, seconds: 0.3 }],
   ...THEME_ASSETS.map((asset) => [asset.id, {
@@ -363,9 +367,15 @@ export function createSampleRuntime(options = {}) {
         return buf;
       }
       stats.misses++;
-      if (SAMPLE_MANIFEST.has(id) && !failed.has(id)) {
-        enqueue(id);
-        pump();
+      if (SAMPLE_MANIFEST.has(id)) {
+        // One flaky fetch must not blacklist a sample for the whole session: age the failure
+        // out after a cooldown so the next acquire retries the real fetch.
+        const failure = failed.get(id);
+        if (failure && Date.now() - failure.time > FAILED_RETRY_MS) failed.delete(id);
+        if (!failed.has(id)) {
+          enqueue(id);
+          pump();
+        }
       }
       return null;
     },

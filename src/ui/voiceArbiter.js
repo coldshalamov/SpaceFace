@@ -153,7 +153,9 @@ export class VoiceQueue {
       priority: priorityFor(channel, priority),
       ttlMs,
       enqueuedAt: now,
-      expireAt: now + ttlMs,                         // stale-drop deadline while queued
+      // One extra bark gap is queue patience, not screen time. Equal-tick barks must not
+      // expire together when the first finishes. Backlogged lines still have a finite age.
+      expireAt: now + ttlMs + (channel === 'bark' ? this._barkMinGapMs : 0),
       seq: this._seq++,
     };
     // Coalesce (same-id replace): update the existing active or queued entry in place (keep its seq
@@ -161,6 +163,10 @@ export class VoiceQueue {
     if (entry.id != null) {
       if (this._active && this._active.id === entry.id) {
         entry.seq = this._active.seq;
+        if (channel === 'bark') {
+          entry.floorStartedAt = now;
+          entry.expireAt = now + ttlMs;
+        }
         this._active = entry;
         return entry;
       }
@@ -200,7 +206,15 @@ export class VoiceQueue {
     if (idx >= 0) this._items.splice(idx, 1);
     const prev = this._active;
     this._active = best;
-    if (best.channel === 'bark') this._lastBarkAt = now;
+    if (best.channel === 'bark') {
+      this._lastBarkAt = now;
+      // A delayed line gets its requested reading time. A preempted line retains its
+      // original floor deadline when it resumes, so interruptions cannot prolong it forever.
+      if (!Number.isFinite(best.floorStartedAt)) {
+        best.floorStartedAt = now;
+        best.expireAt = now + best.ttlMs;
+      }
+    }
     // Re-queue the interrupted floor holder unless same-id coalesce already replaced it, or it is
     // already past its expire window.
     if (prev && prev !== best && now < prev.expireAt) {
@@ -340,8 +354,8 @@ export const voiceArbiter = {
       const policy = this._policy();
       const active = this.queue.active;
       // A player dismissal clears the pill once — but never a critical squelch (danger class),
-      // and not the tutorial floor while onboarding still owns it.
-      if (isDangerVoice(active)) return;
+      // and not the tutorial floor while onboarding still owns it. Channel alone is not
+      // critical squelch (isCriticalSquelchLine), so ordinary alert-channel warnings clear.
       if (active && policy.tutorialProtect && active.channel === 'tutorial') return;
       const surfaced = this.queue.dismiss(this._now(), policy);
       this._flushPresentation(surfaced);

@@ -123,7 +123,7 @@ function assertHintFiresOncePerTypePerSession() {
 
   bus.emit('hazard:enter', { entityId: 1, zoneType: 'radiation', intensity: 0.5 });
   assert.equal(sayCalls.length, 1, 'first radiation entry speaks one hint');
-  assert.equal(sayCalls[0].channel, 'warn', 'hint routes on the warn channel');
+  assert.equal(sayCalls[0].channel, 'tutorial', 'hint routes on the tutorial channel');
   assert.equal(sayCalls[0].text, HAZARD_LANGUAGE.radiation.hint, 'hint text is the counterplay line');
 
   bus.emit('hazard:exit', { entityId: 1, zoneType: 'radiation' });

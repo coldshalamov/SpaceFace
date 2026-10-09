@@ -225,6 +225,22 @@ export const core = {
     // host owns spawning and separately re-checks budget/placement. All time is simulation time.
     // Refusals are fail-closed: the engine waits and retries (15 s) rather than spawning.
     const NEMESIS_MIN_SIM_TIME = 180; // earliest first announcement (LIMITS contract, seconds)
+    // The rival wing lands ~1150 WU from the pilot; inside this radius of any station the beat
+    // would open on its doorstep.
+    const NEMESIS_DOORSTEP_WU = 2000;
+    const stationWithin = (s, pos, radius) => {
+      if (!pos) return false;
+      const index = s.entityIndex;
+      const list = index && Array.isArray(index.stations) ? index.stations : (s.entityList || []);
+      const r2 = radius * radius;
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+        const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z;
+        if (dx * dx + dz * dz <= r2) return true;
+      }
+      return false;
+    };
     const canStartNemesisEncounter = (request, currentState) => {
       const s = currentState || state;
       if (!s || s.mode !== 'flight') return false;
@@ -243,14 +259,24 @@ export const core = {
       // Docked or dock-adjacent: never open a boss beat at the station's doorstep.
       if (self.flags && self.flags.docked) return false;
       if (s.ui && s.ui.docked === true) return false;
+      // The corridor readout falls back to 'approach' anywhere in a sector with a manifest station
+      // (its far latch then holds it there), so only its engaged phases mean docking; nearness to
+      // any station is the doorstep. Vetoing 'approach' kept Orra out of all of Helios Prime.
       const corridor = s.dockingCorridor;
-      if (corridor && corridor.phase && corridor.phase !== 'none') return false;
+      const dockPhase = corridor && corridor.phase;
+      if (dockPhase === 'corridor' || dockPhase === 'capture' || dockPhase === 'berthed') return false;
+      if (stationWithin(s, self.pos, NEMESIS_DOORSTEP_WU)) return false;
       // No other major encounter: survival/crucible/swarm runs and an already-live rival beat
       // each veto. Mission-owned set pieces stay authored by their own directors this interim.
       const run = s.run;
       if (run && run.kind && run.phase !== 'inactive') return false;
+      // A live rival beat vetoes a second one. The pending request under approval IS this beat:
+      // vetoing every pending request refused each deployment, so Orra never arrived and the
+      // announcement retried every 15 s forever.
       const rivalMemory = s.nemesis;
-      if (rivalMemory && (rivalMemory.active || rivalMemory.pending)) return false;
+      const pending = rivalMemory && rivalMemory.pending;
+      if (rivalMemory && (rivalMemory.active
+        || (pending && pending.id !== request.requestId))) return false;
       return true;
     };
 

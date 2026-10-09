@@ -351,6 +351,13 @@ export function createUiInput(ctx, screenManager) {
     // --- pure flight: UI-owned global keys only (mode must be flight) ---
     if (state.mode !== 'flight') return;
 
+    if (matchesBinding(ev, BINDINGS.steeringView)) {
+      if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('race:toggleView', { source: 'keyboard' });
+      return;
+    }
     if (matchesBinding(ev, BINDINGS.band)) {
       ev.preventDefault();
       bus.emit('band:cycle', { source: 'keyboard' });
@@ -1044,8 +1051,9 @@ export function createUiInput(ctx, screenManager) {
       // Accept / Cancel (A / B).
       if (gp.actions.accept && gp.actions.accept.pressed) {
         activateFocused();
+        // The audio system voices ui:confirm itself; a second ui_confirm cue here played the
+        // same sample twice on every pad accept.
         bus.emit('ui:confirm', {});
-        bus.emit('audio:cue', { id: 'ui_confirm' });
       }
       if (gp.actions.cancel && gp.actions.cancel.pressed) {
         if (def && def.id === 'station') undock();
@@ -1136,6 +1144,9 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function tick(dt) {
+    // Gesture capture must own the sample itself. Applying this after gp.tick commits the
+    // first modifier as a solo press, and eats the first ordinary press after cancellation.
+    if (gp) gp.captureMode = !!getGamepadCaptureHandler();
     // Poll the pad whenever a modal owns input, not only when timeScale has already dropped.
     // A first-frame push can race the pause request; D-pad/A/B still have to land.
     const modalOpen = !!(screenManager && screenManager.isOpen && screenManager.isOpen());

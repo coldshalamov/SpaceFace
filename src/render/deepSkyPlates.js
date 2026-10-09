@@ -23,6 +23,7 @@
 // test/deep-sky-plate-pipeline.test.mjs, so a re-bake that changes a plate cannot silently
 // disagree with the sizes the runtime budgets from.
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
+import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 
 /**
  * Root-relative URLs survive esbuild chunk relocation and use the same browser/Electron route,
@@ -222,8 +223,15 @@ export class DeepSkyPlateResidency {
     const lastPresentDtMs = this.state && this.state.render
       ? this.state.render.lastPresentDtMs : undefined;
     const gate = shouldStartHeavyAdmissionEventually(lastPresentDtMs, this.lateSkips);
+    // A forced start still needs room on the forced wallet — the same consult
+    // the mesh-build gates got. Forced-but-broke defers without resetting the
+    // skip streak, so the next frame's consult re-earns the start at once.
+    const startAllowed = gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+    if (!startAllowed) {
+      if (!gate.start) this.lateSkips = gate.skippedCount;
+      return false;
+    }
     this.lateSkips = gate.skippedCount;
-    if (!gate.start) return false;
     const texture = this.pendingTexture;
     const id = this.pendingId;
     const started = now();
@@ -242,6 +250,9 @@ export class DeepSkyPlateResidency {
     this.pendingId = null;
     this.pendingTexture = null;
     this.pendingDecoded = false;
+    // The consult that released this upload honored the forced wallet — debit
+    // the measured span so sibling forced lanes read this frame as spent.
+    noteForcedFrameSpend(Math.min(now() - started, FORCED_FRAME_BUDGET_MS));
     return true;
   }
 

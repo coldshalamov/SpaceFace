@@ -296,7 +296,13 @@ export function createAssetResidencyRegistry(options = {}) {
     // Soft-lease admissions (package cache, decode cache, runtime-cache session pins) grow the
     // bounded soft set — a cache-warming decode that never takes a live owner is exactly how
     // soft residency grows without any release. Bound it at admission, not just at departure.
-    if (isSoftResidencyOwner(ownerMetadata)) enforceSoftResidencyBudgets();
+    // Same demand-flag contract release() runs: K retains in one commit
+    // continuation must not pay K x O(assets x owners) census inline — mark
+    // demand on a big world and let the paced sweep enforce.
+    if (isSoftResidencyOwner(ownerMetadata)) {
+      if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
+      else softBudgetPending = true;
+    }
     return true;
   }
 
@@ -306,7 +312,11 @@ export function createAssetResidencyRegistry(options = {}) {
     const state = owners.get(owner);
     if (!state || state.released || state.assets.size === 0) return false;
     for (const entry of state.assets) {
-      if (![...entry.owners.keys()].some((candidate) => candidate !== owner)) return false;
+      let covered = false;
+      for (const candidate of entry.owners.keys()) {
+        if (candidate !== owner) { covered = true; break; }
+      }
+      if (!covered) return false;
     }
     releaseOwner(owner, 'warm-sector-handed-off');
     warmOwner = null;
@@ -384,7 +394,14 @@ export function createAssetResidencyRegistry(options = {}) {
       evictIfUnowned(entry, reason);
     }
     cleanupOwnerState(state);
-    if (released > 0 && !deferBudgets) enforceSoftResidencyBudgets();
+    // The census+sort is unconditional here otherwise: a mass boundary
+    // teardown drives this through the `boundary-removed` listener once per
+    // detach — K x O(assets) synchronously. Big worlds arm the paced flag
+    // instead (the sweep's release-detached drains clear and enforce it).
+    if (released > 0 && !deferBudgets) {
+      if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
+      else softBudgetPending = true;
+    }
     return released;
   }
 
@@ -405,8 +422,12 @@ export function createAssetResidencyRegistry(options = {}) {
       if (state.released || !owner || owner.isObject3D !== true) continue;
       if (!isDetached(owner)) continue;
       if (isClaimed && isClaimed(owner)) continue;
-      releaseOwner(owner, reason);
+      releaseOwner(owner, reason, true);
       released.push(owner);
+    }
+    if (released.length || softBudgetPending) {
+      softBudgetPending = false;
+      enforceSoftResidencyBudgets();
     }
     return Object.freeze(released);
   }
@@ -440,7 +461,10 @@ export function createAssetResidencyRegistry(options = {}) {
       releaseOwner(owner, reason, true);
       released.push(owner);
     }
-    if (released.length) yield* enforceSoftResidencyBudgetsSteps();
+    if (released.length || softBudgetPending) {
+      softBudgetPending = false;
+      yield* enforceSoftResidencyBudgetsSteps();
+    }
     return Object.freeze(released);
   }
 
@@ -448,7 +472,11 @@ export function createAssetResidencyRegistry(options = {}) {
     const state = owners.get(owner);
     if (!state || state.released || state.assets.size === 0) return false;
     for (const entry of state.assets) {
-      if (![...entry.owners.keys()].some((candidate) => candidate !== owner)) return false;
+      let covered = false;
+      for (const candidate of entry.owners.keys()) {
+        if (candidate !== owner) { covered = true; break; }
+      }
+      if (!covered) return false;
     }
     releaseOwner(owner, reason);
     return true;
@@ -468,7 +496,11 @@ export function createAssetResidencyRegistry(options = {}) {
     });
     evictIfUnowned(entry, reason);
     cleanupOwnerState(state);
-    enforceSoftResidencyBudgets();
+    // K releases in one drain used to pay K x O(assets) census+sort inline —
+    // mark demand and let the paced residency service run the stepped
+    // enforcement. Small worlds keep the inline path (the census is free).
+    if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
+    else softBudgetPending = true;
     return true;
   }
 
@@ -601,6 +633,11 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     return true;
   }
+
+  // Demand flag for the amortized release() path — set when the byte census is
+  // deferred to the paced service's stepped enforcement; cleared when it runs.
+  let softBudgetPending = false;
+  const SOFT_BUDGET_INLINE_MAX = 128;
 
   // Inline byte caps on soft residency, enforced at release and soft-retain time: the idle sweep
   // only reclaims entries older than its minAge gate, so a burst of departures or scopeless
@@ -839,11 +876,21 @@ export function createAssetResidencyRegistry(options = {}) {
     cacheSweepCount++;
     diagnosticsEpoch++;
     packageCacheBudgetDepth++;
+    let result;
     try {
-      return releaseUnreferencedCacheOwnersPass(reason, options);
+      result = releaseUnreferencedCacheOwnersPass(reason, options);
     } finally {
       packageCacheBudgetDepth--;
     }
+    // The pass's own release() calls arm the deferred soft-budget flag on big worlds;
+    // it used to sit armed until the next 1s prune sweep while the cache lanes that
+    // did the releasing never drained it. Depth is already unwound here so the
+    // enforce consult actually runs.
+    if (softBudgetPending) {
+      softBudgetPending = false;
+      enforceSoftResidencyBudgets();
+    }
+    return result;
   }
 
   // Stepped twin: identical walk, release order, and result shape — the sweep
@@ -853,11 +900,19 @@ export function createAssetResidencyRegistry(options = {}) {
     cacheSweepCount++;
     diagnosticsEpoch++;
     packageCacheBudgetDepth++;
+    let result;
     try {
-      return yield* releaseUnreferencedCacheOwnersPassSteps(reason, options);
+      result = yield* releaseUnreferencedCacheOwnersPassSteps(reason, options);
     } finally {
       packageCacheBudgetDepth--;
     }
+    // Same drain as the sync twin: the pass's releases arm softBudgetPending on big
+    // worlds; drain it here (paced) so enforcement doesn't wait on the prune sweep.
+    if (softBudgetPending) {
+      softBudgetPending = false;
+      yield* enforceSoftResidencyBudgetsSteps();
+    }
+    return result;
   }
 
   function releaseUnreferencedCacheOwnersPass(reason, options) {
@@ -955,6 +1010,17 @@ export function createAssetResidencyRegistry(options = {}) {
     let bytes = 0;
     for (const unit of memoryUnits.values()) bytes += unit.bytes;
     return bytes;
+  }
+
+  // The budget governor only consumes three scalar totals — building two full
+  // diagnostics() tables inside enforceBudget minted ~2xN frozen rows plus
+  // their owner-metadata sets and sort exactly at the boundary crossing.
+  function budgetTotals() {
+    let cpuPackageBytes = 0;
+    for (const entry of assets.values()) cpuPackageBytes += entry.cpuPackageBytes;
+    let unaccountedResources = 0;
+    for (const resourceEntry of resources.values()) if (resourceEntry.unaccounted) unaccountedResources++;
+    return { cpuPackageBytes, gpuResidentBytes: totalGpuResidentBytes(), unaccountedResources };
   }
 
   function evictIfUnowned(entry, reason) {
@@ -1251,10 +1317,12 @@ export function createAssetResidencyRegistry(options = {}) {
     return !!entry && entry.state !== 'resident';
   }
 
-  function governorEntry(entry, kind = 'gpu') {
-    const activeRequest = [...pendingRequests].some((request) => (
-      request.active && request.key === entry.key
-    ));
+  function governorEntry(entry, kind = 'gpu', activePendingKeys = null) {
+    const activeRequest = activePendingKeys
+      ? activePendingKeys.has(entry.key)
+      : [...pendingRequests].some((request) => (
+        request.active && request.key === entry.key
+      ));
     const ownerRecords = [...entry.owners.values()].map((metadata) => ({ ...(metadata || {}) }));
     const roles = [...new Set(ownerRecords.map((metadata) => metadata.role).filter(Boolean))];
     const presentationTiers = [...new Set(ownerRecords
@@ -1327,10 +1395,39 @@ export function createAssetResidencyRegistry(options = {}) {
   }
 
   function enforceBudget(kind = 'gpu') {
-    const before = diagnostics({ includeEvents: false });
-    const entries = [...assets.values()].map((entry) => governorEntry(entry, kind));
+    const before = budgetTotals();
     const initialResidentBytes = kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes;
-    const plan = governor.plan(entries, kind, { initialResidentBytes });
+    // One pending-request snapshot per call keeps each census map O(assets)+O(requests) —
+    // the inline per-entry scan was O(assets x requests) and ran twice (before + after
+    // entries). The per-candidate re-check below still consults live requests through the
+    // default governorEntry path, so a plan can never outrace a decode completing mid-call.
+    const activePendingKeys = new Set();
+    for (const request of pendingRequests) {
+      if (request && request.active) activePendingKeys.add(request.key);
+    }
+    const entries = [...assets.values()].map((entry) => governorEntry(entry, kind, activePendingKeys));
+    const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
+    // Under the named ceiling the planner can only return evict:[] — selectEvictions
+    // takes its early-out before touching evictions — so the spread/sort/index build
+    // is skipped outright; the receipt still carries the same fields, and the blocked
+    // breakdown below reports the real composition from `entries` like before.
+    const plan = initialResidentBytes <= governorCapBytes
+      ? {
+        overBudget: false,
+        residentBytes: initialResidentBytes,
+        initialResidentBytes,
+        remainingBytes: initialResidentBytes,
+        evictedBytes: 0,
+        plannedEvictedBytes: 0,
+        budgetBytes: governorCapBytes,
+        budgetSatisfied: true,
+        protectedShortfallBytes: 0,
+        kind,
+        blockedBytesByRole: Object.freeze({}),
+        blockedBytesByReason: Object.freeze({}),
+        evict: Object.freeze([]),
+      }
+      : governor.plan(entries, kind, { initialResidentBytes });
     const evicted = [];
     for (const key of plan.evict) {
       const entry = assets.get(String(key || ''));
@@ -1353,8 +1450,13 @@ export function createAssetResidencyRegistry(options = {}) {
       evictIfUnowned(entry, 'governor-budget');
       if (!assets.has(String(key))) evicted.push(key);
     }
-    const afterEntries = [...assets.values()].map((entry) => governorEntry(entry, kind));
-    const after = diagnostics({ includeEvents: false });
+    // An empty plan.evict means no release() ran — the asset map is byte-identical to
+    // the `entries` census minted above, so it doubles as the after-table for the
+    // blocked breakdown instead of paying a second full governorEntry walk.
+    const afterEntries = plan.evict.length === 0
+      ? entries
+      : [...assets.values()].map((entry) => governorEntry(entry, kind, activePendingKeys));
+    const after = budgetTotals();
     const beforeBytes = Number(kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes) || 0;
     const remainingBytes = Number(kind === 'cpu' ? after.cpuPackageBytes : after.gpuResidentBytes) || 0;
     const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
@@ -1427,19 +1529,28 @@ export function applySectorExitResidency(residency, sectorId, options = {}) {
   if (typeof residency.prepareSectorExit === 'function') {
     residency.prepareSectorExit(sectorId, options);
   }
-  const cacheCleanup = typeof residency.releaseUnreferencedCacheOwners === 'function'
-    ? residency.releaseUnreferencedCacheOwners(options.cacheCleanupReason || 'sector-exit-cache-only')
-    : null;
-  // World emits sector:exit before the caller releases its preview/instance owner. Queue one
-  // post-dispatch pass so that just-departed cache-only packages are reclaimed at the same boundary
-  // without making arbitrary owner release tear down a reusable package mid-frame.
-  if (typeof residency.releaseUnreferencedCacheOwners === 'function'
-    && typeof globalThis.queueMicrotask === 'function') {
-    globalThis.queueMicrotask(() => {
-      residency.releaseUnreferencedCacheOwners(
-        options.cacheCleanupReason ? `${options.cacheCleanupReason}:post-dispatch` : 'sector-exit-cache-only:post-dispatch',
-      );
-    });
+  const primaryReason = options.cacheCleanupReason || 'sector-exit-cache-only';
+  const postDispatchReason = options.cacheCleanupReason
+    ? `${options.cacheCleanupReason}:post-dispatch`
+    : 'sector-exit-cache-only:post-dispatch';
+  let cacheCleanup = null;
+  // A caller can take over cleanup driving (e.g. the renderer's paced residency
+  // poll) — the sync twin + microtask then never run inside the exit frame.
+  if (typeof options.driveCacheCleanup === 'function') {
+    options.driveCacheCleanup(primaryReason, postDispatchReason);
+  } else {
+    cacheCleanup = typeof residency.releaseUnreferencedCacheOwners === 'function'
+      ? residency.releaseUnreferencedCacheOwners(primaryReason)
+      : null;
+    // World emits sector:exit before the caller releases its preview/instance owner. Queue one
+    // post-dispatch pass so that just-departed cache-only packages are reclaimed at the same boundary
+    // without making arbitrary owner release tear down a reusable package mid-frame.
+    if (typeof residency.releaseUnreferencedCacheOwners === 'function'
+      && typeof globalThis.queueMicrotask === 'function') {
+      globalThis.queueMicrotask(() => {
+        residency.releaseUnreferencedCacheOwners(postDispatchReason);
+      });
+    }
   }
   if (typeof residency.enforceBudget === 'function') {
     const receipt = residency.enforceBudget(options.kind || 'gpu');

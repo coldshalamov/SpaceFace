@@ -29,6 +29,15 @@ import { createSaveFilmstrip } from '../orrery/saveFilmstrip.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import { capturePhotoPng } from './pause.js';
+import {
+  backupKeptLine,
+  importDestination,
+  profileImportedLine,
+  recoveryFailedLine,
+  recoveryNotice,
+  importResultLine,
+} from './saveNotices.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
@@ -390,7 +399,26 @@ function deleteConfirmBody(id, meta) {
 
 export function importConfirmBody(file) {
   const name = (typeof file === 'string' ? file : (file && file.name)) || 'selected save file';
-  return 'Importing ' + name + ' will validate and load that save immediately. Unsaved progress is lost.';
+  const dest = importSlotWord || 'the selected slot';
+  return 'Importing ' + name + ' into ' + dest + ' will validate and load that save immediately. Unsaved progress is lost.';
+}
+
+let importSlotWord = '';
+
+export function armImportDestination(slot) {
+  importSlotWord = slot ? (slot === 'quick' || slot === 'autosave' || slot === 'auto'
+    ? slot.charAt(0).toUpperCase() + slot.slice(1)
+    : 'Slot ' + slot) : 'the selected slot';
+  return importSlotWord;
+}
+
+/** Import success belongs to the save authority, including asynchronous compressed saves. */
+export async function importValidatedSave(sys, text, slot) {
+  try {
+    if (sys && typeof sys.importString === 'function') return !!(await sys.importString(text, slot));
+    if (sys && typeof sys.importSave === 'function') return !!(await sys.importSave(text, slot));
+  } catch { /* the importer refused; never overwrite its destination with raw JSON */ }
+  return false;
 }
 
 export function slotObjectiveSummary(meta) {
@@ -883,11 +911,19 @@ export const saveLoadScreen = {
     // SFQ-B228: a restore that fails before the start transition emits save:error, not
     // game:startFailed — the shell lifts (loadingPresenter) but this screen kept the load
     // latched and its stage hull released. Reset the same way so the slot is retryable now,
-    // not after the next full remount. Only load-shaped receipts qualify; write-path quota
-    // noise while the screen is open must not touch the stage.
+    // not after the next full remount. Load-shaped means the restore receipts AND the
+    // envelope-stage refusals a requested load can die behind (parse/checksum/version/
+    // migration/size — the _prepareEnvelope* vocabulary); a latched load that never reached
+    // a restore must still give the stage back. The loadRequested guard keeps write-path
+    // and import noise (this screen's own importer, autosave quota) away from the stage.
+    const LOAD_STAGE_REASONS = new Set([
+      'load_failed', 'restore_prepare_failed',
+      'read_failed', 'no_save', 'no_data', 'parse_failed', 'bad_format', 'checksum',
+      'newer_version', 'migration_failed', 'invalid_player', 'save_size_limit',
+    ]);
     const unsubLoadFailed = ctx.bus.on('save:error', (payload = {}) => {
       const reason = payload && payload.reason;
-      if (reason !== 'load_failed' && reason !== 'restore_prepare_failed') return;
+      if (!LOAD_STAGE_REASONS.has(reason) && !String(reason || '').startsWith('import_')) return;
       if (!loadRequested) return;
       loadRequested = false;
       cancelHullRelease();
@@ -900,6 +936,27 @@ export const saveLoadScreen = {
     const unsubSynced = ctx.bus.on('save:store-synced', () => { if (refs) this._render(ctx); });
     const unsubValidated = ctx.bus.on('save:slotsValidated', () => { if (refs) this._render(ctx); });
     const unsubCompleted = ctx.bus.on('save:completed', () => { if (refs) this._render(ctx); });
+    this._notices = this._notices || {};
+    const noteAndRender = (note) => {
+      if (!note || note.slot == null || note.slot === '') return;
+      const prev = this._notices[note.slot];
+      if (note.kind === 'backup' && prev && prev.kind === 'recovered') return;
+      this._notices[note.slot] = note;
+      if (refs) this._render(ctx);
+    };
+    const unsubRecovered = ctx.bus.on('save:recovered', (payload) => noteAndRender(recoveryNotice(payload)));
+    const unsubBackup = ctx.bus.on('save:backup', (payload) => noteAndRender(backupKeptLine(payload)));
+    const unsubRecoveryFailed = ctx.bus.on('save:error', (payload = {}) => {
+      noteAndRender(recoveryFailedLine(payload));
+    });
+    const unsubProfile = ctx.bus.on('save:profile-imported', (payload) => {
+      const note = profileImportedLine(payload);
+      this._importLine = note.text;
+      if (note.focus && refs) refs.selected = note.focus;
+      noteAndRender(note);
+      const row = refs && refs.list && refs.list.querySelector('[data-id="' + note.focus + '"]');
+      if (row && typeof row.focus === 'function') row.focus();
+    });
 
     // Foot: Export, Import (the hidden file input stays), Back.
     const foot = el('footer', orr ? 'k-foot' : 'k-foot of-pause');
@@ -931,6 +988,7 @@ export const saveLoadScreen = {
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
       cancelHullRelease, unsubLoading, unsubStartFailed, unsubLoadFailed, unsubSynced, unsubValidated, unsubCompleted,
+      unsubRecovered, unsubBackup, unsubRecoveryFailed, unsubProfile,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -968,12 +1026,13 @@ export const saveLoadScreen = {
       const meta = slots[id];
       const occupied = isOccupied(meta);
       const summary = slotSummaryLines(meta);
+      const note = this._notices && this._notices[id];
       return {
         id,
-        name: slotLabel(id),
+        name: (meta && meta.label) || slotLabel(id),
         sub: occupied
-          ? [shipLabel(meta.shipName), meta.sectorName, fmtPlaytime(meta.playtimeS)].filter(Boolean).join(' · ') || 'Saved game'
-          : summary.context,
+          ? [shipLabel(meta.shipName), meta.sectorName, fmtPlaytime(meta.playtimeS), note && note.text].filter(Boolean).join(' · ') || 'Saved game'
+          : [summary.context, note && note.text].filter(Boolean).join(' · '),
         num: occupied ? fmtCredits(meta.credits) : '',
         selected: refs.selected === id,
         occupied,
@@ -998,7 +1057,9 @@ export const saveLoadScreen = {
         const frame = el('span', 'sf-slot-frame');
         frame.setAttribute('aria-hidden', 'true');
         frame.appendChild(el('span', 'sf-slot-berth'));
-        const art = item.occupied ? hullPosterUrl(slotShipId(slots[item.id], null), 'side') : null;
+        const filed = slots[item.id];
+        const still = filed && typeof filed.thumbnail === 'string' ? filed.thumbnail : null;
+        const art = item.occupied ? (still || hullPosterUrl(slotShipId(slots[item.id], null), 'side')) : null;
         if (art) {
           const img = el('img', 'sf-slot-thumb');
           img.alt = '';
@@ -1121,11 +1182,13 @@ export const saveLoadScreen = {
     // Which slot, and when: the etched line at the top of the page.
     const badges = occupied ? slotBadges(id, meta, currentSlot, latestOccupiedSlot(refs.slots)) : [];
     const flown = occupied ? fmtLastFlown(meta.savedAt || meta.lastSavedAt) : '';
+    const notice = this._notices && this._notices[id];
     refs.fine.textContent = [
       slotLabel(id) + ' save',
       ...badges.filter((badge) => !/^v\d/.test(badge)),
       occupied ? (flown ? 'flown ' + flown : 'filed') : 'empty',
-    ].join(' · ');
+      notice && notice.text,
+    ].filter(Boolean).join(' · ');
 
     paintEntityLine(refs.shipName, occupied && defId ? 'hull:' + defId : null,
       occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : 'Empty slot');
@@ -1203,6 +1266,31 @@ export const saveLoadScreen = {
       items.push({ action: 'newGame', label: 'New game', primary: true });
     }
     refs.actions.innerHTML = '';
+    if (!refs.labelField) {
+      const field = el('label', 'sf-slot-label');
+      field.style.display = 'grid';
+      field.style.gap = '4px';
+      field.style.width = 'min(28ch, 100%)';
+      field.appendChild(el('span', 'k-caps', 'Name'));
+      const input = el('input', 'k-input');
+      input.type = 'text';
+      input.maxLength = 48;
+      input.setAttribute('aria-label', 'Save name');
+      input.placeholder = 'Name this save';
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      field.appendChild(input);
+      refs.labelField = field;
+      refs.labelInput = input;
+    }
+    if (refs.labelField.parentNode !== refs.caption) refs.caption.insertBefore(refs.labelField, refs.actions);
+    refs.labelField.hidden = !saveAllowed;
+    refs.labelField.style.display = saveAllowed ? 'grid' : 'none';
+    refs.labelInput.disabled = !saveAllowed;
+    if (refs.labelInput && document.activeElement !== refs.labelInput) {
+      const next = (occupied && meta && meta.label) || '';
+      if (refs.labelInput.value !== next) refs.labelInput.value = next;
+    }
     if (!items.length) return;
     const list = words(items, {
       row: true, size: 'emph', ariaLabel: slotLabel(id) + ' actions',
@@ -1303,7 +1391,23 @@ export const saveLoadScreen = {
         if (!ok) return;
       }
       refs.selected = id;
-      ctx.bus.emit('game:save', { slot: id });
+      const presenting = !!(ctx.state && ctx.state.render && ctx.state.render.photoMode && ctx.state.render.photoMode.active);
+      let thumbnail;
+      let thumbnailSource;
+      if (!presenting && typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+        const canvas = document.querySelector('canvas');
+        const shot = capturePhotoPng(canvas);
+        if (shot && shot.ok) {
+          thumbnail = shot.dataUrl;
+          thumbnailSource = canvas;
+        }
+      }
+      ctx.bus.emit('game:save', {
+        slot: id,
+        label: refs.labelInput ? refs.labelInput.value : '',
+        thumbnail,
+        thumbnailSource,
+      });
       setTimeout(() => this._render(ctx), 120);
       return;
     }
@@ -1369,6 +1473,7 @@ export const saveLoadScreen = {
   },
 
   async _import(ctx, fileIn) {
+    this._importLine = '';
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
     const rejectOversize = (actual) => {
@@ -1386,6 +1491,8 @@ export const saveLoadScreen = {
       rejectOversize(fileBytes);
       return;
     }
+    const slot = importDestination(refs && refs.selected, refs && refs.ids);
+    const destinationWord = armImportDestination(slot);
     const confirmed = await confirm({
       title: 'Import save file?',
       body: importConfirmBody(f),
@@ -1393,16 +1500,23 @@ export const saveLoadScreen = {
     });
     if (!confirmed) { fileIn.value = ''; return; }
     const finish = (ok) => {
-      ctx.bus.emit('toast', { text: ok ? 'Save imported' : 'Import failed', kind: ok ? 'good' : 'warn', ttl: 2800 });
+      const spoken = this._importLine;
+      this._importLine = '';
+      ctx.bus.emit('toast', {
+        text: importResultLine(ok, destinationWord, spoken),
+        kind: ok ? 'good' : 'warn',
+        ttl: 2800,
+      });
       fileIn.value = '';
       this._render(ctx);
     };
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     if (sys && typeof sys.importFile === 'function') {
-      try { sys.importFile(f, finish); return; } catch (e) {}
+      try { sys.importFile(f, finish, slot); } catch (e) { finish(false); }
+      return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const text = String(reader.result || '');
       // A synthetic/legacy File may not expose a trustworthy size. Keep the raw-text check before
       // any fallback JSON.parse or save-system import call in that case.
@@ -1411,19 +1525,7 @@ export const saveLoadScreen = {
         rejectOversize(textBytes);
         return;
       }
-      let ok = false;
-      if (sys && typeof sys.importString === 'function') { try { ok = !!sys.importString(text, 'quick'); } catch (e) {} }
-      else if (sys && typeof sys.importSave === 'function') { try { ok = !!sys.importSave(text); } catch (e) {} }
-      if (!ok) {
-        try {
-          JSON.parse(text);
-          if (typeof localStorage !== 'undefined') { localStorage.setItem(LS_PREFIX + 'import', text); ok = true; }
-        } catch (e) {
-          ctx.bus.emit('toast', { text: 'Import failed: file is not valid JSON', kind: 'warn', ttl: 3000 });
-          ok = false;
-        }
-      }
-      finish(ok);
+      finish(await importValidatedSave(sys, text, slot));
     };
     reader.onerror = () => finish(false);
     reader.readAsText(f);
@@ -1431,6 +1533,16 @@ export const saveLoadScreen = {
 
   onShow(ctx) {
     if (!refs) return;
+    // Screen instances outlive runs. Only the save authority's current receipt
+    // can describe this run's recovery; discard cached receipts before hydration.
+    for (const [slot, note] of Object.entries(this._notices || {})) {
+      if (note.kind === 'recovered') delete this._notices[slot];
+    }
+    const retained = ctx && ctx.state && ctx.state.save && ctx.state.save.lastRecovery;
+    if (retained) {
+      const note = recoveryNotice(retained);
+      if (note) this._notices[note.slot] = note;
+    }
     cue('open');
     refs.cancelHullRelease();
     refs.clearLoadRequest();
@@ -1482,9 +1594,13 @@ export const saveLoadScreen = {
       try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
       try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
+      for (const key of ['unsubRecovered', 'unsubBackup', 'unsubRecoveryFailed', 'unsubProfile']) {
+        if (typeof refs[key] === 'function') refs[key]();
+      }
     }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (this._film) { this._film.dispose(); this._film = null; }
     refs = null;
+    this._notices = null;
   },
 };

@@ -21,6 +21,8 @@ import { WEAPONS } from '../data/weapons.js';
 import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
+import { installWorldFeelSeams } from './worldFeelSeams.js';
+import { AFTERMATH_HUSH, admitAftermathHush, cloakBurnCue, distressCallCue, mineArmedCue, mineDetonationCue, miningNoiseDangerCue, playAdmittedEarCue, wardedShotCue, wreckMemorialLine } from './combatFeedbackEar.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import {
   bindBombAudio,
@@ -666,6 +668,41 @@ export function resolveMachineWorkCycle(stateName) {
   });
 }
 
+/** Yard loop sits on the rock the site is built into. The status event has no position. */
+export function machineWorkPosition(state, payload) {
+  const given = payload && payload.pos;
+  if (given && Number.isFinite(given.x) && Number.isFinite(given.z)) {
+    return { x: given.x, z: given.z };
+  }
+  const sites = state && state.sites && state.sites.byId;
+  const site = sites && payload && payload.siteId != null ? sites[payload.siteId] : null;
+  const asteroidId = site && site.asteroidId;
+  const entities = state && state.entities;
+  const ent = asteroidId != null && entities && typeof entities.get === 'function'
+    ? entities.get(asteroidId)
+    : null;
+  const pos = ent && ent.alive !== false && ent.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  return { x: pos.x, z: pos.z };
+}
+
+/** A living relay is not a motor. Machinery keeps sfx_work_motor. */
+export function relayPulseCue(payload) {
+  const ids = payload && Array.isArray(payload.siteIds) ? payload.siteIds : null;
+  if (!ids || ids.length === 0) return null;
+  return { recipeId: 'sfx_anomaly_swell', caption: 'Relay pulse.', gain: 0.36 };
+}
+
+export function playRelayPulse(host, payload) {
+  const cue = relayPulseCue(payload);
+  if (!cue || !host || typeof host.play !== 'function') return null;
+  const played = host.play(cue.recipeId, { id: cue.recipeId, gain: cue.gain });
+  if (played && typeof host._emitPresentationCaption === 'function') {
+    host._emitPresentationCaption(cue.caption, { channel: 'cue' });
+  }
+  return played;
+}
+
 /** SF-233 — a swell is evidence, not a timer on the anomaly palette. */
 export function resolveAnomalyEvidenceCue(input = {}) {
   const type = String(input.type || input.poiType || input.kind || '').toLowerCase();
@@ -1153,6 +1190,10 @@ export const HUSH = Object.freeze({
   death:     Object.freeze({ depth: 0.05, attackS: 0.55,  holdS: 1.40, releaseS: 2.40 }),
   // FB-082 — the best moment. Same floor as a capital kill, a slower open, a steep return.
   stunt:     Object.freeze({ depth: 0.07, attackS: 0.35,  holdS: 0.28, releaseS: 0.45 }),
+  // Post-combat breath. The bark director already stops flavor chatter; this is
+  // the room dropping so that silence is something you hear. Shallower than a
+  // capital kill, so a reactor hush is not replaced by it.
+  aftermath: AFTERMATH_HUSH,
   fullWu: 420,   // inside this the hush is full strength
   farWu: 0,      // 0 -> fall back to D_FAR (world-hearing edge)
 });
@@ -1751,6 +1792,7 @@ export function getPaletteClassName(sector) {
     if (sector.palette === SECTOR_PALETTE_CLASSES.belt) return 'belt';
     if (sector.palette === SECTOR_PALETTE_CLASSES.fringe) return 'fringe';
     if (sector.palette === SECTOR_PALETTE_CLASSES.anomaly) return 'anomaly';
+    if (sector.palette === SECTOR_PALETTE_CLASSES.viscera) return 'anomaly';
   }
   const id = sector.id || '';
   if (id.includes('belt') || id.includes('forge') || id.includes('drift')) return 'belt';
@@ -2408,6 +2450,71 @@ export const audio = {
     bus.on('asteroid:destroyed', (p) => this.play('sfx_asteroid_depleted', { position: p && p.pos, gain: 0.7 }));
     bus.on('cloak:faded', () => this.play(combatVerbRecipe('cloak:faded'), { gain: 0.32 }));
     bus.on('cloak:dropped', () => this.play(combatVerbRecipe('cloak:dropped'), { gain: 0.45 }));
+    // cloak:burned already toasts the player. The fade is that burn, pitched
+    // down, and only for the player's own cloak — a scan that lights an NPC
+    // must not chorus. Admission keeps one pulse from machine-gunning it.
+    // Burn does not also play cloak:dropped; dropping the cloak is a different act.
+    bus.on('cloak:burned', (p) => {
+      const playerId = this.state && this.state.playerId;
+      if (!p || playerId == null || p.entityId !== playerId) return;
+      playAdmittedEarCue(
+        this,
+        cloakBurnCue(p),
+        this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+      );
+    });
+    // distress:call had emitters and zero listeners. The comms log only opens when the
+    // player is inside the radius; the sting is the wanted-alert, not a menu click, once.
+    bus.on('distress:call', (p) => playAdmittedEarCue(
+      this,
+      distressCallCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // mines:detonated had no listener. The blast is the ear; hull damage stays
+    // the hit the damage packet already plays.
+    bus.on('mines:detonated', (p) => playAdmittedEarCue(
+      this,
+      mineDetonationCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // weapons:mineArmed had a picture and no sound. The arming click is the
+    // mine's own recipe, quieter than the blast that comes later.
+    bus.on('weapons:mineArmed', (p) => playAdmittedEarCue(
+      this,
+      mineArmedCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // combat:warded had no listener. The hull hit on the same tick is the damage
+    // voice; this is the catch — a shield hit, not the collapse pop, and one
+    // per escort so a beam cannot machine-gun it.
+    bus.on('combat:warded', (p) => playAdmittedEarCue(
+      this,
+      wardedShotCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // danger:miningNoise fired on the threshold crossing and nothing played it.
+    // One darker alert, ducked, so the beam does not bury "they can hear you".
+    bus.on('danger:miningNoise', (p) => playAdmittedEarCue(
+      this,
+      miningNoiseDangerCue(p),
+      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    ));
+    // barkDirector:silence had zero listeners. One breath per silence window —
+    // a second kill inside it does not restart the drop.
+    bus.on('barkDirector:silence', (p) => {
+      const rt = this.rt;
+      if (!rt || !p) return;
+      const now = Number(this.state && this.state.simTime) || 0;
+      const book = rt._aftermathHush || (rt._aftermathHush = {});
+      if (!admitAftermathHush(book, p.until, now)) return;
+      this._triggerHush({ kind: 'aftermath' });
+    });
+    // scan:wreckInvestigated named the loss and nobody said it. One comms line
+    // per loss id, so a second read replaces the sentence instead of stacking it.
+    bus.on('scan:wreckInvestigated', (p) => {
+      const line = wreckMemorialLine(p);
+      if (line) this.bus.emit('voice:say', line);
+    });
     bus.on('massline:releaseCancelled', () => this.play(combatVerbRecipe('massline:releaseCancelled'), { gain: 0.28 }));
     bus.on('weapons:momentumSinkPlanted', () => this.play(combatVerbRecipe('weapons:momentumSinkPlanted'), { gain: 0.4 }));
     bus.on('weapons:momentumSinkReleased', () => this.play(combatVerbRecipe('weapons:momentumSinkReleased'), { gain: 0.35 }));
@@ -2767,6 +2874,7 @@ export const audio = {
       if (starved && prev !== true) this._onMineCue('machineStarved', p); // once per transition
       this._syncMachineWork(p);
     });
+    bus.on('ecology:relayPulse', (p) => playRelayPulse(this, p));
 
     // UI namespaced cue events (DOM UI may emit these directly).
     // ui:confirm is the only ui:* semantic event with a producer (src/ui/input.js);
@@ -2797,6 +2905,7 @@ export const audio = {
     bindBombAudio(this, bus);
     bindFieldAudio(this, bus);
     installCombatVerbCueDispatch(this, bus);
+    installWorldFeelSeams(this, bus);
 
     // If a context already exists (hot reload), wire immediately.
     if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
@@ -5497,6 +5606,10 @@ export const audio = {
   _sessionBoundaryReset({ forceUndock = false } = {}) {
     const rt = this.rt;
     if (!rt) return;
+    // These cooldowns use the outgoing simulation clock and entity IDs. Neither survives
+    // New Game or a save restore: the next run must be able to speak from tick zero.
+    rt._combatFeedbackAdmit = null;
+    rt._aftermathHush = null;
     this._clearDeferred();
     this._endDesiredLoops();
     this._releaseDockedFieldLoops();
@@ -5816,7 +5929,7 @@ export const audio = {
       this._endLoopVoice(current);
       delete rt.loops[key];
     }
-    const started = this._startLoopVoice(voice.recipeId, p.pos || null, voice.gain, { rate: voice.rate });
+    const started = this._startLoopVoice(voice.recipeId, machineWorkPosition(this.state, p), voice.gain, { rate: voice.rate });
     if (!started) return;
     rt.loops[key] = started;
   },

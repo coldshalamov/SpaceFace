@@ -482,6 +482,9 @@ export const survivalResults = {
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:started', () => this._reset()));
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
+    // Brood deaths are not entities — they arrive only as these batched receipts, so without
+    // this count the results plate's KILLS reads zero beside a hundred-body chain.
+    this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDamage(p)));
@@ -741,6 +744,25 @@ export const survivalResults = {
         family: 'field',
         points: 140,
       });
+    }
+  },
+
+  _onBroodKills(payload) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || !payload) return;
+    const count = Math.max(0, Math.trunc(Number(payload.count) || 0));
+    if (count <= 0) return;
+    this._kills += count;
+    if (this._runStartSimTime == null) this._runStartSimTime = this._simNow();
+    if (this._firstKillSimTime == null) this._firstKillSimTime = this._simNow();
+    const wave = Number.isInteger(payload.wave) && payload.wave > 0
+      ? payload.wave
+      : (Number.isInteger(run.wave) ? run.wave : 0);
+    this._killsByWave.set(wave, (this._killsByWave.get(wave) || 0) + count);
+    // SF-075: terrain and collision brood deaths are the room doing the killing — the same
+    // improvised-kill ledger the entity path keeps for thrown hulls and slams.
+    if (payload.cause === 'terrain' || payload.cause === 'collision') {
+      this._improvisedKills += count;
     }
   },
 

@@ -54,7 +54,7 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // unchanged — verified against the live receipt, which the standalone check passes.
 // Prior digest 8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  '1e245a850b53c10a7de1cda7ce4caf7cf97685e39f5e1b39e30529c4b15e68a6';
+  'f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -165,37 +165,20 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.equal(first.receiptDigest, second.receiptDigest);
 
   assert.equal(first.structuralCost.scope, 'sector_ceres_belt:seed47:one-fixed-tick');
-  // Live core cost at boot since the far shelf (9c4509ff1, b8cce1567): the cathedral's 14 wrecks
-  // and one POI marker are far-actor rows until the player approaches, so they are not on the
-  // combat list. They are still materialized as planned (worldSite below counts live + shelved).
-  // Pre-shelf this was total 38 / fx 10 / wreck 14 / collidable 21.
-  // PR #170: the Closed Refinery colony adds 12 fauna bodies to the live core census
-  // (23 → 35); they are not collider-backed, so `collidable` stays at 14.
-  // The Kettle Line (WF-10) adds three drift-trail POIs whose markers are live fx (35 → 38, fx 9 → 12).
-  // SOLSTICE / SL-9 (5103e8668) added a fixed-pos POI whose two _spawnPOIs rng draws shifted the
-  // deterministic spawn stream: one patrol ship now lands inside the far-shelf boundary and is a
-  // far-actor row at boot instead of a live body (38 → 37, ship 2 → 1, collidable 14 → 13).
-  // The solid-dressing lane (309deb2f7, D161) then gave six re-pointed Ceres activity-object
-  // structures their fixed measured-skin bodies — same entities, now collidable (13 → 19).
+  // PR221 keeps the Cathedral's fourteen static wrecks under asteroidSites: generic far rows
+  // cannot preserve their fixed compound source anatomy. Its seven solids now remain live.
+  // The four ghost activity slots (7f6f048ef) stay free of physics; two new Ceres POIs shift
+  // the ordinary seeded patrol into live range. Additive Second Measure is counted separately.
   assert.deepEqual(first.structuralCost.entities, {
-    total: 37,
-    byType: { asteroid: 6, fauna: 12, fx: 12, ship: 1, station: 6 },
-    collidable: 19,
+    total: 52,
+    byType: { asteroid: 6, fauna: 12, fx: 12, ship: 2, station: 6, wreck: 14 },
+    collidable: 23,
   });
-  // Colliders went 14 → 66 with the compound-collision rollout, then kept moving as measured
-  // skins and authored rebuilds changed proxy primitive counts (66 → 108 prism gallery,
-  // 108 → 184 Forge wave, 184 → 190 the packet-8 pack releases). Package E (b7b499263) made the
-  // six non-landmark asteroids dynamic, so they left the measured-skin eligibility list and
-  // collide as single balls (190 → 68). Solid contact dynamics (eb1869826) then restored compound
-  // skins to solid dynamic bodies via SKIN_DYNAMIC_TYPES (68 → 236: 60 stations/gates + 128
-  // asteroid primitives + 48 ship primitives). The count tracks sanctioned asset/physics work,
-  // not topology — the digest pin above is the canary. The Solstice rng shift then parked one
-  // of the two live ships on the far shelf, taking its 24-primitive skin with it (236 → 212),
-  // and the solid-dressing lane added the six structures' measured skins (212 → 329).
-  assert.equal(first.structuralCost.colliders, 329);
+  // Latest core260 + seven canonical Cathedral solids + one 24-primitive patrol skin.
+  assert.equal(first.structuralCost.colliders, 291);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
-  assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);
+  assert.equal(first.structuralCost.worldSite.shelvedEntities, 0);
   assert.equal(first.structuralCost.residencyTier, 'FULL');
   assert.equal(first.structuralCost.presentationAdmission, 'headless');
   assert.ok(Number.isInteger(first.structuralCost.spatial.queries));
@@ -211,16 +194,27 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
     first.additiveWorldSites.exclusionPolicy,
     'manifest_identified_non_cathedral_world_records',
   );
-  assert.deepEqual(first.additiveWorldSites.siteIds, ['world_site_ceres_cinder_sluice']);
+  assert.deepEqual(first.additiveWorldSites.siteIds, [
+    'world_site_ceres_cinder_sluice', 'world_site_ceres_second_measure',
+  ]);
   assert.equal(first.additiveWorldSites.allMaterializedExactlyAsPlanned, true);
   assert.deepEqual(first.additiveWorldSites.totals, {
-    live: { entities: 5, byType: { fx: 1, wreck: 4 }, collidable: 2, colliders: 2 },
-    planned: { entities: 5, byType: { fx: 1, wreck: 4 }, collidable: 2, colliders: 2 },
+    live: { entities: 17, byType: { fx: 2, wreck: 15 }, collidable: 10, colliders: 18 },
+    planned: { entities: 17, byType: { fx: 2, wreck: 15 }, collidable: 10, colliders: 18 },
   });
   const cinder = first.additiveWorldSites.sites[0];
   assert.equal(cinder.siteId, 'world_site_ceres_cinder_sluice');
   assert.equal(cinder.exactAgreement, true);
   assert.deepEqual(cinder.live, cinder.planned);
+  const secondMeasure = first.additiveWorldSites.sites[1];
+  assert.equal(secondMeasure.siteId, 'world_site_ceres_second_measure');
+  assert.equal(secondMeasure.exactAgreement, true);
+  // Five shell solids plus three whole finite sections (5+5+1 boxes), six interaction
+  // components and one non-solid visual root. Structural sections are real wrecks, not loot.
+  assert.deepEqual(secondMeasure.live, {
+    entities: 12, byType: { fx: 1, wreck: 11 }, collidable: 8, colliders: 16,
+  });
+  assert.deepEqual(secondMeasure.live, secondMeasure.planned);
 
   assert.deepEqual(first.additiveDressing, second.additiveDressing);
   assert.equal(
@@ -246,7 +240,7 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
     entities: 21,
     byType: { fx: 20, wreck: 1 },
     collidable: 15,
-    colliders: 299,
+    colliders: 279,
   });
   assert.equal(first.additiveDressing.ambiguousEntities, 0);
   assert.deepEqual(first.additiveDressing.groups, [
@@ -263,7 +257,7 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
     {
       id: 'wreckAftermath',
       dataFlag: 'wreckAftermath',
-      live: { entities: 4, byType: { fx: 4 }, collidable: 3, colliders: 58 },
+      live: { entities: 4, byType: { fx: 4 }, collidable: 3, colliders: 38 },
     },
   ]);
 
@@ -314,6 +308,17 @@ test('PQ-020 validator fails closed on topology, structural, map, and evidence-s
   assert.equal(cinderPlannedResult.pass, false);
   assert.ok(cinderPlannedResult.failures.some((failure) => (
     failure.startsWith('additiveWorldSites.world_site_ceres_cinder_sluice.planned:')
+  )));
+
+  const secondMeasureDrift = structuredClone(snapshot);
+  // Matching a bad live/planned census must not hide a lost section collider.
+  const secondMeasure = secondMeasureDrift.additiveWorldSites.sites[1];
+  secondMeasure.live.colliders -= 1;
+  secondMeasure.planned.colliders -= 1;
+  const secondMeasureResult = validatePq020CeresTopologySnapshot(secondMeasureDrift);
+  assert.equal(secondMeasureResult.pass, false);
+  assert.ok(secondMeasureResult.failures.some((failure) => (
+    failure.startsWith('additiveWorldSites.world_site_ceres_second_measure.planned:')
   )));
 
   const additiveDressingDrift = structuredClone(snapshot);

@@ -555,6 +555,8 @@ export function createAttachmentService(context) {
     });
     if (bus) bus.emit('tether:broken', {
       actorId: actorId == null ? attachment.ownerId : actorId,
+      ownerId: attachment.ownerId != null ? attachment.ownerId : null,
+      controllerId: attachment.controllerId != null ? attachment.controllerId : null,
       targetId: attachment.targetId,
       attachmentId: attachment.id,
       reason,

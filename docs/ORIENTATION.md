@@ -32,7 +32,7 @@ Enter a directory through its `AGENTS.md`/`README.md`, not by listing it.
 
 | Path | What lives there |
 |---|---|
-| `src/` | The game. `core/` state/loop/registry, `systems/` fixed-step systems, `ai/` + `combat/` shared libraries, `data/` pure catalogs, `render/` Three.js layer, `ui/` DOM screens, plus `audio/ save/ presentation/ story/ world/ testing/lab/`. Code questions: `MODULE_MAP.md` finds the owner. |
+| `src/` | The game. Enter a folder through its `AGENTS.md` (every top-level owner has one; `law/` and `physicalCargo/` are covered by `src/missions/AGENTS.md`). `core/` state and the loop facade, `runtime/` the live init/update/clock manifest, `systems/` fixed-step systems, `ai/` + `combat/` shared libraries, `data/` pure catalogs, `render/` Three.js, `ui/` DOM screens, plus audio, save, presentation, story, world, and `testing/lab/`. Code questions: `MODULE_MAP.md` finds the owner. |
 | `assets/` | Authored GLB ships/places/props, portraits, concept art, works. Pipeline rules in `assets/AGENTS.md`; ships in `assets/ships/AGENTS.md`. Evidence subfolders are historical. |
 | `design/` | Product and program authority: `GDD_2_0.md`, `VISION.md`, perf docs, plan suites (`spec2/ spec3/ revamp/ vision/ graphics-sprints/`, …). Big — enter via a link, never by sweeping. |
 | `design/program/` | The only whole-program status surface: verified-done / remaining-work split, roadmap queue + active packets, `NOW.md` lock board. Enter via `design/program/README.md`. |

@@ -3,7 +3,7 @@
 // shieldRegenCapable: only advanced hulls mount regenerating deflector modules; early enemies
 // keep shields as a one-time buffer but shieldRegen is ignored unless this flag is true.
 // weapon IDs use wpn_ prefix; loot drop IDs use cmdty_ prefix; shipId uses ship_ prefix.
-// Pure data, no imports.
+// Pure data; specialist rows reuse their canonical finite source recipe.
 //
 // VISUALS: each enemy carries a `silhouette` field consumed ONLY by the render track
 // (src/render/visualFactory.js). When present it overrides the ship-def family lookup so the
@@ -14,6 +14,10 @@
 //   wasp ~3s, reaver ~8–10s, corsair ~15s, bruiser tanky but never immune.
 // armorFlat must stay well below starter shot damage — flat DR ≥ dmg zeroes residual damage
 // after the shield layer and made bruisers literally unkillable with the Hitch gun.
+import { KILNBACK_ENEMY } from './kilnback.js';
+import { MOTH_ENEMY } from './mothlight.js';
+import { PALLET_JACK_ENEMY } from './palletJack.js';
+
 export const ENEMY_TYPES = [
 
   {
@@ -670,4 +674,7 @@ export const ENEMY_TYPES = [
     behavior: 'light engineered cutter; locks one crossing, misses when displaced, exposes its side in recovery',
     loot: { creditsRange: [80, 180], drops: [{ id: 'cmdty_electronics', chance: 0.45, qtyRange: [1, 2] }] },
   },
+  KILNBACK_ENEMY,
+  MOTH_ENEMY,
+  PALLET_JACK_ENEMY,
 ];

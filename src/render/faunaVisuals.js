@@ -4,9 +4,11 @@
 // Entities are kinematic (type 'fauna', no physics body) — the mesh IS the creature.
 
 import * as THREE from 'three';
-import { faunaSpeciesById } from '../data/alienFauna.js';
+import { faunaSpeciesById, FAUNA_SPECIES } from '../data/alienFauna.js';
 import { alienStrainById } from '../data/alienEcology.js';
 import { creatureSkin } from './creatureSkinLibrary.js';
+import { buildNurseryRay, buildNurseryFlock } from './veilRayNurseryVisuals.js';
+import { bolusSilhouette } from './bolusSilhouettes.js';
 
 const TISSUE = 0x9aa08e;
 const FILAMENT = 0xc94f3d;
@@ -651,6 +653,30 @@ function buildPilgrimSpine(colors) {
   return g;
 }
 
+function buildBolusFauna(colors, species) {
+  const g = new THREE.Group();
+  const id = species && species.id || 'bolus_knob';
+  const scale = Math.max(6, (species && species.radius) || 12);
+  const recipe = bolusSilhouette(id);
+  for (let i = 0; i < recipe.parts.length; i++) {
+    const part = recipe.parts[i];
+    const geometry = geo(`bolus_sil_${id}_${part.id}`, () => {
+      const buffer = new THREE.BufferGeometry();
+      buffer.setAttribute('position', new THREE.Float32BufferAttribute(part.positions, 3));
+      if (part.indices) buffer.setIndex(part.indices.slice());
+      buffer.computeVertexNormals();
+      return buffer;
+    });
+    const material = part.glow ? glowMat(part.color, 0.9) : tissueMat(part.color || colors.tissue);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.scale.setScalar(scale);
+    mesh.name = part.id;
+    g.add(mesh);
+  }
+  g.name = `SF_Fauna_${id}`;
+  return g;
+}
+
 const BUILDERS = {
   veil_ray: (c, s) => buildVeilRay(c),
   needle_swarm: (c, s) => buildNeedleSwarm(c, s),
@@ -676,11 +702,20 @@ const BUILDERS = {
   pilgrim_spine: (c) => buildPilgrimSpine(c),
 };
 
+for (const speciesId of Object.keys(FAUNA_SPECIES)) {
+  if (speciesId.startsWith('bolus_') && !BUILDERS[speciesId]) {
+    BUILDERS[speciesId] = (colors, species) => buildBolusFauna(colors, species);
+  }
+}
+
 export function buildFaunaMesh(entity) {
   const eco = entity && entity.data && entity.data.ecology;
   const species = faunaSpeciesById(eco && eco.speciesId);
   if (!species) return null;
   const colors = strainColors(entity);
+  if (eco.siteId === 'veil_ray_nursery') {
+    return eco.aggregate ? buildNurseryFlock(entity, colors, tissueMat) : buildNurseryRay(entity, colors, tissueMat);
+  }
   const root = BUILDERS[species.id] ? BUILDERS[species.id](colors, species) : null;
   if (root) {
     root.userData.kind = 'fauna';

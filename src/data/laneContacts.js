@@ -299,6 +299,17 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     sectorIds: Object.freeze(['sector_sedna_dark']),
   }),
   Object.freeze({
+    id: 'lane_bolus_rib',
+    name: 'Ives of the Swallowed Rib',
+    callsign: 'RIB-BERTH',
+    role: 'courier',
+    gimmick: 'swallowed-berth',
+    ship: 'ship_kestrel',
+    hail: 'Berth is still warm. Do not ask what swallowed the rest of the shift.',
+    memoryHook: 'bolus-rib-berth',
+    sectorIds: Object.freeze(['sector_the_bolus']),
+  }),
+  Object.freeze({
     // WORLD-40 — Ceres already wears Rell on the seam miner. Jorah is the second face,
     // on the refinery hauler, so a return trip meets someone else. He is placed by the
     // dedicated authored-cast fixture in traffic._ensureNamedLaneContact (found by id on

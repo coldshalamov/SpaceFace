@@ -199,7 +199,7 @@
   <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" href="./src/render/uiStage.js" />
-                                                              <!-- modulepreload:registry:begin -->
+          <!-- modulepreload:registry:begin -->
   <link rel="modulepreload" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
@@ -224,11 +224,13 @@
   <link rel="modulepreload" href="./src/ai/fodderCohort.js" />
   <link rel="modulepreload" href="./src/ai/gunnery.js" />
   <link rel="modulepreload" href="./src/ai/inspection.js" />
+  <link rel="modulepreload" href="./src/ai/kilnback.js" />
   <link rel="modulepreload" href="./src/ai/maneuver.js" />
   <link rel="modulepreload" href="./src/ai/mineLayerVerb.js" />
   <link rel="modulepreload" href="./src/ai/nemesisTactics.js" />
   <link rel="modulepreload" href="./src/ai/npcBombMirror.js" />
   <link rel="modulepreload" href="./src/ai/npcFieldDeploy.js" />
+  <link rel="modulepreload" href="./src/ai/palletJack.js" />
   <link rel="modulepreload" href="./src/ai/pdScreen.js" />
   <link rel="modulepreload" href="./src/ai/perception.js" />
   <link rel="modulepreload" href="./src/ai/reflexes.js" />
@@ -249,6 +251,7 @@
   <link rel="modulepreload" href="./src/audio/bandBeds.js" />
   <link rel="modulepreload" href="./src/audio/barkVoice.js" />
   <link rel="modulepreload" href="./src/audio/bombAudio.js" />
+  <link rel="modulepreload" href="./src/audio/combatFeedbackEar.js" />
   <link rel="modulepreload" href="./src/audio/combatVerbCues.js" />
   <link rel="modulepreload" href="./src/audio/cuePriorityBus.js" />
   <link rel="modulepreload" href="./src/audio/elementaryVoices.js" />
@@ -262,6 +265,7 @@
   <link rel="modulepreload" href="./src/audio/synth.js" />
   <link rel="modulepreload" href="./src/audio/themeCompose.js" />
   <link rel="modulepreload" href="./src/audio/themeMatrix.js" />
+  <link rel="modulepreload" href="./src/audio/worldFeelSeams.js" />
   <link rel="modulepreload" href="./src/careers/ladders/careerLadders.js" />
   <link rel="modulepreload" href="./src/careers/ladders/haulerLadderDefs.js" />
   <link rel="modulepreload" href="./src/careers/ladders/haulerLadderFsm.js" />
@@ -287,6 +291,7 @@
   <link rel="modulepreload" href="./src/careers/origins/prospectorOriginState.js" />
   <link rel="modulepreload" href="./src/characters/bracketRules.js" />
   <link rel="modulepreload" href="./src/characters/ravelRules.js" />
+  <link rel="modulepreload" href="./src/characters/redKiteRules.js" />
   <link rel="modulepreload" href="./src/characters/ruckusRules.js" />
   <link rel="modulepreload" href="./src/characters/solsticeRules.js" />
   <link rel="modulepreload" href="./src/chronicler/ledger.js" />
@@ -362,21 +367,31 @@
   <link rel="modulepreload" href="./src/contracts/renderPackage.js" />
   <link rel="modulepreload" href="./src/contracts/scenarioSchemas.js" />
   <link rel="modulepreload" href="./src/core/activityScheduler.js" />
+  <link rel="modulepreload" href="./src/core/articulatedColliderBounds.js" />
   <link rel="modulepreload" href="./src/core/atlasIndex.js" />
   <link rel="modulepreload" href="./src/core/bootScheduler.js" />
   <link rel="modulepreload" href="./src/core/bootSystemInit.js" />
   <link rel="modulepreload" href="./src/core/bootWork.js" />
   <link rel="modulepreload" href="./src/core/catchupPolicy.js" />
+  <link rel="modulepreload" href="./src/core/ceresWorkfleetActuation.js" />
+  <link rel="modulepreload" href="./src/core/ceresWorkfleetArticulation.js" />
+  <link rel="modulepreload" href="./src/core/ceresWorkfleetLayoutAdmission.js" />
+  <link rel="modulepreload" href="./src/core/collisionProxySweep.js" />
   <link rel="modulepreload" href="./src/core/combatTable.js" />
   <link rel="modulepreload" href="./src/core/constraints/masslineController.js" />
+  <link rel="modulepreload" href="./src/core/convexHullQuery.js" />
   <link rel="modulepreload" href="./src/core/coordinates.js" />
   <link rel="modulepreload" href="./src/core/coreSystem.js" />
   <link rel="modulepreload" href="./src/core/deepSpaceAddress.js" />
   <link rel="modulepreload" href="./src/core/demoMode.js" />
   <link rel="modulepreload" href="./src/core/devMode.js" />
   <link rel="modulepreload" href="./src/core/dirtyJournal.js" />
+  <link rel="modulepreload" href="./src/core/dockAccess.js" />
+  <link rel="modulepreload" href="./src/core/dockIntent.js" />
+  <link rel="modulepreload" href="./src/core/dockRange.js" />
   <link rel="modulepreload" href="./src/core/fields/clusterDetonate.js" />
   <link rel="modulepreload" href="./src/core/fields/fieldKernel.js" />
+  <link rel="modulepreload" href="./src/core/fields/thermalFields.js" />
   <link rel="modulepreload" href="./src/core/fittedModules.js" />
   <link rel="modulepreload" href="./src/core/flight/drawFlightControl.js" />
   <link rel="modulepreload" href="./src/core/flight/driveAuthority.js" />
@@ -389,7 +404,11 @@
   <link rel="modulepreload" href="./src/core/focusLossHold.js" />
   <link rel="modulepreload" href="./src/core/frameLiveness.js" />
   <link rel="modulepreload" href="./src/core/inputCommandSnapshot.js" />
+  <link rel="modulepreload" href="./src/core/latchNineArrivalEvidence.js" />
+  <link rel="modulepreload" href="./src/core/latchNineMaterialization.js" />
+  <link rel="modulepreload" href="./src/core/latchNineNative.js" />
   <link rel="modulepreload" href="./src/core/livingHull.js" />
+  <link rel="modulepreload" href="./src/core/machineryPresentation.js" />
   <link rel="modulepreload" href="./src/core/math.js" />
   <link rel="modulepreload" href="./src/core/newGamePlus.js" />
   <link rel="modulepreload" href="./src/core/numberFormat.js" />
@@ -400,6 +419,7 @@
   <link rel="modulepreload" href="./src/core/physicsAuthority.js" />
   <link rel="modulepreload" href="./src/core/pickupAcceptance.js" />
   <link rel="modulepreload" href="./src/core/pickupCustody.js" />
+  <link rel="modulepreload" href="./src/core/planarProxyGeometry.js" />
   <link rel="modulepreload" href="./src/core/playerCompass.js" />
   <link rel="modulepreload" href="./src/core/presentationAdmission.js" />
   <link rel="modulepreload" href="./src/core/presentationFreeze.js" />
@@ -410,6 +430,7 @@
   <link rel="modulepreload" href="./src/core/runShareCode.js" />
   <link rel="modulepreload" href="./src/core/runState.js" />
   <link rel="modulepreload" href="./src/core/runtimeWitness.js" />
+  <link rel="modulepreload" href="./src/core/sableDemo.js" />
   <link rel="modulepreload" href="./src/core/sectorEnterDefer.js" />
   <link rel="modulepreload" href="./src/core/sg02DynamicBodyOwner.js" />
   <link rel="modulepreload" href="./src/core/sim.js" />
@@ -418,6 +439,7 @@
   <link rel="modulepreload" href="./src/core/spatialQuery.js" />
   <link rel="modulepreload" href="./src/core/surfaceContact.js" />
   <link rel="modulepreload" href="./src/core/uniqueWreckComplications.js" />
+  <link rel="modulepreload" href="./src/core/warnDedup.js" />
   <link rel="modulepreload" href="./src/core/worldActivityManager.js" />
   <link rel="modulepreload" href="./src/data/achievements.js" />
   <link rel="modulepreload" href="./src/data/adventureArenaSites.js" />
@@ -437,13 +459,25 @@
   <link rel="modulepreload" href="./src/data/bandRadio.js" />
   <link rel="modulepreload" href="./src/data/barks.js" />
   <link rel="modulepreload" href="./src/data/blueprints.js" />
+  <link rel="modulepreload" href="./src/data/bolusAudio.js" />
+  <link rel="modulepreload" href="./src/data/bolusForces.js" />
+  <link rel="modulepreload" href="./src/data/bolusLore.js" />
+  <link rel="modulepreload" href="./src/data/bolusPlay.js" />
   <link rel="modulepreload" href="./src/data/bombs.js" />
+  <link rel="modulepreload" href="./src/data/borrowedVoice.js" />
+  <link rel="modulepreload" href="./src/data/borrowedVoiceBody.js" />
   <link rel="modulepreload" href="./src/data/bountyHunters.js" />
   <link rel="modulepreload" href="./src/data/bountyMarks.js" />
   <link rel="modulepreload" href="./src/data/bracket.js" />
   <link rel="modulepreload" href="./src/data/careerContracts.js" />
   <link rel="modulepreload" href="./src/data/cargoIdentity.js" />
   <link rel="modulepreload" href="./src/data/causePhrases.js" />
+  <link rel="modulepreload" href="./src/data/ceresShipbreak.js" />
+  <link rel="modulepreload" href="./src/data/ceresShipbreakCollision.js" />
+  <link rel="modulepreload" href="./src/data/ceresWorkfleet.js" />
+  <link rel="modulepreload" href="./src/data/ceresWorkfleetArticulation.js" />
+  <link rel="modulepreload" href="./src/data/ceresWorkfleetHardware.js" />
+  <link rel="modulepreload" href="./src/data/ceresWorkfleetIdentity.js" />
   <link rel="modulepreload" href="./src/data/claimableBodies.js" />
   <link rel="modulepreload" href="./src/data/collisionProxyManifests.js" />
   <link rel="modulepreload" href="./src/data/combatDefs.js" />
@@ -548,6 +582,206 @@
   <link rel="modulepreload" href="./src/data/encounters/365-the-grandee.js" />
   <link rel="modulepreload" href="./src/data/encounters/366-the-counting-relay.js" />
   <link rel="modulepreload" href="./src/data/encounters/367-the-salvage-tail.js" />
+  <link rel="modulepreload" href="./src/data/encounters/368-scissorwake.js" />
+  <link rel="modulepreload" href="./src/data/encounters/369-kilnback.js" />
+  <link rel="modulepreload" href="./src/data/encounters/370-mothlight.js" />
+  <link rel="modulepreload" href="./src/data/encounters/371-pallet-jack.js" />
+  <link rel="modulepreload" href="./src/data/encounters/372-the-kettle-hold.js" />
+  <link rel="modulepreload" href="./src/data/encounters/373-the-berth-vows.js" />
+  <link rel="modulepreload" href="./src/data/encounters/374-the-ash-casket.js" />
+  <link rel="modulepreload" href="./src/data/encounters/375-the-name-plate.js" />
+  <link rel="modulepreload" href="./src/data/encounters/376-the-relief-lamp.js" />
+  <link rel="modulepreload" href="./src/data/encounters/377-the-invoice-fight.js" />
+  <link rel="modulepreload" href="./src/data/encounters/378-the-tin-hymn.js" />
+  <link rel="modulepreload" href="./src/data/encounters/379-the-loose-cat.js" />
+  <link rel="modulepreload" href="./src/data/encounters/380-the-harvest-orbit.js" />
+  <link rel="modulepreload" href="./src/data/encounters/381-the-dark-cones.js" />
+  <link rel="modulepreload" href="./src/data/encounters/382-the-skiff-saturday.js" />
+  <link rel="modulepreload" href="./src/data/encounters/383-the-boot-whistle.js" />
+  <link rel="modulepreload" href="./src/data/encounters/384-the-rehearsed-scan.js" />
+  <link rel="modulepreload" href="./src/data/encounters/385-the-courtesy-honk.js" />
+  <link rel="modulepreload" href="./src/data/encounters/386-the-twelve-degrees.js" />
+  <link rel="modulepreload" href="./src/data/encounters/387-the-variance-apron.js" />
+  <link rel="modulepreload" href="./src/data/encounters/388-the-file-closed.js" />
+  <link rel="modulepreload" href="./src/data/encounters/389-the-veil-walk.js" />
+  <link rel="modulepreload" href="./src/data/encounters/390-the-wrong-berth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/391-lived-civilian-core-toll-choir-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/392-lived-trade-lane-toll-choir-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/393-lived-patrol-corridor-toll-choir-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/394-lived-border-checkpoint-toll-choir-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/395-lived-refinery-approach-toll-choir-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/396-lived-mining-belt-toll-choir-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/397-lived-colony-toll-choir-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/398-lived-derelict-field-toll-choir-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/399-lived-outlaw-zone-toll-choir-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/400-lived-radiation-field-toll-choir-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/401-lived-nebula-fog-toll-choir-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/402-lived-ambush-lane-toll-choir-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/403-lived-anomaly-deep-toll-choir-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/404-lived-planetary-mass-toll-choir-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/405-lived-civilian-core-toll-choir-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/406-lived-trade-lane-toll-choir-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/407-lived-patrol-corridor-toll-choir-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/408-lived-border-checkpoint-toll-choir-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/409-lived-refinery-approach-toll-choir-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/410-lived-mining-belt-toll-choir-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/411-lived-colony-toll-choir-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/412-lived-derelict-field-toll-choir-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/413-lived-outlaw-zone-toll-choir-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/414-lived-radiation-field-toll-choir-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/415-lived-nebula-fog-toll-choir-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/416-lived-ambush-lane-toll-choir-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/417-lived-anomaly-deep-toll-choir-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/418-lived-planetary-mass-toll-choir-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/419-lived-civilian-core-toll-choir-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/420-lived-trade-lane-toll-choir-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/421-lived-patrol-corridor-toll-free-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/422-lived-border-checkpoint-toll-choir-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/423-lived-refinery-approach-toll-choir-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/424-lived-mining-belt-toll-free-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/425-lived-colony-toll-choir-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/426-lived-derelict-field-toll-choir-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/427-lived-outlaw-zone-toll-free-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/428-lived-radiation-field-toll-choir-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/429-lived-nebula-fog-toll-choir-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/430-lived-ambush-lane-toll-free-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/431-lived-anomaly-deep-toll-choir-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/432-lived-planetary-mass-toll-choir-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/433-lived-civilian-core-toll-free-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/434-lived-trade-lane-toll-free-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/435-lived-patrol-corridor-toll-free-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/436-lived-border-checkpoint-toll-free-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/437-lived-refinery-approach-toll-free-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/438-lived-mining-belt-toll-free-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/439-lived-colony-toll-free-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/440-lived-derelict-field-toll-free-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/441-lived-outlaw-zone-toll-free-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/442-lived-radiation-field-toll-free-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/443-lived-nebula-fog-toll-free-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/444-lived-ambush-lane-toll-free-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/445-lived-anomaly-deep-toll-free-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/446-lived-planetary-mass-toll-free-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/447-lived-civilian-core-toll-free-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/448-lived-trade-lane-toll-free-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/449-lived-patrol-corridor-toll-free-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/450-lived-border-checkpoint-toll-free-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/451-lived-refinery-approach-toll-free-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/452-lived-mining-belt-toll-free-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/453-lived-colony-toll-free-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/454-lived-derelict-field-toll-free-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/455-lived-outlaw-zone-toll-free-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/456-lived-radiation-field-toll-free-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/457-lived-nebula-fog-toll-free-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/458-lived-ambush-lane-toll-free-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/459-lived-anomaly-deep-toll-free-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/460-lived-planetary-mass-toll-free-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/461-lived-civilian-core-toll-free-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/462-lived-trade-lane-toll-dmc-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/463-lived-patrol-corridor-toll-dmc-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/464-lived-border-checkpoint-toll-free-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/465-lived-refinery-approach-toll-dmc-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/466-lived-mining-belt-toll-dmc-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/467-lived-colony-toll-free-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/468-lived-derelict-field-toll-dmc-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/469-lived-outlaw-zone-toll-dmc-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/470-lived-radiation-field-toll-free-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/471-lived-nebula-fog-toll-dmc-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/472-lived-ambush-lane-toll-dmc-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/473-lived-anomaly-deep-toll-free-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/474-lived-planetary-mass-toll-dmc-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/475-lived-civilian-core-toll-dmc-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/476-lived-trade-lane-toll-dmc-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/477-lived-patrol-corridor-toll-dmc-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/478-lived-border-checkpoint-toll-dmc-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/479-lived-refinery-approach-toll-dmc-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/480-lived-mining-belt-toll-dmc-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/481-lived-colony-toll-dmc-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/482-lived-derelict-field-toll-dmc-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/483-lived-outlaw-zone-toll-dmc-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/484-lived-radiation-field-toll-dmc-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/485-lived-nebula-fog-toll-dmc-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/486-lived-ambush-lane-toll-dmc-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/487-lived-anomaly-deep-toll-dmc-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/488-lived-planetary-mass-toll-dmc-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/489-lived-civilian-core-toll-dmc-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/490-lived-trade-lane-toll-dmc-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/491-lived-patrol-corridor-toll-dmc-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/492-lived-border-checkpoint-toll-dmc-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/493-lived-refinery-approach-toll-dmc-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/494-lived-mining-belt-toll-dmc-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/495-lived-colony-toll-dmc-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/496-lived-derelict-field-toll-dmc-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/497-lived-outlaw-zone-toll-dmc-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/498-lived-radiation-field-toll-dmc-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/499-lived-nebula-fog-toll-dmc-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/500-lived-ambush-lane-toll-dmc-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/501-lived-anomaly-deep-toll-dmc-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/502-lived-planetary-mass-toll-dmc-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/503-lived-civilian-core-toll-archive-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/504-lived-trade-lane-toll-archive-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/505-lived-patrol-corridor-toll-archive-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/506-lived-border-checkpoint-toll-archive-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/507-lived-refinery-approach-toll-archive-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/508-lived-mining-belt-toll-archive-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/509-lived-colony-toll-archive-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/510-lived-derelict-field-toll-archive-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/511-lived-outlaw-zone-toll-archive-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/512-lived-radiation-field-toll-archive-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/513-lived-nebula-fog-toll-archive-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/514-lived-ambush-lane-toll-archive-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/515-lived-anomaly-deep-toll-archive-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/516-lived-planetary-mass-toll-archive-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/517-lived-civilian-core-toll-archive-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/518-lived-trade-lane-toll-archive-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/519-lived-patrol-corridor-toll-archive-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/520-lived-border-checkpoint-toll-archive-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/521-lived-refinery-approach-toll-archive-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/522-lived-mining-belt-toll-archive-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/523-lived-colony-toll-archive-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/524-lived-derelict-field-toll-archive-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/525-lived-outlaw-zone-toll-archive-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/526-lived-radiation-field-toll-archive-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/527-lived-nebula-fog-toll-archive-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/528-lived-ambush-lane-toll-archive-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/529-lived-anomaly-deep-toll-archive-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/530-lived-planetary-mass-toll-archive-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/531-lived-civilian-core-toll-archive-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/532-lived-trade-lane-toll-archive-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/533-lived-patrol-corridor-toll-helix-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/534-lived-border-checkpoint-toll-archive-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/535-lived-refinery-approach-toll-archive-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/536-lived-mining-belt-toll-helix-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/537-lived-colony-toll-archive-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/538-lived-derelict-field-toll-archive-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/539-lived-outlaw-zone-toll-helix-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/540-lived-radiation-field-toll-archive-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/541-lived-nebula-fog-toll-archive-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/542-lived-ambush-lane-toll-helix-none.js" />
+  <link rel="modulepreload" href="./src/data/encounters/543-lived-anomaly-deep-toll-archive-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/544-lived-planetary-mass-toll-archive-follow-on.js" />
+  <link rel="modulepreload" href="./src/data/encounters/545-lived-civilian-core-toll-helix-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/546-lived-trade-lane-toll-helix-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/547-lived-patrol-corridor-toll-helix-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/548-lived-border-checkpoint-toll-helix-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/549-lived-refinery-approach-toll-helix-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/550-lived-mining-belt-toll-helix-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/551-lived-colony-toll-helix-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/552-lived-derelict-field-toll-helix-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/553-lived-outlaw-zone-toll-helix-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/554-lived-radiation-field-toll-helix-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/555-lived-nebula-fog-toll-helix-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/556-lived-ambush-lane-toll-helix-depth.js" />
+  <link rel="modulepreload" href="./src/data/encounters/557-lived-anomaly-deep-toll-helix-named.js" />
+  <link rel="modulepreload" href="./src/data/encounters/558-lived-planetary-mass-toll-helix-k1.js" />
+  <link rel="modulepreload" href="./src/data/encounters/559-lived-civilian-core-toll-helix-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/560-lived-trade-lane-toll-helix-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/561-lived-patrol-corridor-toll-helix-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/562-lived-border-checkpoint-toll-helix-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/563-lived-refinery-approach-toll-helix-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/564-lived-mining-belt-toll-helix-admirers.js" />
+  <link rel="modulepreload" href="./src/data/encounters/565-lived-colony-toll-helix-logic.js" />
+  <link rel="modulepreload" href="./src/data/encounters/566-lived-derelict-field-toll-helix-literalized.js" />
+  <link rel="modulepreload" href="./src/data/encounters/567-second-rinse.js" />
   <link rel="modulepreload" href="./src/data/encounters/capital-boss.js" />
   <link rel="modulepreload" href="./src/data/encounters/capital-boss/ala.js" />
   <link rel="modulepreload" href="./src/data/encounters/capital-boss/brood-queen.js" />
@@ -603,6 +837,7 @@
   <link rel="modulepreload" href="./src/data/flavor/index.generated.js" />
   <link rel="modulepreload" href="./src/data/flightFeelEnvelopes.js" />
   <link rel="modulepreload" href="./src/data/flightTuning.js" />
+  <link rel="modulepreload" href="./src/data/foldAberrant.js" />
   <link rel="modulepreload" href="./src/data/frontierRegions/east.js" />
   <link rel="modulepreload" href="./src/data/frontierRegions/index.js" />
   <link rel="modulepreload" href="./src/data/frontierRegions/north.js" />
@@ -618,17 +853,28 @@
   <link rel="modulepreload" href="./src/data/hullFractureSeams.js" />
   <link rel="modulepreload" href="./src/data/hullIdentity.js" />
   <link rel="modulepreload" href="./src/data/hunterTricks.js" />
+  <link rel="modulepreload" href="./src/data/ilexArk.js" />
+  <link rel="modulepreload" href="./src/data/ilexArkBody.js" />
   <link rel="modulepreload" href="./src/data/impulseCharges.js" />
   <link rel="modulepreload" href="./src/data/interactionDescriptorCatalog.js" />
   <link rel="modulepreload" href="./src/data/kettleLine.js" />
   <link rel="modulepreload" href="./src/data/killRewards.js" />
+  <link rel="modulepreload" href="./src/data/kilnback.js" />
+  <link rel="modulepreload" href="./src/data/kilnbackBody.js" />
   <link rel="modulepreload" href="./src/data/lampChannels.js" />
   <link rel="modulepreload" href="./src/data/landmarkMissions.js" />
   <link rel="modulepreload" href="./src/data/laneContacts.js" />
+  <link rel="modulepreload" href="./src/data/lastShift.js" />
+  <link rel="modulepreload" href="./src/data/latchNine.js" />
+  <link rel="modulepreload" href="./src/data/latchNineBody.js" />
+  <link rel="modulepreload" href="./src/data/latchNineGeometry.js" />
+  <link rel="modulepreload" href="./src/data/latchNineGuidance.js" />
+  <link rel="modulepreload" href="./src/data/latchNineIdentity.js" />
   <link rel="modulepreload" href="./src/data/localPortraits.js" />
   <link rel="modulepreload" href="./src/data/lookMoods.js" />
   <link rel="modulepreload" href="./src/data/massSeed.js" />
   <link rel="modulepreload" href="./src/data/masslineCounters.js" />
+  <link rel="modulepreload" href="./src/data/materialRoleBands.js" />
   <link rel="modulepreload" href="./src/data/mining.js" />
   <link rel="modulepreload" href="./src/data/missionConditions.js" />
   <link rel="modulepreload" href="./src/data/missions.js" />
@@ -638,6 +884,8 @@
   <link rel="modulepreload" href="./src/data/modules.js" />
   <link rel="modulepreload" href="./src/data/moralTraps.js" />
   <link rel="modulepreload" href="./src/data/morrow.js" />
+  <link rel="modulepreload" href="./src/data/mothlight.js" />
+  <link rel="modulepreload" href="./src/data/mothlightBody.js" />
   <link rel="modulepreload" href="./src/data/namedAces.js" />
   <link rel="modulepreload" href="./src/data/narrative.js" />
   <link rel="modulepreload" href="./src/data/nemesisRival.js" />
@@ -649,6 +897,9 @@
   <link rel="modulepreload" href="./src/data/orrinWitnessCase.js" />
   <link rel="modulepreload" href="./src/data/palettes.js" />
   <link rel="modulepreload" href="./src/data/pallasHiddenCache.js" />
+  <link rel="modulepreload" href="./src/data/palletJack.js" />
+  <link rel="modulepreload" href="./src/data/palletJackBody.js" />
+  <link rel="modulepreload" href="./src/data/phaseBlink.js" />
   <link rel="modulepreload" href="./src/data/physicsMaterials.js" />
   <link rel="modulepreload" href="./src/data/pilotCallsigns.js" />
   <link rel="modulepreload" href="./src/data/pirateDisguise.js" />
@@ -660,8 +911,11 @@
   <link rel="modulepreload" href="./src/data/postEndingReplayChains.js" />
   <link rel="modulepreload" href="./src/data/precursorMachines.js" />
   <link rel="modulepreload" href="./src/data/raceCourses.js" />
+  <link rel="modulepreload" href="./src/data/raceLevels.js" />
   <link rel="modulepreload" href="./src/data/rangeRails.js" />
   <link rel="modulepreload" href="./src/data/ravel.js" />
+  <link rel="modulepreload" href="./src/data/redKite.js" />
+  <link rel="modulepreload" href="./src/data/redKiteBody.js" />
   <link rel="modulepreload" href="./src/data/regionalEcology.js" />
   <link rel="modulepreload" href="./src/data/regionalEconomyProfiles.js" />
   <link rel="modulepreload" href="./src/data/repReasons.js" />
@@ -669,12 +923,19 @@
   <link rel="modulepreload" href="./src/data/resonanceObelisk.js" />
   <link rel="modulepreload" href="./src/data/ruckus.js" />
   <link rel="modulepreload" href="./src/data/runModifiers.js" />
+  <link rel="modulepreload" href="./src/data/ruud.js" />
+  <link rel="modulepreload" href="./src/data/sableVenn.js" />
+  <link rel="modulepreload" href="./src/data/sableVennBody.js" />
   <link rel="modulepreload" href="./src/data/salvageActions.js" />
   <link rel="modulepreload" href="./src/data/salvageLegality.js" />
   <link rel="modulepreload" href="./src/data/sandboxSetPieceFollowOns.js" />
   <link rel="modulepreload" href="./src/data/saveVersion.js" />
   <link rel="modulepreload" href="./src/data/scanClues.js" />
   <link rel="modulepreload" href="./src/data/scanReveal.js" />
+  <link rel="modulepreload" href="./src/data/scissorwake.js" />
+  <link rel="modulepreload" href="./src/data/scissorwakeBody.js" />
+  <link rel="modulepreload" href="./src/data/secondRinse.js" />
+  <link rel="modulepreload" href="./src/data/secondRinseAudio.js" />
   <link rel="modulepreload" href="./src/data/sectorActivityPockets.js" />
   <link rel="modulepreload" href="./src/data/sectorAnchors.js" />
   <link rel="modulepreload" href="./src/data/sectorCompositions.js" />
@@ -696,6 +957,7 @@
   <link rel="modulepreload" href="./src/data/stationBubbles.js" />
   <link rel="modulepreload" href="./src/data/stationContacts.js" />
   <link rel="modulepreload" href="./src/data/stationSideEvents.js" />
+  <link rel="modulepreload" href="./src/data/statusPayoffs.js" />
   <link rel="modulepreload" href="./src/data/stormshiftCollectorCollision.js" />
   <link rel="modulepreload" href="./src/data/survivalActs.js" />
   <link rel="modulepreload" href="./src/data/survivalArenas.js" />
@@ -718,9 +980,14 @@
   <link rel="modulepreload" href="./src/data/swarmStakes.js" />
   <link rel="modulepreload" href="./src/data/swarmThreats.js" />
   <link rel="modulepreload" href="./src/data/synergies.js" />
+  <link rel="modulepreload" href="./src/data/tallyThree.js" />
+  <link rel="modulepreload" href="./src/data/tallyThreeBody.js" />
   <link rel="modulepreload" href="./src/data/tech.js" />
   <link rel="modulepreload" href="./src/data/techVerbLadder.js" />
+  <link rel="modulepreload" href="./src/data/theBolus.js" />
   <link rel="modulepreload" href="./src/data/titles.js" />
+  <link rel="modulepreload" href="./src/data/towlineTable.js" />
+  <link rel="modulepreload" href="./src/data/towlineTableBodies.js" />
   <link rel="modulepreload" href="./src/data/travelLaneRoutes.js" />
   <link rel="modulepreload" href="./src/data/uniqueWrecks.js" />
   <link rel="modulepreload" href="./src/data/vesper.js" />
@@ -806,7 +1073,12 @@
   <link rel="modulepreload" href="./src/render/authoredMotion.js" />
   <link rel="modulepreload" href="./src/render/authoredUpgradePolicy.js" />
   <link rel="modulepreload" href="./src/render/bloom.js" />
+  <link rel="modulepreload" href="./src/render/bolusCable.js" />
+  <link rel="modulepreload" href="./src/render/bolusCanal.js" />
+  <link rel="modulepreload" href="./src/render/bolusSilhouettes.js" />
+  <link rel="modulepreload" href="./src/render/bolusView.js" />
   <link rel="modulepreload" href="./src/render/bombPresentation.js" />
+  <link rel="modulepreload" href="./src/render/borrowedVoiceVisuals.js" />
   <link rel="modulepreload" href="./src/render/broodPresentation.js" />
   <link rel="modulepreload" href="./src/render/camera.js" />
   <link rel="modulepreload" href="./src/render/cameraDirector.js" />
@@ -816,12 +1088,16 @@
   <link rel="modulepreload" href="./src/render/canvasTextures.js" />
   <link rel="modulepreload" href="./src/render/cas.js" />
   <link rel="modulepreload" href="./src/render/casHeaders.generated.js" />
+  <link rel="modulepreload" href="./src/render/ceresCradleLayoutVisuals.js" />
   <link rel="modulepreload" href="./src/render/ceresJobActionVfx.js" />
+  <link rel="modulepreload" href="./src/render/ceresShipbreakVisuals.js" />
+  <link rel="modulepreload" href="./src/render/ceresWorkfleetVisuals.js" />
   <link rel="modulepreload" href="./src/render/characters/bracketModel.js" />
   <link rel="modulepreload" href="./src/render/characters/morrowModel.js" />
   <link rel="modulepreload" href="./src/render/characters/ravelModel.js" />
   <link rel="modulepreload" href="./src/render/characters/ruckusMeshData.js" />
   <link rel="modulepreload" href="./src/render/characters/ruckusModel.js" />
+  <link rel="modulepreload" href="./src/render/characters/ruudModel.js" />
   <link rel="modulepreload" href="./src/render/characters/solsticeModel.js" />
   <link rel="modulepreload" href="./src/render/characters/vesperModel.js" />
   <link rel="modulepreload" href="./src/render/clearanceQuery.js" />
@@ -845,6 +1121,7 @@
   <link rel="modulepreload" href="./src/render/combat/transientVfxMaterials.js" />
   <link rel="modulepreload" href="./src/render/compilePipelinesSafely.js" />
   <link rel="modulepreload" href="./src/render/compilePresentSlice.js" />
+  <link rel="modulepreload" href="./src/render/contactShadowReceivers.js" />
   <link rel="modulepreload" href="./src/render/contextResourceLifecycle.js" />
   <link rel="modulepreload" href="./src/render/creatureSkinLibrary.js" />
   <link rel="modulepreload" href="./src/render/crucibleGhost.js" />
@@ -871,6 +1148,7 @@
   <link rel="modulepreload" href="./src/render/flightProductCooker.js" />
   <link rel="modulepreload" href="./src/render/flightReadySet.js" />
   <link rel="modulepreload" href="./src/render/flightRenderPackage.js" />
+  <link rel="modulepreload" href="./src/render/foldAberrantVisual.js" />
   <link rel="modulepreload" href="./src/render/forceLanguage/bombFlowSurface.js" />
   <link rel="modulepreload" href="./src/render/forceLanguage/catalog.js" />
   <link rel="modulepreload" href="./src/render/forceLanguage/effectLifecycle.js" />
@@ -890,6 +1168,7 @@
   <link rel="modulepreload" href="./src/render/gpuTimers.js" />
   <link rel="modulepreload" href="./src/render/hitchClassifier.js" />
   <link rel="modulepreload" href="./src/render/hlod.js" />
+  <link rel="modulepreload" href="./src/render/ilexArkVisuals.js" />
   <link rel="modulepreload" href="./src/render/illustratedHullLayout.js" />
   <link rel="modulepreload" href="./src/render/illustratedLivery.js" />
   <link rel="modulepreload" href="./src/render/illustratedSurface.js" />
@@ -899,7 +1178,9 @@
   <link rel="modulepreload" href="./src/render/infrastructureMotion.js" />
   <link rel="modulepreload" href="./src/render/instanceChunkSubmitPolicy.js" />
   <link rel="modulepreload" href="./src/render/killcamStage.js" />
+  <link rel="modulepreload" href="./src/render/kilnbackVisuals.js" />
   <link rel="modulepreload" href="./src/render/lampBus.js" />
+  <link rel="modulepreload" href="./src/render/latchNineVisuals.js" />
   <link rel="modulepreload" href="./src/render/latePipelineAdmission.js" />
   <link rel="modulepreload" href="./src/render/lawArenaDressing.js" />
   <link rel="modulepreload" href="./src/render/lawHeatTelegraphVfx.js" />
@@ -909,6 +1190,7 @@
   <link rel="modulepreload" href="./src/render/lod.js" />
   <link rel="modulepreload" href="./src/render/look.js" />
   <link rel="modulepreload" href="./src/render/machineVisuals.js" />
+  <link rel="modulepreload" href="./src/render/marrowCone.js" />
   <link rel="modulepreload" href="./src/render/masslineCableSurface.js" />
   <link rel="modulepreload" href="./src/render/masslineChainReadout.js" />
   <link rel="modulepreload" href="./src/render/masslinePresentation.js" />
@@ -919,6 +1201,7 @@
   <link rel="modulepreload" href="./src/render/materialClone.js" />
   <link rel="modulepreload" href="./src/render/materialLibrary.js" />
   <link rel="modulepreload" href="./src/render/momentumSinkVfx.js" />
+  <link rel="modulepreload" href="./src/render/mothlightVisuals.js" />
   <link rel="modulepreload" href="./src/render/nextContactWarm.js" />
   <link rel="modulepreload" href="./src/render/npcJobSignatureVfx.js" />
   <link rel="modulepreload" href="./src/render/objectHoverFeedback.js" />
@@ -931,9 +1214,12 @@
   <link rel="modulepreload" href="./src/render/ordnanceMotionPresentation.js" />
   <link rel="modulepreload" href="./src/render/packageCpuDetach.js" />
   <link rel="modulepreload" href="./src/render/paintedPlanets.js" />
+  <link rel="modulepreload" href="./src/render/palletJackVisuals.js" />
   <link rel="modulepreload" href="./src/render/parallaxLayers.js" />
   <link rel="modulepreload" href="./src/render/particleShards.js" />
   <link rel="modulepreload" href="./src/render/persistentSubmitLanes.js" />
+  <link rel="modulepreload" href="./src/render/phaseBlinkLifecycle.js" />
+  <link rel="modulepreload" href="./src/render/phaseBlinkPresentation.js" />
   <link rel="modulepreload" href="./src/render/pickupMotionPresentation.js" />
   <link rel="modulepreload" href="./src/render/pickupShapeData.generated.js" />
   <link rel="modulepreload" href="./src/render/pickupShapes.js" />
@@ -956,7 +1242,10 @@
   <link rel="modulepreload" href="./src/render/programBinaryCache.js" />
   <link rel="modulepreload" href="./src/render/programCanon.js" />
   <link rel="modulepreload" href="./src/render/projectileMotionPresentation.js" />
+  <link rel="modulepreload" href="./src/render/racingCameraBlend.js" />
+  <link rel="modulepreload" href="./src/render/racingCourseView.js" />
   <link rel="modulepreload" href="./src/render/rcsJets.js" />
+  <link rel="modulepreload" href="./src/render/redKiteVisuals.js" />
   <link rel="modulepreload" href="./src/render/releaseMode.js" />
   <link rel="modulepreload" href="./src/render/renderEntityFrame.js" />
   <link rel="modulepreload" href="./src/render/renderPackageDigest.js" />
@@ -968,9 +1257,13 @@
   <link rel="modulepreload" href="./src/render/rigidOpaqueBatchPolicy.js" />
   <link rel="modulepreload" href="./src/render/rockFamilyLibrary.js" />
   <link rel="modulepreload" href="./src/render/rockSurfaceLibrary.js" />
+  <link rel="modulepreload" href="./src/render/runtimeWorkers.js" />
+  <link rel="modulepreload" href="./src/render/sableVennVisuals.js" />
   <link rel="modulepreload" href="./src/render/saveEnvelopeSectorWarm.js" />
   <link rel="modulepreload" href="./src/render/scenarioPropBatching.js" />
   <link rel="modulepreload" href="./src/render/scenarioProps47a.js" />
+  <link rel="modulepreload" href="./src/render/scissorwakeVisuals.js" />
+  <link rel="modulepreload" href="./src/render/secondRinseVisuals.js" />
   <link rel="modulepreload" href="./src/render/sectorPredict.js" />
   <link rel="modulepreload" href="./src/render/sectorVisualTransition.js" />
   <link rel="modulepreload" href="./src/render/selectionSigil.js" />
@@ -1003,6 +1296,7 @@
   <link rel="modulepreload" href="./src/render/stationSideEventVfx.js" />
   <link rel="modulepreload" href="./src/render/statusAttachedVfx.js" />
   <link rel="modulepreload" href="./src/render/tabletopPolicy.js" />
+  <link rel="modulepreload" href="./src/render/tallyThreeVisuals.js" />
   <link rel="modulepreload" href="./src/render/targetContour.js" />
   <link rel="modulepreload" href="./src/render/thruster/geometry/axialWidthEnvelope.js" />
   <link rel="modulepreload" href="./src/render/thruster/geometry/segmentedPlumeGeometry.js" />
@@ -1039,8 +1333,10 @@
   <link rel="modulepreload" href="./src/render/thruster/volume/plumeNoiseVolume.js" />
   <link rel="modulepreload" href="./src/render/titleAttractStage.js" />
   <link rel="modulepreload" href="./src/render/toolConduit.js" />
+  <link rel="modulepreload" href="./src/render/towlineTableVisuals.js" />
   <link rel="modulepreload" href="./src/render/trailTexture.js" />
   <link rel="modulepreload" href="./src/render/transparentSinglePassPolicy.js" />
+  <link rel="modulepreload" href="./src/render/veilRayNurseryVisuals.js" />
   <link rel="modulepreload" href="./src/render/velocityLanguage.js" />
   <link rel="modulepreload" href="./src/render/vfx.js" />
   <link rel="modulepreload" href="./src/render/vfx/actionEventRecipes.js" />
@@ -1093,6 +1389,7 @@
   <link rel="modulepreload" href="./src/save/saveSystem.js" />
   <link rel="modulepreload" href="./src/save/saveWorker.js" />
   <link rel="modulepreload" href="./src/save/sharedPlayerStore.js" />
+  <link rel="modulepreload" href="./src/save/slotStill.js" />
   <link rel="modulepreload" href="./src/sim/killcamTape.js" />
   <link rel="modulepreload" href="./src/sim/sector/embodiment.js" />
   <link rel="modulepreload" href="./src/sim/titleAttractTape.js" />
@@ -1141,6 +1438,7 @@
   <link rel="modulepreload" href="./src/systems/barkDirector.js" />
   <link rel="modulepreload" href="./src/systems/beacons.js" />
   <link rel="modulepreload" href="./src/systems/bombs.js" />
+  <link rel="modulepreload" href="./src/systems/borrowedVoice.js" />
   <link rel="modulepreload" href="./src/systems/bountyHunt.js" />
   <link rel="modulepreload" href="./src/systems/bracket.js" />
   <link rel="modulepreload" href="./src/systems/buildIdentity.js" />
@@ -1150,6 +1448,8 @@
   <link rel="modulepreload" href="./src/systems/careerContracts.js" />
   <link rel="modulepreload" href="./src/systems/cargo.js" />
   <link rel="modulepreload" href="./src/systems/cargoCustody.js" />
+  <link rel="modulepreload" href="./src/systems/ceresWorkfleet.js" />
+  <link rel="modulepreload" href="./src/systems/ceresWorkfleetRecovery.js" />
   <link rel="modulepreload" href="./src/systems/choirReliefBerth.js" />
   <link rel="modulepreload" href="./src/systems/chronicler.js" />
   <link rel="modulepreload" href="./src/systems/cinderSluiceArena.js" />
@@ -1185,6 +1485,7 @@
   <link rel="modulepreload" href="./src/systems/flight.js" />
   <link rel="modulepreload" href="./src/systems/flightV3.js" />
   <link rel="modulepreload" href="./src/systems/flybyFocus.js" />
+  <link rel="modulepreload" href="./src/systems/foldAberrant.js" />
   <link rel="modulepreload" href="./src/systems/fragileCargo.js" />
   <link rel="modulepreload" href="./src/systems/gamepad.js" />
   <link rel="modulepreload" href="./src/systems/gateControlDirector.js" />
@@ -1193,15 +1494,24 @@
   <link rel="modulepreload" href="./src/systems/heistFacilities.js" />
   <link rel="modulepreload" href="./src/systems/hullBurst.js" />
   <link rel="modulepreload" href="./src/systems/hullFracture.js" />
+  <link rel="modulepreload" href="./src/systems/ilexArk.js" />
   <link rel="modulepreload" href="./src/systems/impulseCharges.js" />
   <link rel="modulepreload" href="./src/systems/input.js" />
   <link rel="modulepreload" href="./src/systems/interactionDescriptors.js" />
   <link rel="modulepreload" href="./src/systems/intervention.js" />
   <link rel="modulepreload" href="./src/systems/jettisonImpulse.js" />
   <link rel="modulepreload" href="./src/systems/killReplay.js" />
+  <link rel="modulepreload" href="./src/systems/kilnback.js" />
   <link rel="modulepreload" href="./src/systems/lagrangeCrucible.js" />
+  <link rel="modulepreload" href="./src/systems/laneErrands.js" />
+  <link rel="modulepreload" href="./src/systems/lastShift.js" />
+  <link rel="modulepreload" href="./src/systems/latchNine.js" />
+  <link rel="modulepreload" href="./src/systems/latchNinePropulsion.js" />
+  <link rel="modulepreload" href="./src/systems/latchNineService.js" />
+  <link rel="modulepreload" href="./src/systems/latchNineTender.js" />
   <link rel="modulepreload" href="./src/systems/lawSecurity.js" />
   <link rel="modulepreload" href="./src/systems/legacyTouch.js" />
+  <link rel="modulepreload" href="./src/systems/livedWorldDirector.js" />
   <link rel="modulepreload" href="./src/systems/livingPoiBehaviors.js" />
   <link rel="modulepreload" href="./src/systems/lootShards.js" />
   <link rel="modulepreload" href="./src/systems/lossInvestigation.js" />
@@ -1229,6 +1539,7 @@
   <link rel="modulepreload" href="./src/systems/moralMemory.js" />
   <link rel="modulepreload" href="./src/systems/moralTrap.js" />
   <link rel="modulepreload" href="./src/systems/morrow.js" />
+  <link rel="modulepreload" href="./src/systems/mothlight.js" />
   <link rel="modulepreload" href="./src/systems/nemesis.js" />
   <link rel="modulepreload" href="./src/systems/nemesisEncounter.js" />
   <link rel="modulepreload" href="./src/systems/nemesisSignals.js" />
@@ -1237,6 +1548,8 @@
   <link rel="modulepreload" href="./src/systems/onboarding.js" />
   <link rel="modulepreload" href="./src/systems/orbitNodeRuntime.js" />
   <link rel="modulepreload" href="./src/systems/pallasWorkLoop.js" />
+  <link rel="modulepreload" href="./src/systems/palletJack.js" />
+  <link rel="modulepreload" href="./src/systems/phaseBlink.js" />
   <link rel="modulepreload" href="./src/systems/pirateDisengage.js" />
   <link rel="modulepreload" href="./src/systems/pirateDisguise.js" />
   <link rel="modulepreload" href="./src/systems/pirateParley.js" />
@@ -1247,23 +1560,31 @@
   <link rel="modulepreload" href="./src/systems/presentationAdapters.js" />
   <link rel="modulepreload" href="./src/systems/presentationOrchestrator.js" />
   <link rel="modulepreload" href="./src/systems/provenanceLedger.js" />
+  <link rel="modulepreload" href="./src/systems/racingGeometry.js" />
+  <link rel="modulepreload" href="./src/systems/racingSteer.js" />
   <link rel="modulepreload" href="./src/systems/ravel.js" />
   <link rel="modulepreload" href="./src/systems/recoveryEncounter.js" />
+  <link rel="modulepreload" href="./src/systems/redKite.js" />
   <link rel="modulepreload" href="./src/systems/regionalEcology.js" />
   <link rel="modulepreload" href="./src/systems/rescuedWorkerReturn.js" />
   <link rel="modulepreload" href="./src/systems/routeFollower.js" />
   <link rel="modulepreload" href="./src/systems/ruckus.js" />
   <link rel="modulepreload" href="./src/systems/runSession.js" />
+  <link rel="modulepreload" href="./src/systems/ruud.js" />
+  <link rel="modulepreload" href="./src/systems/sableVenn.js" />
   <link rel="modulepreload" href="./src/systems/salvage.js" />
   <link rel="modulepreload" href="./src/systems/salvageActions.js" />
   <link rel="modulepreload" href="./src/systems/scanReveal.js" />
   <link rel="modulepreload" href="./src/systems/scanner.js" />
   <link rel="modulepreload" href="./src/systems/scavengerOccupationSwitch.js" />
   <link rel="modulepreload" href="./src/systems/scenarioRuntime.js" />
+  <link rel="modulepreload" href="./src/systems/scissorwake.js" />
+  <link rel="modulepreload" href="./src/systems/secondRinse.js" />
   <link rel="modulepreload" href="./src/systems/sectorSim.js" />
   <link rel="modulepreload" href="./src/systems/setPieceMissionOffers.js" />
   <link rel="modulepreload" href="./src/systems/shipCapabilities.js" />
   <link rel="modulepreload" href="./src/systems/shipLedger.js" />
+  <link rel="modulepreload" href="./src/systems/siteIndustryPlanner.js" />
   <link rel="modulepreload" href="./src/systems/siteLogistics.js" />
   <link rel="modulepreload" href="./src/systems/siteProduction.js" />
   <link rel="modulepreload" href="./src/systems/siteSurvey.js" />
@@ -1305,12 +1626,15 @@
   <link rel="modulepreload" href="./src/systems/swarmJuice.js" />
   <link rel="modulepreload" href="./src/systems/swarmSupply.js" />
   <link rel="modulepreload" href="./src/systems/tacticalAI.js" />
+  <link rel="modulepreload" href="./src/systems/tallyThree.js" />
   <link rel="modulepreload" href="./src/systems/tensionDirector.js" />
   <link rel="modulepreload" href="./src/systems/terrainAnchors.js" />
   <link rel="modulepreload" href="./src/systems/tetherGameplay.js" />
+  <link rel="modulepreload" href="./src/systems/theBolus.js" />
   <link rel="modulepreload" href="./src/systems/theHiveArena.js" />
   <link rel="modulepreload" href="./src/systems/titles.js" />
   <link rel="modulepreload" href="./src/systems/touch.js" />
+  <link rel="modulepreload" href="./src/systems/towlineTable.js" />
   <link rel="modulepreload" href="./src/systems/traffic.js" />
   <link rel="modulepreload" href="./src/systems/travelLanes.js" />
   <link rel="modulepreload" href="./src/systems/tumbleStates.js" />
@@ -1319,6 +1643,7 @@
   <link rel="modulepreload" href="./src/systems/uniqueWrecks.js" />
   <link rel="modulepreload" href="./src/systems/v2FlavorRuntime.js" />
   <link rel="modulepreload" href="./src/systems/vesper.js" />
+  <link rel="modulepreload" href="./src/systems/vignetteInterpreter.js" />
   <link rel="modulepreload" href="./src/systems/volatileExposure.js" />
   <link rel="modulepreload" href="./src/systems/waveMaterialization.js" />
   <link rel="modulepreload" href="./src/systems/weapons.js" />
@@ -1334,6 +1659,7 @@
   <link rel="modulepreload" href="./src/ui/asteroid/asteroidRenderer2d.js" />
   <link rel="modulepreload" href="./src/ui/asteroid/asteroidRenderer3d.js" />
   <link rel="modulepreload" href="./src/ui/asteroid/buildPalette.js" />
+  <link rel="modulepreload" href="./src/ui/asteroid/industryPlanner.js" />
   <link rel="modulepreload" href="./src/ui/asteroid/inspector.js" />
   <link rel="modulepreload" href="./src/ui/asteroid/worksPartLoader.js" />
   <link rel="modulepreload" href="./src/ui/automationPayoff.js" />
@@ -1341,6 +1667,7 @@
   <link rel="modulepreload" href="./src/ui/bindings.js" />
   <link rel="modulepreload" href="./src/ui/bootMediaPlayback.js" />
   <link rel="modulepreload" href="./src/ui/bootVisualizer.js" />
+  <link rel="modulepreload" href="./src/ui/borrowedVoicePrompt.js" />
   <link rel="modulepreload" href="./src/ui/canvasFonts.js" />
   <link rel="modulepreload" href="./src/ui/captions.js" />
   <link rel="modulepreload" href="./src/ui/careerLadderView.js" />
@@ -1380,6 +1707,7 @@
   <link rel="modulepreload" href="./src/ui/discoveryPlate.js" />
   <link rel="modulepreload" href="./src/ui/dockArrival.js" />
   <link rel="modulepreload" href="./src/ui/dockDenyBanner.js" />
+  <link rel="modulepreload" href="./src/ui/dockStateCommit.js" />
   <link rel="modulepreload" href="./src/ui/domInstrumentation.js" />
   <link rel="modulepreload" href="./src/ui/effects/circularGauge.js" />
   <link rel="modulepreload" href="./src/ui/effects/commsTrace.js" />
@@ -1400,6 +1728,7 @@
   <link rel="modulepreload" href="./src/ui/entityResolver.js" />
   <link rel="modulepreload" href="./src/ui/factionStanding.js" />
   <link rel="modulepreload" href="./src/ui/fieldHud.js" />
+  <link rel="modulepreload" href="./src/ui/firstHourFelt.js" />
   <link rel="modulepreload" href="./src/ui/floatingText.js" />
   <link rel="modulepreload" href="./src/ui/forkInstrument.js" />
   <link rel="modulepreload" href="./src/ui/frontierRumorMapLayer.js" />
@@ -1415,6 +1744,7 @@
   <link rel="modulepreload" href="./src/ui/hudMeta.js" />
   <link rel="modulepreload" href="./src/ui/hudSkipUnchanged.js" />
   <link rel="modulepreload" href="./src/ui/hullPosters.js" />
+  <link rel="modulepreload" href="./src/ui/ilexArkPrompt.js" />
   <link rel="modulepreload" href="./src/ui/impoundPayPrompt.js" />
   <link rel="modulepreload" href="./src/ui/input.js" />
   <link rel="modulepreload" href="./src/ui/jumpNotice.js" />
@@ -1425,6 +1755,7 @@
   <link rel="modulepreload" href="./src/ui/kit/motion.js" />
   <link rel="modulepreload" href="./src/ui/kit/sound.js" />
   <link rel="modulepreload" href="./src/ui/kit/temperature.js" />
+  <link rel="modulepreload" href="./src/ui/lastShiftPrompt.js" />
   <link rel="modulepreload" href="./src/ui/lawfulInspectionPrompt.js" />
   <link rel="modulepreload" href="./src/ui/listControls.js" />
   <link rel="modulepreload" href="./src/ui/loadingProgressDriver.js" />
@@ -1451,6 +1782,7 @@
   <link rel="modulepreload" href="./src/ui/missionPreflight.js" />
   <link rel="modulepreload" href="./src/ui/momentumSinkOverlay.js" />
   <link rel="modulepreload" href="./src/ui/moralTrapPrompt.js" />
+  <link rel="modulepreload" href="./src/ui/mothlightPrompt.js" />
   <link rel="modulepreload" href="./src/ui/navigation/cargoDeck.js" />
   <link rel="modulepreload" href="./src/ui/navigation/localSpaceMapModel.js" />
   <link rel="modulepreload" href="./src/ui/navigationWaypoint.js" />
@@ -1461,6 +1793,7 @@
   <link rel="modulepreload" href="./src/ui/orrery/archiveInstruments.js" />
   <link rel="modulepreload" href="./src/ui/orrery/archiveLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/barReplyDial.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/bearingRefusal.js" />
   <link rel="modulepreload" href="./src/ui/orrery/bootRing.js" />
   <link rel="modulepreload" href="./src/ui/orrery/bootRingWorker.js" />
   <link rel="modulepreload" href="./src/ui/orrery/buildSigils.js" />
@@ -1497,7 +1830,12 @@
   <link rel="modulepreload" href="./src/ui/orrery/ledgerTape.js" />
   <link rel="modulepreload" href="./src/ui/orrery/marketLayouts.js" />
   <link rel="modulepreload" href="./src/ui/orrery/motion.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/nextDecision.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/pipSpannerCrew.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/pipSpannerPreview.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/ringLegend.js" />
   <link rel="modulepreload" href="./src/ui/orrery/routeOrrery.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/sableDemo.js" />
   <link rel="modulepreload" href="./src/ui/orrery/saveBerth.js" />
   <link rel="modulepreload" href="./src/ui/orrery/saveFilmstrip.js" />
   <link rel="modulepreload" href="./src/ui/orrery/saveLayouts.js" />
@@ -1520,6 +1858,7 @@
   <link rel="modulepreload" href="./src/ui/orrery/yardCarousel.js" />
   <link rel="modulepreload" href="./src/ui/outfittingSpendConfirm.js" />
   <link rel="modulepreload" href="./src/ui/pallasHiddenCacheMapLayer.js" />
+  <link rel="modulepreload" href="./src/ui/palletJackPrompt.js" />
   <link rel="modulepreload" href="./src/ui/panels/handlingProfile.js" />
   <link rel="modulepreload" href="./src/ui/panels/massDelta.js" />
   <link rel="modulepreload" href="./src/ui/panels/moduleRisk.js" />
@@ -1534,8 +1873,13 @@
   <link rel="modulepreload" href="./src/ui/promptDeck.js" />
   <link rel="modulepreload" href="./src/ui/prompts/bulkHaulTag.js" />
   <link rel="modulepreload" href="./src/ui/quitGame.js" />
+  <link rel="modulepreload" href="./src/ui/racingControls.js" />
+  <link rel="modulepreload" href="./src/ui/racingHud.js" />
+  <link rel="modulepreload" href="./src/ui/racingLaunch.js" />
+  <link rel="modulepreload" href="./src/ui/racingMap.js" />
   <link rel="modulepreload" href="./src/ui/radar.js" />
   <link rel="modulepreload" href="./src/ui/recoveryEncounterPrompt.js" />
+  <link rel="modulepreload" href="./src/ui/redKitePrompt.js" />
   <link rel="modulepreload" href="./src/ui/reducedMotionInformation.js" />
   <link rel="modulepreload" href="./src/ui/sandbox/sandboxSetup.js" />
   <link rel="modulepreload" href="./src/ui/screenManager.js" />
@@ -1544,7 +1888,10 @@
   <link rel="modulepreload" href="./src/ui/screens/crucibleLabControls.js" />
   <link rel="modulepreload" href="./src/ui/screens/crucibleLabTelemetry.js" />
   <link rel="modulepreload" href="./src/ui/screens/drill.js" />
+  <link rel="modulepreload" href="./src/ui/screens/industryReadout.js" />
   <link rel="modulepreload" href="./src/ui/screens/replay.js" />
+  <link rel="modulepreload" href="./src/ui/screens/resultsSheet.js" />
+  <link rel="modulepreload" href="./src/ui/screens/saveNotices.js" />
   <link rel="modulepreload" href="./src/ui/screens/shareCode.js" />
   <link rel="modulepreload" href="./src/ui/screens/stageHull.js" />
   <link rel="modulepreload" href="./src/ui/sectorLawPresenter.js" />
@@ -1602,6 +1949,7 @@
   <link rel="modulepreload" href="./src/ui/teachingOverlay.js" />
   <link rel="modulepreload" href="./src/ui/threatHalo.js" />
   <link rel="modulepreload" href="./src/ui/toasts.js" />
+  <link rel="modulepreload" href="./src/ui/towlineTablePrompt.js" />
   <link rel="modulepreload" href="./src/ui/uiPrimitives.js" />
   <link rel="modulepreload" href="./src/ui/uiRoot.js" />
   <link rel="modulepreload" href="./src/ui/uniqueWreckMapLayer.js" />
@@ -1653,6 +2001,7 @@
   <link rel="modulepreload" href="./src/world/presentationSources.js" />
   <link rel="modulepreload" href="./src/world/resourceBodyRecords.js" />
   <link rel="modulepreload" href="./src/world/solidDressing.js" />
+  <link rel="modulepreload" href="./src/world/veilRayNursery.js" />
   <link rel="modulepreload" href="./src/world/worldCatchup.js" />
   <link rel="modulepreload" href="./src/world/worldRecords.js" />
   <link rel="modulepreload" href="./vendor/addons/libs/ktx-parse.module.js" />

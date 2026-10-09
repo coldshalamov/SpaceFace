@@ -41,7 +41,10 @@ test('ranks rise with reputation and never step backward', () => {
 
 test('the yard discount is zero below the second step and ten percent at it', () => {
   const { state } = boot();
-  state.dock = { factionId: 'faction_scn' };
+  // The discount reads the docked station's own faction through economy.serviceUnitCr — the
+  // real production resolution (an older draft read a fabricated state.dock that no system
+  // ever wrote, which left the discount dead on both the quote and the charge).
+  state.ui.dockedStationId = 'station_helios';
   state.fuel = { current: 0, max: 10 };
   state.player.credits = 100000;
   state.factions.faction_scn.rep = 0;

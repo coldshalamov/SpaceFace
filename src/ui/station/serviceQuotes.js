@@ -3,8 +3,7 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor } from '../../systems/economy.js';
-import { rankServiceDiscount } from '../../systems/factions.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, AMMO_BATCH } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -87,7 +86,7 @@ export function runFactionPresenceDockAction(bus, state, stationId, serviceId) {
   return { ok: true, targetTab: row.targetTab || null };
 }
 
-export const AMMO_BATCH = 100;         // munitions per ammo purchase
+export { AMMO_BATCH };                    // munitions per ammo purchase — owned by economy now
 const MUNITIONS = COMMODITIES.find((c) => c.id === 'cmdty_munitions') || { volPerU: 1 };
 
 const FUEL_WARN_FRAC = 0.45;
@@ -279,12 +278,22 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'refuel') {
+    // The berth's services list outranks the tank math: no pump here, no quote at all.
+    if (!stationOffersService(state, 'refuel')) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'This berth has no fuel berth — refuel where the services list names it',
+        buttonLabel: 'Refuel',
+        disabled: true,
+        disabledReason: 'no fuel berth here — try a trade hub or a depot',
+        chips: [{ text: 'no pump', kind: 'bad' }],
+      };
+    }
     const fuel = state && state.fuel || { current: 0, max: 0 };
     const current = Math.round(fuel.current || 0);
     const max = Math.round(fuel.max || 0);
     const missing = Math.max(0, (fuel.max || 0) - (fuel.current || 0));
-    const dockFaction = state && state.dock && state.dock.factionId;
-    const fuelUnit = SERVICE_PRICES.fuelCrPerUnit * (1 - rankServiceDiscount(state, dockFaction));
+    const fuelUnit = serviceUnitCr(state, SERVICE_PRICES.fuelCrPerUnit);
     const cost = Math.round(missing * fuelUnit);
     if (missing <= 0) {
       return { amount: 0, cost: 0, detail: 'Fuel ' + current + '/' + max + ' · full', buttonLabel: 'Full', disabled: true, chips: [{ text: 'full', kind: 'ok' }] };
@@ -328,9 +337,19 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'repair') {
+    // Same berth contract as the pump: no yard here, no quote.
+    if (!stationOffersService(state, 'repair')) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'This berth has no repair yard — weld where the services list names it',
+        buttonLabel: 'Repair Hull',
+        disabled: true,
+        disabledReason: 'no repair yard here — try a station with repair services',
+        chips: [{ text: 'no yard', kind: 'bad' }],
+      };
+    }
     const missing = repairMissing(entity);
-    const dockFaction = state && state.dock && state.dock.factionId;
-    const repairUnit = SERVICE_PRICES.repairCrPerHp * (1 - rankServiceDiscount(state, dockFaction));
+    const repairUnit = serviceUnitCr(state, SERVICE_PRICES.repairCrPerHp);
     const cost = Math.round(missing.total * repairUnit);
     const hullText = 'Hull ' + Math.round(entity ? entity.hull : 0) + '/' + Math.round(entity ? entity.hullMax : 0);
     const armorText = 'Armor ' + Math.round(entity ? entity.armorHp || 0 : 0) + '/' + Math.round(entity ? entity.armorMax || 0 : 0);
@@ -349,7 +368,7 @@ export function serviceQuote(type, state, entity) {
       };
     }
     if (credits < cost) {
-      const repairable = Math.max(1, Math.floor(credits / SERVICE_PRICES.repairCrPerHp));
+      const repairable = Math.max(1, Math.floor(credits / repairUnit));
       return {
         amount: missing.total,
         cost: credits,
@@ -369,6 +388,17 @@ export function serviceQuote(type, state, entity) {
     };
   }
   if (type === 'hull_wash') {
+    // Same berth contract as the pump and the weld: the wash runs at a repair berth.
+    if (!stationOffersService(state, 'repair')) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'This berth has no repair yard — the wash runs where hulls are welded',
+        buttonLabel: 'Wash Hull',
+        disabled: true,
+        disabledReason: 'no repair yard here — the wash runs at a repair berth',
+        chips: [{ text: 'no yard', kind: 'bad' }],
+      };
+    }
     const index = Math.max(0, Math.floor(Number(p.activeShipIndex) || 0));
     const owned = Array.isArray(p.ownedShips) ? p.ownedShips[index] : null;
     const now = Number(state && state.simTime) || 0;

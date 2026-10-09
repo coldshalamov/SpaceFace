@@ -10,8 +10,9 @@ import {
 
 class FakePage extends EventEmitter {}
 
-const failedRequest = (url, errorText) => ({
+const failedRequest = (url, errorText, method = 'GET') => ({
   url: () => url,
+  method: () => method,
   failure: () => ({ errorText }),
 });
 
@@ -89,8 +90,12 @@ test('an optional save-store deadline is ignored only on an explicitly store-les
   page.emit('requestfailed', failedRequest('http://game.test/__spaceface_player_store', 'net::ERR_ABORTED'));
   assert.equal(absent.issues.length, 0);
   assert.equal(absent.ignoredIssues[0].absentPlayerStore, true);
-  assert.equal(mounted.issues.length, 1);
-  assert.equal(unknown.issues.length, 1);
+  // Callers that excuse only the boot GET probe read the recorded method.
+  assert.equal(absent.ignoredIssues[0].method, 'GET');
+  page.emit('requestfailed', failedRequest('http://game.test/__spaceface_player_store', 'net::ERR_ABORTED', 'PUT'));
+  assert.equal(absent.ignoredIssues[1].method, 'PUT');
+  assert.equal(mounted.issues.length, 2);
+  assert.equal(unknown.issues.length, 2);
   page.emit('requestfailed', failedRequest('http://game.test/__spaceface_player_store', 'net::ERR_FAILED'));
   page.emit('requestfailed', failedRequest('http://game.test/asset.glb', 'net::ERR_ABORTED'));
   assert.equal(absent.issues.length, 2, 'asset failures and real transport faults remain visible');

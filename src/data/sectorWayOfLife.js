@@ -388,6 +388,20 @@ export const SECTOR_WAY_OF_LIFE = Object.freeze([
     landmark: 'Dione Exchange (station_dione).',
     signatureToy: 'explicitly none',
   }),
+  row({
+    id: 'sector_the_bolus',
+    name: 'The Bolus',
+    sentence: 'The throat: a colonized carrier, one line, no answer.',
+    verb: 'Swing the wall. Decide what the line takes.',
+    rhythm: 'Coast, then a breath, then the cough.',
+    law: 'Nothing answers a distress call.',
+    crime: 'Taking the specimen. Leaving the lip unstitched.',
+    ships: 'The player, the drowned hauler, and Ives at the rib.',
+    structures: 'The Swallowed Rib, the cartilage road, the iris.',
+    hazardGeometry: 'A lumen that bites, a shove that a taut tendon can stall.',
+    landmark: 'The Swallowed Rib (station_bolus_rib).',
+    signatureToy: 'explicitly none',
+  }),
 ]);
 
 export const SECTOR_WAY_OF_LIFE_BY_ID = Object.freeze(

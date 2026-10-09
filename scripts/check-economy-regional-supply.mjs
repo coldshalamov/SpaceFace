@@ -60,9 +60,9 @@ export function checkEconomyRegionalSupply() {
   });
   for (const e of catalog.errors) errors.push(e);
 
-  if (SECTORS.length !== 24) errors.push(`SECTORS length ${SECTORS.length} !== 24`);
-  if (REGIONAL_ECONOMY_PROFILES.length !== 24) {
-    errors.push(`profiles length ${REGIONAL_ECONOMY_PROFILES.length} !== 24`);
+  if (SECTORS.length !== 25) errors.push(`SECTORS length ${SECTORS.length} !== 25`);
+  if (REGIONAL_ECONOMY_PROFILES.length !== 25) {
+    errors.push(`profiles length ${REGIONAL_ECONOMY_PROFILES.length} !== 25`);
   }
 
   // ── Coverage ───────────────────────────────────────────────────────────────

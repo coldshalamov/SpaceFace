@@ -108,6 +108,8 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
           clockForFight,
           reducedMotion,
         });
+        const fights = (st && st.capitalBossEncounters && st.capitalBossEncounters.fights) || {};
+        overlay.restore(fights);
       }
       if (st && st.mode === 'flight') {
         if (sizeDirty) syncSize();

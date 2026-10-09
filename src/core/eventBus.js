@@ -27,12 +27,135 @@ export const PRESENTATION_LISTENER_DRAIN_BUDGET = 8;
 // (no listener is ever skipped); it does not promise that delivery stays sliced.
 export const MAX_QUEUED_SLICED_EMITS = 8;
 
+// A persistently-throwing listener on a hot event used to pay a full Error +
+// stack serialization per emit — emit-rate volume for the rest of the session.
+// Per-event storm dedup (the laneWarn shape): the first few faults log verbatim,
+// the storm folds into a suppressed count re-summarized on a >=1 s heartbeat.
+//
+// Rows hang off the listener itself (WeakMap → [{ label, event, ... }]) — a
+// re-registered listener folds into the same row because its fn identity never
+// changes, and the per-fault path is one map hop + a === scan instead of the
+// old `${label}|${event}|${token}` composite string mint per throw. Non-function
+// listeners (none today — defensive) hold a parallel keyed Map so WeakMap key
+// typing never breaks the fault path. The bounded index owns retained rows;
+// eviction removes the listener lookup too, so a later fault is indexed anew.
+const BUS_ERROR_VERBATIM = 8;
+const BUS_ERROR_CAP = 256;
+const BUS_ERROR_INDEX_CAP = 512;
+const busErrorRows = new WeakMap(); // fn -> [{ label, event, logged, suppressed, faults, lastWarnAt, lastErrorHead }]
+const busErrorRowsByKey = new Map(); // non-function listener key -> same rows
+const busErrorIndex = new Set(); // every minted row, insertion-ordered, oldest-evict at cap
+
+function rowsForBusListener(listener) {
+  if (typeof listener === 'function') {
+    let rows = busErrorRows.get(listener);
+    if (!rows) { rows = []; busErrorRows.set(listener, rows); }
+    return rows;
+  }
+  const key = listener === undefined ? '?' : listener;
+  let rows = busErrorRowsByKey.get(key);
+  if (!rows) {
+    if (busErrorRowsByKey.size >= BUS_ERROR_CAP) {
+      // Oldest-row evict, not clear(): a cap-hit wipe re-arms every storming
+      // key's verbatim budget simultaneously and erases accrued suppressed
+      // counts before their heartbeat can report them.
+      const oldest = busErrorRowsByKey.keys().next();
+      if (!oldest.done) busErrorRowsByKey.delete(oldest.value);
+    }
+    rows = [];
+    busErrorRowsByKey.set(key, rows);
+  }
+  return rows;
+}
+
+// Fault history may suppress logs, never delivery: the next payload can be valid,
+// and gameplay must not depend on a wall-clock cooldown or another bus's faults.
+function invokeBusListener(fn, payload, event, label) {
+  try { fn(payload, event); }
+  catch (err) {
+    try { noteBusHandlerError(event, err, label, fn); }
+    catch (_) { /* Diagnostics, including the logger, must never interrupt delivery. */ }
+  }
+}
+
+function busErrorHead(error) {
+  try {
+    const message = error?.message;
+    return (typeof message === 'string' ? message : String(error)).slice(0, 160);
+  } catch (_) {
+    return '(unprintable thrown value)';
+  }
+}
+
+function noteBusHandlerError(event, err, label, listener) {
+  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now() : Date.now();
+  // Per-listener row: an event-level row let one storming handler consume the
+  // verbatim budget for every faulting listener on that event — the second
+  // distinct fault's identity never appeared verbatim.
+  const rows = rowsForBusListener(listener);
+  let entry = null;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.label === label && row.event === event) { entry = row; break; }
+  }
+  if (!entry) {
+    if (busErrorIndex.size >= BUS_ERROR_INDEX_CAP) {
+      const oldest = busErrorIndex.values().next();
+      if (!oldest.done) {
+        const retired = oldest.value;
+        busErrorIndex.delete(retired);
+        retired.rows.splice(retired.rows.indexOf(retired), 1);
+      }
+    }
+    entry = { rows, label, event, logged: 0, suppressed: 0, faults: 0, lastWarnAt: -Infinity, lastErrorHead: null };
+    rows.push(entry);
+    busErrorIndex.add(entry);
+  }
+  entry.faults += 1;
+  entry.lastErrorHead = busErrorHead(err);
+  if (entry.logged < BUS_ERROR_VERBATIM) {
+    entry.logged += 1;
+    console.error(`[bus] ${label} for "${event}":`, err);
+    return;
+  }
+  entry.suppressed += 1;
+  if (now - entry.lastWarnAt >= 1000) {
+    entry.lastWarnAt = now;
+    console.error(
+      `[bus] ${label} for "${event}": ${entry.suppressed} further fault(s) suppressed; latest:`,
+      err,
+    );
+    entry.suppressed = 0;
+  }
+}
+
+// Name the hot throwing listeners — the dominant per-fault cost (Error+stack
+// inside the thrower) is only fixable once forensics can see WHO storms. Top-N
+// by total faults, read by render diagnostics next to laneFaults.
+export function busFaultSummary(limit = 8) {
+  const rows = [];
+  for (const entry of busErrorIndex) {
+    if (entry.faults > 0) {
+      rows.push({
+        label: entry.label,
+        event: entry.event,
+        faults: entry.faults,
+        suppressed: entry.suppressed,
+        lastErrorHead: entry.lastErrorHead,
+        lastWarnAt: entry.lastWarnAt,
+      });
+    }
+  }
+  rows.sort((a, b) => b.faults - a.faults);
+  return rows.slice(0, Math.max(0, limit | 0));
+}
+
 function dispatchRange(fns, payload, event, start, end) {
   const last = Math.min(fns.length, end);
   let i = start;
   for (; i < last; i++) {
-    try { fns[i](payload, event); }
-    catch (err) { console.error(`[bus] handler error for "${event}":`, err); }
+    invokeBusListener(fns[i], payload, event, 'handler error');
   }
   return i;
 }
@@ -293,8 +416,7 @@ export function createBus() {
         while (emitSlice === slice && slice.index < slice.fns.length) {
           const fn = slice.fns[slice.index];
           slice.index += 1;
-          try { fn(slice.payload, slice.event); }
-          catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
+          invokeBusListener(fn, slice.payload, slice.event, 'handler error');
         }
         if (emitSlice === slice) emitSlice = null;
         else break; // clear() or a re-entrant sliced emit swapped the global — stop here
@@ -342,8 +464,7 @@ export function createBus() {
       const fn = slice.fns[slice.index];
       slice.index += 1;
       ran += 1;
-      try { fn(slice.payload, slice.event); }
-      catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
+      invokeBusListener(fn, slice.payload, slice.event, 'handler error');
       // The caller's deadline plus the shared paced ledger — a frame that already
       // spent its paced budget doesn't also get this drain's whole wallet.
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
@@ -410,8 +531,7 @@ export function createBus() {
       const fn = head.fns[head.index];
       head.index += 1;
       ran += 1;
-      try { fn(head.payload, head.event); }
-      catch (err) { console.error(`[bus] presentation handler error for "${head.event}":`, err); }
+      invokeBusListener(fn, head.payload, head.event, 'presentation handler error');
       if (head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
       if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }

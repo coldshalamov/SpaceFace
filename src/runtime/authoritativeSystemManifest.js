@@ -49,8 +49,8 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
-  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'lossInvestigation', 'salvageActions', 'survivorPod',
-  'recoveryEncounter', 'factions', 'sectorSim', 'npcJobsRuntime', 'careerOrigins',
+  'gateControlDirector', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'salvage', 'tallyThree', 'lastShift', 'lastShiftPrompt', 'redKite', 'redKitePrompt', 'sableVenn', 'ilexArk', 'ilexArkPrompt', 'kilnback', 'mothlight', 'mothlightPrompt', 'palletJack', 'palletJackPrompt', 'secondRinse', 'lossInvestigation', 'salvageActions', 'survivorPod',
+  'recoveryEncounter', 'factions', 'sectorSim', 'towlineTable', 'towlineTablePrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
@@ -63,7 +63,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // impoundPayPrompt, moralTrapPrompt and wreckChoicePrompt are event-only like customsPrompt —
   // init order matters (bus subscriptions); all are deliberately absent from
   // PRODUCTION_UPDATE_ORDER.
-  'impoundPayPrompt', 'moralTrapPrompt', 'wreckChoicePrompt',
+  'impoundPayPrompt', 'moralTrapPrompt', 'wreckChoicePrompt', 'stuckTowPrompt',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem', 'render', 'vfx', 'feel', 'audio', 'ui', 'save',
 ]);
@@ -85,15 +85,15 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // combat pass committed (kernel capabilities are effective by then). The fire gate itself also
   // re-runs inside tacticalAI on both full-decision and cached ticks, so a score-owned capital
   // can never double-fire through stock intent.
-  'nemesis', 'nemesisEncounter', 'capitalBossEncounters', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
-  'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
+  'nemesis', 'nemesisEncounter', 'capitalBossEncounters', 'kilnback', 'mothlight', 'palletJack', 'secondRinse', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
+  'beacons', 'travelLanes', 'flightSlot', 'cruise', 'redKite', 'ilexArk', 'aiPorts', 'tumbleStates',
   // Bombs and emergent primitives read the shared chargeDetonate edge before impulseCharges consumes it.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'physics', 'latchNine', 'combat',
+  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'physics', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
@@ -105,8 +105,8 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'regionalEcology', 'tensionDirector', 'encounterDirector', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
-  'salvage', 'tallyThree', 'lastShift', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
-  'factions', 'sectorSim', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
+  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
+  'factions', 'sectorSim', 'towlineTable', 'borrowedVoice', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
   'liveCareerLadderBranches', 'story', 'scenarioRuntime',
   // survivalWave: materializes the planned wave through spawnBudget and reports the cleared
   // receipt. Immediately before survivalRun so a wave cleared this tick advances the phase this tick.
@@ -157,6 +157,12 @@ export const SLOT_SYSTEM_IDS = Object.freeze(['aiSlot', 'flightSlot']);
  */
 export const SYSTEM_CAPABILITIES = Object.freeze({
   lastShiftPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
+  redKitePrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
+  ilexArkPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
+  towlineTablePrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
+  mothlightPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
+  palletJackPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
+  borrowedVoicePrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   core: Object.freeze({ nodeSafe: true, phase: 'core', capability: 'core' }),
   aiSlot: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'ai', slot: true }),
   flightSlot: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'flight', slot: true }),
@@ -239,8 +245,14 @@ export const CALENDAR_CLOCK_PERIOD_TICKS = 30;
 export const CALENDAR_CLOCK_COHORTS = 3;
 export const CALENDAR_CLOCK_COHORT_STRIDE = CALENDAR_CLOCK_PERIOD_TICKS / CALENDAR_CLOCK_COHORTS;
 
+export function clockLookupId(id) {
+  if (id === 'ai' || id === 'tacticalAI') return 'aiSlot';
+  if (id === 'moralTrap') return 'moralTrapSystem';
+  return id;
+}
+
 export function calendarCohortIndex(id) {
-  const idx = CALENDAR_CLOCK_IDS.indexOf(id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id);
+  const idx = CALENDAR_CLOCK_IDS.indexOf(clockLookupId(id));
   // Capability-clocked ids outside the list land in the last cohort deterministically.
   return ((idx % CALENDAR_CLOCK_COHORTS) + CALENDAR_CLOCK_COHORTS) % CALENDAR_CLOCK_COHORTS;
 }
@@ -250,7 +262,7 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   'automation', 'asteroidSites', 'asteroidFormations', 'crafting', 'economy', 'intervention',
   'heistFacilities', 'regionalEcology', 'tensionDirector', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors',
   'pirateRumor', 'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'gateControlDirector',
-  'salvage', 'tallyThree', 'lastShift', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
+  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
   'factions', 'sectorSim', 'missions', 'careerOrigins', 'careerLadders', 'liveCareerLadderBranches',
   'story', 'scenarioRuntime', 'drill', 'claims', 'bandRadio', 'onboarding', 'save',
   // Ecology/morale are event-driven; the 60 Hz tick only expires or reseeds. 2 Hz is enough.
@@ -296,7 +308,7 @@ const CALENDAR_CLOCK_SUB_PHASE = new Map();
 
 /** Sub-phase inside the owner's 10-tick cohort window (0 = cohort base tick). */
 export function calendarCohortSubPhase(id) {
-  return CALENDAR_CLOCK_SUB_PHASE.get(id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id) || 0;
+  return CALENDAR_CLOCK_SUB_PHASE.get(clockLookupId(id)) || 0;
 }
 
 /** The tick%30 value this calendar owner fires on (production profile). */
@@ -307,7 +319,7 @@ export function calendarCohortTickMod(id) {
 export const NEAR_CLOCK_IDS = Object.freeze([
   'flybyFocus', 'scanner', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aiSlot', 'aiPorts', 'aiEncounter', 'traffic', 'titles', 'planetRuntime',
-  'npcJobsRuntime',
+  'towlineTable', 'borrowedVoice', 'npcJobsRuntime',
   // Observer receipts; primary ticks already throttle internally. Catch-up extra steps
   // must not rescan the island just to notice a flee flag.
   'combatOutcome',
@@ -331,7 +343,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Input and control owners — per-tick player intent and assists.
   'input', 'autoTargetAssist', 'bulletTime', 'cloak', 'actions',
   // Flight + physics authorities: single writers of position/velocity.
-  'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake',
+  'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',
   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.
   'nemesis', 'nemesisEncounter',
   // Capital score publishes orders the tactical slot reads the same tick.
@@ -341,7 +353,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery',
   // Anchored set-pieces queue physics impulses every tick.
-  'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus',
+  'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud',
   // Combat island: damage/attachment/custody owners at combat cadence.
   'combat', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
@@ -378,7 +390,8 @@ for (const id of TABLE_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.TABLE);
 export function getDeclaredSystemClock(id) {
   // Hosts partition instantiated systems by name, after resolving manifest slots. Both AI
   // backends must retain aiSlot's near clock or every extra catch-up step repeats full AI.
-  const clockId = id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id;
+  // moralTrap's object name is not the manifest id; without the alias it is clocked as table.
+  const clockId = clockLookupId(id);
   const mapped = CLOCK_BY_ID.get(clockId);
   if (mapped) return mapped;
   const cap = SYSTEM_CAPABILITIES[id];
@@ -390,7 +403,7 @@ export function getDeclaredSystemClock(id) {
 export function getSystemClock(id) {
   const declared = getDeclaredSystemClock(id);
   if (declared) return declared;
-  const clockId = id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id;
+  const clockId = clockLookupId(id);
   if (PRODUCTION_UPDATE_ORDER.includes(clockId)) {
     // A registered production system with no clock declaration is a manifest bug, not a
     // default. Throw so the missing line surfaces at host init, not as a silent 60 Hz join.

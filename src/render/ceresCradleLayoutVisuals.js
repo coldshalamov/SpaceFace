@@ -24,16 +24,31 @@ export function ceresCradleKeeperVisible(acceptedLayout, nodeLod, activeLod) {
 // Bind exactly the sealed, unpooled mesh bank once. Materials and geometries stay
 // untouched: one legacy instance must never hide a current sibling's hardware.
 export function createCeresCradleKeeperMask(root, entity) {
+  const steps = createCeresCradleKeeperMaskSteps(root, entity);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+// Steps twin: the keeper collect used to pay one atomic O(subtree) traverse in
+// the authored-build tail; the stack form yields at stride boundaries.
+export function* createCeresCradleKeeperMaskSteps(root, entity) {
   if (!root || ceresWorkfleetRoleForEntity(entity) !== 'cradle') return null;
   const meshes = [], names = new Set();
   let valid = true;
-  root.traverse(node => {
-    if (!String(node.name || '').includes(CERES_CRADLE_KEEPER_HOOK)) return;
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const node = stack.pop();
+    if ((++visited % 128) === 0) yield;
+    const kids = node && node.children || [];
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
+    if (!node || !String(node.name || '').includes(CERES_CRADLE_KEEPER_HOOK)) continue;
     // The direct-source composer gives dedicated meshes a Place_ label and one
     // transform anchor. Package instances retain their exact source names. Only
     // that sanctioned wrapper is ignored; arbitrary keeper-named groups fail.
     const anchor = KEEPER_ANCHOR.exec(node.name);
-    if (anchor && keeperAnchorMatches(node, node.children[0], anchor[1])) return;
+    if (anchor && keeperAnchorMatches(node, node.children[0], anchor[1])) continue;
     const match = KEEPER_NODE.exec(node.name), tags = node.userData?.spacefaceTags;
     const canonicalName = match?.[1], sourceWrapped = node.name.startsWith('Place_');
     if (!match || !node.isMesh || tags?.instance !== false || pooled(node)
@@ -43,7 +58,7 @@ export function createCeresCradleKeeperMask(root, entity) {
     names.add(canonicalName);
     meshes.push({ node, lod: match ? `lod${match[2]}` : null });
     node.visible = false;
-  });
+  }
   valid = valid && meshes.length === 9 && names.size === 9;
   let disposed = false;
   return {
@@ -68,7 +83,14 @@ import { recordCeresCradleAuthoredLayout } from '../core/machineryPresentation.j
 // This root-local closure uses the existing boundary lifetime. There is no ID
 // lookup, scene registry, per-frame traversal, or renderer-owned gameplay fact.
 export function installCeresCradleLayoutGuard(root, entity, boundary) {
-  const mask = createCeresCradleKeeperMask(root, entity);
+  const steps = installCeresCradleLayoutGuardSteps(root, entity, boundary);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+export function* installCeresCradleLayoutGuardSteps(root, entity, boundary) {
+  const mask = yield* createCeresCradleKeeperMaskSteps(root, entity);
   if (!mask) return null;
   if (!mask.valid) {
     mask.dispose();
@@ -125,7 +147,9 @@ export function installCeresCradleLayoutGuard(root, entity, boundary) {
   const dispose = () => {
     if (disposed) return;
     disposed = true; published = false; mask.dispose(); root.visible = false;
-    priorDetach?.();
+    // The closure state holds the last bound liveState — forward it so a
+    // throwing prior detach stamps the lane fault instead of dropping it.
+    priorDetach?.(state);
   };
   root.userData.updateLod = level => { priorLod?.(level); refresh(); };
   root.userData.detachAuthoredMotion = dispose;

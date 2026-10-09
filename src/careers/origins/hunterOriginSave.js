@@ -114,15 +114,21 @@ export function migrateHunterOrigin(blob, seed = 1) {
   const reward = src.reward && typeof src.reward === 'object' ? src.reward : {};
   const failure = src.failure && typeof src.failure === 'object' ? src.failure : null;
 
+  const offerStatus = normalizeOfferStatus(offer.status);
   const stepIndex = Number.isInteger(src.stepIndex) ? Math.max(0, Math.min(3, src.stepIndex)) : 0;
   const step = stepDefAt(stepIndex);
+  // Decline and abandon clear stepId on purpose. Do not invent one from stepIndex
+  // unless the offer is still accepted and the blob never recorded a step.
+  const stepId = src.stepId == null
+    ? (offerStatus === 'accepted' && step ? step.id : null)
+    : String(src.stepId);
 
   return {
     schemaVersion: HUNTER_ORIGIN_SCHEMA_VERSION,
     careerId: HUNTER_ORIGIN_ID,
     exclusive: false,
     offer: {
-      status: normalizeOfferStatus(offer.status),
+      status: offerStatus,
       offeredAtSimTime: offer.offeredAtSimTime == null ? null : finiteNumber(offer.offeredAtSimTime, null),
       firstDockStationId: offer.firstDockStationId == null ? null : String(offer.firstDockStationId),
       firstDockSeen: !!offer.firstDockSeen,
@@ -130,7 +136,7 @@ export function migrateHunterOrigin(blob, seed = 1) {
       acceptAtSimTime: offer.acceptAtSimTime == null ? null : finiteNumber(offer.acceptAtSimTime, null),
     },
     stepIndex,
-    stepId: step ? step.id : (src.stepId == null ? null : String(src.stepId)),
+    stepId,
     phase: normalizePhase(src.phase),
     failure: failure ? {
       code: String(failure.code || 'unknown'),

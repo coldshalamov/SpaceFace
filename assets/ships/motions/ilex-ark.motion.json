@@ -1,0 +1,289 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "ilex_ark_controls",
+  "sourceAssetId": "SF_SHIP_ILEX_ARK",
+  "sourceGlbSha256": "0ba53da20998512849815a59d744a3f92d07237fd5f073044c8fb7f29abbbb55",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "ilex_vault_1",
+      "node": "MOTION_ILEX_VAULT_1",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -12,
+          0,
+          -10
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "ilex_vault_2",
+      "node": "MOTION_ILEX_VAULT_2",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -12,
+          0,
+          10
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "ilex_vault_3",
+      "node": "MOTION_ILEX_VAULT_3",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          0,
+          0,
+          -10
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "ilex_vault_4",
+      "node": "MOTION_ILEX_VAULT_4",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          0,
+          0,
+          10
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "ilex_vault_5",
+      "node": "MOTION_ILEX_VAULT_5",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          12,
+          0,
+          -10
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "ilex_vault_6",
+      "node": "MOTION_ILEX_VAULT_6",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          12,
+          0,
+          10
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "ilex_vault_1",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "ilex_vault_2",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "ilex_vault_3",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "ilex_vault_4",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "ilex_vault_5",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "ilex_vault_6",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

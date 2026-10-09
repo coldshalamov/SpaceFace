@@ -476,6 +476,21 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
       { commodityId: 'cmdty_comp_hullplate', weight: 0.50 },
     ],
   }),
+  profile({
+    sectorId: 'sector_the_bolus',
+    identityKey: 'bolus_swallowed_rib',
+    primaryRole: 'research',
+    secondaryRoles: [],
+    pressureBias: 0.48,
+    produces: [
+      { commodityId: 'cmdty_medical', weight: 0.82 },
+    ],
+    consumes: [
+      { commodityId: 'cmdty_ice_water', weight: 0.66 },
+      { commodityId: 'cmdty_exotic_amazonite', weight: 0.58 },
+      { commodityId: 'cmdty_crystal_silica', weight: 0.42 },
+    ],
+  }),
 ]);
 
 /** sectorId → profile (built once). */

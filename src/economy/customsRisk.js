@@ -121,18 +121,22 @@ function normalizeStack(stack) {
   };
 }
 
-/**
- * stackFine(stack) — projected line fine using FINE_MULT[legality] (engine parity at economy.js:866).
- * Projection only; never charged.
- */
-export function stackFine(stack) {
+function lineProduct(stack) {
   const s = normalizeStack(stack) || stack;
   if (!s || !(s.qty > 0)) return 0;
   const legality = s.legality || 'legal';
   const mult = FINE_MULT[legality] != null
     ? FINE_MULT[legality]
     : (Number.isFinite(s.fineMultFallback) ? s.fineMultFallback : 1);
-  return round((Number(s.basePrice) || 0) * (Number(s.qty) || 0) * mult);
+  return (Number(s.basePrice) || 0) * (Number(s.qty) || 0) * mult;
+}
+
+/**
+ * stackFine(stack) — one projected line, rounded. Display only.
+ * The charged total is estimatedFine: sum the raw products, round once, matching runScan.
+ */
+export function stackFine(stack) {
+  return round(lineProduct(stack));
 }
 
 /**
@@ -217,8 +221,8 @@ export function remainingIllicit({ stacks = [], hiddenCapacity = 0 } = {}) {
  */
 export function estimatedFine(stacks = []) {
   let total = 0;
-  for (const s of stacks) total += stackFine(s);
-  return total;
+  for (const s of stacks) total += lineProduct(s);
+  return round(total);
 }
 
 /** estimatedBribe(fine) — round(fine * BRIBE_FRAC). Projection only. */

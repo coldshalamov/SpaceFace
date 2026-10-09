@@ -1,3 +1,4 @@
+import { mothlightGunCadence } from '../data/mothlight.js';
 import {
   AI_CONTRACT_VERSION,
   ContactKind,
@@ -991,6 +992,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
   };
   // The id allocator recycles numbers. Copy the occupant token the spawn just
   // stamped; omit it when the body has none so a tokenless self stays tokenless.
+  const cadence = mothlightGunCadence(state, entity);
+  if (cadence) self.mothlightGunCadence = cadence;
   const generation = entity.occupantGeneration;
   if (generation != null && generation !== '') self.occupantGeneration = generation;
   return freeze(self);
@@ -1850,7 +1853,10 @@ function contactKindFor(entity) {
   if (entity.type === 'projectile') return ContactKind.PROJECTILE;
   if (entity.type === 'asteroid' || entity.type === 'station' || entity.type === 'wreck'
       || entity.type === 'masslineSnare' || entity.type === 'masslineSnareAnchor') return ContactKind.HAZARD;
-  if (entity.type === 'pickup') return ContactKind.OBJECTIVE;
+  // Deliberately jettisoned freight uses a payload body; it remains a sensed cargo objective.
+  if (entity.type === 'pickup' || (entity.type === 'payload'
+    && entity.data?.kind === 'cargo' && typeof entity.data?.commodityId === 'string'
+    && Number(entity.data?.amount) > 0)) return ContactKind.OBJECTIVE;
   return null;
 }
 

@@ -666,6 +666,7 @@ export const cargo = {
       } else if (kind === 'module') {
         // physics only hands us a commodityId → treat it as the module defId; mint a deterministic instanceId.
         const count = typeof commodityId === 'string' && commodityId.length > 0 ? qty : 0;
+        if (count > 0 && !Array.isArray(state.player.moduleInventory)) state.player.moduleInventory = [];
         for (let i = 0; i < count; i++) {
           state.player.moduleInventory.push({ instanceId: nextLooseModuleInstanceId(state), defId: commodityId });
         }

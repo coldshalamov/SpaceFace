@@ -15,6 +15,9 @@ import { RAVEL_AUDIO_RECIPES } from './ravel.js';
 import { SOLSTICE_AUDIO_RECIPES } from './solstice.js';
 import { RUBRIC_AUDIO_RECIPES } from './rubric.js';
 import { RUCKUS_AUDIO_RECIPES } from './ruckus.js';
+import { RUUD_AUDIO_RECIPES } from './ruud.js';
+import { BOLUS_AUDIO_RECIPES } from './bolusAudio.js';
+import { SECOND_RINSE_AUDIO_RECIPES } from './secondRinseAudio.js';
 
 export const RECIPES = [
   ...MORROW_AUDIO_RECIPES,
@@ -24,6 +27,9 @@ export const RECIPES = [
   ...SOLSTICE_AUDIO_RECIPES,
   ...RUBRIC_AUDIO_RECIPES,
   ...RUCKUS_AUDIO_RECIPES,
+  ...RUUD_AUDIO_RECIPES,
+  ...BOLUS_AUDIO_RECIPES,
+  ...SECOND_RINSE_AUDIO_RECIPES,
   // --- Engine SFX ---
   {
     id: 'sfx_engine_idle',
@@ -1124,6 +1130,48 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.02, sustain: 0.0, release: 0.3 },
     filterType: 'bandpass', filterFreq: 500, filterQ: 0.4,
     pitchRange: [1.0, 1.5],
+  },
+
+  // Veil Step — a low rip and a short blip, not the thruster whoosh.
+  {
+    id: 'sfx_phase_rift_body',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 78,
+    freqSweep: [96, 34],
+    sweepTimeS: 0.32,
+    gainEnvelope: { attack: 0.006, sustain: 0.08, release: 0.36 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 0.7,
+    subBass: { startFreq: 58, endFreq: 26, dur: 0.34, gain: 0.95 },
+    distortionAmount: 0.18, distortionCurve: 'tanh',
+  },
+  {
+    id: 'sfx_phase_rift_blip',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 740,
+    freqSweep: [880, 210],
+    sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.6,
+  },
+  {
+    id: 'sfx_phase_rift_air',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.26 },
+    filterType: 'bandpass', filterFreq: 380, filterQ: 1.5,
+  },
+  {
+    id: 'sfx_phase_rift',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_phase_rift_body', 'sfx_phase_rift_blip', 'sfx_phase_rift_air'],
+    gainMult: 1.05,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.38 },
   },
 
   // --- Countermeasures (P1-7): chaff = bright metallic burst; ECM = descending electronic whine ---
@@ -2630,6 +2678,7 @@ export const RECIPES = [
     ['sector_eris_margin', 'fringe'], ['sector_phoebe_echo', 'anomaly'], ['sector_nereid_shoal', 'fringe'],
     ['sector_proteus_well', 'fringe'], ['sector_triton_wake', 'anomaly'], ['sector_eunomia_gulf', 'fringe'],
     ['sector_sedna_dark', 'anomaly'], ['sector_dione_lane', 'core'],
+    ['sector_the_bolus', 'anomaly'],
   ].map(([sectorId, paletteClass]) => {
     let h = 0x811c9dc5;
     for (let i = 0; i < sectorId.length; i++) h = Math.imul(h ^ sectorId.charCodeAt(i), 0x01000193) >>> 0;
@@ -3770,6 +3819,7 @@ export const SAMPLE_BINDINGS = {
   sfx_arrival_eunomia_gulf: { id: 'arrival_eunomia_gulf', share: 0.55 },
   sfx_arrival_sedna_dark: { id: 'arrival_sedna_dark', share: 0.58 },
   sfx_arrival_dione_lane: { id: 'arrival_dione_lane', share: 0.58 },
+  sfx_arrival_the_bolus: { id: 'arrival_the_bolus', share: 0.58 },
 };
 
 // WF-13 — sector arrival identity table. The presentation adapter reads this when the
@@ -3803,6 +3853,7 @@ export const SECTOR_ARRIVAL_CUES = Object.freeze({
   sector_eunomia_gulf: 'sfx_arrival_eunomia_gulf',
   sector_sedna_dark: 'sfx_arrival_sedna_dark',
   sector_dione_lane: 'sfx_arrival_dione_lane',
+  sector_the_bolus: 'sfx_arrival_the_bolus',
 });
 
 // PQ-158.01 — the impact ladder: material (hull/rock/station) x force (light/medium/heavy).

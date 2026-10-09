@@ -10,6 +10,13 @@ For the owner-directed production-quality and physics-playground planning pass, 
 It groups existing obligations into finite deliveries and resolves a first wave; it does not replace
 this board, change task statuses, or launch implementation automatically.
 
+For chase flight, authored circuits and their complementary expansion builds, use
+[`RACING_FLIGHT_PROGRAM.md`](./design/program/RACING_FLIGHT_PROGRAM.md). Its eight finite packets
+cover hull-aware handling/camera, raceable terrain, adventure mission sections, ghosts, actual
+rivals, earned-speed mechanics, career/rewards, and accessibility/runtime quality. Start with
+RF-01 → RF-02 → one RF-03 mission; RF-08 runs across every packet. These extend the existing
+mission/flight/render owners rather than creating a separate racing engine.
+
 ## 1. Start here — the one procedure (no scope words needed)
 
 **The goal, in the owner's words (2026-09-03):** *a super-fun space adventure game with fast-paced, physics-centric, arcade-style combat that plays optimally in swarm mode, and is super interesting and
@@ -17,6 +24,7 @@ mentally stimulating in adventure mode because of its advanced customization and
 version and optimized.* Product intent: [`design/VISION.md`](./design/VISION.md).
 Expansion alignment is retained in the non-dispatching [`EXPANSION_MASTER_BLUEPRINT.md`](./design/program/roadmap/active/EXPANSION_MASTER_BLUEPRINT.md)
 and the story/place concept companion [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md).
+Current original-concept source handoff: [8 October checkpoint](./design/program/world-depth-2026-10-02/EXECUTION_STATUS.md#source-checkpoint-for-cloud-work---8-october-2026). Inactive sources and failed route checks remain explicitly unfinished.
 Those syntheses do not add queue IDs or replace packet ownership. Existing owners stay compactly mapped here:
 kinetic combat and the Massline → `PQ-137`, `PQ-026`–`PQ-031`, `PQ-140`, `PQ-146`; readable swarms and
 world reactions → `PQ-140`, `PQ-174`, `PQ-175`, `PQ-138`, `PQ-143`, `PQ-151`, `PQ-144`; readable trade
@@ -263,7 +271,7 @@ procedure:
 | "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
 | "finish the game", "what's next for release", "the professional bar", "batch the work into lanes" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) — take the first lane whose files are free and own that area to its bar |
-| "do the next N tasks", "next 10", countable parallel work, `--next` reports queue drained | **§1C** — the numbered board; take the N lowest OPEN rows whose paths are free, one row per agent |
+| "do the next N tasks", "next 10", countable parallel work, `--next` reports queue drained | **§1C** — the numbered board; take the N lowest OPEN rows whose paths are free, one row per agent. When only §M ADMIT rows remain, they count like any other row |
 | "swarm mode should be more fun" | §16 — the arcade-expansion revision is §16.4 (board rows 263–273); the survival engine stays `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
 | "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
@@ -458,9 +466,15 @@ An empty script result is this board. It is not permission to switch to
 `INFERENCE_IDEAS.md`. The inference catalog is the small wiring inside a seam you already
 claimed, and it is the whole job only when the owner said INFERENCE.
 
-**"Do 10 tasks" means 10 open rows inside seams you claimed.** A row is already a chunk: a
-planbank batch, a next-wave build, or a fable batch. Do not split it into captions, and do
-not count a catalog line as one of the ten.
+**This map is the whole build plan.** Every plan about building this game — the SFQ pack, the
+Fable bank, the Swarm phases, the depth roll-up, the vm-drop outbox — is *on* this board: either
+as a row below, or as an admitted remainder owned by the **§M admission rows**. There is no plan
+that lives outside this file. When the counted rows drain, the work is not done — §M is the
+work: admitting the next slice of reservoir scope into real numbered rows.
+
+**"Do 10 tasks" means 10 open rows inside seams you claimed** — and the §M admission rows count.
+A row is already a chunk: a planbank batch, a next-wave build, a fable batch, or one admission
+slice. Do not split it into captions, and do not count a catalog line as one of the ten.
 
 ### Seams — what is free, and what another agent has
 
@@ -474,7 +488,8 @@ name means it is in flight — take a different seam. `done` means its rows are 
 3. Do the seam's still-OPEN rows in the order listed, up to the count you were given
    (ten, unless the owner named another number). Skip a row whose status is no longer OPEN.
 4. If the seam runs out before your count, claim another `free` seam whose files do not
-   overlap the one you have.
+   overlap the one you have. When every seam reads `done`, the **§M reservoir-admission rows**
+   are the remaining plan — take one like any other row.
 5. When you stop, set the cell back to `free` if any of its rows are still OPEN, or `done`
    if none are. Delete a detail row only in the commit that finishes it.
 6. If two agents edit the same files, keep both changes and merge them. Do not revert the
@@ -494,24 +509,25 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | save | done (devin-oct2-batch) | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
 | economy | done (devin-sweep-oct2) | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250, 274 |
 | effects | done | vfx, profiles, cues | 230, 255 |
-| swarm | done (devin-sweep-oct2) | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
+| swarm | done (devin-sweep-oct2) | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
 | fight | done | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
 | fields | done | fields | 162 |
 | law | done (devin-oct2-batch) | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
 | discovery | done | scanner, scan reveal | 214 |
 | industry | done | world sites, machinery, mining commitment | 206 |
 | people | done (devin-sweep-oct2) | jobs, aftermath, convoys | 201, 209, 212, 213 |
-| ship | done (devin-oct2-batch) | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
+| ship | done (devin-oct2-batch) | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 252 |
 | hand | done | flight, tether, massline, onboarding | 106, 220, 238, 275 |
 | missions | done (devin-sweep-oct2) | missions | 83, 84, 85, 86, 188, 189, 211, 222, 254 |
 | world | done | sectors, traffic, factions, news | 243, 244, 245, 248 |
 | story | done (devin-oct2-batch) | story | 192, 215, 216, 253 |
-| input | done (devin-oct2-batch) | gamepad, input, settings behavior | 196, 237, 260, 262 |
+| input | done (devin-oct2-batch) | gamepad, input, settings behavior | 196, 237, 262 |
 | ui-sim | done (devin-sweep-oct2) | sim halves of screens and the map; no visual redesign | 197, 246, 276, 277 |
 | physics | done (devin-oct2-batch) | physics clocks, manifest | 258 |
-| accept | done (devin-sweep-oct2) | judge work that is already built | 60, 63, 64 |
+| accept | free | judge work that is already built; quiet-host session produce/land | 60, 63, 64, 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | 30 |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | 223 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -535,7 +551,8 @@ How to finish a row:
 
 Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-drop package batch ·
 **BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·
-**LANE** open-ended area ownership (detail in `FINISH_LANES.md`).
+**LANE** open-ended area ownership (detail in `FINISH_LANES.md`) ·
+**ADMIT** turn admitted-but-undecomposed reservoir scope into real rows (§M).
 
 ### Handoff — thirty landed rows, do not retake (2026-09-29)
 
@@ -697,11 +714,11 @@ ship stills (all REVISE — awaiting new remote candidates).
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 67 | L-MACHINE | Own THE MACHINE's development half — boot, hitches, admission, residency. Rows 2, 4–16, 19–34 are its counted surface. | LANE | OPEN — stale-adoptable |
-| 68 | L-HAND | Own THE HAND — flight, tether, fields, verbs, input. Rows 37–38, 42 are its counted surface. | LANE | OPEN — stale-adoptable |
-| 69 | L-FIGHTWORLD | Own THE FIGHT + THE WORLD — swarm, arenas, sectors, NPC jobs, law, consequences. Rows 1, 43–55 are its counted surface. [First-fight cohesion](design/program/world-depth-2026-10-02/COHESION.md#first-fight) extends existing PQ-140 route acceptance: expose and transfer distinct physical choices; preserve shipped tactical variety and the approved Swarm expansion. [World expansion target](design/program/world-depth-2026-10-02/README.md): complete a selected inhabited/physical slice with genuinely missing assets; Anvil Stormshift is the worked first candidate, not a second queue | LANE | OPEN — stale-adoptable |
+| 67 | L-MACHINE | Own THE MACHINE's development half — boot, hitches, admission, residency. Rows 2, 4–16, 19–34 are its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): demo-route machine slices BM-16..18 only; disjoint from codex render/snapshotFence + sweep-oct3 soak paths |
+| 68 | L-HAND | Own THE HAND — flight, tether, fields, verbs, input. Rows 37–38, 42 are its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): hand safe slices BM-19..20 only (no input.js/flightV3/physics/tetherGameplay/maneuver) |
+| 69 | L-FIGHTWORLD | Own THE FIGHT + THE WORLD — swarm, arenas, sectors, NPC jobs, law, consequences. Rows 1, 43–55 are its counted surface. [First-fight cohesion](design/program/world-depth-2026-10-02/COHESION.md#first-fight) extends existing PQ-140 route acceptance: expose and transfer distinct physical choices; preserve shipped tactical variety and the approved Swarm expansion. [World expansion target](design/program/world-depth-2026-10-02/README.md): complete a selected inhabited/physical slice with genuinely missing assets; Anvil Stormshift is the worked first candidate, not a second queue | LANE | OPEN — writer muse-polish-oct7 (sitting 1): fightworld demo-route units BM-08..15; disjoint from demo-oct7 D-rows/optic/dead-seams + codex crucible/gyre paths |
 | 70 | L-LONGGAME | Own THE LONG GAME — progression, economy depth, story spine, persistent ship identity. Counted surface: rows 278–283 (§L). | LANE | OPEN — writer lonngame-oct4 (sitting 1) |
-| 71 | L-EAR | Own THE EAR — audio identity and feedback. Row 41 is its counted surface. | LANE | OPEN — no writer ever |
+| 71 | L-EAR | Own THE EAR — audio identity and feedback. Row 41 is its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): ear units BM-01..07 + audio INF rotates; row-41 surface + demo-route audio identity |
 | — | L-PICTURE | THE PICTURE — Forge backlog GFX-1, 3–14 | LANE | CLAIMED devin-graphics (live) |
 | — | L-INSTRUMENT | THE INSTRUMENT — all UI | LANE | CLAIMED ORRERY — do not take |
 | — | L-RELEASE | THE RELEASE — demo path, packaging, store | LANE | PARKED pre-release (owner) |
@@ -779,7 +796,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 157 | PB-LANE-ORRERY | SF-128, 239, 247–250, 252–255, 267, 299 — pure-UI packets (sim halves already dispatched as rows 147–149) | PB | PARKED ORRERY lane |
 | 158 | PB-LANE-WORLD | SF-078–084, 086, 087, 090, 287, 298 — npcJobs/traffic/pocket-data packets held by the boards-3x3 claim | PB | DONE 2026-10-04 devin-packets-oct4 — boards-3x3 claim was stale-adoptable; all 12 packets landed (5 implemented: 078/080/081/082/087; 7 equivalence-pinned: 079/083/084/086/090/287/298) + defect fixes 17ab64ac3, 78c1845b5 |
 
-Not on the board: **deferred review/capture ceremonies** (retired by owner 2026-09-10 — `PQ-018/.019/.020/.045` H1+review pairs, `PQ-191`, `PQ-167.01`), **vm-drop HOLDs** and the REVISE chase stills, **remote in-flight jobs** (`bloom-cost`, `hold-prefetch-inbound`, `a-list-convergence` — the remote machine owns them), **never-foldered VM jobs** (`residency-budget`, `jump-arrival-spread`, steady-state CPU/GPU, `long-soak-witness`, `moonshot-assessment`, `npc-kit-stills` — remote owns; VM_LANES.md is their door), and **ORRERY-claimed queue units** (`PQ-180.03`, `PQ-181`, `PQ-182`, `PQ-185`, `PQ-187`, `PQ-194`, `PQ-025` calib, `PQ-040` native). The Depth roll-up and Alpha M-rows in `02_REMAINING_WORK.md` are admitted scope not yet decomposed into dispatchable leaves — the owning lane's first sitting turns them into board rows.
+Not on the board as countable rows: **deferred review/capture ceremonies** (retired by owner 2026-09-10 — `PQ-018/.019/.020/.045` H1+review pairs, `PQ-191`, `PQ-167.01`), **vm-drop HOLDs** and the REVISE chase stills, **remote in-flight jobs** (`bloom-cost`, `hold-prefetch-inbound`, `a-list-convergence` — the remote machine owns them), **never-foldered VM jobs** (`residency-budget`, `jump-arrival-spread`, steady-state CPU/GPU, `long-soak-witness`, `moonshot-assessment`, `npc-kit-stills` — remote owns; VM_LANES.md is their door), and **ORRERY-claimed queue units** (`PQ-180.03`, `PQ-181`, `PQ-182`, `PQ-185`, `PQ-187`, `PQ-194`, `PQ-025` calib, `PQ-040` native). The Depth roll-up and Alpha M-rows in `02_REMAINING_WORK.md` are admitted scope — their path onto this board is §M row 291.
 
 ### H. Next Wave 300 — directed build and INFERENCE work (2026-09-28)
 
@@ -787,7 +804,7 @@ This user-requested wave supplies pre-decided outcomes, not permission for a wea
 
 **One live board.** BUILD status is in this table; small-task status is in `design/program/INFERENCE_IDEAS.md`. The packet files and JSON are specifications, not a second mutable queue. `OPEN` means a named task may be taken after exact-path checks, not that it is free of all concurrent work. `WAITING <id>` means an actual missing capability; an equivalent verified implementation can satisfy it. Open dependent rows in the landing that supplies the capability. Do not infer DONE from a deleted row.
 
-**Do not dry-fire.** An empty legacy `program-dispatch` result means claim a free seam in §1C. It does not authorize brainstorming, and it does not switch the sitting to the inference catalog. `node scripts/board-chunks.mjs` lists the free seams. `next-wave-read.mjs` is advisory detail for a row you already took; `--kind inference` is only for an owner-said INFERENCE sitting. Inspect `NOW.md` and current dirty hunks before claiming. NXB/NXI IDs are not PQ IDs and must not be passed to legacy `program-dispatch --id`.
+**Do not dry-fire.** An empty legacy `program-dispatch` result means claim a free seam in §1C — and when the seams are done, the §M admission rows. It does not authorize brainstorming, and it does not switch the sitting to the inference catalog. `node scripts/board-chunks.mjs` lists the free seams. `next-wave-read.mjs` is advisory detail for a row you already took; `--kind inference` is only for an owner-said INFERENCE sitting. Inspect `NOW.md` and current dirty hunks before claiming. NXB/NXI IDs are not PQ IDs and must not be passed to legacy `program-dispatch --id`.
 
 **Reuse rather than duplicate.** Read the prior SF/PQ/PB owner named in each packet. Implement equivalent work once, then retire/match the duplicate row to its actual result. Existing SF packet bodies are under `design/planbank/SpaceFace_Planbank_300/plans/<domain>/` (not `packets/<domain>/`). Do not re-admit shipped slices or copy active PR #170/#174 work. Necessary functional UI follows ORRERY; no second redesign. Release-prep work remains parked.
 
@@ -851,8 +868,9 @@ links, topological order clean). Entry: [`START_HERE.md`](./design/finish-expans
 
 Same law as section H, plus this pack's own admission rules:
 
-- **Reservoir, not a second queue.** Statuses live on this board and in `INFERENCE_IDEAS.md`; the
-  pack's JSON/CSV are candidate inventories. `SFQ-` IDs never go to `program-dispatch --id`.
+- **This pack is on the board.** Statuses live on this board and in `INFERENCE_IDEAS.md`; the
+  pack's JSON/CSV are candidate inventories, worked through the §M admission rows — never run
+  as a detached queue. `SFQ-` IDs never go to `program-dispatch --id`.
 - **Map by outcome before building** ([admission + crosswalk](./design/finish-expansion-2026-09/integration/01_ADMISSION_AND_CROSSWALK.md)):
   already-true → close with the native owner's evidence; residual → extend the native packet;
   genuinely new → take it through a row here; conflicting → park in-pack as history.
@@ -900,10 +918,10 @@ plus [`INDEX`](./design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/INDEX.md) �
 existence, ID continuation, symbol grounding, and near-duplicate freedom against the SF-300,
 next-wave and finish-expansion banks — **PASS, zero flags** (re-run by the landing agent).
 
-Same law as sections H and I: the bank is a reservoir, statuses live on this board and in
+Same law as sections H and I: the bank is on the board — statuses live on this board and in
 `INFERENCE_IDEAS.md`; map by outcome against prior owners before building (114 of 142 packets cite
 their landed neighbours); cross-source dedupe through
-[`TASK_SOURCE_CROSSWALK.md`](./design/program/TASK_SOURCE_CROSSWALK.md). The bank's signature
+[`TASK_SOURCE_CROSSWALK.md`](./design/program/TASK_SOURCE_CROSSWALK.md). Its uncovered remainder was §M row 290, closed 2026-10-08 — see the disposition note under §M. The bank's signature
 finding: the game's signature verb and long game are full of dead seams — events computed and
 emitted that no eye, ear, or pad ever receives — so its first batches are wire-the-truth packets,
 not new systems.
@@ -919,12 +937,11 @@ named in the status for the frontend lane to take alone):
 | 232 | FB-023+FB-024+FB-120+FB-027 | Warden, cutter and lawman join the swarm; one boss machine; champions bring rooms and tricks | PB | DONE 2026-10-02 — warden_escort(9)/customs_cutter(13)/patrol_lawman(15) on the roster clock, lawful hulls restamped arena_contract+weapons_free on the cohort copy only; boss rotation to six rows: wave 20/30 field authored capital scores (`capital_boss_foreman`/`capital_boss_regent`, `swarm:wN` fight ids) via `capitalBoss:start`, score-owned wings join the wave cohort under the wave budget owner; boss rooms now six real recipes incl. `mirror_lane` (cross-current + far repulsor wall, no mines) and `crown_furnace` (center repulsor + rim racetrack + 4 face-approach mines); compositional champions carry `trickId` through the ordinary bounty-hunter telegraph/counter path (capital rows exempt). Tests: fb-023/024/027/120 acceptance files (19/19); crucible-swarm + swarm-boss-round re-pinned to the six-row/capital contract; baseline 14/16 (pre-existing pq020 + sim-v3 reload) |
 | 233 | FB-025+FB-026 | Wave intros are real windows; the scored arc stops inflating HP | PB | DONE — intro constants raised (120 arena / 90 wave), announce speaks the opener at plan time + owns the completion emit, HUD renders the line for the window; levelForWave flat, act curve moved into composeArcWave counts/bearings (+gaps via difficulty), runs exempt from the damage profile; `test/fb-wave-intro-window.test.mjs` + `test/fb-arc-difficulty-composition.test.mjs` |
 | 234 | FB-018+FB-020+FB-019 | Flak intercepts for real, the dreadnought phases on turret loss, hits confirm in three states | PB | DONE 2026-10-02 — flak weapons on data.weapons run as a real PD channel (chance/cooldown/arc/energy authored, saturation shared, pds:intercept receipt); dreadnought's 14 mounts are destructible subsystem_turret_* (dependencies: subsystem_weapon bus), phaseAtTurretsLost [4,10] drives capital_broadside stages (swarmer_vent → broadside_desperation), edge 1 vents iron_maw_screen via turretsLostAtLeast, edge 2 opens the prow surface + PROW RIB weak point and cuts RCS yaw authority; hit pips are control receipts gated on gameplay.hitPips sharing the hit-voice 40ms gap. Tests: fb-flak-interception, fb-hit-confirmation-pip, fb-dreadnought-phases (19/19); pq206-00 wing cell + pq-152-02 stay green |
-| 235 | FB-022+FB-028 | Arena props are bodies the Massline moves; the results sheet prints its stunt rows | PB | FB-022 DONE — relays + cryo props materialize as room-owned dynamic bodies (authored prop mass, station latch endpoint, shootable); law follows the body: occupancy markers + `stormGraphNodes(liveRelays)` arcs ride dragged relays, bounded re-anchor servo via the membrane (held relays untouched), cryo pockets ride thrown tanks for a bounded vent window and die with the body; `test/fb-arena-props-are-bodies.test.mjs` (6/6, seed 4242 ≥40 WU drag + arc-pattern change). FB-028 OPEN — ORRERY lane |
 | 236 | FB-001+FB-059 | The pursuit-slot assist is reachable; five heavy hulls fly distinct drives | PB | DONE 2026-10-04 — FB-059 (2026-10-03): drive_torch_xl authored in propulsionCatalog.js; Bastion and Warden fly drive_gravimetric_m, Colossus and Leviathan fly drive_torch_xl; fb-heavy-ladder-drives 4/4. FB-001: pursuit-slot assist live on the default route — flightV3 `_stepPursuitSlot` gates strict on `gameplay.pursuitSlotAssist === true` (default off, gameState.js), surfaced as the "Pursuit slot assist" row in ui/screens/settings.js; the slot forms once per lock at the pilot's bearing/range and holds with bounded thrust through the impulse membrane; fb-pursuit-slot-reachable 3/3 green |
 | 237 | FB-003+FB-004+FB-005+FB-113 | The pad covers the whole hand with curves, deadzones, haptics on their own axis and hold-to-toggle | PB | SHIPPED devin-oct2-batch — LB/RB chord verbs + pad curves/deadzones + haptics axis + hold-to-toggle; 55/55 focused + 102/102 input sweep |
 | 238 | FB-002+FB-116+FB-117+FB-118+FB-136 | Every bound verb is spoken once in the player's device vocabulary; the Range teaches all five powers | PB | DONE 2026-10-03 — verb shelf dedupes each bound verb exactly once and speaks it through the device's own glyph vocabulary (Xbox/DualShock/face-neutral sets), power rail slot 0 reserved for the DRIVE lamp, prompts follow rebinding, touch hides unpressable labels, Range teaches all five powers (4cc3a1beb); tests fb-002-verb-shelf + b118-power-rungs + power-rail + teach-01 + orrery-hud-adapter suites green |
 | 240 | FB-015+FB-114+FB-093+FB-094+FB-109 | Deployables and the first-hour rail survive a save; writes are bounded and gzipped by one long-lived worker; quota keeps a recovery | PB | **SHIPPED devin-oct2-batch** — snare/charge/web save rows with durable-id remap; onboarding rail + pad bindings restore; worker-pooled bounded gzip writes; quota keeps newest recovery |
-| 241 | FB-104+FB-108+FB-115+FB-110+FB-130 | Export carries medals; a fuzzer and a migration ladder guard the envelope; the save screen says what it repaired; [research A](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#a-save-outcomes-and-continue-provenance--j2-j3): save delete outcomes + title Continue provenance (J2/J3) | PB | PARTIAL 2026-10-02 devin-oct2-batch — FB-104 profile side bags (gz+plain), FB-108 5k-case fuzzer, FB-115 v1–14 ladder shipped; FB-110/FB-130 remain ORRERY lane |
+| 241 | FB-104+FB-108+FB-115+FB-110+FB-130 | Export carries medals; a fuzzer and a migration ladder guard the envelope; the save screen says what it repaired; [research A](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#a-save-outcomes-and-continue-provenance--j2-j3): save delete outcomes + title Continue provenance (J2/J3) | PB | CLOSED instrument 2026-10-08 — FB-110 and FB-130 landed (`test/fb-repaired-save-notice.test.mjs`, `test/fb-save-slot-label-still.test.mjs`). Research A (J2/J3) remains the named residual on this row and was not opened by this landing |
 | 242 | FB-029+FB-032+FB-031+FB-128+FB-133 | Twenty-four sectors get distinct populations, physics, arrangement, a face and two more working craft | PB | DONE 2026-10-04 — 24/24 distinct traffic mixes (FB-029, fb-sector-traffic-identity 4/4); 24/24 sectors physical/composition complete (FB-032, fb-sector-physical-complete 4/4); 24-row way of life sheet consumed by arrival postcard (FB-031, fb-way-of-life-consumed 3/3); 24/24 named lane contacts resolve deterministically (FB-128, fb-named-face-every-sector 3/3); volatiles tanker and inspection cutter fielded with signature profiles (FB-133, fb-tanker-cutter-fielded 3/3) |
 | 243 | FB-030 | Pallas Drift closes the miner→hauler→refinery→ambush→escort loop | PB | SHIPPED — four handoffs in order inside twenty minutes, seed 4242 |
 | 244 | FB-033+FB-125+FB-038 | Six lanes, no singleton POI types, and a Ceres unique wreck | PB | SHIPPED — six lanes, the singleton place types have company, and the Ceres tender pays one branch |
@@ -934,7 +951,6 @@ named in the status for the frontend lane to take alone):
 | 248 | FB-043+FB-044 | Three placeless factions get a door; standing has named ranks with perks | PB | SHIPPED — Archive, Understory, and Helix each have a dock; ranks discount the yard from the second step |
 | 249 | FB-046+FB-047+FB-048+FB-050 | Where the money went, lifetime margins, honest cost basis, price alerts | PB | DONE — sink roll-up on footprint (entries were already projected); `player.tradeMargins` lifetime per-commodity buckets + `lifetimeMarginFor` on the intel view; cargo deck reads real FIFO cost basis; price pins arm target/direction alerts that announce once per crossing on dock/sector entry (visited-gated); 4 new test files 13/13 + watchlist/story-so-far stay green |
 | 250 | FB-049+FB-124+FB-101+FB-111 | Debt is an instrument, cargo insurance exists, a dry tank and a wedged hull have doors | PB | DONE — loan/settle verbs bounded by net worth+standing with cited escalation headline; cargo policy priced on legal manifest × danger tier, one trip, claim honored in the recovery plan; broke+dry gets a minimum fill filed as debt, no-pump sectors grant one reserve/day; 8s wedge offers a priced tow that re-validates and docks at the lawful berth; 4 new test files 14/14 |
-| 251 | FB-053+FB-054+FB-056+FB-055+FB-132 | Research reads as a verb, four module numbers work, the time-limit clause ticks, industry has one readout, defense is a choice | PB | SHIPPED partial devin-oct2-batch — FB-053/132 (ffd4e2fc9, 697f27cd3), FB-054 incl. flightV3 burner cap (83461978d), FB-056 clause deadline (044db074c); FB-055 remains ORRERY lane |
 | 252 | FB-057+FB-058+FB-060+FB-061+FB-062 | The persistent ship can be named, shows its identity, earns more titles, keeps its hold, and shipyards differ | PB | SHIPPED 2026-10-02 devin-oct2-batch (7cddca83e) — named hulls, build identity shown, multi-title aura, hold travels with hull, shop-chit yard pricing |
 | 253 | FB-063+FB-064+FB-129+FB-127 | Beats 4–7 run the authored step machine, choices become facts, the ending announces itself, careers are in the ledger | PB | SHIPPED devin-oct2-batch — 11782d21e 87af11998 e2fb93fb5 e268dedec; 14 FB tests + 7 story regressions green |
 | 254 | FB-065+FB-066+FB-067+FB-068+FB-137+FB-069 | Conditions speak, a race archetype, archetype variants, honest failure settlement, travel lines, story-so-far on screen | PB | DONE 2026-10-03 devin-sweep-oct2 — FB-065 shipped: the HUD objective slot speaks pending/progress/broken on the one line, the break voices once at mission priority (`test/fb-condition-tells-you.test.mjs` 3/3); FB-069 shipped: the doing/then/so prose heads the shared ship-ledger panel on both hosts (`test/fb-story-so-far-on-screen.test.mjs` 2/2); FB-137 shipped: a spoken witness_run travel line records its berth on the cause and `setPieceRibbons` draws a second-destination ribbon that clears with the run, the active route untouched (`test/fb-set-piece-travel-line.test.mjs` 2/2); FB-066 shipped: the race archetype derives a six-gate course from frozen lane geometry (chord inside-segment on lane endpoints, buoy ring on scenic sectors), stands non-colliding gate beacons on durable mission slots, scores gates in order on a sim clock, and pays razor/standard/finish bands off the posted record — course, bands, and progress ride `params` so a save mid-run resumes the same course (`test/row254-physical-archetypes.test.mjs` 16/16); FB-067 shipped: every physical archetype owns a second authored variant row (drift hulk tow, guarded tower, pocket pull) picked deterministically off the offer-id hash so no board field drifts, with mass/radius/escort/spread terms and clause rows riding the offer, and career repeatable stages exercise each variant through the shared catalog; FB-068 shipped: a non-player kill on a contract objective voids fairly — collateral refunded, no rep penalty, receipt carries the kill-causality family + killer, the toast names the cause, and a recovery successor routes to the stamped loss site, while authored 47-A/heist/set-piece chains keep their own failure branches (all in `test/row254-physical-archetypes.test.mjs` 16/16 + adjacent pq-152-00/01, twist clauses, career, settlement suites green) |
@@ -942,8 +958,7 @@ named in the status for the frontend lane to take alone):
 | 256 | FB-078+FB-079+FB-081+FB-082+FB-083+FB-122+FB-135+FB-123 | The ear: kill ladder, continuous voices, money register, the hush for the best moment, wider ducking, sector beds, fuel voice, captions | PB | DONE 2026-10-03 — all 8 packets shipped. FB-123: every referenced recipe resolves to a caption record (fb-every-cue-captioned 4/4). FB-078 f857ff3ef, FB-079 efdeb279c + elem-backend mass lift 1b09d8704, FB-081 9bca95b20, FB-082 b5b4a6384 (hush + camera push-zoom), FB-083 149e90da8, FB-122 691126ad4, FB-135 1e316ca3f — each with its named pin test green; combined 37/37 + review approved |
 | 258 | FB-088+FB-089+FB-090+FB-095 | The machine on the table clock: gated spatial hash, declared clocks, five quiet latches, wall-time guard; [research I](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#i-quiet-cleanup-still-respects-deadlines--c8): coreSystem timed wreck/asteroid quiet-clock admission (C8) | PB | SHIPPED 2026-10-02 devin-oct2-batch — gated hash rebuild, declared system clocks, five owner-local quiet latches with bench toggles, wall-time guard; sim-hash neutral; C8 research residual closed 2026-10-03 glm-campaign-oct3 (`22b168195` — finite-deadline wrecks/asteroids admitted to the bounded quiet clock, 8/8 RED→GREEN) |
 | 259 | FB-091+FB-092+FB-096+FB-097+FB-098+FB-141 | The machine on the present: budgeted admission, enumerated arrival roster, no first-frame allocation, hitch ring, one batched archetype, probe doors | PB | DONE 2026-10-03 — FB-091 slice-budget pin on 40-root queue (999acbe6d); FB-092 arrival roster + FB-097 hitch ring verified already-true; FB-096 npc-job contact scratch pooled at construction (dd25b06c6); FB-098 asteroid archetype batched instance draw pinned (19e3a60c6); FB-141 probe doors exist, fb-probe-doors 2/2 |
-| 260 | FB-099+FB-100+FB-126+FB-105+FB-112 | Dead settings controls live, options reach parity, focus loss mutes and pauses, Ironman is one-way, settings speak to a reader | PB | SHIPPED partial 2026-10-02 devin-oct2-batch verify — FB-099 shake (bc705bb67), FB-100 parity (5ba307571), FB-105 ironman latch (bc705bb67), FB-126 focus hold (bc705bb67) confirmed on master; FB-112 remains ORRERY lane |
-| 262 | FB-134+FB-138+FB-139+FB-011+FB-008 | Small closures: the corridor typo, wing refusals, vengeful returns, the massline readout, the overspeed band | PB | SHIPPED partial 2026-10-02 devin-demo5 — FB-134 sector:enter latch pinned, FB-138 refusal receipts on the radial, FB-139 vengeful-return bark+news cite the earlier mercy; FB-011/FB-008 remain ORRERY lane |
+| 262 | FB-134+FB-138+FB-139+FB-011+FB-008 | Small closures: the corridor typo, wing refusals, vengeful returns, the massline readout, the overspeed band | PB | SHIPPED — FB-134/138/139 as of 2026-10-02; FB-011 the cadence instrument reads load, stored swing energy and apex (test/fb-massline-readout-columns.test.mjs); FB-008 the speed gauge's 100% mark is governed combat speed and earned overspeed stays on the band (test/fb-overspeed-band.test.mjs, seed 4242). |
 
 Same closing law as H and I. The bank's own routing aids ([`FIRST_BATCHES.md`](./design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/FIRST_BATCHES.md),
 [`OVERLAP_MAP.md`](./design/planbank/SpaceFace_Planbank_FABLE_2026-09-28/OVERLAP_MAP.md)) name the
@@ -990,7 +1005,47 @@ shipped, so their J1/J6 and P04 residuals moved to §K rows 276/277; §K rows re
 
 ### L. THE LONG GAME — first decomposition (lane L-LONGGAME sitting 1, 2026-10-04)
 
-Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row. The first six rows are landed; the table is empty until the next decomposition.
+Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row. The first six rows are landed; the lane's next decomposition is its own continuing work.
+
+### M. The rest of the plan — reservoirs that are this board
+
+Owner ruling, 2026-10-08: **there is no plan about building this game that is not part of this
+map.** The task banks below are admitted scope. A bank is not run like a queue — every candidate
+is outcome-mapped against landed work before it becomes a row (already-true → close with evidence;
+residual → extend the native owner; genuinely new → its own row; conflicting → park with a
+sentence) — but the un-admitted remainder is *remaining plan*, and turning it into rows is the
+**ADMIT** work below. An ADMIT row's done-when: every candidate in its named scope dispositioned
+on this board — closed with evidence, routed to a lane, or minted as a numbered row.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 285 | ADMIT-SFQ-B | Finish & Expansion build reservoir (`design/finish-expansion-2026-09/catalog/`): ~230 of 240 candidates unadmitted across 24 programs. Take the next `dependency_graph` level, outcome-map each candidate, mint its rows or close it with evidence | ADMIT | OPEN — serial, one DAG level per sitting; programs 13–17 reconcile against merged PR-170 reality |
+| 286 | ADMIT-SFQ-I | 96 SFQ-I inference candidates → `INFERENCE_IDEAS.md`, one at a time once the named dependency actually lands and the gap is real | ADMIT | OPEN — gated per candidate |
+| 287 | ADMIT-SFQ-M | 36 mission briefs → mission rows | ADMIT | OPEN |
+| 288 | ADMIT-SFQ-ART | 36 model-family briefs → rows; routes to L-PICTURE write sets | ADMIT | OPEN |
+| 291 | ADMIT-DEPTH | `02_REMAINING_WORK.md` Depth roll-up + Alpha M-rows: admitted scope never decomposed → dispatchable leaves | ADMIT | OPEN |
+
+ADMIT-FABLE closed 2026-10-08. Row 290 is deleted; this note is not an open row.
+
+ADMIT-SFQ-FX closed 2026-10-08 on `feat/world-feel`. Row 289 is deleted; this note is not an open row. Scope was the 32 effect/audio briefs (F01–F32) plus the three programs that feed them: SFQ-P10 mining work, SFQ-P19 force VFX, SFQ-P20 mechanical sound. Seed 4242.
+
+Heard or seen, and pinned: F01 nozzle versus flight history (`test/plasma-stream-thruster.test.mjs`); F03 Massline load (`test/sfq-b192-massline-four-voices.test.mjs`); F04/F06/F07 starter gun, beam, and disruptor already use different family recipes (`test/sfq-b193-sonic-verbs.test.mjs`, `test/cv-ear-weapon-voices.test.mjs`); F05 concussion shove is not the gun, and a signed impulse already draws one way (`test/sfq-b183-impulse-throw-read.test.mjs`); F15 material destruction (`test/explosion-rupture.test.mjs`); F16 volatile warming, critical, and venting (`test/worldfeel-unfelt-seams.test.mjs`); F17 fracture sheets were already drawn and survey, cut, and collect now are too (`test/sfq-b091-extraction-phases.test.mjs`); F20 a relay pulse is not a motor (`test/sfq-b197-relay-pulse.test.mjs`); F11 a running yard machine sits on its rock (`test/sfq-b196-yard-position.test.mjs`); contact weight envelopes (`test/sfq-b191-contact-envelopes.test.mjs`, `test/audio-collision-weight.test.mjs`). A developed rock's refused beam, a hull skim, and those volatile stages are the three seams that had emitters and no ear.
+
+Parked, not built: F09 and F28 — there is no elastic-bridge weapon and no pressure-sac weapon (`test/sfq-b193-sonic-verbs.test.mjs`). SFQ-B194: a fast coast stays silent on purpose; a hum tied to world speed would violate that (`test/sfq-b194-coast-silence.test.mjs`). Boost and the brake bite already have their own voices. `mining:podSplit` stays silent bookkeeping.
+
+Routed, not taken on this branch: F05's shove-versus-autocannon picture and F13's Tarburst basin live outside `src/render/vfx*.js` (discharge pool, bomb presentation) — L-PICTURE. F08 caustic coating, F12 repair-as-operation, F18 the full failure chain, F19 biospectral read, F21 fauna bodies, F22 purge, F23 assembly, F24 inspection, F25 suppression corridor, F26 velocity plane, F27 enforcement, F29 work-completion stem, F30 contact recognition, and F32 deep-domain events are campaigns on picture, ear, industry, or law, not a cue swap. F31 crucible rhythm stays with the first-hour lane. SFQ-B092 through B100 (rock geometry, freight doctrine, salvage structure, repair economy, construction kit, manipulable hazards, NPC crews, upgrade technique, a whole district) stay on the industry, hand, and AI seams — this lane does not edit those systems. SFQ-B182, B184's remaining basin, B185 shield-conforming break, B187 transfer processes, and B188–B190 lifecycle budgets stay L-PICTURE. SFQ-B195 ducking through a live explosion, B198 recovery music, B199 output-device changes, and B200 mix-by-weakest-route stay L-EAR.
+
+Closed with evidence on the instrument lane: FB-028 the named results sheet (`test/fb-results-sheet-rows.test.mjs`); FB-055 one industry readout (`test/fb-industry-one-readout.test.mjs`); FB-110 a restored save says so (`test/fb-repaired-save-notice.test.mjs`); FB-130 a slot name and a bounded still (`test/fb-save-slot-label-still.test.mjs`); FB-112 settings announce values, conflicts, and a separate text scale (`test/fb-settings-a11y.test.mjs`); FB-102 career counters already lived in `careerStats` and FB-103 the Pause Statistics screen reads them (`test/fb-statistics-screen.test.mjs`); FB-106 the shell's window mode is the Settings toggle (`test/fb-electron-window-state.test.mjs`); FB-107 machine locales already wear "(machine preview)" until the 0.95 reviewed-coverage gate (`test/fb-locale-readiness-gate.test.mjs`).
+
+Instrument lane 2026-10-08, SFQ-P21 / SFQ-P23 slice only (not the whole ADMIT-SFQ-B reservoir). Already true: SFQ-B201 continue-with-no-save is not a dial word (`src/ui/screens/mainMenu.js`); SFQ-B205 a market fill cannot double-commit (`tradeBusy` + `marketGoDecision` in `src/ui/station/screens/market.js`); SFQ-B206 the yard readout stays on the station refresh and `station:yardChanged` is not a focus steal; SFQ-B207 delete, overwrite, and load already confirm (`src/ui/screens/saveLoad.js`); SFQ-B209 cluster arrival already finishes under `html.sf-reduce-motion`; SFQ-B222 old saves already take additive defaults in `src/save/migrations.js` (no wipe-to-fix found); SFQ-B223 overlapping new/load is row 226 (`test/sfq-b223-overlapping-transition.test.mjs`); SFQ-B224 a dropped controller already toasts and returns to keyboard and mouse (`src/systems/gamepad.js`); SFQ-B226 and SFQ-B227 stay the existing settings and locale pins; SFQ-B228 errors already leave an exit (`test/sfq-b228-error-exits.test.mjs`); the chart inspector already leads with navigation cost. Landed residuals: SFQ-B202 the next flight decision (`test/sfq-b202-next-decision.test.mjs`); SFQ-B203 a refused bearing on the tuner (`test/sfq-b203-bearing-refusal.test.mjs`); SFQ-B204 a refused build says why on its preset (`test/sfq-b204-preset-rejection.test.mjs`). Inference wirings, not new truth: `band:bearingUnavailable` on the tuner, `ship:loadoutPresetApplyRejected` on the preset, `ship:nameChanged` on the ring (`test/sfq-ship-name-ring.test.mjs`). Parked: SFQ-B221 tether and material resume would write simulation systems; SFQ-B224 rebind tables stay on the bindings lane; SFQ-B229 packaged media provenance and SFQ-B230 session-interruption packaging were not opened.
+Toy lane (`feat/toy-hand-line`), outcome-mapped, not minted as rows. SFQ-B022 residual-built: an attached line's load pill says PAYLOAD, EVEN, or ANCHOR from the two masses the constraint couples (`latchCouplingRead`, the existing 3× ratio). The pre-latch CAN mark stays a shape. Pin: `test/sfq-b022-coupling-readout.test.mjs`, seed 4242. SFQ-B023 residual-built: an overload snap on the player's own line, or on the bridle they are holding, paints LINE BROKE (integrity-failure included) anchored on that body; a hostile sever paints LINE CUT; another hull's snap stays off that pill; a deliberate cut keeps its grade and a handoff reason `accepted` stays off that pill. Pin: `test/sfq-b023-release-break.test.mjs`, seed 4242. SFQ-B032 residual-built: a machine is an explicit refusal (no damage, shove, status, or fuze) and the class matrix names wreck, pickup, fauna, craft, and station. Pin: `test/sfq-b032-ordnance-coverage.test.mjs`, seed 4242. SFQ-B033 residual-built: pinned, unmoored, burning, goo, and scrambled say their payoff on the player's callout (scrambled says NO LOCK; tumbling stays quiet because the player hull never keeps it). A bomb the player primed says PRIMED plus the trigger. NPC statuses stay quiet. The combinations themselves were already the status service (row 221). Pin: `test/sfq-b033-status-payoff.test.mjs`, seed 4242. SFQ-B034 already-true: a drop copies the owner's velocity on both axes and is laid behind the hull, not spawned at rest. Proximity and fuze already detonate once in `test/bombs.test.mjs`; command returns 1 then 0 in `test/bomb-choreography.test.mjs`. Pin: `test/sfq-b034-inherited-velocity-4242.test.mjs`, seed 4242, velocity (42, -24). SFQ-B011 already-true: the G combat stick recenters without restoring absolute-radius numbers. Evidence: `test/sfq-b011-gstick-seed-4242.test.mjs` and `test/sfq-b011-gstick-verification.test.mjs`. Not rebuilt. SFQ-B012 already-true: steer, latch, release, and fire are keyboard-first in the default scheme, and the scroll wheel drives no flight input. Evidence: the B012 cases in `test/sfq-b011-gstick-verification.test.mjs`. Not rebuilt. SFQ-B013 conflict: keeping earned speed across a sling, shove, collision, or well is the propulsion owner. This lane does not retune drag or thrust and does not restore absolute-radius stick numbers. SFQ-B016 conflict: chase framing that anticipates travel without stealing the stick is the camera. This lane does not write `src/render/**`. SFQ-B020 conflict: learning drift, brake, and release inside a job is the first-hour teach surface. This lane does not write onboarding or missions. SFQ-B021 already-true: what looks latchable is the body the latch actually takes. Evidence: board row 220, `test/hand-220-latch-eligibility.test.mjs`, `test/row220-fresh-wreck-body.test.mjs`. Not rebuilt. SFQ-B026 already-true: the load pill shows the break-envelope estimate, so a pilot can release, reel, or ease before the snap. Evidence: `scripts/check-massline-tension-estimate.mjs` and the HUD `tensionEstimate` read. Not rebuilt. SFQ-B029 already-true: a specialist waits one response window and warns once on `ai:counterTether` instead of erasing the line. Evidence: `test/massline-counter-tether-response.test.mjs`. The AI owner was not edited. SFQ-B031 already-true: the starters already differ as gun, shove, rope, and bomb. Evidence: board row 221, `test/sfq-b031-b033-starter-verbs.test.mjs`. Not rebuilt. SFQ-B035 already-true: a flank blast signs the opposite side from a nose blast, and fauna in the blast take damage without the craft status riders. Evidence: `test/sfq-b035-directional-impulse.test.mjs`. Not rebuilt.
+
+Routed, not taken here: FB-006..FB-014 stay with the hand/massline lane (FB-008 and FB-011 stay named on row 262; their ORRERY presentation stays ORRERY-routed). FB-084..FB-087 stay with the ear/kill lane.
+
+Already-rowed parked work is the rest of the remainder and stays visible where it is: rows 155
+(Charon Bloom opt-in), 156 (graphics packets), 157 (ORRERY packets), 36 (chase stills awaiting
+remote candidates), 270–273 (Swarm phases C–F on the owner's phase order), 284 (the quiet-host
+session), and the §F lanes. A PARKED row's gate is named on the row; it is still on this map.
 
 ## 2. Product north star
 

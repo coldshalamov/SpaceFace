@@ -1025,7 +1025,7 @@ const ROUTES = {
         jumpState = r.jump;
         arrived = r.sector === target;
         if (arrived || r.t > simDeadline) break;
-        if (jumpState && jumpState !== 'CHARGING' && jumpState !== 'RUNNING') break;
+        if (jumpState && jumpState !== 'CHARGING' && jumpState !== 'RUNNING' && jumpState !== 'JUMPING') break;
         await sleep(500);
       }
       await sleep(1500);

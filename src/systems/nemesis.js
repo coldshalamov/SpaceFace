@@ -81,6 +81,15 @@ export function createNemesisSystem() {
         situation, text, evidence, t: nowOf(this.state) });
     },
     _flight() { return this.state.mode === 'flight' && alive(entity(this.state, this.state.playerId)); },
+    _pacingAllows() {
+      const approve = this.helpers && this.helpers.canStartNemesisEncounter;
+      // Missing pacing stays the host's fail-closed refusal, which carries its own receipt.
+      if (typeof approve !== 'function') return true;
+      try {
+        return approve({ requestId: null, sectorId: sector(this.state), aceId: RIVAL.id, preflight: true },
+          this.state) === true;
+      } catch (_) { return false; }
+    },
     _sensorFrame() {
       const a = this.state.nemesis.active;
       const sensors = this.helpers.aiSensors;
@@ -118,7 +127,8 @@ export function createNemesisSystem() {
     },
     _killed(p) {
       const m = this.state.nemesis, a = m.active;
-      if (!a || !p || m.ending) return;
+      if (!p || m.ending) return;
+      if (!a) { this._killedLeaving(p); return; }
       const id = p.id ?? p.victimId;
       const kill = classifyPlayerKill(p, this.state.playerId, m.tumbles, nowOf(this.state));
       // Orra directly experiences their own hull's final hit, even after the sensor drops it.
@@ -130,6 +140,27 @@ export function createNemesisSystem() {
           ? p.presentation.playerCaused : p.killerId === this.state.playerId;
         this._finish(caused ? 'destroyed' : 'lost');
       } else if (id === this.state.playerId) this._finish('player_defeated');
+    },
+    // An escaped captain is still a real hull while the encounter host flies it out. Run it down
+    // before it clears the area and the arc ends here — the next return would resurrect Orra.
+    _killedLeaving(p) {
+      const rows = this.state.nemesisDeployment && this.state.nemesisDeployment.departures;
+      if (!Array.isArray(rows) || !rows.length) return;
+      const m = this.state.nemesis, id = p.id ?? p.victimId;
+      const row = rows.find((r) => r && r.id === id);
+      const ship = entity(this.state, id);
+      if (!row || (ship && !localTag(ship, row.requestId))) return;
+      const caused = p.presentation && typeof p.presentation.playerCaused === 'boolean'
+        ? p.presentation.playerCaused : p.killerId === this.state.playerId;
+      const outcome = caused ? 'destroyed' : 'lost', now = nowOf(this.state);
+      if (m.pending) this._cancelPending('rival destroyed after escape');
+      m.ending = outcome; m.phase = 'resolved';
+      this._log('outcome', `${outcome} while leaving after an escape`, row.requestId);
+      this._voice(outcome, NEMESIS_LINES[outcome], null, row.requestId);
+      const receipt = { encounterId: row.requestId, bossId: id, crewIds: [id], aceId: RIVAL.id,
+        outcome, afterEscape: true, t: now };
+      this._emit('namedAce:defeated', { aceId: RIVAL.id, entityId: id, t: now });
+      this._emit('nemesis:resolved', { ...receipt, ending: outcome });
     },
     _observation(p) {
       const a = this.state.nemesis.active;
@@ -212,6 +243,10 @@ export function createNemesisSystem() {
         return;
       }
       if (now < m.nextContactAt) return;
+      // Warn only for an arrival the host's pacing would admit now. A refused deployment retries in
+      // 15 s, so announcing first turned every refusal (onboarding, a run, docking, low hull) into a
+      // COUNTEREXAMPLE INBOUND warning every ~21 s with nobody arriving.
+      if (!this._pacingAllows()) { m.nextContactAt = now + LIMITS.retryS; return; }
       // No RNG consumed. Alternating handedness is deliberate choreography, not random sampling.
       const plan = prepareNemesisPlan(m, m.completed % 2 ? -1 : 1);
       m.requestSerial += 1;

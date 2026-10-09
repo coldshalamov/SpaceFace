@@ -355,6 +355,10 @@ export const tetherGameplay = {
     this._cutNpcLinesWithMonofilament(attachments, state, player, dt);
     this._staggerLightsWithMonofilament(attachments, state, player, dt);
     this._cutPlayerLinesWithHostileSweep(attachments, state, player);
+    // The sweep breaks the line after the reconcile above, and the broken listener
+    // no-ops while this update owns the tick. Drop the mirror now so the snap pill
+    // is not cleared as if the cable were still live.
+    this._reconcileActive(attachments, state);
     this._startPendingDrillApproach(attachments, state, player);
     this._reconcileTwinBridle(attachments, state, player, now);
     this._adoptTwinBridle(attachments, state, player);
@@ -877,9 +881,12 @@ export const tetherGameplay = {
     const attachment = attachments.get(this._bridleActive.attachmentId);
     if (!attachment || attachment.state !== 'active') {
       const reason = attachment && attachment.breakReason || 'line_broken';
+      const ended = this._bridleActive;
       this._endTwinBridleMirror(state, reason);
       this.bus.emit('massline:bridleEnded', {
-        attachmentId: this._bridleActive && this._bridleActive.attachmentId,
+        attachmentId: ended && ended.attachmentId,
+        sourceId: ended && ended.sourceId != null ? ended.sourceId : null,
+        targetId: ended && ended.targetId != null ? ended.targetId : null,
         reason,
       });
       this._bridleActive = null;
@@ -894,7 +901,12 @@ export const tetherGameplay = {
       const reason = sameSector ? 'endpoint_lost' : 'sector_changed';
       attachments.cut(attachment.id, player.id, reason);
       this._endTwinBridleMirror(state, reason);
-      this.bus.emit('massline:bridleEnded', { attachmentId: attachment.id, reason });
+      this.bus.emit('massline:bridleEnded', {
+        attachmentId: attachment.id,
+        sourceId: attachment.ownerId != null ? attachment.ownerId : null,
+        targetId: attachment.targetId != null ? attachment.targetId : null,
+        reason,
+      });
       this._bridleActive = null;
       return;
     }
@@ -1100,12 +1112,20 @@ export const tetherGameplay = {
       || (mirror && mirror.kind === TWIN_BRIDLE_HEAD_ID)
       || (state && Object.prototype.hasOwnProperty.call(state, 'masslineBridle')));
     if (!hasRuntime) return;
-    const attachmentId = this._bridleActive && this._bridleActive.attachmentId;
+    const ended = this._bridleActive;
+    const attachmentId = ended && ended.attachmentId;
     const attachments = combatKernel(this)?.attachments;
     if (attachmentId && attachments) attachments.cut(attachmentId, state.playerId, reason);
     this._cancelTwinBridleSetup(state, reason);
     this._resetTwinBridleRuntime(state, reason, false);
-    if (attachmentId) this.bus.emit('massline:bridleEnded', { attachmentId, reason });
+    if (attachmentId) {
+      this.bus.emit('massline:bridleEnded', {
+        attachmentId,
+        sourceId: ended.sourceId != null ? ended.sourceId : null,
+        targetId: ended.targetId != null ? ended.targetId : null,
+        reason,
+      });
+    }
   },
 
   _refreshAcquisitionPreview(player, def, state, now, force = false, pressOverride = false) {

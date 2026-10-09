@@ -36,7 +36,7 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
-import { revealSubjectWithAncestors } from './compilePresentSlice.js';
+import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from './compilePresentSlice.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
@@ -525,7 +525,7 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
   // links overlap on purpose and pacing would serialize them). Each call yields one task-queue
   // slot then finishes the GL queue while it is still ~one unit deep, so a whole cohort never
   // drains inside one compositor readback. Callers invoke it between issued units.
-  const paceQueue = makeGpuQueuePacer(renderer);
+  const paceQueue = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
   batch.handle = {
     paceQueue,
     join(gl, programs, settle) {
@@ -1821,6 +1821,14 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // threshold, so the traversal cost cannot matter; keep it armed for the same reason the brick
   // warning itself is always armed.
   const seenBloomGeometryUuids = new Set();
+  // A sustained slow stretch bricks EVERY frame — and each brick used to pay
+  // three scene traverses plus a report serialization inside the presented
+  // pass, worsening the frame it was diagnosing. Dedup: the first brick and
+  // every 120th carry the full describe payload; bricks ≥1 s apart emit a
+  // cheap summary; everything between is counted and suppressed.
+  let brickSeq = 0;
+  let brickLastWarnAt = -Infinity;
+  let brickSuppressed = 0;
 
   function describeUnstampedVisibleGeometries(scene) {
     if (!scene || typeof scene.traverse !== 'function') return [];
@@ -1896,13 +1904,59 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // harmless; an unbounded uuid set across sectors and generations is not.
   const SEEN_BLOOM_GEOMETRY_CAP = 2000;
 
-  function rememberBloomGeometries(scene) {
+  // The refill used to pay a full scene traverse inside the frames that had
+  // already bricked. The walk is parked as a stepped iterator instead: each
+  // request advances a bounded slice and registers uuids as visited, so the
+  // seen set stays honest while the refill amortizes across the storm's own
+  // frames. A geometry added inside an already-visited branch reports "new"
+  // once — diagnostic noise, not a contract breach (same as the cap reset).
+  let bloomGeometryWalkIter = null;
+  let bloomGeometryWalkScene = null;
+
+  function* bloomGeometryWalkSteps(root) {
+    const stack = [root];
+    while (stack.length) {
+      const object = stack.pop();
+      if (object) {
+        const geometry = object.geometry;
+        if (geometry && geometry.uuid && seenBloomGeometryUuids.size < SEEN_BLOOM_GEOMETRY_CAP) {
+          seenBloomGeometryUuids.add(geometry.uuid);
+        }
+        const children = object.children;
+        if (children) {
+          for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+        }
+      }
+      yield;
+    }
+  }
+
+  function driveBloomGeometryWalk(scene, drainAll) {
     if (!scene || typeof scene.traverse !== 'function') return;
-    if (seenBloomGeometryUuids.size >= SEEN_BLOOM_GEOMETRY_CAP) seenBloomGeometryUuids.clear();
-    scene.traverse((object) => {
-      const geometry = object && object.geometry;
-      if (geometry && geometry.uuid) seenBloomGeometryUuids.add(geometry.uuid);
-    });
+    if (bloomGeometryWalkScene !== scene) {
+      bloomGeometryWalkIter = null;
+      bloomGeometryWalkScene = scene;
+    }
+    if (!bloomGeometryWalkIter) {
+      if (seenBloomGeometryUuids.size >= SEEN_BLOOM_GEOMETRY_CAP) seenBloomGeometryUuids.clear();
+      bloomGeometryWalkIter = bloomGeometryWalkSteps(scene);
+    }
+    let visited = 0;
+    while (bloomGeometryWalkIter && (drainAll || visited < 256)) {
+      let step = null;
+      try { step = bloomGeometryWalkIter.next(); }
+      catch (_) { bloomGeometryWalkIter = null; return; }
+      if (step && step.done) { bloomGeometryWalkIter = null; return; }
+      visited += 1;
+    }
+  }
+
+  function rememberBloomGeometries(scene) {
+    driveBloomGeometryWalk(scene, false);
+  }
+
+  function drainBloomGeometryWalk(scene) {
+    driveBloomGeometryWalk(scene, true);
   }
 
   function describeNewProgramOwners(scene, seenKeys) {
@@ -2024,28 +2078,46 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         const grewGeometries = geometriesAfter != null && geometriesBefore != null
           && geometriesAfter > geometriesBefore;
         if (brick) {
-          console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify({
-            // Owners first: probe collectors truncate long warning payloads, so the fields that
-            // NAME the producer must precede the bulky key lists.
-            owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
-            newGeometries: grewGeometries
-              ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
-              : [],
-            unstampedVisible: describeUnstampedVisibleGeometries(scene),
-            programsBefore,
-            programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
-            geometriesBefore,
-            geometriesAfter,
-            texturesBefore,
-            texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
-            // Three appends to info.programs as it acquires them, so the tail beyond
-            // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
-            // previous-brick set reported every program acquired since the last brick — dozens of
-            // legitimately warm ones — which made the payload unusable for naming a producer.
-            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 512)),
-          })}`);
+          brickSeq += 1;
+          const brickNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+            ? performance.now() : Date.now();
+          const sampled = brickSeq === 1 || (brickSeq % 120) === 0;
+          const heartbeat = brickNow - brickLastWarnAt >= 1000;
+          if (sampled || heartbeat) {
+            brickLastWarnAt = brickNow;
+            const suppressed = brickSuppressed;
+            brickSuppressed = 0;
+            console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify(sampled ? {
+              // Owners first: probe collectors truncate long warning payloads, so the fields that
+              // NAME the producer must precede the bulky key lists.
+              owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
+              newGeometries: grewGeometries
+                ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
+                : [],
+              unstampedVisible: describeUnstampedVisibleGeometries(scene),
+              programsBefore,
+              programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
+              geometriesBefore,
+              geometriesAfter,
+              texturesBefore,
+              texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
+              // Three appends to info.programs as it acquires them, so the tail beyond
+              // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
+              // previous-brick set reported every program acquired since the last brick — dozens of
+              // legitimately warm ones — which made the payload unusable for naming a producer.
+              newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 512)),
+              suppressedBricks: suppressed,
+            } : {
+              programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
+              geometriesAfter,
+              suppressedBricks: suppressed,
+            })}`);
+          } else {
+            brickSuppressed += 1;
+          }
         }
         if (brick || grewGeometries) rememberBloomGeometries(scene);
+        else if (bloomGeometryWalkIter) driveBloomGeometryWalk(scene, false);
       }
     }
   }
@@ -2068,7 +2140,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       renderer.setRenderTarget(rtScene);
       renderer.clear(true, true, false);
       renderer.render(scene, camera);
-      rememberBloomGeometries(scene);
+      drainBloomGeometryWalk(scene);
       // The rehearsal's GL work sits in the driver's queue until something forces the flush —
       // without a drain here the deferred cost lands inside the presented frame it exists to
       // protect. gl.finish() moves that drain into the held gate.

@@ -1,6 +1,117 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Active continuation — 8 October 2026, 21:56 UTC
+
+Branch: `dot/expansion-continuation-2026-10-08`, starting from current master
+`518c8d6fce7202f412d54995876c4ced0ddfd696`. Public clone, current source checkout,
+locked production dependencies and Rapier are available. Connector branch creation was
+independently read back; CLI login is not a blanket blocker. No old recovery snapshot
+has been applied over current upstream.
+
+The owner requested a durable correction to repeated status-only continuation. See
+[CONTINUATION_RUNBOOK.md](CONTINUATION_RUNBOOK.md). The read-only local diagnostic
+`node scripts/check-continuation-readiness.mjs` has eight passing tests; it deliberately
+does not infer remote access or connector authentication from local state. This is
+requested support tooling, not a completed gameplay unit.
+
+Current draft PR: #246. The continuation diagnostic/runbook increment is published as
+`6c841c089c49b3a65cbf1528af333a1d0ee6e7be`; its eight tests pass. GitHub connector
+blob/tree/commit/ref publication and independent branch readback all succeeded.
+
+Pallet Jack repair: ordinary clamp and repeated cold Continue now pass on the starting
+composition. Exact changed paths are `test/pallet-jack-route.test.mjs`,
+`test/pallet-jack-maneuver.test.mjs`, `src/ai/palletJack.js`, `src/ai/stack.js`,
+`src/systems/aiPorts.js`, and `src/systems/tacticalAI.js`.
+The first native reproduction confirmed the old fixture dumps cargo while the real
+director is still quiet and lets the pod escape. A valid catchable-load case exposed
+Pallet waypoints being applied after motor planning and real cargo payloads missing from
+the sensor contact set. The repair shapes fresh/cached intent before motor planning,
+uses moving-load formation tracking, and classifies only valid cargo payloads as
+objectives. It preserves admission refusals, patrol disengagement and native physics.
+Root reran both changed test files: 5/5 passed in 51 seconds, including ordinary native
+clamp, two cold Continue cycles, same-original nonlethal release, unrelated attachment
+preservation and the original quiet/runaway refusal. The unchanged Pallet owner suite
+passes 9/9; independent focused review found no blocking source issue. These counts
+overlap review selections and are not a full-game total.
+
+Pallet source is published as `19e7cce66de95fbee58827b2d6de3af4c82afd4a`. Upstream
+`653ad4d142b98092383cfffc4273e986ce10df02` has now been composed without conflicts,
+preserving 140 intervening commits. The combined tree passes 22/22 route, owner and
+readiness cases, plus 2/2 measured native-body/source tests. This includes the full
+ordinary clamp and two cold Continue cycles on the new composition, not only the old base.
+
+Mothlight's ordinary gun/Continue route is now repaired and independently reviewed.
+The idle fixture legitimately lost sensor confidence. Ordinary input pursuit exposed a
+second defect: the iris warning and ranged doctrine used independent clocks whose gun
+windows never overlapped during the finite-lamp encounter. The owner now supplies a
+validated sensor cadence; the doctrine consumes that one clock while preserving target,
+EnemyMind, pressure/retreat, ROE, aim, LOS, native readiness and exact-tick weapon gates.
+Warnings last at least 66 ticks and align with real tactical decision cadence; copied,
+expired, malformed and wrong-life samples fail closed.
+
+On the composition with upstream `89c25c17e73317d54e2117fed721e9b322cd37bf`, root ran
+`node --test test/mothlight.test.mjs test/mothlight-doctrine.test.mjs test/mothlight-native-body.test.mjs`:
+15/15 passed in 27 seconds. The ordinary input route accepted shot 2 after a 67-tick
+warning and two cold Continues retained two remaining lamps without reminting destroyed
+lamp 1. The legitimate idle/low-confidence refusal remains a negative test. Both measured
+tender/lamp contracts are materialized and native-body comparisons pass. Existing CRLF
+style in combatDoctrine.js is preserved; CR-aware whitespace validation passes.
+
+Next original unit: inspect the existing Thimble Door geometry and quiet driver, then
+finish its live convoy-clearance, recorder recovery/payment, persistence and activation.
+Use the current source checkpoint below and original concept dossier; do not count the
+geometry-only scaffold as a finished encounter. The original scope remains open.
+
+Browser playability remains unverified. Playwright and exact locked dependencies are
+installed with manifests unchanged; its browser download failed with a truncated archive,
+and system Chromium launch reported a socket permission error. No security flags were
+disabled. This affects browser execution, not the verified native route or code delivery.
+No visual, target-device performance or whole-program completion is claimed.
+
+## Source checkpoint for cloud work - 8 October 2026
+
+The owner requested publication of all current work, including unfinished sources, before
+starting cloud build-map lanes. Use current `origin/master`; the dated sections below are
+historical. PR #221 has merged. Its P00-P21 implementation obligations remain open wherever
+the actual current owners and ordinary route have not satisfied them.
+
+- Kilnback, Scissorwake and Towline Table landed in `7cf451ca7`; Borrowed Voice landed
+  in `ab7fbdf4c`. Their authored assets, runtime joins and focused/native continuity checks
+  are preserved. This does not certify target-device performance or every P00-P21 packet.
+- Pallet Jack and Mothlight source, original art, save joins, scanner/AI/render consumers
+  and 350 rebuilt production packages are in the publication batch. Focused source/native
+  checks pass. **Ordinary route acceptance is unfinished:**
+  `test/pallet-jack-route.test.mjs` still ends at a legitimate `tension_recovery` refusal
+  within its 120-second admission window; no full ordinary clamp/Continue result was reached.
+  `test/mothlight.test.mjs` reaches normal admission, native lamp release and actual DECOY
+  scanning, but ordinary tactical AI vetoed all eight sampled true-gun windows with
+  `enemy_mind_hold`; the full Continue leg remains unreached. The failing tests are preserved.
+  Fix the actual condition or fixture without forcing admission or bypassing ordinary AI.
+- `11f12f596` preserves **inactive, unfinished** Borrowed Sun, Tethys Switchyard and
+  Thimble Door sources. Sun has three import-safe owners but needs measured geometry,
+  helper injection, safe berth reservation, native dock/economy/registry/save joins and tests.
+  Switchyard has only an unimported data file: native gantry, source/system/UI, cargo jobs,
+  receiver authority, original art and continuity are absent. Thimble has editable source,
+  six raw GLBs, motion, source-derived body and an import-safe quiet driver; its 12 native
+  solids and genuinely open passage pass two geometry checks. Gameplay, real convoy-clearance
+  feedback, recorder recovery/payment, persistence and release/default-route activation remain
+  to implement. The driver must receive the real `thimbleDoorPresentation` owner on activation.
+- Anvil Storm Orchard, Open Hand Lock and Hundred Hand Mile have not been implemented in
+  this checkpoint. Continue the original concept amendment and remaining P00-P21 obligations;
+  these source commits do not close their review-ledger rows.
+- Prior dirty AI/motion work is preserved as **unfinished tuning**. The committed
+  `test/fixtures/m3-career-cohorts/cohort-report.v2.json` has `ok:false`; its failed cells
+  are not accepted tuning. The browser-only `process` crash found during review was fixed
+  and directly checked with real cohort steering while `process` was absent. Physics-mask,
+  save-error region reporting, durable nav restoration and existing scratch probes are retained.
+- Frontend changes landed in `622da5da7`; radar/HUD/alert checks passed 23/23, save-error
+  and dock-reset checks passed 6/6. The complete publication candidate passed
+  `node scripts/check-baseline.mjs` 16/16 in 68 seconds. Broader composed concept pacing,
+  rewards, recovery and continuity acceptance remains open; passing baseline does not close it.
+  The actual Electron boot, launch, controls, quick save and Continue check also passed 16/16,
+  with no uncaught errors, shader failures, missing assets or invisible authored hulls.
+
 ## Local maturation system — 4 October 2026
 
 The owner authorized continued cloud groundwork plus local expansion/improvement and adversarial

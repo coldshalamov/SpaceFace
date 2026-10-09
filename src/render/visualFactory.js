@@ -1,5 +1,6 @@
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
+import { isBorrowedVoiceRing } from '../data/borrowedVoiceBody.js';
 import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
@@ -27,6 +28,7 @@ import { buildRavelVisual } from './characters/ravelModel.js';
 import { buildSolsticeVisual } from './characters/solsticeModel.js';
 import { buildRubricVisual } from './characters/rubricModel.js';
 import { buildRuckusVisual } from './characters/ruckusModel.js';
+import { buildRuudVisual } from './characters/ruudModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
@@ -46,7 +48,9 @@ import { canonicalizeObjectSurfaceProgramKeys, canonicalizeObjectSurfaceProgramK
 import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCell, opticCellPoolResources } from './opticCellPresentation.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
+import { buildNurseryMineralRib } from './veilRayNurseryVisuals.js';
 import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
+import { buildFoldAberrantVisual, buildFoldPayloadVisual } from './foldAberrantVisual.js';
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
@@ -81,6 +85,7 @@ import {
   carryAdmittedOnceStamp,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
+  queuePacedDetachedTeardown,
   releaseBoundaryResidency,
   residencyOptionsForBoundary,
   staleAuthoredRunVerdict,
@@ -477,6 +482,7 @@ function optimizeStaticBatches(root) {
 
 function isBatchCandidate(obj) {
   if (!obj || !obj.isMesh || obj.isBatchedMesh || obj.isInstancedMesh) return false;
+  if (obj.userData?.contactShadowReceiver === true) return false;
   if (obj.onBeforeRender && obj.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return false;
   if (obj.children && obj.children.length) return false;
   const g = obj.geometry, m = obj.material;
@@ -1099,6 +1105,7 @@ function addNavBlinkers(g, R, halfWidth, length, blinkers) {
 // Detail is laid out on a loose grid across the deck footprint (length × halfWidth in R-fractions),
 // jittered so it doesn't look mechanical. Each cluster is built from cached primitives.
 // =============================================================================================
+
 function surfaceDetail(ctx) {
   const { g, R, pal, hm, vis, hints, seed } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
@@ -1643,9 +1650,8 @@ function buildTraderHaul(ctx) {
 
 // pirate_swoop — Reaver Pirate. Asymmetric, greeble-heavy, exposed mismatched engines. Reads: raider/scavenger.
 function buildPirateSwoop(ctx) {
-  const { g, R, hm, accent, vis, seed } = ctx;
+  const { g, R, hm, accent, vis } = ctx;
   const L = vis.length || 1.3, W = vis.halfWidth || 0.55;
-  const rnd = mulberryLite(seed + 31);
   const hullShape = new THREE.Shape();
   hullShape.moveTo(0, L * 0.6); hullShape.lineTo(W * 0.8, -L * 0.4);
   hullShape.lineTo(W * 0.3, -L * 0.55); hullShape.lineTo(-W * 1.0, -L * 0.2);
@@ -1656,9 +1662,11 @@ function buildPirateSwoop(ctx) {
   hullGeo.center();
   const hull = new THREE.Mesh(hullGeo, hm);
   hull.rotation.x = -Math.PI / 2; hull.scale.setScalar(R); g.add(hull);
+  const swoopX = [-0.40, -0.15, 0.10, 0.28, 0.42];
+  const swoopZ = [0.20, -0.25, 0.15, -0.10, 0.30];
   for (let i = 0; i < 5; i++) {
-    const box = new THREE.Mesh(getGeometry(`edr:greeb${i}`, () => new THREE.BoxGeometry(0.1 + rnd() * 0.12, 0.1 + rnd() * 0.1, 0.12 + rnd() * 0.15)), hm);
-    box.position.set((rnd() - 0.5) * W * 1.4 * R, R * (0.15 + rnd() * 0.15), (rnd() - 0.5) * L * 0.8 * R);
+    const box = new THREE.Mesh(getGeometry('edr:swoopBolt', () => new THREE.BoxGeometry(0.14, 0.12, 0.16)), hm);
+    box.position.set(swoopX[i] * W * R, R * 0.2, swoopZ[i] * L * R);
     box.scale.setScalar(R); g.add(box);
   }
   const sizes = [0.16, 0.11, 0.13];
@@ -1821,8 +1829,8 @@ function buildShipMesh(e, pal) {
   const family = (enemySil && ENEMY_FAMILY_BUILDERS[enemySil]) ? enemySil : familyFor(defId);
   const isEnemyFamily = !!enemySil && !!ENEMY_FAMILY_BUILDERS[enemySil];
   const recipe = recipeFor(defId);
-  const seed = hashId(e.id);
   const tierRow = tierForLoadout(defId, (e.data && e.data.fittings) || [], e.data && e.data.visualTier);
+  const seed = hashId(`${defId}|${family}|${tierRow.name || ''}|${Math.round(R)}`);
   const hints = Object.assign({ plating: 'smooth', greeble: 0.5 }, tierRow.hints || {});
   const loadout = loadoutProps(e);
   const blinkers = [];
@@ -1929,17 +1937,19 @@ function buildShipMesh(e, pal) {
   // 8) SENSOR/UTILITY masts — antennas + dishes near the authored sensor anchor, count from loadout.
   if (vis.sensor) {
     const n = Math.max(1, Math.min(5, (loadout.utilityCount || 1) + Math.round((hints.greeble || 0) * 2)));
-    const rnd = mulberryLite(seed + 777);
     for (let i = 0; i < n; i++) {
       const ant = new THREE.Mesh(getGeometry('ship:antenna', () => new THREE.CylinderGeometry(0.015, 0.025, 0.45, 4)), hm);
-      ant.position.set(vis.sensor[0] * R + (rnd() - 0.5) * R * 0.3, vis.sensor[1] * R + rnd() * R * 0.1, (rnd() - 0.5) * R * 0.3);
+      ant.position.set(
+        vis.sensor[0] * R + (i - (n - 1) / 2) * R * 0.08,
+        vis.sensor[1] * R,
+        0,
+      );
       ant.scale.setScalar(R); g.add(ant);
       const tip = lampFixture(pal.accent, R * 0.032, 2.6);
       tip.position.set(ant.position.x, vis.sensor[1] * R + R * 0.32, ant.position.z); g.add(tip);
-      // a dish on some masts
       if (i % 2 === 0) {
         const dish = new THREE.Mesh(getGeometry('ship:dish', () => new THREE.SphereGeometry(0.12, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2)), hm);
-        dish.position.set(vis.sensor[0] * R + (rnd() - 0.5) * R * 0.2, vis.sensor[1] * R + R * 0.18, (rnd() - 0.5) * R * 0.2);
+        dish.position.set(vis.sensor[0] * R, vis.sensor[1] * R + R * 0.18, (i - 1) * R * 0.06);
         dish.scale.setScalar(R); g.add(dish);
       }
     }
@@ -2961,6 +2971,28 @@ function animateGate(host, blinkers) {
   };
 }
 
+
+function addStationSolidity(g, R, material) {
+  // The fallback ring needs a load-bearing floor below the flight plane, not a
+  // second hull kit or a yard spine several station radii outside its collider.
+  const deck = new THREE.Mesh(
+    getGeometry('stat:solidDeck', () => new THREE.CylinderGeometry(0.84, 0.84, 0.04, 48)),
+    material,
+  );
+  deck.name = 'Station_ContactDeck';
+  deck.position.y = -0.32 * R;
+  deck.scale.setScalar(R);
+  deck.receiveShadow = true;
+  // Keep this one receiver identifiable through static merging. Its true top
+  // plane and inscribed footprint are the contact-shadow contract.
+  deck.userData.contactShadowReceiver = true;
+  g.add(deck);
+  g.userData.contactShadowReceivers = [{
+    nodeName: deck.name, centerX: 0, centerZ: 0, y: 0.02,
+    innerRadius: 0, outerRadius: 0.838,
+  }];
+}
+
 function buildStation(e) {
   const R = structureVisualRadius(e, 40);
   const pal = resolvePalette(e);
@@ -3079,6 +3111,7 @@ function buildStation(e) {
   // PAINT PROFILE for stations — the same dirty-vs-clean art direction as ships: grimy frontier
   // outposts (grime + patches), pristine chrome core stations (env-map foil + insignia). Reads the
   // faction personality via resolvePalette's profile, exactly like ships.
+  addStationSolidity(g, R, m);
   applyStructureProfile(g, pal, R, hashId(e.id));
   animateStation(core, blinkers);
   g.userData.kind = 'station';
@@ -4131,8 +4164,35 @@ export function* deadenPackagedHulkSteps(group, options = {}) {
 // A detached packaged group the admission run still owns: its primitives were minted fresh for
 // this mount, so geometry and material instances die with it. Shared-asset geometries keep
 // their pool pin; texture maps ride the packaged cache and are left alone.
+function* disposeDetachedPackagedGroupSteps(group) {
+  const stack = [group];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+}
+
 function disposeDetachedPackagedGroup(group) {
   if (!group || typeof group.traverse !== 'function') return;
+  // The mid-commit abort legs (orphan/pipeline-fail/stale-run) used to tear the
+  // packaged subtree down atomically inside the commit continuation — the same
+  // presented-beat class the place/commit disposes already pace on the shared
+  // queue. Sync path stays as the no-queue fallback.
+  if (queuePacedDetachedTeardown(group, disposeDetachedPackagedGroupSteps(group))) return;
   group.traverse((object) => {
     if (!object) return;
     if (object.geometry && typeof object.geometry.dispose === 'function'
@@ -5950,10 +6010,15 @@ export function createVisualFactory() {
     build(e) {
       try {
         if (!e) return null;
+        if (isBorrowedVoiceRing(e)) {
+          const root = new THREE.Group(); root.name = 'BorrowedVoiceRingAuthoredPending'; return root;
+        }
+        if (Number.isInteger(e.data?.veilNurseryRib)) return stampBuiltVisual(buildNurseryMineralRib(e));
         if (isLatchActor(e) || isTallyThreeAssessor(e)) {
           const root = new THREE.Group(); root.name = isLatchActor(e) ? 'LatchNineAuthoredPending' : 'TallyThreeAuthoredPending'; return root;
         }
         if (e.data?.ruckusPart) return stampBuiltVisual(buildRuckusVisual(e));
+        if (e.data?.ruudPart) return stampBuiltVisual(buildRuudVisual(e));
         if (e.data?.ravelPart) return stampBuiltVisual(buildRavelVisual(e));
         if (e.data?.bracketPart) return stampBuiltVisual(buildBracketVisual(e));
         if (e.data?.solsticePart) return stampBuiltVisual(buildSolsticeVisual(e));
@@ -5965,8 +6030,8 @@ export function createVisualFactory() {
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
-          case 'drone': return stampBuiltVisual(e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
-          case 'payload': return stampBuiltVisual(buildPayload(e));
+          case 'drone': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldAberrantVisual(e) : e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
+          case 'payload': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldPayloadVisual(e) : buildPayload(e));
           case 'mine': return stampBuiltVisual(buildMine(e));
           case 'vectormine': return stampBuiltVisual(buildVectorMine(e));
           case 'charge': return stampBuiltVisual(buildImpulseCharge(e));

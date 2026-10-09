@@ -26,12 +26,7 @@ const _motionPadCorner = new THREE.Vector3();
  * draw past the committed envelope. Same-named LOD twin pivots max within a binding
  * (only one level draws); distinct bindings sum (nested pivots compose).
  */
-function motionTravelPadFor(mesh) {
-  const data = mesh && mesh.userData;
-  const spec = data && data.authoredMotionPadSpec;
-  if (!spec || !spec.length) return 0;
-  const cached = data.__authoredMotionPad;
-  if (typeof cached === 'number') return cached;
+function _measureMotionPad(data, spec) {
   let pad = 0;
   for (const entry of spec) {
     let reach = 0;
@@ -54,6 +49,33 @@ function motionTravelPadFor(mesh) {
   }
   data.__authoredMotionPad = pad;
   return pad;
+}
+
+function motionTravelPadFor(mesh) {
+  const data = mesh && mesh.userData;
+  const spec = data && data.authoredMotionPadSpec;
+  if (!spec || !spec.length) return 0;
+  const cached = data.__authoredMotionPad;
+  if (typeof cached === 'number') return cached;
+  // The first-consult subtree walk is unmetered — identical to the drawn-cull
+  // miss it sits above. Once the pass remeasure budget is spent, queue the
+  // pad measure on the same FIFO and serve the conservative estimate
+  // (ΣtMax + chordFactor over the drawn-radius memo when one exists — the
+  // over-serve direction) until the drain commits the real pad.
+  if (_passRemeasureCount >= DRAWN_CULL_REMEASURE_PER_PASS) {
+    if (data.motionPadForceQueued !== true) {
+      data.motionPadForceQueued = true;
+      _drawnCullForceRemeasure.push(mesh);
+    }
+    const knownRadius = (data.drawnCullRadius && data.drawnCullRadius.radius) || 0;
+    let pad = 0;
+    for (const entry of spec) {
+      pad += (Number(entry.tMax) || 0) + (Number(entry.chordFactor) || 0) * knownRadius;
+    }
+    return pad;
+  }
+  _passRemeasureCount += 1;
+  return _measureMotionPad(data, spec);
 }
 
 /**
@@ -136,12 +158,24 @@ export function resetDrawnCullPassBudget(debitSpend) {
     const data = mesh && mesh.userData;
     // Rows whose mesh parked (unparented) or had the queue stamp cleared drop —
     // they are not being culled this pass and re-queue on their next consult.
+    const wantsRadius = !!(data && data.drawnCullForceQueued === true);
+    const wantsPad = !!(data && data.motionPadForceQueued === true
+      && data.__authoredMotionPad == null);
     if (!mesh || mesh.isObject3D !== true || !mesh.parent || !data
-        || data.drawnCullForceQueued !== true) {
-      if (data) data.drawnCullForceQueued = false;
+        || (!wantsRadius && !wantsPad)) {
+      if (data) { data.drawnCullForceQueued = false; data.motionPadForceQueued = false; }
       continue;
     }
     data.drawnCullForceQueued = false;
+    data.motionPadForceQueued = false;
+    if (wantsPad) {
+      // Queued motion-pad first-consult: same unmetered subtree walk, drained
+      // under the same budget — commits the real pad, no radius memo update.
+      const padSpec = data.authoredMotionPadSpec;
+      _measureMotionPad(data, Array.isArray(padSpec) ? padSpec : []);
+      spent += 1;
+      continue;
+    }
     _drawnCullBox.setFromObject(mesh);
     let radius = 0;
     if (!_drawnCullBox.isEmpty()) {

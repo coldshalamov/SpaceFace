@@ -5,16 +5,24 @@ instructions. Do not infer the live backend from imports; root §5 and `core/reg
 
 ## Layer boundaries
 
-- `core/` — state, event bus, loop, registry, physics/lifetime authority.
+- `core/` — state, event bus, loop facade, registry, physics/lifetime authority. Order and clocks:
+  `src/runtime/AGENTS.md`.
 - `systems/` — registered fixed-step systems and a few imported helpers.
 - `ai/` and `combat/` — shared tactical/combat libraries used by registered systems.
 - `data/` — stable IDs and data-driven definitions.
 - `render/` — Three.js presentation and runtime asset integration; never owns sim results.
-- `testing/lab/` — deterministic gameplay scenarios, evidence classes, equivalence, and focused
-  Chromium parity; read its `AGENTS.md` and `docs/VALIDATION_WORKFLOW.md`.
+  Hazard notes also in `render/combat/`, `render/ships/`, `render/vfx/`, `render/forceLanguage/`.
+- `testing/lab/` — deterministic gameplay scenarios. `testing/AGENTS.md` points at the lab.
 - `ui/` — DOM presentation and input intents. UI may update explicitly UI/input-owned selection state
   such as `state.player.targetId`; it must not mutate gameplay-owned outcomes.
-- `save/`, `audio/`, `presentation/`, `story/`, `world/` — use `docs/MODULE_MAP.md`.
+- `audio/`, `presentation/`, `save/`, `sim/`, `observability/` — each has an `AGENTS.md`. Audio and
+  presentation do not write outcomes. Save owns the envelope. `sim/` is tapes and pure projections.
+- `world/`, `story/`, `characters/`, `nemesis/`, `chronicler/`, `onboarding/`, `localization/` —
+  libraries. The registered writers stay in `systems/`. Read the folder note before editing.
+- `economy/`, `missions/`, `contracts/`, `careers/`, `balance/` — pure math, schemas, or harnesses.
+  `missions/AGENTS.md` also covers `law/` and `physicalCargo/` (too small for their own note).
+- Credits, cargo, WANTED heat, reputation, and derived ship stats still have one writer each in
+  `systems/`. These folders return numbers or intents.
 
 ## Source rules
 

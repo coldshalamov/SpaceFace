@@ -34,7 +34,7 @@ import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { estimateBrakingSolution, evaluateArrivalCue } from '../core/flight/flightTelemetry.js';
-import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { previewBrakeStop, resolveTravelCeiling, TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS } from './bindings.js';
@@ -391,6 +391,13 @@ export function steadyClosingMarker(prev, rawText, nowMs) {
   if (rawText === text) return { text, holdUntil, changed: false };
   if (nowMs < holdUntil) return { text, holdUntil, changed: false };
   return { text: rawText, holdUntil: nowMs + CLOSING_MARKER_HOLD_MS, changed: true };
+}
+
+const BRAKE_MODE_WORDS = Object.freeze({ 'direct-counterthrust': 'brake', 'flip-and-burn': 'flip & burn' });
+
+export function brakeModeWords(mode) {
+  const key = String(mode || '');
+  return BRAKE_MODE_WORDS[key] || key.replace(/-/g, ' ');
 }
 
 // INF-086: compact live handling consequence, pure over a ships derived-stats object.
@@ -1414,6 +1421,16 @@ function setHudScreenTransform(el, x, y, opts = null) {
 function setClass(el, cls, active) {
   if (el && el.classList.contains(cls) !== !!active) el.classList.toggle(cls, !!active);
 }
+// World-anchored marks: a one-frame off-screen flicker (edge crossing, a late mesh admission)
+// hard-blinks the mark. Writers stamp `el._sfOkAt` on every good projection; consumers keep the
+// mark visible through a grace window so an edge-straddling read is a dip, not a strobe.
+const WORLD_MARK_GRACE_MS = 150;
+function markStillLive(el) {
+  return !!el && (performance.now() - (el._sfOkAt || 0)) < WORLD_MARK_GRACE_MS;
+}
+function stampMarkLive(el) {
+  el._sfOkAt = performance.now();
+}
 function setDisplay(el, visible, mode = 'block') {
   if (!el) return;
   const next = visible ? mode : 'none';
@@ -1760,6 +1777,15 @@ export function createHud(ctx, alerts) {
   const boostSettle = createGaugeSettleSpring(0);
   const fuelSettle = createGaugeSettleSpring(1);
   let gaugesPrimed = false;
+  // Heat-row dwell: the vitals grid auto-places its children, so hiding the heat row shifts
+  // every row below it — tap-firing crossed the reveal gate twice a second and bobbed the
+  // whole left stack. The row arms at 6%, retires below 2%, and dwells after the last hot sample.
+  let _heatRowShown = false;
+  let _heatRowRetireAt = 0;
+  // Tether status word dwell (see the slow-clock tether readout for the why).
+  let _tetherText = '';
+  let _tetherTextAt = 0;
+  let _tetherWarn = false;
   for (const key of ['energy', 'heat', 'boost', 'fuel']) {
     if (fillEls[key]) setStyle(fillEls[key], 'transition', 'none');
   }
@@ -2109,9 +2135,9 @@ export function createHud(ctx, alerts) {
     // projected stop point, fastest stop mode, and stop time/distance.
     if (sp > 0.5) {
       const brake = estimateBrakingSolution(p, resolvePropulsionProfile(p, state));
-      lines.push(`Best stop: ${brake.bestMode.replace('-', ' ')}`);
-      lines.push(`Direct: ${brake.directDistance.toFixed(0)} wu / ${brake.directTimeS.toFixed(1)} s`);
-      lines.push(`Flip-and-burn: ${brake.flipBurnDistance.toFixed(0)} wu / ${brake.flipBurnTimeS.toFixed(1)} s`);
+      lines.push(`Best stop: ${brakeModeWords(brake.bestMode)}`);
+      lines.push(`Brake: ${brake.directDistance.toFixed(0)} wu / ${brake.directTimeS.toFixed(1)} s`);
+      lines.push(`Flip & burn: ${brake.flipBurnDistance.toFixed(0)} wu / ${brake.flipBurnTimeS.toFixed(1)} s`);
     }
     return lines.join('\n');
   }
@@ -2228,7 +2254,7 @@ export function createHud(ctx, alerts) {
   // ordnance. It reads the same sources as the chassis and rail (src/ui/orrery/hudAdapter.js); those
   // stay mounted and hidden (#hud[data-hud="orrery"]) until the live route is checked, because
   // their DOM contracts are pinned by tests and the slot-claim protocol still drives the rail.
-  const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null });
+  const orreryCluster = mountOrreryCluster(root, state, { bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null, bus: ctx.bus });
   // The radar keeps its canvas (contacts, rocks, trails); ORRERY takes its frame (rim, range, Hand).
   if (orreryCluster && radar && typeof radar.setOrreryFrame === 'function') radar.setOrreryFrame(true);
   // ORRERY hides the leftstack chassis, but the tape's --on class re-shows it through the hidden
@@ -2456,6 +2482,10 @@ export function createHud(ctx, alerts) {
 
   // Aerospace Optical G-Lag & G-LOC simulation state
   const opticalGLag = { x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0 };
+  // G-LOC vignette teardown: the fade-out (CSS .12s) must finish before the fullscreen layer
+  // sleeps — the old instant display:none cut the vignette off at the sustained-turn boundary.
+  let _glocHideTimer = null;
+  let _glocFraction = 0;
   const lastPlayerVel = { x: 0, z: 0 };
   let lastPlayerShield = -1;
   let gLocSustainedTime = 0;
@@ -2689,16 +2719,17 @@ export function createHud(ctx, alerts) {
       const entity = gravityMarkTargets[i];
       const anchor = entity && entity.alive !== false ? presentedEntityAnchor(entity) : null;
       if (!anchor || !helpers.worldToScreen) {
-        setClass(marker, 'visible', false);
+        setClass(marker, 'visible', markStillLive(marker));
         continue;
       }
       overlayProjectionWorld.x = anchor.x;
       overlayProjectionWorld.z = anchor.z;
       const projected = helpers.worldToScreen(overlayProjectionWorld, overlayProjectionScreen);
       if (!projected.onScreen) {
-        setClass(marker, 'visible', false);
+        setClass(marker, 'visible', markStillLive(marker));
         continue;
       }
+      stampMarkLive(marker);
       setClass(marker, 'visible', true);
       setHudScreenTransform(marker, projected.x, projected.y);
     }
@@ -2726,14 +2757,14 @@ export function createHud(ctx, alerts) {
       const entity = momentumSinkTargets[i];
       const anchor = entity && entity.alive !== false ? presentedEntityAnchor(entity) : null;
       if (!anchor || !helpers.worldToScreen) {
-        setClass(overlay.marker, 'visible', false);
+        setClass(overlay.marker, 'visible', markStillLive(overlay.marker));
         continue;
       }
       overlayProjectionWorld.x = anchor.x;
       overlayProjectionWorld.z = anchor.z;
       const projected = helpers.worldToScreen(overlayProjectionWorld, overlayProjectionScreen);
       if (!projected.onScreen) {
-        setClass(overlay.marker, 'visible', false);
+        setClass(overlay.marker, 'visible', markStillLive(overlay.marker));
         continue;
       }
       const runtime = state.combat && state.combat.entities && state.combat.entities[String(entity.id)];
@@ -2744,6 +2775,7 @@ export function createHud(ctx, alerts) {
         setText(overlay.remaining, `${seconds}s`);
         overlay.marker.setAttribute('aria-label', `Momentum Sink target, bound to your velocity frame, ${seconds} seconds remaining`);
       }
+      stampMarkLive(overlay.marker);
       setClass(overlay.marker, 'visible', true);
       setHudScreenTransform(overlay.marker, projected.x, projected.y);
     }
@@ -4384,6 +4416,7 @@ export function createHud(ctx, alerts) {
     const isLocking = lockProgress > 0 && lockProgress < 1;
     const isLocked = lockProgress >= 1;
     if (isLocking || isLocked) {
+      stampMarkLive(lockRing);
       setClass(lockRing, 'active', true);
       setClass(lockRing, 'locked', isLocked);
       const offset = LOCK_C * (1 - lockProgress);
@@ -4411,9 +4444,12 @@ export function createHud(ctx, alerts) {
         setLagTranslate(innerRing, opticalGLag.x * 0.95, opticalGLag.y * 0.95);
       }
     } else {
-      setClass(lockRing, 'active', false);
+      // Lock progress wobbling on the cone edge must not blink the ring: hold through the
+      // mark-grace window, then retire (the CSS fades opacity, visibility sleeps the layer).
+      const ringLive = markStillLive(lockRing);
+      setClass(lockRing, 'active', ringLive);
       setClass(lockRing, 'locked', false);
-      if (_lockStageApplied) {
+      if (!ringLive && _lockStageApplied) {
         _lockStageApplied = false;
         clearAttr(lockRing, 'data-stage');
         if (lockDiamond) clearAttr(lockDiamond, 'data-stage');
@@ -4481,6 +4517,7 @@ export function createHud(ctx, alerts) {
     if (tgt && tgt.alive && tgtAnchor && helpers.worldToScreen) {
       const proj = projectTargetCenter(tgtAnchor);
       if (proj.onScreen) {
+        stampMarkLive(lockDiamond);
         setClass(lockDiamond, 'visible', true);
         setHudScreenTransform(lockDiamond, proj.x, proj.y);
         // Tint: red when missile-locked, cyan when just selected/tracking.
@@ -4497,10 +4534,10 @@ export function createHud(ctx, alerts) {
           });
         }
       } else {
-        setClass(lockDiamond, 'visible', false);
+        setClass(lockDiamond, 'visible', markStillLive(lockDiamond));
       }
     } else {
-      setClass(lockDiamond, 'visible', false);
+      setClass(lockDiamond, 'visible', markStillLive(lockDiamond));
     }
 
     updateGravityMarkOverlays(p);
@@ -4517,6 +4554,7 @@ export function createHud(ctx, alerts) {
       primaryProjSpeed,
     }) : leadPipHidden;
     if (pipOverlay.visible) {
+      stampMarkLive(leadPip);
       setClass(leadPip, 'visible', true);
       setHudScreenTransform(leadPip, pipOverlay.x, pipOverlay.y);
       setClass(leadPip, 'on-solution', pipOverlay.onSolution);
@@ -4539,7 +4577,7 @@ export function createHud(ctx, alerts) {
         setSvgAttr(leadPipArc, 'transform', `rotate(${rotateDeg} 11 11)`);
       }
     } else {
-      setClass(leadPip, 'visible', false);
+      setClass(leadPip, 'visible', markStillLive(leadPip));
     }
     // Edge-of-screen threat indicators live on the overlay cadence: their inputs (hostile set,
     // projected edge placement) are refreshed at 30 Hz alongside the other world-anchored DOM.
@@ -4561,6 +4599,10 @@ export function createHud(ctx, alerts) {
   let lastNavEta = '';
   let lastObjectiveMarkerText = '';
   let lastObjectiveSig = null;
+  // Objective-arrow mode latch (on-screen diamond vs edge chevron): null until the first sample.
+  let _objarrowOnscreen = null;
+  let _objarrowModeStreak = 0;
+  let _objarrowModeWanted = null;
   const numericClock = createHudClock(10);
   const targetClock = createHudClock(20);
   const overlayClock = createHudClock(30);
@@ -4570,11 +4612,13 @@ export function createHud(ctx, alerts) {
     if (!alerts || !p) return;
     if (hullFrac == null) hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
     if (shieldFrac == null) shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
-    const lowShield = shieldFrac > 0 && shieldFrac < 0.2;
+    // Hysteresis: shield regen ≈ incoming DPS parks the fraction ON the 20% line and strobed the
+    // pill at the top-center stack. Arm deeper than the retire boundary; same for hull.
+    const lowShield = shieldFrac > 0 && shieldFrac < (lowShieldActive ? 0.24 : 0.16);
     if (lowShield && !lowShieldActive) alerts.raise({ key: 'low-shield', sev: 'warn', text: 'SHIELDS LOW', ttl: Infinity });
     if (!lowShield && lowShieldActive) alerts.clear('low-shield');
     lowShieldActive = lowShield;
-    const lowHull = hullFrac > 0 && hullFrac < 0.25;
+    const lowHull = hullFrac > 0 && hullFrac < (lowHullActive ? 0.3 : 0.22);
     if (lowHull && !lowHullActive) alerts.raise({ key: 'low-hull', sev: 'danger', text: 'HULL CRITICAL', ttl: Infinity });
     if (!lowHull && lowHullActive) alerts.clear('low-hull');
     lowHullActive = lowHull;
@@ -4689,9 +4733,15 @@ export function createHud(ctx, alerts) {
   // empty sample hides it even then. While mounted, scan/threat reveals and the manual PIN
   // (state.settings.ui.overviewOpen, O key) expand it from the count line to full rows.
   const OVERVIEW_HOSTILE_REVEAL_R = 2600;   // a hostile inside this radius keeps the strip open
+  const OVERVIEW_HOSTILE_DISARM_R = 2900;   // …and only an EMPTY band out here lets it stand down
   const OVERVIEW_SCAN_REVEAL_MS = 7000;     // how long a scan pulse holds the strip open
   const OVERVIEW_CONTACT_REVEAL_MS = 5000;  // how long a newly-arrived contact holds it open
   let _overviewRevealUntil = 0;
+  // Threat-channel hysteresis: a hostile oscillating across the reveal radius used to flip five
+  // coupled visuals (ring, arcs, lamp, data-threat, roster reveal) at the 5 Hz sample rate.
+  let _threatNearLatch = false;
+  let _threatNearLastAt = -1e9;
+  let _overviewEmptyAllowedAt = 0;
   let _knownContactIds = new Set();
   function revealOverview(ms) {
     const until = performance.now() + ms;
@@ -4903,7 +4953,9 @@ export function createHud(ctx, alerts) {
       const dx = e.pos.x - player.pos.x;
       const dz = e.pos.z - player.pos.z;
       const dist = Math.hypot(dx, dz);
-      if (dist > 5200) return;
+      // Retention band: a listed contact stays listed to 5500 so a ship riding the 5200 line
+      // does not pop its roster row (and shift the target panel) every 5 Hz sample.
+      if (dist > 5200 && !(dist <= 5500 && _knownContactIds.has(e.id))) return;
 
       const hostile = isHostileToPlayer(e, playerTeam, state);
       const ally = !hostile && !isWreck && playerTeam !== 0 && e.team === playerTeam;
@@ -4947,6 +4999,21 @@ export function createHud(ctx, alerts) {
     }
     // The threat channel (FRONTEND_PROGRAM §2, option B): red is reserved for threat, so the HUD
     // publishes one state the threat lamp and the red-only marks read — clear / contact / near.
+    // Latched with hysteresis (see the constants above): arm inside 2600, stand down only after a
+    // full second with nobody inside 2900 — a chasing hostile oscillating across the radius must
+    // not pulse the ring, arcs and lamp at sample rate.
+    if (nearbyHostile) {
+      _threatNearLatch = true;
+      _threatNearLastAt = nowMs;
+    } else {
+      let stillNear = false;
+      for (const c of contacts) {
+        if (c.hostile && c.dist < OVERVIEW_HOSTILE_DISARM_R) { stillNear = true; break; }
+      }
+      if (stillNear) _threatNearLastAt = nowMs;
+      if (!stillNear && nowMs - _threatNearLastAt > 1000) _threatNearLatch = false;
+    }
+    nearbyHostile = _threatNearLatch;
     const threatState = nearbyHostile ? 'near' : (hostileContacts ? 'contact' : 'clear');
     setAttr(root, 'data-threat', threatState);
     let nearestHostile = Infinity;
@@ -4978,9 +5045,16 @@ export function createHud(ctx, alerts) {
     // sit on the deck as a bare glass bar. Hide it here instead; rows stay retained while hidden
     // and the next non-empty sample reconciles them back to the truth.
     if (!contacts.length) {
-      setDisplay(elOverview, false);
+      // The strip sits in a bottom-anchored column: an empty sample between two non-empty ones
+      // yanked the target panel. Retire only after the roster has been empty for a beat; during
+      // the hold the retained rows simply keep their last written state.
+      if (nowMs > _overviewEmptyAllowedAt) {
+        setDisplay(elOverview, false);
+        return;
+      }
       return;
     }
+    _overviewEmptyAllowedAt = nowMs + 1500;
 
     const targetId = state.player.targetId;
     const expanded = contactRosterExpanded({
@@ -5095,6 +5169,25 @@ export function createHud(ctx, alerts) {
 
   let _fadeOutTimer = null;
 
+  // Retire the ring set through its fade: remove `visible` and let the 260 ms timer sleep the
+  // element after the CSS opacity transition plays. Every hide reason routes here — the old
+  // off-screen / degenerate branches wrote display:none synchronously, which hard-cut a target
+  // straddling the frustum edge and then restarted the fade-in on the next on-screen frame.
+  function retireTargetArcs() {
+    setClass(targetArcs, 'visible', false);
+    if (!targetArcs.classList.contains('visible')) {
+      const cache = targetArcs._sfStyle || (targetArcs._sfStyle = Object.create(null));
+      if (cache.display !== 'none' && !_fadeOutTimer) {
+        _fadeOutTimer = setTimeout(() => {
+          if (!targetArcs.classList.contains('visible')) {
+            setDisplay(targetArcs, false);
+          }
+          _fadeOutTimer = null;
+        }, 260);
+      }
+    }
+  }
+
   function resolveReticle() {
     if (!elReticle) elReticle = document.getElementById('aim-reticle');
   }
@@ -5105,37 +5198,26 @@ export function createHud(ctx, alerts) {
     const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
 
     if (!tgt || !tgt.alive || !tgtAnchor) {
-      setClass(targetArcs, 'visible', false);
-      if (!targetArcs.classList.contains('visible')) {
-        const cache = targetArcs._sfStyle || (targetArcs._sfStyle = Object.create(null));
-        if (cache.display !== 'none' && !_fadeOutTimer) {
-          _fadeOutTimer = setTimeout(() => {
-            if (!targetArcs.classList.contains('visible')) {
-              setDisplay(targetArcs, false);
-            }
-            _fadeOutTimer = null;
-          }, 260);
-        }
-      }
+      retireTargetArcs();
       return;
     }
-    
+
     if (_fadeOutTimer) {
       clearTimeout(_fadeOutTimer);
       _fadeOutTimer = null;
     }
-    
+
     const p = state.entities.get(state.playerId);
     if (!p || !helpers.worldToScreen) {
-      setDisplay(targetArcs, false);
-      setClass(targetArcs, 'visible', false);
+      retireTargetArcs();
       return;
     }
-    
+
     const center = projectTargetCenter(tgtAnchor);
     if (!center.onScreen) {
-      setDisplay(targetArcs, false);
-      setClass(targetArcs, 'visible', false);
+      // One-frame edge flickers hold at the last placement (mark grace); a real exit fades.
+      if (markStillLive(targetArcs)) return;
+      retireTargetArcs();
       return;
     }
 
@@ -5148,11 +5230,12 @@ export function createHud(ctx, alerts) {
     const rHull = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 6, center));
     
     if (rShield <= 0) {
-      setDisplay(targetArcs, false);
-      setClass(targetArcs, 'visible', false);
+      if (markStillLive(targetArcs)) return;   // degenerate-radius flicker at extreme range
+      retireTargetArcs();
       return;
     }
-    
+
+    stampMarkLive(targetArcs);
     setDisplay(targetArcs, true, 'block');
     setClass(targetArcs, 'visible', true);
     
@@ -5272,7 +5355,12 @@ export function createHud(ctx, alerts) {
       if (driveState === 'spooling') note = 'SPOOLING…';
       else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' WU/S';
       // The state label already prints DRIVE COOLDOWN — the note carries only WHY it broke.
-      else if (driveState === 'cooldown') note = drive && drive.breakReason ? String(drive.breakReason).toUpperCase() : '';
+      // Known reasons get a word a pilot would use; unknown ones still humanize, never a raw slug.
+      else if (driveState === 'cooldown') {
+        const reason = drive && drive.breakReason ? String(drive.breakReason) : '';
+        note = reason === 'energy' ? 'CAPACITOR DRAINED'
+          : reason ? reason.replace(/_/g, ' ').toUpperCase() : '';
+      }
       else if (nearCeiling) note = 'AT CEILING';
       const laneStatus = travelTapeLaneStatus(state.travelLanes);
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
@@ -5303,7 +5391,7 @@ export function createHud(ctx, alerts) {
         setText(vt.arcLabel, cue.overshoot
           ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' WU / ARRIVAL ' + Math.round(cue.distance) + ' WU'
           : 'STOP ' + Math.round(cue.stopDistance) + ' WU · ARRIVAL ' + Math.round(cue.distance)
-            + ' WU · ' + String(cue.bestMode).replace('-', ' ').toUpperCase());
+            + ' WU · ' + brakeModeWords(cue.bestMode).toUpperCase());
       }
     } else if (showBrakeStop) {
       const span = Math.max(brakeStop.stopDistance, 1) * 1.1;
@@ -5383,15 +5471,22 @@ export function createHud(ctx, alerts) {
         gLocSustainedTime = Math.max(0, gLocSustainedTime - frameDt * 2.8);
       }
       const gLocFraction = calculateGLocIntensity(gLocSustainedTime);
+      _glocFraction = gLocFraction;
       if (glocVignette) {
         if (gLocFraction > 0) {
+          if (_glocHideTimer) { clearTimeout(_glocHideTimer); _glocHideTimer = null; }
           setStyle(glocVignette, 'display', 'block');
           setOpacity(glocVignette, (gLocFraction * 0.55).toFixed(3));
         } else {
           setOpacity(glocVignette, '0');
-          // Mirror the show path: without display:none the fullscreen will-change layer stayed
-          // in the compositor forever after the first fade to zero.
-          setStyle(glocVignette, 'display', 'none');
+          // Let the opacity transition play out, then sleep the layer: without display:none the
+          // fullscreen will-change layer stayed in the compositor forever after the first fade.
+          if (!_glocHideTimer) {
+            _glocHideTimer = setTimeout(() => {
+              _glocHideTimer = null;
+              if (glocVignette && _glocFraction <= 0) setStyle(glocVignette, 'display', 'none');
+            }, 220);
+          }
         }
       }
     }
@@ -5484,8 +5579,19 @@ export function createHud(ctx, alerts) {
 
       const heatRow = rowEls.heat;
       if (heatRow) {
-        const heatHot = !!(wpnHeat.armed && (heatFrac > 0.04 || wpnHeat.overheated));
-        setStyle(heatRow, 'display', heatHot ? '' : 'none');
+        if (wpnHeat.armed && (heatFrac > 0.06 || wpnHeat.overheated)) {
+          _heatRowShown = true;
+          _heatRowRetireAt = 0;
+        } else if (_heatRowShown && !_heatRowRetireAt && heatFrac < 0.02) {
+          _heatRowRetireAt = performance.now() + 1500;
+        } else if (_heatRowShown && _heatRowRetireAt && heatFrac >= 0.02) {
+          _heatRowRetireAt = 0;   // climbed back into the band before the dwell elapsed — keep it
+        }
+        if (_heatRowRetireAt && performance.now() >= _heatRowRetireAt) {
+          _heatRowShown = false;
+          _heatRowRetireAt = 0;
+        }
+        setStyle(heatRow, 'display', _heatRowShown ? '' : 'none');
         setClass(barEls.heat, 'sf-bar--overheated', wpnHeat.overheated);
       }
       setClass(fillEls.energy && fillEls.energy.parentElement, 'sf-bar--low', capFrac < 0.2 && capFrac > 0);
@@ -5545,7 +5651,11 @@ export function createHud(ctx, alerts) {
       const vx = p.vel && Number.isFinite(p.vel.x) ? p.vel.x : 0;
       const vz = p.vel && Number.isFinite(p.vel.z) ? p.vel.z : 0;
       const sp = Math.hypot(vx, vz);
-      setKitGauge(speedGaugeEl, sp, Math.max(1, p.maxSpeed || 1));
+      // FB-008 — the 100% mark is the governed combat speed the kernel holds, not the
+      // legacy derived maxSpeed. Earned momentum above that cap stays on the band
+      // (data-overspeed) and does not move the mark.
+      const governed = resolveGovernedCombatSpeed(p, state, p.maxSpeed || 1);
+      setKitGauge(speedGaugeEl, sp, Math.max(1, governed || 1));
       if (slow) setText(elSpeed, Math.round(sp) + '');
     }
     if (slow && p) {
@@ -5568,8 +5678,18 @@ export function createHud(ctx, alerts) {
         if (elTetherStat) {
           const tetherStatus = masslineTetherStatus(tether);
           setStyle(elTetherStat, 'display', '');
-          setText(elTether, tetherStatus.text);
+          // Word dwell: a line load riding the LOADED/HIGH LOAD boundary flipped the status word
+          // (and with it the centered cluster's width) every slow tick. A new word must survive
+          // 500 ms before it is believed; a warn edge is honoured immediately.
+          const warnRose = tetherStatus.warn && !_tetherWarn;
+          if ((tetherStatus.text !== _tetherText || warnRose)
+            && (warnRose || performance.now() - _tetherTextAt > 500)) {
+            _tetherText = tetherStatus.text;
+            _tetherTextAt = performance.now();
+            setText(elTether, tetherStatus.text);
+          }
           setClass(elTether, 'sf-warn', tetherStatus.warn);
+          _tetherWarn = tetherStatus.warn;
           // While a line is attached the live movement/boost bindings reel, pay out, orbit and pump.
           if (elTetherKeys) {
             const glyph = (action) => formatBindingCode(resolveActionCodes(state, action)[0]);
@@ -5604,7 +5724,7 @@ export function createHud(ctx, alerts) {
       const nGuns = ws ? ws.length : 0;
       const auto = !!(state.input && state.input.autoFire);
       const primary = nGuns === 1 ? (ws[0].name || ws[0].defId || '1 gun') : (nGuns + ' guns');
-      setText(elWeapons, primary + (auto ? ' · AUTO-TGT' : ''));
+      setText(elWeapons, primary + (auto ? ' · AUTO-TARGET' : ''));
       setClass(elWeapons, 'sf-warn', auto);
       if (elReticle) setClass(elReticle, 'autofire', auto);
       // Reticle accuracy bloom: decay _recoilBloom toward 0 and scale the inner SVG. Sustained fire
@@ -5844,7 +5964,27 @@ export function createHud(ctx, alerts) {
       if (etaText !== lastNavEta) { setText(elNavEta, etaText); lastNavEta = etaText; }
     }
     const w = window.innerWidth, h = window.innerHeight;
-    if (proj.onScreen) {
+    // Mode stability: on-screen and edge render entirely different glyph shapes (diamond vs
+    // chevron), so a waypoint projecting at the frustum margin swapped them frame-to-frame while
+    // turning. A mode change must be wanted three frames in a row before it is believed.
+    const wantOnscreen = !!proj.onScreen;
+    if (_objarrowOnscreen == null) _objarrowOnscreen = wantOnscreen;
+    if (wantOnscreen === _objarrowOnscreen) {
+      _objarrowModeStreak = 0;
+      _objarrowModeWanted = null;
+    } else {
+      if (_objarrowModeWanted !== wantOnscreen) {
+        _objarrowModeWanted = wantOnscreen;
+        _objarrowModeStreak = 0;
+      }
+      _objarrowModeStreak += 1;
+      if (_objarrowModeStreak >= 3) {
+        _objarrowOnscreen = wantOnscreen;
+        _objarrowModeStreak = 0;
+        _objarrowModeWanted = null;
+      }
+    }
+    if (_objarrowOnscreen) {
       const x = Math.max(18, Math.min(w - 18, proj.x));
       const y = Math.max(18, Math.min(h - 18, proj.y));
       const overlapsLeftAnchor = x < 370 && y > h - 340;
@@ -6125,6 +6265,7 @@ export function createHud(ctx, alerts) {
       if (clusterSizeObserver) clusterSizeObserver.disconnect();
       if (typeof window !== 'undefined' && window.removeEventListener) {
         window.removeEventListener('resize', publishClusterReserve);
+        window.removeEventListener('resize', invalidateObjectiveEdgeBoxes);
       }
     },
   };

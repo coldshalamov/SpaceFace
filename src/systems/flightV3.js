@@ -12,6 +12,7 @@ import { consumeCeresBreakerControl, publishCeresWorkfleetActuation } from './ce
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
 import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
+import { cancelPhaseBlink, stepPhaseBlink } from './phaseBlink.js';
 // FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
 // (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
 import { perfNow } from '../core/perfRuntime.js';
@@ -32,6 +33,7 @@ export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
 import { createPursuitSlot, stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
+import { raceGridHolding } from './racingSteer.js';
 import {
   corridorStateFor,
   proxyScaleFor,
@@ -220,7 +222,10 @@ export const flightV3 = {
     const player = state.entities && state.entities.get(state.playerId);
     if (player && playerFlightSimActive(state, player)) {
       const active = playerFlightControlsActive(state, player);
-      if (!active) this._cancelPlayerBoost(player);
+      if (!active) {
+        this._cancelPlayerBoost(player);
+        cancelPhaseBlink(player);
+      }
       const raw = active ? state.input : neutralInput();
       this._stepCraft(player, raw, dt, state, true);
       // Emit boost start/stop on the TRUE transition. _stepCraft set flags.boosting to the
@@ -233,6 +238,7 @@ export const flightV3 = {
     } else if (player) {
       settleBank(player, dt);
       this._cancelPlayerBoost(player);
+      cancelPhaseBlink(player);
     }
 
     for (const entity of flightCraftCandidates(state)) {
@@ -261,6 +267,7 @@ export const flightV3 = {
     const runtime = propulsionRuntime(entity, baseProfile);
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt,
       isPlayer ? _stepInputPlayer : _stepInputNpc);
+    const gridHeld = isPlayer && raceGridHolding(state);
     const tether = isPlayer && state.player && state.player.tether;
     let profile = isPlayer && state.input?.autoFire
       ? applyAutoTargetHelmProfile(baseProfile)
@@ -270,7 +277,8 @@ export const flightV3 = {
     }
     let autopilot = null;
     if (isPlayer) {
-      autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
+      if (gridHeld) stopAutopilot(this, state, 'race-grid');
+      else autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
       if (autopilot && autopilot.input) {
         input = autopilot.input;
       }
@@ -300,6 +308,24 @@ export const flightV3 = {
     let boosting = input.boost;
     if (isPlayer) {
       const autoBoost = !!(autopilot && autopilot.active);
+      // Veil Step (mod_veil_step → derived.phaseBlink) replaces the thruster boost.
+      // Shift throws a shadow ahead and the release puts the hull there. The
+      // capacitor still refills through the boost machine, with the key forced
+      // off so a dash impulse and the afterburner cannot also fire.
+      const veil = !autoBoost && !!(entity.data && entity.data.derived && entity.data.derived.phaseBlink);
+      let veilBusy = false;
+      if (veil) {
+        const phase = stepPhaseBlink({
+          entity,
+          held: !!(rawInput && rawInput.boost),
+          dt,
+          state,
+          bus: this.bus,
+          now: finite(state && state.simTime, 0),
+        });
+        veilBusy = !!(phase && phase.busy);
+        input.boost = false;
+      }
       // A held tether-orbit chord and a dash impulse are incompatible control contracts. The
       // orbit helper can continuously trim yaw and the swing coordinator can lower sustained
       // boost to the speed the hull can actually track, but a boost press also carries a discrete
@@ -323,8 +349,8 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost || orbitOwnsBoostPress,
-        suppressRegen: requestedTravelBurn,
+        suppressDash: autoBoost || orbitOwnsBoostPress || veil,
+        suppressRegen: requestedTravelBurn || veilBusy,
       });
       input.boost = boosting;
       if (boosting && finite(state && state.simTime, 0) < finite(entity.boost && entity.boost._overshootUntil, 0)) {
@@ -356,7 +382,7 @@ export const flightV3 = {
       input.unvectoredCruiseSteering = vectoringSetting === false
         && !(autopilot && autopilot.active)
         && !(tether && tether.active === true);
-      debitTravelBurn(this, entity, input, dt, state);
+      if (!gridHeld) debitTravelBurn(this, entity, input, dt, state);
     }
 
     let orbitAssist = null;
@@ -412,7 +438,7 @@ export const flightV3 = {
       // The module returns ONE bounded additive impulse from thrust the hull already has —
       // it never writes velocity and never clamps earned speed.
       const pursuitSlotStep = this._stepPursuitSlot(entity, body, input, profile, dt, state, {
-        controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+        controlsBlocked: gridHeld || !playerFlightControlsActive(state, entity) || !!input.drawFlight,
         tetherLive: !!(tether && tether.active === true),
         autopilotActive: !!(autopilot && autopilot.active),
       });
@@ -420,6 +446,12 @@ export const flightV3 = {
       if (pursuitSlot.active && pursuitSlot.impulse) {
         queuePhysicsImpulse(entity, pursuitSlot.impulse);
       }
+    }
+    if (gridHeld) {
+      input.throttle = input.strafe = input.turn = 0;
+      input.boost = input.boostPressed = false;
+      input.brake = true;
+      input.drawFlight = input.travelDrive = undefined;
     }
     _stepArgs.dt = dt;
     _stepArgs.body = body;
@@ -1144,16 +1176,22 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
     rt.cmdThrottle = throttle;
     rt.cmdStrafe = strafe;
   }
+  const gridHeld = isPlayer && raceGridHolding(state);
+  if (gridHeld) {
+    turn = 0;
+    throttle = 0;
+    strafe = 0;
+  }
   const o = out || {};
   o.throttle = throttle;
   o.strafe = strafe;
   o.turn = clamp(turn, -1, 1);
-  o.boost = boost;
-  o.boostPressed = boost && !previousBoost;
-  o.boostReleased = !boost && previousBoost;
-  o.brake = !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
+  o.boost = boost && !gridHeld;
+  o.boostPressed = o.boost && !previousBoost;
+  o.boostReleased = !o.boost && previousBoost;
+  o.brake = !gridHeld && !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
   o.assistMode = resolveAssistMode(entity, state, raw);
-  o.drawFlight = isPlayer && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
+  o.drawFlight = isPlayer && !gridHeld && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
   // Reset every key downstream code may have written last tick: autopilot/orbit-assist
   // substitution and the massline/travelDrive/vectoring blocks above write optional keys onto
   // the packet, so a reused scratch must drop them before they can leak into the next craft.

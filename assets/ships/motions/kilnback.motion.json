@@ -1,0 +1,379 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "kilnback_controls",
+  "sourceAssetId": "SF_SHIP_KILNBACK",
+  "sourceGlbSha256": "eb09c9bc4c165b0aedf8fca3a0c81c75f6ca248f743d433cb7f46193af2e667c",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "kilnback_slat_1",
+      "node": "MOTION_KILNBACK_SLAT_1",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -2,
+          3.7799999713897705,
+          3.4700000286102295
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "kilnback_slat_2",
+      "node": "MOTION_KILNBACK_SLAT_2",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -2,
+          3.7799999713897705,
+          2.2699999809265137
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "kilnback_slat_3",
+      "node": "MOTION_KILNBACK_SLAT_3",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -2,
+          3.7799999713897705,
+          1.0700000524520874
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "kilnback_slat_4",
+      "node": "MOTION_KILNBACK_SLAT_4",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -2,
+          3.7799999713897705,
+          -0.12999999523162842
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "kilnback_slat_5",
+      "node": "MOTION_KILNBACK_SLAT_5",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -2,
+          3.7799999713897705,
+          -1.3300000429153442
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "kilnback_slat_6",
+      "node": "MOTION_KILNBACK_SLAT_6",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -2,
+          3.7799999713897705,
+          -2.5299999713897705
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "kilnback_cask_port",
+      "node": "MOTION_KILNBACK_CASK_PORT",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -1,
+          0,
+          -10
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "kilnback_cask_starboard",
+      "node": "MOTION_KILNBACK_CASK_STARBOARD",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -1,
+          0,
+          10
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "kilnback_slat_1",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "kilnback_slat_2",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "kilnback_slat_3",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "kilnback_slat_4",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "kilnback_slat_5",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "kilnback_slat_6",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "kilnback_cask_port",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "kilnback_cask_starboard",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

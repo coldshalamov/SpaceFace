@@ -16,6 +16,7 @@ Current save version: `14`
 - `solstice`
 - `rubric`
 - `ruckus`
+- `ruud`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -50,6 +51,15 @@ Current save version: `14`
 - `latchNine`
 - `scissorwake`
 - `lastShift`
+- `redKite`
+- `sableVenn`
+- `ilexArk`
+- `kilnback`
+- `mothlight`
+- `palletJack`
+- `secondRinse`
+- `towlineTable`
+- `borrowedVoice`
 - `lossLedger`
 - `provenance`
 - `factionPresence`
@@ -137,6 +147,7 @@ Current save version: `14`
 | `$.automation.traders` | array | length 0 |
 | `$.bandRadio` | object | {} |
 | `$.bombs` | object | {} |
+| `$.borrowedVoice` | null | null |
 | `$.bracket` | object | {} |
 | `$.capitalBoss` | null | null |
 | `$.careerLadders` | object | {} |
@@ -225,6 +236,8 @@ Current save version: `14`
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
+| `$.ilexArk` | null | null |
+| `$.kilnback` | null | null |
 | `$.lastShift` | null | null |
 | `$.latchNine` | null | null |
 | `$.lawSecurity` | object | {} |
@@ -259,6 +272,7 @@ Current save version: `14`
 | `$.missions.story.phase` | number | 1 |
 | `$.missions.story.seenComms` | object | {} |
 | `$.morrow` | object | {} |
+| `$.mothlight` | null | null |
 | `$.nav` | object | {} |
 | `$.nav.autopilot` | object | {} |
 | `$.nav.autopilot.active` | boolean | false |
@@ -274,6 +288,7 @@ Current save version: `14`
 | `$.nemesisDeployment` | null | null |
 | `$.npcJobs` | object | {} |
 | `$.onboarding` | null | null |
+| `$.palletJack` | null | null |
 | `$.physics` | null | null |
 | `$.player` | object | {} |
 | `$.player.activeShipIndex` | number | 0 |
@@ -345,9 +360,12 @@ Current save version: `14`
 | `$.provenance` | object | {} |
 | `$.ravel` | object | {} |
 | `$.recoveryEncounters` | object | {} |
+| `$.redKite` | null | null |
 | `$.regionalEcology` | object | {} |
 | `$.rubric` | object | {} |
 | `$.ruckus` | object | {} |
+| `$.ruud` | object | {} |
+| `$.sableVenn` | null | null |
 | `$.salvage` | object | {} |
 | `$.scenario` | object | {} |
 | `$.scenario.active` | null | null |
@@ -357,6 +375,7 @@ Current save version: `14`
 | `$.scenario.schemaVersion` | number | 1 |
 | `$.scenario.unresolvedActorIds` | array | length 0 |
 | `$.scissorwake` | null | null |
+| `$.secondRinse` | null | null |
 | `$.sectorSim` | object | {} |
 | `$.settings` | object | {} |
 | `$.settings.accessibility` | object | {} |
@@ -457,6 +476,7 @@ Current save version: `14`
 | `$.stunts` | null | null |
 | `$.survivorPod` | object | {} |
 | `$.tensionDirector` | null | null |
+| `$.towlineTable` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |
 | `$.uiScreenMemory.bags` | object | {} |

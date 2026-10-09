@@ -20,6 +20,11 @@ import {
 
 const VFX_ERROR_LOG_CAP = 20;
 let vfxErrorLogCount = 0;
+// A persistently-throwing resident UI stage used to error every presented
+// frame for the session's life. Same cap shape the vfx lane already carries.
+const UI_STAGE_ERROR_LOG_CAP = 20;
+let uiStageErrorLogCount = 0;
+let uiStagePrewarmErrorLogCount = 0;
 
 export function runRenderUpdatePhase({
   state,
@@ -48,7 +53,9 @@ export function runRenderUpdatePhase({
     try {
       presentUiStage({ render, state, frameDt });
     } catch (error) {
-      console.error('[loop] ui stage error:', error);
+      uiStageErrorLogCount++;
+      if (uiStageErrorLogCount <= UI_STAGE_ERROR_LOG_CAP) console.error('[loop] ui stage error:', error);
+      else if (uiStageErrorLogCount === UI_STAGE_ERROR_LOG_CAP + 1) console.error('[loop] further ui stage errors suppressed');
     } finally {
       stageMs = clock() - stageStart;
     }
@@ -79,7 +86,11 @@ export function runRenderUpdatePhase({
   // task — the flight picture lands over it before the browser presents anything.
   if (state && state.mode === 'flight') {
     try { tickUiStagePrewarm({ render, state }); }
-    catch (error) { console.error('[loop] ui stage prewarm error:', error); }
+    catch (error) {
+      uiStagePrewarmErrorLogCount++;
+      if (uiStagePrewarmErrorLogCount <= UI_STAGE_ERROR_LOG_CAP) console.error('[loop] ui stage prewarm error:', error);
+      else if (uiStagePrewarmErrorLogCount === UI_STAGE_ERROR_LOG_CAP + 1) console.error('[loop] further ui stage prewarm errors suppressed');
+    }
   }
   const worldDrawFollows = !!(state && state.mode === 'flight' && !shouldSkipFlightDraw(state));
   let renderError = null;

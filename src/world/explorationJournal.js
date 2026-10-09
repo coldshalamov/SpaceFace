@@ -3,6 +3,7 @@
 
 import { SECTORS } from '../data/sectors.js';
 import { UNIQUE_WRECKS } from '../data/uniqueWrecks.js';
+import { borrowedVoiceJournalPlate } from '../data/borrowedVoice.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 
@@ -194,6 +195,8 @@ export function explorationDiscoveryPlates(state) {
     }
   }
 
+  const retainedVoice = borrowedVoiceJournalPlate(state);
+  if (retainedVoice) plates.push(retainedVoice);
   plates.sort((a, b) => (b.completedAt - a.completedAt) || a.id.localeCompare(b.id));
   return plates;
 }

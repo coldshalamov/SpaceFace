@@ -151,7 +151,10 @@ test('missing/negative pacing, insufficient budget and blocked placement fail cl
   for (const options of [{ approve: false }, { approve: null }, { budgetCap: 1 }, { blockPlacement: true }]) {
     const t = boot(options); t.advance(200); assert.equal(t.state.nemesis.active, null);
     assert.equal(t.state.entities.size, 1); assert.equal(t.allocations.size, 0);
-    assert.ok(events(t, 'nemesis:encounterRejected').length);
+    // A pacing refusal is asked before the warning, so it never announces an arrival that cannot
+    // happen; missing pacing and the host's own budget/placement refusals still leave a receipt.
+    if (options.approve === false) assert.equal(events(t, 'nemesis:announced').length, 0);
+    else assert.ok(events(t, 'nemesis:encounterRejected').length);
   }
 });
 test('partial spawn failure rolls back every created hull and the budget', () => {
@@ -169,10 +172,15 @@ test('docking and paused modes do not advance learning or encounter scheduling',
   assert.equal(t.state.nemesis.active.episode.total, 0);
 });
 test('an escaped captain physically leaves, while the shared budget fully releases', () => {
-  const t = boot(); t.start(); t.escape(); t.tick();
-  assert.equal(t.state.nemesis.active, null); assert.equal(t.state.entities.size, 1);
+  const t = boot(); t.start(); const bossId = t.state.nemesis.active.bossId; t.escape(); t.tick();
+  assert.equal(t.state.nemesis.active, null);
   assert.equal(t.allocations.size, 0); assert.equal(t.state.nemesis.completed, 1);
   assert.ok(t.state.nemesis.grudge > 0);
+  // INF-076: the flown hull is not despawned where the escape was confirmed. It keeps leaving
+  // (crew retired, budget released) and retires once it clears the player's radar.
+  assert.ok(t.state.entities.has(bossId)); assert.equal(t.state.entities.size, 2);
+  t.state.entities.get(bossId).pos = { x: t.player.pos.x + 4500, z: t.player.pos.z }; t.advance(0.5);
+  assert.equal(t.state.entities.size, 1);
 });
 test('forged early escape receipts cannot teleport a captain out of combat', () => {
   const t = boot(); t.start(); const a = t.state.nemesis.active;

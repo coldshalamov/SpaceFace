@@ -5,6 +5,7 @@
 // entity.data.ai.archetype (swarmer/sniper/brawler/fleeing_trader/pirate/miniboss_capital).
 // Deterministic: uses state.rng for any randomness (never Math.random in sim logic, §0.5).
 import { wrapAngle } from '../core/rng.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import {
   ensureActivityClassified,
@@ -159,7 +160,7 @@ export const ai = {
             this.helpers.spawnEntity(spec);
             this.bus.emit('toast', { text: 'Reinforcements have arrived!', kind: 'danger', ttl: 2 });
           } catch (err) {
-            console.warn('[ai] failed to spawn reinforcement:', err);
+            dedupWarn('ai/reinforcement-spawn', '[ai] failed to spawn reinforcement:', err);
           }
         }
       }

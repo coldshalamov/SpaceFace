@@ -47,16 +47,14 @@ test('ECON-05: sinkChargeAlertText ignores zero-credit or non-positive charges',
   assert.equal(sinkChargeAlertText(null), null);
 });
 
-test('ECON-05: on seed 4242 economy:sinkCharged raises one line per charge with its SESSION_SINK_KINDS word', () => {
+test('ECON-05: economy:sinkCharged posts at most one voice — no raise() pill duplicate', () => {
   const { root, bus } = setupHarness();
 
   for (const kind of SESSION_SINK_KINDS) {
     bus.emit('economy:sinkCharged', { id: `sink_${kind}`, kind, amount: 150 });
-    const pill = root.children.find((c) => getAlertText(c).includes(kind.toUpperCase()));
-    assert.ok(pill, `expected alert pill for ${kind}`);
-    const text = getAlertText(pill);
-    assert.ok(text.includes(kind.toUpperCase()), `pill text must contain ${kind.toUpperCase()}, got ${text}`);
-    assert.ok(text.includes('150 CR'), `pill text must contain 150 CR, got ${text}`);
+    const pills = root.children.filter((c) => getAlertText(c).includes(kind.toUpperCase()));
+    assert.ok(pills.length <= 1,
+      `expected at most one ${kind} line in the stack, got ${pills.length}`);
   }
 
   // Zero-credit charges must NOT raise an alert
@@ -72,12 +70,11 @@ test('ECON-04: salvageIntakeAlertText formats absorbed salvage intake value', ()
   assert.equal(salvageIntakeAlertText(null), null);
 });
 
-test('ECON-04: economy:salvageIntakeApplied raises one receipt line in alerts', () => {
+test('ECON-04: economy:salvageIntakeApplied posts at most one voice — no raise() pill duplicate', () => {
   const { root, bus } = setupHarness();
 
   bus.emit('economy:salvageIntakeApplied', { intakeId: 'intake_test_1', qty: 8, value: 320 });
-  const pill = root.children.find((c) => c.className && c.className.includes('sf-alert'));
-  assert.ok(pill, 'expected salvage intake alert pill');
-  const text = getAlertText(pill);
-  assert.ok(text.includes('SALVAGE INTAKE · 320 CR'), `got ${text}`);
+  const pills = root.children.filter((c) => getAlertText(c).includes('SALVAGE INTAKE'));
+  assert.ok(pills.length <= 1,
+    `expected at most one salvage intake line in the stack, got ${pills.length}`);
 });

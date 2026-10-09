@@ -1,4 +1,5 @@
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
+import { isTowlineCleanupTarget } from '../data/towlineTable.js';
 // npcJobsRuntime — the thin runtime adapter that drives the PURE npcJobs kernel into the live game.
 // PQ-014 / SF-15 / W06 integration ("natural NPC miner/hauler/patrol jobs").
 //
@@ -56,6 +57,8 @@ import {
   NPC_JOB_SCHEMA,
 } from './npcJobs.js';
 import { hash32 } from '../core/rng.js';
+import { armLaneErrands, applyLaneErrandIntent } from './laneErrands.js';
+import { tickLivedVignettes } from './livedWorldDirector.js';
 import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import { takeNearWorkSlice, NEAR_WORK_TOKEN_BUDGET } from '../core/activityScheduler.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
@@ -3233,7 +3236,12 @@ export const npcJobsRuntime = {
     if (entry.job.phase === NPC_JOB_PHASE.FLEE) return { granted: false, reason: 'under_threat' };
     const target = targetEntityId != null && entities ? entities.get(targetEntityId) : null;
     // Same towability gate the tug's own job uses: a real loose cargo body, never scenery.
-    if (!isTowableCargoTarget(target)) return { granted: false, reason: 'not_towable' };
+    if (!isTowableCargoTarget(target) && !isTowlineCleanupTarget(state, target)) return { granted: false, reason: 'not_towable' };
+    // Reserve the original at lease admission, before a later tick creates its physical line.
+    // Two available workers cannot both promise the same load while still approaching it.
+    if (Object.values(this._byId()).some(other => other !== entry && other?.towAssist?.targetId === targetEntityId)) {
+      return { granted: false, reason: 'target_already_hired' };
+    }
     if (!destPos || !Number.isFinite(destPos.x) || !Number.isFinite(destPos.z)) {
       return { granted: false, reason: 'no_destination' };
     }
@@ -3940,11 +3948,14 @@ export const npcJobsRuntime = {
     const step = Math.max(0, finite(dt, 0));
     const simT = finite(this.state.simTime, 0);
     this._expireHeaveToLease(simT);
+    // Lived vignettes do not need a job hull. A quiet sector still gets an egg.
+    // Errands stay below the empty-bag return: there is nobody to choreograph.
+    tickLivedVignettes(this);
     if (ids.length === 0) {
       threatQueries.execute();
       this._lastThreatQueryTick = null;
       this._threatQueryDirty = true;
-      return; // strict no-op when no jobs exist
+      return; // strict no-op for the job bag when no jobs exist
     }
 
     const currentSector = (this.state.world && this.state.world.currentSectorId) || null;
@@ -3998,6 +4009,7 @@ export const npcJobsRuntime = {
       this._threatQueryDirty = false;
     }
     let threatRequestIndex = 0;
+    armLaneErrands(this, simT);
 
     for (let index = 0; index < ids.length; index++) {
       const jobId = ids[index];
@@ -4103,6 +4115,7 @@ export const npcJobsRuntime = {
       if (entry.job.phase === NPC_JOB_PHASE.COMPLETE && !claimed) { this.release(jobId); continue; }
 
       if (!claimed) this._drive(entry, entity);
+      if (!claimed) applyLaneErrandIntent(this, entry, entity, simT);
     }
   },
 
@@ -5697,6 +5710,7 @@ export const npcJobsRuntime = {
           this.bus.emit('npcjobs:distress', {
             jobId: job.id, kind: job.kind, sectorId: entry.sectorId || null,
             threatId: threat.id,
+            hullId: hull ? hull.id : null,
             pos: hull && hull.pos ? { x: hull.pos.x, z: hull.pos.z } : null,
             hold: { x: entry.routeHold.x, z: entry.routeHold.z },
             simTime: now,

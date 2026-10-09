@@ -219,7 +219,7 @@ const CSS = `
 }
 #sf-starmap .sm-kv b { color: var(--sf-paper); font-weight: 500; text-align: right; }
 #sf-starmap .sm-driver { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.35; margin: var(--sp-1) 0 var(--sp-2); }
-#sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.45; }
+#sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.5; }
 #sf-starmap .sm-objective {
   border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
   border-radius: 4px; padding: var(--sp-2) var(--sp-3);
@@ -310,7 +310,7 @@ const CSS = `
 #sf-starmap .sm-market-row.old { color: var(--sf-calm); font-style: italic; }
 #sf-starmap .sm-actions { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); padding-top: var(--sp-2); }
 #sf-starmap .sm-actions button {
-  width: 100%; padding: var(--sp-2); border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.15s ease;
+  width: 100%; min-height: 44px; padding: var(--sp-2); border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.15s ease;
 }
 #sf-starmap .sm-actions button:hover {
   translate: 0 -1px;

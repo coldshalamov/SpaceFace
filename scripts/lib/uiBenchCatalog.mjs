@@ -32,6 +32,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'missionLog', screen: 'missionLog', backdrop: 'title' },
   { id: 'credits', screen: 'credits', backdrop: 'title' },
   { id: 'achievements', screen: 'achievements', backdrop: 'title' },
+  { id: 'statistics', screen: 'statistics', backdrop: 'title' },
   { id: 'game-over', screen: 'gameOver', backdrop: 'title' },
   { id: 'gameOver', screen: 'gameOver', backdrop: 'title' },
   { id: 'tech-tree', screen: 'techTree', backdrop: 'title' },

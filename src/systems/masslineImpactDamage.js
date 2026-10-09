@@ -111,7 +111,7 @@ export const masslineImpactDamage = {
     // Sync-read scratches: normalizeDamagePacket copies pos/source/flags field-by-field and
     // routeDamage reads the args wrapper without retaining it.
     _kineticHitPos.x = pos && Number.isFinite(pos.x) ? pos.x : target.pos.x;
-    _kineticHitPos.z = pos && Number.isFinite(pos.x) ? pos.z : target.pos.z;
+    _kineticHitPos.z = pos && Number.isFinite(pos.z) ? pos.z : target.pos.z;
     _kineticSource.kind = sourceKind;
     const packet = scalarHitToDamagePacket({
       damage,

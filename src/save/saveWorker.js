@@ -7,6 +7,24 @@ const validationSessions = new Map();
 export const SAVE_WRITE_MAX_BYTES = 12 * 1024 * 1024;
 export const SAVE_GZIP_FORMAT = 'spaceface-save-gz';
 
+// The storage/import ceiling is UTF-8 bytes, even when the envelope is later compressed.
+// Stop at the ceiling without allocating another multi-MB encoded buffer.
+function saveTextByteLength(value) {
+  let bytes = 0;
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code <= 0x7f) bytes++;
+    else if (code <= 0x7ff) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff && i + 1 < value.length
+      && value.charCodeAt(i + 1) >= 0xdc00 && value.charCodeAt(i + 1) <= 0xdfff) {
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+    if (bytes > SAVE_WRITE_MAX_BYTES) return SAVE_WRITE_MAX_BYTES + 1;
+  }
+  return bytes;
+}
+
 export function encodeSavePayload({ descriptor, data } = {}) {
   const dataJson = JSON.stringify(data);
   const checksum = fnv1a(dataJson);
@@ -51,7 +69,28 @@ async function gunzipText(payload) {
   const bytes = base64ToBytes(payload);
   const stream = new Blob([bytes]).stream()
     .pipeThrough(new DecompressionStream('gzip'));
-  return await new Response(stream).text();
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  const parts = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > SAVE_WRITE_MAX_BYTES) {
+        try { await reader.cancel(); } catch { /* the size failure remains authoritative */ }
+        const error = new Error('Decoded save exceeds the import byte ceiling');
+        error.reason = 'import_too_large';
+        throw error;
+      }
+      parts.push(decoder.decode(value, { stream: true }));
+    }
+    parts.push(decoder.decode());
+    return parts.join('');
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export function saveGzipAvailable() {
@@ -91,7 +130,7 @@ export async function decodeSaveEnvelopeText(raw) {
     const text = await gunzipText(outer.payload);
     return outer.profile != null ? { ok: true, text, profile: outer.profile } : { ok: true, text };
   } catch (error) {
-    return { ok: false, reason: 'gz_decode_failed' };
+    return { ok: false, reason: error.reason || 'gz_decode_failed' };
   }
 }
 
@@ -142,8 +181,9 @@ export async function encodeSavePayloadFinal({ descriptor, data } = {}) {
   const encoded = encodeSavePayload({ descriptor, data });
   const preflight = preflightSaveImport(JSON.parse(encoded.json));
   if (!preflight.ok) return { ok: false, reason: preflight.reason, limit: preflight.limit, actual: preflight.actual };
-  if (encoded.json.length > SAVE_WRITE_MAX_BYTES) {
-    return { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: encoded.json.length };
+  const bytes = saveTextByteLength(encoded.json);
+  if (bytes > SAVE_WRITE_MAX_BYTES) {
+    return { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: bytes };
   }
   if (saveGzipAvailable()) {
     try {
@@ -400,6 +440,21 @@ function encodeSavePayload(input) {
   return { json: JSON.stringify(Object.assign({}, descriptor || {}, { checksum, data })), checksum };
 }
 var SAVE_WRITE_MAX_BYTES = ${SAVE_WRITE_MAX_BYTES};
+function saveTextByteLength(value) {
+  var bytes = 0;
+  for (var i = 0; i < value.length; i++) {
+    var code = value.charCodeAt(i);
+    if (code <= 0x7f) bytes++;
+    else if (code <= 0x7ff) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff && i + 1 < value.length
+      && value.charCodeAt(i + 1) >= 0xdc00 && value.charCodeAt(i + 1) <= 0xdfff) {
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+    if (bytes > SAVE_WRITE_MAX_BYTES) return SAVE_WRITE_MAX_BYTES + 1;
+  }
+  return bytes;
+}
 var SAVE_GZIP_FORMAT = 'spaceface-save-gz';
 function saveGzipAvailable() {
   return typeof CompressionStream === 'function'
@@ -428,7 +483,27 @@ function gzipText(json) {
 }
 function gunzipText(payload) {
   var stream = new Blob([base64ToBytes(payload)]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(stream).text();
+  var reader = stream.getReader();
+  var decoder = new TextDecoder();
+  var parts = [];
+  var totalBytes = 0;
+  function readNext() {
+    return reader.read().then(function (chunk) {
+      if (chunk.done) {
+        parts.push(decoder.decode());
+        return parts.join('');
+      }
+      totalBytes += chunk.value.byteLength;
+      if (totalBytes > SAVE_WRITE_MAX_BYTES) {
+        var error = new Error('Decoded save exceeds the import byte ceiling');
+        error.reason = 'import_too_large';
+        return reader.cancel().catch(function () {}).then(function () { throw error; });
+      }
+      parts.push(decoder.decode(chunk.value, { stream: true }));
+      return readNext();
+    });
+  }
+  return readNext().finally(function () { reader.releaseLock(); });
 }
 function isGzippedSaveText(raw) {
   return typeof raw === 'string' && raw.length >= 16 && raw.charCodeAt(0) === 123
@@ -454,8 +529,8 @@ function decodeSaveEnvelopeText(raw) {
   return gunzipText(outer.payload).then(function (text) {
     // FB-104 — profile side bags ride on the outer wrapper of a compressed export bundle.
     return outer.profile != null ? { ok: true, text: text, profile: outer.profile } : { ok: true, text: text };
-  }, function () {
-    return { ok: false, reason: 'gz_decode_failed' };
+  }, function (error) {
+    return { ok: false, reason: error.reason || 'gz_decode_failed' };
   });
 }
 // FB-093 — bounded, worker-side compressed encode: the import limit object applies pre-write;
@@ -469,8 +544,9 @@ function encodeSavePayloadFinal(input) {
   try { envelope = JSON.parse(encoded.json); } catch (error) { return Promise.resolve({ ok: false, reason: 'stringify_failed' }); }
   var bound = preflightSaveImport(envelope);
   if (!bound.ok) return Promise.resolve({ ok: false, reason: bound.reason, limit: bound.limit, actual: bound.actual });
-  if (encoded.json.length > SAVE_WRITE_MAX_BYTES) {
-    return Promise.resolve({ ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: encoded.json.length });
+  var bytes = saveTextByteLength(encoded.json);
+  if (bytes > SAVE_WRITE_MAX_BYTES) {
+    return Promise.resolve({ ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: bytes });
   }
   if (!saveGzipAvailable()) {
     return Promise.resolve({ ok: true, json: encoded.json, checksum: encoded.checksum, gz: false });
