@@ -3332,6 +3332,25 @@ test('an already-adopted ball on watch overflow gets the full hand-back strip', 
   balls[1].alive = false;
   for (let i = 0; i < 31; i++) t.sim.step();
   assert.equal(rt.ballOverflow, 0, 'a quiet overflow death drops +N within ~0.5 s');
+  // An unwatched marked body whose deadline a foreign owner stripped is an
+  // adopted orphan, not a silent ball: the recount HANDS IT BACK (sheds the
+  // mark + credit shadow + disarm ledger) instead of leaving it permanently
+  // pull/snag/suck-immune — parity with the watched-adoptee lane.
+  const orphan = rock(t.sim, 4200, 0, 6, 4);
+  orphan.data.gyreLaunched = true;
+  orphan.data.gyreLaunchMeta = {
+    actorId: t.state.playerId, weaponId: 'wpn_gyre_snare', tag: 'gyre_launch',
+    magnitude: 120, holdUntilSim: stamped, clumpRadius: 6,
+  };
+  orphan.data.gyrePrevImpactScale = 0.2;
+  orphan.physicsBody.impactDamageScale = 8;
+  // no despawnAt — the adopter already stripped the lash's flight deadline
+  for (let i = 0; i < 31; i++) t.sim.step();
+  assert.equal(orphan.data.gyreLaunched, undefined, 'the recount hands back the adopted orphan');
+  assert.equal(orphan.data.gyreLaunchMeta, undefined, 'the credit shadow sheds with it');
+  assert.equal(orphan.data.gyrePrevImpactScale, undefined, 'the disarm ledger consumed');
+  assert.equal(orphan.physicsBody.impactDamageScale, 0.2, 'the authored scale came back');
+  assert.equal(rt.ballOverflow, 0, 'an adopted orphan never counts as a flying ball');
   t.cleanup();
 });
 
@@ -3838,6 +3857,15 @@ test('a same-tick multi-absorb publishes absorbR for the BIGGEST meal', async ()
   t.state.input.actions.gyreSnare = true; t.sim.step();
   assert.equal(t.state.gyreSnare.absorbR, 0,
     `a quiet tick publishes 0, not a stale meal (got ${t.state.gyreSnare.absorbR})`);
+  // And the ledger dies with the hold phase: a meal landing on the launch tick
+  // can't pin its radius through the coil — the per-tick reset lives in the
+  // suck pass, which never runs during LAUNCH.
+  const lastMeal = rock(t.sim, core.pos.x + 1, core.pos.z, 2, 7);
+  t.sys._absorb(t.state, t.sys._rt, core, lastMeal, 1, 0, 1);
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // release edge -> _launch
+  assert.equal(t.sys._rt.phase, 'launching');
+  assert.equal(t.state.gyreSnare.absorbR, 0,
+    `the launch tick's meal can't pin absorbR through the coil (got ${t.state.gyreSnare.absorbR})`);
   t.cleanup();
 });
 
