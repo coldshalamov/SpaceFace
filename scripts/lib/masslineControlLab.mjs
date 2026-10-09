@@ -333,8 +333,8 @@ export async function runScenario(options = {}) {
         z: Math.sin(selectedTangentHeading) * params.entrySpeed,
       }
     : rot(0, params.entrySpeed);
-  player.vel.x = entryVel.x;
-  player.vel.z = entryVel.z;
+  player.vel.x = Number.isFinite(options.entryVelAngle) ? Math.cos(options.entryVelAngle) * params.entrySpeed : entryVel.x;
+  player.vel.z = Number.isFinite(options.entryVelAngle) ? Math.sin(options.entryVelAngle) * params.entrySpeed : entryVel.z;
 
   const physicsSys = registry.get('physics');
   const ready = await physicsSys.prepareBackend(state, {});
@@ -391,8 +391,9 @@ export async function runScenario(options = {}) {
   for (let tick = 0; tick < params.ticks; tick++) {
     const input = resolveInput(params, tick);
     state.input.moveX = finite(input.moveX, 0);
-    state.input.moveZ = params.productionOrbitAssist ? 1 : finite(input.moveZ, 0);
-    state.input.turnIntent = params.productionOrbitAssist
+    const freeChord = params.productionOrbitAssist && input.chord === false;
+    state.input.moveZ = params.productionOrbitAssist && !freeChord ? 1 : finite(input.moveZ, 0);
+    state.input.turnIntent = params.productionOrbitAssist && !freeChord
       ? params.productionOrbitDirection
       : finite(input.turnIntent, 0);
     state.input.boost = !!input.boost;

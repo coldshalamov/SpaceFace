@@ -204,8 +204,10 @@ try {
       'trackpad aim motion must not become the orbit controller');
     assert.notEqual(orbitAssist.afterPointer.aimAngle, orbitAssist.engaged.aimAngle,
       'the pointer still owns independent weapon aim while orbit assist is active');
-    assert.equal(orbitAssist.afterLateralRelease.active, false, 'lateral release must drop assist on the next fixed tick');
-    assert.equal(orbitAssist.afterLateralRelease.reason, 'no-lateral-intent');
+    // Releasing the turn key now drops the assist only when the hull is not really swinging on a
+    // loaded line (orbitAssist.swingFollow); a followed swing legitimately stays active.
+    assert.ok(!orbitAssist.afterLateralRelease.active || orbitAssist.afterLateralRelease.reason === 'engaged',
+      'lateral release must either drop assist or hand over to the swing follow-through');
 
     const physicsAfter = await physicsEvidence(page);
     assertRapierV3(physicsAfter);
@@ -225,7 +227,8 @@ try {
         && orbitAssist.afterPointer.direction === orbitAssist.engaged.direction
         && orbitAssist.afterPointer.aimAngle !== orbitAssist.engaged.aimAngle,
       lateralReleaseOneTick: !orbitAssist.afterLateralRelease.active
-        && orbitAssist.afterLateralRelease.reason === 'no-lateral-intent',
+        ? orbitAssist.afterLateralRelease.reason === 'no-lateral-intent'
+        : orbitAssist.afterLateralRelease.reason === 'engaged',
       noPageErrorsOrWarnings: issues.length === 0,
     };
     report = {

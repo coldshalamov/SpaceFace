@@ -233,17 +233,34 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
   }
 });
 
-test('the assist exists only for the explicit forward-plus-turn chord', () => {
+test('the assist needs forward held; a released turn key only keeps following a real swing', () => {
   const input = { throttle: 0.6, strafe: 0.2, turn: 0.8, boost: false, brake: false };
   const noForward = orbitStep({ input, forward: 0, lateral: 1 });
-  const noTurn = orbitStep({ input, forward: 1, lateral: 0 });
   const off = orbitStep({ input, forward: 1, lateral: 1, strength: 'off' });
 
-  for (const result of [noForward, noTurn, off]) {
+  for (const result of [noForward, off]) {
     assert.equal(result.active, false);
-    assert.deepEqual(result.input, input, 'releasing either chord key restores raw steering immediately');
+    assert.deepEqual(result.input, input, 'releasing forward (or turning the assist off) restores raw steering immediately');
     assert.equal(Object.hasOwn(result, 'impulse'), false);
   }
+});
+
+test('forward alone keeps following a loaded swing the nose is already on', () => {
+  // orbitStep puts the host on +x moving +z at 30 WU/s with the nose on +z: a CCW tangent.
+  const followed = orbitStep({ forward: 1, lateral: 0, tangentialSpeed: 80 });
+  assert.equal(followed.active, true);
+  assert.equal(followed.telemetry.swingFollow, true);
+  assert.equal(followed.telemetry.direction, 1);
+
+  const slow = orbitStep({ forward: 1, lateral: 0, tangentialSpeed: 5 });
+  assert.equal(slow.active, false, 'a ship that is not really swinging is never captured');
+  assert.equal(slow.telemetry.reason, 'no-lateral-intent');
+
+  const slack = orbitStep({ forward: 1, lateral: 0, tangentialSpeed: 80, phase: 'slack' });
+  assert.equal(slack.active, false, 'a slack line is a fly-by, not a swing');
+
+  const launching = orbitStep({ forward: 1, lateral: 0, tangentialSpeed: 80, hostRot: 0 });
+  assert.equal(launching.active, false, 'a nose pointed radially away from the tangent is a launch');
 });
 
 test('the pilot carve chord (forward plus a small turn intent) still orbits at the exact rate', () => {
@@ -477,9 +494,8 @@ test('releasing either chord key restores the ordinary boost dash immediately', 
   system.update(DT, harness.state);
   const command = consumePhysicsCommand(harness.player);
 
-  assert.equal(harness.player._flightFrame.orbitAssist.active, false);
   assert.equal(command.impulses.length, 1,
-    'releasing the turn key must hand the boost press back to the ordinary dash verb');
+    'releasing the turn key must not cost the boost press its dash');
 });
 
 test('an unusable orbit geometry leaves the boost press with the normal dash', () => {

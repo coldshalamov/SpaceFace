@@ -51,6 +51,20 @@ export const ORBIT_LINE_YAW_LOCK = Object.freeze({
  * swinging) for as long as the chord holds. Keyboard and stick intent stay live, so a deliberate
  * reversal still works. `engageSwingFraction` of hull yaw decides "already swinging".
  */
+/**
+ * Swing follow-through. Releasing the turn key while forward is still held used to hand the nose
+ * back to the pilot mid-swing: a nose frozen in space points at the anchor after half a revolution,
+ * thrust drives the ship inward, the line goes slack and the hull dives into the anchor. While the
+ * line is loaded, the ship is really swinging (minSwingSpeed WU/s of tangential speed) and the nose
+ * is still within maxHeadingError of that swing's tangent, forward alone keeps following it. A nose
+ * pointed well off the tangent (a launch, an approach, a deliberate turn-away) is never captured.
+ */
+export const ORBIT_SWING_FOLLOW = Object.freeze({
+  id: 'orbitAssist.swingFollow.v1',
+  minSwingSpeed: 30,
+  maxHeadingError: 1.2,
+});
+
 export const ORBIT_DIRECTION_LATCH = Object.freeze({
   id: 'orbitAssist.directionLatch.aim.v1',
   engageSwingFraction: 0.25,
@@ -118,8 +132,14 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   let selectedDirection = Math.sign(finite(options.flightIntent && options.flightIntent.lateral));
   if (priorLatch !== 0) selectedDirection = priorLatch;
   if (!(forward > ORBIT_ASSIST_TUNING_V1.minIntent)) return inactive('no-forward-intent');
-  if (selectedDirection === 0) return inactive('no-lateral-intent');
-  if (input.brake || options.controlsBlocked) return inactive('manual-override');
+  if (input.brake || options.controlsBlocked) return inactive(selectedDirection === 0 ? 'no-lateral-intent' : 'manual-override');
+  let swingFollow = false;
+  if (selectedDirection === 0) {
+    const followed = swingFollowDirection(options);
+    if (followed === 0) return inactive('no-lateral-intent');
+    selectedDirection = followed;
+    swingFollow = true;
+  }
 
   const host = options.host;
   const anchor = options.anchor;
@@ -213,9 +233,29 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       yawCeiling: lineLoaded ? ORBIT_LINE_YAW_LOCK.absoluteYawCap : null,
       armShare,
       latchedDirection: fromAim ? selectedDirection : 0,
+      swingFollow,
       reason: lineLoaded ? 'engaged' : 'line-slack',
     },
   };
+}
+
+/** Direction (+1/-1) of the swing the ship is carrying on a loaded line, or 0 when it is not following one. */
+function swingFollowDirection(options) {
+  const host = options.host;
+  const anchor = options.anchor;
+  const phase = String((options.tether && options.tether.phase) || 'slack');
+  if (!(phase === 'capture' || phase === 'loaded' || phase === 'overload')) return 0;
+  const rx = finite(host.pos.x) - finite(anchor.pos.x);
+  const rz = finite(host.pos.z) - finite(anchor.pos.z);
+  const radius = Math.hypot(rx, rz);
+  if (!(radius > 1e-6)) return 0;
+  const orbitalYawRate = (rx * (finite(host.vel.z) - finite(anchor.vel.z))
+    - rz * (finite(host.vel.x) - finite(anchor.vel.x))) / (radius * radius);
+  if (!(Math.abs(orbitalYawRate) * radius >= ORBIT_SWING_FOLLOW.minSwingSpeed)) return 0;
+  const direction = Math.sign(orbitalYawRate);
+  const tangentHeading = Math.atan2((rx / radius) * direction, -(rz / radius) * direction);
+  if (Math.abs(wrapAngle(tangentHeading - finite(host.rot))) > ORBIT_SWING_FOLLOW.maxHeadingError) return 0;
+  return direction;
 }
 
 function inactiveTelemetry(strength, reason) {
