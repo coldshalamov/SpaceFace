@@ -168,6 +168,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'dust',
   'game:embarkSpeculation',
   'game:loadingProgress',
+  'lane:facadeMiss',
   'game:over:dismissed',
   'game:startFailed',
   'hud:recallObjective',

@@ -880,6 +880,14 @@ export function createSimHost() {
         if (!s || typeof s.deleteSlot !== 'function') return { ok: false, reason: 'save-system-unavailable' };
         return { ok: true, result: s.deleteSlot((args && args.slot) || undefined) };
       }],
+      // cargo:jettison is a main-side UI emit whose handler used to call
+      // registry.get('cargo').jettison synchronously — under the lane the cargo
+      // system lives here, so the facade routes it through this op.
+      ['cargoJettison', (args) => {
+        const c = registry.get('cargo');
+        if (!c || typeof c.jettison !== 'function') throw new Error('cargo-system-unavailable');
+        return c.jettison((args && args.commodityId) || null, (args && args.qty) || 1);
+      }],
       // Import an exported envelope JSON into a slot — the lane-twin of
       // saveSystem.importString (main-side importFile reads the File, then
       // routes the envelope here so the worker's save system loads it).

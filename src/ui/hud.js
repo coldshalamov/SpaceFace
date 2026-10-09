@@ -4161,11 +4161,14 @@ export function createHud(ctx, alerts) {
   ctx.bus.on('cargo:jettison', ({ commodityId, qty }) => {
     const cargoSys = ctx.registry && ctx.registry.get('cargo');
     if (cargoSys && cargoSys.jettison) {
-      const dumped = cargoSys.jettison(commodityId, qty || 1);
-      if (dumped > 0) {
-        const name = cargoDisplayName(commodityId);
-        ctx.bus.emit('toast', { text: `Jettisoned ${dumped}× ${name}`, kind: 'warn', ttl: 2 });
-      }
+      // On the worker lane the facade returns a Promise of the dumped count;
+      // main-side it resolves a number through the same await.
+      Promise.resolve(cargoSys.jettison(commodityId, qty || 1)).then((dumped) => {
+        if (dumped > 0) {
+          const name = cargoDisplayName(commodityId);
+          ctx.bus.emit('toast', { text: `Jettisoned ${dumped}× ${name}`, kind: 'warn', ttl: 2 });
+        }
+      });
     }
   });
 

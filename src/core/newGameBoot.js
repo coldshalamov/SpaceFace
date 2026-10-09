@@ -224,7 +224,7 @@ export async function runNewGameSimBoot({
     // from a prior run's entity objects survives into the new world. The catch marker
     // only suppresses the unhandled-rejection window before the physics gate awaits it.
     const physicsPrep = Promise.resolve()
-      .then(() => physicsSystem.prepareBackend(state, { reset: true }));
+      .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: 20000 }));
     physicsPrep.catch(() => {});
     if (onPhysicsPrep) onPhysicsPrep(physicsPrep);
     if (awaitPhysicsPrep) await physicsPrep;
@@ -289,6 +289,11 @@ export function resetRunState(state, opts = {}) {
   state.drill = fresh.drill;
   state.claims = fresh.claims;
   state.traffic = fresh.traffic;
+  // Mark the fresh world's epoch newer than any pending emit tail: a sector:enter slice
+  // deferred across this reset drains inside the next emit or pump frame, and without an
+  // epoch here its stale payload would pass the live-or-inert guard on an un-serialed world.
+  state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+  state.world.enterSerial = state.enterSerialSeq;
   resetRunUiState(state, fresh.ui);
   state.save = fresh.save;
 }

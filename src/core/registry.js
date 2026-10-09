@@ -888,6 +888,20 @@ export function createRegistry(ctx) {
     ? new Set(resolved.authoritativeSystemIds.filter((id) => isNodeSafeSystemId(id)))
     : null;
 
+  // Facade-miss diagnostic: a sim-owned id with no facade resolves undefined
+  // and every caller silently degrades — cargo:jettison proved that can mean
+  // a dead feature. Name each miss once so it surfaces instead.
+  const _laneFacadeMissNoted = laneWorker ? new Set() : null;
+  function _noteLaneFacadeMiss(name) {
+    if (!_laneFacadeMissNoted || _laneFacadeMissNoted.has(name)) return;
+    _laneFacadeMissNoted.add(name);
+    try { console.warn(`[lane] facade miss on sim-owned system '${name}' — registry.get resolves undefined`); } catch (_) {}
+    const bus = ctx && ctx.bus;
+    if (bus && typeof bus.emit === 'function') {
+      try { bus.emit('lane:facadeMiss', { name }); } catch (_) {}
+    }
+  }
+
   function laneSystemFacade(name) {
     const st = ctx && ctx.state;
     switch (name) {
@@ -948,6 +962,15 @@ export function createRegistry(ctx) {
         // Price lookups are synchronous reads — the stage-5 census showed the
         // only caller (market price column) degrades to a blank cell on null.
         return { name: 'economy', quote: () => null };
+      case 'cargo':
+        return {
+          name: 'cargo',
+          // Async hop: resolves the worker cargo.jettison's dumped count — the
+          // HUD toast awaits it (cargo:jettisoned bridges back for vfx/audio).
+          jettison: (commodityId, qty) => Promise.resolve(
+            laneRpc('cargoJettison', { commodityId, qty: qty || 1 })
+          ).then((ack) => (ack && ack.ok !== false ? (ack.result || 0) : 0)),
+        };
       case 'world':
         return {
           name: 'world',
@@ -964,6 +987,7 @@ export function createRegistry(ctx) {
           }),
         };
       default:
+        _noteLaneFacadeMiss(name);
         return undefined;
     }
   }
