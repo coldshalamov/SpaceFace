@@ -867,7 +867,7 @@ export class GyreSnarePresentation {
     // early-returning here froze the ring at t≈0.03 as a faint glow stuck at the grave.
     // The close-ramp owns the quiet window too: latching _quiet on the first dead frame
     // strangled the ramp after ~1 tick, leaving a ghost cone + frozen clump on screen.
-    if (!live && this._quiet && !this._closing && this._deathT <= 0 && !this._bursts.some((b) => b.t < 1) && this._tearFade == null && this._secGraveT == null) return;
+    if (!live && this._quiet && !this._closing && this._deathT <= 0 && this._adoptT <= 0 && !this._bursts.some((b) => b.t < 1) && this._tearFade == null && this._secGraveT == null) return;
     if (!live) { this._quiet = true; }
     else this._quiet = false;
 
@@ -1595,7 +1595,10 @@ export class GyreSnarePresentation {
           // the grown body plainly still flies. Shrinks gently as it leaves.
           const p = this.toLocal(finite(mirror.tornPos.x), finite(mirror.tornPos.z), this._pt);
           this._clump.position.set(p.x, 0.6, p.z);
-          this._clumpSpin += sdt * spinRate;
+          // Keep the live lane's chirality: spinRate is the unsigned default
+          // on this lane — _swirlDir still carries the dead ball's tumble
+          // direction, so a -1 ball doesn't reverse its rubble mid-whip.
+          this._clumpSpin += sdt * spinRate * this._swirlDir;
           this._clump.rotation.y = -this._clumpSpin;
           this._clump.scale.multiplyScalar(Math.exp(-sdt * 1.5));
           this._veilMat.opacity *= Math.exp(-sdt * 4);
@@ -2110,7 +2113,7 @@ export class GyreSnarePresentation {
       // A live bowling ball keeps its frozen member ledger — the lumps ride the throw.
       // Only drop them when the mirror itself stopped tracking a ball (and no death
       // dissolve is still playing them out).
-      if (phase === 'off' && mirror.launchedId == null && this._deathT <= 0) this._clearLumps();
+      if (phase === 'off' && mirror.launchedId == null && this._deathT <= 0 && this._adoptT <= 0) this._clearLumps();
       this._phase = phase;
     }
 
