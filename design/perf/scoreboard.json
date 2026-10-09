@@ -74,9 +74,18 @@
       },
       "evidence": {
         "goldenHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
-        "level": "MECHANISM_VERIFIED",
+        "level": "PERFORMANCE_VERIFIED (CPU-scope: assetResidency bookkeeping paths only — matched A/B, same box/scenario; GPU/frame-time remains hardware-unverified)",
         "hardwareVerified": false,
-        "unitMeasurement": "deferred — modules under src/render pull three.js context; pure-node micro-benches not yet wired",
+        "unitMeasurement": {
+          "harness": "C:/Users/Administrator/perf-waves/bench-residency.mjs (imports src/render/assetResidency.js headlessly; old rev extracted via git show 241b5be05^)",
+          "fixture": "1200 assets / 400 pending requests / 200 soft holds / 600 boundary-owned; medians of 5-9 reps",
+          "results": {
+            "enforceBudget_overCeiling_evict200": { "old_ms": 14.55, "new_ms": 4.58, "parity": "identical evicted set + remainingBytes" },
+            "releaseOwnerBurst_600Entries": { "old_ms": 4.54, "new_ms": 1.21 },
+            "warmHandoffConsult_400Retains": { "old_ms": 0.90, "new_ms": 0.69 },
+            "enforceBudget_underCeiling": { "old_ms": 1.48, "new_ms": 1.88, "note": "with BENCH_SOFT=0 the delta vanishes (1.59 vs 1.51) — the +0.4ms is W120's soft-residency census doing its intended count, not a regression" }
+          }
+        },
         "focusedTests": "event-bus-contract 34/0, vfx-save-restore-destroy, input-lifecycle, deep-sky-plate-pipeline, asteroid-instance suites green; residual reds canon"
       },
       "verdict": "kept"
