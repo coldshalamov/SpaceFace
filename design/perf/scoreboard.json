@@ -435,7 +435,10 @@
           ]
         },
         "skeptic": {
-          "status": "auditing"
+          "clean": false,
+          "findings": 2,
+          "headline": "F1 (M) rotate-marker abandonment leak — already remediated on HEAD: the skeptic audited 664985df7 (pre-W125 landings); the fix landed in 2ed5695a1 as popin F4 (mintIterator.onAbandoned clears hasPendingRotate + applies the repoint; fused-chain abandonment cascades the hook at both queue sites; .return() abandonment sites call it) — independently re-verified end-to-end by the W126 popin lane's stranded-rotation hunt. F2 (L) _queueSharedStoreMirror drops a failed PUT with no requeue — documented best-effort trade; tombstones stay durable locally.",
+          "remediationCommits": ["2ed5695a1"]
         }
       },
       "verdicts": [
@@ -443,7 +446,34 @@
         "popin-admission: saturated false (streak 0/3)",
         "boot-loading: saturated false (streak 0/3)",
         "in-flight-hitches: saturated false (streak 0/3)",
-        "skeptic: pending"
+        "skeptic: clean false — F1 already fixed on HEAD (2ed5695a1), F2 documented trade"
+      ]
+    },
+    {
+      "wave": "regression-watch",
+      "note": "W123-hitches F1 (f39fd835c) REVERTED at 2a5fbebd6: test/sector-identity 'Ceres work share is 0' — bisect pinned f39fd835c first-bad; probe-caught unmarked kills survive ~4 ticks and same/few-tick consumers latch wrongly (one asteroid corpse stalled the pocket tender's job cycle the whole 30s watch). ~168 alive=false sites bypass markDirty(MEMBERSHIP), so any deferred discovery is unsafe without a kill funnel. Unconditional collect restored; revert confirmed 11/11 + golden 0b33dde bit-identical. The lane's win was cosmetic (O(list) scan is cheap; removal legs already corpse-gated).",
+      "commits": ["2a5fbebd6"]
+    },
+    {
+      "wave": 126,
+      "head": "3f98caa1a",
+      "lanes": {
+        "popin-admission": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 3,
+          "landed": 3,
+          "commits": ["3f98caa1a"],
+          "headline": "F1 (M-H): the W125 roster pool narrowed the arrival census to the entry bucket + globals — but the roster predicate has no sector clause: every live typed entity on stage is roster-eligible, including foreign-claimed visitors/adopted actors whose canonical stamp names another sector. Coverage is inexpressible by claim bucketing, so the pool returns to entityList (once-per-enter publish, µs cost); bySectorId stays for genuinely sector-scoped readers. F2 (M): sorterTargetsForSector rides the sector bucket like machineScanForSector (canonical-head predicate, list fallback while unready). F3 (L-M): tickBolus pools bySectorId.get(BOLUS_SECTOR_ID) — the per-tick O(entityList) scan early-outs to empty outside the bolus sector."
+        },
+        "boot-loading": { "status": "queued — SWE-2 session cap held by non-lane sessions" },
+        "in-flight-hitches": { "status": "queued — SWE-2 session cap held by non-lane sessions" }
+      },
+      "verdicts": [
+        "lod-in-frame: CLOSED",
+        "popin-admission: saturated false (streak 0/3)",
+        "boot-loading: pending",
+        "in-flight-hitches: pending"
       ]
     }
   ],

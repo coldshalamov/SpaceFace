@@ -2543,3 +2543,24 @@ Wave 124 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 0/3.
 - Enumeration results: 0 retaggable bus listeners; deferred-enter PACED everywhere; W124 machinery intact. H1-H3 deferred — GPU conclusions hardware-unverified on this box.
 
 ### skeptic — lane `51c3d7e5` auditing
+
+### skeptic — `clean: false` → all findings resolved (audited `664985df7`, pre-W125 landings)
+
+- **skeptic F1 (M) — rotate-marker abandonment leak**: `hasPendingRotate`/`pendingSectorTarget` minted at call time, cleared only in the generator `finally` — a never-started `.return()` or mid-`yield*` abandon stranded the marker and shadowed `effectiveCurrentSectorId()`. **Already remediated on HEAD**: the fix landed in `2ed5695a1` (W125 popin F4) — `mintIterator.onAbandoned` clears the marker and applies the repoint; both queue sites cascade the hook through fused chains; `.return()` abandonment sites call it. Independently re-verified end-to-end by the W126 popin lane's stranded-rotation hunt.
+- **skeptic F2 (L) — `_queueSharedStoreMirror` drops a failed PUT** with no requeue: documented best-effort trade; tombstones stay durable locally.
+
+## Regression watch — `f39fd835c` REVERTED at `2a5fbebd6`
+
+`test/sector-identity` "Ceres work share is 0" failed 3× on branch vs 11/11 green on clean master. `git bisect` (19 revs, 4 steps) pinned `f39fd835c` (W123-hitches F1: latch/probe/64-tick corpse sweep) as first-bad. Instrumented run: 2 kills in 30s — 1 marked (same-tick either way), 1 unmarked asteroid probe-caught ~4 ticks late; that single delayed corpse stalled the pocket tender's job cycle for the whole watch. ~168 `alive=false` sites bypass `markDirty(MEMBERSHIP)`, so any deferred discovery leaves a corpse visible to same/few-tick consumers — unsafe without a kill funnel. The unconditional collect is restored (the lane's win was cosmetic: the O(list) scan is cheap; removal legs already corpse-gated). F2's diagnostics quarantine is unrelated and kept. Revert confirmed: 11/11 green + golden `0b33dde` bit-identical both lanes. The env-gated `SF_DEBUG_SECTOR` dump (corpses/jobs/sweep arms) stays in the bench for future triage.
+
+## Wave 126 (in progress — HEAD 3f98caa1a)
+
+### popin-admission — `saturated: false` (F1-F3 landed `3f98caa1a`)
+
+- **popin F1 (M-H, MECHANISM VERIFIED) — roster coverage restore**: the W125 `bySectorId` pool narrowed the arrival census to the entry bucket + globals, but the roster predicate has no sector clause — every live typed entity on stage is roster-eligible, including foreign-claimed visitors and adopted actors whose canonical stamp names another sector (e.g. `farActorTable`/`worldRecords` rematerialize minting the record's home, traffic's set-if-absent adopt keeping a foreign `e.homeSectorId`). Coverage is inexpressible by claim bucketing, so the pool returns to `entityList` — the once-per-enter publish is µs-cheap; `bySectorId` stays for genuinely sector-scoped readers.
+- **popin F2 (M)** — `sorterTargetsForSector` rides the sector bucket like `machineScanForSector` (canonical-head predicate, per-member type/pos kept, `entityList` fallback while unready).
+- **popin F3 (L-M)** — `tickBolus` pools `bySectorId.get(BOLUS_SECTOR_ID)`; the per-tick O(entityList) scan early-outs to empty outside the bolus sector.
+- F4 documented non-expressible readers (OR-predicate `_resourceWorkPublishedCount`, conjunction `data.sectorId`+`data.homeSectorId` hail paths, mesh-domain walks) — recorded, not converted.
+- Golden `0b33dde` bit-identical; sector-membership 9/9, bolus 25/25, alienEcology 34/34 green.
+
+### boot-loading + in-flight-hitches — lanes queued behind the SWE-2 session cap
