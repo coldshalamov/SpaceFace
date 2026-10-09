@@ -299,6 +299,9 @@ export function createSecondRinseVisualDriver(root, entity) {
         leader.visible = age < 1;
         pin.visible = false;
         whip.rotation.y = 0;
+        // a cut mid-clap must not inherit the crooked pose — the cut frame hangs the boat normal
+        boatPivot.rotation.z = 0;
+        arm.rotation.z = 0;
       }
       for (let i = 0; i < cloth.count; i++) {
         const x = clothBase[i * 3], y = clothBase[i * 3 + 1];
