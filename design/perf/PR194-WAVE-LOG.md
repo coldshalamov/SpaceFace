@@ -2370,3 +2370,34 @@ Saturation: all 4 lanes `saturated: false` → streak 0/3; W120 spawns on the la
 - **hitches D1 (optional) — `[loop] frame error` 20-verbatim window → stormWarn**: SKIPPED as flagged optional.
 
 Saturation: all 4 lanes `saturated: false` → streak 0/3; W121 spawns on the landed HEAD `20bb78011`.
+
+## Wave 121 — refined-evidence contract wave (scoreboard.json + blind global + skeptic lanes commissioned)
+
+Campaign-contract change this wave (owner directive): three-level evidence labels on every finding/verdict (MECHANISM_VERIFIED / PERFORMANCE_VERIFIED / UNVERIFIED; GPU conclusions tagged hardware-unverified on this box), `design/perf/scoreboard.json` committed as the machine-readable cumulative ledger, a BLIND global bottleneck reviewer + a skeptical disprove-the-gains reviewer added to the lane set, and saturation redefined to 'no unaddressed material evidence-supported optimization in scope'.
+
+### lod-in-frame — `saturated: true` (first ever saturated report; streak 1/3)
+
+- The lane found only L-class residuals after the W120 census-sig/bulk-stage machinery: no unaddressed material evidence-supported optimization remains inside its scope. This is the campaign's first saturation report under either contract — one of the three consecutive saturated-wave verdicts required for convergence.
+
+### popin-admission — `saturated: false` (5 findings, all landed `0917823d6`)
+
+- **popin F1 (M, PERFORMANCE_VERIFIED at real owner density) — `prepareSectorExit`/`rotateSector` iterated every asset's owners map per consult**: new `sectorOwnerIndex` (sectorId → Map<entry,{total,nonPlayer}>) + per-entry `softOwnerCount`/`rpcOwnerCount` maintained by `noteOwnerMembershipIndexed/Unindexed` — the boundary legs now iterate one sector's index instead of the whole registry. A/B (bench-residency-w121.mjs): 1-owner microfixture is slightly slower (0.45→0.61 ms — index maintenance + snapshot spread, honest regression noted), but at the lane's real density (BENCH_OWNERS=4) it wins: prepare 0.66→0.55 ms, rotate 0.65→0.49 ms.
+- **popin F2 (M, PERFORMANCE_VERIFIED) — canonical residency diagnostics re-minted synchronously at 5 seam emits**: `_publishAssetResidencyDiagnosticsDeferred` arms a post-present callback; the 5 seam sites switched. Parity-verified diagnostic payloads.
+- **popin F3 (M-H, PERFORMANCE_VERIFIED) — version-keyed `activePendingKeys` memo missed version bumps on deactivate**: replaced by a live-maintained set (`notePendingRequestActivated/Deactivated` + `deactivateRequest` funnel); cancel-burst 8.09→0.659 ms (~9×) on the pinned fixture.
+- **popin F4 (H, PERFORMANCE_VERIFIED) — `enforceBudget` paid the full governor census + a second after-table under the byte ceiling**: running ledgers (`gpuResidentBytesTotal`, `cpuPackageBytesTotal`, `unaccountedResourceCount`) make `totalGpuResidentBytes`/`budgetTotals` O(1); `blockedRows` collected during the census folds the after-table filter. Over-ceiling 46% faster; under-ceiling skips the census entirely.
+- **popin F5 (L-M, MECHANISM_VERIFIED) — `enforceBudgetSteps` wasn't chained on the fused-iterator fault path**: the fault path now `yield* postLeg` then `yield* residency.enforceBudgetSteps('gpu')` so a throwing post leg can't strand the budget enforce.
+- Verdict row in scoreboard.json wave-121: all CPU-scope measurements on the pinned fixture; GPU/frame-time benefit hardware-unverified.
+
+### boot-loading — `saturated: false` (F1-F3+F5 landed `d37b0fab6`; F4 declined on audit)
+
+- **boot F1 (H, MECHANISM_VERIFIED — frame relief is real but unmeasurable headless) — the import lane drained `_restoreChunks` atomically on a production path**: `loadEnvelopeFromString`'s plain tail + `_loadEnvelopeFromStringAsync` both route through `_restorePreparedEnvelopeAsync` now (Save/Load screen Import → `importString` was a multi-second frozen-veil brick). `_restorePreparedEnvelopeAsync` gained the sync twin's SFQ-B223 gate (defer BEFORE rollback-snapshot capture). Contract: `importString` still returns sync `false` on rejection; accepts resolve `Promise<true>` — the same contract the compressed lane already had.
+- **boot F2 (M, MECHANISM_VERIFIED for atomicity; listener-cost hardware-unverified) — `mode:changed` ran ~8 listener files atomically inside the restore**: joins the emit-slice whitelist armed `setEmitSliceBudget('mode:changed', 8)` in `_openRestoreSession`, cleared in `_closeRestoreSession` (sector:exit precedent). Listener audit: all 8 files are UI/reset-class — veil show/hide, pause sync, HUD refresh, radial close, hail/auto-aim reset; none reads back into restore ordering.
+- **boot F3 (L-M, MECHANISM_VERIFIED) — `_captureRollbackSnapshotAsync` fused `preflightSaveImport` to the capture tail**: yield moved before the O(world-graph) validator walk.
+- **boot F5 (M ceiling, MECHANISM_VERIFIED; real-save materiality hardware-unverified) — `recoveryEncounter.deserialize` + `aceMemory.deserialize` were the two O(save-size) plain deserializes**: `deserializeChunked` twins at 16-record strides — the emit loop + `normalizeMemory`/`normalizeActiveReturns` walks slice under `_callDeserializeChunked`; sync lane drains inline. `normalizeMemory`/`normalizeActiveReturns` are now drain-twin delegates over shared `*Steps` generators (single implementation).
+- **boot F4 — audited and DECLINED**: all 9 `afterContinue` bodies read as bounded reconciles (map clears + set-piece actor walks; mothlight O(encounter actors), ilexArk O(1)) — no unbounded save-size walk exists to slice. Evidence-supported decline.
+- Test contract modernization (same strength, async shape): `fb-export-bundles-medals` awaits the now-async plain import and stubs `_restoreAsync` on the same recording seam; `save-rejected-candidate` awaits the queued drain (the deferred closure re-enters the async lane); `recovery-encounter` re-pins its seam regex to `_callDeserializeChunked`.
+- Golden `0b33dde` bit-identical after both batches; ~100 focused save/event tests green.
+
+### in-flight-hitches / blind global / skeptic — lanes in flight at land time
+
+Reports pending; their findings land as the next W121 batch. Saturation verdicts recorded in scoreboard.json when they report.

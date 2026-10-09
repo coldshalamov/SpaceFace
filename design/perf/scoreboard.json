@@ -48,7 +48,10 @@
       "headless GLB traversal 120s timeout", "authoritative-manifest pair",
       "Vercel build rate-limit", "draw-flight", "check-sg02-dash-collision",
       "check-sg05-runtime", "help-gamepad-rebind (pad table 37 vs pin 36)",
-      "opening-cook-ledger seam pin", "asset-npc-authored-binding queue-seam"
+      "opening-cook-ledger seam pin", "asset-npc-authored-binding queue-seam",
+      "bounded-autosave raw 8/12ms task-graph-settle pair (identical on clean master)",
+      "save-growth-dock-trade-flat parityArmSlope=11024 B/cycle (identical on clean master — window-churn artifact)",
+      "static(2): src-reachability thimbleDoorVisuals/borrowedSun/borrowedSunPrompt + check-parts-manifest GLB drift (upstream 11f12f596)"
     ]
   },
 
@@ -87,6 +90,36 @@
           }
         },
         "focusedTests": "event-bus-contract 34/0, vfx-save-restore-destroy, input-lifecycle, deep-sky-plate-pipeline, asteroid-instance suites green; residual reds canon"
+      },
+      "verdict": "kept"
+    },
+    {
+      "wave": 121,
+      "head": "d37b0fab6",
+      "contractChange": "owner-refined evidence contract adopted: MECHANISM_VERIFIED / PERFORMANCE_VERIFIED / UNVERIFIED labels, blind global + skeptic lanes, this file committed as the machine-readable ledger",
+      "lanes": {
+        "lod-in-frame": { "saturated": true, "findings": 0, "landed": 0, "commits": [], "headline": "FIRST saturated lane report under either contract — only L-class residuals remain in scope (saturation streak 1/3)" },
+        "popin-admission": { "saturated": false, "findings": 5, "landed": 5, "commits": ["0917823d6"], "headline": "sectorOwnerIndex + owner-membership counters (O(sector) boundary legs), deferred diagnostics publish, live-maintained activePendingKeys set (cancel burst 8.09→0.66ms), byte ledgers O(1) + blockedRows fold (enforceBudget over-ceiling −46%), fault-path enforceBudgetSteps chain" },
+        "boot-loading": { "saturated": false, "findings": 5, "landed": 4, "declined": 1, "commits": ["d37b0fab6"], "headline": "import lane rides sliced async restore (F1 H — production-path veil brick closed), mode:changed restore-scoped emit slice, preflight yield move, recoveryEncounter/aceMemory deserializeChunked twins; F4 declined — all 9 afterContinue bodies bounded by construction" },
+        "in-flight-hitches": { "saturated": null, "findings": null, "commits": [], "headline": "audit in flight at land time" },
+        "blind-global": { "saturated": null, "findings": null, "commits": [], "headline": "first 10-wave blind global review commissioned (incl. devin/s1-sim-worker-spike adjudication)" },
+        "skeptic": { "saturated": null, "findings": null, "commits": [], "headline": "first disprove-the-gains review commissioned" }
+      },
+      "evidence": {
+        "goldenHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+        "level": "PERFORMANCE_VERIFIED (CPU-scope only — assetResidency bookkeeping + cancel burst on pinned fixture; boot F1/F2/F5 mechanism-verified, frame relief hardware-unverified; lod saturation is a scope verdict, not a perf claim)",
+        "hardwareVerified": false,
+        "unitMeasurement": {
+          "harness": "C:/Users/Administrator/perf-waves/bench-residency-w121.mjs (imports src/render/assetResidency.js headlessly; old rev extracted via git show HEAD^:path)",
+          "fixture": "1200 assets / 400 pending / 200 soft holds / 600 boundary-owned; BENCH_OWNERS=N multiplies presentation owners per boundary asset; medians of 5-9 reps",
+          "results": {
+            "cancelBurst_400Deactivations": { "old_ms": 8.09, "new_ms": 0.659, "parity": "identical evicted set + diagnostics" },
+            "enforceBudget_overCeiling": { "old_ms": "~13.4", "new_ms": "~7.2", "parity": "identical evicted set + remainingBytes + blockedRows total" },
+            "prepareSectorExit_BENCH_OWNERS_4": { "old_ms": 0.66, "new_ms": 0.55, "note": "1-owner microfixture regresses 0.45→0.61 (index maintenance + snapshot) — net win only at real multi-owner density, recorded honestly" },
+            "rotateSector_BENCH_OWNERS_4": { "old_ms": 0.65, "new_ms": 0.49 }
+          }
+        },
+        "focusedTests": "fb-export-bundles-medals 6/0, save-rejected-candidate 7/7, save-import-bounds 8/8, pr-instrument-integrity 8/8, event-bus-contract 34/0, recovery-encounter 12/12, save-arbitration 7/7, save-envelope-fidelity 2/2, save-restore-atomicity 5/5, save-shared-continuation 4/4, ~60 recovery/ace/wreck suites green; residual reds canon (incl. new: save-growth-dock-trade-flat parityArmSlope identical on clean master)"
       },
       "verdict": "kept"
     }
