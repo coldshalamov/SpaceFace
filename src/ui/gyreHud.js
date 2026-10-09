@@ -306,23 +306,23 @@ export const gyreHud = {
       // A mixed net carries the warm face + the refusal count too — an uneatable
       // body inside is the actionable read, same as the tow branch's own rule.
       // handlingTxt already ends in `· TOO HEAVY ×N` — the suffix comes once.
-      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
+      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
     }
     if (tow > 0) {
       // The too-heavy read is the actionable half of the line — carry the warm
       // face whenever a body it can never eat is inside, not only when tow==0.
-      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
+      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
     }
     if (heavy > 0) {
-      return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}`, cls: 'gyre-heavy', fuse: fuseS };
+      return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-heavy', fuse: fuseS };
     }
     if (deflect > 0) {
       // The defensive-only read: nothing to tow or eat — the cone is purely
       // bending their fire. Its own word so the pill isn't silent SEARCHING
       // while the weapon's one defensive payoff does real work.
-      return { text: `GYRE — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
+      return { text: `GYRE — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-search', fuse: fuseS };
     }
-    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: 'gyre-search', fuse: fuseS };
+    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-search', fuse: fuseS };
   },
 
   _apply(dom, text, cls, strain, fuse) {
