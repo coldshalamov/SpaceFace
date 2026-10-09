@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "27f28ee3a7ad8402e73ad345eb1e140cb43ecd8af5e0fa324a45afd2bf495ae8",
+  "contentHash": "8cb8a6de852a0b7960be1207f941c81d0f46d199d0ba19d695f0f2bc65f72917",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2847,7 +2847,7 @@
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
+      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
       "uri": "pilots.json"
     }
   },
@@ -4010,7 +4010,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_graffiti.glb"
   },
-  "runtimeHash": "1aac94dff1c3d2ffc1c48c13b1efb09563fc5f09f476e502f1785c784c37244d",
+  "runtimeHash": "b7d0a096dd408e8140af37c26a4d07dab564aea357c5ccbd4e6db1fa328ec66f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

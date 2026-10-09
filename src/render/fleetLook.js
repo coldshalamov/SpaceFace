@@ -92,12 +92,16 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function blueprintToGroup(blueprint) {
   const group = new THREE.Group();
+  // Split-file LOD siblings (kestrel_lod1/_lod2) carry only LOD1_/LOD2_ names; shoot the finest
+  // level the file has instead of an empty frame.
+  const levels = new Set((blueprint.primitives || []).map((p) => p.tags && p.tags.lod).filter(Boolean));
+  const shown = levels.has('lod0') || !levels.size ? 'lod0' : [...levels].sort()[0];
   for (const p of blueprint.primitives || []) {
     const mesh = new THREE.Mesh(p.geometry, p.material);
     mesh.matrixAutoUpdate = false;
     mesh.matrix.copy(p.matrix);
     if (p.tags && (p.tags.collision || p.tags.collider)) continue;
-    if (p.tags && p.tags.lod && p.tags.lod !== 'lod0') continue;
+    if (p.tags && p.tags.lod && p.tags.lod !== shown) continue;
     group.add(mesh);
   }
   return group;

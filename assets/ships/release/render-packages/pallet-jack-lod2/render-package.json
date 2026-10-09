@@ -421,7 +421,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c15c9e97af44f4dfeea96213a2e090c18b8574120273596148873404055e9624",
+  "contentHash": "2207c443c7251a3811b07bb65cfd58e44c2e2c38b1c54c9309b2439336fb1d0a",
   "dynamicGroups": [
     {
       "id": "sf.render.pallet-jack-lod2.node.lod2-motion-pallet-jack-clamp-armor.dynamic",
@@ -3190,7 +3190,7 @@
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
+      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
       "uri": "pilots.json"
     }
   },
@@ -4600,7 +4600,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pallet_jack_lod2.glb"
   },
-  "runtimeHash": "7f5ef5254cebab59848e1c6ff4cb65f2feb6937bd16a7c14244fa19020504d81",
+  "runtimeHash": "4f2319f880ac7c25882c45b2dc02534484ab78e76fd2947b8d7582f4bf52f2a7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

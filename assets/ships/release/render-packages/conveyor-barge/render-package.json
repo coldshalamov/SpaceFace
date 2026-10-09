@@ -473,7 +473,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fd8eba8ecd71d175597c437a566921fd9a3651101174feb0d1134221b73b82ad",
+  "contentHash": "32ba2e7f2caf2ca42fb639f451a146280e9925dc0d7e2280ae03fa5def0113a2",
   "dynamicGroups": [
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port.dynamic",
@@ -3243,7 +3243,7 @@
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
+      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
       "uri": "pilots.json"
     }
   },
@@ -4767,7 +4767,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_barge.glb"
   },
-  "runtimeHash": "1a69370caee9e1536404b4ae64c033c88446c12e3f674643df27a54e3a4b83b5",
+  "runtimeHash": "ecc9542f1fc03cce995f302ed757f86b663077c17cebe5357c8f814e31d75e87",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "da4d4fd8213bf3d9a38af32f0a658f4624ac2324858af6c54565650665a01744",
+  "contentHash": "0f0ed356e488a38291f09a7d29386867a1fd972e73ea14154fe576fa3f506f67",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -245,7 +245,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8605ebaf4157f3f19b909f305a0c8a82dc5fa927cbeca20481f45406cac09db2",
+      "geometryHash": "3920c1b173707d03301ce390f333d1d417f8db41d181acf6667cdeab28b9e2e6",
       "id": "sf.render.traffic-signal.mesh.mast.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -913,19 +913,19 @@
       "sha256": "b904ddf091f94fea9142ba3d2d65c92c8270215ba3b804fc7974d01ced666712"
     },
     "sourceGlb": {
-      "bytes": 17928,
-      "sha256": "1673bf80b7268705ce1a5f6eec08a65a0e32504cc644a575789fcec17e57af3d",
+      "bytes": 17924,
+      "sha256": "f39f6029210338ff041b78d707ec02d526ca232ea9ae74505f0fc28a6d8dfc69",
       "uri": "place_traffic_signal.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
+      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 25216,
-    "sha256": "20e8c1f13a22ad5e670ee762c7068369c3a00d0dc33b5d58a13569774339e6c2",
+    "sha256": "7ebdf113263d19058a874918b2cb7368ebb222cd86eb06e9e5f3f8a3f289393b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1326,7 +1326,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_traffic_signal.glb"
   },
-  "runtimeHash": "dd730f0b2877710d64120cdd9bcdc1c35bf5004e206dde1e5b75f9a71bd52773",
+  "runtimeHash": "109127a46c8c04e9ddb1a09af8f02029913cef5566907ba6941d1b61763c56ba",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

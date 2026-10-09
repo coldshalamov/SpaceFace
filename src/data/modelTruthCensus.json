@@ -1071,7 +1071,7 @@
           2.615137
         ]
       },
-      "bytes": 577956,
+      "bytes": 577952,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -3469,7 +3469,7 @@
           1.082134
         ]
       },
-      "bytes": 18712,
+      "bytes": 18732,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -18022,7 +18022,7 @@
           9.465342
         ]
       },
-      "bytes": 1279856,
+      "bytes": 1278520,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -25728,15 +25728,15 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "94960554fb04adcfd65dd3320b7699d669ef99bd66aa26fc661a4db4158045ab"
+              "sha256": "bfb0d2e7170d6773969962564145fa6b9a82b3959e2666ef0eb171aa549fb38c"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb"
+              "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
-              "sha256": "951eefc274dfa294f626ff026ab12c432847b37a58bedfece7463e0167100b33"
+              "sha256": "49a77ed268379b786e9cbfc94d834408fc28e66d848e02e5fe66d440186200ae"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -26280,15 +26280,15 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "94960554fb04adcfd65dd3320b7699d669ef99bd66aa26fc661a4db4158045ab"
+              "sha256": "bfb0d2e7170d6773969962564145fa6b9a82b3959e2666ef0eb171aa549fb38c"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb"
+              "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
-              "sha256": "74fe2366b592f990839f2d1a1ccf9f29adf8f0d575186e3a54f302dc22c35769"
+              "sha256": "f52f9cc97511b9ac2a7bfff5a564134442acced19a0071572d09de166045f786"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -26748,15 +26748,15 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "94960554fb04adcfd65dd3320b7699d669ef99bd66aa26fc661a4db4158045ab"
+              "sha256": "bfb0d2e7170d6773969962564145fa6b9a82b3959e2666ef0eb171aa549fb38c"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb"
+              "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
-              "sha256": "388fbadf0c06472d4505d70ba81d54d3e84307402853bfcfa22f3cbd808d8474"
+              "sha256": "b9ec83e4c329fb6ab0476e699c71f5f81370fdd08e6f82220fefb0ec330ac5e7"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -27252,15 +27252,15 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "94960554fb04adcfd65dd3320b7699d669ef99bd66aa26fc661a4db4158045ab"
+              "sha256": "bfb0d2e7170d6773969962564145fa6b9a82b3959e2666ef0eb171aa549fb38c"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb"
+              "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
-              "sha256": "2797e513723cc42c5a0e371970ca22ee6ee3bd77229588e40964355e4274e7e9"
+              "sha256": "eb29ecea2708b43e2f2e3bd3354a0a0322569218fcb950d2481bdcc06c88f163"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -30980,7 +30980,7 @@
           6.600064
         ]
       },
-      "bytes": 28048,
+      "bytes": 28036,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -31361,7 +31361,7 @@
           12.937276
         ]
       },
-      "bytes": 38340,
+      "bytes": 38324,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -32464,7 +32464,7 @@
           7.150064
         ]
       },
-      "bytes": 28708,
+      "bytes": 28700,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -35962,7 +35962,7 @@
           10.400781
         ]
       },
-      "bytes": 28080,
+      "bytes": 28076,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -37274,7 +37274,7 @@
           189.884716
         ]
       },
-      "bytes": 2456092,
+      "bytes": 2455764,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -37721,7 +37721,7 @@
       ],
       "shell": {
         "boundaryEdges": 28464,
-        "inwardFaceFraction": 0.35675,
+        "inwardFaceFraction": 0.35725,
         "silhouetteRadius": 111.769048,
         "sliceY": 0
       },
@@ -38637,7 +38637,7 @@
           6.3
         ]
       },
-      "bytes": 30128,
+      "bytes": 30100,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -39979,7 +39979,7 @@
           7.9
         ]
       },
-      "bytes": 31988,
+      "bytes": 31960,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -42138,7 +42138,7 @@
           9.511053
         ]
       },
-      "bytes": 997880,
+      "bytes": 994692,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -44458,7 +44458,7 @@
           10.399463
         ]
       },
-      "bytes": 33960,
+      "bytes": 33968,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -45274,7 +45274,7 @@
           21.460001
         ]
       },
-      "bytes": 28432,
+      "bytes": 28424,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -46003,7 +46003,7 @@
           6.200049
         ]
       },
-      "bytes": 26532,
+      "bytes": 26528,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -46318,7 +46318,7 @@
           2.4
         ]
       },
-      "bytes": 17928,
+      "bytes": 17924,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -67140,7 +67140,7 @@
           53.600979
         ]
       },
-      "bytes": 1500948,
+      "bytes": 1496420,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -67591,7 +67591,7 @@
       ],
       "shell": {
         "boundaryEdges": 7855,
-        "inwardFaceFraction": 0.3255,
+        "inwardFaceFraction": 0.32425,
         "silhouetteRadius": 102.935827,
         "sliceY": 0
       },
@@ -68651,37 +68651,37 @@
           111.305145
         ]
       },
-      "bytes": 3066436,
+      "bytes": 3066180,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_station_trade_hub",
         "kind": "proxy",
         "outline": [
-          11.392543,
-          11.713916,
-          12.165437,
+          11.432547,
+          11.71487,
+          12.166244,
           13.46952,
           14.66044,
           15.98818,
           17.751724,
           19.779874,
           21.15512,
-          22.588835,
+          22.590641,
           23.403418,
           23.758069,
-          23.696076,
-          23.323309,
-          22.590939,
-          20.884045,
-          19.414455,
-          17.750536,
+          23.745476,
+          23.326207,
+          22.591831,
+          20.890431,
+          19.420609,
+          17.754014,
           16.120218,
           14.273948,
-          13.259075,
+          13.471515,
           12.278364,
-          11.579016,
-          11.201838
+          11.715857,
+          11.433057
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -68878,37 +68878,28 @@
         "capped": false,
         "cellWu": 2.850968,
         "gapWu": 0,
-        "mouthBearingDeg": 172.5,
+        "mouthBearingDeg": 187.5,
         "primitiveCount": 22,
         "primitives": [
           {
             "id": "core",
             "kind": "circle",
-            "r": 0.05857,
+            "r": 0.058579,
             "x": 0,
             "z": 0
           },
           {
-            "ax": -0.054111,
-            "az": -0.022414,
-            "bx": -0.118194,
-            "bz": -0.048958,
-            "id": "arm-1",
-            "kind": "capsule",
-            "r": 0.005
-          },
-          {
-            "ax": -0.046466,
-            "az": -0.035655,
-            "bx": -0.105476,
-            "bz": -0.080934,
+            "ax": -0.046474,
+            "az": -0.035661,
+            "bx": -0.105483,
+            "bz": -0.08094,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.035655,
-            "az": -0.046466,
+            "ax": -0.035661,
+            "az": -0.046474,
             "bx": -0.089755,
             "bz": -0.116971,
             "id": "arm-3",
@@ -68916,8 +68907,8 @@
             "r": 0.005
           },
           {
-            "ax": -0.022414,
-            "az": -0.054111,
+            "ax": -0.022417,
+            "az": -0.05412,
             "bx": -0.061486,
             "bz": -0.148441,
             "id": "arm-4",
@@ -68925,8 +68916,8 @@
             "r": 0.005
           },
           {
-            "ax": -0.007645,
-            "az": -0.058069,
+            "ax": -0.007646,
+            "az": -0.058078,
             "bx": -0.022897,
             "bz": -0.173923,
             "id": "arm-5",
@@ -68934,8 +68925,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.007645,
-            "az": -0.058069,
+            "ax": 0.007646,
+            "az": -0.058078,
             "bx": 0.025455,
             "bz": -0.193351,
             "id": "arm-6",
@@ -68943,8 +68934,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.022414,
-            "az": -0.054111,
+            "ax": 0.022417,
+            "az": -0.05412,
             "bx": 0.083254,
             "bz": -0.200994,
             "id": "arm-7",
@@ -68952,8 +68943,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.035655,
-            "az": -0.046466,
+            "ax": 0.035661,
+            "az": -0.046474,
             "bx": 0.141741,
             "bz": -0.18472,
             "id": "arm-8",
@@ -68961,17 +68952,17 @@
             "r": 0.005
           },
           {
-            "ax": 0.046466,
-            "az": -0.035655,
-            "bx": 0.197358,
-            "bz": -0.151438,
+            "ax": 0.046474,
+            "az": -0.035661,
+            "bx": 0.197374,
+            "bz": -0.151451,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.054111,
-            "az": -0.022414,
+            "ax": 0.05412,
+            "az": -0.022417,
             "bx": 0.238191,
             "bz": -0.098662,
             "id": "arm-10",
@@ -68979,8 +68970,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.058069,
-            "az": -0.007645,
+            "ax": 0.058078,
+            "az": -0.007646,
             "bx": 0.259517,
             "bz": -0.034166,
             "id": "arm-11",
@@ -68988,62 +68979,62 @@
             "r": 0.005
           },
           {
-            "ax": 0.058069,
-            "az": 0.007645,
-            "bx": 0.258834,
-            "bz": 0.034076,
+            "ax": 0.058078,
+            "az": 0.007646,
+            "bx": 0.259378,
+            "bz": 0.034148,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.054111,
-            "az": 0.022414,
-            "bx": 0.237368,
-            "bz": 0.098321,
+            "ax": 0.05412,
+            "az": 0.022417,
+            "bx": 0.237398,
+            "bz": 0.098334,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.046466,
-            "az": 0.035655,
-            "bx": 0.197377,
-            "bz": 0.151453,
+            "ax": 0.046474,
+            "az": 0.035661,
+            "bx": 0.197385,
+            "bz": 0.151459,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.035655,
-            "az": 0.046466,
-            "bx": 0.139907,
-            "bz": 0.182331,
+            "ax": 0.035661,
+            "az": 0.046474,
+            "bx": 0.13995,
+            "bz": 0.182387,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.022414,
-            "az": 0.054111,
-            "bx": 0.081701,
-            "bz": 0.197243,
+            "ax": 0.022417,
+            "az": 0.05412,
+            "bx": 0.081727,
+            "bz": 0.197306,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.007645,
-            "az": 0.058069,
-            "bx": 0.025453,
-            "bz": 0.193338,
+            "ax": 0.007646,
+            "az": 0.058078,
+            "bx": 0.025458,
+            "bz": 0.193376,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.007645,
-            "az": 0.058069,
+            "ax": -0.007646,
+            "az": 0.058078,
             "bx": -0.023089,
             "bz": 0.175378,
             "id": "arm-18",
@@ -69051,8 +69042,8 @@
             "r": 0.005
           },
           {
-            "ax": -0.022414,
-            "az": 0.054111,
+            "ax": -0.022417,
+            "az": 0.05412,
             "bx": -0.059843,
             "bz": 0.144474,
             "id": "arm-19",
@@ -69060,20 +69051,29 @@
             "r": 0.005
           },
           {
-            "ax": -0.035655,
-            "az": 0.046466,
-            "bx": -0.088332,
-            "bz": 0.115116,
+            "ax": -0.035661,
+            "az": 0.046474,
+            "bx": -0.089769,
+            "bz": 0.116989,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.046466,
-            "az": 0.035655,
+            "ax": -0.046474,
+            "az": 0.035661,
             "bx": -0.106471,
             "bz": 0.081698,
             "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.005
+          },
+          {
+            "ax": -0.05412,
+            "az": 0.022417,
+            "bx": -0.118214,
+            "bz": 0.048966,
+            "id": "arm-22",
             "kind": "capsule",
             "r": 0.005
           }
@@ -72002,7 +72002,7 @@
           9.465342
         ]
       },
-      "bytes": 1279740,
+      "bytes": 1278404,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -72597,7 +72597,7 @@
           9.511418
         ]
       },
-      "bytes": 1262772,
+      "bytes": 1258324,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -79823,7 +79823,7 @@
           14.963001
         ]
       },
-      "bytes": 331224,
+      "bytes": 331436,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -89836,7 +89836,7 @@
           31.905441
         ]
       },
-      "bytes": 851712,
+      "bytes": 852172,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -90283,7 +90283,7 @@
           70.119453
         ]
       },
-      "bytes": 645464,
+      "bytes": 646752,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -90735,7 +90735,7 @@
           70.119453
         ]
       },
-      "bytes": 645832,
+      "bytes": 647116,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -91187,7 +91187,7 @@
           70.119453
         ]
       },
-      "bytes": 649656,
+      "bytes": 650936,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -92107,7 +92107,7 @@
           47.132276
         ]
       },
-      "bytes": 519296,
+      "bytes": 519904,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -92484,7 +92484,7 @@
           64.883125
         ]
       },
-      "bytes": 608336,
+      "bytes": 608748,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,

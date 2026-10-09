@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e8a97de08bdbce8387093a4c04b737418c1b7e3dc44d0e4357929427f7ecf7b8",
+  "contentHash": "d8189fbd280af580e50f7613ae7d7d970611a0fbadd2140b7313634eff270fb3",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1450,7 +1450,7 @@
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
+      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
       "uri": "pilots.json"
     }
   },
@@ -2075,7 +2075,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform_cold.glb"
   },
-  "runtimeHash": "6bdbca80338823903a01627aa7c18f0e0e6e7b3ef20f62d51250461334e8f7b2",
+  "runtimeHash": "78cb2f94483624cda46021eac8683b4e4af91e09ff7728cea88a4ccb52d2035a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

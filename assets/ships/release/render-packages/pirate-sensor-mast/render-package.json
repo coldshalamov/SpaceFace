@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e39262130462e9cc255d1bac4924d935d8d4ff336ff693673c808fe2937758ca",
+  "contentHash": "520d942f0791699058749c9003082cdee145a5e11bae8fbc896cb1d29b802f10",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -509,18 +509,18 @@
     {
       "bounds": {
         "max": [
-          2.8861100673675537,
+          2.8861098289489746,
           9.94780445098877,
-          0.05193735286593437
+          0.05193738639354706
         ],
         "min": [
           1.6456483602523804,
           9.679852485656738,
-          -0.05193735286593437
+          -0.05193738639354706
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0dc595e6376a9ad4142116e44f31cec1fa1350f8c54ec71f4a213423e5a8cbb",
+      "geometryHash": "d7700ba9906261bb87171c49f522fe421c786807342d2aaa54c860c1cd669739",
       "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-feed.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -1655,19 +1655,19 @@
       "sha256": "dc774170fbd1a955619ff4360cd2afc1fe27fcad251fa92cf6e0d7faf83ffe57"
     },
     "sourceGlb": {
-      "bytes": 31988,
-      "sha256": "31051f43be3865061b8488ca82e8866d384e5faa90823c2617a2fef7f45c8199",
+      "bytes": 31960,
+      "sha256": "706e378857529dbce1e1dddc426905d763872b3231852f8b8001ac0af66b27bc",
       "uri": "place_pirate_sensor_mast.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
+      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 60904,
-    "sha256": "791a7eb5e0ab3856117654c1357ecd2207a332dae53f6986eeaaebaef1535dea",
+    "sha256": "821b2c983a8934f4eac8f3c89e5f1ebd286a9d76dac53a4c20f871021c45433c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2389,7 +2389,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_pirate_sensor_mast.glb"
   },
-  "runtimeHash": "405879d1365ae23534dc989ab331caa8ec5e37fbaf8cab6e192852f23553933e",
+  "runtimeHash": "85cc3a3efe241b32db68148f4076b54ceb4d42756864f5c30335cf9787172aab",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

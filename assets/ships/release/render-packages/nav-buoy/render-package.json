@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "50a96160bd5c33cc9f1d010823123e6cee9dc05b466aae24ba4fbb127ca6672c",
+  "contentHash": "755f225933b371b693c412089da193455cc1224487a8919cfe2f640a0f9a46e4",
   "dynamicGroups": [
     {
       "id": "sf.render.nav-buoy.node.lod0-hook-nav-port.dynamic",
@@ -132,7 +132,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1464fa21d6cbfb1b0028be34bc0dafc830252ffcc9e6d8dad40197d5f219ae5",
+      "geometryHash": "5d161ca064856de51779121ded263297f8cdb2a238add39429212f2054cf3787",
       "id": "sf.render.nav-buoy.node.lod0-armor.primitive.0",
       "indexCount": 13959,
       "indexed": true,
@@ -207,7 +207,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a13a0dda5b78ecd56a885eece58e39abb78954a29beff108bb1e91db901659cc",
+      "geometryHash": "314c9f182251a2a7a92671262291bfd4811fda1e843ce23ee48a33b052ef015a",
       "id": "sf.render.nav-buoy.node.lod0-canopy.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -282,7 +282,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4213dd6ddfedaeced9fbad0428aa19c931ef9f811e9f6a65e4942b5b7081642d",
+      "geometryHash": "df12e3a030b06b3f464ecafe6cb9df5906abd37b41a8b585aea4df4d028da046",
       "id": "sf.render.nav-buoy.node.lod0-hull.primitive.0",
       "indexCount": 7512,
       "indexed": true,
@@ -307,7 +307,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "127eb871ba2df3cfd6f953904f58ac9395bf713f79be9573b5038589ab1e803e",
+      "geometryHash": "e5a31c9609f333409c7ceda4b7b2ae9aa541e1ffcfb58f3ad9559e15270f685f",
       "id": "sf.render.nav-buoy.node.lod0-lights-cyan.primitive.0",
       "indexCount": 744,
       "indexed": true,
@@ -332,7 +332,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "301c7d87c0289bee00083513b420702a69d62cf9cb5dbb8bf17981675ad42f3d",
+      "geometryHash": "211a45c3894395b2a64f3e04c68416578e08a989fbedf8475ccb52fda5ce5fb6",
       "id": "sf.render.nav-buoy.node.lod0-livery.primitive.0",
       "indexCount": 5184,
       "indexed": true,
@@ -357,7 +357,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a7c5ca33d30b905a7ab1e9192093150ea1887d975ec99de7db452853475eab3",
+      "geometryHash": "5f66c4d6d79b3ea1fb33a67625879c504a081010276a3fc6e8352b9f3c1321fc",
       "id": "sf.render.nav-buoy.node.lod0-mechanical.primitive.0",
       "indexCount": 10212,
       "indexed": true,
@@ -382,7 +382,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e71fadcbb2d5de8af45bde32d46d70627e68f7e1d83874994cb95a6dad8c621f",
+      "geometryHash": "99856de9f059ae8f3a4a71be02ae8316e099fcaf0cd323882f5ba0425d181fda",
       "id": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-cage-mechanical.primitive.0",
       "indexCount": 3744,
       "indexed": true,
@@ -407,7 +407,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9bc4dedac4fb2ea4d4eaf0f28195b587a4deca9c847217581eda4b9764e50b76",
+      "geometryHash": "b6509c624b47cd50245cada5c11738ea9ade002a139dd279b5c8f8be20742a5f",
       "id": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-pulse-lights-cyan.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -457,7 +457,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d7de77c9b4f5528f034813c8137eacf1527c361753ec079d8021bfec77bd3e5",
+      "geometryHash": "2a96a9472fc60b427f0478551f39f9b112488f07947b0c2bbcfbc9b4ac2f66b8",
       "id": "sf.render.nav-buoy.node.lod1-armor.primitive.0",
       "indexCount": 4380,
       "indexed": true,
@@ -482,7 +482,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "73f82aa0a2a3deac3d2360426c47de8e1d24d72c91165378d295adb867107bd6",
+      "geometryHash": "5759db3ec04ec0e21950b6d1cbc466f66f2f0369d509d4cf4e08ec981fd00489",
       "id": "sf.render.nav-buoy.node.lod1-beacon-amber.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -532,7 +532,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee4d178b43c000b8754c393f50ff759a2b157cac7844f22339c609381941f913",
+      "geometryHash": "fa0727c672775943ec00ac6c19e91a33bc8c60f2f71ece0a1c2981dc479ba71b",
       "id": "sf.render.nav-buoy.node.lod1-canopy.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -607,7 +607,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0174b95ce1c4aed91535c645ec4cafd575f9e420e48bbd3f32350a5ef9a0be5c",
+      "geometryHash": "f5ec3b070a82cd16c8dd7e2c99dd0af59ccfbceef877af32ecfc6136a3cbbaf3",
       "id": "sf.render.nav-buoy.node.lod1-hull.primitive.0",
       "indexCount": 2088,
       "indexed": true,
@@ -657,7 +657,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5278d91495ff58f3d860fe6e799e05aa96a98560a7f47891700c3be58bbdf323",
+      "geometryHash": "9f6ac9bc8bfe4f9a82cdcfe6689afb77be793d073ecb1e6b0fa62b80dc922e88",
       "id": "sf.render.nav-buoy.node.lod1-livery.primitive.0",
       "indexCount": 1656,
       "indexed": true,
@@ -682,7 +682,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f51d907d644ef5f087f4f5309c9b32d9ff6ea4679e313aff92d51fb8a0e2eb09",
+      "geometryHash": "5fc7e4509c3182fc07c69612d8cb52026cb263938029fabd71c42d412c0bda75",
       "id": "sf.render.nav-buoy.node.lod1-mechanical.primitive.0",
       "indexCount": 5988,
       "indexed": true,
@@ -707,7 +707,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6c24bc3c856a28f4c8d143696f6fb40cc2939a00c244266ec5244e2165a312c",
+      "geometryHash": "d875414d06632b4381697e0dc79b1c3408b4babf89b6814f04e87b729f20dc7f",
       "id": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-cage-mechanical.primitive.0",
       "indexCount": 1494,
       "indexed": true,
@@ -732,7 +732,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0dc7534e48c4f9ecc4b9833f1f716c2f84d4ac83497bb1df3cbadc1ba40a8d51",
+      "geometryHash": "25eb7b680ad07ccd3959cd15c355f77db866f80837acbd4af8360827af549386",
       "id": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-pulse-lights-cyan.primitive.0",
       "indexCount": 342,
       "indexed": true,
@@ -757,7 +757,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "84b34559f52e09e3bbd8b591ebe321b5b69d32b6654bdb4a1d6f07c1e765c50a",
+      "geometryHash": "9a727939704665910756ec47df25ca9bacebeb46089c10dcfecad3f2c56b9471",
       "id": "sf.render.nav-buoy.node.lod1-warning.primitive.0",
       "indexCount": 510,
       "indexed": true,
@@ -1007,7 +1007,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c8ef9dbe1c2ff2fc25a1ccaaaaf978d2775fea643d71c8e87d3ac939868c29b5",
+      "geometryHash": "bd8b4ba674432a501c77bb461f1e5df2357df5611e5e0098f0268d3d3b512f1b",
       "id": "sf.render.nav-buoy.node.lod2-mechanical.primitive.0",
       "indexCount": 2838,
       "indexed": true,
@@ -3494,19 +3494,19 @@
       "sha256": "9406910b24629697adcd5bffd10bf2db7327a0b3471e1b853eb78427abf35813"
     },
     "sourceGlb": {
-      "bytes": 577956,
-      "sha256": "37c1a513bfa1b102d5710555106e6efcd00fe6add8caf34683e7e2b42307eeeb",
+      "bytes": 577952,
+      "sha256": "c9d306d7c8b6c00ce24beb27a45b82ca2f543d73a859068252046804704af3f3",
       "uri": "place_nav_buoy.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
+      "sha256": "f65ca439d2cbd3b709b3ac9382782e88a3b3a19e30aef0cb95c55a2b7e1ad778",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1060564,
-    "sha256": "837a902c7f69a2916f758550841cc096a03fb52217af3f1f3326aba56d4aa7fd",
+    "bytes": 1060652,
+    "sha256": "c055f6a6ba7ca4ea138a96f5b9967e9af0b5a4ca9e7ac72589cba56700c1943d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5014,7 +5014,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
-  "runtimeHash": "3ede1741888e58d267ab8fe16381622a4c69c96dfac37514416d110bae4f9e38",
+  "runtimeHash": "9ad7563c03e4abd497d3ab30aa0c111c09a717a76e52ba1d892892aea30aa4d6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -13,6 +13,8 @@
 // renderer derives tangents from the new normals instead of pairing old tangents with new normals.
 
 const FACETED_ON_PURPOSE = /crystal|rock|asteroid|regolith|(^|[^a-z])ice|geology|stone|(^|[^a-z])ore|gem|shard|ingot/i;
+// Names that only borrow a geology word ("Material_Ceramic_ore" hull paint, "wreck_ore_freighter_*").
+const NOT_GEOLOGY = /ceramic|hull|armou?r|metal|mechanical|heat|emissive|light|freighter|barge|hopper|container|carrier|sorter|crusher/i;
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -95,7 +97,9 @@ export function repairPrimitive(document, prim, meshName, materialName, opts = {
   if (/^COLLISION/i.test(meshName || '')) return null;
   const a = analysePrimitive(prim, opts);
   if (!a) return null;
-  const keepFacets = FACETED_ON_PURPOSE.test(materialName || '') || FACETED_ON_PURPOSE.test(meshName || '');
+  const mat = materialName || '', mesh = meshName || '';
+  const keepFacets = (FACETED_ON_PURPOSE.test(mat) && !NOT_GEOLOGY.test(mat))
+    || (FACETED_ON_PURPOSE.test(mesh) && !NOT_GEOLOGY.test(mesh) && !NOT_GEOLOGY.test(mat));
   const fixNormals = !!a.N && ((a.facetedCurve && !keepFacets) || a.flippedFrac > 0.02);
   if (!fixNormals && a.degen === 0) return null;
   const row = { mesh: meshName, material: materialName, tris: a.tris.length + a.degen, degenRemoved: a.degen,
