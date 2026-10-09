@@ -2563,4 +2563,18 @@ Wave 124 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 0/3.
 - F4 documented non-expressible readers (OR-predicate `_resourceWorkPublishedCount`, conjunction `data.sectorId`+`data.homeSectorId` hail paths, mesh-domain walks) — recorded, not converted.
 - Golden `0b33dde` bit-identical; sector-membership 9/9, bolus 25/25, alienEcology 34/34 green.
 
-### boot-loading + in-flight-hitches — lanes queued behind the SWE-2 session cap
+### boot-loading — `saturated: false` (F1+F2 landed `2d7e46565`)
+
+- **boot F1 (S/L, MECHANISM VERIFIED) — mirror collect re-queue could clobber a fresher writer delta**: the uncovered-writer arm's `.then(keys => _queueSharedStoreMirror(keys))` merged the collect's whole map over `_sharedStorePatch` with no staleness check — a writer landing on the microtask hop between the generation-bracketed collect and the merge could see its newer value overwritten by the collect's stale row (durable: mirror holds the stale row until the key's next write). The re-queue now filters `keys` down to rows not already covered by a pending delta patch, so landed writer deltas stay dominant.
+- **boot F2 (S/L-M, MECHANISM VERIFIED) — `applySharedStoreKeys` was the last unyielded multi-MB leg in the boot reconcile**: the getItem-compare + setItem pass over the whole merged corpus ran atomically inside `_syncSharedPlayerStore`. `applySharedStoreKeysChunked` keeps identical write/prune semantics but yields through `_restoreFrameYield()` every 8-key batch across both passes.
+- Golden `0b33dde` bit-identical; 60 focused save/store tests green (player-save-store 17, autosave/fuzz/parity 43).
+
+### in-flight-hitches — `saturated: true` (streak 1/3; first hitches saturation since W121)
+
+- **shelvedDiscovery lane verified healthy, measured** (lane's micro-bench, N=2000/1916 partition-0): fresh pass 0.17 ms p50 vs stale 0.73 ms; under full churn 1.07 ms — never worse than the plain-walk baseline it replaced. Global `index.version` invalidation is correct-by-necessity (unstamped gap entities are partition-0); the every-8th audit only guards unsanctioned pos writes.
+- **B3 sim-atomic-burst**: zero delta since W125 — identical 138 files / 104 `killed|destroyed` registrations; the retag lever stays exhausted.
+- **SG02 impacts + deferred-enter drain**: untouched since W125; pacing intact.
+- Only residual is the documented corpse-collect funnel avenue (kill funnel over ~168 `alive=false` sites → re-land deferred corpse compaction; L effort, L measured benefit) — below the materiality bar, recorded not counted.
+- W125 machinery regression sweep: all PASS (sector lane, restamp funnel, under-veil NG+, mirror deltas, shelved discovery).
+
+Wave 126 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 1/3.
