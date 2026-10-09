@@ -1603,7 +1603,7 @@ export class GyreSnarePresentation {
       // cuts at thrownBeat (the burst's first tick), not when the phase flag drops.
       const winding = phase === 'launching' && finite(mirror.launchBurst01) === 0;
       if (phase === 'holding' || winding) {
-        const wind = winding ? clamp01(finite(mirror.launchWindup01)) : 0;
+        const windGrip = winding ? clamp01(finite(mirror.launchWindup01)) : 0;
         const gL = this.toLocal(cx, cz, this._ballPt);
         const mL2 = this.toLocal(finite(mirror.maw && mirror.maw.x), finite(mirror.maw && mirror.maw.z), this._mawPt);
         if (winding && mirror.launchDir && mirror.nose) {
@@ -1633,10 +1633,10 @@ export class GyreSnarePresentation {
         this._grip.rotation.y = Math.atan2(-gz, gx);
         const strain = clamp01(finite(mirror.strain01));
         // Grip width flickers under strain — the spoke trembles with the held rubble.
-        this._grip.scale.set(gd, 1, 2.2 * (1 + strain * 0.35 * Math.sin(this.time * 37) * calm) * (1 - wind * 0.45));
+        this._grip.scale.set(gd, 1, 2.2 * (1 + strain * 0.35 * Math.sin(this.time * 37) * calm) * (1 - windGrip * 0.45));
         // Blooms in on the hold edge (~0.2 s) — a snag before ~150 ms was landing
         // the ~0.34-alpha spoke in a single frame while every sibling ramps in.
-        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2 + wind * 0.4) * flashCalm * Math.min(1, (this._holdT || 0) / 0.2);
+        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2 + windGrip * 0.4) * flashCalm * Math.min(1, (this._holdT || 0) / 0.2);
         this._grip.visible = true;
       } else if (!this._closing && this._grip.visible) {
         this._grip.visible = false;
@@ -1822,11 +1822,15 @@ export class GyreSnarePresentation {
         // The group's tumble grades by THIS ball's speed like the primary's — a
         // ricochet-stalled secondary barely spins; a clean bowl keeps pace.
         const sbv = Math.hypot(finite(sb.vx), finite(sb.vz));
-        this._secGroup.rotation.y += sdt * 2.6 * Math.max(0.15, Math.min(1, sbv / (GYRE_SNARE.launchSpeed || 520))) * calm;
+        // Tumble chirality rides the ball's real spin sign — a ricochet that
+        // reversed its angular velocity must not leave the overlay rubble
+        // counter-rotating its owner (pub.balls[] now carries signed angVel).
+        const sSign = finite(sb.angVel) < 0 ? -1 : 1;
+        this._secGroup.rotation.y += sdt * 2.6 * Math.max(0.15, Math.min(1, sbv / (GYRE_SNARE.launchSpeed || 520))) * calm * sSign;
         for (let i = 0; i < this._secLumps.length; i++) {
           if (!this._secLumps[i].visible) continue;
           const lm = this._secLumps[i];
-          lm.rotation.y += sdt * (0.35 + i * 0.17) * calm;
+          lm.rotation.y += sdt * (0.35 + i * 0.17) * calm * sSign;
           lm.rotation.x += sdt * (0.21 + i * 0.11) * calm;
           if (lm.userData.baseY !== undefined) {
             // Per-lump bob rate like the primary's (golden-ratio spread) — the

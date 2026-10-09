@@ -168,6 +168,9 @@ function freshRuntime() {
     towCount: 0,           // non-absorbable bodies under tow this tick — loot the beam drags but never eats
     towLatched: false,     // the 0->1 tow edge ticks once — the last silent arrival class
     towLane: null,         // 'basin' | 'suck' — positions the tick where the tow was counted
+    prevPreyD: Infinity,   // last tick's closest absorbable-to-maw distance — the pre-snag
+                           // riser only speaks while it CLOSES (orbiters at a fixed seat never chirp)
+    snagRiserT: 0,         // ~5-tick gate between riser emits — shimmer, not chatter
     tooHeavyCount: 0,      // whole bodies that cannot fit; never promise them as the next meal
     holdLag: 0,            // wu — core's distance off its orbit slot: the spring's residual error,
                            // a mild second-order tension read for ordinary dragging (strained only
@@ -2025,6 +2028,8 @@ export const gyreSnare = {
         ttl01: D.ballTtlS > 0 ? Math.max(0, Math.min(1, ttlS / D.ballTtlS)) : 1,
         mass: entityMass(e),
         r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : entityRadius(e),
+        angVel: finite(e.angVel), // the overlay's tumble chirality — a ricochet that
+                                  // reversed spin must not leave its rubble counter-rotating
         // Bounded member slice (≤12, the overlay's own lump ceiling) so a second
         // thrown katamari isn't a bare collider — and the radius-graded lump
         // count the presentation computes (4 + r/8) can actually reach ~11 on a
@@ -2140,6 +2145,32 @@ export const gyreSnare = {
           position: { x: towAt.x, z: towAt.z },
         });
       } else if (!towing) rt.towLatched = false;
+      // Pre-snag escalation gets an ear to match its eyes: while the hottest
+      // ABSORBABLE closes the dead lip (~2.2x snagR -> snagR) a quiet beam-riser
+      // ticks up in pitch. Only fires while it actually closes — an orbiter at
+      // a fixed seat never chirps — ~5-tick gated so a circling prey shimmers
+      // instead of chattering, and wake-saturated so it can't promise a grab
+      // the funnel can't deliver. The lane twin of hotIdx warming + uAim lean.
+      if (rt.snagRiserT > 0) rt.snagRiserT -= 1;
+      if (rt.phase === PHASE.BEAM && rt.beamWake >= 0.105 && rt.basinSpots.length) {
+        let dHot = Infinity, hx = 0, hz = 0;
+        for (let i = 0; i < rt.basinSpots.length; i++) {
+          const s = rt.basinSpots[i];
+          if (!s || !s.abs) continue;
+          const d = Math.hypot(s.x - maw.x, s.z - maw.z);
+          if (d < dHot) { dHot = d; hx = s.x; hz = s.z; }
+        }
+        const band = D.snagRadius * 2.2;
+        if (dHot < band && dHot > D.snagRadius * 0.4 && rt.prevPreyD - dHot > 0.5 && rt.snagRiserT <= 0) {
+          rt.snagRiserT = 5;
+          const k = 1 - clamp((dHot - D.snagRadius * 0.4) / (band - D.snagRadius * 0.4), 0, 1);
+          this.bus.emit('audio:cue', {
+            id: 'gyre_snare_beam', gain: 0.07, rate: 0.9 + 0.3 * k,
+            position: { x: hx, z: hz },
+          });
+        }
+        rt.prevPreyD = dHot;
+      } else rt.prevPreyD = Infinity;
       // The appetite has a voice while it builds: the shown +N (basin fold +
       // annulus arrivals during HOLD) used to climb eyes-only. A quieter
       // count-graded re-tick on each new peak lets the funnel stack be heard

@@ -144,8 +144,16 @@ export const gyreHud = {
     // When the soonest secondary is inside its warn window its countdown rides too:
     // ". +2 balls 4s" — the pile's own quiet grave telegraphed like the primary's.
     if (extraBalls > 0) {
-      const soonest = Array.isArray(g.balls) && g.balls.length
-        && Number.isFinite(g.balls[0].ttlS) ? g.balls[0].ttlS : 0;
+      // The soonest SECONDARY — while a new core is held the displaced primary
+      // rejoins balls[]; picking [0] there would print its countdown twice
+      // ('ball Ns' on the primary lane AND '+N balls Ns' here on the same pill).
+      let soonest = 0;
+      if (Array.isArray(g.balls)) {
+        for (const b of g.balls) {
+          if (!b || b.id === g.launchedId) continue;
+          if (Number.isFinite(b.ttlS)) { soonest = b.ttlS; break; }
+        }
+      }
       ballTxt += ` · +${extraBalls} ball${extraBalls > 1 ? 's' : ''}`;
       if (soonest > 0 && soonest < GYRE_SNARE.ballTtlWarnS) {
         ballTxt += ` ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.floor(soonest)))}s`;

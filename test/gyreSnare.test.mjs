@@ -2818,6 +2818,36 @@ test('non-absorbable loot under tow publishes towCount — TOWING answers "why n
   t.cleanup();
 });
 
+test('the pre-snag riser speaks while the hottest absorbable closes — never for tow', async () => {
+  const t = await bootPhysics();
+  t.state.input.actions.gyreSnare = true;
+  for (let i = 0; i < 15; i++) t.sim.step(); // wake saturates past the 0.7 snag gate
+  assert.equal(t.sys._rt.phase, 'beaming');
+  // Inside the ~2.2x band (~75 wu), outside snagRadius (34) — the pull lane
+  // drags it closer each tick; the riser ticks up in pitch as it closes the
+  // dead lip. rate marks the riser (the beam-on wake voice carries none).
+  const risers = () => t.events.filter((e) => e.name === 'audio:cue'
+    && e.p && e.p.id === 'gyre_snare_beam' && e.p.rate != null);
+  const prey = rock(t.sim, T.mawDist + 62, 0, 6, 3);
+  t.sim.step(); // a mid-tick spawn reaches the physics-backed query next step
+  for (let i = 0; i < 12; i++) t.sim.step();
+  assert.ok(risers().length > 0, 'a closing prey gets its escalation voice');
+  assert.ok(risers()[risers().length - 1].p.rate > risers()[0].p.rate,
+    'the shimmer rises as the prey closes');
+  assert.ok(prey.pos.x !== T.mawDist + 62 || t.sys._rt.phase === 'holding',
+    'the pull lane really dragged it (or it cored — either way it was closing)');
+  // A courtesy-tugged pickup in the same band never speaks — the riser is
+  // 'about to grab', and a pickup can't be grabbed. Retire the live prey first
+  // so only the pickup remains under the wedge.
+  prey.alive = false;
+  t.sim.step();
+  t.events.length = 0;
+  rock(t.sim, T.mawDist + 62, 8, 6, 4, 'pickup');
+  for (let i = 0; i < 8; i++) t.sim.step();
+  assert.equal(risers().length, 0, 'a towed pickup is a passenger, never a promise');
+  t.cleanup();
+});
+
 test('a heavy clump drags the helm — the lash is not massless to the ship', async () => {
   const t = await bootPhysics();
   const core = rock(t.sim, T.mawDist, 0, 200, 14);
