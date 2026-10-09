@@ -1521,6 +1521,12 @@ export class GyreSnarePresentation {
       spinRate = 2.6 * Math.max(0.15, Math.min(1, bs / (GYRE_SNARE.launchSpeed || 520)))
         * (finite(mirror.ballAngVel) < 0 ? -1 : 1);
     }
+    // The armed surge decays whether or not a clump draws this frame — a ball
+    // that retires inside the ~0.7 s tail used to freeze the kick mid-value,
+    // leaking a spent surge into the NEXT coil's veil/lumps before that
+    // throw's own beat.
+    this._launchKick *= Math.exp(-sdt * 4);
+
     // The swirl's chirality for lump fly-ins: meals arrive spiralling the same
     // way the rubble tumbles, so their rim entry tilts along the group spin.
     // Written only on the lanes that compute a SIGNED spinRate — on the
@@ -1816,7 +1822,6 @@ export class GyreSnarePresentation {
       // The hold-gated massFrac term keeps the veil densifying past the 60 wu
       // radius cap — a half-fed moon reads heavier than a fresh snag on the
       // payload itself, not just the pill (0 off HOLD: flying balls ride armed).
-      this._launchKick *= Math.exp(-sdt * 4);
       const armed = Math.min(1, this._launchKick);
       // The armed surge is hold-gated like lumpArmed's sibling channel below:
       // a re-snag mid-flight must not dress the fresh core's veil in the old
@@ -2231,6 +2236,10 @@ export class GyreSnarePresentation {
         this._fireBurst(fx, fz, Math.max(6, finite(mirror.clumpRadius, 8) * 1.1), flashCalm, null, 1.1);
         this._coneMat.uniforms.uPulse.value = Math.max(this._coneMat.uniforms.uPulse.value, 0.5);
         this._throwBeat = false;
+        // The surge belongs to this throw's own thrownBeat — any residual from
+        // a previous throw dies at the coil, so a quick re-throw can't inherit
+        // a spent warm before its beat.
+        this._launchKick = 0;
       }
       // A live bowling ball keeps its frozen member ledger — the lumps ride the throw.
       // Only drop them when the mirror itself stopped tracking a ball (and no death
