@@ -1,0 +1,16 @@
+You are a wave-122 SPIKE-MINING audit subagent for the repo coldshalamov/SpaceFace — a Three.js space game (browser + Electron). This is audit-only: DO NOT write code to the working tree, open PRs, or run the app. You may run node-level micro-benchmarks for modules that import headlessly (one node process at a time: /c/hostedtoolcache/node/24.0.1/x64/node).
+
+CHECKOUT: work on branch `devin/1791504143-perf-w120` — pull latest and audit HEAD (c3d84934c or later). The mining target is the EXISTING branch `devin/s1-sim-worker-spike` (inspect via git log/git show/git merge-base — do NOT check it out destructively).
+
+CONTEXT: ~122 waves of a perf hill-climb have landed. The W121 blind global review adjudicated the s1-sim-worker-spike branch as PURSUE: SHIP-proven and golden bit-identical on the spike, with measured journal overhead 0.21-0.26ms and SAB 0.03ms — BUT flagged open gaps: postMessage p95 ~0.85ms, Electron ?simLane unexercised, ~67 KNOWN_UNFORWARDED event types. Your job is NOT to re-litigate whether the spike is good — it is to produce the concrete, evidence-backed ADOPTION CHECKLIST for the orchestrator.
+
+DELIVERABLES (commit AND PUSH your report to sf-prompts worktree at wave122-reports/s1-spike.md):
+1. BRANCH INVENTORY: exact file list the spike touches/adds (git diff --stat origin/master...devin/s1-sim-worker-spike); the transport architecture (postMessage vs SAB channels, journal layout, ring sizing); the feature flags / URL params / launch gates that enable it.
+2. GAP ENUMERATION — for each of the ~67 KNOWN_UNFORWARDED event types: grep the spike for its forwarding table, list which event types are unforwarded, and classify each by consumer (render-only / sim-must-see / telemetry). Which gaps are correctness blockers for master adoption vs acceptable stubs?
+3. MERGE-CONFLICT MAP: which master-side files has the spike drifted from (files touched by both the spike and waves 1-122)? Rank by expected rebase difficulty.
+4. THE p95 POSTMESSAGE PROBLEM: measure or reason about the 0.85ms p95 on this platform — is it structured-clone size, GC pressure, or wake latency? What would bring it under the frame budget (SAB for hot channels, transferables, batching)?
+5. ELECTRON LANE: what exactly does ?simLane exercise and what is needed to cover the Electron path (spawned BrowserWindow webPreferences, nodeIntegration constraints)?
+6. ADOPTION PLAN: a staged sequence to production — minimal shippable increment first (which subset lands alone without regression), what the orchestrator must verify per stage (golden hash, test list), and estimated session-count per stage.
+7. VERDICT: proceed | proceed-with-changes | abandon, with evidence level per claim (MECHANISM_VERIFIED / PERFORMANCE_VERIFIED / UNVERIFIED / hardware-unverified).
+
+ENVIRONMENT: Windows Server 2022, Git Bash, no Python, no rg (use grep tool). SwiftShader — GPU/frame-time claims are hardware-unverified on this box. Golden hash contract: sim determinism must stay bit-identical (0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1).
