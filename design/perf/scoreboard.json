@@ -581,7 +581,7 @@
     },
     {
       "wave": 129,
-      "head": "e6e0e8b6e",
+      "head": "5a1238be9",
       "lanes": {
         "popin-admission": {
           "saturated": false,
@@ -592,12 +592,22 @@
             "e6e0e8b6e"
           ],
           "headline": "F1 (S, MECHANISM VERIFIED): sector-scoped warm latches (_wantedTierWarmSectors/_modularPoolWarmSectors/_gateWingWarmKeys) were session Sets keyed on bare sectorId, never cleared on demote — second-visit spawn arms paid cold decode/mint in presented frames; world:residency now drops the demoted sector keys for any tier!==FULL (clearSectorWarmLatchKeys). F2 (M, MECHANISM VERIFIED): _sessionLiveSectorCookedId survived demotion — keep-GPU recook skipped !recook coverage censuses + requestDecodeRunwayPromote on re-materialized sectors, cohort draining at paced-service rate past the veil; stamp+keepGpu+render mirror now clear on FULL demote (option b — re-materialized sectors re-cook)."
+        },
+        "boot-loading": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 3,
+          "landed": 3,
+          "commits": [
+            "5a1238be9"
+          ],
+          "headline": "F1 (M, MECHANISM VERIFIED): _slotStoreSignature atomic enumerate+getItem walk inside the async Continue consult on generation miss — new _slotStoreSignatureAsync generation-brackets the walk (16-key yields, redo on tear, 3 attempts then sync fallback); consult + mid-ride re-sign ride it. F2 (M-L, MECHANISM VERIFIED): _scanStoredSlotsAsync/_scanRecoverySlotsAsync awaited each untrusted blob worker verdict serially — K roundtrips sequential; now bounded slices of 4 overlapping, per-slot independent writes. F3 (L-M, MECHANISM VERIFIED): target envelope bytes materialized 2-3x per latest consult — loadAsync + _newerUnplayableSkipAsync now reuse slotBurst.raws under the same gen freshness proof; specByteHit O(len) compare stays (only proof for older-gen specs)."
         }
       },
       "verdicts": [
         "lod-in-frame: CLOSED",
         "popin-admission: saturated false (streak 0/3)",
-        "boot-loading: pending (lane queued on SWE-2 cap)",
+        "boot-loading: saturated false (streak 0/3)",
         "in-flight-hitches: CLOSED"
       ],
       "regressionWatch": "W128 machinery re-verified by lane — sectorPrewarmEligiblePool key parity, uvulaHold O(1) fallback, deferred rollback capture, latest-resolution async slot scans — all PASS."

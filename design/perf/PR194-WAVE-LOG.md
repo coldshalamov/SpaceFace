@@ -2645,6 +2645,15 @@ Bisected W120–W127: merge base `e261ae275` is itself bad — the failure preda
 - Regression block: all four W128 blocks PASS verified concretely (`sectorPrewarmEligiblePool` key parity entitySectorId≡entitySectorIndexKey + null-key global-bucket semantics; `uvulaHold` O(1) with fallback pinned; deferred rollback capture arms sync+async identical bytes + failure receipt; 'latest' worker-backed scan 16-entry yields + in-flight validation join).
 - Golden `0b33dde` bit-identical; 85/86 + 23/25 focused green (3 reds reproduce byte-identical on clean HEAD — canon).
 
+### boot-loading — `saturated: false` (F1+F2+F3 landed `5a1238be9`)
+
+- **boot F1 (M, MECHANISM VERIFIED) — `_slotStoreSignature()`'s atomic enumerate+getItem walk inside `_slotIndexWithFallbackAsync` on a generation miss**: any tracked write (`sf.save.*`/`sf.recovery.*`/`sf.settings.*`) between menu dwell and click stales both caches and lands a multi-MB string materialization on the click chain — the pacing yield sat *after* the walk. New `_slotStoreSignatureAsync` generation-brackets the walk like `_collectSharedStoreKeysChunked` (yield every 16 keys, redo on a generation tear, bounded 3 attempts then sync fallback) and feeds the same `raws` downstream; both consult entries + the mid-ride re-sign ride it.
+- **boot F2 (M-L, MECHANISM VERIFIED) — serial worker verdicts in `_scanStoredSlotsAsync`/`_scanRecoverySlotsAsync`**: each untrusted blob awaited its own `_prepareEnvelopeMetaAsync` roundtrip before the loop advanced — K untrusted entries = K sequential roundtrips, while `_scheduleSlotIndexValidation` fans the identical verdicts out via Promise.all one function away. Untrusted entries now collect during the yielded walk and dispatch in bounded slices of 4 (per-slot independent `out[slot]` writes preserve results).
+- **boot F3 (L-M, MECHANISM VERIFIED) — target envelope bytes materialized 2-3× per 'latest' consult**: `slotBurst.raws` already held them, then `getItem` re-read at `loadAsync` and at `_newerUnplayableSkipAsync`. Both now consult the burst Map under the same `'gen:' + _saveStoreGeneration` freshness proof the specHit path uses — on match the Map's bytes are definitionally current. `specByteHit`'s O(len) compare stays: it is the only proof for a spec minted under an *older* generation (bytes could have drifted — no cheaper proof exists; generation-equal cases are already subsumed by specHit).
+- F4 (UNVERIFIED, no action): remaining un-chunked `_callDeserialize` singles all bounded by small fixed bags — nothing material under the driver's 16 ms wall-clock gate.
+- W128 machinery: all four blocks PASS re-verified concretely (deferred rollback capture, async slot scans, sectorPrewarmEligiblePool, uvulaHold O(1)).
+- Golden `0b33dde` bit-identical; 83 focused save/continue tests green + SG-08 golden trace OK.
+
 Wave 129 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches CLOSED.
 
 ## CI adjudication — `live-whole-ship-admission` reds (static 1–3) = canon
