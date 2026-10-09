@@ -4526,7 +4526,14 @@ export const save = {
     if (this._restoring && !rollbackAttempt) {
       this.deferRunTransition(() => {
         try {
-          return this._restorePreparedEnvelopeAsync(prepared, slot, options);
+          // The deferred call is async too: chain the rejection handler like the
+          // _restoreAsync twin so a late failure reports instead of escaping as
+          // an unhandled rejection through the drain's return path.
+          return this._restorePreparedEnvelopeAsync(prepared, slot, options).catch((error) => {
+            console.error('[save] deferred restore failed', error);
+            this.bus.emit('save:error', { slot, reason: 'load_failed' });
+            return { restored: false, slot, error: true };
+          });
         } catch (error) {
           console.error('[save] deferred restore failed', error);
           this.bus.emit('save:error', { slot, reason: 'load_failed' });

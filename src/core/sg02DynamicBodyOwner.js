@@ -775,6 +775,7 @@ export class Sg02DynamicBodyOwner {
       frameOrigin: options.frameOrigin || this._frameOrigin,
       frameOriginSeq: options.frameOriginSeq ?? this._frameOriginSeq,
     });
+    let committed = false;
     try {
       // Construction may move coincident spawns. Stage those mirrors too so a later
       // native construction failure cannot mutate entities belonging to the old owner.
@@ -805,7 +806,13 @@ export class Sg02DynamicBodyOwner {
       }
       yield 'native-rebuild-mirrored';
       this._commitNativeOwner(candidate, mirrors);
-    } catch (error) { candidate.dispose(); throw error; }
+      committed = true;
+    } finally {
+      // A generator abandoned mid-drive (iterator.return on a parked drive)
+      // runs finally but never catch — the scratch RAPIER world + its
+      // colliders would leak without the committed flag.
+      if (!committed) candidate.dispose();
+    }
   }
 
   _commitNativeOwner(candidate, mirrors = []) {

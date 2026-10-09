@@ -147,6 +147,18 @@ export function createAssetResidencyRegistry(options = {}) {
       : DEFAULT_PACKAGE_CACHE_ONLY_MAX_BYTES);
   const visibilityHolds = new Map();
   let visibilityPresent = 0;
+  // Write counter bumped on every SEMANTIC visibilityHolds mutation (row
+  // create, offGlass change, held flip) — never on idempotent present
+  // restamps. The noteOwnerVisibility memo keys on it, so a write landing
+  // between two same-present consults invalidates the stale verdict.
+  let visibilityWriteSeq = 0;
+  const ownerVisibilityMemo = new Map();
+  // Whether this present's advance pass already ran. Staleness is virtual
+  // (row.offGlass + elapsed un-noted presents); the current present counts
+  // toward it only once its advance has run — consults before the advance
+  // see the same count the old eager tail-walk had materialized, consults
+  // after see one more.
+  let visibilityAdvancedThisPresent = false;
   // >0 while a sweep/budget pass is already walking the registry; release paths inside it must not
   // re-enter the inline cap or every per-owner release would rescan the whole asset table.
   let packageCacheBudgetDepth = 0;
@@ -171,7 +183,7 @@ export function createAssetResidencyRegistry(options = {}) {
     if (isOwnerReleased(owner)) return null;
     let state = owners.get(owner);
     if (!state && create) {
-      state = { owner, assets: new Set(), requests: new Set(), released: false, removalOff: null };
+      state = { owner, assets: new Set(), requests: new Set(), released: false, removalOff: null, assetsVersion: 0 };
       owners.set(owner, state);
       if (owner && typeof owner.addEventListener === 'function') {
         const onRemoved = () => releaseOwner(owner, 'boundary-removed');
@@ -335,6 +347,7 @@ export function createAssetResidencyRegistry(options = {}) {
     noteOwnerMembershipIndexed(entry, ownerMetadata);
     entry.lastWarmClaimAtMs = now();
     state.assets.add(entry);
+    state.assetsVersion += 1;
     noteWarmCoverageEntryMutation(entry);
     emit('asset-retained', {
       key: entry.key,
@@ -469,6 +482,7 @@ export function createAssetResidencyRegistry(options = {}) {
       if (!entry.owners.delete(owner)) continue;
       noteOwnerMembershipUnindexed(entry, releasedMetadata);
       state.assets.delete(entry);
+      state.assetsVersion += 1;
       noteWarmCoverageEntryMutation(entry);
       entry.lastReleaseAtMs = now();
       released++;
@@ -577,6 +591,7 @@ export function createAssetResidencyRegistry(options = {}) {
     if (!entry || !state || !entry.owners.delete(owner)) return false;
     noteOwnerMembershipUnindexed(entry, releasedMetadata);
     state.assets.delete(entry);
+    state.assetsVersion += 1;
     noteWarmCoverageEntryMutation(entry);
     entry.lastReleaseAtMs = now();
     emit('asset-released', {
@@ -598,6 +613,7 @@ export function createAssetResidencyRegistry(options = {}) {
   function cleanupOwnerState(state) {
     if (!state || state.assets.size || state.requests.size) return;
     if (state.removalOff) state.removalOff();
+    ownerVisibilityMemo.delete(state.owner);
     owners.delete(state.owner);
   }
 
@@ -813,6 +829,124 @@ export function createAssetResidencyRegistry(options = {}) {
     }
   }
 
+  // Recompute-and-compare guard for the running ledgers: drift used to stay
+  // silent because nothing ever re-derived the scalars from their backing
+  // maps. The cheap totals recompute rides inside the enforce sweep's asset
+  // walk (O(1) per row); the owner-graph ledgers (soft/rpc counts, sector
+  // index) verify every LEDGER_VERIFY_EVERY_ENFORCES sweeps. Drift emits a
+  // 'ledger-drift' event and counts into diagnostics().
+  const LEDGER_VERIFY_EVERY_ENFORCES = 4;
+  let ledgerVerifyCountdown = LEDGER_VERIFY_EVERY_ENFORCES;
+  let ledgerDriftEvents = 0;
+  function noteLedgerDrift(mismatches) {
+    if (!mismatches || mismatches.length === 0) return;
+    ledgerDriftEvents += 1;
+    emit('ledger-drift', { count: mismatches.length, sample: mismatches.slice(0, 4) });
+  }
+  function ledgerDriftMismatches(re, includeOwnerGraph) {
+    const mismatches = [];
+    if (re.gpuResidentBytes !== gpuResidentBytesTotal) {
+      mismatches.push({ ledger: 'gpuResidentBytes', expected: re.gpuResidentBytes, actual: gpuResidentBytesTotal });
+    }
+    if (re.cpuPackageBytes !== cpuPackageBytesTotal) {
+      mismatches.push({ ledger: 'cpuPackageBytes', expected: re.cpuPackageBytes, actual: cpuPackageBytesTotal });
+    }
+    if (re.unaccountedResources !== unaccountedResourceCount) {
+      mismatches.push({ ledger: 'unaccountedResources', expected: re.unaccountedResources, actual: unaccountedResourceCount });
+    }
+    for (const key of re.activePendingKeys) {
+      if (!activePendingKeys.has(key)) mismatches.push({ ledger: 'activePendingKeys', expected: key, actual: 'absent' });
+    }
+    for (const key of activePendingKeys) {
+      if (!re.activePendingKeys.has(key)) mismatches.push({ ledger: 'activePendingKeys', expected: 'absent', actual: key });
+    }
+    if (includeOwnerGraph) {
+      for (const [entry, soft] of re.softOwnerCounts) {
+        if (soft !== entry.softOwnerCount) {
+          mismatches.push({ ledger: 'softOwnerCount', key: entry.key, expected: soft, actual: entry.softOwnerCount });
+        }
+        const rpc = re.rpcOwnerCounts.get(entry) || 0;
+        if (rpc !== entry.rpcOwnerCount) {
+          mismatches.push({ ledger: 'rpcOwnerCount', key: entry.key, expected: rpc, actual: entry.rpcOwnerCount });
+        }
+      }
+      for (const [sid, sectorMap] of re.sectorIndex) {
+        const liveMap = sectorOwnerIndex.get(sid);
+        for (const [entry, row] of sectorMap) {
+          const liveRow = liveMap && liveMap.get(entry);
+          if (!liveRow || liveRow.total !== row.total || liveRow.nonPlayer !== row.nonPlayer) {
+            mismatches.push({ ledger: 'sectorOwnerIndex', sectorId: sid, key: entry.key,
+              expected: `${row.total}/${row.nonPlayer}`,
+              actual: liveRow ? `${liveRow.total}/${liveRow.nonPlayer}` : 'absent' });
+          }
+        }
+      }
+      for (const [sid, liveMap] of sectorOwnerIndex) {
+        const reMap = re.sectorIndex.get(sid);
+        for (const entry of liveMap.keys()) {
+          if (!reMap || !reMap.has(entry)) {
+            mismatches.push({ ledger: 'sectorOwnerIndex', sectorId: sid, key: entry.key,
+              expected: 'absent', actual: 'stale-row' });
+          }
+        }
+      }
+    }
+    return mismatches;
+  }
+  // Probe-facing twin: a full recompute-and-compare on demand. Tests and
+  // diagnostics assert ledger health without paying the owner-graph walk
+  // inside hot paths.
+  function verifyLedgerConsistency() {
+    let gpuResidentBytes = 0;
+    for (const memory of memoryUnits.values()) gpuResidentBytes += memory.bytes;
+    let cpuPackageBytes = 0;
+    const softOwnerCounts = new Map();
+    const rpcOwnerCounts = new Map();
+    const sectorIndex = new Map();
+    for (const entry of assets.values()) {
+      cpuPackageBytes += entry.cpuPackageBytes;
+      let soft = 0;
+      let rpc = 0;
+      for (const metadata of entry.owners.values()) {
+        const role = String(metadata.role || '').trim().toLowerCase();
+        if (metadata.softLease === true
+            || role === 'render-package-cache' || role === 'decode-cache' || role === 'runtime-cache') {
+          soft += 1;
+        }
+        if (role === 'render-package-cache') rpc += 1;
+        if (metadata.sectorId == null) continue;
+        const sid = String(metadata.sectorId);
+        let sectorMap = sectorIndex.get(sid);
+        if (!sectorMap) {
+          sectorMap = new Map();
+          sectorIndex.set(sid, sectorMap);
+        }
+        let row = sectorMap.get(entry);
+        if (!row) {
+          row = { total: 0, nonPlayer: 0 };
+          sectorMap.set(entry, row);
+        }
+        row.total += 1;
+        if (metadata.role !== 'player') row.nonPlayer += 1;
+      }
+      softOwnerCounts.set(entry, soft);
+      rpcOwnerCounts.set(entry, rpc);
+    }
+    let unaccountedResources = 0;
+    for (const resourceEntry of resources.values()) {
+      if (resourceEntry.unaccounted) unaccountedResources += 1;
+    }
+    const activeKeys = new Set();
+    for (const request of pendingRequests) {
+      if (request && request.active && request.key != null) activeKeys.add(request.key);
+    }
+    const mismatches = ledgerDriftMismatches({
+      gpuResidentBytes, cpuPackageBytes, unaccountedResources,
+      softOwnerCounts, rpcOwnerCounts, sectorIndex, activePendingKeys: activeKeys,
+    }, true);
+    return Object.freeze({ ok: mismatches.length === 0, mismatches: Object.freeze(mismatches) });
+  }
+
   // Stepped twin: the O(assets) tally yields per entry batch so the release
   // leg's caller clock bounds it like the walk that produced the releases.
   // The eviction leg yields on the same cadence inside the depth guard — it
@@ -824,8 +958,43 @@ export function createAssetResidencyRegistry(options = {}) {
     const strictCandidates = [];
     const softCandidates = [];
     let visited = 0;
+    const verifyOwnerGraph = --ledgerVerifyCountdown <= 0;
+    if (verifyOwnerGraph) ledgerVerifyCountdown = LEDGER_VERIFY_EVERY_ENFORCES;
+    let cpuPackageRe = 0;
+    const softOwnerRe = verifyOwnerGraph ? new Map() : null;
+    const rpcOwnerRe = verifyOwnerGraph ? new Map() : null;
+    const sectorIndexRe = verifyOwnerGraph ? new Map() : null;
     for (const entry of assets.values()) {
       if (++visited % batchEntries === 0) yield;
+      cpuPackageRe += entry.cpuPackageBytes;
+      if (verifyOwnerGraph) {
+        let soft = 0;
+        let rpc = 0;
+        for (const metadata of entry.owners.values()) {
+          const role = String(metadata.role || '').trim().toLowerCase();
+          if (metadata.softLease === true
+              || role === 'render-package-cache' || role === 'decode-cache' || role === 'runtime-cache') {
+            soft += 1;
+          }
+          if (role === 'render-package-cache') rpc += 1;
+          if (metadata.sectorId == null) continue;
+          const sid = String(metadata.sectorId);
+          let sectorMap = sectorIndexRe.get(sid);
+          if (!sectorMap) {
+            sectorMap = new Map();
+            sectorIndexRe.set(sid, sectorMap);
+          }
+          let row = sectorMap.get(entry);
+          if (!row) {
+            row = { total: 0, nonPlayer: 0 };
+            sectorMap.set(entry, row);
+          }
+          row.total += 1;
+          if (metadata.role !== 'player') row.nonPlayer += 1;
+        }
+        softOwnerRe.set(entry, soft);
+        rpcOwnerRe.set(entry, rpc);
+      }
       if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
         continue;
       }
@@ -837,6 +1006,21 @@ export function createAssetResidencyRegistry(options = {}) {
         softCandidates.push(entry);
       }
     }
+    let gpuResidentRe = 0;
+    for (const memory of memoryUnits.values()) gpuResidentRe += memory.bytes;
+    let unaccountedRe = 0;
+    for (const resourceEntry of resources.values()) {
+      if (resourceEntry.unaccounted) unaccountedRe += 1;
+    }
+    const activeKeysRe = new Set();
+    for (const request of pendingRequests) {
+      if (request && request.active && request.key != null) activeKeysRe.add(request.key);
+    }
+    noteLedgerDrift(ledgerDriftMismatches({
+      gpuResidentBytes: gpuResidentRe, cpuPackageBytes: cpuPackageRe,
+      unaccountedResources: unaccountedRe, softOwnerCounts: softOwnerRe,
+      rpcOwnerCounts: rpcOwnerRe, sectorIndex: sectorIndexRe, activePendingKeys: activeKeysRe,
+    }, verifyOwnerGraph));
     const strictOver = packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes;
     const softOver = softResidentMaxBytes != null && softBytes > softResidentMaxBytes;
     if (!strictOver && !softOver) return 0;
@@ -853,9 +1037,21 @@ export function createAssetResidencyRegistry(options = {}) {
     }
   }
 
+  // Staleness is virtual: a row's off-glass count is row.offGlass plus the
+  // presents elapsed since its last note, materialized on consult instead of
+  // by a per-present full-table advance. Boundary matches the old eager
+  // sweep: a row noted at present P stays held through P+8's tail and drops
+  // at P+9's advance, so consult answers are unchanged; only row lifetime in
+  // the table defers to the amortized GC below.
+  function visibilityRowOffGlass(row) {
+    const elapsed = visibilityPresent - row.present - 1
+      + (visibilityAdvancedThisPresent ? 1 : 0);
+    return row.offGlass + Math.max(0, elapsed);
+  }
+
   function visibilityHeld(entry) {
     const row = entry && visibilityHolds.get(entry.key);
-    return !!(row && row.held);
+    return !!(row && row.held && visibilityRowOffGlass(row) < VISIBILITY_OFF_GLASS_PRESENTS);
   }
 
   function visibilityKeysForOwners(ownerList) {
@@ -885,6 +1081,7 @@ export function createAssetResidencyRegistry(options = {}) {
 
   function beginVisibilityPresent() {
     visibilityPresent += 1;
+    visibilityAdvancedThisPresent = false;
     return visibilityPresent;
   }
 
@@ -898,14 +1095,22 @@ export function createAssetResidencyRegistry(options = {}) {
     if (!row) {
       row = { held: false, offGlass: 0, present: -1 };
       visibilityHolds.set(id, row);
+      visibilityWriteSeq += 1;
     }
     const seenThisPresent = row.present === visibilityPresent;
-    row.present = visibilityPresent;
     if (visible) {
+      if (!seenThisPresent || !row.held || row.offGlass !== 0) visibilityWriteSeq += 1;
+      row.present = visibilityPresent;
       row.held = true;
       row.offGlass = 0;
     } else if (!seenThisPresent && row.held) {
-      row.offGlass += 1;
+      // Count every un-noted present elapsed since the last note, including
+      // this one — the old eager sweep added one per present; folding the
+      // whole gap here keeps the count identical without the sweep.
+      row.offGlass += Math.max(1,
+        visibilityPresent - row.present + (visibilityAdvancedThisPresent ? 1 : 0));
+      row.present = visibilityPresent;
+      visibilityWriteSeq += 1;
       if (row.offGlass >= VISIBILITY_OFF_GLASS_PRESENTS) row.held = false;
     }
     return row.held;
@@ -913,27 +1118,61 @@ export function createAssetResidencyRegistry(options = {}) {
 
   // Pin every asset key this glass owner already retains. Eviction looks up
   // entry.key, so the pin has to be that same key.
+  // The visible-row consult runs twice per presented frame per entity with
+  // frame-stable inputs — memo the verdict on (present, visible, assets
+  // version, holds write seq) so the second consult skips the O(owner's
+  // whole retained set) walk. Any semantic mutation to the owner's set or
+  // the shared holds table bumps its version and re-proves the next consult.
   function noteOwnerVisibility(owner, visible) {
     if (owner == null) return false;
     const state = owners.get(owner);
     if (!state || state.released || state.assets.size === 0) return false;
+    const memo = ownerVisibilityMemo.get(owner);
+    if (memo
+      && memo.present === visibilityPresent
+      && memo.visible === visible
+      && memo.assetsVersion === state.assetsVersion
+      && memo.writeSeq === visibilityWriteSeq) {
+      return memo.held;
+    }
     let held = false;
     for (const entry of state.assets) {
       if (noteVisibility(entry.key, visible)) held = true;
     }
+    ownerVisibilityMemo.set(owner, {
+      present: visibilityPresent,
+      visible,
+      assetsVersion: state.assetsVersion,
+      writeSeq: visibilityWriteSeq,
+      held,
+    });
     return held;
   }
 
+  // Pure GC now: consults expire rows lazily via visibilityRowOffGlass, so
+  // this pass only frees dead rows. It sweeps a bounded share per present —
+  // enough to complete a full pass of the table within the 8-present expiry
+  // horizon — instead of iterating every row every presented frame.
+  let visibilityGcIter = null;
   function advanceVisibilityHysteresis() {
-    for (const [key, row] of visibilityHolds) {
-      if (row.present === visibilityPresent) continue;
-      if (!row.held) {
-        visibilityHolds.delete(key);
-        continue;
+    visibilityAdvancedThisPresent = true;
+    // Rows cross the expiry boundary when this present's virtual increment
+    // lands — re-prove any memoized owner verdicts against it.
+    visibilityWriteSeq += 1;
+    if (visibilityHolds.size === 0) {
+      visibilityGcIter = null;
+      return;
+    }
+    const target = Math.max(256, Math.ceil(visibilityHolds.size / VISIBILITY_OFF_GLASS_PRESENTS));
+    if (!visibilityGcIter) visibilityGcIter = visibilityHolds.entries();
+    for (let swept = 0; swept < target; swept++) {
+      const next = visibilityGcIter.next();
+      if (next.done) {
+        visibilityGcIter = null;
+        break;
       }
-      row.offGlass += 1;
-      if (row.offGlass >= VISIBILITY_OFF_GLASS_PRESENTS) {
-        row.held = false;
+      const [key, row] = next.value;
+      if (!row.held || visibilityRowOffGlass(row) >= VISIBILITY_OFF_GLASS_PRESENTS) {
         visibilityHolds.delete(key);
       }
     }
@@ -1422,6 +1661,7 @@ export function createAssetResidencyRegistry(options = {}) {
       disposedResources,
       abandonedResources,
       evictedAssets,
+      ledgerDriftEvents,
       cacheSweepCount,
       packageCacheOnlyBytes,
       packageCacheOnlyMaxBytes,
@@ -1739,6 +1979,7 @@ export function createAssetResidencyRegistry(options = {}) {
     releaseDetachedBoundaryOwnersSteps,
     releaseUnreferencedCacheOwners,
     releaseUnreferencedCacheOwnersSteps,
+    verifyLedgerConsistency,
     handoffOwnerWhenCovered,
     isOwnerReleased,
     rotateSector,

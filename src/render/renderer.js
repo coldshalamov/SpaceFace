@@ -2217,9 +2217,15 @@ function laneWarn(owner, lane, ...args) {
   if (row.epoch !== epoch) {
     row.epoch = epoch; row.warns = 0; row.suppressed = 0; row.summarized = false; row.heartbeatMs = 1000;
   }
-  row.warns += 1;
   const warnNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
     ? performance.now() : Date.now();
+  // Quiet-gap heal, same contract warnDedup/busError carry: a lane silent for
+  // >60 s has recovered — its next faults earn a fresh verbatim budget instead
+  // of inheriting a stale epoch's suppression.
+  if (row.lastWarnAt !== -Infinity && warnNow - row.lastWarnAt > 60000) {
+    row.warns = 0; row.suppressed = 0; row.summarized = false; row.heartbeatMs = 1000;
+  }
+  row.warns += 1;
   if (row.warns <= LANE_WARN_BUDGET_PER_EPOCH) { row.lastWarnAt = warnNow; console.warn(...args); return; }
   row.suppressed += 1;
   if (!row.summarized) {
@@ -3221,15 +3227,25 @@ export function serviceRenderMeshResidency(owner, frameDt) {
             : null;
           // A faulted primary leg forfeits leg 3 with it — the over-ceiling state
           // then sits unenforced until the next seam. Chain the enforce behind the
-          // re-minted post-dispatch leg exactly as the clean fused iterator does.
+          // re-minted post-dispatch leg exactly as the clean fused iterator does,
+          // with the same per-leg guards: a post-dispatch fault drops only itself.
           const enforceLeg = residency
             && typeof residency.enforceBudgetSteps === 'function'
             ? () => residency.enforceBudgetSteps('gpu')
             : null;
+          const dropLeg = (err, leg) => {
+            noteLaneFault(owner.state, 'sectorExitCleanup');
+            laneWarn(owner, 'sectorExitCleanup',
+              `[render] sector-exit cleanup re-minted ${leg} leg faulted; dropped`, err);
+          };
           owner._sectorExitCleanupIter = postLeg || enforceLeg
             ? (function* () {
-              if (postLeg) yield* postLeg;
-              if (enforceLeg) yield* enforceLeg();
+              if (postLeg) {
+                try { yield* postLeg; } catch (err) { dropLeg(err, 'post-dispatch'); }
+              }
+              if (enforceLeg) {
+                try { yield* enforceLeg(); } catch (err) { dropLeg(err, 'enforce'); }
+              }
             })()
             : null;
         } else {
@@ -19350,17 +19366,32 @@ export const render = {
             self._sectorExitCleanupPendingPost = true;
             self._sectorExitCleanupPostReason = postDispatchReason;
             self._sectorExitCleanupIter = (function* () {
-              yield* residency.releaseUnreferencedCacheOwnersSteps(primaryReason);
+              // Each leg is independent bookkeeping; wrap them independently so a
+              // fault drops only its own leg — the enforce can no longer be
+              // stranded behind a post-dispatch fault (the outer catch's re-mint
+              // stays the backstop for a primary-leg fault on older drives).
+              const dropLeg = (err, leg) => {
+                noteLaneFault(self.state, 'sectorExitCleanup');
+                laneWarn(self, 'sectorExitCleanup',
+                  `[render] sector-exit cleanup ${leg} leg faulted; dropped`, err);
+              };
+              try {
+                yield* residency.releaseUnreferencedCacheOwnersSteps(primaryReason);
+              } catch (err) { dropLeg(err, 'primary'); }
               self._sectorExitCleanupPendingPost = false;
-              yield* residency.releaseUnreferencedCacheOwnersSteps(postDispatchReason);
+              try {
+                yield* residency.releaseUnreferencedCacheOwnersSteps(postDispatchReason);
+              } catch (err) { dropLeg(err, 'post-dispatch'); }
               // The governor enforce rides the same slice clock as leg 3 — its
               // O(assets x owners x resources + requests) census was the last
               // atomic lump landing inside the boundary-crossing emit. The seam
               // discards the receipt anyway, so deferring it past painted beats
               // loses nothing.
-              if (typeof residency.enforceBudgetSteps === 'function') {
-                yield* residency.enforceBudgetSteps('gpu');
-              }
+              try {
+                if (typeof residency.enforceBudgetSteps === 'function') {
+                  yield* residency.enforceBudgetSteps('gpu');
+                }
+              } catch (err) { dropLeg(err, 'enforce'); }
             })();
           },
           deferBudgetEnforce: true,

@@ -3134,10 +3134,13 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   let activeRoot = fallbackRoot;
   // Epoch guard mirroring installPreparedBoundaryPublisher: a deferred swap armed by
   // admission run A must refuse to fire after a newer run re-minted the boundary's
-  // epoch — grafting A's root under B's epoch would overlay stale geometry.
-  const installedEpoch = boundary.userData.admissionEpoch;
+  // epoch — grafting A's root under B's epoch would overlay stale geometry. The cell
+  // re-stamps at request time: residencyOptionsForBoundary mints the boundary's new
+  // epoch on the very upgrade request that arms this swap, so a live commit lands
+  // under the newer token and only a superseded run is refused.
+  let swapEpoch = boundary.userData.admissionEpoch;
   const setActiveRoot = (next) => {
-    if (boundary.userData.admissionEpoch !== installedEpoch) {
+    if (boundary.userData.admissionEpoch !== swapEpoch) {
       if (boundary.userData.__setActiveVisualRoot === setActiveRoot) {
         delete boundary.userData.__setActiveVisualRoot;
       }
@@ -3167,6 +3170,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
     const liveEntity = boundaryLiveEntity(boundary, entity);
     boundary.userData.authoredAssetState = 'loading';
     const residency = residencyOptionsForBoundary(liveEntity, boundary, renderer);
+    swapEpoch = boundary.userData.admissionEpoch;
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
@@ -3827,9 +3831,11 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   let activeRoot = fallbackRoot;
   // Same epoch guard as installPreparedBoundaryPublisher: a swap armed under a
   // superseded admission epoch must self-clear instead of grafting stale geometry.
-  const installedEpoch = boundary.userData.admissionEpoch;
+  // Re-stamped at request time — residencyOptionsForBoundary mints the epoch the
+  // armed commit will land under.
+  let swapEpoch = boundary.userData.admissionEpoch;
   const setActiveVisualRoot = (next) => {
-    if (boundary.userData.admissionEpoch !== installedEpoch) {
+    if (boundary.userData.admissionEpoch !== swapEpoch) {
       if (boundary.userData.__setActiveVisualRoot === setActiveVisualRoot) {
         delete boundary.userData.__setActiveVisualRoot;
       }
@@ -3878,6 +3884,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     const liveEntity = boundaryLiveEntity(boundary, options.liveEntity || entity);
     boundary.userData.authoredAssetState = 'loading';
     const residency = residencyOptionsForBoundary(liveEntity, boundary, renderer);
+    swapEpoch = boundary.userData.admissionEpoch;
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
@@ -4006,9 +4013,11 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   let activeRoot = fallbackRoot;
   // Same epoch guard as installPreparedBoundaryPublisher: a swap armed under a
   // superseded admission epoch must self-clear instead of grafting stale geometry.
-  const installedEpoch = boundary.userData.admissionEpoch;
+  // Re-stamped at request time — residencyOptionsForBoundary mints the epoch the
+  // armed commit will land under.
+  let swapEpoch = boundary.userData.admissionEpoch;
   const setActiveVisualRoot = (next) => {
-    if (boundary.userData.admissionEpoch !== installedEpoch) {
+    if (boundary.userData.admissionEpoch !== swapEpoch) {
       if (boundary.userData.__setActiveVisualRoot === setActiveVisualRoot) {
         delete boundary.userData.__setActiveVisualRoot;
       }
@@ -4075,10 +4084,12 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     if (!renderer || !scene || authoredAdmissionStarted(state)) return null;
     const liveEntity = boundaryLiveEntity(boundary, entity);
     boundary.userData.authoredAssetState = 'loading';
+    const residency = residencyOptionsForBoundary(liveEntity, boundary, renderer);
+    swapEpoch = boundary.userData.admissionEpoch;
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
-      ...residencyOptionsForBoundary(liveEntity, boundary, renderer),
+      ...residency,
       ...requestOptions,
     };
     const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
