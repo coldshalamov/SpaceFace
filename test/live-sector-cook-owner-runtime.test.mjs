@@ -241,6 +241,7 @@ function enterFixture() {
   const f = fixture();
   f.owner._sessionRecookKeepGpu = true;
   f.owner._publishAssetResidencyDiagnostics = () => f.marks.push('diagnostics');
+  f.owner._publishAssetResidencyDiagnosticsDeferred = () => f.marks.push('diagnostics');
   f.values.clearRendererMeshLatches = () => f.marks.push('clear');
   f.values.cam = { snapToPlayer() {} };
   f.values.reattachResidentGpuMeshes = () => f.marks.push('reattach');
