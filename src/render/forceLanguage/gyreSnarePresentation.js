@@ -494,7 +494,10 @@ export class GyreSnarePresentation {
     // cone while the suck annulus owns the shared halo around the clump — a
     // second, fainter ring keeps the two-zone gravity story drawn.
     this._basinHaloMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(glass), transparent: true, opacity: 0,
+      // A hair toward the pale-blue maw tint: during HOLD the suck halo beside
+      // it is the identical glass color and the two wells otherwise differ
+      // only in opacity — the basin edge reads as its own zone at a glance.
+      color: new THREE.Color(glass).lerp(this._colMaw, 0.2), transparent: true, opacity: 0,
       blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
     this._basinHalo = new THREE.Mesh(haloGeo, this._basinHaloMat);
@@ -1341,7 +1344,14 @@ export class GyreSnarePresentation {
       // so the residue dies with the throw instead of popping at the flip.
       const spotFade = phase === 'launching' ? 1 - clamp01(finite(mirror.launchWindup01)) : 1;
       g.material.opacity = (0.06 + 0.14 * finite(s.k, 0.5)) * flashCalm * this._wakeEase * (this._fuseDim || 1) * spotFade;
-      g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
+      // Courtesy-tugged loot (abs:false) stays in the cool maw channel — an
+      // uneatable pickup dragged into the basin must not warm toward rim-hot
+      // like an edible about to be grabbed (the glow lane's TOWING vs IN NET).
+      if (s.abs === false) {
+        g.material.color.copy(this._colGlass).lerp(this._colMaw, Math.min(1, finite(s.k, 0.5) * 0.8));
+      } else {
+        g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
+      }
       // The strongest ABSORBABLE puller burns hottest — the rock about to cross
       // snagRadius. A courtesy-tugged pickup/mine/projectile can top the k sort
       // but can never be caught; upgrading it would promise a grab that can't
