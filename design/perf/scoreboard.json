@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-10-09",
+  "updated": "2026-10-09T17:14:15.371Z",
   "purpose": "Machine-readable cumulative scoreboard for the magic-frame hill-climb campaign. Every accepted wave records evidence level, integrity gates, and measurement status. Durable narrative log lives in PR194-WAVE-LOG.md; this file is the diff-friendly ledger.",
   "evidenceLevels": {
     "MECHANISM_VERIFIED": "A real inefficiency exists and the change removes it (code-level proof + tests).",
@@ -537,6 +537,47 @@
         "boot-loading: saturated false (streak 0/3)",
         "in-flight-hitches: saturated true (streak 2/3)"
       ]
+    },
+    {
+      "wave": 128,
+      "head": "e057d80b7",
+      "lanes": {
+        "popin-admission": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 2,
+          "landed": 2,
+          "commits": [
+            "4c4c40459"
+          ],
+          "headline": "F1 (S-M, MECHANISM VERIFIED): incoming-sector prewarm arm rode 4-5 O(entityList) collects per crossing — sectorPrewarmEligiblePool rides entityIndex.bySectorId under the standard guard, verdict-identical member sets. F2 (S, MECHANISM VERIFIED + measured ~60x @N=600): uvulaHold per-frame entityList scan inside the tether-cable path — state.entities.get O(1) with entityList fallback."
+        },
+        "boot-loading": {
+          "saturated": false,
+          "streak": 0,
+          "findings": 2,
+          "landed": 2,
+          "commits": [
+            "e057d80b7"
+          ],
+          "headline": "F1 (M, MECHANISM VERIFIED): in-flight loads paid a synchronous O(world) serializeData on the click+1 task — deferred-capture marker resolves inside the opened restore session (scale-0 freeze, pre-destructive), identical bytes + identical failure receipt. F2 (M, MECHANISM VERIFIED): latest-resolution atomic slot scan — _slotIndexWithFallbackAsync/_scanStoredSlotsAsync/_scanRecoverySlotsAsync ride _prepareEnvelopeMetaAsync + 16-entry yields; Continue rides _slotIndexValidationInFlight."
+        },
+        "in-flight-hitches": {
+          "saturated": null,
+          "streak": 2,
+          "findings": null,
+          "landed": 0,
+          "commits": [],
+          "headline": "lane queued on SWE-2 cap — streak 2/3, a clean audit closes the lane"
+        }
+      },
+      "verdicts": [
+        "lod-in-frame: CLOSED",
+        "popin-admission: saturated false (streak 0/3)",
+        "boot-loading: saturated false (streak 0/3)",
+        "in-flight-hitches: lane pending — streak 2/3"
+      ],
+      "regressionWatch": "pq146-save-roundtrip: green on clean master, red at 165636c35 pre-W128 — prior-wave regression (W120-W127), under bisect"
     }
   ],
   "laneStatus": {

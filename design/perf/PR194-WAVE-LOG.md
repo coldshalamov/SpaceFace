@@ -2604,3 +2604,26 @@ Wave 126 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 1/3.
 - Regression sweep at `236614edc`: roster pool restore (popin F1), mirror re-queue dominance (boot F1), chunked applySharedStoreKeys (boot F2), W125 sector-lane/restamp machinery — all PASS.
 
 Wave 127 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 2/3.
+
+## Wave 128 (in progress — HEAD e057d80b7)
+
+### popin-admission — `saturated: false` (F1+F2 landed `4c4c40459`)
+
+- **popin F1 (S–M, MECHANISM VERIFIED) — incoming-sector prewarm arm rode 4–5 O(entityList) collects per crossing**: `sectorPrewarmRequests`/`sectorPrewarmCoverageOptions`/`stageSectorPrewarmBoundaries` all filtered `state.entityList` on the canonical claim chain (`String(entitySectorId(e)) === record.sectorId`) on the charge/entry path — arm at `jump:chargeStart`/`jump:unfiledConfirmed`/`player:death`, `jump:arrive` dirty-refresh, publish certification. New `sectorPrewarmEligiblePool(sectorId)` rides `entityIndex.bySectorId` under the standard 4-part index guard with `entityList` unready fallback; bucket member-set is verdict-identical (coverage census keeps its per-member `entities.get` authority check; a Set cannot duplicate members so the dup check is vacuous). The `[entity]` single-entity call site (:19285) keeps its explicit pool.
+- **popin F2 (S, MECHANISM VERIFIED + measured) — `uvulaHold` inner entityList scan inside the per-frame tether-cable path**: `bolusCableStyle`→`vfx.js` ran O(entityList) every frame while tethered to the uvula (bolus fight). Now `state.entities.get(att.targetId)` (O(1); lane micro-bench ~60×: 1.68µs→0.028µs/call @N=600) with the entityList scan kept as fallback for states without a live index (pinned by `bolus-cut`/`bolus-render-lifetime` — first cut regressed both, fallback restored them).
+- Lane-hunt verified: ~180 entityList consumers enumerated — every other sector-scoped reader is pooled, rate-limited, cold, or provably non-expressible (OR-predicate captures, index-position sweeps, multi-sector disjuncts); sector-membership guard `{"violations":[]}` at HEAD.
+- Golden `0b33dde` bit-identical; bolus 10/10 + prewarm suites 112/113 (sole red = canon `prepared cargo capsule`, red on clean master).
+
+### boot-loading — `saturated: false` (F1+F2 landed `e057d80b7`)
+
+- **boot F1 (M, MECHANISM VERIFIED) — in-flight loads paid a synchronous O(world) `serializeData()` inside the click continuation**: `loadAsync`'s rollback capture branched on `_frozenTickBoundary()` which knows pause/dock/stack but not free-flight — a `game:load` during live flight took the atomic `serializeData()` leg (~30–100 ms mature-sector estimate, hardware-unverified) on the click+1 task, stalling the veil's first painted beats. Non-frozen arm now hands `{deferred:true}` through `options.rollbackSnapshot`; the marker resolves inside `_restore`/`_restoreAsync` after `_openRestoreSession` (scale-0 + `enterSerial` bump + `_restoring` write guards) but before the first destructive chunk — bytes are identical since `world.serialize()` reads none of the session-stamped fields. Async arm slices the capture itself under `() => this._restoring === true`; capture failure emits the same `restore_prepare_failed`/`rollback:'unavailable'` receipt the eager arm emits (pinned by save-restore-atomicity).
+- **boot F2 (M, MECHANISM VERIFIED) — `'latest'` resolution rode the atomic authoritative slot scan**: a `_slotIndexCache` signature miss on `loadAsync('latest')` ran `getItem`+`fnv1a`+`_prepareEnvelopeMeta` per stored blob inside one synchronous task (~150–350 ms mature-store estimate). `_slotIndexWithFallbackAsync` + `_scanStoredSlotsAsync`/`_scanRecoverySlotsAsync` now move the per-envelope parse/checksum leg to `_prepareEnvelopeMetaAsync` (worker) with `_restoreFrameYield()` every 16 entries — verdict gates the same sync `_prepareEnvelopeMeta` card rebuild, identical merge/dedup/scrub and authoritative cache write. `_scheduleSlotIndexValidation` stores `{sig, promise}` as `_slotIndexValidationInFlight` so a racing Continue rides the in-flight validation; `_latestSlotAsync` consumed by `loadAsync` and `_newerUnplayableSkipAsync`.
+- Golden `0b33dde` bit-identical; 30/30 pinned save tests green. Save-sweep reds adjudicated: `pq136`/`save-load-integrity`/`prepared cargo capsule`/`save-growth-dock-trade-flat` canon on clean master, `retail-gltfloader` parallel-run flake, **`pq146-save-roundtrip` is a real prior-wave regression** (green on master `38368f739`, red at HEAD `165636c35` without W128 edits — amendment-window replay pays `0 !== 1`; under bisect, tracked below).
+
+### in-flight-hitches — lane queued on SWE-2 cap
+
+Streak 2/3 — a clean wave closes the lane.
+
+## Regression watch — `pq146-save-roundtrip` open
+
+"a save after the first payoff keeps the amendment window: the wingman collision amends the saved incident and a replay pays nothing" — green on clean master, red at `165636c35` with or without W128 edits → landed in W120–W127 on this branch (save-path suspects: W121 chunked restore twins, W124/W126 shared-store changes). Bisect running; not a W128 gate since HEAD carries it already, but it is a real campaign regression — will pin the commit and either fix here or hand to the skeptic lane.
