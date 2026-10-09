@@ -682,6 +682,32 @@ test('a held clump never eats a meal behind a modal screen', async () => {
   t.cleanup();
 });
 
+test('the fulfillment blackout freezes the merge the same way', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 30, 6);
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const massBefore = t.sys._rt.clumpMass;
+  // The third _modalHeld leg: ui.fulfillmentBlackoutActive — the class-driven
+  // delivery overlay with no stack entry and no input.blocked flag. Same
+  // contract as the modal test above: pull lanes run, only the merge freezes.
+  (t.state.ui = t.state.ui || {}).fulfillmentBlackoutActive = true;
+  const meal = rock(t.sim, core.pos.x + 20, core.pos.z, 6, 3);
+  const distBefore = Math.hypot(meal.pos.x - core.pos.x, meal.pos.z - core.pos.z);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.clumpMass, massBefore, 'no merge behind the blackout');
+  assert.notEqual(meal.alive, false, 'the meal survives the blind hold');
+  const distAfter = Math.hypot(meal.pos.x - core.pos.x, meal.pos.z - core.pos.z);
+  assert.ok(distAfter < distBefore, 'the annulus keeps pulling under the blackout');
+  t.state.ui.fulfillmentBlackoutActive = false;
+  for (let i = 0; i < 30 && meal.alive !== false && t.sys._rt.clumpMass === massBefore; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.ok(t.sys._rt.clumpMass > massBefore, 'the merge resumes on the first visible tick');
+  t.cleanup();
+});
+
 test('a key release behind a live modal defers the bowl to the first visible tick', async () => {
   const t = await bootPhysics();
   const body = rock(t.sim, T.mawDist, 0, 30, 6);

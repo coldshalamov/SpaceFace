@@ -1597,8 +1597,12 @@ export const gyreSnare = {
   },
 
   // ── ball watch retire — sim-side work (emits cues, mutates entity data) ──────
-  // Deliberately OUT of _publish: the mirror pass must stay read-only — a publish
-  // that mutates is how a retired primary re-fired its own grave the next tick.
+  // Deliberately OUT of _publish: the mirror pass must not mutate LIFECYCLE
+  // state — a publish that mutates is how a retired primary re-fired its own
+  // grave the next tick. (Edge-latched emit bookkeeping — basinCatchLatched,
+  // tooHeavyLatched, catchTickPeak, prevBasinN/prevSuckN, the cue latches —
+  // still writes rt inside _publish by design: those gate the emits' own
+  // edges, ride published values, and mutate nothing any other lane reads.)
   // Runs in update() immediately before the mirror write.
   _sweepBallWatch(state) {
     const rt = this._rt;
