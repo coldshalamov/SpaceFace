@@ -556,6 +556,9 @@ export const save = {
         for (const [key, value] of Object.entries(merged)) {
           if ((remote || {})[key] !== value) (delta || (delta = {}))[key] = value;
         }
+        // Yield before the push — its JSON.stringify is an unsliced O(store-bytes)
+        // leg; isolating it on its own task keeps "Checking saves…" responsive.
+        if (delta != null) await this._restoreFrameYield();
         const pushed = delta == null ? true : await pushSharedPlayerStore(delta);
         if (!pushed) { ok = false; error = 'mirror_unreachable'; }
       }

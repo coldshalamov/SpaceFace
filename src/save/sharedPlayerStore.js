@@ -418,7 +418,9 @@ export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
   // The budget is measured in UTF-8 bytes (non-ASCII names encode wider than .length), and the
   // encoder only runs when the guarantee was actually requested.
   let byteLength = 0;
-  try { byteLength = new TextEncoder().encode(body).byteLength; } catch { byteLength = body.length; }
+  if (keepalive === true) {
+    try { byteLength = new TextEncoder().encode(body).byteLength; } catch { byteLength = body.length; }
+  }
   const carriesKeepalive = keepalive === true && byteLength <= KEEPALIVE_BODY_BUDGET_BYTES;
   const attempt = async () => {
     try {
