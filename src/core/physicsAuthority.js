@@ -5,6 +5,7 @@
 // commands and measured telemetry out of saves, replays, and renderer-facing entity graphs.
 
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
+import { isPlayerSaucer, SAUCER_DRIVE } from '../data/saucer.js';
 
 export const PHYSICS_COMMAND_SCHEMA_VERSION = 1;
 export const PHYSICS_BODY_SCHEMA_VERSION = 1;
@@ -49,6 +50,31 @@ const BODY_RESPONSE_RECORDS = new WeakMap(); // entity -> reusable {massScale,in
 const PROJECTILE_CONTINUATIONS = new WeakMap(); // entity -> reusable continuation record
 const CONSUMED_CONTINUATIONS = new WeakSet();
 const VECTOR_POOL = [];
+const SAUCER_COMMANDS = new WeakMap();
+
+/** One-tick side channel, like the projectile continuation port. Not serialized. */
+export function queueSaucerVelocity(entity, velocity, { tick = null, haltYaw = true } = {}) {
+  if (!isPlayerSaucer(entity) || entity.alive === false || (entity.flags?.docked || entity.flags?.defeated || !physicsBodyNativeReady(entity))
+    || !Number.isFinite(velocity?.x) || !Number.isFinite(velocity?.z)) return false;
+  const speed = Math.hypot(velocity.x, velocity.z);
+  const scale = speed > SAUCER_DRIVE.boostSpeed ? SAUCER_DRIVE.boostSpeed / speed : 1;
+  SAUCER_COMMANDS.set(entity, {
+    x: velocity.x * scale, z: velocity.z * scale, haltYaw: haltYaw === true,
+    tick: Number.isInteger(tick) ? tick : null, generation: entity.occupantGeneration,
+  });
+  return true;
+}
+
+/** Native-owner use only. Consume once, reject recycled lives, swaps and stale sim ticks. */
+export function consumeSaucerVelocity(entity, tick = null) {
+  const command = SAUCER_COMMANDS.get(entity);
+  SAUCER_COMMANDS.delete(entity);
+  if (!command || !isPlayerSaucer(entity) || entity.alive === false || (entity.flags?.docked || entity.flags?.defeated || !physicsBodyNativeReady(entity))
+    || command.generation !== entity.occupantGeneration
+    || (Number.isInteger(tick) && command.tick !== null && command.tick !== tick)) return null;
+  return command;
+}
+
 
 const DEFAULT_THRUSTERS = Object.freeze([
   Object.freeze({ id: 'drive-port', forward: 1, reverse: 0.8, strafe: 0.45, yaw: 0.8 }),

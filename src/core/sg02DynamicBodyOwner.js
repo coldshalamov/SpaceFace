@@ -1,3 +1,4 @@
+import { consumeSaucerVelocity } from './physicsAuthority.js';
 import { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 // SG-02 dynamic body owner.
@@ -1390,10 +1391,19 @@ export class Sg02DynamicBodyOwner {
 
     this._applyAttachmentSprings();
 
+    // The alien drive rejects inertia, not collision geometry. Commit its bounded velocity
+    // AFTER external impulses (including towing), BEFORE the trusted prediction and collision
+    // solve. Contacts may still stop/slide the ship and transfer its real mass to other bodies.
+    // No post-solve velocity override: that would push the ship through walls on the next tick.
     // Structural-give baseline: at this point every impulse (dash, spring, combat) has already
     // mutated linvel/angvel; only the continuous control force/torque still integrates inside
     // world.step(). Predicting that lets the post-step pass isolate pure contact response.
     for (const rec of this.dynamicRecords) {
+      const command = rec.entity.isPlayer ? consumeSaucerVelocity(rec.entity, this._simTick) : null;
+      if (command) {
+        rec.body.setLinvel({ x: command.x, y: 0, z: command.z }, true);
+        if (command.haltYaw) rec.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      }
       if (this._sleepingRecordSkipsCpu(rec, false)) continue;
       this._captureExpectedKinematics(rec);
     }

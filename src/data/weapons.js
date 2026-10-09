@@ -28,8 +28,10 @@ import {
   userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
 } from './userContent.js';
 import { EMERGENT_WEAPON_DEFS } from './emergentPrimitives.js';
+import { SAUCER_WEAPONS } from './saucer.js';
 
 const SHIPPED_WEAPONS = [
+  ...SAUCER_WEAPONS,
   {
     id: 'wpn_snarl_s', name: 'Snarl Webcaster', slotType: 'weapon', size: 'S', tier: 3,
     mass: 4, price: 38000, requiresTech: 'tech_fire_control',

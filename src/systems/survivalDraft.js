@@ -1,3 +1,4 @@
+import { SAUCER_ID, saucerFittingRefusal, SAUCER_BRIEF, SAUCER_WEAPON_SLOTS } from '../data/saucer.js';
 // Survival draft owner (PQ-133 / CRU-016) and refit host (CRU-017).
 //
 // When the run enters `draft`, this offers three seeded choices and opens the draft surface. When
@@ -230,7 +231,8 @@ export const survivalDraft = {
         && this._trials?.get(offer.slotIndex)?.defId === offer.defId;
       // The live demo IS the legality — offerDraft drops a fitted support module, so the card
       // that seeded the trial would read "No compatible slot" while it is still wearing it.
-      const legal = !!current || demoed;
+      const intrinsicRefusal = saucerFittingRefusal(loadout.hullId, MODULE_DEF_BY_ID.get(offer.defId));
+      const legal = (!!current || demoed) && !intrinsicRefusal;
       const price = offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
       const replaces = (current || offer).replaces ?? null;
       return { ...offer, ...(current || {}), price, purchased, demoed, replaces,
@@ -238,8 +240,8 @@ export const survivalDraft = {
         held: !!(this._locked && this._locked.id === offer.id),
         lockedIn: !!(this._lockedInto && this._lockedInto.has(offer.id)),
         available: !purchased && legal && price != null && run.credits >= price,
-        unavailableReason: purchased ? 'Fitted' : !legal ? 'No compatible slot' :
-          run.credits < price ? `Save ${price - run.credits} more cr` : null };
+        unavailableReason: purchased ? 'Fitted' : intrinsicRefusal || (!legal ? 'No compatible slot' :
+          run.credits < price ? `Save ${price - run.credits} more cr` : null) };
     });
     const shown = new Set(rows.map((row) => row.id));
     for (const entry of this._evolutionOffers(loadout)) {
@@ -1038,11 +1040,11 @@ export const survivalDraft = {
         ? owned.fittings : [], player).cargoCap || 0;
       extras.push({
         id: `hull_${ship.id}`, kind: SWARM_HULL_OFFER_KIND, defId: ship.id,
-        verb: owned ? 'Switch' : 'Hull', name: ship.name,
-        blurb: owned
-          ? `On your manifest · ${ship.role} · ${buildSlotList(ship).length} hardpoints`
-          : `${ship.role} hull · tier ${ship.tier} · ${buildSlotList(ship).length} hardpoints`,
-        price: owned ? 0 : ask(swarmHullPrice(ship)), category: 'Hulls', slotLabel: 'Ship cradle',
+        verb: owned ? 'Switch ship' : 'Buy ship', name: ship.name,
+        blurb: ship.id === SAUCER_ID ? SAUCER_BRIEF : owned
+          ? 'Owned for this run. Switch free; this ship keeps its own fitted equipment.'
+          : `Buy and fly this ${ship.role} ship for this run. Previous ship and equipment stay owned; switch back free.`,
+        price: owned ? 0 : ask(swarmHullPrice(ship)), category: 'Ships', slotLabel: 'Whole ship · this run',
         _flying: ship.id === (loadout && loadout.hullId),
         _cargoBlocked: cargoUsed > cargoCap,
         _ownedIndex: ownedIndex >= 0 ? ownedIndex : null,
@@ -1156,7 +1158,9 @@ export const survivalDraft = {
     // to a hull that stays owned. A refused swap keeps its demos.
     this._retireAllTrials();
     this._purchased.add(pending.id);
-    this._notice = `${pending.name} is yours for the run. The shelf just re-priced your hardpoints — build it.`;
+    this._notice = pending.defId === SAUCER_ID
+      ? `Saucer ready. ${SAUCER_BRIEF} Previous ship kept; switch back free.`
+      : `${pending.name} is now active for this run. Your previous ship keeps its equipment; switching back is free.`;
     this._emit('run:modifierRecordRequested', {
       record: { kind: 'hull', offerId: pending.id, defId: pending.defId, wave: Math.max(1, this._wave) },
       draft: { wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id },
@@ -1187,7 +1191,8 @@ export const survivalDraft = {
       return false;
     }
     this._retireAllTrials();
-    this._notice = `${offer.name} back in the cradle — the shelf just re-priced your hardpoints.`;
+    this._notice = `${offer.name} active — no charge. This ship keeps its own equipment.`
+      + (offer.defId === SAUCER_ID ? ` ${SAUCER_BRIEF}` : '');
     this._emit('run:modifierRecordRequested', {
       record: { kind: 'hull', offerId: offer.id, defId: offer.defId, wave: Math.max(1, this._wave) },
       draft: { wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: offer.id },
@@ -1507,12 +1512,15 @@ export const survivalDraft = {
         }
       }
       const heldDef = defId ? MODULE_DEF_BY_ID.get(defId) : null;
+      const intrinsicDefId = !defId && loadout.hullId === SAUCER_ID && slot.type === 'weapon'
+        ? SAUCER_WEAPON_SLOTS[slotIndex] || null : null;
       return {
         slotIndex,
         slotType: slot.type,
         slotSize: slot.size,
         defId,
         name: defId ? ((heldDef && heldDef.name) || prettyDefId(defId)) : null,
+        ...(intrinsicDefId ? { intrinsicDefId, intrinsicName: MODULE_DEF_BY_ID.get(intrinsicDefId)?.name } : {}),
         spares,
       };
     });

@@ -1,3 +1,5 @@
+import { isPlayerSaucer } from '../data/saucer.js';
+import { resolveHullBurst } from '../data/hullBurst.js';
 // Read-only Crucible toy guidance. Fittings choose the toy; combat owns its readiness.
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
@@ -86,6 +88,20 @@ export function crucibleCombatLines(state) {
   const ship = state.entities?.get(state.playerId);
   if (!ship?.alive) return [];
   const rows = [];
+  if (isPlayerSaucer(ship)) {
+    rows.push({ id: 'saucer-drive', status: 'armed',
+      text: 'Saucer · arrows / WASD translate · release to stop · gravity immune' });
+    const guns = gunReadiness(state, ship, () => true);
+    rows.push({ id: 'saucer-arsenal', status: guns.status,
+      text: `Alien emitters · ${binding(state, 'fire')} fire · ${guns.text}` });
+    const boost = Number(ship.boost?.energy) || 0;
+    const off = state.settings?.gameplay?.boostBurst === false;
+    const horizon = resolveHullBurst('saucer_horizon');
+    const active = state.hullBurst?.phase === 'active' && state.hullBurst?.kind === 'saucer_horizon';
+    const ready = !off && boost >= horizon.activationCost && (state.simTime || 0) >= (state.hullBurst?.readyAt || 0);
+    rows.push({ id: 'saucer-horizon', status: active || ready ? 'armed' : 'cooldown',
+      text: `Event Horizon · ${binding(state, 'boost')} boost + radial shock field · ${off ? 'disabled in settings' : active ? 'active' : ready ? 'ready' : 'recharging'}` });
+  }
   const addGun = (id, accepts, emptyText) => {
     const readiness = gunReadiness(state, ship, accepts, emptyText);
     rows.push({ id, status: readiness.status,

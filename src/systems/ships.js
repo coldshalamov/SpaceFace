@@ -7,6 +7,7 @@
 // getDerivedStats() and makeShipEntitySpec() are exported as pure-ish builders so other systems
 // (save/newGame, render previews, UI stat readouts) can call them without going through the bus.
 import { SHIPS } from '../data/ships.js';
+import { SAUCER_ID, SAUCER_WEAPON_SLOTS, saucerFittingRefusal } from '../data/saucer.js';
 import { FLIGHT_TUNING } from '../data/flightTuning.js';
 import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS, WEAPON_MOUNT_CLASSES } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
@@ -567,6 +568,11 @@ export function dryRunLoadoutPresetApply({
         slotSize: slots[slotIndex].size,
         text: fitRefusalText(slots[slotIndex], def),
       });
+      continue;
+    }
+    const saucerRefusal = saucerFittingRefusal(shipDef.id, def);
+    if (saucerRefusal) {
+      slotBlockers.push({ reason: 'intrinsic_saucer_drive', defId, name: def.name, slotIndex, text: saucerRefusal });
       continue;
     }
     const unlocked = typeof isUnlockedFn === 'function'
@@ -1144,8 +1150,8 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let phaseBlink = false;
   // Hull burst: ONE per hull. The higher rank wins, ties break by kind name, so a hand-edited fit
   // with two burst modules is deterministic instead of slot-ordered.
-  let hullBurstKind = null;
-  let hullBurstRank = 0;
+  let hullBurstKind = shipDef.id === SAUCER_ID ? 'saucer_horizon' : null;
+  let hullBurstRank = shipDef.id === SAUCER_ID ? 1 : 0;
   let controlWeaponCount = 0;
   let chaffCount = 0;
   let ecmCount = 0;
@@ -1372,6 +1378,11 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     }
     : null;
 
+  if (shipDef.id === SAUCER_ID) {
+    hullBurstKind = 'saucer_horizon'; hullBurstRank = 1;
+    lootMagnetRange = Math.max(lootMagnetRange, 300);
+  }
+
   return {
     hull: hullMax, hullMax,
     armorHp: 0, armorMax: 0, armorFlat: 0,
@@ -1448,6 +1459,20 @@ export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null
     // to inventory with its sentence.
     if (!fits(slots[i], d)) continue;
     weapons.push(makeWeaponRuntime(d, slots[i], i, isPlayer, derivedStats));
+  }
+  // Alien emitters are part of the ship, not inventory. Empty mounts recover their emitter
+  // on construction, refit, ship switch and old-save load, without minting sellable copies.
+  if (isPlayer && shipDef.id === SAUCER_ID) {
+    let ordinal = 0;
+    for (const slot of slots) {
+      if (slot.type !== 'weapon') continue;
+      const def = WEAPON_BY_ID.get(SAUCER_WEAPON_SLOTS[ordinal++]);
+      if (!def || weapons.some(w => w.slotIndex === slot.index)) continue;
+      const weapon = makeWeaponRuntime(def, { ...slot, facing: 'turret' }, slot.index, true, derivedStats);
+      weapon.intrinsic = true;
+      weapons.push(weapon);
+    }
+    return weapons.sort((a, b) => a.slotIndex - b.slotIndex);
   }
   // Legacy player saves before the explicit NEW_GAME weapon may still have no weapon fitted. Prefer
   // a front-facing slot so the fallback starter gun never fires backward or as an unturreted mount.
@@ -2067,7 +2092,7 @@ export const ships = {
    *  tree plays no part, and no station rack bypasses it — faction yards do not stock rivals'
    *  exclusives. The buy price still quotes through the normal standing-discount path. */
   isUnlocked(def) {
-    if (!def) return false;
+    if (!def || def.intrinsicHull) return false;
     if (def.swarmEarned) {
       return swarmCrossoverEarned(def.swarmEarned)
         || !!stationShopOffer(def, dockedShopStationId(this.state));
@@ -2367,6 +2392,8 @@ export const ships = {
     if (!fits(slot, def)) {
       return { reason: 'incompatible_slot', text: fitRefusalText(slot, def) };
     }
+    const saucerRefusal = saucerFittingRefusal(shipDef.id, def);
+    if (saucerRefusal) return { reason: 'intrinsic_saucer_drive', text: saucerRefusal };
     if (!this.isUnlocked(def)) {
       return { reason: 'research_required', text: defLockReasonText(def) };
     }

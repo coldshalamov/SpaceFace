@@ -41,13 +41,14 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       const fitKey = `${hullId}:${rows.map(row => row.defId || '').join('|')}`;
       if (fitKey !== lastFit) {
         lastFit = fitKey; buildList.replaceChildren();
-        buildSummary.textContent = `Current build · ${rows.filter(row => row.defId).length} / ${rows.length} fitted`;
+        buildSummary.textContent = `Current build · ${rows.filter(row => row.defId).length} fitted`
+          + (rows.some(row => row.intrinsicDefId) ? ' · alien emitters built in' : ` / ${rows.length}`);
         for (const row of rows) {
           const li = make('li', '');
           li.appendChild(equipmentSvg({ defId: row.defId || row.slotType }, doc));
           const text = make('span', '');
           text.append(make('small', '', `${row.slotIndex + 1} / ${row.slotType} ${row.slotSize}`),
-            make('span', '', row.defId ? row.name || row.defId : 'Empty'));
+            make('span', '', row.defId ? row.name || row.defId : row.intrinsicDefId ? `${row.intrinsicName} · built in` : 'Empty'));
           li.appendChild(text); buildList.appendChild(li);
         }
       }
@@ -62,14 +63,14 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
           }, { once: true });
           item.appendChild(image);
         } else item.appendChild(equipmentSvg(offer, doc));
-        label.textContent = offer.kind === 'hull' ? 'Hull preview' : 'Equipment schematic';
+        label.textContent = offer.kind === 'hull' ? 'Ship preview' : 'Equipment schematic';
       }
       fitline.textContent = lines.slot || (offer.kind === 'service' ? 'Applies to this run.' : 'Inspect before you fit.');
       const price = Math.max(0, Number(offer.price) || 0);
       buy.disabled = !offer.available || !!offer.purchased || !armed;
       buy.setAttribute('aria-disabled', String(buy.disabled));
       buy.textContent = offer.purchased ? 'Already fitted' : !offer.available ? 'Unavailable' : !armed ? 'Select an item to prepare'
-        : `${offer.kind === 'hull' ? 'Switch hull' : offer.kind === 'service' ? 'Purchase' : 'Install'} · ${price.toLocaleString('en-US')} cr`;
+        : `${offer.kind === 'hull' ? (Number.isInteger(offer._ownedIndex) ? 'Switch ship' : 'Buy & fly') : offer.kind === 'service' ? 'Purchase' : 'Install'} · ${price.toLocaleString('en-US')} cr`;
       buy.setAttribute('aria-label', `${buy.textContent}: ${lines.name}`);
       refusal.textContent = offer.purchased ? 'This item is part of your current build.'
         : !offer.available ? offer.unavailableReason || 'This offer cannot be fitted to the current build.'

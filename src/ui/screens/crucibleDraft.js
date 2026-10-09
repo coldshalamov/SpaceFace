@@ -68,7 +68,7 @@ function setWordShown(button, show) {
 
 // The armory's shelf row: 'All', the six fitting shelves, then the two non-fitting counters
 // the swarm owner stocks (hull offers file under 'Hulls', service work under 'Service').
-const ARMORY_CATEGORIES = Object.freeze(['All', ...SWARM_CATEGORIES, 'Hulls', 'Service']);
+const ARMORY_CATEGORIES = Object.freeze(['All', ...SWARM_CATEGORIES, 'Ships', 'Service']);
 const ARMORY_CATEGORY_SET = new Set(ARMORY_CATEGORIES);
 
 /** A kit word (`button.k-word`). The caller appends it. */
@@ -229,7 +229,7 @@ function railVerbDisplay(verb, compact) {
 /** Card text for one offer. Exported so a check can assert the wording without a DOM. */
 export function offerCardLines(offer, state) {
   if (!offer) return null;
-  const slot = typeof offer.slotLabel === 'string' && offer.slotLabel
+  let slot = typeof offer.slotLabel === 'string' && offer.slotLabel
     // Non-fitting offers (a hull, a weld) carry their own "where it lands" line; fittings
     // derive theirs from the hardpoint the legality pass picked.
     ? offer.slotLabel
@@ -238,6 +238,11 @@ export function offerCardLines(offer, state) {
       : offer.replaces
         ? `Hardpoint ${offer.slotIndex + 1} — replaces ${fittingName(offer.replaces)}`
         : Number.isInteger(offer.slotIndex) ? `Hardpoint ${offer.slotIndex + 1} — empty` : '';
+  const innate = state?.entities?.get?.(state.playerId)?.data?.weapons
+    ?.find(w => w.intrinsic && w.slotIndex === offer.slotIndex);
+  if (innate && offer.kind !== 'hull' && offer.kind !== 'service') {
+    slot = `Hardpoint ${offer.slotIndex + 1} — replaces built-in ${innate.name}. Strip the fitting to restore it.`;
+  }
   return {
     verb: offer.verb || offer.id || '',
     name: offer.name || offer.defId || '',
@@ -518,7 +523,8 @@ export function refitRowLines(row) {
   return {
     label,
     slotTag,
-    value: options.length ? '' : 'Empty — no spare in the run inventory fits it',
+    value: row.intrinsicDefId ? `${row.intrinsicName || fittingName(row.intrinsicDefId)} — built in; fitting a spare replaces it`
+      : options.length ? '' : 'Empty — no spare in the run inventory fits it',
     action: 'Fit',
     disabled: options.length === 0,
     options,
@@ -1792,7 +1798,7 @@ export const crucibleRefitScreen = {
       const lines = refitRowLines(row);
       if (!lines) continue;
 
-      const state = row.defId ? 'fitted' : (lines.options.length ? 'open' : 'bare');
+      const state = row.defId || row.intrinsicDefId ? 'fitted' : (lines.options.length ? 'open' : 'bare');
       const item = el('li', `k-row k-row--static sf-cru-row orr-hp is-${state}`);
       const left = el('div', 'orr-hp__body');
       const head = el('div', 'orr-hp__head');

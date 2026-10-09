@@ -1,4 +1,7 @@
 import { consumeCeresBreakerControl, publishCeresWorkfleetActuation } from './ceresWorkfleet.js';
+import { isPlayerSaucer } from '../data/saucer.js';
+import { saucerVelocity } from '../core/flight/saucerControl.js';
+import { queueSaucerVelocity } from '../core/physicsAuthority.js';
 // SpaceFace Flight V3 — production adapter.
 //
 // Drop-in intent: replace the registry's import of src/systems/flight.js with this
@@ -259,6 +262,8 @@ export const flightV3 = {
   },
 
   _stepCraft(entity, rawInput, dt, state, isPlayer) {
+    const saucer = isPlayer && isPlayerSaucer(entity);
+    if (saucer && rawInput?.blocked) rawInput = neutralInput();
     const resolvedProfile = resolvePropulsionProfile(entity, state);
     const pathActive = isPlayer && pathFollowBlocksFeel(state && state.input);
     const baseProfile = (isPlayer && !pathActive)
@@ -312,7 +317,7 @@ export const flightV3 = {
       // Shift throws a shadow ahead and the release puts the hull there. The
       // capacitor still refills through the boost machine, with the key forced
       // off so a dash impulse and the afterburner cannot also fire.
-      const veil = !autoBoost && !!(entity.data && entity.data.derived && entity.data.derived.phaseBlink);
+      const veil = !saucer && !autoBoost && !!(entity.data && entity.data.derived && entity.data.derived.phaseBlink);
       let veilBusy = false;
       if (veil) {
         const phase = stepPhaseBlink({
@@ -349,7 +354,7 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost || orbitOwnsBoostPress || veil,
+        suppressDash: autoBoost || orbitOwnsBoostPress || veil || saucer,
         suppressRegen: requestedTravelBurn || veilBusy,
       });
       input.boost = boosting;
@@ -463,6 +468,25 @@ export const flightV3 = {
     // Recorded on the command so physics does not scale the force again.
     _stepArgs.authority = driveAuthority;
     const result = stepPropulsion(_stepArgs);
+    if (saucer) {
+      const automatic = !!(autopilot?.active || pathActive);
+      const controls = playerFlightControlsActive(state, entity) && !gridHeld;
+      // Automatic pilots still navigate by their local intent; manual axes are world axes.
+      const cf = Math.cos(body.rot), sf = Math.sin(body.rot);
+      const intent = !controls ? { brake: true } : automatic ? {
+        moveX: input.throttle * cf - input.strafe * sf,
+        moveZ: input.throttle * sf + input.strafe * cf, brake: input.brake,
+      } : rawInput;
+      const velocity = saucerVelocity(intent, boosting, helmControlScaleFromCombat(state, entity.id));
+      queueSaucerVelocity(entity, velocity, { tick: state.tick, haltYaw: !automatic });
+      result.force = { x: 0, y: 0, z: 0 };
+      if (!automatic) result.torque = { x: 0, y: 0, z: 0 };
+      result.impulse = null;
+      result.maxSpeed = Infinity;
+      // The field is intrinsic. Boost still pays the existing meter, not acceleration-energy
+      // designed for thrusters (a 90-degree turn must not drain a fictitious engine impulse).
+      result.resourceDelta = { energy: 0, heat: 0 };
+    }
     const cryoScale = helmControlScaleFromCombat(state, entity.id);
     const helmCommand = cryoScale < 1
       ? scaleHelmCommandForCryoLock(
@@ -471,7 +495,7 @@ export const flightV3 = {
         cryoLockStickLive(input),
       )
       : result;
-    _stepCtl.source = isPlayer ? 'player-flight-v3' : 'npc-flight-v3';
+    _stepCtl.source = saucer ? 'player-saucer-inertialess' : isPlayer ? 'player-flight-v3' : 'npc-flight-v3';
     _stepCtl.mode = input.assistMode;
     _stepCtl.force = helmCommand.force;
     _stepCtl.torque = helmCommand.torque;
@@ -489,6 +513,7 @@ export const flightV3 = {
 
     applyResourceDelta(entity, result.resourceDelta);
     updateBank(entity, dt, profile);
+    if (saucer) entity.bank = 0;
     if (isPlayer) {
       const frame = entity._flightFrame || (entity._flightFrame = {});
       frame.autopursuit = null;
