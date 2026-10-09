@@ -1249,6 +1249,10 @@ export const gyreSnare = {
       ? this.helpers.queryRadius : null;
     // Reset above the guard — a helper-less host must not publish a frozen +N read forever.
     rt.suckCount = 0;
+    // Per-tick meal ledger: the publish carries THIS tick's biggest meal —
+    // without the reset the max ratchets to the hold's lifetime wreck and every
+    // later pebble over-grades the gulp reads (the last-write under-grade's twin).
+    rt.absorbRadius = 0;
     if (!queryRadius) return;
     // The band widens with the ball — a capped katamari is hungrier than a fresh
     // snag (katamari escalation legibility; the presentation halo draws the same

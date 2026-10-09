@@ -3612,6 +3612,16 @@ test('a same-tick multi-absorb publishes absorbR for the BIGGEST meal', async ()
   t.state.input.actions.gyreSnare = true; t.sim.step();
   assert.equal(t.state.gyreSnare.absorbR, 12,
     `the publish ledger carries the biggest meal's radius (got ${t.state.gyreSnare.absorbR})`);
+  // The ledger is PER TICK — a later small meal re-reads its own radius instead
+  // of ratcheting to the hold's lifetime wreck.
+  rock(t.sim, core.pos.x, core.pos.z + 1, 2, 5);
+  t.state.input.actions.gyreSnare = true; t.sim.step(); // index registers
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.absorbR, 5,
+    `the next tick's meal re-reads its own size (got ${t.state.gyreSnare.absorbR})`);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.absorbR, 0,
+    `a quiet tick publishes 0, not a stale meal (got ${t.state.gyreSnare.absorbR})`);
   t.cleanup();
 });
 
