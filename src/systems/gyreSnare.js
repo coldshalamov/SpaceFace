@@ -1517,6 +1517,9 @@ export const gyreSnare = {
     // mass-scaled shove so a wreck visibly rocks the tether (a pebble is a tap,
     // and a heavier ball shrugs more since Δv = impulse/mass). The hold spring
     // recovers it in ~half a second — a rock, never a displacement.
+    // The grown clump's inertia — hoisted so the meal's angular momentum below
+    // and the physics rebuild at the bottom of the absorb agree on it.
+    const newInertia = Math.max(8, Math.round(rt.clumpMass * rt.clumpRadius * rt.clumpRadius * 0.4));
     if (dist > 1e-4) {
       // Mass-proportional impulse alone shrugs to nothing at the fantasy's
       // climax (40 t into 2400 t ≈ 0.05 wu/s) — a Δv floor keeps big meals
@@ -1534,6 +1537,15 @@ export const gyreSnare = {
           y: 0,
           z: (dz / dist) * knock },
         this._evidence(state.tick));
+      // The meal's ANGULAR momentum lands too — a spiraling feed doesn't die
+      // spinless at the merge. Δω = L/I with L ≈ m·v_t·r: a fast corkscrewing
+      // wreck visibly quickens the katamari's drift in the direction it came
+      // in on. Capped so a railgun meal quickens rather than spins out.
+      const tangential = relX * (-dz / dist) + relZ * (dx / dist);
+      const dOmega = Math.max(-0.5, Math.min(0.5, em * tangential * rt.clumpRadius / newInertia));
+      if (Math.abs(dOmega) > 1e-3) {
+        queuePhysicsTorqueImpulse(core, { x: 0, y: newInertia * dOmega, z: 0 }, this._evidence(state.tick));
+      }
     }
     if (rt.members.length < D.maxAbsorbRecords) {
       rt.members.push({ type: e.type, mass: em, radius: er, nx, nz });
@@ -1549,7 +1561,7 @@ export const gyreSnare = {
       syncDerivedPhysicsMass(
         core,
         rt.clumpMass,
-        Math.max(8, Math.round(rt.clumpMass * rt.clumpRadius * rt.clumpRadius * 0.4)),
+        newInertia,
         rt.clumpRadius,
       );
     }

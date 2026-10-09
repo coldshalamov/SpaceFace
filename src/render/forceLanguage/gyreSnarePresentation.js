@@ -242,14 +242,15 @@ void main() {
 const BURST_FRAG = /* glsl */`
 uniform vec3 uCol;
 uniform float uT;         // 0..1 burst age
-uniform float uCalm;      // flash-accessibility scale — the burst respects reduced-flash
+uniform float uFlashCalm; // flash-accessibility scale — the burst respects reduced-flash.
+                          // (uCalm is the file's reduced-MOTION dialect — different contract)
 varying vec2 vUv;
 void main() {
   float r = length(vUv);
   float edge = smoothstep(0.10, 0.0, abs(r - uT));
   float inner = smoothstep(1.0, 0.0, r) * 0.25 * (1.0 - uT);
   float a = (edge * 0.85 + inner) * (1.0 - uT) * (1.0 - uT);
-  gl_FragColor = vec4(uCol, a * uCalm);
+  gl_FragColor = vec4(uCol, a * uFlashCalm);
 }
 `;
 
@@ -505,7 +506,7 @@ export class GyreSnarePresentation {
     for (let i = 0; i < MAX_BURSTS; i++) {
       const mat = new THREE.ShaderMaterial({
         vertexShader: BURST_VERT, fragmentShader: BURST_FRAG,
-        uniforms: { uCol: { value: new THREE.Color(P.hot) }, uT: { value: 1 }, uCalm: { value: 1 } },
+        uniforms: { uCol: { value: new THREE.Color(P.hot) }, uT: { value: 1 }, uFlashCalm: { value: 1 } },
         transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
       });
       const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
@@ -690,7 +691,7 @@ export class GyreSnarePresentation {
     return jitterGeometry(geo, rough, seed);
   }
 
-  _addLump(member, i, instant = false, stagger = 0) {
+  _addLump(member, i, instant = false, stagger = null) {
     // Seed on the member's own identity, not its ledger index — a want<have
     // rebuild re-adds the same members and their silhouettes should survive
     // it instead of re-jittering into new rocks. A pooled slot recycled to a
@@ -715,7 +716,7 @@ export class GyreSnarePresentation {
     // later lumps literally bloom later: a dense feed lands as a wave of arrivals,
     // oldest first, not N lumps in lockstep (nor reverse — a past spawnT would
     // arrive already grown). Capped so a long feed never delays beyond ~0.4 s.
-    slot.spawnT = instant ? this.time + stagger * 0.012
+    slot.spawnT = instant ? this.time + (stagger || 0) * 0.012
       : this.time + Math.min(this._spawnStagger || 0, 8) * 0.045;
     if (!instant) this._spawnStagger = (this._spawnStagger || 0) + 1;
     // Katamari compaction: the member ledger caps at MAX_LUMPS but the ball keeps
@@ -734,7 +735,7 @@ export class GyreSnarePresentation {
     // scale. A ledger rebuild isn't a meal: `instant` restores full scale so
     // the same ball doesn't visibly re-bloom in place — UNLESS staggered (a
     // rebuild wave still swells each lump back rather than teleporting it whole).
-    slot.spawnScale = instant ? (stagger ? 0.55 : 1)
+    slot.spawnScale = instant ? (stagger != null ? 0.55 : 1)
       : Math.min(1, Math.max(0.45, finite(member.radius, 2) / Math.max(0.5, r) * 0.9));
     const m = slot.mesh;
     m.material = this._lumpMaterial(member.type);
@@ -844,7 +845,7 @@ export class GyreSnarePresentation {
     slot.stretch = dir ? 1.9 : 1;
     // The two brightest flashes in the vocabulary respect reduced-flash like
     // everything else — scale the ring's alpha, not just its lifespan.
-    slot.mesh.material.uniforms.uCalm.value = calm;
+    slot.mesh.material.uniforms.uFlashCalm.value = calm;
     const p = this.toLocal(x, z, this._pt);
     slot.mesh.position.set(p.x, 0.4, p.z);
     // A directed burst stretches its ring along the throw axis — the payoff
@@ -1412,8 +1413,10 @@ export class GyreSnarePresentation {
         const k = Math.max(0, 1 - this._closeT / (this._closeSpan || 0.25));
         const kk = k * k;
         // The dying funnel keeps its last pace — a post-launch close inhaling at full
-        // pre-spend speed while the glass collapses would betray the spent read.
-        if (calm !== 0) this._moteT += sdt * (this._lastSpent == null ? 1 : this._lastSpent);
+        // pre-spend speed while the glass collapses would betray the spent read. A TEAR
+        // is different: the well visibly SEIZES as it lets go (the kk ramp owns the
+        // alpha either way).
+        if (calm !== 0 && !this._closeTear) this._moteT += sdt * (this._lastSpent == null ? 1 : this._lastSpent);
         this._spiralMat.uniforms.uTime.value = this._moteT;
         this._coneMat.uniforms.uTime.value = this.time;
         this._coneMat.uniforms.uAlpha.value = (this._closeSeeds || { cone: 0.42 }).cone * kk * flashCalm;
@@ -2178,6 +2181,12 @@ export class GyreSnarePresentation {
         this._coneMat.uniforms.uPulse.value = 0.9;
         this._discKick = 1;
         this._moteKick = 1;
+        // The catch IS the first swallow — the same gulp band every later meal
+        // rides, graded by the cored body's own radius (the biggest meal the
+        // verb ever takes).
+        const uG = this._coneMat.uniforms.uGulp.value;
+        uG.x = Math.min(1.5, uG.x * 0.35 + Math.min(1.5, 0.6 + finite(mirror.clumpRadius, 4) * 0.07) * 0.45);
+        uG.y = this.time;
       }
       if (phase === 'launching') {
         // Coil-engage flare only — HALF-size: the big shatter blooms at the throw
