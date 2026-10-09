@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "updated": "2026-10-09T00:00:00Z",
+ "updated": "2026-10-09",
  "purpose": "Machine-readable cumulative scoreboard for the magic-frame hill-climb campaign. Every accepted wave records evidence level, integrity gates, and measurement status. Durable narrative log lives in PR194-WAVE-LOG.md; this file is the diff-friendly ledger.",
  "evidenceLevels": {
   "MECHANISM_VERIFIED": "A real inefficiency exists and the change removes it (code-level proof + tests).",
@@ -627,11 +627,17 @@
      "headline": "F1 (M, MECHANISM VERIFIED): _spawnRequestWarmSeen + _interventionWarmSeen were never-cleared session Sets — demote/retract/byte-pressure evictions stranded pendingSpawns + pendingInterventions cohorts cold (intervention wreck exemplars + ~43-file modular kit decoded at mount in presented frames). Both outer latches + inner _modularPoolWarmSectors latch deleted; re-post per residency poll dedupes on the shared task registry and re-pins soft leases (dueAt-refresh idiom). F2 (doc): stale liveEnterSpawnerStubs comment concealed that guard/jumper resolve the seeded modular pick — corrected."
     },
     "boot-loading": {
-     "pending": true
+     "saturated": false,
+     "streak": 0,
+     "findings": 4,
+     "landed": 4,
+     "headline": "B-130-1 (M, MECHANISM VERIFIED): slot cards re-parsed every blob after the verdict — worker restore_prepare_meta now projects a cardEnv (exactly the fields slotCardFromEnvelopeData reads) into the meta verdict; _scheduleSlotIndexValidation publishes cardEnvs[slot] and both async scans serve verdict.cardEnv, skipping ~3 atomic parses/slot. B-130-2b: no-worker + timeout fallbacks now surface their parsed env as cardEnv instead of paying the parse twice. B-130-3: speculate-arm re-read the slot blob on click — readSlotSaveData returns a gen-bracketed {sig,slot,raw,data} memo; _select renders-then-emits {slot,raw,sig}; speculateLoadPrepare accepts the raw only on sig match. B-130-4 (L): _slotIndexWithFallbackAsync merged the fresh burst into the retry instead of dropping it. New public saveStoreSignature() = gen currency without materializing raws."
     },
     "skeptic": {
-     "pending": true,
-     "cadence": "rotating ~5th wave (due this wave)"
+     "clean": false,
+     "findings": 3,
+     "remediated": 3,
+     "headline": "F1 (M): W128 deferred rollback capture ran inside the session but AFTER save:restoring fired — listeners (tensionDirector policy=null, encounterDirector clearAllPredationBindings, automation _releaseOutpostEntity) observed mid-capture state. deferRestoringEmit holds the emit in pendingRestoringEmit; _firePendingRestoringEmit fires post-capture inside the frozen session. F2 (L): post-apply _sharedStoreCollectCache stamp claimed foreign writes — apply now rides a silenced facade; stamp lands only when gen unchanged. F3 (L): catchUpEntity silent pos writes stranded cell-map members out-of-band — partition-0 members marked into shelvedDiscoveryMoved and envelope-tested directly until the audit rebuild; non-catchUp writers retain the 8-pass bound."
     }
    },
    "integrity": {
