@@ -414,9 +414,21 @@ export class GyreSnarePresentation {
     const bodyLeanU = this._bodyLeanU;
     this._bodyMat.onBeforeCompile = (sh) => {
       sh.uniforms.uLeanZ = bodyLeanU;
-      sh.vertexShader = 'uniform float uLeanZ;\n' + sh.vertexShader.replace(
+      sh.uniforms.uTremble = coneU.uTremble;   // shared — one strain*calm dialect
+      sh.uniforms.uTime = coneU.uTime;         // shared — same metronome as the shells
+      sh.vertexShader = 'uniform float uLeanZ;\nuniform float uTremble;\nuniform float uTime;\n' + sh.vertexShader.replace(
         '#include <begin_vertex>',
-        '#include <begin_vertex>\n\ttransformed.z += uLeanZ * smoothstep(0.25, 1.0, uv.y);'
+        '#include <begin_vertex>\n'
+        + '\ttransformed.z += uLeanZ * smoothstep(0.25, 1.0, uv.y);\n'
+        // A whisper of the shells' strain shiver so the whole glass kit trembles
+        // in one language — scaled well under the additive amp: this skin is the
+        // ~10%-alpha silhouette, a full ripple would read as banding.
+        + '\t{\n'
+        + '\t\tfloat tAng = atan(transformed.z, transformed.x);\n'
+        + '\t\tfloat tRip = uTremble * 0.6 * sin(uv.y * 110.0 - uTime * 60.0 + tAng * 6.0);\n'
+        + '\t\tvec2 tRad = transformed.xz;\n'
+        + '\t\ttransformed.xz += (tRad / max(length(tRad), 1e-4)) * tRip * 0.02;\n'
+        + '\t}'
       );
     };
     this._coneBody = new THREE.Mesh(coneGeo, this._bodyMat);
@@ -570,6 +582,22 @@ export class GyreSnarePresentation {
       blending: THREE.AdditiveBlending, depthWrite: false,
     });
     this._secVeil = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), this._secVeilMat);
+    // The thrown ball is the payoff object — a capped secondary moon shouldn't
+    // fly its whole ~9 s as a visibly lesser katamari. Same fresnel rim the
+    // primary veil carries: a child of _secVeil (visibility lanes gate it free),
+    // uOp/uCol synced at draw time like the primary's.
+    this._secVeilRimMat = new THREE.ShaderMaterial({
+      vertexShader: VEIL_RIM_VERT, fragmentShader: VEIL_RIM_FRAG,
+      uniforms: { uCol: { value: new THREE.Color(glass) }, uOp: { value: 0 } },
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    this._secVeilRim = new THREE.Mesh(this._secVeil.geometry, this._secVeilRimMat);
+    this._secVeilRim.scale.setScalar(1.06);
+    this._secVeilRim.onBeforeRender = () => {
+      this._secVeilRimMat.uniforms.uOp.value = this._secVeilMat.opacity;
+      this._secVeilRimMat.uniforms.uCol.value.copy(this._secVeilMat.color);
+    };
+    this._secVeil.add(this._secVeilRim);
     this._secGroup.add(this._secVeil);
     this._secLumps = [];
     this._secId = null;   // which balls[] id the overlay currently tracks
@@ -2114,7 +2142,7 @@ export class GyreSnarePresentation {
           if (!this._secLumps[i].visible) continue;
           const lm = this._secLumps[i];
           lm.rotation.y += sdt * (0.35 + i * 0.17) * calm * sSign;
-          lm.rotation.x += sdt * (0.21 + i * 0.11) * calm;
+          lm.rotation.x += sdt * (0.21 + i * 0.11) * calm * sSign; // same chirality contract — a reversed ball doesn't counter-rotate its own rubble
           if (lm.userData.baseY !== undefined) {
             // Per-lump bob rate like the primary's (golden-ratio spread) — the
             // overlay rubble shouldn't bob in lockstep on a 6-lump read either.
@@ -2244,7 +2272,7 @@ export class GyreSnarePresentation {
     if (this.disposed) return;
     this.disposed = true;
     this.scene.remove(this._beam, this._clump, this._trail, this._trail2, this._grip, this._halo, this._basinHalo, this._secGroup);
-    this._secVeil.geometry.dispose(); this._secVeilMat.dispose();
+    this._secVeil.geometry.dispose(); this._secVeilMat.dispose(); this._secVeilRimMat.dispose();
     for (const m of this._secLumps) m.geometry.dispose(); // lump MATERIALS stay shared via _lumpMats
     this._halo.geometry.dispose(); this._haloMat.dispose();
     this._basinHaloMat.dispose(); // shares haloGeo (disposed on the line above)
