@@ -91,7 +91,7 @@ export function createAssetResidencyRegistry(options = {}) {
       // Going active disqualifies the entry from the soft-budget candidate
       // classes — re-key once per 0->1 transition, same for 1->0 below.
       const entry = assets.get(String(key));
-      if (entry) rekeySoftBudgetClass(entry);
+      if (entry) { rekeySoftBudgetClass(entry); rekeyGovernorBlocked(entry); }
     }
   }
   function notePendingRequestDeactivated(key) {
@@ -101,7 +101,7 @@ export function createAssetResidencyRegistry(options = {}) {
       activePendingRefcounts.delete(key);
       activePendingKeys.delete(key);
       const entry = assets.get(String(key));
-      if (entry) rekeySoftBudgetClass(entry);
+      if (entry) { rekeySoftBudgetClass(entry); rekeyGovernorBlocked(entry); }
     } else {
       activePendingRefcounts.set(key, count - 1);
     }
@@ -324,6 +324,7 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     entry.handle = Object.freeze({ key: exactKey, generation: entry.generation });
     assets.set(exactKey, entry);
+    rekeyGovernorBlocked(entry);
     cpuPackageBytesTotal += entry.cpuPackageBytes;
     emit('asset-registered', {
       key: exactKey,
@@ -683,6 +684,7 @@ export function createAssetResidencyRegistry(options = {}) {
       if (metadata.role !== 'player') row.nonPlayer += 1;
     }
     rekeySoftBudgetClass(entry);
+    rekeyGovernorBlocked(entry);
   }
   function noteOwnerMembershipUnindexed(entry, metadata) {
     if (!metadata) return;
@@ -709,6 +711,7 @@ export function createAssetResidencyRegistry(options = {}) {
       }
     }
     rekeySoftBudgetClass(entry);
+    rekeyGovernorBlocked(entry);
   }
 
   // Cache-lease roles: owners that exist only to keep a decoded blueprint/package reusable while
@@ -866,6 +869,24 @@ export function createAssetResidencyRegistry(options = {}) {
   const packageCacheOnlyMembers = new Set();
   const softResidentMembers = new Set();
   const SOFT_BUDGET_INLINE_MAX = 128;
+
+  // Governor blocked-membership set — entries the enforce census would classify
+  // non-evictable (any owner-policy block reason, or an active pending request).
+  // The same funnel points that re-key the soft classes re-key membership here,
+  // so enforceBudget projects the blocked rows in O(blocked) instead of walking
+  // O(assets) — the common under-budget call short-circuits to O(1) when the set
+  // is empty. Members are re-qualified at consult (a stale member filters out,
+  // never trusted) and the ledger-verify cadence rebuilds the set wholesale as
+  // drift insurance, same contract as the soft-class ledgers.
+  const governorBlockedMembers = new Set();
+  function rekeyGovernorBlocked(entry) {
+    if (entry && assets.get(entry.key) === entry
+        && (hasActiveRequestForEntry(entry) || !isGovernorEntryEvictable(entry))) {
+      governorBlockedMembers.add(entry);
+    } else {
+      governorBlockedMembers.delete(entry);
+    }
+  }
 
   // Inline byte caps on soft residency, enforced at release and soft-retain time: the idle sweep
   // only reclaims entries older than its minAge gate, so a burst of departures or scopeless
@@ -1044,6 +1065,14 @@ export function createAssetResidencyRegistry(options = {}) {
       packageCacheOnlyBytes: packageCacheOnlyRe, softResidentBytes: softResidentRe,
       strictMembers: strictReCount, softMembers: softReCount,
     }, true);
+    let blockedReCount = 0;
+    for (const entry of assets.values()) {
+      if (hasActiveRequestForEntry(entry) || !isGovernorEntryEvictable(entry)) blockedReCount += 1;
+    }
+    if (blockedReCount !== governorBlockedMembers.size) {
+      mismatches.push({ ledger: 'governorBlockedMembers',
+        expected: blockedReCount, actual: governorBlockedMembers.size });
+    }
     return Object.freeze({ ok: mismatches.length === 0, mismatches: Object.freeze(mismatches) });
   }
 
@@ -1079,6 +1108,7 @@ export function createAssetResidencyRegistry(options = {}) {
       const softOwnerRe = new Map();
       const rpcOwnerRe = new Map();
       const sectorIndexRe = new Map();
+      const blockedRe = new Set();
       for (const entry of assets.values()) {
         if (++visited % batchEntries === 0) yield;
         cpuPackageRe += entry.cpuPackageBytes;
@@ -1108,6 +1138,7 @@ export function createAssetResidencyRegistry(options = {}) {
         }
         softOwnerRe.set(entry, soft);
         rpcOwnerRe.set(entry, rpc);
+        if (hasActiveRequestForEntry(entry) || !isGovernorEntryEvictable(entry)) blockedRe.add(entry);
         if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
           continue;
         }
@@ -1136,6 +1167,17 @@ export function createAssetResidencyRegistry(options = {}) {
         packageCacheOnlyBytes: strictBytes, softResidentBytes: softBytes,
         strictMembers: strictCandidates.length, softMembers: softCandidates.length,
       }, true));
+      // The governor blocked set rebuilds wholesale on the same cadence: a missed
+      // re-key surfaces as drift and the recomputed membership supplants the
+      // maintained one — same contract the soft candidate lists get above.
+      if (blockedRe.size !== governorBlockedMembers.size
+          || [...blockedRe].some((member) => !governorBlockedMembers.has(member))
+          || [...governorBlockedMembers].some((member) => !blockedRe.has(member))) {
+        noteLedgerDrift([{ ledger: 'governorBlockedMembers',
+          expected: blockedRe.size, actual: governorBlockedMembers.size }]);
+      }
+      governorBlockedMembers.clear();
+      for (const member of blockedRe) governorBlockedMembers.add(member);
     }
     const strictOver = strictOverLedger || (verifyOwnerGraph
       && packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes);
@@ -1439,9 +1481,13 @@ export function createAssetResidencyRegistry(options = {}) {
     const budgetCandidates = [];
 
     let visited = 0;
-    for (const entry of [...assets.values()]) {
+    // The qualifying population is exactly the two class member sets (an entry reaches this
+    // pass only as a strict package-cache or soft-only resident) — iterate them directly
+    // instead of spreading the whole asset table; per-member re-qualify below handles drift.
+    for (const entry of [...packageCacheOnlyMembers, ...softResidentMembers]) {
       if (++visited % 256 === 0) yield;
-      if (entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
+      if (assets.get(entry.key) !== entry
+          || entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
       // The owner-class counters answer both classifications in O(1) — every owner a
       // package-cache owner ⇔ rpcOwnerCount === owners.size; the soft-only budget
       // candidate check is the same fold — so the two per-asset array mints are gone.
@@ -1527,6 +1573,7 @@ export function createAssetResidencyRegistry(options = {}) {
     entry.state = 'evicted';
     rekeySoftBudgetClass(entry);
     assets.delete(entry.key);
+    governorBlockedMembers.delete(entry);
     cpuPackageBytesTotal -= entry.cpuPackageBytes;
     noteWarmCoverageEntryMutation(entry);
     evictedAssets++;
@@ -2053,30 +2100,38 @@ export function createAssetResidencyRegistry(options = {}) {
     const blockedReasons = new Map();
     const unitOwners = overBudgetKnown ? new Map() : null;
     let hasMemoryModel = false;
-    for (const entry of assets.values()) {
+    if (overBudgetKnown) {
+      for (const entry of assets.values()) {
+        const row = governorEntry(entry, kind, activePendingKeys);
+        const index = entries.length;
+        entries.push(row);
+        if (Array.isArray(row.memoryUnits)) hasMemoryModel = true;
+        const units = memoryUnitList(row);
+        const effective = units && units.length > 0
+          ? units
+          : [{ identity: row, bytes: numericBytes(row, kind) }];
+        for (const unit of effective) {
+          if (!unit || unit.bytes <= 0) continue;
+          let record = unitOwners.get(unit.identity);
+          if (!record) {
+            record = { bytes: unit.bytes, entryIndexes: new Set() };
+            unitOwners.set(unit.identity, record);
+          } else {
+            record.bytes = Math.max(record.bytes, unit.bytes);
+          }
+          record.entryIndexes.add(index);
+        }
+      }
+    }
+    // Blocked rows mint off the live member set for both paths — per-member re-qualify
+    // on this call's pending snapshot keeps the set exact while the per-row policy
+    // check drops out of the census entirely (O(blocked), O(1) when the set is empty).
+    for (const entry of governorBlockedMembers) {
+      if (assets.get(entry.key) !== entry) continue;
       const row = governorEntry(entry, kind, activePendingKeys);
       if (!isGovernorEntryEvictable(row)) {
         blockedRows.push(row);
         blockedReasons.set(row, governorEntryBlockReasons(row));
-      }
-      if (!overBudgetKnown) continue;
-      const index = entries.length;
-      entries.push(row);
-      if (Array.isArray(row.memoryUnits)) hasMemoryModel = true;
-      const units = memoryUnitList(row);
-      const effective = units && units.length > 0
-        ? units
-        : [{ identity: row, bytes: numericBytes(row, kind) }];
-      for (const unit of effective) {
-        if (!unit || unit.bytes <= 0) continue;
-        let record = unitOwners.get(unit.identity);
-        if (!record) {
-          record = { bytes: unit.bytes, entryIndexes: new Set() };
-          unitOwners.set(unit.identity, record);
-        } else {
-          record.bytes = Math.max(record.bytes, unit.bytes);
-        }
-        record.entryIndexes.add(index);
       }
     }
     const memoryUnitOwners = hasMemoryModel ? unitOwners : null;
@@ -2173,21 +2228,18 @@ export function createAssetResidencyRegistry(options = {}) {
     const activePendingKeys = activePendingKeySet();
     const entries = [];
     const blockedRows = [];
-    // Same single-fold census as the sync twin: blocked reasons mint once here and serve both
-    // the planner's blocked loop and the after-table breakdown; the entries list and unit-owner
-    // index mint only when the ledger is already over the cap (the plan can only be evict:[]
-    // otherwise). Yield cadence keeps its O(assets)/batchEntries contract.
+    // Same single-fold census as the sync twin: blocked reasons mint once off the member
+    // set and serve both the planner's blocked loop and the after-table breakdown; the
+    // entries list and unit-owner index mint only when the ledger is already over the cap
+    // (the plan can only be evict:[] otherwise). Yield cadence keeps its
+    // O(assets)/batchEntries contract.
     const blockedReasons = new Map();
     const unitOwners = overBudgetKnown ? new Map() : null;
     let hasMemoryModel = false;
     let visited = 0;
-    for (const entry of assets.values()) {
-      const row = governorEntry(entry, kind, activePendingKeys);
-      if (!isGovernorEntryEvictable(row)) {
-        blockedRows.push(row);
-        blockedReasons.set(row, governorEntryBlockReasons(row));
-      }
-      if (overBudgetKnown) {
+    if (overBudgetKnown) {
+      for (const entry of assets.values()) {
+        const row = governorEntry(entry, kind, activePendingKeys);
         const index = entries.length;
         entries.push(row);
         if (Array.isArray(row.memoryUnits)) hasMemoryModel = true;
@@ -2206,6 +2258,15 @@ export function createAssetResidencyRegistry(options = {}) {
           }
           record.entryIndexes.add(index);
         }
+        if (++visited % batchEntries === 0) yield;
+      }
+    }
+    for (const entry of governorBlockedMembers) {
+      if (assets.get(entry.key) !== entry) continue;
+      const row = governorEntry(entry, kind, activePendingKeys);
+      if (!isGovernorEntryEvictable(row)) {
+        blockedRows.push(row);
+        blockedReasons.set(row, governorEntryBlockReasons(row));
       }
       if (++visited % batchEntries === 0) yield;
     }
