@@ -5,6 +5,11 @@ export const RUNTIME_WORKERS = Object.freeze([
     output: 'workers/renderPackageDigestWorker.js', type: 'classic', format: 'iife' }),
   Object.freeze({ id: 'prepass', source: 'src/render/glbPrepassWorker.js',
     output: 'workers/glbPrepassWorker.js', type: 'module', format: 'esm' }),
+  // The whole-sim lane worker (S1): default runtime since Stage E. Same contract —
+  // URL-created, invisible to the main-thread bundler, emitted as a self-contained
+  // retail entry under workers/ so the deployment root resolves it.
+  Object.freeze({ id: 'simLane', source: 'src/core/wholeSimBrowserWorker.js',
+    output: 'workers/wholeSimBrowserWorker.js', type: 'module', format: 'esm' }),
 ]);
 
 export function runtimeWorkerUrl(id, moduleUrl, {

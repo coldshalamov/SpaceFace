@@ -48,6 +48,7 @@ import {
 } from '../../scripts/lib/simSabEnvelope.mjs';
 import { flattenEventPayload } from '../../scripts/lib/simEventBridge.mjs';
 import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
+import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import {
   installSimCommandSink,
@@ -1042,7 +1043,10 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
 //   post(msg) / onMessage(cb) / onError(cb) / terminate()
 function createBrowserChannel() {
   const worker = new Worker(
-    new URL('./wholeSimBrowserWorker.js', import.meta.url),
+    // Retail path resolves workers/wholeSimBrowserWorker.js against the document
+    // base (the bundle emits it as a separate self-contained program); dev keeps
+    // the raw-module ./wholeSimBrowserWorker.js sibling.
+    runtimeWorkerUrl('simLane', import.meta.url),
     { type: 'module' },
   );
   const messageHandlers = [];
