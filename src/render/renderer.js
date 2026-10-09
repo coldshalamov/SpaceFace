@@ -3213,10 +3213,23 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         if (owner._sectorExitCleanupPendingPost) {
           owner._sectorExitCleanupPendingPost = false;
           const residency = owner._assetResidency;
-          owner._sectorExitCleanupIter = residency
+          const postLeg = residency
             && typeof residency.releaseUnreferencedCacheOwnersSteps === 'function'
             ? residency.releaseUnreferencedCacheOwnersSteps(
               owner._sectorExitCleanupPostReason || 'sector-exit-cache-only:post-dispatch')
+            : null;
+          // A faulted primary leg forfeits leg 3 with it — the over-ceiling state
+          // then sits unenforced until the next seam. Chain the enforce behind the
+          // re-minted post-dispatch leg exactly as the clean fused iterator does.
+          const enforceLeg = residency
+            && typeof residency.enforceBudgetSteps === 'function'
+            ? () => residency.enforceBudgetSteps('gpu')
+            : null;
+          owner._sectorExitCleanupIter = postLeg || enforceLeg
+            ? (function* () {
+              if (postLeg) yield* postLeg;
+              if (enforceLeg) yield* enforceLeg();
+            })()
             : null;
         } else {
           owner._sectorExitCleanupIter = null;
@@ -19365,7 +19378,7 @@ export const render = {
         this._authoredSectorPrewarmPendingId = null;
         this._authoredSectorPrewarmPending = null;
       }
-      this._publishAssetResidencyDiagnostics();
+      this._publishAssetResidencyDiagnosticsDeferred();
     });
     // PQ-210.00: the arena publishes real spawn-spec exemplars on every run:wavePlanned —
     // wave 1's receipt lands while mode is still 'loading', so these jobs drain behind the
@@ -19497,7 +19510,7 @@ export const render = {
           state.render.sectorShellAdmission = false;
           state.render.sectorShellAdmissionSerial = null;
         }
-        this._publishAssetResidencyDiagnostics();
+        this._publishAssetResidencyDiagnosticsDeferred();
         return;
       }
       if (continuous !== true) {
@@ -19626,7 +19639,7 @@ export const render = {
         pipelinePrecompile.catch((error) => {
           console.warn('[render] pipeline precompile rejected', error);
         });
-        this._publishAssetResidencyDiagnostics();
+        this._publishAssetResidencyDiagnosticsDeferred();
         return;
       }
 
@@ -19667,7 +19680,7 @@ export const render = {
         pipelinePrecompile.catch((error) => {
           console.warn('[render] pipeline precompile rejected', error);
         });
-        this._publishAssetResidencyDiagnostics();
+        this._publishAssetResidencyDiagnosticsDeferred();
         return;
       }
 
@@ -19831,7 +19844,7 @@ export const render = {
             upgradeMintPass.catch(() => {});
           }
         }
-        this._publishAssetResidencyDiagnostics();
+        this._publishAssetResidencyDiagnosticsDeferred();
       });
       state.render.pipelinePrecompileReady = preparation;
       // A fail-closed arrival (an invariant broke; console.error above carries the cause) still
@@ -23249,6 +23262,23 @@ export const render = {
     if (this.state.render.assetResidency === diagnostics) return diagnostics;
     this.state.render.assetResidency = diagnostics;
     return diagnostics;
+  },
+
+  // The snapshot itself is a memo, but the re-mint after a mass-retain storm is
+  // O(assets) — publishing it inline inside a seam emit spends ~1.6ms of the
+  // boundary frame on diagnostics nobody reads per-frame. Seam tails arm the
+  // publish on a post-present slot instead (deduped so a burst of emits shares
+  // one armed callback); readers continue to see the last canonical snapshot
+  // until the deferred publish lands, which is the documented snapshot contract.
+  _publishAssetResidencyDiagnosticsDeferred() {
+    if (this._assetResidencyDiagnosticsPublishArmed) return;
+    this._assetResidencyDiagnosticsPublishArmed = true;
+    armCallbackAfterPresent(() => {
+      this._assetResidencyDiagnosticsPublishArmed = false;
+      try {
+        this._publishAssetResidencyDiagnostics();
+      } catch (_) { /* diagnostics only */ }
+    });
   },
 
   // Burst-safe variant: a bus flush carrying N corpse events rebuilds the canonical sort once

@@ -62,27 +62,48 @@ export function createAssetResidencyRegistry(options = {}) {
   const assets = new Map();
   const resources = new Map();
   const memoryUnits = new Map();
+  // Running byte ledgers — every mutation site funnels through
+  // registerAsset/evictIfUnowned/finalizeResource, so the scalars the governor
+  // consults (gpuResidentBytes, cpuPackageBytes, unaccountedResources) stay
+  // O(1) instead of re-walking their backing maps inside every budget census.
+  let gpuResidentBytesTotal = 0;
+  let cpuPackageBytesTotal = 0;
+  let unaccountedResourceCount = 0;
   const owners = new Map();
   const releasedObjectOwners = new WeakSet();
   const releasedPrimitiveOwners = new Set();
   const pendingRequests = new Set();
   const events = [];
-  // Versioned memo of keys with an active decode request: every census leg that
-  // asked "does this entry have a live request?" used to rescan O(requests) per
-  // entry — O(assets x requests) per drain. One mint per mutation epoch serves
-  // all consults at O(1). Bumped only where the set or a request's active flag
-  // changes (beginRequest's add, finishRequest's delete).
-  let pendingRequestsVersion = 0;
-  let activePendingKeysCache = null;
-  let activePendingKeysVersion = -1;
-  function activePendingKeySet() {
-    if (activePendingKeysVersion !== pendingRequestsVersion) {
-      const keys = new Set();
-      for (const request of pendingRequests) if (request && request.active) keys.add(request.key);
-      activePendingKeysCache = keys;
-      activePendingKeysVersion = pendingRequestsVersion;
+  // Live-maintained active-request key set — every `active` transition funnels
+  // through beginRequest/cancel/finishRequest, so the set is maintained
+  // incrementally with a per-key refcount (concurrent dup-key requests stay
+  // correct) instead of a version-memoized re-mint: a K-pending owner teardown
+  // used to re-mint O(P) per cancel, O(K × P) per drain.
+  const activePendingRefcounts = new Map();
+  const activePendingKeys = new Set();
+  function notePendingRequestActivated(key) {
+    const count = (activePendingRefcounts.get(key) || 0) + 1;
+    activePendingRefcounts.set(key, count);
+    if (count === 1) activePendingKeys.add(key);
+  }
+  function notePendingRequestDeactivated(key) {
+    const count = activePendingRefcounts.get(key);
+    if (!count) return;
+    if (count <= 1) {
+      activePendingRefcounts.delete(key);
+      activePendingKeys.delete(key);
+    } else {
+      activePendingRefcounts.set(key, count - 1);
     }
-    return activePendingKeysCache;
+  }
+  function deactivateRequest(request) {
+    if (request && request.active) {
+      request.active = false;
+      notePendingRequestDeactivated(request.key);
+    }
+  }
+  function activePendingKeySet() {
+    return activePendingKeys;
   }
   // Evictions run inside an active enforce have their demand already served —
   // arming softBudgetPending there just books a redundant next-drain census.
@@ -219,6 +240,11 @@ export function createAssetResidencyRegistry(options = {}) {
       cpuPackageBytes: normalizeNonNegativeBytes(registration.cpuPackageBytes),
       metadata: { ...(registration.metadata || {}) },
       handle: null,
+      // Maintained per owner-set mutation by noteOwnerMembership* — the soft
+      // budget's per-entry class checks consult O(1) counters instead of
+      // re-scanning the owner set inside every census row.
+      softOwnerCount: 0,
+      rpcOwnerCount: 0,
     };
     const accountingOptions = {
       renderer: registration.renderer || accountingRenderer,
@@ -250,18 +276,21 @@ export function createAssetResidencyRegistry(options = {}) {
           if (!memory) {
             memory = { identity: unit.identity, bytes: unit.bytes, resources: new Set() };
             memoryUnits.set(unit.identity, memory);
+            gpuResidentBytesTotal += memory.bytes;
           }
           memory.resources.add(resourceEntry);
           resourceEntry.memoryUnits.add(memory);
           resourceEntry.bytes += memory.bytes;
         }
         resources.set(resource, resourceEntry);
+        if (resourceEntry.unaccounted) unaccountedResourceCount += 1;
       }
       resourceEntry.assets.add(entry);
       entry.resources.add(resourceEntry);
     }
     entry.handle = Object.freeze({ key: exactKey, generation: entry.generation });
     assets.set(exactKey, entry);
+    cpuPackageBytesTotal += entry.cpuPackageBytes;
     emit('asset-registered', {
       key: exactKey,
       generation: entry.generation,
@@ -303,6 +332,7 @@ export function createAssetResidencyRegistry(options = {}) {
       else if (tier === 'R2_METADATA' || tier === 'R3_UNLOADED') ownerMetadata.role = 'evictable';
     }
     entry.owners.set(owner, ownerMetadata);
+    noteOwnerMembershipIndexed(entry, ownerMetadata);
     entry.lastWarmClaimAtMs = now();
     state.assets.add(entry);
     noteWarmCoverageEntryMutation(entry);
@@ -399,13 +429,13 @@ export function createAssetResidencyRegistry(options = {}) {
         return retained;
       },
       cancel(reason = 'cancelled-before-decode') {
-        request.active = false;
+        deactivateRequest(request);
         finishRequest(request, reason);
         evictIfUnowned(assets.get(exactKey), reason);
       },
     };
     pendingRequests.add(request);
-    pendingRequestsVersion++;
+    if (request.active) notePendingRequestActivated(exactKey);
     if (state) state.requests.add(request);
     emit('request-begun', { key: exactKey, role: metadata.role || null });
     return request;
@@ -413,9 +443,8 @@ export function createAssetResidencyRegistry(options = {}) {
 
   function finishRequest(request, status) {
     if (!pendingRequests.has(request)) return;
-    request.active = false;
+    deactivateRequest(request);
     pendingRequests.delete(request);
-    pendingRequestsVersion++;
     const state = owners.get(request.owner);
     if (state) {
       state.requests.delete(request);
@@ -436,7 +465,9 @@ export function createAssetResidencyRegistry(options = {}) {
     for (const request of [...state.requests]) request.cancel(reason);
     let released = 0;
     for (const entry of [...state.assets]) {
+      const releasedMetadata = entry.owners.get(owner);
       if (!entry.owners.delete(owner)) continue;
+      noteOwnerMembershipUnindexed(entry, releasedMetadata);
       state.assets.delete(entry);
       noteWarmCoverageEntryMutation(entry);
       entry.lastReleaseAtMs = now();
@@ -542,7 +573,9 @@ export function createAssetResidencyRegistry(options = {}) {
   function release(key, owner, reason = 'released') {
     const entry = assets.get(String(key || ''));
     const state = owners.get(owner);
+    const releasedMetadata = entry && entry.owners.get(owner);
     if (!entry || !state || !entry.owners.delete(owner)) return false;
+    noteOwnerMembershipUnindexed(entry, releasedMetadata);
     state.assets.delete(entry);
     noteWarmCoverageEntryMutation(entry);
     entry.lastReleaseAtMs = now();
@@ -572,6 +605,63 @@ export function createAssetResidencyRegistry(options = {}) {
     return !!entry && activePendingKeySet().has(entry.key);
   }
 
+  // Owner-membership index. Every owner-set mutation funnels through
+  // retain/release/releaseOwner, so two indexes stay exact per-mutation:
+  // (a) sectorId -> Map<entry, {total, nonPlayer}> — the boundary seams
+  //     (prepareSectorExit, rotateSector) iterate O(assets in that sector)
+  //     instead of a full O(assets x owners) census inline inside the emit;
+  //     `nonPlayer` counts owners whose metadata.role is not 'player',
+  //     preserving the player-role filter the seam scans apply.
+  // (b) per-entry soft-class counters — isSoftOnlyEntry/isPackageCacheOnlyEntry
+  //     turn O(1) consults instead of an O(owners) scan inside every census row.
+  const sectorOwnerIndex = new Map();
+  function noteOwnerMembershipIndexed(entry, metadata) {
+    if (!metadata) return;
+    const role = String(metadata.role || '').trim().toLowerCase();
+    // One increment per owner — a softLease flag stacked on a soft role still
+    // counts once, or the all-soft equality check below would never hold.
+    if (metadata.softLease === true
+        || role === 'render-package-cache' || role === 'decode-cache' || role === 'runtime-cache') {
+      entry.softOwnerCount += 1;
+    }
+    if (role === 'render-package-cache') entry.rpcOwnerCount += 1;
+    if (metadata.sectorId == null) return;
+    const sid = String(metadata.sectorId);
+    let sectorMap = sectorOwnerIndex.get(sid);
+    if (!sectorMap) {
+      sectorMap = new Map();
+      sectorOwnerIndex.set(sid, sectorMap);
+    }
+    let row = sectorMap.get(entry);
+    if (!row) {
+      row = { total: 0, nonPlayer: 0 };
+      sectorMap.set(entry, row);
+    }
+    row.total += 1;
+    if (metadata.role !== 'player') row.nonPlayer += 1;
+  }
+  function noteOwnerMembershipUnindexed(entry, metadata) {
+    if (!metadata) return;
+    const role = String(metadata.role || '').trim().toLowerCase();
+    if (metadata.softLease === true
+        || role === 'render-package-cache' || role === 'decode-cache' || role === 'runtime-cache') {
+      entry.softOwnerCount -= 1;
+    }
+    if (role === 'render-package-cache') entry.rpcOwnerCount -= 1;
+    if (metadata.sectorId == null) return;
+    const sid = String(metadata.sectorId);
+    const sectorMap = sectorOwnerIndex.get(sid);
+    if (!sectorMap) return;
+    const row = sectorMap.get(entry);
+    if (!row) return;
+    row.total -= 1;
+    if (metadata.role !== 'player') row.nonPlayer -= 1;
+    if (row.total <= 0) {
+      sectorMap.delete(entry);
+      if (sectorMap.size === 0) sectorOwnerIndex.delete(sid);
+    }
+  }
+
   // Cache-lease roles: owners that exist only to keep a decoded blueprint/package reusable while
   // no live boundary needs it. `render-package-cache` covers decoded packages; `decode-cache` is
   // the same lease for source-route GLB blueprints (assetLoader's decodeCacheOwner).
@@ -595,12 +685,7 @@ export function createAssetResidencyRegistry(options = {}) {
   // second soft tier below.
   function isPackageCacheOnlyEntry(entry) {
     if (!entry || entry.state !== 'resident' || entry.owners.size === 0) return false;
-    for (const metadata of entry.owners.values()) {
-      if (String(metadata && metadata.role || '').trim().toLowerCase() !== 'render-package-cache') {
-        return false;
-      }
-    }
-    return true;
+    return entry.rpcOwnerCount === entry.owners.size;
   }
 
   // Warm-purpose decode leases speculate on a spawn that has not arrived yet — they read as
@@ -682,10 +767,7 @@ export function createAssetResidencyRegistry(options = {}) {
   // runtime-cache session pin). A live presentation owner of any kind disqualifies the entry.
   function isSoftOnlyEntry(entry) {
     if (!entry || entry.state !== 'resident' || entry.owners.size === 0) return false;
-    for (const metadata of entry.owners.values()) {
-      if (!isSoftResidencyOwner(metadata)) return false;
-    }
-    return true;
+    return entry.softOwnerCount === entry.owners.size;
   }
 
   // Demand flag for the amortized release() path — set when the byte census is
@@ -1070,20 +1152,18 @@ export function createAssetResidencyRegistry(options = {}) {
 
   /** The gpuResidentBytes total diagnostics() reports, without building its per-asset rows. */
   function totalGpuResidentBytes() {
-    let bytes = 0;
-    for (const unit of memoryUnits.values()) bytes += unit.bytes;
-    return bytes;
+    return gpuResidentBytesTotal;
   }
 
   // The budget governor only consumes three scalar totals — building two full
   // diagnostics() tables inside enforceBudget minted ~2xN frozen rows plus
   // their owner-metadata sets and sort exactly at the boundary crossing.
   function budgetTotals() {
-    let cpuPackageBytes = 0;
-    for (const entry of assets.values()) cpuPackageBytes += entry.cpuPackageBytes;
-    let unaccountedResources = 0;
-    for (const resourceEntry of resources.values()) if (resourceEntry.unaccounted) unaccountedResources++;
-    return { cpuPackageBytes, gpuResidentBytes: totalGpuResidentBytes(), unaccountedResources };
+    return {
+      cpuPackageBytes: cpuPackageBytesTotal,
+      gpuResidentBytes: totalGpuResidentBytes(),
+      unaccountedResources: unaccountedResourceCount,
+    };
   }
 
   function evictIfUnowned(entry, reason) {
@@ -1091,6 +1171,7 @@ export function createAssetResidencyRegistry(options = {}) {
     if (activePendingKeySet().has(entry.key)) return false;
     entry.state = 'evicted';
     assets.delete(entry.key);
+    cpuPackageBytesTotal -= entry.cpuPackageBytes;
     noteWarmCoverageEntryMutation(entry);
     evictedAssets++;
     const evictionAt = now();
@@ -1116,9 +1197,13 @@ export function createAssetResidencyRegistry(options = {}) {
     if (!entry || entry.state !== 'resident') return;
     entry.state = contextLost ? 'abandoned' : 'disposed';
     resources.delete(entry.resource);
+    if (entry.unaccounted) unaccountedResourceCount -= 1;
     for (const memory of entry.memoryUnits || []) {
       memory.resources.delete(entry);
-      if (memory.resources.size === 0) memoryUnits.delete(memory.identity);
+      if (memory.resources.size === 0) {
+        memoryUnits.delete(memory.identity);
+        gpuResidentBytesTotal -= memory.bytes;
+      }
     }
     const protectedState = entry.resource && entry.resource[PROTECTED_RESOURCE];
     if (contextLost) {
@@ -1162,18 +1247,17 @@ export function createAssetResidencyRegistry(options = {}) {
     if (previousSectorId != null) {
       const owner = Object.freeze({ type: 'asset-warm-sector', sectorId: previousSectorId, generation: assetGeneration });
       let retained = 0;
-      for (const entry of assets.values()) {
-        let belongsToPrevious = false;
-        for (const metadata of entry.owners.values()) {
-          if (String(metadata && metadata.sectorId || '') !== previousSectorId) continue;
-          if (metadata && metadata.role === 'player') continue;
-          belongsToPrevious = true;
-          break;
+      const previousSectorMap = sectorOwnerIndex.get(previousSectorId);
+      if (previousSectorMap) {
+        // Snapshot: the warm retain below indexes its own owner into this same
+        // sector map, and Map iterators visit entries added mid-walk.
+        for (const [entry, row] of [...previousSectorMap]) {
+          if (row.nonPlayer <= 0) continue;
+          if (retain(entry.key, owner, {
+            role: 'warm-previous-sector',
+            sectorId: previousSectorId,
+          })) retained++;
         }
-        if (belongsToPrevious && retain(entry.key, owner, {
-          role: 'warm-previous-sector',
-          sectorId: previousSectorId,
-        })) retained++;
       }
       if (retained > 0) {
         warmOwner = owner;
@@ -1193,15 +1277,13 @@ export function createAssetResidencyRegistry(options = {}) {
     if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
     const owner = Object.freeze({ type: 'asset-warm-sector', sectorId: exactSectorId, generation: assetGeneration });
     let retained = 0;
-    for (const entry of assets.values()) {
-      let belongs = false;
-      for (const metadata of entry.owners.values()) {
-        if (String(metadata && metadata.sectorId || '') !== exactSectorId) continue;
-        if (!includePlayer && metadata && metadata.role === 'player') continue;
-        belongs = true;
-        break;
+    const exitSectorMap = sectorOwnerIndex.get(exactSectorId);
+    if (exitSectorMap) {
+      // Snapshot as above — the warm retain indexes its own owner into this map.
+      for (const [entry, row] of [...exitSectorMap]) {
+        if (!includePlayer && row.nonPlayer <= 0) continue;
+        if (retain(entry.key, owner, { role: warmRole, sectorId: exactSectorId })) retained++;
       }
-      if (belongs && retain(entry.key, owner, { role: warmRole, sectorId: exactSectorId })) retained++;
     }
     warmOwner = retained > 0 ? owner : null;
     warmSectorId = retained > 0 ? exactSectorId : null;
@@ -1462,7 +1544,17 @@ export function createAssetResidencyRegistry(options = {}) {
     // entries). The per-candidate re-check below still consults live requests through the
     // default governorEntry path, so a plan can never outrace a decode completing mid-call.
     const activePendingKeys = activePendingKeySet();
-    const entries = [...assets.values()].map((entry) => governorEntry(entry, kind, activePendingKeys));
+    const entries = [];
+    // Blocked rows are collected inside the same census walk — a planned evict
+    // can only remove evictable rows, so the blocked set survives to the
+    // after-table unchanged; the membership filter below stays for mutations
+    // that raced the census itself.
+    const blockedRows = [];
+    for (const entry of assets.values()) {
+      const row = governorEntry(entry, kind, activePendingKeys);
+      if (!isGovernorEntryEvictable(row)) blockedRows.push(row);
+      entries.push(row);
+    }
     const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
     // Under the named ceiling the planner can only return evict:[] — selectEvictions
     // takes its early-out before touching evictions — so the spread/sort/index build
@@ -1507,19 +1599,19 @@ export function createAssetResidencyRegistry(options = {}) {
       evictIfUnowned(entry, 'governor-budget');
       if (!assets.has(String(key))) evicted.push(key);
     }
-    // An empty plan.evict means no release() ran — the asset map is byte-identical to
-    // the `entries` census minted above, so it doubles as the after-table. A non-empty
-    // evict plan only removes rows: release() leaves surviving entries' owner sets and
-    // the request snapshot untouched, so filtering `entries` to still-resident keys is
-    // exact — not approximate — and skips a second full governorEntry census.
-    const afterEntries = plan.evict.length === 0
-      ? entries
-      : entries.filter((row) => assets.has(row.key));
+    // An empty plan.evict means no release() ran — the blocked rows collected in
+    // the census are byte-identical to the after-table's. A non-empty evict plan
+    // can only remove evictable rows, so the blocked set needs no filter there;
+    // the same filter covers mutations that raced the census itself (mid-flight
+    // releases in the stepped twin).
+    const afterBlockedRows = plan.evict.length === 0
+      ? blockedRows
+      : blockedRows.filter((row) => assets.has(row.key));
     const after = budgetTotals();
     const beforeBytes = Number(kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes) || 0;
     const remainingBytes = Number(kind === 'cpu' ? after.cpuPackageBytes : after.gpuResidentBytes) || 0;
     const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
-    const blocked = blockedBreakdown(afterEntries);
+    const blocked = blockedBreakdown(afterBlockedRows);
     const budgetBytes = Number(plan.budgetBytes);
     const gpuAccountingAuthoritative = kind !== 'gpu' || after.unaccountedResources === 0;
     const indeterminate = !gpuAccountingAuthoritative;
@@ -1554,9 +1646,12 @@ export function createAssetResidencyRegistry(options = {}) {
     const initialResidentBytes = kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes;
     const activePendingKeys = activePendingKeySet();
     const entries = [];
+    const blockedRows = [];
     let visited = 0;
     for (const entry of assets.values()) {
-      entries.push(governorEntry(entry, kind, activePendingKeys));
+      const row = governorEntry(entry, kind, activePendingKeys);
+      if (!isGovernorEntryEvictable(row)) blockedRows.push(row);
+      entries.push(row);
       if (++visited % batchEntries === 0) yield;
     }
     const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
@@ -1600,14 +1695,14 @@ export function createAssetResidencyRegistry(options = {}) {
       evictIfUnowned(entry, 'governor-budget');
       if (!assets.has(String(key))) evicted.push(key);
     }
-    const afterEntries = plan.evict.length === 0
-      ? entries
-      : entries.filter((row) => assets.has(row.key));
+    const afterBlockedRows = plan.evict.length === 0
+      ? blockedRows
+      : blockedRows.filter((row) => assets.has(row.key));
     const after = budgetTotals();
     const beforeBytes = Number(kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes) || 0;
     const remainingBytes = Number(kind === 'cpu' ? after.cpuPackageBytes : after.gpuResidentBytes) || 0;
     const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
-    const blocked = blockedBreakdown(afterEntries);
+    const blocked = blockedBreakdown(afterBlockedRows);
     const budgetBytes = Number(plan.budgetBytes);
     const gpuAccountingAuthoritative = kind !== 'gpu' || after.unaccountedResources === 0;
     const indeterminate = !gpuAccountingAuthoritative;
