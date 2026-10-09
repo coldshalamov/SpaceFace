@@ -3104,7 +3104,10 @@ export const RECIPES = [
     baseFreq: 320, freqSweep: [320, 480], sweepTimeS: 0.04,
     gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.06 },
     filterType: 'bandpass', filterFreq: 1100, filterQ: 2.4,
-    pitchRange: [0.95, 1.15],
+    // Narrow scatter: the +N appetite ratchet reuses this voice at
+    // rate 1.3+0.05·n — a ±10% per-voice pitch scatter can invert the graded
+    // ordering between consecutive ticks (same fix absorb/windup already carry).
+    pitchRange: [0.98, 1.02],
   },
   // Launch: the bowling-ball release — a whip-crack transient over a big falling
   // sub whoosh. The single loudest voice in the weapon's vocabulary.

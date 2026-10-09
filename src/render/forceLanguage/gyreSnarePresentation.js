@@ -165,7 +165,9 @@ void main() {
   vec3 p = vec3(x, cos(a) * r, sin(a) * r);
   // While a core is held the well it orbits is off-axis from the maw — bend the
   // funnel's last stretch toward it so the suction arrow points at the real mass.
-  p += uAim * smoothstep(0.55, 1.0, t) * (1.0 - wide);
+  // The ~28% ambient wide band shares the lean at 0.3× — "everything feeds the
+  // well" stays honest under a big orbit without losing the ambient read.
+  p += uAim * smoothstep(0.55, 1.0, t) * mix(0.3, 1.0, 1.0 - wide);
   vFade = smoothstep(0.0, 0.15, t) * mix(1.0, 0.45, wide);
   // Terminal gulp: the mote holds full bright, flashes as the mouth swallows it,
   // then snaps off AT the rim — the swallow beat was invisible when it faded early.
@@ -403,11 +405,13 @@ export class GyreSnarePresentation {
 
     // ── absorb contact glints: a brief additive spark where each meal actually
     // stuck. The mouth gulps on every absorb, but on a capped clump the skin is
-    // ~60 wu from the maw — the contact point deserves its own flash. Pooled 2
-    // deep; a fast feed reuses the stalest slot. Rides the clump group so the
+    // ~60 wu from the maw — the contact point deserves its own flash. Pooled 4
+    // deep (the absorb gate allows ~12 merges/s and a spark lives ~0.4 s —
+    // 2 slots made the 3rd meal in a burst steal a mid-flash slot or get none);
+    // a fast feed still reuses the stalest slot. Rides the clump group so the
     // spark sits in the same space the lump pops into (clump-local gulp angle).
     this._glints = [];
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       const gm = new THREE.MeshBasicMaterial({
         color: new THREE.Color(P.hot), transparent: true, opacity: 0,
         blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
@@ -847,7 +851,11 @@ export class GyreSnarePresentation {
       // tenses against the payload it's about to sling.
       const windup = phase === 'launching' ? clamp01(finite(mirror.launchWindup01)) : 0;
       const coilR = endR * (1 - windup * 0.07);
-      const coilBack = windup * Math.min(6, endR * 0.5);
+      // Cock-back graded by payload: the drawn mouth's retreat tracks the
+      // sim's real draw-back (max(13, clumpRadius·0.4) ≈ 24 wu on a capped
+      // clump) — a flat 6 wu cap left the glass ~18 wu ahead of the payload
+      // on the tautest beat. Pebbles keep the old shallow cock.
+      const coilBack = windup * Math.min(6 + this._clumpRadius * 0.3, endR * 0.5);
       this._cone.scale.set(coilR, drawLen - coilBack, coilR);
       this._coneBody.scale.set(coilR * 0.97, drawLen - coilBack, coilR * 0.97);
       this._maw.position.set(drawLen - coilBack, 0, 0);
