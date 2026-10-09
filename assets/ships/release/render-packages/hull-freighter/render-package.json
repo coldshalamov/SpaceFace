@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "337ac6b9998f7932f0457ae059e6061aca713bffaef345a1ca1349c892de82da",
+  "contentHash": "b9bb41ff31a9e8620ed3843007036a7e21dcdfed0b2ff10125e2ef06dc115a02",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,7 +116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bafa450a7b925aed22226f0fee5f1a585fe54b0f0d8c425268458bcf51c27dc4",
+      "geometryHash": "3c9210350fefdcf4399752daf7fbb3c779f9338777acf4e17070214b1ae2c938",
       "id": "sf.render.hull-freighter.mesh.lod0-det-cargo-bay-rim.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -125,7 +125,7 @@
       "meshName": "Cube",
       "nodeId": "sf.render.hull-freighter.mesh.lod0-det-cargo-bay-rim",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -141,7 +141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "235b6400e47c658916c43bd3babff762e566da7fad809685377c9ff16b47415e",
+      "geometryHash": "90aaa6d499f5ba85986d8909b7612b37427941e4cfcfbc396ffb3517aea452b8",
       "id": "sf.render.hull-freighter.mesh.lod0-det-container-latch.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -150,7 +150,7 @@
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-freighter.mesh.lod0-det-container-latch",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -166,7 +166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3756febe6baf3df847b33fd66d83411cfcbfd24aa7f384a9add98d5b31d613c6",
+      "geometryHash": "9f177a6c7a833501589e590e00bcb41736c0a9f2aa7b6a7df43169276c338ca3",
       "id": "sf.render.hull-freighter.mesh.lod0-det-dock-scrape.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -175,7 +175,7 @@
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-freighter.mesh.lod0-det-dock-scrape",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -191,7 +191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "097eb362923d2f5c0a57fd557b9de0d3c2dc82065e8954e665b6c3b547bf749a",
+      "geometryHash": "e69bbb491d0b1f5bde05d6f8b975c761d930b936ac1388c6a511b4cab993884f",
       "id": "sf.render.hull-freighter.mesh.lod0-det-exhaust-soot.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -200,7 +200,7 @@
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-freighter.mesh.lod0-det-exhaust-soot",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 177
     },
     {
       "bounds": {
@@ -216,7 +216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "702afa195fa8c6714984a409681c1c47caa73a48f23d0e2412661dcd2b4df28c",
+      "geometryHash": "f8692d8447a39f145357887dbb33c8f4909325af74fd6deb20b2cfc5a16abfa0",
       "id": "sf.render.hull-freighter.mesh.lod0-det-field-weld.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -225,7 +225,7 @@
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-freighter.mesh.lod0-det-field-weld",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -241,7 +241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05085e4e54424b2d169a158a8ae239c7a5ac819fcf2712ede3d8343757ab4fb8",
+      "geometryHash": "63329cfbbb1669615304f8a33d90299916f7556657e685c9d3c8125c399b23a8",
       "id": "sf.render.hull-freighter.mesh.lod0-det-manifest-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -250,7 +250,7 @@
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-freighter.mesh.lod0-det-manifest-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -266,7 +266,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da625dcd0197e8cefcdeb0334e258770295eb8693c5501b9d024a44cff12299e",
+      "geometryHash": "30a483f0e0bdbffd9a9db35a828f137c54ca164edadc238fd702657f1322073f",
       "id": "sf.render.hull-freighter.mesh.lod0-det-rust-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -275,7 +275,7 @@
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-freighter.mesh.lod0-det-rust-stripe",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 173
     },
     {
       "bounds": {
@@ -291,7 +291,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "868a2253e41035eb133572622601158081b138c9ebb1cb798187c8b2a51f98d3",
+      "geometryHash": "1f693f0a77d5b5da25445834569c22328793587853baa4662ad3e80e4c5b6d5e",
       "id": "sf.render.hull-freighter.mesh.lod0-det-superstructure-rib.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -300,7 +300,7 @@
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-freighter.mesh.lod0-det-superstructure-rib",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 162
     },
     {
       "bounds": {
@@ -341,7 +341,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a031e4f03e3413960b1e783decf81b7f0ea19e0041a4c0de4936234d5b00d634",
+      "geometryHash": "a1e2cfccce93c3319caeda6d0c91c21a456b6fec17fa7b41514dd102720198ec",
       "id": "sf.render.hull-freighter.mesh.lod1-hull-freighter-silhouette.primitive.0",
       "indexCount": 3933,
       "indexed": true,
@@ -366,7 +366,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82088fa2d137745958a6c2c8a646cf89ecf6d79a81ac959e6823a1ff0c6c34ae",
+      "geometryHash": "5a66ce1def365b3a1a48e9615758466cf07087e91a10b0ee183996ed2e4f150b",
       "id": "sf.render.hull-freighter.mesh.lod2-hull-freighter-silhouette.primitive.0",
       "indexCount": 186,
       "indexed": true,
@@ -375,7 +375,7 @@
       "meshName": "LOD0_HULL_FREIGHTER.004",
       "nodeId": "sf.render.hull-freighter.mesh.lod2-hull-freighter-silhouette",
       "primitiveIndex": 0,
-      "vertexCount": 111
+      "vertexCount": 151
     }
   ],
   "hlods": [],
@@ -1073,19 +1073,19 @@
       "sha256": "43d011ac1beec98bce204df03d3963432fb7cfd5959769cb9df8d3283b0a92c9"
     },
     "sourceGlb": {
-      "bytes": 583136,
-      "sha256": "d4d7a88b50fc181bd2c501e9fbcaf4e2f2a630a78273dcb10a5a5ef38da82ba6",
+      "bytes": 597188,
+      "sha256": "621804dfa0bc7f34a0e52af57700ddf201e6ba8caefbaeec2fea254d9a2f0622",
       "uri": "hull_freighter.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 688268,
-    "sha256": "163ff311da09aa208db0c2e9f1d2e25935fe1b95e062bc93abebe3bb2a7994be",
+    "bytes": 706532,
+    "sha256": "ea031c01bff195e96e311b5922f28f5cf4e3f43054c6901c35c569558247f4cc",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_freighter.glb"
   },
-  "runtimeHash": "bc5f7fb6033e33595827c2f855a221e0fc9803c2ec465e7880fb2413b8ddc852",
+  "runtimeHash": "4ab8f175a94eba5a6f517e65a939c508e2601cbee24c58f41f9cabab30d2c935",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

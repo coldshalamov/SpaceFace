@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e6c944d9f567d11f7987fff4367c7d43a855ae2344901609e485d757b527268f",
+  "contentHash": "5be0701598dc9d02d9bb8d494a59912445a7bd148c8066fbae70f40a273d8af4",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b7db35db07494391a3514ea5611ab2dd5e3c20a399cbfb271c413553d107f0a",
+      "geometryHash": "9502297a0b6fad9cd640dfba060311af7d62dbc48e8de7a772d6d34dd359ce1d",
       "id": "sf.render.engine-plasma-ring.mesh.engine-plasma-ring-material-mechanical-merged.primitive.0",
       "indexCount": 2400,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d093633d9dfa9f4cbcf4f982f91d9311e71983729e907ba76d654395ea33af0f",
+      "geometryHash": "d1b5bff62203462c9588cf20fd374f4077af6c7e9945a33eaaf62de321d1e350",
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-core.primitive.0",
       "indexCount": 588,
       "indexed": true,
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "484eb72348f6bc3eca06e4e5f76b8f175f8f9207cee9d625f31894bfb8bd2b50",
+      "geometryHash": "a2cf6a5a3afeb271ee9c66ee11c235cfb329de0523100da9076b2b9dedb1db7c",
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-fan.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8bef43eee6ea1552233e7bfc6a625e9ca71a1534ba7e98b65c6f9d2114e4552",
+      "geometryHash": "bfa79b2b859ea7de19e10b1e639c2717b7d8921114e4e14bf41941ba550cc017",
       "id": "sf.render.engine-plasma-ring.mesh.lod0-engine-plasma-ring-main.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca7203466476332b85323d6beec925d32d79938ac6f9b66ce515db2833934934",
+      "geometryHash": "353498fdd0e323d02bb6c48c1adc5a16d4c68ae03a363a53d401904767f164cf",
       "id": "sf.render.engine-plasma-ring.mesh.plasma-ring-outer.primitive.0",
       "indexCount": 4032,
       "indexed": true,
@@ -768,19 +768,19 @@
       "sha256": "fb28c9933925e4e7f6b401c37df28cc0a1d5f81e5152472f3f978d2d9bf781bf"
     },
     "sourceGlb": {
-      "bytes": 60884,
-      "sha256": "ad690ba3aff8890bdbc447bc0d53d39b9d8f2cc65c67050c419c1a609929aecd",
+      "bytes": 71924,
+      "sha256": "d8e593684da5598a7e8bd6706acb529be22220dfe696f489be30fef0c9580472",
       "uri": "engine_plasma_ring.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 109012,
-    "sha256": "d0a34a774fd2c76161c337c363cf5c4e6988dbec4b29fc4086b1bb7daa63c1cf",
+    "bytes": 105196,
+    "sha256": "b8fede9c8fb213c05139011604c44ab795d8265050fb081f883f9a4c72d6c49e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1160,7 +1160,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_plasma_ring.glb"
   },
-  "runtimeHash": "35538c7c753f8e86e4467d2149c6f007e1d4491d907ef2ca6910b51720423c7b",
+  "runtimeHash": "afcbe22102e2eb07026b93569394171cb80fca5b48e0097ab095ae97542abcce",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

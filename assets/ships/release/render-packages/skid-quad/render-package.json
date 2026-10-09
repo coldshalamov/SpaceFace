@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8e3cf6166a29848267951e7df2fd2783e8666b8df08bb8014fb5fe6504b07af3",
+  "contentHash": "549e8ef4a592a9268725d3b7434d94420afdd0393f3978a61d43f1ab5a0dc7e8",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0360f2e21f1184a9ddd900cf9ccaa9822cb5867b49a4654c2b0e904c44da61ed",
+      "geometryHash": "35f8f139b656d48d4d13c9d747f7d40b8433620cf5c8f8cb72cf26fdf348ce8a",
       "id": "sf.render.skid-quad.mesh.skid-quad-material-accent-merged.primitive.0",
       "indexCount": 6912,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92b87490483367637aa5bc83e97e5c6700f43891803f68e1b9105904cd6fe4b5",
+      "geometryHash": "6ef7c93c524e8d498e3a6db30486673b24a0b39fd0177770fb9981280003f3c6",
       "id": "sf.render.skid-quad.mesh.skid-quad-material-hull-merged.primitive.0",
       "indexCount": 1620,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "skid_quad_Material_Hull_Merged",
       "nodeId": "sf.render.skid-quad.mesh.skid-quad-material-hull-merged",
       "primitiveIndex": 0,
-      "vertexCount": 560
+      "vertexCount": 670
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "821e32f6bb5a2a2c370bd2eecdd81ad6709b09cb83bd03af2546e52139dc1f61",
+      "geometryHash": "36c1cb1ec268da0756a1035dd0b50e76a12fef977e228c86c2b4a50eb9c231bf",
       "id": "sf.render.skid-quad.mesh.skid-quad-material-mechanical-merged.primitive.0",
       "indexCount": 2016,
       "indexed": true,
@@ -338,19 +338,19 @@
       "sha256": "43bb44df74ebdbb8f038aef27cb8dca3ba79648397aa2c8a78449ba28e6d9e2e"
     },
     "sourceGlb": {
-      "bytes": 247876,
-      "sha256": "d558811881d13647e321f3d49a2f29d8537cbc3b5ad3828537354b054bdde99f",
+      "bytes": 254480,
+      "sha256": "41fff3b98701f80d26f51604530e51020b2b9e047181a18e97129dd258d0db29",
       "uri": "skid_quad.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 284476,
-    "sha256": "95aac23eee1f85f4f27ed3b725d1ddf3a2eb18a1b46a39887e4bbf59b88ee931",
+    "bytes": 285724,
+    "sha256": "192117f488331e0d3baf4690afa523e781d59e9702362b31c92cabcacb65549d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -486,7 +486,7 @@
     "slot": "gear",
     "url": "assets/ships/release/parts/gear/skid_quad.glb"
   },
-  "runtimeHash": "65368d2cd42ff3debb59be61869e9adf74a5857e5ec18d82ec7cbee384185023",
+  "runtimeHash": "9a9136a5e1b607956f5b7cdcec87b98ca19f0cfeb9215cdb819422d806ee685f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7a854bd2fc8d3836824acc9c9650050f2f29c9379c6ae93425aaaca346df5482",
+  "contentHash": "b79d1a97814725c0c605522664b1d19a962feff49a23924cc9352a4180eb33e2",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,7 +116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fdc8aa173e62b3166514cb86cc727e298e5649faaf4f74ce768200e673d28b0c",
+      "geometryHash": "3a4174d960a755a589d84448fd123e50b7b521d640d5dae7f30bbb87b69590c7",
       "id": "sf.render.hull-corvette.mesh.lod0-det-bridge-super.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -125,7 +125,7 @@
       "meshName": "Cube",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-bridge-super",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 177
     },
     {
       "bounds": {
@@ -141,7 +141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f98bd7202a2bee12875f1952674cd5c69b59eceed8b845ba140aa8347f481673",
+      "geometryHash": "8c1deee49f132a04629f6b06691ca123cd7222e3bb56077a32038f7e0411a72d",
       "id": "sf.render.hull-corvette.mesh.lod0-det-corporate-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -150,7 +150,7 @@
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-corporate-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -166,7 +166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1a484cfb6a0c2b9ebbed8be038cb134dbc56bad87052d6f0ee41d5b4d9b6c0e1",
+      "geometryHash": "2202253a44c525ef6cfbdc618bd95f015824a54ce1611d75b8ef91084f6dbb2e",
       "id": "sf.render.hull-corvette.mesh.lod0-det-dock-wear.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -175,7 +175,7 @@
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-dock-wear",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -191,7 +191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c46d985980a1331a043ca4a8b1bdb85abae4e0ffd9686aaee8f875949decbc7",
+      "geometryHash": "99975620e744a45a5eec6ff295f7de513971443728a74ef17cb53fe3782aa6da",
       "id": "sf.render.hull-corvette.mesh.lod0-det-engine-vent.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -200,7 +200,7 @@
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-engine-vent",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 177
     },
     {
       "bounds": {
@@ -216,7 +216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c0f464078441bbf9966a2ee92c8f81d6c6f1d9bc16089c711bef9204897d4e0",
+      "geometryHash": "38e00832db7e2b262cdd7b7b5b6c6776319a5f2611cc587dfea206d24ec8d23f",
       "id": "sf.render.hull-corvette.mesh.lod0-det-escort-nav-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -225,7 +225,7 @@
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-escort-nav-stripe",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 173
     },
     {
       "bounds": {
@@ -241,7 +241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0da3156b488bd3c256f88419ae975d2eab8bef28ac2246796474c481e52cb7e8",
+      "geometryHash": "1bebb6886e72ec71cf314a5efeda3361b141d4ccc5123fa47742b325762a4395",
       "id": "sf.render.hull-corvette.mesh.lod0-det-field-patch.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -250,7 +250,7 @@
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-field-patch",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -266,7 +266,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d9b3d308c44c9341a854af4eac62d0d0dfc7915c09cb51571206e47f048ba37",
+      "geometryHash": "71bc64ce315a4968d172292628ef43d19388ecd87f93b9704933ddb267fc468d",
       "id": "sf.render.hull-corvette.mesh.lod0-det-sensor-array.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -275,7 +275,7 @@
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-sensor-array",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -291,7 +291,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "267b5b86087694fbc534b42678adb1d88997ce84cc45393fcb5bf91db8b76315",
+      "geometryHash": "32a6370aeb7b75f8c0db939b1c59f5b49aa6098c0fb8fbc09fb0e31d65c284a4",
       "id": "sf.render.hull-corvette.mesh.lod0-det-turret-collar.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -300,7 +300,7 @@
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-turret-collar",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -366,7 +366,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "49c3d9c054485aac7c5dde04e01d9d2f3fa35239cb63392e403ed7ca99a8b8d0",
+      "geometryHash": "53205b7d70316dbdcb9e48a8cbea09607a2e273fd07b26928c0bf1f8db57d7e3",
       "id": "sf.render.hull-corvette.mesh.lod2-hull-corvette-silhouette.primitive.0",
       "indexCount": 150,
       "indexed": true,
@@ -375,7 +375,7 @@
       "meshName": "LOD0_HULL_CORVETTE.002",
       "nodeId": "sf.render.hull-corvette.mesh.lod2-hull-corvette-silhouette",
       "primitiveIndex": 0,
-      "vertexCount": 87
+      "vertexCount": 120
     }
   ],
   "hlods": [],
@@ -1073,19 +1073,19 @@
       "sha256": "f6305ffdd285e2aeebe280cd8135afeb0406de69a099ddcadf5831d6bdd980c0"
     },
     "sourceGlb": {
-      "bytes": 515500,
-      "sha256": "02b1d1e2167c6f14f8f7ec0113880c55c188c4d4d23cf7fa4cabd7b7bc03315d",
+      "bytes": 529160,
+      "sha256": "83ad3de63e91328bbd2fb57f55ccf8e0376cc38f86ea70d2877ce84434ae1a91",
       "uri": "hull_corvette.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 620488,
-    "sha256": "66a5a264339830d50de9d346bcdff53176c816787ccf9b1849c49fa0614acd5f",
+    "bytes": 639012,
+    "sha256": "22bb1d88f70d005a4792aaa82cebcf3401cc6404b85659da38c3f28b906d9d39",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_corvette.glb"
   },
-  "runtimeHash": "b7174fdc3b4f6f445672a58846c9ef0a291537d04fa0475a7770f939cef5a196",
+  "runtimeHash": "02777474fba5c54e9cb075a368981e7f6484b435250b662995a348bdd0eeea50",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

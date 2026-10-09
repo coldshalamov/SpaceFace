@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4a9bb63881d4d266ec3e52b78ef06c4a6f13bc61269b7c5b5a50d7a3282b777f",
+  "contentHash": "9b054dc5e98ddca065d2ef064b6ff76dbdd860c9355ab77116ad4653330de0ed",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -766,7 +766,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0bf1a5b222f8eb5be7fab7351a11cb8ec1b91f9b6cf358ad97dc8d6a7c9647d6",
+      "geometryHash": "ecbec60ad51209b021ef2831480d30084a349ddce87f73bd04daeef5f76f2f41",
       "id": "sf.render.shuttle-dock.mesh.mast-col.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -2840,19 +2840,19 @@
       "sha256": "0d377668bed15c4afdbc3f5ec43ed4dcf5456b1f17f4d99a87e0ea231c2ab4ca"
     },
     "sourceGlb": {
-      "bytes": 33968,
-      "sha256": "5af743fa28534fc7c22cf157795bca7bfc3945bc18adfa908b437fea9cd738b5",
+      "bytes": 33960,
+      "sha256": "f70b6c13db8940872ec5528d2e96af8630036526c391bc32df60d772ca9f14dc",
       "uri": "place_shuttle_dock.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 96388,
-    "sha256": "4fff5cc8ec91ff3501b5ee87a4ee1fd8e4a5363c36d4ebe4c0e0ba2380ecca88",
+    "bytes": 96420,
+    "sha256": "63e09a089fef11ff1da65f9dadaa24d0a195a356698f5b72b7f1be5be3dfaf77",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4092,7 +4092,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_shuttle_dock.glb"
   },
-  "runtimeHash": "54649a21ae0df7a6fb13ace970b03204d49e11adffa09726862ece62c465db2d",
+  "runtimeHash": "dee9f14bd8f5de4dd83818e9ba4e121d3a340e573ed321f3e9cbc0c71677bffa",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

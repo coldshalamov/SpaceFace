@@ -1071,7 +1071,7 @@
           2.615137
         ]
       },
-      "bytes": 577592,
+      "bytes": 577956,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -1791,7 +1791,7 @@
           62.004645
         ]
       },
-      "bytes": 1638244,
+      "bytes": 1649376,
       "collider": {
         "authoredClearVolumesPreserved": true,
         "compoundBoxesWU": [
@@ -2144,7 +2144,7 @@
       "reasons": [],
       "shell": {
         "boundaryEdges": 2380,
-        "inwardFaceFraction": 0.45225,
+        "inwardFaceFraction": 0.45475,
         "silhouetteRadius": 106.831362,
         "sliceY": 0
       },
@@ -2306,7 +2306,7 @@
       "source": "glb",
       "status": "green",
       "tasteBudget": null,
-      "triangles": 74464,
+      "triangles": 74516,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/wholeships/ceres_breaker.glb",
       "worldSize": [
@@ -2643,7 +2643,7 @@
           74.999181
         ]
       },
-      "bytes": 1018780,
+      "bytes": 1029972,
       "collider": {
         "authoredClearVolumesPreserved": true,
         "compoundBoxesWU": [
@@ -2946,7 +2946,7 @@
       "reasons": [],
       "shell": {
         "boundaryEdges": 72,
-        "inwardFaceFraction": 0.4685,
+        "inwardFaceFraction": 0.46875,
         "silhouetteRadius": 104.067424,
         "sliceY": 0
       },
@@ -3469,7 +3469,7 @@
           1.082134
         ]
       },
-      "bytes": 18732,
+      "bytes": 18712,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -25728,15 +25728,15 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "e4d650dfb4f93b4dcf2c012d88c5b10096f4a941f59ac76d790fbf6ce2c8aa7c"
+              "sha256": "94960554fb04adcfd65dd3320b7699d669ef99bd66aa26fc661a4db4158045ab"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336"
+              "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
-              "sha256": "a91dd67424a1bcc294087dcd99e47476dcee824bad241947b1b7a26bfe1af544"
+              "sha256": "951eefc274dfa294f626ff026ab12c432847b37a58bedfece7463e0167100b33"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -26280,15 +26280,15 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "e4d650dfb4f93b4dcf2c012d88c5b10096f4a941f59ac76d790fbf6ce2c8aa7c"
+              "sha256": "94960554fb04adcfd65dd3320b7699d669ef99bd66aa26fc661a4db4158045ab"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336"
+              "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
-              "sha256": "3f54fd0c92aaf14ecb57335a93a4ddae176c5bc796d966031eb887c5de135594"
+              "sha256": "74fe2366b592f990839f2d1a1ccf9f29adf8f0d575186e3a54f302dc22c35769"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -26748,15 +26748,15 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "e4d650dfb4f93b4dcf2c012d88c5b10096f4a941f59ac76d790fbf6ce2c8aa7c"
+              "sha256": "94960554fb04adcfd65dd3320b7699d669ef99bd66aa26fc661a4db4158045ab"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336"
+              "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
-              "sha256": "10906bc8d37f3f19bdd3080c0893fad0833570fec398276bcdb2029c6bfa02af"
+              "sha256": "388fbadf0c06472d4505d70ba81d54d3e84307402853bfcfa22f3cbd808d8474"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -27252,15 +27252,15 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "e4d650dfb4f93b4dcf2c012d88c5b10096f4a941f59ac76d790fbf6ce2c8aa7c"
+              "sha256": "94960554fb04adcfd65dd3320b7699d669ef99bd66aa26fc661a4db4158045ab"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336"
+              "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
-              "sha256": "5fa2711d1e6668b42f5b22d6133b0083cd53ffeba65de7dd2ca3e4fb705217f2"
+              "sha256": "2797e513723cc42c5a0e371970ca22ee6ee3bd77229588e40964355e4274e7e9"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -30980,7 +30980,7 @@
           6.600064
         ]
       },
-      "bytes": 28040,
+      "bytes": 28048,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -31361,7 +31361,7 @@
           12.937276
         ]
       },
-      "bytes": 38324,
+      "bytes": 38340,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -32464,7 +32464,7 @@
           7.150064
         ]
       },
-      "bytes": 28700,
+      "bytes": 28708,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -35962,7 +35962,7 @@
           10.400781
         ]
       },
-      "bytes": 28076,
+      "bytes": 28080,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -37274,7 +37274,7 @@
           189.884716
         ]
       },
-      "bytes": 2455748,
+      "bytes": 2456092,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -37721,7 +37721,7 @@
       ],
       "shell": {
         "boundaryEdges": 28464,
-        "inwardFaceFraction": 0.357,
+        "inwardFaceFraction": 0.35675,
         "silhouetteRadius": 111.769048,
         "sliceY": 0
       },
@@ -38637,7 +38637,7 @@
           6.3
         ]
       },
-      "bytes": 30100,
+      "bytes": 30128,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -39979,7 +39979,7 @@
           7.9
         ]
       },
-      "bytes": 31956,
+      "bytes": 31988,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -44458,7 +44458,7 @@
           10.399463
         ]
       },
-      "bytes": 33968,
+      "bytes": 33960,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -45274,7 +45274,7 @@
           21.460001
         ]
       },
-      "bytes": 28424,
+      "bytes": 28432,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -46003,7 +46003,7 @@
           6.200049
         ]
       },
-      "bytes": 26516,
+      "bytes": 26532,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -46318,7 +46318,7 @@
           2.4
         ]
       },
-      "bytes": 17924,
+      "bytes": 17928,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -59490,7 +59490,7 @@
           7.6
         ]
       },
-      "bytes": 27036,
+      "bytes": 27040,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -68158,7 +68158,7 @@
           75.199997
         ]
       },
-      "bytes": 2104420,
+      "bytes": 2104248,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -68577,7 +68577,7 @@
       ],
       "shell": {
         "boundaryEdges": 5758,
-        "inwardFaceFraction": 0.34275,
+        "inwardFaceFraction": 0.3425,
         "silhouetteRadius": 89.43057,
         "sliceY": 0
       },
@@ -68651,37 +68651,37 @@
           111.305145
         ]
       },
-      "bytes": 3065832,
+      "bytes": 3066436,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:place_station_trade_hub",
         "kind": "proxy",
         "outline": [
-          11.432547,
-          11.71487,
-          12.166244,
+          11.392543,
+          11.713916,
+          12.165437,
           13.46952,
           14.66044,
           15.98818,
           17.751724,
           19.779874,
           21.15512,
-          22.590641,
+          22.588835,
           23.403418,
           23.758069,
-          23.745476,
-          23.326207,
-          22.591831,
-          20.890431,
-          19.420609,
-          17.754014,
+          23.696076,
+          23.323309,
+          22.590939,
+          20.884045,
+          19.414455,
+          17.750536,
           16.120218,
           14.273948,
-          13.471515,
+          13.259075,
           12.278364,
-          11.715857,
-          11.433057
+          11.579016,
+          11.201838
         ],
         "overTolerance": false,
         "stickWu": 0,
@@ -68878,28 +68878,37 @@
         "capped": false,
         "cellWu": 2.850968,
         "gapWu": 0,
-        "mouthBearingDeg": 187.5,
+        "mouthBearingDeg": 172.5,
         "primitiveCount": 22,
         "primitives": [
           {
             "id": "core",
             "kind": "circle",
-            "r": 0.058579,
+            "r": 0.05857,
             "x": 0,
             "z": 0
           },
           {
-            "ax": -0.046474,
-            "az": -0.035661,
-            "bx": -0.105483,
-            "bz": -0.08094,
+            "ax": -0.054111,
+            "az": -0.022414,
+            "bx": -0.118194,
+            "bz": -0.048958,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.005
+          },
+          {
+            "ax": -0.046466,
+            "az": -0.035655,
+            "bx": -0.105476,
+            "bz": -0.080934,
             "id": "arm-2",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.035661,
-            "az": -0.046474,
+            "ax": -0.035655,
+            "az": -0.046466,
             "bx": -0.089755,
             "bz": -0.116971,
             "id": "arm-3",
@@ -68907,8 +68916,8 @@
             "r": 0.005
           },
           {
-            "ax": -0.022417,
-            "az": -0.05412,
+            "ax": -0.022414,
+            "az": -0.054111,
             "bx": -0.061486,
             "bz": -0.148441,
             "id": "arm-4",
@@ -68916,8 +68925,8 @@
             "r": 0.005
           },
           {
-            "ax": -0.007646,
-            "az": -0.058078,
+            "ax": -0.007645,
+            "az": -0.058069,
             "bx": -0.022897,
             "bz": -0.173923,
             "id": "arm-5",
@@ -68925,8 +68934,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.007646,
-            "az": -0.058078,
+            "ax": 0.007645,
+            "az": -0.058069,
             "bx": 0.025455,
             "bz": -0.193351,
             "id": "arm-6",
@@ -68934,8 +68943,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.022417,
-            "az": -0.05412,
+            "ax": 0.022414,
+            "az": -0.054111,
             "bx": 0.083254,
             "bz": -0.200994,
             "id": "arm-7",
@@ -68943,8 +68952,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.035661,
-            "az": -0.046474,
+            "ax": 0.035655,
+            "az": -0.046466,
             "bx": 0.141741,
             "bz": -0.18472,
             "id": "arm-8",
@@ -68952,17 +68961,17 @@
             "r": 0.005
           },
           {
-            "ax": 0.046474,
-            "az": -0.035661,
-            "bx": 0.197374,
-            "bz": -0.151451,
+            "ax": 0.046466,
+            "az": -0.035655,
+            "bx": 0.197358,
+            "bz": -0.151438,
             "id": "arm-9",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.05412,
-            "az": -0.022417,
+            "ax": 0.054111,
+            "az": -0.022414,
             "bx": 0.238191,
             "bz": -0.098662,
             "id": "arm-10",
@@ -68970,8 +68979,8 @@
             "r": 0.005
           },
           {
-            "ax": 0.058078,
-            "az": -0.007646,
+            "ax": 0.058069,
+            "az": -0.007645,
             "bx": 0.259517,
             "bz": -0.034166,
             "id": "arm-11",
@@ -68979,62 +68988,62 @@
             "r": 0.005
           },
           {
-            "ax": 0.058078,
-            "az": 0.007646,
-            "bx": 0.259378,
-            "bz": 0.034148,
+            "ax": 0.058069,
+            "az": 0.007645,
+            "bx": 0.258834,
+            "bz": 0.034076,
             "id": "arm-12",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.05412,
-            "az": 0.022417,
-            "bx": 0.237398,
-            "bz": 0.098334,
+            "ax": 0.054111,
+            "az": 0.022414,
+            "bx": 0.237368,
+            "bz": 0.098321,
             "id": "arm-13",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.046474,
-            "az": 0.035661,
-            "bx": 0.197385,
-            "bz": 0.151459,
+            "ax": 0.046466,
+            "az": 0.035655,
+            "bx": 0.197377,
+            "bz": 0.151453,
             "id": "arm-14",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.035661,
-            "az": 0.046474,
-            "bx": 0.13995,
-            "bz": 0.182387,
+            "ax": 0.035655,
+            "az": 0.046466,
+            "bx": 0.139907,
+            "bz": 0.182331,
             "id": "arm-15",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.022417,
-            "az": 0.05412,
-            "bx": 0.081727,
-            "bz": 0.197306,
+            "ax": 0.022414,
+            "az": 0.054111,
+            "bx": 0.081701,
+            "bz": 0.197243,
             "id": "arm-16",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": 0.007646,
-            "az": 0.058078,
-            "bx": 0.025458,
-            "bz": 0.193376,
+            "ax": 0.007645,
+            "az": 0.058069,
+            "bx": 0.025453,
+            "bz": 0.193338,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.007646,
-            "az": 0.058078,
+            "ax": -0.007645,
+            "az": 0.058069,
             "bx": -0.023089,
             "bz": 0.175378,
             "id": "arm-18",
@@ -69042,8 +69051,8 @@
             "r": 0.005
           },
           {
-            "ax": -0.022417,
-            "az": 0.05412,
+            "ax": -0.022414,
+            "az": 0.054111,
             "bx": -0.059843,
             "bz": 0.144474,
             "id": "arm-19",
@@ -69051,29 +69060,20 @@
             "r": 0.005
           },
           {
-            "ax": -0.035661,
-            "az": 0.046474,
-            "bx": -0.089769,
-            "bz": 0.116989,
+            "ax": -0.035655,
+            "az": 0.046466,
+            "bx": -0.088332,
+            "bz": 0.115116,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.005
           },
           {
-            "ax": -0.046474,
-            "az": 0.035661,
+            "ax": -0.046466,
+            "az": 0.035655,
             "bx": -0.106471,
             "bz": 0.081698,
             "id": "arm-21",
-            "kind": "capsule",
-            "r": 0.005
-          },
-          {
-            "ax": -0.05412,
-            "az": 0.022417,
-            "bx": -0.118214,
-            "bz": 0.048966,
-            "id": "arm-22",
             "kind": "capsule",
             "r": 0.005
           }
@@ -69086,7 +69086,7 @@
       ],
       "shell": {
         "boundaryEdges": 10239,
-        "inwardFaceFraction": 0.394,
+        "inwardFaceFraction": 0.39475,
         "silhouetteRadius": 23.758069,
         "sliceY": 0
       },
@@ -94637,26 +94637,26 @@
       "bounds": {
         "center": [
           16.002581,
-          37.914886,
+          37.914889,
           -12.98573
         ],
         "max": [
           320.633533,
-          148.286764,
+          148.286772,
           113.223535
         ],
         "min": [
           -288.628371,
-          -72.456992,
+          -72.456994,
           -139.194994
         ],
         "size": [
           609.261904,
-          220.743755,
+          220.743765,
           252.418529
         ]
       },
-      "bytes": 6973204,
+      "bytes": 6998824,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -94665,7 +94665,7 @@
         "outline": [
           286.038161,
           287.313586,
-          113.216784,
+          113.216786,
           67.872852,
           124.778029,
           130.086494,
@@ -94795,7 +94795,7 @@
       "opening": null,
       "pivot": [
         16.002581,
-        37.914886,
+        37.914889,
         -12.98573
       ],
       "proposedSkin": {
@@ -95043,7 +95043,7 @@
       "url": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
       "worldSize": [
         609.261904,
-        220.743755,
+        220.743765,
         252.418529
       ]
     }

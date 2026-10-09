@@ -375,7 +375,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "86655f3abe969da9f5a6bad58d7693dcaedb9378a2d256b44b06b3f9385d5190",
+  "contentHash": "3254847a4ca0895d7c1ccbfb39b4b85a810a76fb28b15f988141c05b06963ab4",
   "dynamicGroups": [
     {
       "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-armor.dynamic",
@@ -4967,7 +4967,7 @@
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
@@ -7404,7 +7404,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kilnback_lod1.glb"
   },
-  "runtimeHash": "e86f6b2456c102dd64c982286c64aeb877a0d6dff9b45b2db281cbc82fd47b84",
+  "runtimeHash": "175868531fe7d7181ca46cc54ed3bbb2566830a5e7c95bb6505be8aaa5b09fcd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

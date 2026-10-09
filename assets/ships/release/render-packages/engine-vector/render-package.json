@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3a48bddfc4e679c2a52a573319ae386e4fd4f21db594317dd0f7c7cf80874547",
+  "contentHash": "7954867c7dbeb318938948ceb98a8177d42c8cb8bae3dd2211277dd11e963f52",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9601d6c4e58c946f4ae02001529e16cbfd048bde983ba4c50280f1220aa61a21",
+      "geometryHash": "cf0a0741dd49480858778503293d1246455e04e9381e2ed680e6fbc612a844ce",
       "id": "sf.render.engine-vector.node.hook-drive-fan.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -107,7 +107,7 @@
       "meshName": "HOOK_DRIVE_FAN_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-fan",
       "primitiveIndex": 0,
-      "vertexCount": 192
+      "vertexCount": 232
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7671b13a59644b65e213f92bd8a6722611cdb1592ee3e7eb59561ced4339329f",
+      "geometryHash": "d4047838d1c77c4fc0a9b1c9cb290139a076695d0752c3733a37bfb7e2f975eb",
       "id": "sf.render.engine-vector.node.lod0-engine-vector-main.primitive.0",
       "indexCount": 14976,
       "indexed": true,
@@ -565,19 +565,19 @@
       "sha256": "c70fa1181200fe5849d0f7da95b87b0935419e3265dde2797f1d1a42f749edac"
     },
     "sourceGlb": {
-      "bytes": 150456,
-      "sha256": "cffe99ddfc368f77bba069f790a345b4b82f360bdac74a6128d13fe5a457eff0",
+      "bytes": 152416,
+      "sha256": "6fc50f4aff4fc5b379b49099f6c366b76f4be9b8de1ef5e797801b68ced0a6ad",
       "uri": "engine_vector.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 129384,
-    "sha256": "238aedd5aa8654a4d395e7f78b3eabcf63d8a066ef3e31de50b1e7dcc96c6bd6",
+    "bytes": 130424,
+    "sha256": "7f0616a1996c80cb9831b36131f23b2651b724b7bda3ec71934e71a42148bda3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -872,7 +872,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_vector.glb"
   },
-  "runtimeHash": "8aa832de04a772e39e58aec784542cb24c8f2e4dd18bb1bf82ca574651322a7f",
+  "runtimeHash": "7c96f294eb16944d1195bfe964440c0f90fc95714cbc00839fa3abb0e7172706",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

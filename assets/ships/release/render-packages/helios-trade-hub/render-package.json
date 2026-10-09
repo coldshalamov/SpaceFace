@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8b4c7787d4e70355f189c1b82e67901faf05439ee61989cbde24d5f25a1ec0b3",
+  "contentHash": "347777741dc466b56ad8421531245e80ea8556f320749b62378ed28e6432ab0c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -193,7 +193,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef0debd8229200582c190aeadc3cabea4376b4c9b00d33bf46777d5f8b186c40",
+      "geometryHash": "66609fae5cad75dc2590a07c877c4d310ee42ef44c6a4b39cc5aa9449ae476b7",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.0",
       "indexCount": 38535,
       "indexed": true,
@@ -218,7 +218,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f84fcb6c4a2f9290b09759ee748105dfb1da1ecd25509c95846008f69a8c556f",
+      "geometryHash": "ae17a7da799228cdfce4939c17af1f535150c7a073dabdfcf863f8ba596132c6",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.1",
       "indexCount": 8682,
       "indexed": true,
@@ -268,7 +268,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d13ba7088dd747f9e525cc7cfcb9e34ce65c4edbd4175643926755b3209b2ca2",
+      "geometryHash": "929e1f52cbe9afee15cdb3b6f13e7288375c78db0415f0949908bd181b0dcf5d",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.11",
       "indexCount": 35319,
       "indexed": true,
@@ -293,7 +293,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1892145e6510d993ade891f16fd8831a6f193e8c7206c87d979bfb1428fea44b",
+      "geometryHash": "92e14f1173671c0dad74ad697c1eab6cc14d07858c35db1b5556766dd359701d",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.12",
       "indexCount": 5076,
       "indexed": true,
@@ -318,7 +318,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25ed59c343659d7c6cd0237b0005c60090bc294b4e4722c987aa2da44f7d2eb3",
+      "geometryHash": "6da85f614983db23b29d8d43b3f7839d6628c458837a70aa8796d08a4890fd22",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.13",
       "indexCount": 6540,
       "indexed": true,
@@ -343,7 +343,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5d2475b4758d0d8d2f761993542de88021f2ff69cb196c28b1db083b6b0fad84",
+      "geometryHash": "9a86873196b3784efa110630f558aed4b72a0db5dcc12eada925125da31e3886",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.2",
       "indexCount": 972,
       "indexed": true,
@@ -368,7 +368,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c8199bafffab0ef9bc2fd056b414390ddc3553eac6e8c6db0049950f593ce49f",
+      "geometryHash": "b18396e80a04294b9689af15e99c61c97e359611b904101bda16211aa58af0e0",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.3",
       "indexCount": 2574,
       "indexed": true,
@@ -393,7 +393,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f907d1c5e7dcf63511ba14bb88ee864d90ff3803e198c85d06074c8cc9976475",
+      "geometryHash": "2cad379e10531552edabc9cdc97e416e137e908fdc9deeb97e306fc47e6c9e2f",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.4",
       "indexCount": 36174,
       "indexed": true,
@@ -418,7 +418,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a56aade72ce1ca6ffe394f135426e0cf9c9a2b5ff4c79ab2adcec0f3126ef155",
+      "geometryHash": "19c562b8cc56bd600c290efe593e1a2f3051499b21a2d3761237c918ce761824",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.5",
       "indexCount": 480,
       "indexed": true,
@@ -443,7 +443,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0e78a6befcc910520c3d35b35782d9da99abb22d02b8274f80747b7486f9b2a",
+      "geometryHash": "48a8cfd4857839ee813d9ac385471667c362ef4c7bafe14a1eb751a445833742",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.6",
       "indexCount": 42246,
       "indexed": true,
@@ -468,7 +468,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98a4d0fcb5aac8b950d5cca7ab8718cccfe619829c079a0a6ff2a515fb7f4b77",
+      "geometryHash": "df15f0dbe3b3705f28231401e65ce86216d75ecfa409cd1c58557233f51ba849",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.7",
       "indexCount": 16992,
       "indexed": true,
@@ -518,7 +518,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f69805952d29e4d07a8a5d5fc2dfcee741f0a9acbd77a666a1f0e7c17272c5cc",
+      "geometryHash": "80195dcd0313422b3367439ac32c252b02926095a62be216585094347d522ac3",
       "id": "sf.render.helios-trade-hub.node.lod0-armor.primitive.9",
       "indexCount": 3384,
       "indexed": true,
@@ -543,7 +543,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b445bd4d9b613eb3601f9fe6790c8885b756a242323e6b95365154df71d0dd6",
+      "geometryHash": "1ceffee4d0e4bfc30cb11656f4f64d5b0e86be89a5afb8c6bc8fb2f6499ff3e9",
       "id": "sf.render.helios-trade-hub.node.lod0-canopy.primitive.0",
       "indexCount": 3732,
       "indexed": true,
@@ -568,7 +568,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad2436acb222e02c89e9641c1a4730ca94ffa21ea55c8e9940702cfede30bcc9",
+      "geometryHash": "72f50d83682c77570e4e9c9ba0156e58ffd71ce1e5d01ba673116114f03a14b9",
       "id": "sf.render.helios-trade-hub.node.lod1-armor.primitive.0",
       "indexCount": 12786,
       "indexed": true,
@@ -618,7 +618,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21fd9790cd0f3b441ba543abb4b13bbc72846dcc771ba85e35fcfefe7824327c",
+      "geometryHash": "1e4b2a35d60a98032ce7915c9268c79fb0e9cc501c5cf715900fc7bc86869bda",
       "id": "sf.render.helios-trade-hub.node.lod1-armor.primitive.10",
       "indexCount": 19608,
       "indexed": true,
@@ -643,7 +643,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a518f977dba9a0a90cef89f5da8b470901ac1e733e163ed8f6747188243ebfe1",
+      "geometryHash": "35ce51a2fd2807bbaf3c3d688092b1e201664f37bcbdfcf0ab560ac6180d89d2",
       "id": "sf.render.helios-trade-hub.node.lod1-armor.primitive.11",
       "indexCount": 22170,
       "indexed": true,
@@ -668,7 +668,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc99d8f3dc08af39942b7e4b39235ed50361e6d2340b01738facd3d4f7d6bf53",
+      "geometryHash": "76242f7e7fc6c872d90d2af02c020087158315d4baa9a974d3a018696ed46688",
       "id": "sf.render.helios-trade-hub.node.lod1-armor.primitive.12",
       "indexCount": 2478,
       "indexed": true,
@@ -693,7 +693,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9b412155c3fb7e969644098bcf5952a3274c116dbc0d4e0f802cf97077bd885",
+      "geometryHash": "90453c79b65f08814345316bf126bcbeebd4e06346c1c9fe447a7c3b2bfa95cf",
       "id": "sf.render.helios-trade-hub.node.lod1-armor.primitive.13",
       "indexCount": 3492,
       "indexed": true,
@@ -768,7 +768,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c14a17170366b873b8aa2ea83a8105decfd245c6f06d933f3e4bf19df926d19",
+      "geometryHash": "7efa86b5ee7a50b983398647563d0f5b959b9b3c6d74381e8c03edb7d9b9450d",
       "id": "sf.render.helios-trade-hub.node.lod1-armor.primitive.4",
       "indexCount": 12144,
       "indexed": true,
@@ -818,7 +818,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a39865cae464a7d450baedb536c2dbd98a0621812fb01dd34ddc4538d3cc89af",
+      "geometryHash": "910bf5d21a44c13543baf0a052e81932f1eb539dbc811f4f2872155d5ffe5f1b",
       "id": "sf.render.helios-trade-hub.node.lod1-armor.primitive.6",
       "indexCount": 19170,
       "indexed": true,
@@ -893,7 +893,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4588922f0e97fc3fa717097242964943c61db993037bc39a4ff26a3dfbacdeda",
+      "geometryHash": "785b7fc29ab545dc0cb5945c113b756499c7627c1d58e1c89de4939fdb22d776",
       "id": "sf.render.helios-trade-hub.node.lod1-armor.primitive.9",
       "indexCount": 1926,
       "indexed": true,
@@ -943,7 +943,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c93b21d35353f4aa98bf3ea4dc5d1c59ce373c0bc6b9a698e1474ee80221c52",
+      "geometryHash": "78762a3f07791b5c138ec6975af3501919cbf38a888156379a630a0b19359628",
       "id": "sf.render.helios-trade-hub.node.lod2-armor.primitive.0",
       "indexCount": 6087,
       "indexed": true,
@@ -993,7 +993,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a2e0f00e63902e455b416e0e2e32e01c1b9f93eb2a4c80f3387ac38d5823850",
+      "geometryHash": "4b63f7c2f23674f9d0f0d4d8cd246d72d8ef2ec7c5db357dd166879129bd5a6f",
       "id": "sf.render.helios-trade-hub.node.lod2-armor.primitive.10",
       "indexCount": 4923,
       "indexed": true,
@@ -1018,7 +1018,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5978c113a556c2cbffb573e8d57e8c0133bbcdc288a670b10f50cd6286ab491",
+      "geometryHash": "60ca854b0ab4949dc05ad713be401a8afeaed44b0480a84b74f5e6c65e77a7f6",
       "id": "sf.render.helios-trade-hub.node.lod2-armor.primitive.11",
       "indexCount": 744,
       "indexed": true,
@@ -1043,7 +1043,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f1c10dc9d2c7a25c0c0a5190560870e32b567236791dd5d30a600fa346c336a",
+      "geometryHash": "5af8b6d46d47b2740f854f77810577902fc9df9a653cc5b2655db26a7813a2ab",
       "id": "sf.render.helios-trade-hub.node.lod2-armor.primitive.12",
       "indexCount": 1314,
       "indexed": true,
@@ -1093,7 +1093,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b27efd592116693419939f3ad72fa78b2e632407de2cc8b266c24339a546985",
+      "geometryHash": "050a6419d288a9124d2ed5f069df2dfe12c02ecf6293ec73cd3398c98a590da4",
       "id": "sf.render.helios-trade-hub.node.lod2-armor.primitive.3",
       "indexCount": 6321,
       "indexed": true,
@@ -1143,7 +1143,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd2e95f4a55ba77a4da169a441ec1cbd02afce2275b3152ac161e50493aa6e9e",
+      "geometryHash": "a4cabe7abb78c0851f128e343c9d9b91651f94d078813bc0c6756e849a943f4b",
       "id": "sf.render.helios-trade-hub.node.lod2-armor.primitive.5",
       "indexCount": 8934,
       "indexed": true,
@@ -1168,7 +1168,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "077d9da8ac9f89ed2ca5b4370675567a67e6a6ef0d84481f5f3f28138c13830e",
+      "geometryHash": "12986aedc1c9773b4ace3ff79c1c930a10989b6661342d2b88ba6a1b0f7e63fb",
       "id": "sf.render.helios-trade-hub.node.lod2-armor.primitive.6",
       "indexCount": 1152,
       "indexed": true,
@@ -4022,19 +4022,19 @@
       "sha256": "1337bb6f598a64a099fe07e9112bb2d974d114776c92780676c0ede0bf0013e1"
     },
     "sourceGlb": {
-      "bytes": 3065832,
-      "sha256": "f649b8a6566b292cf32b5714dca2f4227f109d51332ccf137a988e2371028c88",
+      "bytes": 3066436,
+      "sha256": "043e34967b0e6e95b3376b5d18464037f4b1175402d4e7ff7d137ae91d8969ce",
       "uri": "place_station_trade_hub.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 5749700,
-    "sha256": "4c7392704d47a101ee5f410e31f22e07a8215bf95450f124de7d7501f1dd756d",
+    "bytes": 5749664,
+    "sha256": "05c5ac3a00d0c77b956a2d5ab99243b5a6275db7ba9828c2f9a4654182497712",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5827,7 +5827,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_trade_hub.glb"
   },
-  "runtimeHash": "c21136cac9eaa9aa0290eda406ea39dad8a8b8f57b776f49149d0b488fe0a9a8",
+  "runtimeHash": "fa426139a278a17b0a4d3009ae878144b16619f598fcb8d2a13200978e6328dd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

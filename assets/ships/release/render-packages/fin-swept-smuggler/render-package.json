@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "789b517168bf22a46f0ded04636820a9036e36823e7dbeec20ca5d8c4d82fee3",
+  "contentHash": "3655a8a495433f4a43bd7e04e3b5ea242f6f6aff5cf3437cd14495ddd2c925d4",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62412c64092ca35a40f4d33132a6ac43008c7413f310dbbed784f7f4316f004c",
+      "geometryHash": "a4d94c419f09dc5aee79b3a3e554b696f5b3554c58aefed547eb163d60454986",
       "id": "sf.render.fin-swept-smuggler.mesh.fin-swept-smuggler-material-mechanical-merged.primitive.0",
       "indexCount": 1524,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5cf501a7866b27ff08c07fdb8fec11ef789bf01ab77b5fbb11b579425bd409d8",
+      "geometryHash": "12dcfecf6aaa3d934acf7beb66b45fa53c41dd0e89c7cd80020ccadb58ea2ff5",
       "id": "sf.render.fin-swept-smuggler.mesh.swept-blade.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "Swept_Blade",
       "nodeId": "sf.render.fin-swept-smuggler.mesh.swept-blade",
       "primitiveIndex": 0,
-      "vertexCount": 50
+      "vertexCount": 70
     },
     {
       "bounds": {
@@ -339,19 +339,19 @@
       "sha256": "e35debd0ead80cd62c70270542e4ee3eafa14eb0f2353d6f51bcf963c42b725a"
     },
     "sourceGlb": {
-      "bytes": 372928,
-      "sha256": "a9f802052e270f7ed86c8937ed00ecaca8156f0ec50b817525b79cb2e7194266",
+      "bytes": 374240,
+      "sha256": "68541eabfd6a6d32d4b1b93c158aefc235a60925db9b12b5a90aeb6e922780ff",
       "uri": "fin_swept_smuggler.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 377976,
-    "sha256": "e50fb1e8b15a49b7a3f46ebcef034fff942cadf69266e1a9bf6f82085b864b7f",
+    "bytes": 379200,
+    "sha256": "72f4f320f8c5f51dd6fdea39bca397f1f84c5a8252711621bdde197cb334d863",
     "uri": "render.glb"
   },
   "runtime": {
@@ -515,7 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
   },
-  "runtimeHash": "c1977f2b6e4a8fac581e3706850522f6a867540476f651926b26e1a0aa1199a8",
+  "runtimeHash": "6f3ae72247e4bcc00620c4e36784f381492c3937913cfcf5d0f6070215950212",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

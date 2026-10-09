@@ -142,12 +142,88 @@ export function repairPrimitive(document, prim, meshName, materialName, opts = {
   row.vertsAfter = count; return row;
 }
 
+// 3. Collapsed UVs on textured materials: triangles whose three UVs coincide sample one texel and
+//    smear it across the face (the streaked / flat sides of kitbash boxes). Each collapsed triangle
+//    gets its own corners with a planar projection on its dominant axis, anchored at its old UV and
+//    scaled to the primitive's own median texel density, so the texture continues at the authored scale.
+export const UV_REPAIR_MAX_TRIS = 1500;
+
+export function repairCollapsedUVs(document, prim) {
+  const mat = prim.getMaterial();
+  const uvAcc = prim.getAttribute('TEXCOORD_0');
+  const pos = prim.getAttribute('POSITION');
+  if (!mat || !uvAcc || !pos || prim.getMode() !== 4) return null;
+  if (!mat.getBaseColorTexture() && !mat.getNormalTexture()) return null;
+  const idxAcc = prim.getIndices();
+  const n = pos.getCount();
+  const I = idxAcc ? Array.from(idxAcc.getArray()) : Array.from({ length: n }, (_, i) => i);
+  const P = (i) => pos.getElement(i, []), U = (i) => uvAcc.getElement(i, []);
+  const dens = []; const collapsed = [];
+  for (let t = 0; t + 2 < I.length; t += 3) {
+    const a = P(I[t]), b = P(I[t + 1]), c = P(I[t + 2]);
+    const A = len(cross(sub(b, a), sub(c, a))) / 2; if (A < 1e-12) continue;
+    const ua = U(I[t]), ub = U(I[t + 1]), uc = U(I[t + 2]);
+    const uA = Math.abs((ub[0] - ua[0]) * (uc[1] - ua[1]) - (uc[0] - ua[0]) * (ub[1] - ua[1])) / 2;
+    if (uA < 1e-10) collapsed.push(t); else dens.push(Math.sqrt(uA / A));
+  }
+  if (collapsed.length < Math.max(2, 0.2 * (I.length / 3))) return null;
+  // Scatter-generated debris (thousands of point-UV shards on a near-flat texture) reads fine as-is and
+  // would cost real vertices; keep the fix to authored kitbash-scale primitives.
+  if (collapsed.length > UV_REPAIR_MAX_TRIS) return null;
+  let scale;
+  if (dens.length >= 3) { dens.sort((x, y) => x - y); scale = dens[dens.length >> 1]; }
+  else {
+    const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < n; i++) { const p = P(i); for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], p[k]); mx[k] = Math.max(mx[k], p[k]); } }
+    scale = 1 / Math.max(1e-6, mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]);
+  }
+  // Rebuild every attribute as float with room for the new corners.
+  const semantics = prim.listSemantics().filter((s) => s !== 'TANGENT');
+  const extra = collapsed.length * 3; const count = n + extra;
+  const fresh = {};
+  for (const s of semantics) {
+    const acc = prim.getAttribute(s); const size = acc.getElementSize();
+    const out = new Float32Array(count * size); const el = [];
+    for (let i = 0; i < n; i++) { acc.getElement(i, el); for (let k = 0; k < size; k++) out[i * size + k] = el[k]; }
+    fresh[s] = { out, size, type: acc.getType(), buffer: acc.getBuffer() };
+  }
+  let next = n; const newI = I.slice();
+  for (const t of collapsed) {
+    const vs = [I[t], I[t + 1], I[t + 2]]; const ps = vs.map(P);
+    const fn = cross(sub(ps[1], ps[0]), sub(ps[2], ps[0]));
+    const ax = [Math.abs(fn[0]), Math.abs(fn[1]), Math.abs(fn[2])];
+    const [u, v] = ax[0] >= ax[1] && ax[0] >= ax[2] ? [2, 1] : (ax[1] >= ax[2] ? [0, 2] : [0, 1]);
+    const anchor = U(vs[0]);
+    vs.forEach((src, c) => {
+      for (const s of semantics) { const f = fresh[s]; for (let k = 0; k < f.size; k++) f.out[next * f.size + k] = f.out[src * f.size + k]; }
+      const uvOut = fresh.TEXCOORD_0.out;
+      uvOut[next * 2] = anchor[0] + (ps[c][u] - ps[0][u]) * scale;
+      uvOut[next * 2 + 1] = anchor[1] + (ps[c][v] - ps[0][v]) * scale;
+      newI[t + c] = next++;
+    });
+  }
+  for (const s of semantics) {
+    const f = fresh[s];
+    prim.setAttribute(s, document.createAccessor().setType(f.type).setArray(f.out).setBuffer(f.buffer));
+  }
+  if (prim.getAttribute('TANGENT')) prim.setAttribute('TANGENT', null);
+  const IA = count > 65535 ? Uint32Array : Uint16Array;
+  prim.setIndices(document.createAccessor().setType('SCALAR').setArray(new IA(newI)).setBuffer((idxAcc || pos).getBuffer()));
+  return { uvCollapsedFixed: collapsed.length, vertsAddedForUV: extra };
+}
+
 export function repairDocumentShading(document, opts = {}) {
+  // Certified geometry (Ceres workfleet) promises exact source anatomy, down to triangle counts.
+  const extras = document.getRoot().getAsset().extras || {};
+  if (extras.ceresWorkfleet) return [];
   const rows = [];
   for (const mesh of document.getRoot().listMeshes()) {
     for (const prim of mesh.listPrimitives()) {
       const mat = prim.getMaterial();
-      const r = repairPrimitive(document, prim, mesh.getName(), mat ? mat.getName() : null, opts);
+      if (/^COLLISION/i.test(mesh.getName() || '')) continue;
+      let r = repairPrimitive(document, prim, mesh.getName(), mat ? mat.getName() : null, opts);
+      const uv = opts.uv === false ? null : repairCollapsedUVs(document, prim);
+      if (uv) r = { mesh: mesh.getName(), material: mat ? mat.getName() : null, ...(r || {}), ...uv };
       if (r) rows.push(r);
     }
   }

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ce5ae1108eb130194f394f71fac05eb6839af43471c95a8bf2677f9ee348b905",
+  "contentHash": "ff9c51a71f7776ac00da2bda5a30b4c57c9c47878cbe0d7de443aefcad7df57c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3b3c91bca81c419ab4ed670ca6cee6187bfed8af9a29a15a52a77bc92fbb0c5",
+      "geometryHash": "df9fba4db81785054f901da3ebf180a86f679388dba6d3cdfd70e5cf088206ad",
       "id": "sf.render.works-gas-tap.mesh.lod0-gas-tap.primitive.0",
       "indexCount": 6156,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "LOD0_gas_tap",
       "nodeId": "sf.render.works-gas-tap.mesh.lod0-gas-tap",
       "primitiveIndex": 0,
-      "vertexCount": 3733
+      "vertexCount": 4359
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e64c67fa6a5b2822b8079085b5593380e19dfd09bec12fedc2e533f82412cd3a",
+      "geometryHash": "2caf536ccd7fc517e3c5dd0317c10958a7fbdcde81adef6c8b61d23c49cec59b",
       "id": "sf.render.works-gas-tap.mesh.lod0-gauge-needle.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "LOD0_gauge_needle",
       "nodeId": "sf.render.works-gas-tap.mesh.lod0-gauge-needle",
       "primitiveIndex": 0,
-      "vertexCount": 60
+      "vertexCount": 80
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a5571d3b43c6d08d3a292e993b6238593c7c7fab2a9017fc4daa20c6468e5c08",
+      "geometryHash": "6de7dd212728e0d6c0a333a36213ac1038eb602138af2b26be476b35e7a90602",
       "id": "sf.render.works-gas-tap.mesh.lod0-lamp.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "LOD0_lamp",
       "nodeId": "sf.render.works-gas-tap.mesh.lod0-lamp",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 56
     },
     {
       "bounds": {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7244a145695714b939928ab18645a91c8893122949b9214b1a26ab672a261f92",
+      "geometryHash": "c57504093b50abc2724182749e173ae39f88d4f8f5eb429c36c1e6bb2b6bcf1e",
       "id": "sf.render.works-gas-tap.mesh.lod0-valve-wheel.primitive.0",
       "indexCount": 1056,
       "indexed": true,
@@ -107,7 +107,7 @@
       "meshName": "LOD0_valve_wheel",
       "nodeId": "sf.render.works-gas-tap.mesh.lod0-valve-wheel",
       "primitiveIndex": 0,
-      "vertexCount": 519
+      "vertexCount": 646
     },
     {
       "bounds": {
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d321eab0b0e30866d83cfe66bc2673d9fe5016a3cc45f94e900e2c104bca3aba",
+      "geometryHash": "a0c2107f0efc97f67da9c4617fd40798c8ae8801a77d87dcd4910a01f2740f40",
       "id": "sf.render.works-gas-tap.mesh.lod1-gas-tap.primitive.0",
       "indexCount": 2958,
       "indexed": true,
@@ -132,7 +132,7 @@
       "meshName": "LOD1_gas_tap",
       "nodeId": "sf.render.works-gas-tap.mesh.lod1-gas-tap",
       "primitiveIndex": 0,
-      "vertexCount": 1791
+      "vertexCount": 2225
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e64c67fa6a5b2822b8079085b5593380e19dfd09bec12fedc2e533f82412cd3a",
+      "geometryHash": "2caf536ccd7fc517e3c5dd0317c10958a7fbdcde81adef6c8b61d23c49cec59b",
       "id": "sf.render.works-gas-tap.mesh.lod1-gauge-needle.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -157,7 +157,7 @@
       "meshName": "LOD1_gauge_needle",
       "nodeId": "sf.render.works-gas-tap.mesh.lod1-gauge-needle",
       "primitiveIndex": 0,
-      "vertexCount": 60
+      "vertexCount": 80
     },
     {
       "bounds": {
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54f4b5d6b4ed01074aa15b4e619344229cf6cca135a3fc7b969f585d4b1065f7",
+      "geometryHash": "3367a569615b76991926d4915de9ab5ec749579340b307e4b321b2ee224d613d",
       "id": "sf.render.works-gas-tap.mesh.lod1-lamp.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -182,7 +182,7 @@
       "meshName": "LOD1_lamp",
       "nodeId": "sf.render.works-gas-tap.mesh.lod1-lamp",
       "primitiveIndex": 0,
-      "vertexCount": 42
+      "vertexCount": 50
     },
     {
       "bounds": {
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5c97f29eab7180603012e3afdc0aaabc3670353cfd5805c1c42cac4f7190915",
+      "geometryHash": "1b7287f448d3e21c5111952d61717174a51d90d72e9047a24cb7f4730d432d4f",
       "id": "sf.render.works-gas-tap.mesh.lod1-valve-wheel.primitive.0",
       "indexCount": 420,
       "indexed": true,
@@ -207,7 +207,7 @@
       "meshName": "LOD1_valve_wheel",
       "nodeId": "sf.render.works-gas-tap.mesh.lod1-valve-wheel",
       "primitiveIndex": 0,
-      "vertexCount": 240
+      "vertexCount": 324
     }
   ],
   "hlods": [],
@@ -732,19 +732,19 @@
       "sha256": "a86f9a34e5ee42c701540b764edd9fb1b373cd7183c3bf16a2c65283b1544bf2"
     },
     "sourceGlb": {
-      "bytes": 297200,
-      "sha256": "fa91d34bf614205e782dd20ba7ea14f619ab57931a45bbc0cbfdeb6defbc1184",
+      "bytes": 318260,
+      "sha256": "e3241539bcca7d39d09b9b9e663e4c6636cea6511331eac21fcaaaabc6a6ef0c",
       "uri": "place_works_gas_tap.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 358276,
-    "sha256": "64d684c78431b999ba6a1555cbe4ed80cc45e126c78304f0faeb3a87342c7bfb",
+    "bytes": 363156,
+    "sha256": "939fe9b5d30a88ca96a4cffdbb37e6058f44289d16a1d820d094e36e94157e50",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1153,7 +1153,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_gas_tap.glb"
   },
-  "runtimeHash": "93e6bdb2299591e5b67a75df865a72097b6f97e2a4416fdbfbcad76f3b38cc54",
+  "runtimeHash": "cc883fac6925902f2f7d0bd5f5d0272dea45d65f61852f1a97e4aaf4e1e29b80",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

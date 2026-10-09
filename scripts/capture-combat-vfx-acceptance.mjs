@@ -93,7 +93,8 @@ try {
 
   gpu = await readGpuContract(page);
   assert.equal(gpu.available, true, 'combat VFX acceptance requires WebGL');
-  assert.doesNotMatch(gpu.renderer || '', /SwiftShader|llvmpipe|software/i,
+  // SF_ALLOW_SOFTWARE_GL=1: picture review on a GPU-less host (frames only; timing claims are void).
+  if (process.env.SF_ALLOW_SOFTWARE_GL !== '1') assert.doesNotMatch(gpu.renderer || '', /SwiftShader|llvmpipe|software/i,
     `combat VFX acceptance requires a real GPU path, got ${gpu.renderer}`);
   if (PQ023_H1) await installPq023CueObservers(page);
 
@@ -1844,10 +1845,13 @@ async function dismissTutorial(targetPage) {
 
 function findSystemBrowser() {
   const candidates = [
+    process.env.SF_CHROMIUM,
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
     'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
     'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
     'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
   ];
-  return candidates.find((candidate) => existsSync(candidate)) || null;
+  return candidates.find((candidate) => candidate && existsSync(candidate)) || null;
 }

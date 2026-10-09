@@ -53,4 +53,6 @@ for (const entry of manifest.assets) {
 if (!args.dry) writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
 if (args.report) writeFileSync(args.report, JSON.stringify(report, null, 1));
 const sum = (k) => report.reduce((s, r) => s + r.prims.filter((p) => p[k]).length, 0);
-console.log(`[shading] files ${report.length}, prims ${report.reduce((s, r) => s + r.prims.length, 0)}, faceted ${sum('facetedCurve')}, flipped ${report.reduce((s, r) => s + r.prims.filter((p) => p.flippedFrac > 0.02).length, 0)}, degenerate tris removed ${report.reduce((s, r) => s + r.prims.reduce((t, p) => t + p.degenRemoved, 0), 0)}`);
+const uvFixed = report.reduce((s, r) => s + r.prims.reduce((t, p) => t + (p.uvCollapsedFixed || 0), 0), 0);
+console.log(`[shading] collapsed-UV triangles reprojected ${uvFixed}`);
+console.log(`[shading] files ${report.length}, prims ${report.reduce((s, r) => s + r.prims.length, 0)}, faceted ${sum('facetedCurve')}, flipped ${report.reduce((s, r) => s + r.prims.filter((p) => p.flippedFrac > 0.02).length, 0)}, degenerate tris removed ${report.reduce((s, r) => s + r.prims.reduce((t, p) => t + (p.degenRemoved || 0), 0), 0)}`);

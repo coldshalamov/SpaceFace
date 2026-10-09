@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "eeda86004462f974c5368df2a010d2554955a29710291135970cc56d3abf6a86",
+  "contentHash": "8569538763a9eb956526858ee0518f6ae3b0aa2c4fd9064634eb99283fba0b5e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23d7fdf2998a194e84c71e14913d1dcce0a5bd547ba835143f715b118295b764",
+      "geometryHash": "b89b5f49b453a90ed8a08aea94aa084fa9c3d57f1b89c6a908c4a6552eb815a9",
       "id": "sf.render.fin-crystalline.mesh.crystal-plane.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "Crystal_Plane",
       "nodeId": "sf.render.fin-crystalline.mesh.crystal-plane",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 43
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57594589b5b02a5d91393a9ef66b4eb74924dfc225d8d0cc7c88e735e24a1cdc",
+      "geometryHash": "ff585250477d7490f75d8a4350a54383f52e35196608dd0d29d8ed6793eae32e",
       "id": "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged-2.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "471428968141bc4b9229a13e3f81b27496e1ba1ee32f6fa9f1090ab4d84c5a6c",
+      "geometryHash": "995e5a4fc3259ee6e343fa423e64ed0aaf44f258891f97cb85a112d7ba23efae",
       "id": "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged.primitive.0",
       "indexCount": 1200,
       "indexed": true,
@@ -331,19 +331,19 @@
       "sha256": "3690d6588a851b8d7e0a9d12e62592cb72531933d0c961168fe4c5b252ed9463"
     },
     "sourceGlb": {
-      "bytes": 372580,
-      "sha256": "90d525e072d87124adec8f6d240f72b3bda79b394bff8bfb4cc272d1cdaa9cc2",
+      "bytes": 373952,
+      "sha256": "ff9fb010f9dd13b7db3c1192e9ebda25e77b0455ca6569aaf2d043adcb999acd",
       "uri": "fin_crystalline.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 377272,
-    "sha256": "7da0aa51c8cd60323d56def6971bafff00ea803a9a15a2bdd332f4fb2d14805b",
+    "bytes": 378328,
+    "sha256": "e483f0c997d757c68bd0f0114afa5234490f9460a4bd3c00eede2805b9eca9aa",
     "uri": "render.glb"
   },
   "runtime": {
@@ -506,7 +506,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_crystalline.glb"
   },
-  "runtimeHash": "a629e93902448e7a55e4e48b93ef63d0c572d9addb9db3e21fd1d7fabb62f746",
+  "runtimeHash": "adbe3bcf9ee164842363dbe31e897dfd562c859e6044de97da957e126f143faa",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "67941f8b0f68349dcc7731a954c143de931e20a65ca6844344b50e116faa6410",
+  "contentHash": "46343efae6802a54590aeaf659ed947ce4e86c847655c69dfb75bf5fb0c593a9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,7 +116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e9ea9a0a169610482a575c9770cdf6195cce28541607ddc1ff463676f48b812",
+      "geometryHash": "dbb7847a2e962b427e28ddb4ff056a002cbad4f62531451d45f45a7286295bb5",
       "id": "sf.render.hull-gunship.mesh.lod0-det-armor-plate.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -125,7 +125,7 @@
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-armor-plate",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -141,7 +141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4aafd2090292456b06a5f6533825d55377dc000312e40e99f66979ef9a46aba9",
+      "geometryHash": "e2a01361f2231a92a0d39dba5181eda4a2f65980ec49d392c2315eb3a9beb7af",
       "id": "sf.render.hull-gunship.mesh.lod0-det-battle-scar.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -150,7 +150,7 @@
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-battle-scar",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -166,7 +166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5d1ddb9a3b6a6833fcc0fb7024ac6a9d1b75b401d7a7e9cc1f1982c396b5e218",
+      "geometryHash": "124704c9705b285a5f5a184b9d35e729dc40bc2d2ab3430496eecdc6f19bfb1b",
       "id": "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -175,7 +175,7 @@
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 177
     },
     {
       "bounds": {
@@ -191,7 +191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eb80fbe8153666d271b26e60a097d54ae3bed79e8006c618f8ce4c4453ccbd2f",
+      "geometryHash": "2c729a1d75105b19399bb5042a06382f47d93efc189ed4e8023a6e060fd1ca13",
       "id": "sf.render.hull-gunship.mesh.lod0-det-fracture-patch.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -200,7 +200,7 @@
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-fracture-patch",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -216,7 +216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "017f7fd27aa7ce7bd8f6a4cc84184307d82fb0d538436f419b22669121c3c16c",
+      "geometryHash": "b9c7fdd53cabd4dadf057b53c55cc71f8ee3ff9cd4268e45070fe5e65f82f3a9",
       "id": "sf.render.hull-gunship.mesh.lod0-det-military-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -225,7 +225,7 @@
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-military-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 166
     },
     {
       "bounds": {
@@ -241,7 +241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "564f5dc68958926be90f8d55356d2fd3bf8e0afc1cdad819950110384bd0dabe",
+      "geometryHash": "50b9ffc65121578ad6b4a7d0e8cf1c8d1319a293346da838d4dfe62e696ffa62",
       "id": "sf.render.hull-gunship.mesh.lod0-det-sensor-dome.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -250,7 +250,7 @@
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-sensor-dome",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -266,7 +266,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bec660b275f8913b58f648843ce2499cf62201ba2dc14bf0acf4e9bf261067a5",
+      "geometryHash": "4528193a055d6f751c91978ed74ca69375b451a3d856f037c23a22b274bb12ed",
       "id": "sf.render.hull-gunship.mesh.lod0-det-turret-mount.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -275,7 +275,7 @@
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-turret-mount",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 177
     },
     {
       "bounds": {
@@ -291,7 +291,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6cd00682e0f1703f72ec13d500b9aba97767441163f5074bdf976e02b70f0e8",
+      "geometryHash": "5c5e576d2c6ef2cc1ed97087261c262fe817828979bcded51551729688d8a986",
       "id": "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -300,7 +300,7 @@
       "meshName": "Cube",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -316,7 +316,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aefeba70a23833d119058eb8a3462ddaf667b57b1569c4de0014301dd9c12a54",
+      "geometryHash": "fa37f612635b30e9839bfbd777d45ae754fdb4622d7c47f822c49448ba241221",
       "id": "sf.render.hull-gunship.mesh.lod0-hull-gunship-main.primitive.0",
       "indexCount": 6888,
       "indexed": true,
@@ -341,7 +341,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bfa228ec9a3fff0fcd8f998b23e2b3a345712ef18299b38af3ab1af4e4d181e7",
+      "geometryHash": "7099e143d3869ec06fa926f28a7a70ad5ccd982787abde3c202322c69e0caca6",
       "id": "sf.render.hull-gunship.mesh.lod1-hull-gunship-silhouette.primitive.0",
       "indexCount": 3807,
       "indexed": true,
@@ -366,7 +366,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "de10464daf78966c62ef625df5b989760d2d51c11e6175473d7e9dfc69f2ec57",
+      "geometryHash": "d8b3aa54ebb972a1b34555ebc47902f44812db3184103e288e4ed438548023bc",
       "id": "sf.render.hull-gunship.mesh.lod2-hull-gunship-silhouette.primitive.0",
       "indexCount": 150,
       "indexed": true,
@@ -375,7 +375,7 @@
       "meshName": "LOD0_HULL_GUNSHIP.002",
       "nodeId": "sf.render.hull-gunship.mesh.lod2-hull-gunship-silhouette",
       "primitiveIndex": 0,
-      "vertexCount": 85
+      "vertexCount": 109
     }
   ],
   "hlods": [],
@@ -1073,19 +1073,19 @@
       "sha256": "955890b548ec822eb0c74bc62205ffe02e9caf98004af40435c5fad7bee43681"
     },
     "sourceGlb": {
-      "bytes": 686400,
-      "sha256": "8cd1f4543c3b02791be500751d59f27967cceb03c032823d8fd84b7facac37c9",
+      "bytes": 699876,
+      "sha256": "e132e3701c71502a59f48db31317f46486abf96bb7ae9492f7d0950e56241d3c",
       "uri": "hull_gunship.glb"
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 786044,
-    "sha256": "d6b1857687468447a5dffa87d3867fa53a896dfc2de89ab43599a2b827c9f1c4",
+    "bytes": 804440,
+    "sha256": "7925013c7570da86382b52076f60b98b2036cdc5e9c46d3fa1bf9cf5d24ed2cb",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_gunship.glb"
   },
-  "runtimeHash": "b361c47ebe258575e92c56b09adeb1b775551e7c0aebaffaf05ff2a4378f336e",
+  "runtimeHash": "dbfa5ecdc5d218e1cb74d1624fb98646a20dcf3d3b766cd8f5a4966f40ea5ba7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

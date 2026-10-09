@@ -329,7 +329,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2b668b8c33bc9ae771e9d4180be3e2b432c26448727090570d8fea48f1e4712f",
+  "contentHash": "03b3fab02e7f35ac91402d5d7c7ef47a351483b2c56ff1112d22ecae9b57e3a2",
   "dynamicGroups": [
     {
       "id": "sf.render.scissorwake-lod1.node.lod1-motion-scissorwake-blade-port-beacon-amber.dynamic",
@@ -2572,7 +2572,7 @@
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
@@ -3828,7 +3828,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/scissorwake_lod1.glb"
   },
-  "runtimeHash": "a38b04273adf235b8a4e1cd94c169197d898ec5a0c664869edc998490dc8ab57",
+  "runtimeHash": "a6dbe4ac0fb7c150834974ab98a61438585b805e3fe58d63f5955beef2a2faec",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

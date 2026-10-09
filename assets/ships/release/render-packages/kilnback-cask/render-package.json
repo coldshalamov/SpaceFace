@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e8400aaf6999df08d8ac2fe42346f798a7cb6a2278bbb0a3055080eaaa70b25e",
+  "contentHash": "8dbf17a0c84c8a37fe5e97d04cb97b5a55a332a82452289b1c083020a068ec1d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -846,7 +846,7 @@
     },
     "sourceManifest": {
       "bytes": 270117,
-      "sha256": "3c4043044f7b7b8f5abdcac16c5a37e667fcd89f270504e7324c14360547c336",
+      "sha256": "966cf01f617f1cb51bb1295869603ba5a9566bfeb6d9abec20866f646acf1beb",
       "uri": "pilots.json"
     }
   },
@@ -1164,7 +1164,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/kilnback_cask.glb"
   },
-  "runtimeHash": "95147e7e1e5fff793039355729533487ea91ad42384bc9432d3428519b44c8fc",
+  "runtimeHash": "c54ad4c82fc74c32867f8a0c13cb226863ad57c3fcb7bb9720b9b90a9ba8373e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
