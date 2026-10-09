@@ -782,14 +782,11 @@ function readSlotSaveData(ctx, slot) {
     _slotDataMemo.set(slot, hit);
     return hit;
   }
-  let raw = null;
-  try {
-    if (typeof localStorage !== 'undefined') raw = localStorage.getItem(LS_PREFIX + slot);
-  } catch (e) {}
-  // The multi-MB JSON.parse a data fill needs stays off the pick task — the stage chrome
-  // renders from the card meta now and the portrait lands when the fill settles (or the
-  // spec arm's worker-parsed envelope arrives first).
-  const entry = { sig, slot, raw, data: null };
+  // The multi-MB getItem + JSON.parse a data fill needs stays off the pick task — the
+  // stage chrome renders from the card meta now, the blob materializes lazily inside
+  // the deferred fill/spec paths, and the portrait lands when the fill settles (or
+  // the spec arm's worker-parsed envelope arrives first).
+  const entry = { sig, slot, raw: null, data: null };
   _slotDataMemo.delete(slot);
   _slotDataMemo.set(slot, entry);
   while (_slotDataMemo.size > _SLOT_DATA_MEMO_MAX) {
@@ -805,12 +802,30 @@ let _slotDataFillSlot = null;
 let _slotDataFillCtx = null;
 const _SLOT_DATA_FILL_MS = 180;
 
+function readSlotBlob(slot) {
+  try {
+    return (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null;
+  } catch (e) { return null; }
+}
+
 function fillSlotData(ctx, slot) {
   const entry = _slotDataMemo.get(slot);
-  if (!entry || entry.data || !entry.raw || entry.attempted) return;
+  if (!entry || entry.data || entry.attempted) return;
   entry.attempted = true;
+  // A covering spec arm already parses these bytes in the worker — flush its parked
+  // dispatch and let save:envelopeSpecPrepared fill the row instead of duplicating
+  // the multi-MB JSON.parse on this settle task.
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  const spec = sys && typeof sys.coveringSpeculativePrepare === 'function'
+    ? sys.coveringSpeculativePrepare(slot) : null;
+  if (spec && typeof spec.dispatch === 'function') {
+    spec.dispatch();
+    return;
+  }
+  const raw = entry.raw != null ? entry.raw : (entry.raw = readSlotBlob(slot));
+  if (!raw) return;
   let data = null;
-  try { data = unwrapSaveData(JSON.parse(entry.raw)); } catch (e) {}
+  try { data = unwrapSaveData(JSON.parse(raw)); } catch (e) {}
   entry.data = data;
   if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
 }
@@ -1217,9 +1232,9 @@ export const saveLoadScreen = {
     const occupied = isOccupied(meta);
     const saveAllowed = refs.saveAllowed;
     const saved = occupied ? readSlotSaveData(ctx, id) : null;
-    // A memo miss carries raw but no parsed data — the stage chrome renders now and the
-    // portrait's own parse lands on the settle timer (or the spec emit fills it first).
-    if (saved && !saved.data && saved.raw && !saved.attempted) scheduleSlotDataFill(ctx, id);
+    // A memo miss defers the whole fill — the blob materializes lazily inside the
+    // settle task (or the spec arm's worker parse fills it first).
+    if (saved && !saved.data && !saved.attempted) scheduleSlotDataFill(ctx, id);
     const saveData = saved && saved.data;
     const currentSlot = ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot;
     const portrait = occupied

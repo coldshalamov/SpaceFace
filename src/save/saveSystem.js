@@ -2514,21 +2514,32 @@ export const save = {
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
   },
 
-  _armSpeculativePrepare(slot, raw, sig, { immediate = false } = {}) {
+  _armSpeculativePrepare(slot, rawOrRead, sig, { immediate = false } = {}) {
     // A scrub's previous pick still has its dispatch parked — cancel it so only the
     // settle row ever pays the postMessage clone + worker parse.
     const priorArm = this._speculativeContinuePrepare;
     if (priorArm && priorArm._timer != null) { clearTimeout(priorArm._timer); priorArm._timer = null; }
+    // `rawOrRead` is either the blob string a caller already materialized, or a
+    // thunk reading it on demand — the deferred dispatch/consume paths pay the
+    // multi-MB getItem so the arming task (a pick or a writer) never does.
     const spec = this._speculativeContinuePrepare = {
       sig,
       slot,
       // Byte-identity is the staleness test — strictly stronger than the blobHash compare
       // it replaces, and the click path resolves it via native string equality instead of
       // rehashing a multi-MB blob on the main thread.
-      raw,
+      raw: typeof rawOrRead === 'string' ? rawOrRead : null,
       promise: null,
       dispatch: null,
       _timer: null,
+    };
+    const thunk = typeof rawOrRead === 'function' ? rawOrRead : () => rawOrRead;
+    spec.readRaw = () => {
+      if (spec.raw == null) {
+        try { const v = thunk(); spec.raw = typeof v === 'string' ? v : null; }
+        catch (err) { spec.raw = null; }
+      }
+      return spec.raw;
     };
     // The worker dispatch is a synchronous O(blob) structured clone on the arming task —
     // a filmstrip scrub re-picks rows inside pointermove tasks, so park it ~200ms and only
@@ -2537,7 +2548,12 @@ export const save = {
     spec.dispatch = () => {
       if (spec.promise) return spec.promise;
       if (spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
-      spec.promise = Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null);
+      const blob = spec.readRaw();
+      if (typeof blob !== 'string' || !blob) {
+        spec.promise = Promise.resolve(null);
+        return spec.promise;
+      }
+      spec.promise = Promise.resolve(this._prepareEnvelopeStringAsync(blob)).catch(() => null);
       // A prepare that resolves while the menu is still up names the hull/place set the saved
       // sector will rematerialize — the decode runway can start overlapping dwell time instead
       // of the restore window. Restricted emit: only the visuals prefetch subscribes; physics
@@ -2601,13 +2617,28 @@ export const save = {
       const prior = this._speculativeContinuePrepare;
       if (prior && prior.sig === sig && prior.slot === slot) return;
       // A caller that already materialized this slot's bytes under this generation (the
-      // save/load row pick) hands them over — the arm then skips its own getItem.
+      // save/load row pick) hands them over — the arm then skips its own getItem. Without
+      // one, the blob read defers into the parked dispatch: a pick-emit or a writer re-arm
+      // task must not pay a synchronous multi-MB localStorage read.
       const raw = provided && provided.sig === sig && typeof provided.raw === 'string' && provided.raw
         ? provided.raw
-        : ((typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null);
-      if (typeof raw !== 'string' || !raw) return;
+        : () => {
+          try {
+            return (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null;
+          } catch (err) { return null; }
+        };
       this._armSpeculativePrepare(slot, raw, sig, { immediate: !!(provided && provided.immediate) });
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
+  },
+
+  // The armed spec when it covers this slot under the live generation — the data
+  // fill's consult rides the covering arm's worker parse instead of duplicating
+  // the multi-MB JSON.parse on the settle task.
+  coveringSpeculativePrepare(slot) {
+    const spec = this._speculativeContinuePrepare;
+    if (!spec || spec.slot !== slot) return null;
+    installSaveStoreWriteTracking();
+    return spec.sig === 'gen:' + _saveStoreGeneration ? spec : null;
   },
 
   // A screen going away takes its pick-armed speculation with it — the parked dispatch
@@ -4709,7 +4740,8 @@ export const save = {
       try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
       catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
     }
-    const primary = this._prepareEnvelopeString(specHit ? spec.raw : raw);
+    const primary = this._prepareEnvelopeString(specHit
+      ? (spec.readRaw ? spec.readRaw() : spec.raw) : raw);
     if (primary.ok) {
       return this._restorePreparedEnvelope(primary, slot,
         skippedNewer ? { skippedNewer } : undefined);
@@ -4813,7 +4845,8 @@ export const save = {
     // A spec minted under an older generation still consumes, but only after byte equality
     // proves nothing drifted since it read.
     const specByteHit = !specHit && spec && spec.slot === slot
-      && typeof raw === 'string' && spec.raw === raw;
+      && typeof raw === 'string'
+      && (spec.readRaw ? spec.readRaw() : spec.raw) === raw;
     // NXI-234: capture the load generation before the worker roundtrip. A restore that
     // commits first bumps _restoreSequence, so a late-completing prepare cannot pass the
     // destructive-commit check in _restore/_restoreAsync and overwrite the newer run.
@@ -4824,7 +4857,8 @@ export const save = {
       ? spec.dispatch()
       : ((specHit || specByteHit) && spec && spec.promise) || Promise.resolve(null);
     const primaryPromise = specPromise
-      .then((prepared) => prepared || this._prepareEnvelopeStringAsync(specHit ? spec.raw : raw));
+      .then((prepared) => prepared || this._prepareEnvelopeStringAsync(specHit
+        ? (spec.readRaw ? spec.readRaw() : spec.raw) : raw));
     // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture
     // is main-thread serialize work that used to serialize after the roundtrip. A failed
     // primary falls through to the same snapshot: nothing destructive ran in between.
