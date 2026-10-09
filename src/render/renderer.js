@@ -19348,11 +19348,15 @@ export const render = {
           // presented frames; the post-dispatch leg rides the same iterator,
           // so by the time it runs the caller's preview/instance owner
           // release has landed.
-          driveCacheCleanup(primaryReason, postDispatchReason) {
+          driveCacheCleanup(primaryReason, postDispatchReason, warmMintIter) {
             try { self._sectorExitCleanupIter?.return?.(); } catch (_) { /* best effort */ }
             const residency = self._assetResidency;
             if (!residency || typeof residency.releaseUnreferencedCacheOwnersSteps !== 'function') {
-              // Registries without a Steps twin keep the sync contract.
+              // Registries without a Steps twin keep the sync contract — drain
+              // the deferred mint inline, matching the old sync ordering.
+              if (warmMintIter) {
+                try { while (!warmMintIter.next().done) { /* drain */ } } catch (_) { /* best effort */ }
+              }
               try { residency?.releaseUnreferencedCacheOwners?.(primaryReason); } catch (_) { /* best effort */ }
               try { residency?.releaseUnreferencedCacheOwners?.(postDispatchReason); } catch (_) { /* best effort */ }
               if (typeof residency?.enforceBudgetSteps === 'function') {
@@ -19375,6 +19379,16 @@ export const render = {
                 laneWarn(self, 'sectorExitCleanup',
                   `[render] sector-exit cleanup ${leg} leg faulted; dropped`, err);
               };
+              // Leg 0: the warm mint itself. Its O(sector) prev-warm release +
+              // K-retain loop + coverage pre-mint used to run synchronously
+              // inside this emit — the only sector-scale work left unpaced at
+              // the crossing. It must land before the sweeps so the holds it
+              // mints exist before any cache-only verdict runs.
+              if (warmMintIter) {
+                try {
+                  yield* warmMintIter;
+                } catch (err) { dropLeg(err, 'warm-mint'); }
+              }
               try {
                 yield* residency.releaseUnreferencedCacheOwnersSteps(primaryReason);
               } catch (err) { dropLeg(err, 'primary'); }
@@ -19395,6 +19409,7 @@ export const render = {
             })();
           },
           deferBudgetEnforce: true,
+          deferWarmMint: true,
         });
       }
       const exactSectorId = sectorId == null ? null : String(sectorId);
@@ -19518,6 +19533,26 @@ export const render = {
           && this._sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)
           && this._contextLost !== true;
       }
+      // The rotate's warm mint (prev-warm release + K retains + coverage pre-mint)
+      // is O(sector) — it used to run synchronously inside this emit. The deferred
+      // twin snapshots the qualifying rows now and hands back an iterator; queue
+      // it onto the sector-exit cleanup drive's paced slice clock. FIFO among
+      // mints: append behind any in-flight drive so the newest rotate's sector
+      // assignment lands last.
+      const queueResidencyWarmMint = (residency, targetSectorId) => {
+        if (!residency) return;
+        if (typeof residency.rotateSectorDeferred !== 'function') {
+          residency.rotateSector(targetSectorId);
+          return;
+        }
+        const mintIter = residency.rotateSectorDeferred(targetSectorId);
+        if (!mintIter) return;
+        const self = this;
+        const existing = self._sectorExitCleanupIter;
+        self._sectorExitCleanupIter = existing
+          ? (function* () { yield* existing; yield* mintIter; })()
+          : mintIter;
+      };
       try {
       // A sector is a new admission context: renderer-latched build failures retry here even
       // when the GPU set is kept, so a transient outage cannot strand a live entity invisible.
@@ -19661,7 +19696,7 @@ export const render = {
         this._currentSectorPrewarm = null;
         this._authoredSectorPrewarmPending = null;
         this._authoredSectorPrewarmPendingId = null;
-        if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
+        if (this._assetResidency && exactSectorId) queueResidencyWarmMint(this._assetResidency, exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
         // Nothing in flight awaits this stored promise — suppress the unhandled
@@ -19706,7 +19741,7 @@ export const render = {
           ? SECTOR_VISUAL_TRANSITION_SECONDS
           : 0;
         this._seamDeferredExtendS = null;
-        if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
+        if (this._assetResidency && exactSectorId) queueResidencyWarmMint(this._assetResidency, exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
         pipelinePrecompile.catch((error) => {
@@ -19820,7 +19855,7 @@ export const render = {
         // rotates an incomplete set; this lifecycle-only fallback prevents a failed optional asset
         // from leaving residency labelled as the sector the player already departed.
         if (prewarm.active === true && state.world && state.world.currentSectorId === exactSectorId) {
-          if (this._assetResidency) this._assetResidency.rotateSector(exactSectorId);
+          if (this._assetResidency) queueResidencyWarmMint(this._assetResidency, exactSectorId);
           clearDecodeRunwayDedupe(this);
           if (this._currentSectorPrewarm && this._currentSectorPrewarm !== prewarm) {
             releaseSectorPrewarm(this._currentSectorPrewarm, 'failed-sector-prewarm-replaced');

@@ -84,7 +84,13 @@ export function createAssetResidencyRegistry(options = {}) {
   function notePendingRequestActivated(key) {
     const count = (activePendingRefcounts.get(key) || 0) + 1;
     activePendingRefcounts.set(key, count);
-    if (count === 1) activePendingKeys.add(key);
+    if (count === 1) {
+      activePendingKeys.add(key);
+      // Going active disqualifies the entry from the soft-budget candidate
+      // classes — re-key once per 0->1 transition, same for 1->0 below.
+      const entry = assets.get(String(key));
+      if (entry) rekeySoftBudgetClass(entry);
+    }
   }
   function notePendingRequestDeactivated(key) {
     const count = activePendingRefcounts.get(key);
@@ -92,6 +98,8 @@ export function createAssetResidencyRegistry(options = {}) {
     if (count <= 1) {
       activePendingRefcounts.delete(key);
       activePendingKeys.delete(key);
+      const entry = assets.get(String(key));
+      if (entry) rekeySoftBudgetClass(entry);
     } else {
       activePendingRefcounts.set(key, count - 1);
     }
@@ -257,6 +265,18 @@ export function createAssetResidencyRegistry(options = {}) {
       // re-scanning the owner set inside every census row.
       softOwnerCount: 0,
       rpcOwnerCount: 0,
+      // Soft-budget class ledger: 0 = not a candidate, 1 = package-cache-only,
+      // 2 = soft-only non-strict. Re-keyed per owner/state/pending mutation so
+      // the enforce caps consult O(1) totals instead of an O(assets) walk.
+      softBudgetClass: 0,
+      softBudgetBytes: 0,
+      // Governor row memo: bumped on every owner-membership mutation so a
+      // cached governorEntry row stays exact between enforce calls.
+      ownersVersion: 0,
+      governorRowMemo: null,
+      // Diagnostics row memo on the same version — the sync seam publishes
+      // re-mint the row set only for entries whose owner set actually moved.
+      diagRowMemo: null,
     };
     const accountingOptions = {
       renderer: registration.renderer || accountingRenderer,
@@ -328,6 +348,9 @@ export function createAssetResidencyRegistry(options = {}) {
       if (existingMetadata.decodeWarm === true && metadata.decodeServed === true) {
         existingMetadata.decodeWarm = false;
         existingMetadata.decodeServed = true;
+        // In-place owner-metadata mutation — bump the row version like the
+        // funnel does so a memoized governorEntry can't serve the stale clone.
+        entry.ownersVersion += 1;
         // A boundary-scoped serve claiming a warm lease is a fresh demand signal.
         entry.lastWarmClaimAtMs = now();
       }
@@ -641,20 +664,23 @@ export function createAssetResidencyRegistry(options = {}) {
       entry.softOwnerCount += 1;
     }
     if (role === 'render-package-cache') entry.rpcOwnerCount += 1;
-    if (metadata.sectorId == null) return;
-    const sid = String(metadata.sectorId);
-    let sectorMap = sectorOwnerIndex.get(sid);
-    if (!sectorMap) {
-      sectorMap = new Map();
-      sectorOwnerIndex.set(sid, sectorMap);
+    entry.ownersVersion += 1;
+    if (metadata.sectorId != null) {
+      const sid = String(metadata.sectorId);
+      let sectorMap = sectorOwnerIndex.get(sid);
+      if (!sectorMap) {
+        sectorMap = new Map();
+        sectorOwnerIndex.set(sid, sectorMap);
+      }
+      let row = sectorMap.get(entry);
+      if (!row) {
+        row = { total: 0, nonPlayer: 0 };
+        sectorMap.set(entry, row);
+      }
+      row.total += 1;
+      if (metadata.role !== 'player') row.nonPlayer += 1;
     }
-    let row = sectorMap.get(entry);
-    if (!row) {
-      row = { total: 0, nonPlayer: 0 };
-      sectorMap.set(entry, row);
-    }
-    row.total += 1;
-    if (metadata.role !== 'player') row.nonPlayer += 1;
+    rekeySoftBudgetClass(entry);
   }
   function noteOwnerMembershipUnindexed(entry, metadata) {
     if (!metadata) return;
@@ -664,18 +690,23 @@ export function createAssetResidencyRegistry(options = {}) {
       entry.softOwnerCount -= 1;
     }
     if (role === 'render-package-cache') entry.rpcOwnerCount -= 1;
-    if (metadata.sectorId == null) return;
-    const sid = String(metadata.sectorId);
-    const sectorMap = sectorOwnerIndex.get(sid);
-    if (!sectorMap) return;
-    const row = sectorMap.get(entry);
-    if (!row) return;
-    row.total -= 1;
-    if (metadata.role !== 'player') row.nonPlayer -= 1;
-    if (row.total <= 0) {
-      sectorMap.delete(entry);
-      if (sectorMap.size === 0) sectorOwnerIndex.delete(sid);
+    entry.ownersVersion += 1;
+    if (metadata.sectorId != null) {
+      const sid = String(metadata.sectorId);
+      const sectorMap = sectorOwnerIndex.get(sid);
+      if (sectorMap) {
+        const row = sectorMap.get(entry);
+        if (row) {
+          row.total -= 1;
+          if (metadata.role !== 'player') row.nonPlayer -= 1;
+          if (row.total <= 0) {
+            sectorMap.delete(entry);
+            if (sectorMap.size === 0) sectorOwnerIndex.delete(sid);
+          }
+        }
+      }
     }
+    rekeySoftBudgetClass(entry);
   }
 
   // Cache-lease roles: owners that exist only to keep a decoded blueprint/package reusable while
@@ -786,9 +817,52 @@ export function createAssetResidencyRegistry(options = {}) {
     return entry.softOwnerCount === entry.owners.size;
   }
 
+  // The enforce loop's row predicate as a class id. The byte contribution is
+  // stamped once per classing and stays exact: an entry's memory units attach
+  // at register (before it can hold owners) and never change while it lives.
+  function classifySoftBudgetEntry(entry) {
+    if (!entry || entry.state !== 'resident' || entry.owners.size === 0
+        || hasActiveRequestForEntry(entry)) return 0;
+    if (isPackageCacheOnlyEntry(entry)) return 1;
+    if (isSoftOnlyEntry(entry)) return 2;
+    return 0;
+  }
+  function rekeySoftBudgetClass(entry) {
+    const prev = entry.softBudgetClass || 0;
+    const next = classifySoftBudgetEntry(entry);
+    if (next === prev) return;
+    if (prev === 1) {
+      packageCacheOnlyMembers.delete(entry);
+      packageCacheOnlyBytesTotal -= entry.softBudgetBytes;
+    } else if (prev === 2) {
+      softResidentMembers.delete(entry);
+      softResidentBytesTotal -= entry.softBudgetBytes;
+    }
+    entry.softBudgetClass = next;
+    if (next === 0) {
+      entry.softBudgetBytes = 0;
+      return;
+    }
+    entry.softBudgetBytes = assetResidentBytes(entry);
+    if (next === 1) {
+      packageCacheOnlyMembers.add(entry);
+      packageCacheOnlyBytesTotal += entry.softBudgetBytes;
+    } else {
+      softResidentMembers.add(entry);
+      softResidentBytesTotal += entry.softBudgetBytes;
+    }
+  }
+
   // Demand flag for the amortized release() path — set when the byte census is
   // deferred to the paced service's stepped enforcement; cleared when it runs.
   let softBudgetPending = false;
+  // Running byte totals and member sets for the two soft-budget tiers —
+  // maintained per-mutation by rekeySoftBudgetClass; the periodic
+  // ledger-verify walk re-derives them as drift insurance.
+  let packageCacheOnlyBytesTotal = 0;
+  let softResidentBytesTotal = 0;
+  const packageCacheOnlyMembers = new Set();
+  const softResidentMembers = new Set();
   const SOFT_BUDGET_INLINE_MAX = 128;
 
   // Inline byte caps on soft residency, enforced at release and soft-retain time: the idle sweep
@@ -799,31 +873,21 @@ export function createAssetResidencyRegistry(options = {}) {
   // stay warm under the cap; live presentation owners are never candidates.
   function enforceSoftResidencyBudgets() {
     if (packageCacheBudgetDepth > 0) return 0;
-    let strictBytes = 0;
-    let softBytes = 0;
-    const strictCandidates = [];
-    const softCandidates = [];
-    for (const entry of assets.values()) {
-      if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
-        continue;
-      }
-      if (isPackageCacheOnlyEntry(entry)) {
-        strictBytes += assetResidentBytes(entry);
-        strictCandidates.push(entry);
-      } else if (isSoftOnlyEntry(entry)) {
-        softBytes += assetResidentBytes(entry);
-        softCandidates.push(entry);
-      }
-    }
-    const strictOver = packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes;
-    const softOver = softResidentMaxBytes != null && softBytes > softResidentMaxBytes;
+    // The class ledgers answer the overage consult in O(1); the candidate
+    // arrays mint from the member sets only on a real overage, and the evict
+    // loops re-qualify each row so a stale member is filtered, never trusted.
+    const strictOver = packageCacheOnlyMaxBytes != null
+      && packageCacheOnlyBytesTotal > packageCacheOnlyMaxBytes;
+    const softOver = softResidentMaxBytes != null
+      && softResidentBytesTotal > softResidentMaxBytes;
     if (!strictOver && !softOver) return 0;
     packageCacheBudgetDepth++;
     try {
-      return evictOldestSoftEntries(strictCandidates, packageCacheOnlyMaxBytes, strictBytes,
-        isPackageCacheOnlyEntry)
-        + evictOldestSoftEntries(softCandidates, softResidentMaxBytes, softBytes,
-          (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry));
+      return (strictOver ? evictOldestSoftEntries([...packageCacheOnlyMembers],
+          packageCacheOnlyMaxBytes, packageCacheOnlyBytesTotal, isPackageCacheOnlyEntry) : 0)
+        + (softOver ? evictOldestSoftEntries([...softResidentMembers],
+          softResidentMaxBytes, softResidentBytesTotal,
+          (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry)) : 0);
     } finally {
       packageCacheBudgetDepth--;
     }
@@ -890,6 +954,25 @@ export function createAssetResidencyRegistry(options = {}) {
           }
         }
       }
+      // The soft-budget class ledgers are per-mutation state like the owner
+      // counters — the verify walk re-derives them so a missed re-key (set or
+      // byte total) surfaces as drift instead of silently under-evicting.
+      if (re.packageCacheOnlyBytes != null && re.packageCacheOnlyBytes !== packageCacheOnlyBytesTotal) {
+        mismatches.push({ ledger: 'packageCacheOnlyBytes', expected: re.packageCacheOnlyBytes,
+          actual: packageCacheOnlyBytesTotal });
+      }
+      if (re.softResidentBytes != null && re.softResidentBytes !== softResidentBytesTotal) {
+        mismatches.push({ ledger: 'softResidentBytes', expected: re.softResidentBytes,
+          actual: softResidentBytesTotal });
+      }
+      if (re.strictMembers != null && re.strictMembers !== packageCacheOnlyMembers.size) {
+        mismatches.push({ ledger: 'packageCacheOnlyMembers', expected: re.strictMembers,
+          actual: packageCacheOnlyMembers.size });
+      }
+      if (re.softMembers != null && re.softMembers !== softResidentMembers.size) {
+        mismatches.push({ ledger: 'softResidentMembers', expected: re.softMembers,
+          actual: softResidentMembers.size });
+      }
     }
     return mismatches;
   }
@@ -903,6 +986,10 @@ export function createAssetResidencyRegistry(options = {}) {
     const softOwnerCounts = new Map();
     const rpcOwnerCounts = new Map();
     const sectorIndex = new Map();
+    let packageCacheOnlyRe = 0;
+    let softResidentRe = 0;
+    let strictReCount = 0;
+    let softReCount = 0;
     for (const entry of assets.values()) {
       cpuPackageBytes += entry.cpuPackageBytes;
       let soft = 0;
@@ -931,6 +1018,15 @@ export function createAssetResidencyRegistry(options = {}) {
       }
       softOwnerCounts.set(entry, soft);
       rpcOwnerCounts.set(entry, rpc);
+      if (entry.state === 'resident' && entry.owners.size > 0 && !hasActiveRequestForEntry(entry)) {
+        if (isPackageCacheOnlyEntry(entry)) {
+          packageCacheOnlyRe += assetResidentBytes(entry);
+          strictReCount += 1;
+        } else if (isSoftOnlyEntry(entry)) {
+          softResidentRe += assetResidentBytes(entry);
+          softReCount += 1;
+        }
+      }
     }
     let unaccountedResources = 0;
     for (const resourceEntry of resources.values()) {
@@ -943,6 +1039,8 @@ export function createAssetResidencyRegistry(options = {}) {
     const mismatches = ledgerDriftMismatches({
       gpuResidentBytes, cpuPackageBytes, unaccountedResources,
       softOwnerCounts, rpcOwnerCounts, sectorIndex, activePendingKeys: activeKeys,
+      packageCacheOnlyBytes: packageCacheOnlyRe, softResidentBytes: softResidentRe,
+      strictMembers: strictReCount, softMembers: softReCount,
     }, true);
     return Object.freeze({ ok: mismatches.length === 0, mismatches: Object.freeze(mismatches) });
   }
@@ -953,21 +1051,35 @@ export function createAssetResidencyRegistry(options = {}) {
   // only runs on a real overage.
   function* enforceSoftResidencyBudgetsSteps(batchEntries = 256) {
     if (packageCacheBudgetDepth > 0) return 0;
-    let strictBytes = 0;
-    let softBytes = 0;
-    const strictCandidates = [];
-    const softCandidates = [];
-    let visited = 0;
     const verifyOwnerGraph = --ledgerVerifyCountdown <= 0;
     if (verifyOwnerGraph) ledgerVerifyCountdown = LEDGER_VERIFY_EVERY_ENFORCES;
-    let cpuPackageRe = 0;
-    const softOwnerRe = verifyOwnerGraph ? new Map() : null;
-    const rpcOwnerRe = verifyOwnerGraph ? new Map() : null;
-    const sectorIndexRe = verifyOwnerGraph ? new Map() : null;
-    for (const entry of assets.values()) {
-      if (++visited % batchEntries === 0) yield;
-      cpuPackageRe += entry.cpuPackageBytes;
-      if (verifyOwnerGraph) {
+    // O(1) consult: when neither ledger is over budget and the verify cadence
+    // isn't due, the enforce is a no-op without touching the asset table.
+    const strictOverLedger = packageCacheOnlyMaxBytes != null
+      && packageCacheOnlyBytesTotal > packageCacheOnlyMaxBytes;
+    const softOverLedger = softResidentMaxBytes != null
+      && softResidentBytesTotal > softResidentMaxBytes;
+    if (!strictOverLedger && !softOverLedger && !verifyOwnerGraph) return 0;
+    let strictBytes = packageCacheOnlyBytesTotal;
+    let softBytes = softResidentBytesTotal;
+    const strictCandidates = [...packageCacheOnlyMembers];
+    const softCandidates = [...softResidentMembers];
+    if (verifyOwnerGraph) {
+      // Verify cadence: the O(assets) walk survives here, re-deriving every
+      // ledger — including the new class bytes and member counts — and the
+      // freshly recomputed candidate lists supplant the member sets this call.
+      strictCandidates.length = 0;
+      softCandidates.length = 0;
+      strictBytes = 0;
+      softBytes = 0;
+      let visited = 0;
+      let cpuPackageRe = 0;
+      const softOwnerRe = new Map();
+      const rpcOwnerRe = new Map();
+      const sectorIndexRe = new Map();
+      for (const entry of assets.values()) {
+        if (++visited % batchEntries === 0) yield;
+        cpuPackageRe += entry.cpuPackageBytes;
         let soft = 0;
         let rpc = 0;
         for (const metadata of entry.owners.values()) {
@@ -994,43 +1106,47 @@ export function createAssetResidencyRegistry(options = {}) {
         }
         softOwnerRe.set(entry, soft);
         rpcOwnerRe.set(entry, rpc);
+        if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
+          continue;
+        }
+        if (isPackageCacheOnlyEntry(entry)) {
+          strictBytes += assetResidentBytes(entry);
+          strictCandidates.push(entry);
+        } else if (isSoftOnlyEntry(entry)) {
+          softBytes += assetResidentBytes(entry);
+          softCandidates.push(entry);
+        }
       }
-      if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
-        continue;
+      let gpuResidentRe = 0;
+      for (const memory of memoryUnits.values()) gpuResidentRe += memory.bytes;
+      let unaccountedRe = 0;
+      for (const resourceEntry of resources.values()) {
+        if (resourceEntry.unaccounted) unaccountedRe += 1;
       }
-      if (isPackageCacheOnlyEntry(entry)) {
-        strictBytes += assetResidentBytes(entry);
-        strictCandidates.push(entry);
-      } else if (isSoftOnlyEntry(entry)) {
-        softBytes += assetResidentBytes(entry);
-        softCandidates.push(entry);
+      const activeKeysRe = new Set();
+      for (const request of pendingRequests) {
+        if (request && request.active && request.key != null) activeKeysRe.add(request.key);
       }
+      noteLedgerDrift(ledgerDriftMismatches({
+        gpuResidentBytes: gpuResidentRe, cpuPackageBytes: cpuPackageRe,
+        unaccountedResources: unaccountedRe, softOwnerCounts: softOwnerRe,
+        rpcOwnerCounts: rpcOwnerRe, sectorIndex: sectorIndexRe, activePendingKeys: activeKeysRe,
+        packageCacheOnlyBytes: strictBytes, softResidentBytes: softBytes,
+        strictMembers: strictCandidates.length, softMembers: softCandidates.length,
+      }, true));
     }
-    let gpuResidentRe = 0;
-    for (const memory of memoryUnits.values()) gpuResidentRe += memory.bytes;
-    let unaccountedRe = 0;
-    for (const resourceEntry of resources.values()) {
-      if (resourceEntry.unaccounted) unaccountedRe += 1;
-    }
-    const activeKeysRe = new Set();
-    for (const request of pendingRequests) {
-      if (request && request.active && request.key != null) activeKeysRe.add(request.key);
-    }
-    noteLedgerDrift(ledgerDriftMismatches({
-      gpuResidentBytes: gpuResidentRe, cpuPackageBytes: cpuPackageRe,
-      unaccountedResources: unaccountedRe, softOwnerCounts: softOwnerRe,
-      rpcOwnerCounts: rpcOwnerRe, sectorIndex: sectorIndexRe, activePendingKeys: activeKeysRe,
-    }, verifyOwnerGraph));
-    const strictOver = packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes;
-    const softOver = softResidentMaxBytes != null && softBytes > softResidentMaxBytes;
+    const strictOver = strictOverLedger || (verifyOwnerGraph
+      && packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes);
+    const softOver = softOverLedger || (verifyOwnerGraph
+      && softResidentMaxBytes != null && softBytes > softResidentMaxBytes);
     if (!strictOver && !softOver) return 0;
     packageCacheBudgetDepth++;
     try {
-      const strictEvicted = yield* evictOldestSoftEntriesSteps(strictCandidates,
-        packageCacheOnlyMaxBytes, strictBytes, isPackageCacheOnlyEntry);
-      const softEvicted = yield* evictOldestSoftEntriesSteps(softCandidates,
+      const strictEvicted = strictOver ? yield* evictOldestSoftEntriesSteps(strictCandidates,
+        packageCacheOnlyMaxBytes, strictBytes, isPackageCacheOnlyEntry) : 0;
+      const softEvicted = softOver ? yield* evictOldestSoftEntriesSteps(softCandidates,
         softResidentMaxBytes, softBytes,
-        (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry));
+        (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry)) : 0;
       return strictEvicted + softEvicted;
     } finally {
       packageCacheBudgetDepth--;
@@ -1324,11 +1440,11 @@ export function createAssetResidencyRegistry(options = {}) {
     for (const entry of [...assets.values()]) {
       if (++visited % 256 === 0) yield;
       if (entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
-      const ownerRecords = [...entry.owners.entries()];
-      const cacheOwners = ownerRecords.filter(([, metadata]) => isRenderPackageCacheOwner(metadata));
-      if (cacheOwners.length === 0 || cacheOwners.length !== ownerRecords.length) {
-        if (maxCacheOnlyBytes != null && ownerRecords.length > 0
-            && ownerRecords.every(([, metadata]) => isSoftResidencyOwner(metadata))) {
+      // The owner-class counters answer both classifications in O(1) — every owner a
+      // package-cache owner ⇔ rpcOwnerCount === owners.size; the soft-only budget
+      // candidate check is the same fold — so the two per-asset array mints are gone.
+      if (!isPackageCacheOnlyEntry(entry)) {
+        if (maxCacheOnlyBytes != null && isSoftOnlyEntry(entry)) {
           budgetCandidates.push(entry);
         }
         continue;
@@ -1347,7 +1463,7 @@ export function createAssetResidencyRegistry(options = {}) {
         continue;
       }
 
-      for (const [owner] of cacheOwners) {
+      for (const owner of [...entry.owners.keys()]) {
         if (release(entry.key, owner, reason)) releasedOwners++;
       }
       if (!assets.has(entry.key)) evicted.push(entry.key);
@@ -1363,12 +1479,10 @@ export function createAssetResidencyRegistry(options = {}) {
           if (++evictVisited % 64 === 0) yield;
           if (softBytes <= maxCacheOnlyBytes) break;
           if (entry.state !== 'resident' || !assets.has(entry.key)) continue;
-          const ownerRecords = [...entry.owners.entries()];
-          if (ownerRecords.length === 0
-              || !ownerRecords.every(([, metadata]) => isSoftResidencyOwner(metadata))) continue;
+          if (!isSoftOnlyEntry(entry)) continue;
           if (visibilityHeld(entry) || entryHasPinnedRole(entry)) continue;
           const entryBytes = assetResidentBytes(entry);
-          for (const [owner] of ownerRecords) {
+          for (const owner of [...entry.owners.keys()]) {
             if (release(entry.key, owner, reason)) releasedOwners++;
           }
           if (!assets.has(entry.key)) {
@@ -1409,6 +1523,7 @@ export function createAssetResidencyRegistry(options = {}) {
     if (!entry || entry.state !== 'resident' || entry.owners.size > 0) return false;
     if (activePendingKeySet().has(entry.key)) return false;
     entry.state = 'evicted';
+    rekeySoftBudgetClass(entry);
     assets.delete(entry.key);
     cpuPackageBytesTotal -= entry.cpuPackageBytes;
     noteWarmCoverageEntryMutation(entry);
@@ -1526,8 +1641,120 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     warmOwner = retained > 0 ? owner : null;
     warmSectorId = retained > 0 ? exactSectorId : null;
+    // Mint the coverage ledger here while the caller still bounds the seam —
+    // otherwise the first live retain after the hold pays the O(warmAssets x
+    // owners-per-entry) census inside whatever presented frame it lands in.
+    if (warmOwner) warmCoverageComplete(warmOwner, owners.get(warmOwner));
     emit('sector-exit-warmed', { sectorId: exactSectorId, retained });
     return retained;
+  }
+
+  // Steps twin of the warm-coverage census: same set, minted under a paced
+  // iterator. Aborts early if the hold moved on or a lazy mint beat it.
+  function* mintWarmCoverageSteps(owner) {
+    const warmState = owners.get(owner);
+    if (!warmState || (warmCoverage && warmCoverage.owner === owner)) return;
+    const assetList = [...warmState.assets];
+    const uncovered = new Set();
+    for (let i = 0; i < assetList.length; i++) {
+      if (warmOwner !== owner || (warmCoverage && warmCoverage.owner === owner)) return;
+      if (!warmEntryCovered(assetList[i], owner)) uncovered.add(assetList[i].key);
+      if ((i & 255) === 255) yield;
+    }
+    if (warmOwner === owner && (!warmCoverage || warmCoverage.owner !== owner)) {
+      warmCoverage = { owner, uncovered };
+    }
+  }
+
+  // Deferred twin: snapshots the qualifying rows eagerly (inside the emit,
+  // while owner qualification still reflects the departing sector), then hands
+  // back an iterator that paces the previous-warm release, the retain loop and
+  // the coverage pre-mint across presented frames. Abandon-safe — a mid-mint
+  // return() releases the partially retained warm owner via the finally.
+  function prepareSectorExitDeferred(sectorId = currentSectorId, options = {}) {
+    const exactSectorId = sectorId == null ? null : String(sectorId);
+    if (exactSectorId == null) return null;
+    const includePlayer = options.includePlayer === true;
+    const warmRole = includePlayer ? 'save-restore-hold' : 'warm-previous-sector';
+    const exitSectorMap = sectorOwnerIndex.get(exactSectorId);
+    const rows = exitSectorMap
+      ? [...exitSectorMap]
+        .filter(([, row]) => includePlayer || row.nonPlayer > 0)
+        .map(([entry]) => entry.key)
+      : [];
+    const owner = Object.freeze({ type: 'asset-warm-sector', sectorId: exactSectorId, generation: assetGeneration });
+    return (function* () {
+      if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
+      yield;
+      let retained = 0;
+      let committed = false;
+      try {
+        for (let i = 0; i < rows.length; i++) {
+          if (retain(rows[i], owner, { role: warmRole, sectorId: exactSectorId })) retained++;
+          if ((i & 255) === 255) yield;
+        }
+        committed = true;
+      } finally {
+        if (!committed && retained > 0) releaseOwner(owner, 'warm-sector-mint-abandoned');
+      }
+      if (retained > 0) {
+        warmOwner = owner;
+        warmSectorId = exactSectorId;
+        yield* mintWarmCoverageSteps(owner);
+      } else {
+        warmOwner = null;
+        warmSectorId = null;
+      }
+      emit('sector-exit-warmed', { sectorId: exactSectorId, retained });
+      return retained;
+    })();
+  }
+
+  // Deferred twin of rotateSector: the cheap paths still apply synchronously
+  // (returns null when already applied); a real warm mint snapshots its rows
+  // eagerly and returns an iterator that paces the release/retain/coverage work.
+  function rotateSectorDeferred(nextSectorId) {
+    const exactNext = nextSectorId == null ? null : String(nextSectorId);
+    if (exactNext === currentSectorId) return null;
+    if (warmOwner && warmSectorId === currentSectorId) {
+      currentSectorId = exactNext;
+      emit('sector-rotated', { currentSectorId, warmSectorId });
+      return null;
+    }
+    const previousSectorId = currentSectorId;
+    const previousSectorMap = previousSectorId != null ? sectorOwnerIndex.get(previousSectorId) : null;
+    const rows = previousSectorMap
+      ? [...previousSectorMap].filter(([, row]) => row.nonPlayer > 0).map(([entry]) => entry.key)
+      : [];
+    const owner = previousSectorId != null
+      ? Object.freeze({ type: 'asset-warm-sector', sectorId: previousSectorId, generation: assetGeneration })
+      : null;
+    return (function* () {
+      if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
+      yield;
+      let retained = 0;
+      let committed = false;
+      try {
+        for (let i = 0; i < rows.length; i++) {
+          if (retain(rows[i], owner, { role: 'warm-previous-sector', sectorId: previousSectorId })) retained++;
+          if ((i & 255) === 255) yield;
+        }
+        committed = true;
+      } finally {
+        if (!committed && retained > 0) releaseOwner(owner, 'warm-sector-mint-abandoned');
+      }
+      if (retained > 0) {
+        warmOwner = owner;
+        warmSectorId = previousSectorId;
+        yield* mintWarmCoverageSteps(owner);
+      } else {
+        warmOwner = null;
+        warmSectorId = null;
+      }
+      currentSectorId = exactNext;
+      emit('sector-rotated', { currentSectorId, warmSectorId });
+      return true;
+    })();
   }
 
   function handleContextLost() {
@@ -1571,6 +1798,40 @@ export function createAssetResidencyRegistry(options = {}) {
     contextLost = wasContextLost;
   }
 
+  // Per-entry diagnostics row memo on ownersVersion + the canonical flag —
+  // every field keys off the owner set, refCount/resource/byte totals that are
+  // stable while resident, so an unchanged entry serves its frozen row without
+  // the O(owners) set/dedup/sort mints inside every seam publish.
+  function diagnosticsRow(entry, canonical) {
+    const memo = entry.diagRowMemo;
+    if (memo && memo.ownersVersion === entry.ownersVersion && memo.canonical === canonical) {
+      return memo.row;
+    }
+    const gpuResidentBytes = assetResidentBytes(entry);
+    const unaccountedResources = assetUnaccountedResources(entry);
+    const row = {
+      key: entry.key,
+      refCount: entry.owners.size,
+      resourceCount: entry.resources.size,
+      // `bytes` remains as the compatibility field consumed by existing diagnostics readers.
+      // It is never populated from encoded package size; it aliases authoritative GPU bytes.
+      bytes: gpuResidentBytes,
+      gpuResidentBytes,
+      cpuPackageBytes: entry.cpuPackageBytes,
+      unaccountedResources,
+      unaccountedBytes: unaccountedResources > 0 ? null : 0,
+      gpuAccountingAuthoritative: unaccountedResources === 0,
+      roles: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort()),
+      presentationTiers: Object.freeze([...new Set([...entry.owners.values()]
+        .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort()),
+      sectors: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.sectorId).filter(Boolean).map(String))].sort()),
+    };
+    if (!canonical) row.generation = entry.generation;
+    const frozen = Object.freeze(row);
+    entry.diagRowMemo = { ownersVersion: entry.ownersVersion, canonical, row: frozen };
+    return frozen;
+  }
+
   function diagnostics(diagnosticOptions = {}) {
     const canonical = diagnosticOptions.canonical === true;
     const includeEvents = diagnosticOptions.includeEvents !== false && !canonical;
@@ -1607,41 +1868,18 @@ export function createAssetResidencyRegistry(options = {}) {
         });
       }).sort((a, b) => b.bytes - a.bytes || a.owner.localeCompare(b.owner))
       : null;
-    const assetRows = [...assets.values()].map((entry) => {
-      const gpuResidentBytes = assetResidentBytes(entry);
-      const unaccountedResources = assetUnaccountedResources(entry);
-      const row = {
-        key: entry.key,
-        refCount: entry.owners.size,
-        resourceCount: entry.resources.size,
-        // `bytes` remains as the compatibility field consumed by existing diagnostics readers.
-        // It is never populated from encoded package size; it aliases authoritative GPU bytes.
-        bytes: gpuResidentBytes,
-        gpuResidentBytes,
-        cpuPackageBytes: entry.cpuPackageBytes,
-        unaccountedResources,
-        unaccountedBytes: unaccountedResources > 0 ? null : 0,
-        gpuAccountingAuthoritative: unaccountedResources === 0,
-        roles: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort()),
-        presentationTiers: Object.freeze([...new Set([...entry.owners.values()]
-          .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort()),
-        sectors: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.sectorId).filter(Boolean).map(String))].sort()),
-      };
-      if (!canonical) row.generation = entry.generation;
-      return Object.freeze(row);
-    }).sort((a, b) => a.key.localeCompare(b.key));
+    const assetRows = [...assets.values()].map((entry) => diagnosticsRow(entry, canonical))
+      .sort((a, b) => a.key.localeCompare(b.key));
     let gpuResidentBytes = 0;
     for (const unit of memoryUnits.values()) gpuResidentBytes += unit.bytes;
     let cpuPackageBytes = 0;
     for (const entry of assets.values()) cpuPackageBytes += entry.cpuPackageBytes;
     let unaccountedResources = 0;
     for (const entry of resources.values()) if (entry.unaccounted) unaccountedResources++;
-    let packageCacheOnlyBytes = 0;
-    let softResidentBytes = 0;
-    for (const entry of assets.values()) {
-      if (isPackageCacheOnlyEntry(entry)) packageCacheOnlyBytes += assetResidentBytes(entry);
-      else if (isSoftOnlyEntry(entry)) softResidentBytes += assetResidentBytes(entry);
-    }
+    // The class ledgers carry these totals per-mutation — read them instead of
+    // re-walking the table (the verify cadence re-derives them as drift checks).
+    const packageCacheOnlyBytes = packageCacheOnlyBytesTotal;
+    const softResidentBytes = softResidentBytesTotal;
     return Object.freeze({
       schema: 'spaceface.assetResidency.v2',
       residentAssets: assets.size,
@@ -1705,6 +1943,16 @@ export function createAssetResidencyRegistry(options = {}) {
     const activeRequest = activePendingKeys
       ? activePendingKeys.has(entry.key)
       : activePendingKeySet().has(entry.key);
+    // Row memo: owner clones, role/tier dedups and the memoryUnits walk all key
+    // off the owner set, which mutates only through the membership funnel
+    // (ownersVersion). activeRequest is the one volatile field — it is a Set
+    // probe per consult, restamped onto the shared row each call. Consumers
+    // only read rows or shallow-copy them (selectEvictions), so sharing is safe.
+    const memo = entry.governorRowMemo;
+    if (memo && memo.ownersVersion === entry.ownersVersion && memo.kind === kind) {
+      memo.row.activeRequest = activeRequest;
+      return memo.row;
+    }
     const ownerRecords = [...entry.owners.values()].map((metadata) => ({ ...(metadata || {}) }));
     const roles = [...new Set(ownerRecords.map((metadata) => metadata.role).filter(Boolean))];
     const presentationTiers = [...new Set(ownerRecords
@@ -1721,7 +1969,7 @@ export function createAssetResidencyRegistry(options = {}) {
       }
     }
     const gpuResidentBytes = assetResidentBytes(entry);
-    return {
+    const row = {
       key: entry.key,
       // `bytes` is retained as the GPU compatibility alias. CPU planning uses the separate
       // package-byte field and never falls through to this value.
@@ -1735,6 +1983,8 @@ export function createAssetResidencyRegistry(options = {}) {
       activeRequest,
       memoryUnits: kind === 'gpu' ? memoryUnits : null,
     };
+    entry.governorRowMemo = { ownersVersion: entry.ownersVersion, kind, row };
+    return row;
   }
 
   function blockedBreakdown(entries) {
@@ -1983,7 +2233,9 @@ export function createAssetResidencyRegistry(options = {}) {
     handoffOwnerWhenCovered,
     isOwnerReleased,
     rotateSector,
+    rotateSectorDeferred,
     prepareSectorExit,
+    prepareSectorExitDeferred,
     setEvictionCorridor,
     handleContextLost,
     handleContextRestored,
@@ -2009,7 +2261,15 @@ export function createAssetResidencyRegistry(options = {}) {
 
 export function applySectorExitResidency(residency, sectorId, options = {}) {
   if (!residency) return null;
-  if (typeof residency.prepareSectorExit === 'function') {
+  // A caller that drives the cleanup iterator itself can also take over the
+  // warm mint — it rides as leg 0 of the same paced drive instead of paying
+  // its O(sector) release+retain loop inside the exit emit.
+  let warmMintIter = null;
+  if (options.deferWarmMint === true
+    && typeof options.driveCacheCleanup === 'function'
+    && typeof residency.prepareSectorExitDeferred === 'function') {
+    warmMintIter = residency.prepareSectorExitDeferred(sectorId, options);
+  } else if (typeof residency.prepareSectorExit === 'function') {
     residency.prepareSectorExit(sectorId, options);
   }
   const primaryReason = options.cacheCleanupReason || 'sector-exit-cache-only';
@@ -2020,7 +2280,7 @@ export function applySectorExitResidency(residency, sectorId, options = {}) {
   // A caller can take over cleanup driving (e.g. the renderer's paced residency
   // poll) — the sync twin + microtask then never run inside the exit frame.
   if (typeof options.driveCacheCleanup === 'function') {
-    options.driveCacheCleanup(primaryReason, postDispatchReason);
+    options.driveCacheCleanup(primaryReason, postDispatchReason, warmMintIter);
   } else {
     cacheCleanup = typeof residency.releaseUnreferencedCacheOwners === 'function'
       ? residency.releaseUnreferencedCacheOwners(primaryReason)
