@@ -763,17 +763,24 @@ export function roundTripSavePortrait(source) {
   return { first, second, ok: JSON.stringify(first) === JSON.stringify(second) };
 }
 
-// Single-entry memo keyed on the save store's generation signature: 'gen:' equality already
-// implies byte-identical slot bytes for every tracked writer, so a same-generation stage
-// re-render or re-pick reuses {raw, data} instead of paying another getItem + full multi-MB
-// parse per selection. A write bumps the generation and the next read falls through.
-let _slotDataMemo = null;
+// Bounded per-slot memo keyed on the save store's generation signature: 'gen:' equality
+// already implies byte-identical slot bytes for every tracked writer, so a same-generation
+// stage re-render, re-pick, or scrub back-track reuses {raw, data} instead of paying another
+// getItem + full multi-MB parse per selection. A write bumps the generation and the entry
+// falls through. raws are shared string refs; `data` is the retained part — cap the map so
+// a long dwell can't grow it.
+const _slotDataMemo = new Map();
+const _SLOT_DATA_MEMO_MAX = 6;
 
 function readSlotSaveData(ctx, slot) {
   const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
   const sig = sys && typeof sys.saveStoreSignature === 'function' ? sys.saveStoreSignature() : null;
-  if (_slotDataMemo && _slotDataMemo.slot === slot && sig && _slotDataMemo.sig === sig) {
-    return _slotDataMemo;
+  const hit = _slotDataMemo.get(slot);
+  if (hit && sig && hit.sig === sig) {
+    // Refresh recency — the oldest entry is evicted first.
+    _slotDataMemo.delete(slot);
+    _slotDataMemo.set(slot, hit);
+    return hit;
   }
   let raw = null;
   let data = null;
@@ -789,8 +796,13 @@ function readSlotSaveData(ctx, slot) {
       if (peeked) data = peeked;
     } catch (e) {}
   }
-  _slotDataMemo = { sig, slot, raw, data };
-  return _slotDataMemo;
+  const entry = { sig, slot, raw, data };
+  _slotDataMemo.delete(slot);
+  _slotDataMemo.set(slot, entry);
+  while (_slotDataMemo.size > _SLOT_DATA_MEMO_MAX) {
+    _slotDataMemo.delete(_slotDataMemo.keys().next().value);
+  }
+  return entry;
 }
 
 function shipDisplayName(ctx, defId) {
@@ -1151,7 +1163,7 @@ export const saveLoadScreen = {
     // stage read already materialized the bytes this generation, so the arm rides the memo's
     // raw instead of a second getItem on the same click task.
     if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
-      const picked = _slotDataMemo && _slotDataMemo.slot === id ? _slotDataMemo : null;
+      const picked = _slotDataMemo.get(id) || null;
       ctx.bus.emit('save:loadSpeculationTarget', {
         slot: id,
         raw: picked && picked.raw,

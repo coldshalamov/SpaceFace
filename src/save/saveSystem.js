@@ -111,7 +111,7 @@ let _saveStoreTrackedObject = null;
 // it go stale until the click.
 let _onSaveStoreBump = null;
 
-function bumpSaveStoreGeneration(key) {
+function bumpSaveStoreGeneration(key, value) {
   if (_saveStoreApplySilenced > 0) return;
   if (key != null) {
     const k = String(key);
@@ -121,7 +121,7 @@ function bumpSaveStoreGeneration(key) {
   }
   _saveStoreGeneration++;
   if (_onSaveStoreBump) {
-    try { _onSaveStoreBump(); } catch (err) { /* subscriber is best-effort */ }
+    try { _onSaveStoreBump(key, value); } catch (err) { /* subscriber is best-effort */ }
   }
 }
 
@@ -140,7 +140,9 @@ function installSaveStoreWriteTracking() {
     const wrapped = function (...args) {
       const result = original.apply(this, args);
       // 'clear' takes no key — treat it as a bump for every store, save-prefixed or not.
-      bumpSaveStoreGeneration(name === 'clear' ? null : args[0]);
+      // setItem forwards its value so a write to an armed slot's own key can re-arm the
+      // speculation off the bytes in hand instead of reading them back in this task.
+      bumpSaveStoreGeneration(name === 'clear' ? null : args[0], name === 'setItem' ? args[1] : undefined);
       return result;
     };
     wrapped.spacefaceSaveTracking = true;
@@ -148,7 +150,7 @@ function installSaveStoreWriteTracking() {
   }
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('storage', (event) => {
-      bumpSaveStoreGeneration(event && event.key);
+      bumpSaveStoreGeneration(event && event.key, event && event.newValue);
     });
   }
 }
@@ -170,6 +172,11 @@ export const SAVE_IMPORT_MAX_PERSISTENT_ENTITIES = 2_048;
 // Restore-route persistent respawn batch: spawn order is unchanged; the window only bounds
 // how much spawn work runs between presentation yields inside the chunked restore.
 const RESTORE_PERSISTENT_SPAWN_BATCH = 16;
+// A screen pick re-arms the speculative envelope prepare per row crossed (filmstrip
+// pointermove, focus walk). The worker dispatch is a synchronous O(blob) structured clone,
+// so the arm parks it briefly — a scrub collapses into one dispatch for the settle row,
+// and a real consume flushes it immediately.
+const SPEC_ARM_DEBOUNCE_MS = 200;
 // Entities cleared per restore yield — a dispose-mesh fan-out sits behind each destroy emit.
 const RESTORE_ENTITY_CLEAR_BATCH = 16;
 export const SAVE_IMPORT_LIMITS = Object.freeze({
@@ -373,10 +380,23 @@ export const save = {
     // a warm envelope. The slot's raw is re-read, so a same-slot write re-warms rather
     // than staling; the frozen/menu gate inside speculateLoadPrepare keeps this inert
     // in-flight.
-    _onSaveStoreBump = () => {
+    _onSaveStoreBump = (bumpKey, bumpValue) => {
       try {
         const spec = this._speculativeContinuePrepare;
-        if (spec && spec.sig !== 'gen:' + _saveStoreGeneration) this.speculateLoadPrepare(spec.slot);
+        if (!spec || spec.sig === 'gen:' + _saveStoreGeneration) return;
+        if (bumpKey === LS_PREFIX + spec.slot && typeof bumpValue === 'string' && bumpValue) {
+          // The write to the armed slot's own key already holds the new bytes — re-arm
+          // directly from them instead of reading them back inside the writer's task.
+          this.speculateLoadPrepare(spec.slot, { sig: 'gen:' + _saveStoreGeneration, raw: bumpValue });
+          return;
+        }
+        // Any other write leaves the armed blob's bytes unknown to this handler — defer
+        // the re-read + clone past the writer's task so a mid-dwell autosave doesn't fuse
+        // a multi-MB getItem into it.
+        const staleSlot = spec.slot;
+        Promise.resolve().then(() => {
+          try { this.speculateLoadPrepare(staleSlot); } catch (err) { /* best-effort */ }
+        });
       } catch (err) { /* speculation is best-effort */ }
     };
     bus.on('settings:changed', (payload) => {
@@ -2491,6 +2511,10 @@ export const save = {
   },
 
   _armSpeculativePrepare(slot, raw, sig) {
+    // A scrub's previous pick still has its dispatch parked — cancel it so only the
+    // settle row ever pays the postMessage clone + worker parse.
+    const priorArm = this._speculativeContinuePrepare;
+    if (priorArm && priorArm._timer != null) { clearTimeout(priorArm._timer); priorArm._timer = null; }
     const spec = this._speculativeContinuePrepare = {
       sig,
       slot,
@@ -2498,22 +2522,38 @@ export const save = {
       // it replaces, and the click path resolves it via native string equality instead of
       // rehashing a multi-MB blob on the main thread.
       raw,
-      promise: Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null),
+      promise: null,
+      dispatch: null,
+      _timer: null,
     };
-    // A prepare that resolves while the menu is still up names the hull/place set the saved
-    // sector will rematerialize — the decode runway can start overlapping dwell time instead
-    // of the restore window. Restricted emit: only the visuals prefetch subscribes; physics
-    // still kicks on the real save:envelopePrepared at click, and the click emit's decode
-    // dedupe makes the second pass nearly free.
-    spec.promise.then((prepared) => {
-      try {
-        if (this._speculativeContinuePrepare !== spec) return;
-        if (!prepared || prepared.ok !== true) return;
-        installSaveStoreWriteTracking();
-        if (spec.sig !== 'gen:' + _saveStoreGeneration) return;
-        if (this.bus && this.bus.emit) this.bus.emit('save:envelopeSpecPrepared', { slot, data: prepared.data });
-      } catch (err) { /* speculative warm is best-effort */ }
-    });
+    // The worker dispatch is a synchronous O(blob) structured clone on the arming task —
+    // a filmstrip scrub re-picks rows inside pointermove tasks, so park it ~200ms and only
+    // the row the scrub settles on pays the clone + parse. A consume flushes immediately
+    // (spec.dispatch()); the debounce shifts warm start, never correctness.
+    spec.dispatch = () => {
+      if (spec.promise) return spec.promise;
+      if (spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
+      spec.promise = Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null);
+      // A prepare that resolves while the menu is still up names the hull/place set the saved
+      // sector will rematerialize — the decode runway can start overlapping dwell time instead
+      // of the restore window. Restricted emit: only the visuals prefetch subscribes; physics
+      // still kicks on the real save:envelopePrepared at click, and the click emit's decode
+      // dedupe makes the second pass nearly free.
+      spec.promise.then((prepared) => {
+        try {
+          if (this._speculativeContinuePrepare !== spec) return;
+          if (!prepared || prepared.ok !== true) return;
+          installSaveStoreWriteTracking();
+          if (spec.sig !== 'gen:' + _saveStoreGeneration) return;
+          if (this.bus && this.bus.emit) this.bus.emit('save:envelopeSpecPrepared', { slot, data: prepared.data });
+        } catch (err) { /* speculative warm is best-effort */ }
+      });
+      return spec.promise;
+    };
+    spec._timer = (typeof setTimeout === 'function')
+      ? setTimeout(() => { try { spec.dispatch(); } catch (err) { /* best-effort */ } }, SPEC_ARM_DEBOUNCE_MS)
+      : null;
+    if (spec._timer == null) spec.dispatch();
   },
 
   // The same generation signature the speculation lane arms on: 'gen:' equality implies
@@ -2974,9 +3014,25 @@ export const save = {
         localStorage.removeItem(LS_PREFIX + slot);
         localStorage.removeItem(RECOVERY_PREFIX + slot);
       }
-      const idx = this._slotIndexWithFallback();
+      // A delete is a self-describing mutation — it needs no blob verification. The
+      // removeItems already bumped the generation, so consulting _slotIndexWithFallback
+      // here would pay the whole sync signature walk + scans + a fresh spec arm on the
+      // click task just to land one key removal. Write the index row directly and splice
+      // the merged cache under the new generation instead — same shape the screen's own
+      // bare-storage fallback produces.
+      const idx = normalizeSlotIndex(this._readIndex());
       delete idx[slot];
       if (typeof localStorage !== 'undefined') localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
+      const cache = this._slotIndexCache;
+      if (cache && typeof cache.merged === 'object' && cache.merged) {
+        const merged = { ...cache.merged };
+        delete merged[slot];
+        this._slotIndexCache = {
+          sig: 'gen:' + _saveStoreGeneration,
+          merged,
+          authoritative: cache.authoritative,
+        };
+      }
       this._queueSharedStoreMirror({
         [LS_PREFIX + slot]: null,
         [RECOVERY_PREFIX + slot]: null,
@@ -4611,6 +4667,9 @@ export const save = {
     // its promise — but the raw bytes are the win either way.
     const spec = this._speculativeContinuePrepare;
     this._speculativeContinuePrepare = null;
+    // The sync lane consumes only spec.raw — drop any parked dispatch so the worker
+    // doesn't parse a blob nobody will await.
+    if (spec && spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
     installSaveStoreWriteTracking();
     const specHit = spec && spec.slot === slot
       && spec.sig === 'gen:' + _saveStoreGeneration;
@@ -4725,7 +4784,12 @@ export const save = {
     // commits first bumps _restoreSequence, so a late-completing prepare cannot pass the
     // destructive-commit check in _restore/_restoreAsync and overwrite the newer run.
     const acceptSeq = this._restoreSequence;
-    const primaryPromise = ((specHit || specByteHit) ? spec.promise : Promise.resolve(null))
+    // A consumed spec flushes its parked dispatch now — the debounce exists for scrub
+    // cadence, and a click means the arm's row is the one being loaded.
+    const specPromise = ((specHit || specByteHit) && spec && typeof spec.dispatch === 'function')
+      ? spec.dispatch()
+      : ((specHit || specByteHit) && spec && spec.promise) || Promise.resolve(null);
+    const primaryPromise = specPromise
       .then((prepared) => prepared || this._prepareEnvelopeStringAsync(specHit ? spec.raw : raw));
     // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture
     // is main-thread serialize work that used to serialize after the roundtrip. A failed
