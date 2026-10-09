@@ -2145,6 +2145,36 @@ test('save:loaded mid-launch retires the beam but the ball keeps its deadline an
   t.cleanup();
 });
 
+test('a mode flip mid-coil hands the un-thrown ball back disarmed — never a parked mine', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  a.physicsBody.impactDamageScale = 0.2;
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t); // → LAUNCH: arming stamps committed, coil winding, zero burst ticks
+  assert.equal(t.sys._rt.phase, 'launching');
+  assert.equal(t.sys._rt.launchLeft, T.launchTicks, 'the burst has not fired a single tick');
+  assert.equal(a.data.gyreLaunched, true, 'the launch committed its marks');
+  const parkedPos = { x: a.pos.x, z: a.pos.z };
+  t.state.mode = 'dock';
+  t.sim.step(); // not_flight lands mid-coil
+  assert.equal(t.sys._rt.phase, 'off');
+  // The ball never flew — it hands back like an interrupted adoption instead
+  // of parking at the coil anchor as a live 8x attributed mine for ballTtlS.
+  assert.equal(a.data.gyreLaunched, undefined, 'the mark sheds with the abort');
+  assert.equal(a.data.gyreLaunchMeta, undefined, 'the serialized shadow sheds too');
+  assert.equal(a.data.despawnAt, undefined, 'the lash deadline lifts — authored was absent');
+  assert.equal(a.data.gyrePrevDespawnAt, undefined, 'the lifetime stash consumed');
+  assert.equal(a.data.gyrePrevImpactScale, undefined, 'the disarm ledger consumed');
+  assert.equal(a.physicsBody.impactDamageScale, 0.2, 'the authored collider scale restores');
+  assert.equal(readRecentImpulseProvenance(a, t.state.tick), null, 'no kill credit rides the parked body');
+  assert.ok(!t.sys._rt.ballIds.includes(a.id), 'the watch ledger forgets it');
+  for (let i = 0; i < 10; i++) t.sim.step();
+  assert.ok(Math.hypot(a.pos.x - parkedPos.x, a.pos.z - parkedPos.z) < 4,
+    'the un-thrown ball stays parked — it never flew');
+  t.cleanup();
+});
+
 test('releasing while HOLD with a vanished core drops launch_without_core, never a ghost bowl', async () => {
   const t = await bootPhysics();
   const core = rock(t.sim, T.mawDist, 0, 6, 4);

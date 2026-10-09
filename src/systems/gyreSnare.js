@@ -240,6 +240,14 @@ export const gyreSnare = {
     }
     const droppedPhase = rt.phase;
     const droppedMass = rt.clumpMass;
+    // Coil-abort capture (before the ledger reset zeroes it): a non-boundary
+    // drop during LAUNCH with launchLeft still full means _launch committed
+    // the ball's arming stamps — gyreLaunched, up-to-8× impact scale, the
+    // lash deadline, kill credit — but zero burst ticks ever fired. Handed
+    // back below like any interrupted adoption; otherwise it would park at
+    // the coil anchor for ballTtlS as a live attributed mine.
+    const coilAbortId = !boundary && droppedPhase === PHASE.LAUNCH
+      && rt.launchLeft === D.launchTicks ? rt.launchedId : null;
     // The tear snap's whip scale — captured before the reset zeroes clumpRadius
     // (which would unfloor the ponderous rate). Strain drops only.
     let droppedDir = 1, droppedOrbitR = 0, droppedRate = 0, droppedClumpR = 0;
@@ -264,6 +272,17 @@ export const gyreSnare = {
     rt.launchSpeedEff = 0;
     rt.launchDir.x = 1; rt.launchDir.z = 0; // ledger symmetry — dead data, but nothing stale survives a boundary drop mid-burst
     rt.launchedId = null;
+    if (coilAbortId != null) {
+      // The ball leaves the watch ledger with its marks — the retire pass
+      // never re-enters it and the mirror retires via ballId like an
+      // ordinary adoption (alive, unmarked → no grave).
+      this._unwatchBall(coilAbortId);
+      const coilVictim = this.state && this.state.entities
+        ? this.state.entities.get(coilAbortId) : null;
+      if (coilVictim && coilVictim.alive !== false && coilVictim.data) {
+        this._handBack(coilVictim);
+      }
+    }
     // The drop-side ledger dies with the clump too — a fresh beam must not publish the last
     // ball's absorb count (or reuse its orbit phase) while it searches for a new core.
     rt.totalAbsorbed = 0;
@@ -1907,6 +1926,9 @@ export const gyreSnare = {
       graves: null, thrownBeat: false, basinSpots: null, dropReason: null, fuseS: 0,
       liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
       tornId: null, tornPos: { x: 0, z: 0 }, tornDir: { x: 0, z: 0 },
+      // Published unconditionally at rt's rest values — a reader between
+      // init and the first publish tick sees these too, not undefined.
+      suckRadius: 0, swirlBlend: 1, orbitSeed: 0,
     });
   },
 
