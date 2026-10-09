@@ -19324,7 +19324,12 @@ export const render = {
               // Registries without a Steps twin keep the sync contract.
               try { residency?.releaseUnreferencedCacheOwners?.(primaryReason); } catch (_) { /* best effort */ }
               try { residency?.releaseUnreferencedCacheOwners?.(postDispatchReason); } catch (_) { /* best effort */ }
-              self._sectorExitCleanupIter = null;
+              if (typeof residency?.enforceBudgetSteps === 'function') {
+                self._sectorExitCleanupIter = residency.enforceBudgetSteps('gpu');
+              } else {
+                try { residency?.enforceBudget?.('gpu'); } catch (_) { /* best effort */ }
+                self._sectorExitCleanupIter = null;
+              }
               return;
             }
             self._sectorExitCleanupPendingPost = true;
@@ -19333,8 +19338,17 @@ export const render = {
               yield* residency.releaseUnreferencedCacheOwnersSteps(primaryReason);
               self._sectorExitCleanupPendingPost = false;
               yield* residency.releaseUnreferencedCacheOwnersSteps(postDispatchReason);
+              // The governor enforce rides the same slice clock as leg 3 — its
+              // O(assets x owners x resources + requests) census was the last
+              // atomic lump landing inside the boundary-crossing emit. The seam
+              // discards the receipt anyway, so deferring it past painted beats
+              // loses nothing.
+              if (typeof residency.enforceBudgetSteps === 'function') {
+                yield* residency.enforceBudgetSteps('gpu');
+              }
             })();
           },
+          deferBudgetEnforce: true,
         });
       }
       const exactSectorId = sectorId == null ? null : String(sectorId);
