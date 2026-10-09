@@ -649,6 +649,41 @@
     "check-mission-handoff browser(4) Market-instrument 8s timeout — passes locally on HEAD; starved-runner flake, documented canon",
     "Vercel rate-limit — canon"
    ]
+  },
+  {
+   "wave": 131,
+   "head": "63a27001e",
+   "lanes": {
+    "popin-admission": {
+     "saturated": false,
+     "streak": 0,
+     "findings": 3,
+     "landed": 3,
+     "commits": [
+      "63a27001e"
+     ],
+     "headline": "F1 (M, MECHANISM VERIFIED): 15 surviving once-fired warm latches (dueAt WeakMaps + sector Sets) still stranded evicted cohorts cold — all deleted; warms re-post every residency poll, registry dedupe bounds cost. Plan-computing sites keep verdict/roster memos keyed on the arm deadline stamp (gateWing input-tuple verdict Map; uniqueWreck/depotWatch/depotPatrol roster WeakMaps via new plannedAuthoredEncounterShips). F2 (M): retain() never re-pinned lastWarmClaimAtMs on warm re-posts — armed cohort sorted oldest-idle and evicted first; refreshed on decodeWarm/softLease re-claims. F3 (L, CPU-measured): resident re-post cycle 3.22us/file unaccounted — new reclaimWarm consult skips the request mint for resident-under-owner re-posts (GLB lane gates on it before beginRequest)."
+    },
+    "boot-loading": {
+     "saturated": false,
+     "streak": 0,
+     "findings": 4,
+     "landed": 4,
+     "commits": [
+      "9db68770b"
+     ],
+     "headline": "B-131-F1 (M, MECHANISM VERIFIED): deleteSlot paid a full atomic store consult inside the delete click — writes the index row directly + splices the cached merged index. B-131-F2 (M): every crossed filmstrip row re-armed the spec prepare (multi-MB postMessage clone + doomed worker parse per pick) — SPEC_ARM_DEBOUNCE_MS=200 trailing debounce collapses a scrub to one arm; loadAsync dispatches parked arms. B-131-F3 (L-M): _onSaveStoreBump re-arm cloned the armed blob inside the writer task — same-slot writes re-arm from value, others defer to microtask. B-131-F4 (L-M): _slotDataMemo single-entry -> 6-entry LRU Map."
+    }
+   },
+   "integrity": {
+    "goldenSha256": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+    "bitIdentical": true
+   },
+   "ciAdjudication": [
+    "encounter-pending-decode-warm source contract modernized to no-latch (doesNotMatch) — deliberate, F1 mandate",
+    "sector-prewarm-boundary-generation cargo-capsule dispose red — byte-identical on clean HEAD, documented canon",
+    "bundled Blob worker encoder red — green standalone + on clean HEAD, documented flake"
+   ]
   }
  ],
  "laneStatus": {
