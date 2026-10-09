@@ -127,20 +127,21 @@ function residentBytesFromMemoryUnits(unitOwners, fallback) {
   return total;
 }
 
-function freedBytesForSelection(unitOwners, selectedIndexes) {
-  if (!unitOwners) return 0;
-  let freed = 0;
-  for (const unit of unitOwners.values()) {
-    let allSelected = true;
-    for (const index of unit.entryIndexes) {
-      if (!selectedIndexes.has(index)) {
-        allSelected = false;
-        break;
-      }
+// Per-entry unit identity lists — the input list's effective-unit projection.
+// Callers that already walked the same units (assetResidency's census) pass this
+// through `options.entryUnitIds` so the walk never repeats.
+function entryUnitIdentities(list, kind) {
+  return list.map((entry) => {
+    const units = memoryUnitList(entry);
+    const effective = units && units.length > 0
+      ? units
+      : [{ identity: entry, bytes: numericBytes(entry, kind) }];
+    const ids = [];
+    for (const unit of effective) {
+      if (unit && unit.bytes > 0) ids.push(unit.identity);
     }
-    if (allSelected) freed += unit.bytes;
-  }
-  return freed;
+    return ids;
+  });
 }
 
 function normalizedToken(value) {
@@ -306,13 +307,13 @@ export function selectEvictions(entries, options = {}) {
   const maxBytes = Number(options.maxBytes);
   const budget = Number.isFinite(maxBytes) && maxBytes > 0 ? maxBytes : Number.POSITIVE_INFINITY;
   const kind = options.kind === 'cpu' ? 'cpu' : 'gpu';
-  const list = (entries || []).map((entry) => ({
-    ...entry,
-    kind,
-    bytes: numericBytes(entry, kind),
-  }));
-  let summedEntryBytes = 0;
-  for (const entry of list) summedEntryBytes += Number(entry.bytes) || 0;
+  // Rows already stamped with this call's kind/bytes (assetResidency's governorRow
+  // memos) are used as-is; other entries get the normalized projection.
+  const list = (entries || []).map((entry) => (
+    entry && entry.kind === kind && Number(entry.bytes) === numericBytes(entry, kind)
+      ? entry
+      : { ...entry, kind, bytes: numericBytes(entry, kind) }
+  ));
   // Callers that already walked the same census (e.g. assetResidency's enforceBudget) may pass
   // its projections through `options`: the unit-owner index, the blocked-row subset, and the
   // per-row reasons those rows minted — selectEvictions then skips re-deriving all three. The
@@ -322,7 +323,11 @@ export function selectEvictions(entries, options = {}) {
     : buildMemoryUnitOwners(list, kind);
   const initialResidentBytes = Number.isFinite(Number(options.initialResidentBytes))
     ? Math.max(0, Number(options.initialResidentBytes))
-    : residentBytesFromMemoryUnits(memoryUnitOwners, summedEntryBytes);
+    : residentBytesFromMemoryUnits(memoryUnitOwners, (() => {
+      let summedEntryBytes = 0;
+      for (const entry of list) summedEntryBytes += Number(entry.bytes) || 0;
+      return summedEntryBytes;
+    })());
   let total = initialResidentBytes;
   const blockedBytesByRole = {};
   const blockedBytesByReason = {};
@@ -357,16 +362,46 @@ export function selectEvictions(entries, options = {}) {
       evict: Object.freeze([]),
     });
   }
-  const ordered = [...list].sort(compareEvictionOrder);
+  // Decorate once: evictionPriority's role/tier derivation is O(roles) per compare;
+  // stamping it per entry keeps the sort at O(A) predicate evals with identical order.
+  const ordered = list.map((entry, index) => ({ entry, index, priority: evictionPriority(entry) }));
+  ordered.sort((a, b) => {
+    if (a.priority !== b.priority) return b.priority - a.priority;
+    const ba = Number(a.entry.bytes) || 0;
+    const bb = Number(b.entry.bytes) || 0;
+    if (ba !== bb) return bb - ba;
+    return String(a.entry.key || '').localeCompare(String(b.entry.key || ''));
+  });
+  // A unit's bytes free only once every entry that holds it is selected. Decrementing a
+  // per-unit remaining count keeps that check O(units-on-this-entry) per selection instead
+  // of re-scanning every unit's owner set per pick.
+  let unitRemaining = null;
+  let unitIdsByIndex = null;
+  if (memoryUnitOwners) {
+    unitRemaining = new Map();
+    for (const [identity, record] of memoryUnitOwners) {
+      unitRemaining.set(identity, record.entryIndexes.size);
+    }
+    unitIdsByIndex = Array.isArray(options.entryUnitIds)
+      ? options.entryUnitIds
+      : entryUnitIdentities(list, kind);
+  }
   const evict = [];
-  const selectedIndexes = new Set();
-  const entryIndexes = new Map(list.map((entry, index) => [entry, index]));
-  for (const entry of ordered) {
+  let freedBytes = 0;
+  for (const { entry, index } of ordered) {
     if (!isGovernorEntryEvictable(entry)) continue;
     evict.push(entry.key);
-    selectedIndexes.add(entryIndexes.get(entry));
     if (memoryUnitOwners) {
-      total = initialResidentBytes - freedBytesForSelection(memoryUnitOwners, selectedIndexes);
+      const ids = unitIdsByIndex[index];
+      if (ids) {
+        for (const identity of ids) {
+          const remaining = unitRemaining.get(identity);
+          if (remaining == null) continue;
+          if (remaining === 1) freedBytes += memoryUnitOwners.get(identity).bytes;
+          unitRemaining.set(identity, remaining - 1);
+        }
+      }
+      total = initialResidentBytes - freedBytes;
     } else {
       total -= numericBytes(entry, kind);
     }

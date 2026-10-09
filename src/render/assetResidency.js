@@ -130,6 +130,20 @@ export function createAssetResidencyRegistry(options = {}) {
   let currentSectorId = null;
   let warmSectorId = null;
   let warmOwner = null;
+  // Rotation sequencing: deferred mints queue behind earlier residency drains, so the
+  // live pointer can lag the newest requested target. Call-time decisions consult the
+  // newest REQUESTED target; each rotate mints a seq stamp and a queued iterator only
+  // repoints the live pointer while it is still the newest APPLIED rotation.
+  let hasPendingRotate = false;
+  let pendingSectorTarget = null;
+  let latestRotateSeq = 0;
+  let appliedRotateSeq = 0;
+  const effectiveCurrentSectorId = () => (hasPendingRotate ? pendingSectorTarget : currentSectorId);
+  // Iterate two member sets as one sequence without minting a concat array per pass.
+  function* iterTwoSets(a, b) {
+    for (const entry of a) yield entry;
+    for (const entry of b) yield entry;
+  }
   // Eviction corridor: current sector then predicted legs in approach order, fed by
   // updatePredictedSectorPrewarm. Soft candidates whose owners carry no corridor sector
   // are the least valuable residency — under byte pressure they should die before a
@@ -1484,7 +1498,7 @@ export function createAssetResidencyRegistry(options = {}) {
     // The qualifying population is exactly the two class member sets (an entry reaches this
     // pass only as a strict package-cache or soft-only resident) — iterate them directly
     // instead of spreading the whole asset table; per-member re-qualify below handles drift.
-    for (const entry of [...packageCacheOnlyMembers, ...softResidentMembers]) {
+    for (const entry of iterTwoSets(packageCacheOnlyMembers, softResidentMembers)) {
       if (++visited % 256 === 0) yield;
       if (assets.get(entry.key) !== entry
           || entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
@@ -1637,16 +1651,23 @@ export function createAssetResidencyRegistry(options = {}) {
 
   function rotateSector(nextSectorId) {
     const exactNext = nextSectorId == null ? null : String(nextSectorId);
-    if (exactNext === currentSectorId) return false;
-    if (warmOwner && warmSectorId === currentSectorId) {
+    const effectiveCurrent = effectiveCurrentSectorId();
+    if (exactNext === effectiveCurrent) return false;
+    // A synchronous rotate applies immediately: consume the pending target and out-seq
+    // any queued deferred mints so their end-of-drain repoint cannot regress the pointer.
+    const seq = ++latestRotateSeq;
+    if (warmOwner && warmSectorId === effectiveCurrent) {
       currentSectorId = exactNext;
+      appliedRotateSeq = seq;
+      pendingSectorTarget = exactNext;
+      hasPendingRotate = true;
       emit('sector-rotated', { currentSectorId, warmSectorId });
       return true;
     }
     if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
     warmOwner = null;
     warmSectorId = null;
-    const previousSectorId = currentSectorId;
+    const previousSectorId = effectiveCurrent;
     if (previousSectorId != null) {
       const owner = Object.freeze({ type: 'asset-warm-sector', sectorId: previousSectorId, generation: assetGeneration });
       let retained = 0;
@@ -1668,6 +1689,9 @@ export function createAssetResidencyRegistry(options = {}) {
       }
     }
     currentSectorId = exactNext;
+    appliedRotateSeq = seq;
+    pendingSectorTarget = exactNext;
+    hasPendingRotate = true;
     emit('sector-rotated', { currentSectorId, warmSectorId });
     return true;
   }
@@ -1766,13 +1790,23 @@ export function createAssetResidencyRegistry(options = {}) {
   // returns an iterator that paces the release/retain/coverage work.
   function rotateSectorDeferred(nextSectorId) {
     const exactNext = nextSectorId == null ? null : String(nextSectorId);
-    if (exactNext === currentSectorId) return false;
-    if (warmOwner && warmSectorId === currentSectorId) {
+    // The pointer lags one rotation while an earlier mint is still queued; the sector
+    // this call departs is the newest REQUESTED target, not the stale live one — this
+    // also keeps reversal requests (B→A while A→B is queued) from being dropped.
+    const effectiveCurrent = effectiveCurrentSectorId();
+    if (exactNext === effectiveCurrent) return false;
+    const rotateSeq = ++latestRotateSeq;
+    if (warmOwner && warmSectorId === effectiveCurrent) {
       currentSectorId = exactNext;
+      appliedRotateSeq = rotateSeq;
+      pendingSectorTarget = exactNext;
+      hasPendingRotate = true;
       emit('sector-rotated', { currentSectorId, warmSectorId });
       return null;
     }
-    const previousSectorId = currentSectorId;
+    pendingSectorTarget = exactNext;
+    hasPendingRotate = true;
+    const previousSectorId = effectiveCurrent;
     const previousSectorMap = previousSectorId != null ? sectorOwnerIndex.get(previousSectorId) : null;
     const rows = previousSectorMap
       ? [...previousSectorMap].filter(([, row]) => row.nonPlayer > 0).map(([entry]) => entry.key)
@@ -1781,30 +1815,41 @@ export function createAssetResidencyRegistry(options = {}) {
       ? Object.freeze({ type: 'asset-warm-sector', sectorId: previousSectorId, generation: assetGeneration })
       : null;
     return (function* () {
-      if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
-      yield;
-      let retained = 0;
-      let committed = false;
       try {
-        for (let i = 0; i < rows.length; i++) {
-          if (retain(rows[i], owner, { role: 'warm-previous-sector', sectorId: previousSectorId })) retained++;
-          if ((i & 255) === 255) yield;
+        if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
+        yield;
+        let retained = 0;
+        let committed = false;
+        try {
+          for (let i = 0; i < rows.length; i++) {
+            if (retain(rows[i], owner, { role: 'warm-previous-sector', sectorId: previousSectorId })) retained++;
+            if ((i & 255) === 255) yield;
+          }
+          committed = true;
+        } finally {
+          if (!committed && retained > 0) releaseOwner(owner, 'warm-sector-mint-abandoned');
         }
-        committed = true;
+        if (retained > 0) {
+          warmOwner = owner;
+          warmSectorId = previousSectorId;
+          yield* mintWarmCoverageSteps(owner);
+        } else {
+          warmOwner = null;
+          warmSectorId = null;
+        }
+        // A cheap-path or sync rotate that superseded this one already moved the
+        // pointer; repoint only while this is still the newest applied rotation.
+        if (rotateSeq > appliedRotateSeq) {
+          currentSectorId = exactNext;
+          appliedRotateSeq = rotateSeq;
+        }
+        emit('sector-rotated', { currentSectorId, warmSectorId });
+        return true;
       } finally {
-        if (!committed && retained > 0) releaseOwner(owner, 'warm-sector-mint-abandoned');
+        // Drain-abandon (.return()) or supersede: drop the stale pending marker so
+        // later calls re-derive from the live pointer instead of a dead request.
+        if (hasPendingRotate && pendingSectorTarget === exactNext) hasPendingRotate = false;
       }
-      if (retained > 0) {
-        warmOwner = owner;
-        warmSectorId = previousSectorId;
-        yield* mintWarmCoverageSteps(owner);
-      } else {
-        warmOwner = null;
-        warmSectorId = null;
-      }
-      currentSectorId = exactNext;
-      emit('sector-rotated', { currentSectorId, warmSectorId });
-      return true;
     })();
   }
 
@@ -1819,7 +1864,14 @@ export function createAssetResidencyRegistry(options = {}) {
     const roster = options && Array.isArray(options.roster) ? options.roster : null;
     const sectorId = options && options.sectorId != null ? String(options.sectorId) : null;
     const repin = () => {
-      if (sectorId) currentSectorId = sectorId;
+      if (sectorId) {
+        currentSectorId = sectorId;
+        // The repin is authoritative: consume every queued rotate's seq so a still-
+        // draining deferred mint cannot repoint the pointer back across the restore.
+        hasPendingRotate = false;
+        pendingSectorTarget = null;
+        appliedRotateSeq = latestRotateSeq;
+      }
       if (!roster) return;
       beginVisibilityPresent();
       for (let i = 0; i < roster.length; i++) noteVisibility(roster[i], true);
@@ -2033,6 +2085,12 @@ export function createAssetResidencyRegistry(options = {}) {
       ownerRecords,
       activeRequest,
       memoryUnits: kind === 'gpu' ? memoryUnits : null,
+      // memoryUnitList()'s output for this row, minted once per memo — the enforce census
+      // consults it per pass instead of re-deduping/re-validating the same unit walk.
+      validatedUnits: kind === 'gpu'
+        ? memoryUnits.filter((unit) => unit && unit.identity != null
+            && Number.isFinite(Number(unit.bytes)) && Number(unit.bytes) > 0)
+        : null,
     };
     entry.governorRowMemo = { ownersVersion: entry.ownersVersion, kind, row };
     return row;
@@ -2099,6 +2157,7 @@ export function createAssetResidencyRegistry(options = {}) {
     const blockedRows = [];
     const blockedReasons = new Map();
     const unitOwners = overBudgetKnown ? new Map() : null;
+    const entryUnitIds = overBudgetKnown ? [] : null;
     let hasMemoryModel = false;
     if (overBudgetKnown) {
       for (const entry of assets.values()) {
@@ -2106,12 +2165,14 @@ export function createAssetResidencyRegistry(options = {}) {
         const index = entries.length;
         entries.push(row);
         if (Array.isArray(row.memoryUnits)) hasMemoryModel = true;
-        const units = memoryUnitList(row);
+        const units = row.validatedUnits !== undefined ? row.validatedUnits : memoryUnitList(row);
         const effective = units && units.length > 0
           ? units
           : [{ identity: row, bytes: numericBytes(row, kind) }];
+        const ids = [];
         for (const unit of effective) {
           if (!unit || unit.bytes <= 0) continue;
+          ids.push(unit.identity);
           let record = unitOwners.get(unit.identity);
           if (!record) {
             record = { bytes: unit.bytes, entryIndexes: new Set() };
@@ -2121,6 +2182,7 @@ export function createAssetResidencyRegistry(options = {}) {
           }
           record.entryIndexes.add(index);
         }
+        entryUnitIds[index] = ids;
       }
     }
     // Blocked rows mint off the live member set for both paths — per-member re-qualify
@@ -2155,7 +2217,7 @@ export function createAssetResidencyRegistry(options = {}) {
         blockedBytesByReason: Object.freeze({}),
         evict: Object.freeze([]),
       }
-      : governor.plan(entries, kind, { initialResidentBytes, blockedRows, blockedReasons, memoryUnitOwners });
+      : governor.plan(entries, kind, { initialResidentBytes, blockedRows, blockedReasons, memoryUnitOwners, entryUnitIds });
     const evicted = [];
     for (const key of plan.evict) {
       const entry = assets.get(String(key || ''));
@@ -2235,6 +2297,7 @@ export function createAssetResidencyRegistry(options = {}) {
     // O(assets)/batchEntries contract.
     const blockedReasons = new Map();
     const unitOwners = overBudgetKnown ? new Map() : null;
+    const entryUnitIds = overBudgetKnown ? [] : null;
     let hasMemoryModel = false;
     let visited = 0;
     if (overBudgetKnown) {
@@ -2243,12 +2306,14 @@ export function createAssetResidencyRegistry(options = {}) {
         const index = entries.length;
         entries.push(row);
         if (Array.isArray(row.memoryUnits)) hasMemoryModel = true;
-        const units = memoryUnitList(row);
+        const units = row.validatedUnits !== undefined ? row.validatedUnits : memoryUnitList(row);
         const effective = units && units.length > 0
           ? units
           : [{ identity: row, bytes: numericBytes(row, kind) }];
+        const ids = [];
         for (const unit of effective) {
           if (!unit || unit.bytes <= 0) continue;
+          ids.push(unit.identity);
           let record = unitOwners.get(unit.identity);
           if (!record) {
             record = { bytes: unit.bytes, entryIndexes: new Set() };
@@ -2258,6 +2323,7 @@ export function createAssetResidencyRegistry(options = {}) {
           }
           record.entryIndexes.add(index);
         }
+        entryUnitIds[index] = ids;
         if (++visited % batchEntries === 0) yield;
       }
     }
@@ -2287,7 +2353,7 @@ export function createAssetResidencyRegistry(options = {}) {
         blockedBytesByReason: Object.freeze({}),
         evict: Object.freeze([]),
       }
-      : governor.plan(entries, kind, { initialResidentBytes, blockedRows, blockedReasons, memoryUnitOwners });
+      : governor.plan(entries, kind, { initialResidentBytes, blockedRows, blockedReasons, memoryUnitOwners, entryUnitIds });
     const evicted = [];
     for (const key of plan.evict) {
       if (++visited % batchEntries === 0) yield;
