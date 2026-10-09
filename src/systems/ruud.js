@@ -442,7 +442,8 @@ export function createRuud() {
       this._id[part] = null;
       const rec = this._record(part);
       if (rec) rec.hull = Math.max(1, rec.hull || 1);
-      if ((part === 'suit' || part === 'fin') && this.state.ruud.disposition === 'unchosen') this._cut();
+      const playerKill = p.killerId != null && p.killerId === this.state.playerId;
+      if ((part === 'suit' || part === 'fin') && this.state.ruud.disposition === 'unchosen' && playerKill) this._cut();
       else this._sync();
     },
     _tethered(id) {
