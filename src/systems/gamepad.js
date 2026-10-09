@@ -779,6 +779,13 @@ function readButton(pad, name) {
   };
 }
 
+const ignoreHapticFailure = () => {};
+function observeHapticCompletion(request) {
+  // Browser actuators can reject asynchronously on disconnect or unsupported effects.
+  // Optional rumble must not become an unhandled runtime error.
+  if (request && typeof request.catch === 'function') request.catch(ignoreHapticFailure);
+}
+
 export function createGamepad(ctx) {
   const bus = ctx && ctx.bus;
   const state = ctx && ctx.state;
@@ -1295,7 +1302,7 @@ export function createGamepad(ctx) {
       const active = !!(frame && frame.enabled && (frame.strong > 0.001 || frame.weak > 0.001));
       if (!active) {
         if (this._hapticActive && typeof actuator.reset === 'function') {
-          try { actuator.reset(); } catch (_) { /* haptics are best-effort */ }
+          try { observeHapticCompletion(actuator.reset()); } catch (_) { /* haptics are best-effort */ }
         }
         this._hapticActive = false;
         return;
@@ -1303,14 +1310,14 @@ export function createGamepad(ctx) {
       this._hapticActive = true;
       try {
         if (typeof actuator.playEffect === 'function') {
-          actuator.playEffect('dual-rumble', {
+          observeHapticCompletion(actuator.playEffect('dual-rumble', {
             startDelay: 0,
             duration: HAPTIC_RUMBLE_MS,
             weakMagnitude: frame.weak,
             strongMagnitude: frame.strong,
-          });
+          }));
         } else if (typeof actuator.pulse === 'function') {
-          actuator.pulse(frame.strong, HAPTIC_RUMBLE_MS);
+          observeHapticCompletion(actuator.pulse(frame.strong, HAPTIC_RUMBLE_MS));
         }
       } catch (_) { /* haptics are best-effort */ }
     },

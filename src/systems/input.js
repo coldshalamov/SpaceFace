@@ -982,13 +982,15 @@ export const input = {
           || isUiCommandTarget(e.target),
       });
     });
+    // Physical releases must reach the owner even when a modal consumes the event below
+    // window. Otherwise frozen menu ticks preserve a held thrust/fire command on resume.
     listen(windowTarget, 'keyup', (e) => {
       applyFlightKeyEvent(this, {
         code: eventCode(e),
         pressed: false,
         blocked: false,
       });
-    });
+    }, { capture: true });
     listen(windowTarget, 'blur', () => this.releaseHeldControls('window-blur'));
     const pointerSurface = this._canvas || windowTarget;
     const handlePointerMove = (e) => {
@@ -1054,7 +1056,7 @@ export const input = {
       }
       this._kbmActivityPending = true;
     });
-    listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) { this._m2 = false; this._clearM2HoldClock(); } });
+    listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) { this._m2 = false; this._clearM2HoldClock(); } }, { capture: true });
     listen(windowTarget, 'pointercancel', () => this.releaseHeldControls('pointercancel'));
     const pointerLockTarget = typeof document !== 'undefined' ? document : null;
     listen(pointerLockTarget, 'pointerlockchange', () => {

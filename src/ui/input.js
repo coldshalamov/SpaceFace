@@ -1144,6 +1144,9 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function tick(dt) {
+    // Gesture capture must own the sample itself. Applying this after gp.tick commits the
+    // first modifier as a solo press, and eats the first ordinary press after cancellation.
+    if (gp) gp.captureMode = !!getGamepadCaptureHandler();
     // Poll the pad whenever a modal owns input, not only when timeScale has already dropped.
     // A first-frame push can race the pause request; D-pad/A/B still have to land.
     const modalOpen = !!(screenManager && screenManager.isOpen && screenManager.isOpen());
