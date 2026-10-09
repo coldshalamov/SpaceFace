@@ -126,8 +126,8 @@ test('a held-throttle arc keeps the plume working: centripetal work is not a dar
   );
   assert.notEqual(strafe.picture, 'work');
   assert.ok(resolveDriveTarget(strafe.throttle, strafe.speedDrive) < EMIT_FLOOR);
-  // The authored straight-line cap coast keeps its idle bell: held key, governor clipped the
-  // command, but nothing is bending the path and no transverse work exists.
+  // Straight run at the cap, key still held: the governor clipped the command, and the trail
+  // must keep streaming (it used to drop to an idle bell here).
   const straight = plumeAchievedPicture(
     { throttle: 0.8, drive: 0.8, speedDrive: 1, boost: 0, reverse: 0 },
     {
@@ -136,8 +136,8 @@ test('a held-throttle arc keeps the plume working: centripetal work is not a dar
       governor: { engaged: true, overspeed: false },
     },
   );
-  assert.equal(straight.picture, 'idle-bell');
-  assert.ok(resolveDriveTarget(straight.throttle, straight.speedDrive) < EMIT_FLOOR);
+  assert.equal(straight.picture, 'work');
+  assert.ok(resolveDriveTarget(straight.throttle, straight.speedDrive) > EMIT_FLOOR);
 });
 
 test('impact severity is a class, and a scar grows in the hull frame', () => {
