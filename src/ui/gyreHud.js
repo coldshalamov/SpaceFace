@@ -311,10 +311,12 @@ export const gyreHud = {
     if (tow > 0) {
       // The too-heavy read is the actionable half of the line — carry the warm
       // face whenever a body it can never eat is inside, not only when tow==0.
-      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
+      // Same for the defensive payoff: a beam towing loot while it bends a
+      // volley names both — the deflect ledger isn't silently discarded.
+      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
     }
     if (heavy > 0) {
-      return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-heavy', fuse: fuseS };
+      return { text: `GYRE — TOO HEAVY ×${heavy}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-heavy', fuse: fuseS };
     }
     if (deflect > 0) {
       // The defensive-only read: nothing to tow or eat — the cone is purely

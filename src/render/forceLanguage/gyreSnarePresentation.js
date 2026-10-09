@@ -606,11 +606,32 @@ export class GyreSnarePresentation {
 
     // Grip-spoke: a faint tether from the maw ring to the orbiting clump so the ball
     // visibly circles a held point, not bare space. Opacity rides strain — the tether
-    // tightens as the clump nears the slip point.
+    // tightens as the clump nears the slip point. The shader carries a faint
+    // brightness wave along the spoke (uv.x runs maw->clump after the rotation),
+    // chirality-matched to the suck lanes' _swirlDir: 'the mass is held by
+    // flowing energy' — the one directional element gets a directional read.
     const gripGeo = new THREE.PlaneGeometry(1, 1);
     gripGeo.rotateX(-Math.PI / 2);
-    this._gripMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(glass), transparent: true, opacity: 0,
+    this._gripMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uCol: { value: new THREE.Color(glass) },
+        uOp: { value: 0 },
+        uTime: { value: 0 },
+        uFlow: { value: 0 }, // signed wave rate — _swirlDir chirality, calm-frozen
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+      `,
+      fragmentShader: `
+        uniform vec3 uCol; uniform float uOp; uniform float uTime; uniform float uFlow;
+        varying vec2 vUv;
+        void main() {
+          float w = 0.5 + 0.5 * sin(6.2831 * (vUv.x * 2.0 - uTime * uFlow));
+          gl_FragColor = vec4(uCol, uOp * (0.55 + 0.45 * w));
+        }
+      `,
+      transparent: true,
       blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
     this._grip = new THREE.Mesh(gripGeo, this._gripMat);
@@ -1944,7 +1965,11 @@ export class GyreSnarePresentation {
         this._grip.scale.set(gd, 1, 2.2 * (1 + strain * 0.35 * Math.sin(this.time * 37) * calm) * (1 - windGrip * 0.45));
         // Blooms in on the hold edge (~0.2 s) — a snag before ~150 ms was landing
         // the ~0.34-alpha spoke in a single frame while every sibling ramps in.
-        this._gripMat.opacity = (0.14 + strain * 0.3 + this._discKick * 0.2 + windGrip * 0.4) * flashCalm * (this._fuseDim || 1) * Math.min(1, (this._holdT || 0) / 0.2);
+        this._gripMat.uniforms.uOp.value = (0.14 + strain * 0.3 + this._discKick * 0.2 + windGrip * 0.4) * flashCalm * (this._fuseDim || 1) * Math.min(1, (this._holdT || 0) / 0.2);
+        // The wave flows maw->clump at the suck lanes' chirality (uv.x rises the
+        // same way) and seizes under reduced-motion like every sibling lane.
+        this._gripMat.uniforms.uTime.value = this.time;
+        this._gripMat.uniforms.uFlow.value = 0.6 * (this._swirlDir || 1) * calm;
         this._grip.visible = true;
       } else if (!this._closing && this._grip.visible) {
         this._grip.visible = false;

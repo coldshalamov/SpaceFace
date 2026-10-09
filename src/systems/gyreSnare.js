@@ -649,12 +649,20 @@ export const gyreSnare = {
       // lifetime stashes ride with it too — consumed by the future-only hand-back
       // contract when a foreign owner finally takes the body.
       if (e && e.data && e.data.gyreLaunched) {
-        this._trackBall(e.id);
         // The kill-credit record lives in a WeakMap keyed on the entity OBJECT — a real
         // load rebuilds entities, so the post-load ball is provenance-blind and its impact
         // kills go unattributed. Re-stamp from the serialized meta; the ball's despawnAt
         // is the honest outer bound for the hold (a dead ball can't kill anyway).
         const meta = e.data.gyreLaunchMeta;
+        // A ball serialized between _launch and the first burst tick carries the
+        // mark + armed payload + stamped deadline but never FLEW — the coil-abort
+        // lane's save:loaded twin. Re-adopting it as "flying" would park a static
+        // armed, credited mine at the coil anchor for its whole ~9 s TTL, so it
+        // takes the hand-back lane like any interrupted throw. (burst stamps on
+        // the first burst tick — the throw beat — so every genuinely-flown ball
+        // carries it; meta-less marks can't prove flight either.)
+        if (!meta || meta.burst !== true) { this._handBack(e); return; }
+        this._trackBall(e.id);
         // Skip a ball whose deadline a foreign adopter already stripped before
         // the save: it is guaranteed to hit the hand-back lane (which clears
         // provenance) on the very next tick, so stamping would only open a
@@ -1208,7 +1216,7 @@ export const gyreSnare = {
     const core = state.entities ? state.entities.get(rt.coreId) : null;
     if (!core || core.alive === false || !core.pos) { this._drop('core_lost'); return; }
     if (hasProtectedContent(core)) { this._releaseProtectedCore(core); return; }
-    const t = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
+    const t = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
 
     // Strain break first: something violent flung the ball too far off the maw — the beam slips.
     // Checking before the spring queue keeps a freed core from eating one last pull.
@@ -1587,7 +1595,7 @@ export const gyreSnare = {
       // A dense belt feed can merge several bodies per tick — the absorb event fires for
       // every one (HUD honesty) but the glass tick is rate-gated so it stays readable
       // instead of stacking into noise.
-      const nowS = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
+      const nowS = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
       if (nowS - rt.lastAbsorbCueS >= D.absorbCueMinGapS) {
         rt.lastAbsorbCueS = nowS;
         // Meal size in the ear too: the tick drops pitch as the victim gets heavier — a
@@ -1733,7 +1741,7 @@ export const gyreSnare = {
     // adoption hand-back can restore them — symmetric with the drop contract; a boundary
     // sweep drops them as old-timeline residue.
     core.data.gyreLaunched = true;
-    core.data.despawnAt = (Number.isFinite(state.simTime) ? state.simTime : state.tick / 60) + D.ballTtlS;
+    core.data.despawnAt = (Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60) + D.ballTtlS;
     recordImpulseProvenance(core, {
       actorId: state.playerId,
       weaponId: WEAPON_ID,
@@ -2772,6 +2780,10 @@ export const gyreSnare = {
         }, this._evidence(state.tick));
         rt.launchLeft -= 1;
         if (rt.launchLeft === D.launchTicks - 1) {
+          // The ball has FLOWN — stamp it on the serializable meta so a save
+          // captured inside the coil can tell a real thrown ball from an
+          // armed-but-never-flown one on reload (the sweep hands the latter back).
+          if (core.data && core.data.gyreLaunchMeta) core.data.gyreLaunchMeta.burst = true;
           // First burst tick = the coil release: the weapon's biggest kinetic beat lands
           // HERE — the throw is over, not while the ball was still winding back. Pad
           // players ride gyre:thrown; gyre:launched stays the release-edge record.

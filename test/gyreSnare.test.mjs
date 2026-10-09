@@ -869,7 +869,11 @@ test('a sector-exit boundary retires a re-adopted ball silently — disappearanc
   const body = rock(t.sim, T.mawDist, 0);
   hold(t);
   for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
-  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → bowl
+  // Through the coil and past the first burst tick — the ball has FLOWN, so
+  // the boundary sweep's never-flown hand-back gate leaves it for the
+  // re-adopt + silent-retire lane this test exercises.
+  t.state.input.actions.gyreSnare = false;
+  for (let i = 0; i < 30; i++) t.sim.step(); // release → bowl (past the burst)
   assert.equal(t.sys._rt.ballId, body.id);
   // sector:exit emits BEFORE the residency pass removes the outgoing sector's
   // entities (world.js ordering): the boundary sweep re-adopts the still-live
@@ -944,7 +948,8 @@ test('a serialized ball keeps its disarm ledger — null survives clonePlain whe
   const body = rock(t.sim, T.mawDist, 0);
   hold(t);
   for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
-  t.state.input.actions.gyreSnare = false; t.sim.step(); // release → bowl
+  t.state.input.actions.gyreSnare = false;
+  for (let i = 0; i < 30; i++) t.sim.step(); // release → bowl (past the burst)
   assert.equal(t.sys._rt.ballId, body.id);
   assert.ok(body.physicsBody.impactDamageScale > 1, 'launch wrote the weapon scale');
   assert.equal(body.data.gyrePrevImpactScale, null,
@@ -1994,7 +1999,8 @@ test('a ball tracked through a load boundary keeps gyreLaunched and its deadline
   const ball = rock(t.sim, T.mawDist, 0, 6, 4);
   hold(t);
   for (let i = 0; i < 5; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
-  t.state.input.actions.gyreSnare = false; t.sim.step();
+  t.state.input.actions.gyreSnare = false;
+  for (let i = 0; i < 30; i++) t.sim.step(); // past the burst — genuinely flown
   assert.equal(t.sys._rt.ballId, ball.id);
   const dl = ball.data.despawnAt;
   assert.ok(dl != null, 'launch stamped a deadline');
@@ -2145,6 +2151,50 @@ test('a same-state destroy→init reload re-seeds the ball watch list', async ()
   assert.ok(Number.isFinite(a.ttl) && a.ttl > 0 && a.ttl <= 8888,
     `the handed-back ball resumes its authored countdown (got ${a.ttl})`);
   assert.equal(a.data.gyrePrevTtl, undefined, 'the ttl stash is consumed on restore');
+  t.cleanup();
+});
+
+test('a save inside the coil hands the never-flown ball back on load', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  a.physicsBody.impactDamageScale = 0.2;
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, a.id, 'A cored');
+  release(t);
+  t.state.input.actions.gyreSnare = false; t.sim.step(); // the coil's first tick — no burst yet
+  assert.equal(t.sys._rt.phase, 'launching');
+  assert.equal(a.data.gyreLaunched, true, 'the coil ball is marked');
+  assert.ok(a.data.gyreLaunchMeta && a.data.gyreLaunchMeta.burst !== true,
+    'no burst flag yet — it never flew');
+  assert.ok(a.physicsBody.impactDamageScale > 1, 'the armed payload is stamped');
+  // The save lands inside the ~11-tick coil: mark + meta + armed scale serialize
+  // on a ball that never flew. The sweep must hand it back like the coil-abort
+  // lane — re-adopting it as 'flying' would park a static armed credited mine
+  // at the coil anchor for its whole ~9 s TTL.
+  t.bus.emit('save:loaded', {});
+  assert.equal(a.data.gyreLaunched, undefined, 'the never-flown ball is handed back');
+  assert.equal(a.data.gyreLaunchMeta, undefined, 'the credit shadow sheds with it');
+  assert.equal(a.physicsBody.impactDamageScale, 0.2, 'the authored scale restores');
+  assert.equal(a.data.despawnAt, undefined, 'the stamped flight deadline drops');
+  assert.ok(!t.sys._rt.ballIds.includes(a.id), 'and it never re-joins the watch');
+  t.cleanup();
+});
+
+test('a mid-burst destroy->init keeps the flown ball watched', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  // Through the windup and past the first burst tick — the ball has FLOWN.
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(a.data.gyreLaunchMeta && a.data.gyreLaunchMeta.burst, true,
+    'the throw beat stamped its flight');
+  t.sys.destroy();
+  t.sys.init({ state: t.state, bus: t.bus, helpers: t.helpers, registry: t.sim.registry });
+  assert.ok(t.sys._rt.ballIds.includes(a.id), 'the flown ball re-watches on reload');
+  assert.equal(a.data.gyreLaunched, true, 'its mark rides to TTL');
   t.cleanup();
 });
 
@@ -2330,7 +2380,7 @@ test('save:loaded mid-launch retires the beam but the ball keeps its deadline an
   hold(t);
   for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   release(t);
-  for (let i = 0; i < 2; i++) t.sim.step(); // coil underway — still mid-throw
+  for (let i = 0; i < 30; i++) t.sim.step(); // past the burst — genuinely flown
   t.bus.emit('save:loaded', {});
   assert.equal(t.sys._rt.phase, 'off', 'boundary still drops the lash cold');
   assert.equal(body.data.gyreLaunched, true, 'the flying ball keeps its mark post-load');
@@ -2419,6 +2469,7 @@ test('a reloaded ball keeps kill credit and re-adopts the HUD ball mirror', asyn
   hold(t);
   for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   release(t);
+  for (let i = 0; i < 30; i++) t.sim.step(); // past the burst — genuinely flown
   assert.equal(t.sys._rt.ballId, ball.id);
   assert.equal(ball.data.gyreLaunched, true);
   // A real save:load rebuilds entities — the WeakMap record keyed on the OLD object is
@@ -2526,6 +2577,7 @@ test('save:loaded with >8 live balls bounds the watch and adopts the freshest', 
     b.data.gyreLaunchMeta = {
       actorId: t.state.playerId, weaponId: 'wpn_gyre_snare', tag: 'gyre_launch',
       magnitude: 120, holdUntilSim: t.state.simTime + 4 + i, clumpRadius: 6,
+      burst: true, // every serialized ball here has flown (stamped at the throw beat)
     };
     balls.push(b);
   }
