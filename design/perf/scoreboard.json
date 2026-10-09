@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-10-09T17:15:21.375Z",
+  "updated": "2026-10-09T00:00:00Z",
   "purpose": "Machine-readable cumulative scoreboard for the magic-frame hill-climb campaign. Every accepted wave records evidence level, integrity gates, and measurement status. Durable narrative log lives in PR194-WAVE-LOG.md; this file is the diff-friendly ledger.",
   "evidenceLevels": {
     "MECHANISM_VERIFIED": "A real inefficiency exists and the change removes it (code-level proof + tests).",
@@ -540,7 +540,7 @@
     },
     {
       "wave": 128,
-      "head": "e057d80b7",
+      "head": "38d75108f",
       "lanes": {
         "popin-admission": {
           "saturated": false,
@@ -563,25 +563,26 @@
           "headline": "F1 (M, MECHANISM VERIFIED): in-flight loads paid a synchronous O(world) serializeData on the click+1 task — deferred-capture marker resolves inside the opened restore session (scale-0 freeze, pre-destructive), identical bytes + identical failure receipt. F2 (M, MECHANISM VERIFIED): latest-resolution atomic slot scan — _slotIndexWithFallbackAsync/_scanStoredSlotsAsync/_scanRecoverySlotsAsync ride _prepareEnvelopeMetaAsync + 16-entry yields; Continue rides _slotIndexValidationInFlight."
         },
         "in-flight-hitches": {
-          "saturated": null,
-          "streak": 2,
-          "findings": null,
+          "saturated": true,
+          "streak": 3,
+          "findings": 0,
           "landed": 0,
           "commits": [],
-          "headline": "lane queued on SWE-2 cap — streak 2/3, a clean audit closes the lane"
+          "headline": "LANE CLOSED — third consecutive clean audit (W126-W128). Zero unaddressed material findings: periodic fat-tick census clean (econTick sole >1ms, adjudicated-deferred), audio _frame on bounded post verified, all 42 tryPresentedCall segments + emit coverage complete, presented path scratch-and-retain. Retires per 3-clean rule; hitch findings fold into global/skeptic lane."
         }
       },
       "verdicts": [
         "lod-in-frame: CLOSED",
         "popin-admission: saturated false (streak 0/3)",
         "boot-loading: saturated false (streak 0/3)",
-        "in-flight-hitches: lane pending — streak 2/3"
+        "in-flight-hitches: CLOSED (streak 3/3)"
       ],
       "regressionWatch": "pq146-save-roundtrip adjudicated: NOT a campaign regression — merge base e261ae275 already bad; fix lives on master as 0b5608be1 (postdates branch). Resolves on merge."
     }
   ],
   "laneStatus": {
-    "lod-in-frame": "closed@w123 (3 consecutive saturated)"
+    "lod-in-frame": "closed@w123 (3 consecutive saturated)",
+    "in-flight-hitches": "closed@w128 (3 consecutive saturated)"
   },
   "s1Spike": {
     "stageA": {

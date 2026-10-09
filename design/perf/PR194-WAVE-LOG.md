@@ -2620,9 +2620,15 @@ Wave 127 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 2/3.
 - **boot F2 (M, MECHANISM VERIFIED) — `'latest'` resolution rode the atomic authoritative slot scan**: a `_slotIndexCache` signature miss on `loadAsync('latest')` ran `getItem`+`fnv1a`+`_prepareEnvelopeMeta` per stored blob inside one synchronous task (~150–350 ms mature-store estimate). `_slotIndexWithFallbackAsync` + `_scanStoredSlotsAsync`/`_scanRecoverySlotsAsync` now move the per-envelope parse/checksum leg to `_prepareEnvelopeMetaAsync` (worker) with `_restoreFrameYield()` every 16 entries — verdict gates the same sync `_prepareEnvelopeMeta` card rebuild, identical merge/dedup/scrub and authoritative cache write. `_scheduleSlotIndexValidation` stores `{sig, promise}` as `_slotIndexValidationInFlight` so a racing Continue rides the in-flight validation; `_latestSlotAsync` consumed by `loadAsync` and `_newerUnplayableSkipAsync`.
 - Golden `0b33dde` bit-identical; 30/30 pinned save tests green. Save-sweep reds adjudicated: `pq136`/`save-load-integrity`/`prepared cargo capsule`/`save-growth-dock-trade-flat` canon on clean master, `retail-gltfloader` parallel-run flake, **`pq146-save-roundtrip` is a real prior-wave regression** (green on master `38368f739`, red at HEAD `165636c35` without W128 edits — amendment-window replay pays `0 !== 1`; under bisect, tracked below).
 
-### in-flight-hitches — lane queued on SWE-2 cap
+### in-flight-hitches — `saturated: true` (streak 3/3 — **LANE CLOSED**; lane `58ee4c3b` @ `38d75108f`)
 
-Streak 2/3 — a clean wave closes the lane.
+- Clean audit, zero findings: periodic fat-tick census across `consumePeriodicClock` sites — only >1ms periodic is econTick (adjudicated-deferred W122, sim-atomic); audio `_frame` on `postTaskAtBackgroundPriorityBounded` verified intact; all 42 `tryPresentedCall` segments + recordPhase/recordSystem coverage confirmed; presented path scratch-and-retain throughout (`syncEntityViews` option scratches, `publishActivityFrame` pooled records, feel.frame documented alloc-free); residual allocs (bolus-sector `want` join key, 5Hz overview contact rows) sub-noise.
+- Emit coverage complete: all four listener-invoke paths route `invokeBusListener` → `noteBusHandlerError`; `pendingSlicedEmits` capped 8; `drainPresentationTail` bounded on count AND deadline AND paced budget.
+- W127/W128 machinery re-verified in this lane's scope: bolus freeze-card bucket (popin F1), keepalive encoder gate (boot F1), pre-push restore yield (boot F2), `uvulaHold` O(1) + `sectorPrewarmEligiblePool` (W128 popin) — all PASS; `coreSystem/eventBus/presentationRunner/sharedPlayerStore` byte-identical to W127-verified SHA.
+- Adjudicated avenue set (unchanged, all below materiality or out-of-lane): kill-write funnel (≤0.12ms, DOCUMENTED), econTick (S1 lane owns), physics FFI (S1), listener bursts (sim-atomic), vendored-three render-list (vendor patch, hardware-unverified).
+- **Lane retires per the 3-consecutive-clean rule** — future in-flight hitch findings fold into the global/skeptic lane until new mechanism evidence exists.
+
+Wave 128 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches **CLOSED** (3/3).
 
 ## Regression watch — `pq146-save-roundtrip` adjudicated: NOT a campaign regression
 
