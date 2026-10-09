@@ -98,6 +98,7 @@ function installHarness(storage) {
     state: save.state,
     bus: save.bus,
     restore: save._restore,
+    restoreAsync: save._restoreAsync,
     serialize: save.serialize,
     hasPlayer: save._hasPlayerEntity,
     restoring: save._restoring,
@@ -130,6 +131,9 @@ function installHarness(storage) {
 
   const restored = [];
   save._restore = (data, slot) => { restored.push({ data, slot }); return { restored: true, slot }; };
+  // The async twin now owns the import lane's restore drive — same recording
+  // seam on the chunked drive so the restore receipt assertions hold.
+  save._restoreAsync = async (data, slot) => { restored.push({ data, slot }); return { restored: true, slot }; };
 
   // The async (gzip) import lane runs the real worker protocol in-process.
   globalThis.Worker = class {};
@@ -149,6 +153,7 @@ function installHarness(storage) {
       save.state = original.state;
       save.bus = original.bus;
       save._restore = original.restore;
+      save._restoreAsync = original.restoreAsync;
       save.serialize = original.serialize;
       save._hasPlayerEntity = original.hasPlayer;
       save._restoring = original.restoring;
@@ -313,7 +318,7 @@ test('export bundles both profile side bags and import restores them after wipin
     // Wipe the profile side bags — the machine-change scenario — then import into slot 3.
     storage.removeItem(ACHIEVEMENTS_STORAGE_KEY);
     storage.removeItem(CRUCIBLE_META_STORAGE_KEY);
-    assert.equal(save.importString(exported, '3'), true);
+    assert.equal(await save.importString(exported, '3'), true);
     assert.equal(h.restored.length, 1);
     assert.equal(h.restored[0].slot, '3', 'explicit destination slot wins');
     assert.equal(storage.getItem('sf.save.quick'), storedRaw, 'quick bytes untouched by the import');
@@ -339,7 +344,7 @@ test('export bundles both profile side bags and import restores them after wipin
   } finally { h.restore(); }
 });
 
-test('import merges additively — counters max, unlocks union, a best is never lowered', () => {
+test('import merges additively — counters max, unlocks union, a best is never lowered', async () => {
   const storage = memoryStorage();
   const h = installHarness(storage);
   try {
@@ -367,7 +372,7 @@ test('import merges additively — counters max, unlocks union, a best is never 
       dailyOver: { bestScore: 26000, deepestWave: 15, attempts: 9, lastOutcome: 'victory', recordedAt: '2026-09-29T08:00:00.000Z' },
     });
 
-    assert.equal(save.importString(exported, '3'), true);
+    assert.equal(await save.importString(exported, '3'), true);
 
     const mergedBag = parseAchievementBag(storage.getItem(ACHIEVEMENTS_STORAGE_KEY));
     assert.equal(mergedBag.counters.kills, 99, 'the higher stored counter wins');
@@ -398,7 +403,7 @@ test('import merges additively — counters max, unlocks union, a best is never 
   } finally { h.restore(); }
 });
 
-test('an import without a destination lands in the first empty numbered slot, never quick', () => {
+test('an import without a destination lands in the first empty numbered slot, never quick', async () => {
   const storage = memoryStorage();
   const h = installHarness(storage);
   try {
@@ -408,19 +413,19 @@ test('an import without a destination lands in the first empty numbered slot, ne
     seedAchievementBag(storage, TWENTY_MEDALS.slice(0, 3));
     const exported = save.exportSlot('quick');
 
-    assert.equal(save.importString(exported), true, 'no slot given — first empty slot is 2');
+    assert.equal(await save.importString(exported), true, 'no slot given — first empty slot is 2');
     assert.equal(h.restored[0].slot, '2');
     assert.equal(storage.getItem('sf.save.quick'), quickRaw, 'quick was never the silent answer');
 
     // Slot 2 remains free in storage (imports restore live state, they do not write slots), so a
     // second silent import also lands at 2 — the rule is about the world destination, not files.
-    assert.equal(save.importString(exported), true);
+    assert.equal(await save.importString(exported), true);
     assert.equal(h.restored[1].slot, '2');
 
     // With 1 and 2 marked occupied the default walks to 3; a recovery-only slot also counts.
     storage.setItem('sf.save.2', JSON.stringify(makeEnvelope({ slot: '2' })));
     storage.setItem('sf.recovery.3', JSON.stringify(makeEnvelope({ slot: '3' })));
-    assert.equal(save.importString(exported), true);
+    assert.equal(await save.importString(exported), true);
     assert.equal(h.restored[2].slot, '4');
     assert.equal(storage.getItem('sf.save.quick'), quickRaw);
   } finally { h.restore(); }

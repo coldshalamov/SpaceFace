@@ -412,7 +412,8 @@ export function createBus() {
     // sector:exit joins the slice set for the restore session specifically: inside a
     // restore the sim is frozen, departure listeners observe no arrival state, and the
     // restore generator itself drains the parked tail at its yields.
-    if (budget > 0 && (event === 'sector:enter' || event === 'save:loaded' || event === 'sector:exit')) {
+    if (budget > 0 && (event === 'sector:enter' || event === 'save:loaded' || event === 'sector:exit'
+        || event === 'mode:changed')) {
       startEmitSlice(event, payload, budget);
       return;
     }

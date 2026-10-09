@@ -180,7 +180,12 @@ export const aceMemory = {
   },
 
   deserialize(data) {
-    if (this.state) this.state.aceMemory = normalizeMemory(data, this.state.entities);
+    for (const _ of this.deserializeChunked(data)) { /* sync lane drains inline */ }
+  },
+
+  *deserializeChunked(data) {
+    if (!this.state) return;
+    this.state.aceMemory = yield* normalizeMemorySteps(data, this.state.entities);
   },
 
   update(dt, state) {
@@ -1712,21 +1717,36 @@ function ensureMemory(state) {
 }
 
 function normalizeMemory(input, entities = null) {
+  const g = normalizeMemorySteps(input, entities);
+  let r = g.next();
+  while (!r.done) r = g.next();
+  return r.value;
+}
+
+// Sliced twin of normalizeMemory — identical walk and output, yields at record-batch
+// boundaries so the restore lane can spread a long ledger across frames.
+function* normalizeMemorySteps(input, entities = null) {
   const out = freshMemory();
   if (!input || typeof input !== 'object') return out;
   out.news = clonePlain(input.news || {});
   out.cultureIntros = clonePlain(input.cultureIntros || {});
   out.planetChallenges = clonePlain(input.planetChallenges || {});
   out.playerStyle = normalizePlayerStyle(input.playerStyle);
+  let i = 0;
   if (input.aces && typeof input.aces === 'object') {
-    for (const [id, rec] of Object.entries(input.aces)) out[id] = normalizeRecord(id, rec);
+    for (const [id, rec] of Object.entries(input.aces)) {
+      out[id] = normalizeRecord(id, rec);
+      if ((++i & 15) === 0) yield 'ace-records';
+    }
   }
+  i = 0;
   for (const [id, rec] of Object.entries(input)) {
     if (META_KEYS.has(id) || id === 'aces') continue;
     if (!rec || typeof rec !== 'object') continue;
     out[id] = normalizeRecord(id, rec);
+    if ((++i & 15) === 0) yield 'ace-records';
   }
-  out.activeReturns = normalizeActiveReturns(input.activeReturns, out, entities);
+  out.activeReturns = yield* normalizeActiveReturnsSteps(input.activeReturns, out, entities);
   return out;
 }
 
@@ -1735,10 +1755,18 @@ function normalizeMemory(input, entities = null) {
  *  the record still owns that hull AND the live entity map confirms it still carries the
  *  pilot's tag — a stale row must never rebind an unrelated ship to a pilot's death. */
 function normalizeActiveReturns(input, memory, entities) {
+  const g = normalizeActiveReturnsSteps(input, memory, entities);
+  let r = g.next();
+  while (!r.done) r = g.next();
+  return r.value;
+}
+
+function* normalizeActiveReturnsSteps(input, memory, entities) {
   const out = {};
   if (!input || typeof input !== 'object' || !entities || typeof entities.get !== 'function') {
     return out;
   }
+  let i = 0;
   for (const [key, active] of Object.entries(input)) {
     if (!active || typeof active !== 'object' || !active.aceId) continue;
     const rec = memory[active.aceId];
@@ -1752,13 +1780,16 @@ function normalizeActiveReturns(input, memory, entities) {
       && entities.get(entityId).data.aceMemory;
     if (!tag || tag.aceId !== active.aceId || tag.requestId !== active.requestId) continue;
     out[key] = { aceId: active.aceId, requestId: active.requestId, role: active.role || null };
+    if ((++i & 15) === 0) yield 'active-returns';
   }
   // Records trim to hulls that are still bound — a restored record must not claim crew ids
   // whose bindings the load already invalidated.
+  i = 0;
   for (const [id, rec] of Object.entries(memory)) {
     if (META_KEYS.has(id) || !rec || typeof rec !== 'object') continue;
     if (!Array.isArray(rec.activeReturnIds)) continue;
     rec.activeReturnIds = rec.activeReturnIds.filter((entityId) => out[String(entityId)] != null);
+    if ((++i & 15) === 0) yield 'active-returns';
   }
   return out;
 }

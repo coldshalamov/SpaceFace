@@ -339,7 +339,10 @@ test('a compressed import resolving inside an active restore defers and wins as 
   save._restoring = false;
   const deferred = save._pendingRunTransition;
   save._pendingRunTransition = null;
-  deferred();
+  // The deferred continuation re-enters the async restore lane — the queued
+  // drive completes across its frame yields, so await the drain before the
+  // same 'import won' assertions.
+  await deferred();
   assert.equal(state.economy.marker, 'imported-world');
   assert.equal(state.save.currentSlot, 'import-slot');
 });

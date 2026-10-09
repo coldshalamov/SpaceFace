@@ -4145,6 +4145,11 @@ export const save = {
     if (typeof raw === 'string' && isGzippedSaveText(raw)) {
       return this._loadEnvelopeFromStringAsync(raw, slot);
     }
+    // The import lane is a live UI path (Save/Load screen): restoring the whole
+    // chunked ledger atomically froze the veil for the entire _restoreChunks
+    // drain. Route through the sliced async twin like every other UI-visible
+    // restore; the stamp lets a queued drain bail on a newer commit.
+    const acceptSeq = this._restoreSequence;
     const prepared = this._prepareEnvelopeString(raw);
     if (!prepared.ok) {
       this.bus.emit('save:error', {
@@ -4156,7 +4161,7 @@ export const save = {
       return false;
     }
     this._importProfileSideBags(prepared.env, slot);
-    return this._restorePreparedEnvelope(prepared, slot);
+    return this._restorePreparedEnvelopeAsync(prepared, slot, { acceptSeq });
   },
 
   async _loadEnvelopeFromStringAsync(raw, slot) {
@@ -4177,7 +4182,7 @@ export const save = {
       return false;
     }
     this._importProfileSideBags(prepared.env, slot);
-    return this._restorePreparedEnvelope(prepared, slot, { acceptSeq });
+    return this._restorePreparedEnvelopeAsync(prepared, slot, { acceptSeq });
   },
 
   /** Validate an already-parsed envelope and restore it (atomic: validate before destructive work). */
@@ -4514,6 +4519,23 @@ export const save = {
       return true;
     }
 
+    // SFQ-B223, same rule the sync twin applies: a load arriving inside the restore window
+    // defers whole — the deferred call re-runs this full path, so its rollback snapshot reads
+    // the now-restored world instead of a half-restored one captured here. Rollback restores
+    // are internal and must never defer.
+    if (this._restoring && !rollbackAttempt) {
+      this.deferRunTransition(() => {
+        try {
+          return this._restorePreparedEnvelopeAsync(prepared, slot, options);
+        } catch (error) {
+          console.error('[save] deferred restore failed', error);
+          this.bus.emit('save:error', { slot, reason: 'load_failed' });
+          return { restored: false, slot, error: true };
+        }
+      });
+      return true;
+    }
+
     let rollbackSnapshot = null;
     let rollbackSnapshotError = null;
     if (!rollbackAttempt) {
@@ -4622,9 +4644,11 @@ export const save = {
       const versionRead = readSaveVersion(env.version);
       if (!versionRead.ok) throw new Error('rollback_snapshot_invalid:' + (versionRead.reason || 'version'));
       const ver = versionRead.version;
+      // The O(world-graph) validator walk must not fuse to the capture tail in
+      // the same task — yield before it like _prepareEnvelopeStringAsync does.
+      await this._restoreFrameYield();
       const preflight = preflightSaveImport(env);
       if (!preflight.ok) throw new Error('rollback_snapshot_invalid:' + preflight.reason);
-      await this._restoreFrameYield();
       const migrated = clonePlain(env.data);
       if (!runMigrations(migrated, ver)) throw new Error('rollback_snapshot_invalid:migration_failed');
       await this._restoreFrameYield();
@@ -4811,6 +4835,11 @@ export const save = {
     // slicing on live ticks does not apply here. Cleared in _closeRestoreSession.
     if (typeof this.bus.setEmitSliceBudget === 'function') {
       this.bus.setEmitSliceBudget('sector:exit', 8);
+      // mode:changed slicing is restore-scoped for the same reason: its ~8
+      // listener files are UI/reset-class (veil, pause sync, HUD refresh, radial
+      // close, contact-hail/auto-aim reset) — none writes state a later restore
+      // leg reads back, and the tails drain at the restore's own yields.
+      this.bus.setEmitSliceBudget('mode:changed', 8);
     }
     timeEffects.reset();
     timeEffects.set(restoreSource, { scale: 0 });
@@ -4918,7 +4947,7 @@ export const save = {
       yield 'deserialized-scanner';
       // The long incident/encounter tail is the restore's biggest contiguous un-sliced
       // block — each call below is its own slice point under the same driver cadence.
-      this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
+      yield* this._callDeserializeChunked('recoveryEncounter', data.recoveryEncounters);
       yield 'recovery-encounters-restored';
       this._callDeserialize('latchNine', data.latchNine);
       yield 'latch-nine-restored';
@@ -5151,7 +5180,7 @@ export const save = {
       yield* this._callDeserializeChunked('asteroidFormations', data.formations);
       this._reportRestoreProgress(0.22, 'Restoring world memory');
       yield 'deserialized-tail';
-      this._callDeserialize('aceMemory', data.aceMemory);
+      yield* this._callDeserializeChunked('aceMemory', data.aceMemory);
       yield 'ace-memory-restored';
       yield* this._callDeserializeChunked('lossLedger', data.lossLedger);
       yield* this._callDeserializeChunked('provenanceLedger', data.provenance);
@@ -5399,8 +5428,10 @@ export const save = {
     this._restoring = false;
     // sector:exit slicing was armed in _openRestoreSession for this session's
     // world leg only — a live-tick exit emit must never slice (listener order).
+    // mode:changed restores its sync commit for the same hazard outside restores.
     if (typeof this.bus.setEmitSliceBudget === 'function') {
       this.bus.setEmitSliceBudget('sector:exit', 0);
+      this.bus.setEmitSliceBudget('mode:changed', 0);
     }
     // The envelope's record-id deferral is restore-scoped: every rematerialize that could see
     // it ran inside _restoreChunks (membership enter + residency drain), and a drained newer
@@ -6330,8 +6361,8 @@ export const save = {
     const reader = new FileReader();
     reader.onload = () => {
       const out = this.importString(String(reader.result || ''), slot);
-      // A compressed import restores through the async lane and reports on resolution; legacy
-      // plain imports keep the synchronous callback contract callers already observe.
+      // Imports restore through the sliced async lane and report on resolution; rejection
+      // paths still return a sync bool.
       if (out && typeof out.then === 'function') out.then((ok) => { if (cb) cb(!!ok); });
       else if (cb) cb(!!out);
     };
