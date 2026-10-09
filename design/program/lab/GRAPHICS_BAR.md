@@ -187,7 +187,7 @@ Outcome: no VFX code changed in this PR. The frames show no defect that a cheap 
 unverifiable families need a GPU capture, or a harness that advances the VFX clock with the frozen sim. Both are
 follow-ups, and neither belongs in `bloom.js` or `renderer.js` (#220).
 
-## 5. Rendered before/after (fleet-look, inspect view, SwiftShader; master 62d5 base vs this branch)
+## 5. Rendered before/after (fleet-look, inspect view, SwiftShader; master 38368f739 vs this branch)
 Sheets live in `/workspace/look-unify/bar/`:
 - `worst_parts_close.png` and `worst_parts_inspect.png`: the 20 worst models, before | after. That's the static top 16 plus gas tap, wasp frag, volatiles tanker and ore barge.
 - `all_models.png`: all 280 live models, before | after, most-changed first.
