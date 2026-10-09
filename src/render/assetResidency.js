@@ -453,13 +453,29 @@ export function createAssetResidencyRegistry(options = {}) {
   // Warm re-post consult for the latch-free arms: an entry this owner already holds
   // needs no request mint — refresh the soft-claim stamp in place so the idle sort
   // keeps the armed cohort young, then let the shared task cache serve the blueprint.
-  // True only when the entry is resident under this exact owner.
+  // An in-flight request under the same owner carries the decode demand already —
+  // a sibling mint per poll is pure ledger churn (the task cache dedupes the decode
+  // itself), so the consult covers it too.
   function reclaimWarm(key, owner) {
-    const entry = assets.get(String(key || ''));
-    if (!entry || entry.state !== 'resident' || owner == null) return false;
-    if (!entry.owners.has(owner)) return false;
-    entry.lastWarmClaimAtMs = now();
-    return true;
+    if (owner == null) return false;
+    const exactKey = String(key || '');
+    const entry = assets.get(exactKey);
+    if (entry && entry.state === 'resident') {
+      if (!entry.owners.has(owner)) return false;
+      entry.lastWarmClaimAtMs = now();
+      return true;
+    }
+    const state = owners.get(owner);
+    if (!state || state.released) return false;
+    for (const request of state.requests) {
+      if (request.key === exactKey && request.active) {
+        // Re-stamp the entry's warm-claim where one exists — its post-settle idle sort
+        // keeps the armed cohort young even while the decode is still landing.
+        if (entry) entry.lastWarmClaimAtMs = now();
+        return true;
+      }
+    }
+    return false;
   }
 
   // One O(entry.owners) probe — used by the incremental coverage ledger.

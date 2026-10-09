@@ -1172,8 +1172,50 @@ export function* collectFirstFlightCookEntitiesSteps(state, rowsPerSlice = 256) 
 
 /** Pure per-entity residency plan. Complete authored bodies need one GLB. Modular ships predict the
  * exact deterministic records consumed by live assembly before any decode/upload begins. */
+// The fit plan re-runs whole-ship predicates, contract record walks and seeded mount
+// picks every call — several µs per warm poll per entity — yet its inputs barely move:
+// every entity/data field the plan or the whole-ship predicate chain reads, plus a
+// content fingerprint of the mutable fittings/weapons arrays and the plan-shaping
+// options. Memo on that full tuple: a mount or identity change mints a different key
+// and re-plans (the ensureEntityLibrary retry loop depends on that), while unchanged
+// polls serve the same plan object (callers only read plans, never mutate).
+const authoredPreloadPlanMemo = new WeakMap();
+
+function authoredPreloadPlanKey(entity, options) {
+  const data = entity.data || {};
+  const fittings = Array.isArray(data.fittings) ? data.fittings : null;
+  const weapons = Array.isArray(data.weapons) ? data.weapons : null;
+  let key = [
+    entity.id, entity.factionId, entity.team, entity.radius,
+    data.defId, data.hullDefId, data.factionId,
+    data.lootTableId, data.silhouette, data.assetRef, data.trafficRole,
+    data.towlineMemberId, data.towlineBody, data.authoredAssetId, data.persistenceOwner,
+    data.mothlightKey, data.mothlightLampId, data.kilnbackKey, data.kilnbackCaskId,
+    data.authoredCharacter, data.redKiteActorId, data.worldRecordId,
+    data.ceresWorkfleetRole, data.placeId,
+    fittings ? fittings.join(',') : '',
+    options.forceWholeShipFile || '', options.lodLevel || '',
+    options.requiredWholeShip === true ? '1' : '',
+  ].join('|');
+  if (weapons) {
+    for (const weapon of weapons) {
+      key += `|${weapon ? `${weapon.defId || ''}:${weapon.facing || ''}:${weapon.size || ''}` : ''}`;
+    }
+  }
+  return key;
+}
+
 export function authoredPreloadPlanForEntity(entity, options = {}) {
   if (!entity || entity.type !== 'ship') return {};
+  const key = authoredPreloadPlanKey(entity, options);
+  const memoized = authoredPreloadPlanMemo.get(entity);
+  if (memoized && memoized.key === key) return memoized.plan;
+  const plan = authoredPreloadPlanForEntityUncached(entity, options);
+  authoredPreloadPlanMemo.set(entity, { key, plan });
+  return plan;
+}
+
+function authoredPreloadPlanForEntityUncached(entity, options = {}) {
   const whole = wholeShipVisualForEntity(entity, options);
   if (whole && whole.file) {
     const file = options.forceWholeShipFile

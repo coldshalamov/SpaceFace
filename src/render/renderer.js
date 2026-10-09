@@ -5691,6 +5691,66 @@ function warmNemesisSquadDecode(owner, payload) {
   warmEnemyRosterDecode(owner, archetypes, 'nemesis-announce-decode-runway', payload.sectorId);
 }
 
+// state.nemesis.pending is a live record from announce through the dispatched→spawned gap —
+// poll it like every other runway arm so a soft-budget eviction inside the tell window
+// re-decodes instead of stranding the once-fired announce post.
+function warmNemesisPendingDecode(owner) {
+  const state = owner && owner.state;
+  const pending = state && state.nemesis && state.nemesis.pending;
+  if (!pending || !pending.plan) return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  if (pending.sectorId !== (state.world && state.world.currentSectorId)) return;
+  if (Number.isFinite(pending.notBefore) && pending.notBefore - now > TABLE_DECODE_RUNWAY_SECONDS) return;
+  warmNemesisSquadDecode(owner, {
+    kit: pending.plan.primary,
+    secondary: pending.plan.secondary,
+    sectorId: pending.sectorId,
+  });
+}
+
+// Collect every warm channel a resolved encounter item publishes: the squad roster, the
+// warm-only hulls the fire mounts outside plan.ships (claim victims, named-hunter captains),
+// and the packaged-body files (pods/props) no hull archetype covers.
+function collectEncounterWarmChannels(item, ships, files) {
+  // Keep the whole ship record, not just its archetype: kit squads stamp factionId (and
+  // trafficRole where traffic-sourced) and the faction kit swaps both the hull file and
+  // the 'place'-slot hulk the roster's warm must resolve. Escape-hatch records carry a
+  // complete entitySpec instead of an archetype — warmEnemyRosterDecode resolves the spec's
+  // own hull key, so accept them or their hull escapes the warm entirely.
+  for (const list of [item && item.ships, item && item.warmShips]) {
+    for (const ship of list || []) {
+      if ((ship && typeof ship.archetype === 'string' && ship.archetype)
+        || (ship && ship.entitySpec && ship.entitySpec.type === 'ship')) ships.push(ship);
+    }
+  }
+  for (const file of (item && item.warmAssets) || []) {
+    if (typeof file === 'string' && file) files.push(file);
+  }
+}
+
+// warmAssets: packaged bodies the script's fire body will mount (cargo-pod spills, authored
+// props) that no hull archetype covers — missing the arm decodes them at the glass on the
+// entity:spawned kick. Same post shape as the encounter-pending file lane.
+function warmAuthoredEncounterFiles(owner, files, residencyRole, sectorId) {
+  const renderer = owner && owner.renderer;
+  const state = owner && owner.state;
+  if (!Array.isArray(files) || !files.length || !renderer || !renderer.domElement) return;
+  const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+    || 'assets/ships/release/parts/';
+  const sector = sectorId || (state && state.world && state.world.currentSectorId) || null;
+  for (const file of files) {
+    if (typeof file !== 'string' || !file) continue;
+    const relativeFile = file.replace(/^[\\/]+/, '');
+    Promise.resolve(loadAuthoredPart(`${releaseRoot}${relativeFile}`, {
+      renderer,
+      slot: String(relativeFile).startsWith('pods/') ? 'pod' : 'place',
+      optional: true,
+      residencyRole,
+      sectorId: sector,
+    })).catch(() => {});
+  }
+}
+
 /**
  * Generic paced encounters sit in encounterDirector.pending with their full squad roster
  * (item.ships[].archetype) from plan time — but telegraph→spawn resolves in the same tick,
@@ -5704,7 +5764,6 @@ function warmNemesisSquadDecode(owner, payload) {
  */
 function warmEncounterPendingDecode(owner) {
   const state = owner && owner.state;
-  const renderer = owner && owner.renderer;
   const pending = state && state.encounterDirector && state.encounterDirector.pending;
   if (!Array.isArray(pending) || !pending.length) return;
   const now = state.simTime || 0;
@@ -5712,52 +5771,15 @@ function warmEncounterPendingDecode(owner) {
   // re-decodes through the registry while a resident file re-pins for a Map lookup.
   for (const item of pending) {
     if (!item || !Number.isFinite(item.dueAt) || item.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if ((!Array.isArray(item.ships) || !item.ships.length)
-      && (!Array.isArray(item.warmShips) || !item.warmShips.length)
-      && (!Array.isArray(item.warmAssets) || !item.warmAssets.length)) continue;
-    // Keep the whole ship record, not just its archetype: kit squads stamp factionId (and
-    // trafficRole where traffic-sourced) and the faction kit swaps both the hull file and
-    // the 'place'-slot hulk the roster's warm must resolve.
     const archetypes = [];
-    for (const ship of item.ships || []) {
-      // Escape-hatch records carry a complete entitySpec instead of an archetype —
-      // warmEnemyRosterDecode resolves the spec's own hull key, so accept them here
-      // or their hull escapes the pending warm entirely.
-      if ((ship && typeof ship.archetype === 'string' && ship.archetype)
-        || (ship && ship.entitySpec && ship.entitySpec.type === 'ship')) archetypes.push(ship);
-    }
-    // Warm-only hulls mounted outside plan.ships at fire (the ambush claim victim) — same
-    // record shape as roster ships, never part of the spawn list.
-    for (const ship of item.warmShips || []) {
-      if ((ship && typeof ship.archetype === 'string' && ship.archetype)
-        || (ship && ship.entitySpec && ship.entitySpec.type === 'ship')) archetypes.push(ship);
-    }
-    // warmAssets: packaged bodies the script's fire body will mount (cargo-pod spills,
-    // authored props) that no hull archetype covers — a session that missed the opening
-    // crucible cohort would otherwise decode them at the glass on the entity:spawned kick.
     const files = [];
-    for (const file of item.warmAssets || []) {
-      if (typeof file === 'string' && file) files.push(file);
-    }
+    collectEncounterWarmChannels(item, archetypes, files);
     if (!archetypes.length && !files.length) continue;
     if (archetypes.length) {
       warmEnemyRosterDecode(owner, archetypes, 'encounter-pending-decode-runway', item.sectorId);
     }
-    if (files.length && renderer && renderer.domElement) {
-      const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
-        || 'assets/ships/release/parts/';
-      const sectorId = item.sectorId
-        || (state.world && state.world.currentSectorId) || null;
-      for (const file of files) {
-        const relativeFile = file.replace(/^[\\/]+/, '');
-        Promise.resolve(loadAuthoredPart(`${releaseRoot}${relativeFile}`, {
-          renderer,
-          slot: String(relativeFile).startsWith('pods/') ? 'pod' : 'place',
-          optional: true,
-          residencyRole: 'encounter-pending-decode-runway',
-          sectorId,
-        })).catch(() => {});
-      }
+    if (files.length) {
+      warmAuthoredEncounterFiles(owner, files, 'encounter-pending-decode-runway', item.sectorId);
     }
   }
 }
@@ -6265,6 +6287,7 @@ function warmUniqueWreckComplicationDecode(owner) {
   const plans = owner._uniqueWreckComplicationWarmPlans
     || (owner._uniqueWreckComplicationWarmPlans = new WeakMap());
   const records = [];
+  const assetFiles = [];
   for (const record of Object.values(complications)) {
     if (!record || typeof record !== 'object') continue;
     if (record.status !== 'scheduled') continue;
@@ -6280,7 +6303,9 @@ function warmUniqueWreckComplicationDecode(owner) {
     const shape = ENCOUNTERS[record.encounterId];
     if (!shape) continue;
     const memo = plans.get(record);
-    let ships = memo && memo.dueAt === record.dueAt ? memo.ships : null;
+    let ships = null;
+    let files = null;
+    if (memo && memo.dueAt === record.dueAt) { ships = memo.ships; files = memo.files; }
     if (!ships) {
       const item = planUniqueWreckEncounter({
         programSeed: own.programSeed,
@@ -6293,15 +6318,18 @@ function warmUniqueWreckComplicationDecode(owner) {
         shape,
       });
       ships = [];
-      for (const ship of (item && item.ships) || []) {
-        if (ship && typeof ship.archetype === 'string' && ship.archetype) ships.push(ship);
-      }
-      plans.set(record, { dueAt: record.dueAt, ships });
+      files = [];
+      collectEncounterWarmChannels(item, ships, files);
+      plans.set(record, { dueAt: record.dueAt, ships, files });
     }
     for (const ship of ships) records.push(ship);
+    for (const file of files) assetFiles.push(file);
   }
   if (records.length) {
     warmEnemyRosterDecode(owner, records, 'unique-wreck-complication-decode-runway', currentSectorId);
+  }
+  if (assetFiles.length) {
+    warmAuthoredEncounterFiles(owner, assetFiles, 'unique-wreck-complication-decode-runway', currentSectorId);
   }
 }
 
@@ -6323,11 +6351,12 @@ function _stationEntityForId(state, stationId) {
 
 /**
  * Replay an announced requestAuthoredEncounter payload through the shared plan helper and
- * return the planned roster — the same rng stream and zone assembly the fire consumes, so
- * the decoded hull set is exactly what the fire will spawn. Polled arms memo this result
- * on the record's own deadline stamp and re-post the warm every pass.
+ * return every warm channel the item publishes — the squad roster plus the warm-only hulls
+ * and packaged-body files the fire mounts outside plan.ships. The same rng stream and zone
+ * assembly the fire consumes, so the decoded set is exactly what the fire will spawn.
+ * Polled arms memo this result on the record's own deadline stamp and re-post every pass.
  */
-function plannedAuthoredEncounterShips(owner, payload) {
+function plannedAuthoredEncounterWarm(owner, payload) {
   const state = owner && owner.state;
   if (!state || !payload || typeof payload !== 'object') return null;
   const player = state.entities && typeof state.entities.get === 'function'
@@ -6337,20 +6366,20 @@ function plannedAuthoredEncounterShips(owner, payload) {
     payload,
     playerPos: player && player.pos,
   });
-  const ships = planned && planned.item && planned.item.ships;
-  if (!Array.isArray(ships) || !ships.length) return null;
-  const records = [];
-  for (const ship of ships) {
-    if (ship && typeof ship.archetype === 'string' && ship.archetype) records.push(ship);
-  }
-  return records.length ? records : null;
+  const item = planned && planned.item;
+  if (!item) return null;
+  const ships = [];
+  const files = [];
+  collectEncounterWarmChannels(item, ships, files);
+  return (ships.length || files.length) ? { ships, files } : null;
 }
 
 function warmAuthoredEncounterArm(owner, payload, residencyRole, sectorId) {
-  const records = plannedAuthoredEncounterShips(owner, payload);
-  if (!records) return 0;
-  warmEnemyRosterDecode(owner, records, residencyRole, sectorId);
-  return records.length;
+  const plan = plannedAuthoredEncounterWarm(owner, payload);
+  if (!plan) return 0;
+  if (plan.ships.length) warmEnemyRosterDecode(owner, plan.ships, residencyRole, sectorId);
+  warmAuthoredEncounterFiles(owner, plan.files, residencyRole, sectorId);
+  return plan.ships.length;
 }
 
 /**
@@ -6386,9 +6415,9 @@ function warmDepotWatchDecode(owner) {
       }
       : { x: body.x, z: body.z };
     const memo = plans.get(service);
-    let ships = memo && memo.watchAt === service.watchAt ? memo.ships : null;
-    if (!ships) {
-      ships = plannedAuthoredEncounterShips(owner, {
+    let plan = memo && memo.watchAt === service.watchAt ? memo.plan : null;
+    if (!plan) {
+      plan = plannedAuthoredEncounterWarm(owner, {
         shapeId: 'ambush_snare',
         encounterId: `depot-watch:${body.id}`,
         sectorId: currentSectorId,
@@ -6399,12 +6428,13 @@ function warmDepotWatchDecode(owner) {
         zoneRadius: 240,
         force: true,
         data: { claimDepotId: body.id },
-      });
-      plans.set(service, { watchAt: service.watchAt, ships });
+      }) || { ships: [], files: [] };
+      plans.set(service, { watchAt: service.watchAt, plan });
     }
-    if (ships && ships.length) {
-      warmEnemyRosterDecode(owner, ships, 'depot-watch-decode-runway', currentSectorId);
+    if (plan.ships.length) {
+      warmEnemyRosterDecode(owner, plan.ships, 'depot-watch-decode-runway', currentSectorId);
     }
+    warmAuthoredEncounterFiles(owner, plan.files, 'depot-watch-decode-runway', currentSectorId);
   }
 }
 
@@ -6443,9 +6473,9 @@ function warmDepotPatrolDecode(owner) {
       : { x: body.x + 200, z: body.z };
     const armKey = `${encounterId}:${nextAt}`;
     const memo = plans.get(patrol);
-    let ships = memo && memo.armKey === armKey ? memo.ships : null;
-    if (!ships) {
-      ships = plannedAuthoredEncounterShips(owner, {
+    let plan = memo && memo.armKey === armKey ? memo.plan : null;
+    if (!plan) {
+      plan = plannedAuthoredEncounterWarm(owner, {
         shapeId: DEPOT_PATROL_SHAPE_ID,
         encounterId,
         sectorId: body.sectorId,
@@ -6456,12 +6486,13 @@ function warmDepotPatrolDecode(owner) {
         zoneRadius: DEPOT_PATROL_ZONE_RADIUS_WU,
         force: true,
         data: { claimDepotId: body.id, depotPatrol: true, rotation, stationId },
-      });
-      plans.set(patrol, { armKey, ships });
+      }) || { ships: [], files: [] };
+      plans.set(patrol, { armKey, plan });
     }
-    if (ships && ships.length) {
-      warmEnemyRosterDecode(owner, ships, 'depot-patrol-decode-runway', currentSectorId);
+    if (plan.ships.length) {
+      warmEnemyRosterDecode(owner, plan.ships, 'depot-patrol-decode-runway', currentSectorId);
     }
+    warmAuthoredEncounterFiles(owner, plan.files, 'depot-patrol-decode-runway', currentSectorId);
   }
 }
 
@@ -24933,6 +24964,7 @@ export const render = {
     warmEncounterPendingDecode(this);
     warmPendingReinforcementsDecode(this);
     warmCombatReinforcementsDecode(this);
+    warmNemesisPendingDecode(this);
     yield;
     warmClaimDefenseDecode(this);
     warmAceReturnDecode(this);
