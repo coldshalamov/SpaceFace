@@ -231,13 +231,15 @@ export function offerCardLines(offer, state) {
   if (!offer) return null;
   const slot = typeof offer.slotLabel === 'string' && offer.slotLabel
     // Non-fitting offers (a hull, a weld) carry their own "where it lands" line; fittings
-    // derive theirs from the hardpoint the legality pass picked.
+    // derive theirs from the hardpoint the legality pass picked. The line always answers the
+    // buyer's two questions — WHICH hardpoint, and what happens to what's there (a swap keeps
+    // the old part as a spare; ships.fitModule is the authority).
     ? offer.slotLabel
     : Array.isArray(offer.consumes) && offer.consumes.length
-      ? `Consumes ${offer.consumes.map(fittingName).join(' + ')} — lands on hardpoint ${offer.slotIndex + 1}`
+      ? `Trades ${offer.consumes.map(fittingName).join(' + ')} for this on hardpoint ${offer.slotIndex + 1}`
       : offer.replaces
-        ? `Hardpoint ${offer.slotIndex + 1} — replaces ${fittingName(offer.replaces)}`
-        : Number.isInteger(offer.slotIndex) ? `Hardpoint ${offer.slotIndex + 1} — empty` : '';
+        ? `Swaps with ${fittingName(offer.replaces)} on hardpoint ${offer.slotIndex + 1} — it goes to your spares`
+        : Number.isInteger(offer.slotIndex) ? `Bolts onto empty hardpoint ${offer.slotIndex + 1}` : '';
   return {
     verb: offer.verb || offer.id || '',
     name: offer.name || offer.defId || '',
@@ -974,7 +976,7 @@ export const crucibleDraftScreen = {
       ? context.state.run.telemetry.startWave : 1;
     this._sub.textContent = offers.length
       ? (wave === 0
-        ? 'Fit out before round 1 — the purse is already open.'
+        ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
         : shop && runStart > 1 && wave === runStart - 1
           ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
           : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
@@ -1002,7 +1004,11 @@ export const crucibleDraftScreen = {
     const flying = shop ? offers.find((offer) => offer._flying) : null;
     if (this._cradle) {
       const cradleName = flying && (flying.name || entityLabel('hull:' + flying.defId) || flying.defId);
-      this._cradle.textContent = cradleName ? `In the cradle — ${cradleName}` : '';
+      // The opening armory fits the door's free hull pick — it does not re-sell it. New hulls
+      // go on sale once the run has begun (see _armoryExtras), so this line says where they are.
+      this._cradle.textContent = cradleName
+        ? (wave === 0 ? `In the cradle — ${cradleName} · new hulls go on sale after round 1` : `In the cradle — ${cradleName}`)
+        : '';
       this._cradle.hidden = !cradleName;
     }
     // SWARM-05 §7.3 — Recommended for your build: the owner's three picks lead the shelf
@@ -1064,8 +1070,14 @@ export const crucibleDraftScreen = {
     }
 
     if (shop && !visibleOffers.length && typeof document.createElementNS === 'function') {
-      const empty = el('div', 'orr-armory-empty', 'No equipment matches this search.');
-      const clear = el('button', 'orr-armory-clear', 'Clear filters'); clear.type = 'button';
+      // The Hulls shelf is empty at the opening stop by design (the door's pick is being
+      // fitted, not re-sold) — it says where the hulls are instead of reading as broken.
+      const hullPause = this._category === 'Hulls' && !this._query && wave === 0;
+      const empty = el('div', 'orr-armory-empty', hullPause
+        ? 'New hulls go on sale after round 1 — this stop fits the ship you chose.'
+        : 'No equipment matches this search.');
+      const clear = el('button', 'orr-armory-clear', hullPause ? 'Back to all fittings' : 'Clear filters');
+      clear.type = 'button';
       clear.addEventListener('click', () => {
         this._category = 'All'; this._query = ''; this._search.value = ''; this.refresh(context);
         this._search.focus();
@@ -1222,7 +1234,7 @@ export const crucibleDraftScreen = {
       filled: rows.map((row) => !!row.defId),
       target: slot,
       label: slot >= 0 ? `Hardpoint ${slot + 1}` : '',
-      sub: offer.replaces ? `replaces ${fittingName(offer.replaces)}` : 'empty',
+      sub: offer.replaces ? `swaps with ${fittingName(offer.replaces)} — old part to spares` : 'empty — bolts straight on',
     });
     parts.compare.textContent = '';
     const best = {};
@@ -1396,7 +1408,13 @@ export const crucibleDraftScreen = {
         card.appendChild(el('p', 'k-t-fine sf-cru-afford', offer.unavailableReason));
       }
       // An unaffordable item is still inspectable; only its transaction key is disabled.
+      // But it must LOOK unavailable — a wall of identical rows is how a refused purchase reads
+      // as a purchase that silently did nothing. The reason line above names the unlock.
       card.disabled = visualShop ? false : !offer.available;
+      card.classList.toggle('is-unavail', !offer.available && !offer.purchased);
+      card.classList.toggle('is-fitted', !!offer.purchased);
+      if (!offer.available && !offer.purchased) card.setAttribute('aria-disabled', 'true');
+      else card.removeAttribute('aria-disabled');
       card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${offer.price} credits. ${offer.unavailableReason || lines.slot}`);
     }
     card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));

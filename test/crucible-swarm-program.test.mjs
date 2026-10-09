@@ -27,6 +27,7 @@ import { TECH_NODES } from '../src/data/tech.js';
 import { SURVIVAL_DRAFT_OFFERS, offerDraft } from '../src/data/survivalDraft.js';
 import { SWARM_DRAFT_OFFERS } from '../src/data/swarmDraft.js';
 import {
+  catalogBlurbFor,
   isArmoryStock,
   swarmCatalogCoverage,
   swarmCatalogOffers,
@@ -37,6 +38,7 @@ import {
   normalizeSwarmStake,
   swarmStakeFor,
   swarmStakePitch,
+  swarmStakeYield,
   validateSwarmStakes,
 } from '../src/data/swarmStakes.js';
 import {
@@ -413,12 +415,20 @@ test('buying a hull retires the demos on the hull you are leaving', () => {
   beginSwarm(h, { stake: 'exhibition' });
   landPurse(h, 'exhibition');
   transition(h, 'loadout', 'draft');
-  const offers = survivalDraft.currentOffers();
-  const demoable = offers.find((o) =>
+  // Foreign hulls go on sale once the run has begun — the opening armory fits the door's
+  // free pick, so the buy under test happens at the round-1 shelf.
+  h.bus.emit('run:draftPickRequested', { offerId: null });
+  h.state.run.wave = 1;
+  transition(h, 'draft', 'wave_intro');
+  transition(h, 'wave_intro', 'active');
+  transition(h, 'active', 'cleanup');
+  transition(h, 'cleanup', 'draft');
+  const shelf = survivalDraft.currentOffers();
+  const demoable = shelf.find((o) =>
     Number.isInteger(o.slotIndex) && typeof o.defId === 'string' && o.kind === 'number');
-  const hullOffer = offers.find((o) =>
+  const hullOffer = shelf.find((o) =>
     o.kind === 'hull' && o.available && o.defId !== 'ship_hornet');
-  assert.ok(demoable && hullOffer, 'a demoable card and a foreign hull are on the shelf');
+  assert.ok(demoable && hullOffer, 'a demoable card and a foreign hull are on the round-1 shelf');
   h.bus.emit('run:draftPickRequested', { offerId: demoable.id, demo: true });
   const oldHull = h.state.player.ownedShips[h.state.player.activeShipIndex];
   assert.ok(oldHull.fittings.includes(demoable.defId), 'the demo is bolted on');
@@ -459,10 +469,17 @@ test('an owned hull switches back for free and stays switchable', () => {
     .find((o) => o.kind === 'hull' && o.defId === 'ship_hornet');
   assert.ok(ownedRow && ownedRow._flying, 'the flown hull reads as the one in the cradle');
   assert.equal(ownedRow.price, 0, 'an owned hull is never priced again');
+  // Foreign hulls go on sale once the run has begun — walk to the round-1 shelf for the buy.
+  h.bus.emit('run:draftPickRequested', { offerId: null });
+  h.state.run.wave = 1;
+  transition(h, 'draft', 'wave_intro');
+  transition(h, 'wave_intro', 'active');
+  transition(h, 'active', 'cleanup');
+  transition(h, 'cleanup', 'draft');
   // Buy a foreign hull — the swap lands; the hornet leaves the cradle but not the manifest.
   const foreign = survivalDraft.currentOffers().find((o) =>
     o.kind === 'hull' && o.available && o.defId !== 'ship_hornet');
-  assert.ok(foreign, 'a foreign hull is on the shelf');
+  assert.ok(foreign, 'a foreign hull is on the round-1 shelf');
   h.bus.emit('run:draftPickRequested', { offerId: foreign.id });
   const player = h.state.player;
   assert.equal(player.ownedShips[player.activeShipIndex].defId, foreign.defId, 'the bought hull flies');
@@ -482,6 +499,52 @@ test('an owned hull switches back for free and stays switchable', () => {
     .find((o) => o.kind === 'hull' && o.defId === foreign.defId);
   assert.ok(foreignRow && foreignRow.available,
     `the bought hull stays switchable (${foreignRow && foreignRow.unavailableReason || 'ready'})`);
+});
+
+test('the opening armory fits the door hull — foreign hulls wait for round 1', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  transition(h, 'loadout', 'draft');
+  const hulls = survivalDraft.currentOffers().filter((o) => o.kind === 'hull');
+  assert.equal(hulls.length, 1, 'only the cradle row rides the opening shelf');
+  assert.equal(hulls[0].defId, 'ship_hornet', 'the door pick is the one in the cradle');
+  assert.equal(hulls[0]._flying, true);
+});
+
+test('an unearned crossover hull is a locked goal on the shelf, never a sale', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  transition(h, 'loadout', 'draft');
+  h.bus.emit('run:draftPickRequested', { offerId: null });
+  h.state.run.wave = 1;
+  transition(h, 'draft', 'wave_intro');
+  transition(h, 'wave_intro', 'active');
+  transition(h, 'active', 'cleanup');
+  transition(h, 'cleanup', 'draft');
+  const saucer = survivalDraft.currentOffers().find((o) => o.id === 'hull_ship_saucer');
+  assert.ok(saucer, 'the saucer rides the shelf as the visible goal');
+  assert.equal(saucer.available, false, 'no ledger earn, no sale');
+  assert.match(saucer.unavailableReason || '', /earned/i, 'the row names the earn');
+  // Even a fat wallet cannot buy past the ledger — the door refuses the pick the same way.
+  h.bus.emit('run:awardRequested', { credits: 99999, reason: 'test:rich' });
+  const ownedBefore = h.state.player.ownedShips.length;
+  h.bus.emit('run:draftPickRequested', { offerId: 'hull_ship_saucer' });
+  assert.equal(h.state.player.ownedShips.length, ownedBefore, 'the ledger holds');
+});
+
+test('a catalog gun carries its figures; a stake tile carries its yield', () => {
+  const gun = WEAPONS.find((w) => Number.isFinite(w.dps) && Number.isFinite(w.impulsePerHit));
+  assert.ok(gun, 'a figured gun exists to shelf');
+  const blurb = catalogBlurbFor(gun);
+  assert.ok(blurb.includes('dps'), 'sustained fire reads on the row');
+  assert.ok(blurb.includes('impulse'), 'shove reads on the row');
+  const rig = MODULES.find((m) => m.slotType === 'utility');
+  assert.equal(catalogBlurbFor(rig).includes('dps'), false, 'a rig keeps its sentence');
+  for (const stake of SWARM_STAKES) {
+    assert.equal(swarmStakeYield(stake.id), `pays ×${stake.earn} · scores ×${stake.score}`);
+  }
 });
 
 test('a demoed module stays buyable — the trial is not a lock', () => {

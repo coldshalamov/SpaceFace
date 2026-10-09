@@ -83,6 +83,16 @@ export function swarmStakePitch(stakeId) {
   return `${purse} · ${pressure} · ${earn} · ${score}`;
 }
 
+/**
+ * The tile's third line: round pay and score as bare multipliers. The tile already carries the
+ * purse and the pressure as numerals, so the door's sentence keeps only the blurb — one fact
+ * lives in exactly one place instead of the same purse being said three times.
+ */
+export function swarmStakeYield(stakeId) {
+  const stake = swarmStakeFor(stakeId);
+  return `pays ×${stake.earn} · scores ×${stake.score}`;
+}
+
 /** Data sanity, checkable without a DOM. */
 export function validateSwarmStakes() {
   const issues = [];

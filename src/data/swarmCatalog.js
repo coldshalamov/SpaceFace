@@ -91,14 +91,27 @@ function catalogVerbFor(def) {
   return CATALOG_VERB_BY_SLOT[def.slotType] || 'Stock';
 }
 
-/** A spec line when the def carries no authored sentence — always one clean line. */
-function catalogBlurbFor(def) {
+/**
+ * A spec line when the def carries no authored sentence — always one clean line. Weapons carry
+ * the two figures combat pays (sustained fire, shove), so a shelf row reads as a choice between
+ * guns instead of a list of names with prices. Exported for the armory's checks.
+ */
+export function catalogBlurbFor(def) {
+  if (!def || typeof def !== 'object') return '';
   const sentence = typeof def.sentence === 'string' && def.sentence.trim()
     ? def.sentence.trim()
     : null;
-  if (sentence) return sentence;
   const size = typeof def.size === 'string' ? ` ${def.size}` : '';
-  return `${catalogVerbFor(def)}${size} for the bay that takes it.`;
+  const base = sentence || `${catalogVerbFor(def)}${size} for the bay that takes it.`;
+  if (!def || def.slotType !== 'weapon') return base;
+  const dps = Number.isFinite(def.dps) ? def.dps : null;
+  const impulse = Number.isFinite(def.impulsePerHit) ? def.impulsePerHit : null;
+  if (dps == null && impulse == null) return base;
+  const figures = [
+    dps != null ? `${Math.round(dps * 10) / 10} dps` : '',
+    impulse != null ? `impulse ${Math.round(impulse * 10) / 10}` : '',
+  ].filter(Boolean).join(' · ');
+  return `${base} ${figures}.`;
 }
 
 /** Shop content test: a def that cannot be bought anywhere is not armory content either. */
