@@ -2827,7 +2827,7 @@ test('the pre-snag riser speaks while the hottest absorbable closes — never fo
   // drags it closer each tick; the riser ticks up in pitch as it closes the
   // dead lip. rate marks the riser (the beam-on wake voice carries none).
   const risers = () => t.events.filter((e) => e.name === 'audio:cue'
-    && e.p && e.p.id === 'gyre_snare_beam' && e.p.rate != null);
+    && e.p && e.p.id === 'gyre_snare_riser');
   const prey = rock(t.sim, T.mawDist + 62, 0, 6, 3);
   t.sim.step(); // a mid-tick spawn reaches the physics-backed query next step
   for (let i = 0; i < 12; i++) t.sim.step();

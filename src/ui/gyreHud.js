@@ -39,7 +39,7 @@ export const GYRE_HUD_CSS = `
   pointer-events: none; white-space: nowrap;
   transition: transform .18s ease-out;
 }
-.sf-gyre-pill.gyre-eat { transform: translateX(-50%) scale(1.1); } /* a meal just landed — the counter gulps (keep the seat's translate) */
+.sf-gyre-pill.gyre-eat { transform: translateX(-50%) scale(var(--gyre-eat-scale, 1.1)); } /* a meal just landed — the counter gulps (keep the seat's translate) */
 .sf-gyre-pill.gyre-holding { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-search { color: var(--dp-lamp-dim, #8a6b3a); } /* beam live, nothing gripped yet */
 .sf-gyre-pill.gyre-heavy { color: var(--dp-lamp, #f2b950); text-shadow: var(--dp-emit-lamp, none); } /* a body it can never eat — warm like held, not hot */
@@ -106,10 +106,18 @@ export const gyreHud = {
     // The counter gulps too: maw/lumps/glints/audio/pad all celebrate a meal but
     // the ×N·Mt read used to swap silently — a ~150 ms scale-pop on each absorb.
     const ab = g && Number.isFinite(g.absorbs) ? g.absorbs : 0;
-    if (g && g.phase === 'holding' && ab > this._lastAbsorbs) this._eatUntil = now + 0.15;
+    if (g && g.phase === 'holding' && ab > this._lastAbsorbs) {
+      this._eatUntil = now + 0.15;
+      // The pop grades by the meal it just swallowed — every other gulp channel
+      // scales (absorbR kicks, cue rate); the pill's bump was the one ungraded
+      // edge: a wreck lands ~×1.2, a pebble a hair over ×1.05.
+      this._eatScale = 1.05 + Math.min(0.15, (g.absorbR || 0) * 0.006);
+    }
     this._lastAbsorbs = ab;
     this._apply(dom, text, cls, strain, fuse);
-    dom.pill.classList.toggle('gyre-eat', now < this._eatUntil);
+    const eating = now < this._eatUntil;
+    dom.pill.classList.toggle('gyre-eat', eating);
+    if (eating) dom.pill.style.setProperty('--gyre-eat-scale', (this._eatScale || 1.1).toFixed(3));
     this._applyLaneSeat(dom.pill, seat.bottom);
   },
 

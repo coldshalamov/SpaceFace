@@ -346,6 +346,9 @@ export const gyreSnare = {
     rt.tooHeavyLane = null;
     rt.towLatched = false;
     rt.towLane = null;
+    rt.prevPreyD = Infinity; rt.snagRiserT = 0; // the pre-snag riser's ledgers too —
+                                              // latch symmetry: a fresh beam diffs
+                                              // its first prey off a clean baseline
     rt.catchTickPeak = 0;   // the escalation ratchet dies with the beam ledger
     rt.prevBasinN = 0; rt.prevSuckN = 0; // and the prev-count ledgers with it —
     // the re-seed sits below the OFF early-return, so a re-opened beam would
@@ -1461,7 +1464,10 @@ export const gyreSnare = {
       // micro-shake (30-80t is the most common satisfying meal — it shouldn't be silent),
       // light meals whisper (10-30t gets every other channel — camera joins at 0.01),
       // and belt gravel stays quiet.
-      if (em >= 10) this.bus.emit('camera:shake', { amount: em >= 80 ? 0.04 : em >= 30 ? 0.02 : 0.01 });
+      // Continuous like the rest of the meal-size grading (knock speedK, cue
+      // rate, gulp mealK): em/2000 rises 0.005->0.04 across 10-80t instead of
+      // stepping, floored at the 10t whisper and capped at the 80t wreck shake.
+      if (em >= 10) this.bus.emit('camera:shake', { amount: Math.max(0.01, Math.min(0.04, em / 2000)) });
       // Saturation beat: the absorb that first crosses the cap gets its own voice so
       // the FULL moment lands through the ear, not just the HUD flag.
       if (rt.clumpMass >= D.maxClumpMass && !rt.fullCueLatched) {
@@ -1669,6 +1675,7 @@ export const gyreSnare = {
     rt.tooHeavyLane = null;
     rt.towLatched = false;
     rt.towLane = null;
+    rt.prevPreyD = Infinity; rt.snagRiserT = 0; // riser ledgers — twin of the _drop reset
     rt.catchTickPeak = 0;         // drop/finishLaunch reset symmetry — the ratchet
     // dies with the funnel: _publish's latch clear covers non-BEAM ticks anyway
     rt.prevBasinN = 0; rt.prevSuckN = 0; // and the prev-count ledgers — a re-beam
@@ -2178,7 +2185,7 @@ export const gyreSnare = {
           rt.snagRiserT = 5;
           const k = 1 - clamp((dHot - D.snagRadius * 0.4) / (band - D.snagRadius * 0.4), 0, 1);
           this.bus.emit('audio:cue', {
-            id: 'gyre_snare_beam', gain: 0.07, rate: 0.9 + 0.3 * k,
+            id: 'gyre_snare_riser', gain: 0.07, rate: 0.9 + 0.3 * k,
             position: { x: hx, z: hz },
           });
         }

@@ -1454,7 +1454,10 @@ export class GyreSnarePresentation {
       {
         const _bs = Array.isArray(mirror.balls) ? mirror.balls : [];
         this._drawTrail(this._trail, this._trailMat, this._ballTrailSpec(_bs[0], 0.3), flashCalm);
-        this._drawTrail(this._trail2, this._trail2Mat, this._ballTrailSpec(_bs[1], 0.22), flashCalm);
+        // Slot alpha inherits a small mass grade — a capped second moon reads as
+        // dangerous as a small primary at range, not dimmer by seat.
+        this._drawTrail(this._trail2, this._trail2Mat, this._ballTrailSpec(_bs[1],
+          0.22 + 0.08 * Math.min(1, finite(_bs[1] && _bs[1].mass) / GYRE_SNARE.maxClumpMass)), flashCalm);
       }
       // While the close ramp runs it owns the rings' alphas — an instant hide
       // here would pop them out mid-collapse while every sibling fades on kk.
@@ -1593,7 +1596,8 @@ export class GyreSnarePresentation {
         // Slot two serves the soonest-dying ball not already drawn — a second
         // bowl was invisible for its whole flight until the grave burst.
         const _b2 = _balls.find((b) => b && b.id !== _t1id) || null;
-        this._drawTrail(this._trail2, this._trail2Mat, this._ballTrailSpec(_b2, 0.22), flashCalm);
+        this._drawTrail(this._trail2, this._trail2Mat, this._ballTrailSpec(_b2,
+          0.22 + 0.08 * Math.min(1, finite(_b2 && _b2.mass) / GYRE_SNARE.maxClumpMass)), flashCalm);
       }
 
       // Grip-spoke: while the clump is held, draw the faint tether maw→clump so the

@@ -3280,6 +3280,20 @@ export const RECIPES = [
     filterType: 'bandpass', filterFreq: 1100, filterQ: 1.4,
     pitchRange: [0.96, 1.08],
   },
+  // Pre-snag escalation riser: a thinner, higher shimmer than the beam-on wake
+  // voice (340->980) so the per-tick climb can't read as the lash re-igniting —
+  // the ignition stays singular. Emitted ~5-tick gated with an explicit rate
+  // ramp; pitchRange stays narrow so the ramp can't invert itself.
+  {
+    id: 'sfx_gyre_riser',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1200, freqSweep: [1200, 2200], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 2400, filterQ: 2.0,
+    pitchRange: [0.98, 1.02],
+  },
   // Lash release: the beam letting go without a launch — a short descending glass fizzle
   // over a quick sub exhale. Fired at low gain for an empty-beam close and fuller when a
   // clump slips the beam (strain break / forced drop).
