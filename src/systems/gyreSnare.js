@@ -1863,15 +1863,21 @@ export const gyreSnare = {
     rt.overflowSweepT = (rt.overflowSweepT || 0) + 1;
     if (rt.overflowSweepT >= 30) {
       rt.overflowSweepT = 0;
-      let n = 0;
-      if (state.entities) for (const [id, e] of state.entities) {
-        // despawnAt != null: an unwatched adoptee whose deadline a foreign owner
-        // stripped is an immortal disarmed body, not a ball still flying to a grave —
-        // it must not pin the tail forever (watched adoptees shed via _handBack).
-        if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.data.despawnAt != null
-          && rt.ballIds.indexOf(id) === -1) n++;
+      // No watched balls and no tail: no marked-not-watched body can exist —
+      // gyreLaunched is only written in _launch immediately before _trackBall,
+      // the eviction is the tail's only producer, and the boundary sweep
+      // re-watches every marked body. Skip the map scan while the system sits OFF.
+      if (rt.ballIds.length || rt.ballOverflow) {
+        let n = 0;
+        if (state.entities) for (const [id, e] of state.entities) {
+          // despawnAt != null: an unwatched adoptee whose deadline a foreign owner
+          // stripped is an immortal disarmed body, not a ball still flying to a grave —
+          // it must not pin the tail forever (watched adoptees shed via _handBack).
+          if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.data.despawnAt != null
+            && rt.ballIds.indexOf(id) === -1) n++;
+        }
+        rt.ballOverflow = n;
       }
-      rt.ballOverflow = n;
     }
     // Default each tick: the grave ring only blooms when the ball actually DIES — an
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
@@ -2164,8 +2170,8 @@ export const gyreSnare = {
         if (rt.tornTrack.dir) { pub.tornDir.x = rt.tornTrack.dir.x; pub.tornDir.z = rt.tornTrack.dir.z; }
         else { pub.tornDir.x = 0; pub.tornDir.z = 0; } // a dir-less track (polite release) must not leak a stale whip
         pub.tornGentle = rt.tornTrack.gentle === true;
-      } else pub.tornId = null; // dead/expired read — _sweepBallWatch owns the rt clear
-    } else pub.tornId = null;
+      } else { pub.tornId = null; pub.tornGentle = false; } // dead/expired read — _sweepBallWatch owns the rt clear
+    } else { pub.tornId = null; pub.tornGentle = false; } // track-scoped channel — re-zero like tornDir, no stale latches
     // The funnel's drawn spiral + the clump's float phase ride the same eased stir /
     // orbit seed the sim uses — a -1 snag re-stirs the GLASS too, not just the pull.
     // Safe unconditionally: _drop/_finishLaunch already reset both to 1/0.

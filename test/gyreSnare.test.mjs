@@ -2266,6 +2266,7 @@ test('a mode flip out of flight mid-hold drops with not_flight', async () => {
   t.sim.step();
   assert.equal(t.sys._rt.phase, 'off');
   assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'not_flight'));
+  assert.equal(t.state.gyreSnare.tornGentle, false, 'a polite free carries no de-rez flag');
   t.cleanup();
 });
 
@@ -4239,6 +4240,8 @@ test('mid-hold protected adoption: a mission-pinned core is handed back, not hel
   assert.equal(core.data.gyrePrevTtl, undefined, 'ttl stash consumed');
   assert.ok(t.events.some((e) => e.name === 'gyre:dropped' && e.p.reason === 'core_adopted'),
     'drop reason is core_adopted');
+  assert.equal(t.state.gyreSnare.tornGentle, true,
+    'an adopted body stays alive under its owner — the follow de-rezzes, not scatters');
   assert.ok(t.events.some((e) => e.name === 'toast' && /clump reclaimed/.test(e.p.text)),
     'the involuntary loss narrates itself');
 });
