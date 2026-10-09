@@ -9,6 +9,8 @@
 // non-blocking COMPLETION_STATUS_KHR poll drains it: harvest only happens once the driver
 // says the link finished, so the cost of getProgramBinary lands on programs already linked.
 
+import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
+
 const MEMORY = new Map();
 const shaderSources = new WeakMap();
 const programShaders = new WeakMap();
@@ -208,8 +210,10 @@ export function installProgramBinaryCache(gl) {
   const scheduleDrain = () => {
     if (drainScheduled || pending.length === 0) return;
     drainScheduled = true;
-    // The next linkProgram call also drains, so this timer only covers the tail of a burst.
-    setTimeout(drainPending, 0);
+    // The next linkProgram call also drains, so this post only covers the tail of a
+    // burst — dispatch it at background priority so the getProgramBinary readback
+    // loop can't nest inside the compositor beat that armed it.
+    postTaskAtBackgroundPriorityBounded(drainPending);
   };
 
   const origShaderSource = gl.shaderSource.bind(gl);

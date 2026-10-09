@@ -58,9 +58,15 @@ function rowsForBusListener(listener) {
     if (busErrorRowsByKey.size >= BUS_ERROR_CAP) {
       // Oldest-row evict, not clear(): a cap-hit wipe re-arms every storming
       // key's verbatim budget simultaneously and erases accrued suppressed
-      // counts before their heartbeat can report them.
+      // counts before their heartbeat can report them. The evicted key's rows
+      // leave the index too — keeping them would double-count the re-minted
+      // logical row once that listener faults again.
       const oldest = busErrorRowsByKey.keys().next();
-      if (!oldest.done) busErrorRowsByKey.delete(oldest.value);
+      if (!oldest.done) {
+        const evicted = busErrorRowsByKey.get(oldest.value);
+        busErrorRowsByKey.delete(oldest.value);
+        if (evicted) for (const row of evicted) busErrorIndex.delete(row);
+      }
     }
     rows = [];
     busErrorRowsByKey.set(key, rows);
@@ -114,6 +120,12 @@ function noteBusHandlerError(event, err, label, listener) {
   }
   entry.faults += 1;
   entry.lastErrorHead = busErrorHead(err);
+  // Refresh recency: Set.add alone does not reorder, so without the delete a
+  // row that keeps storming drifts to the oldest end of the index and gets
+  // evicted mid-storm — invisible to busFaultSummary, and the splice that
+  // follows would re-arm its verbatim budget.
+  busErrorIndex.delete(entry);
+  busErrorIndex.add(entry);
   if (entry.logged < BUS_ERROR_VERBATIM) {
     entry.logged += 1;
     console.error(`[bus] ${label} for "${event}":`, err);

@@ -24,6 +24,7 @@
 // disagree with the sizes the runtime budgets from.
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
 import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
+import { dedupError } from '../core/warnDedup.js';
 
 /**
  * Root-relative URLs survive esbuild chunk relocation and use the same browser/Electron route,
@@ -205,7 +206,7 @@ export class DeepSkyPlateResidency {
       (error) => {
         if (this.disposed) return;
         // A missing plate is a quiet region, never a broken frame.
-        console.error(`[background] deep-sky plate failed to load: ${wanted}`, error);
+        dedupError('deep-sky-plate.load', `[background] deep-sky plate failed to load: ${wanted}`, error);
         this.failedIds.add(wanted);
         if (this.pendingId === wanted) this._releasePending();
       },

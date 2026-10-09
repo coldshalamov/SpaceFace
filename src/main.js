@@ -21,6 +21,7 @@ import { listUserMods, hasUserContent, userContentDirLabel } from './data/userCo
 import { createTelemetry } from './systems/telemetry.js';
 import { installAchievements } from './systems/achievements.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
+import { postTaskAtBackgroundPriorityBounded } from './core/backgroundPost.js';
 import { createTimeEffects } from './core/timeEffects.js';
 import { resetFreshRunSystems } from './core/runReset.js';
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
@@ -1352,7 +1353,10 @@ function nextFrame() {
       if (done) return;
       done = true;
       frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
-      resolve();
+      // The rAF path resolves in a fresh background task — an inline resolve
+      // runs the awaited boot/restore leg inside this frame's task, pre-present.
+      if (viaTimer) resolve();
+      else postTaskAtBackgroundPriorityBounded(resolve);
     };
     if (frameWaitStarved >= 2) {
       armFrameWaitProbe();
@@ -1375,7 +1379,8 @@ function nextPaint() {
       done = true;
       frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
       lastPaintAt = nowMs();
-      resolve();
+      if (viaTimer) resolve();
+      else postTaskAtBackgroundPriorityBounded(resolve);
     };
     if (frameWaitStarved >= 2) {
       armFrameWaitProbe();

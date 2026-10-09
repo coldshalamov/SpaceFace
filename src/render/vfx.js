@@ -326,6 +326,7 @@ import {
 import { resolveAdditionalActionVfxReceipt } from './vfx/actionEventRecipes.js';
 import { spawnCausalStructuralBurst } from './combat/causalStructuralBurst.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+import { dedupError } from '../core/warnDedup.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const VFX_TRAIL_LANES = ['shipLike'];
@@ -1712,7 +1713,7 @@ export const vfx = {
     for (const unsubscribe of this._subs || []) {
       if (typeof unsubscribe !== 'function') continue;
       try { unsubscribe(); } catch (error) {
-        console.error('[vfx] unsubscribe failed', error);
+        dedupError('vfx.unsubscribe', '[vfx] unsubscribe failed', error);
       }
     }
     this._subs = [];
@@ -16970,7 +16971,7 @@ function releaseVfxDynamicBufferOwner(owner) {
     // A renderer may be in the middle of a publication epoch when host shutdown arrives. The
     // renderer's own coordinator remains the fallback owner of that callback; VFX still clears
     // its references below, and one failed release cannot strand the rest of the presentation.
-    console.error('[vfx] dynamic buffer owner release failed', error);
+    dedupError('vfx.buffer-owner-release', '[vfx] dynamic buffer owner release failed', error);
     return false;
   }
 }
@@ -16981,7 +16982,7 @@ function invokeVfxDisposer(owner, label) {
     owner.dispose();
     return true;
   } catch (error) {
-    console.error('[vfx] ' + label + ' disposal failed', error);
+    dedupError('vfx.disposer', '[vfx] ' + label + ' disposal failed', error);
     return false;
   }
 }
@@ -16992,7 +16993,7 @@ function invokeVfxCall(fn, receiver, label) {
     fn.call(receiver);
     return true;
   } catch (error) {
-    console.error('[vfx] ' + label + ' failed', error);
+    dedupError('vfx.invoke', '[vfx] ' + label + ' failed', error);
     return false;
   }
 }
@@ -17037,13 +17038,13 @@ function disposeVfxRoot(root, state) {
   } catch (error) {
     // Keep teardown best-effort even for a malformed/stale Object3D tree. The root is still
     // detached below, and registry-level isolation continues with the next system.
-    console.error('[vfx] root resource walk failed', error);
+    dedupError('vfx.root-walk', '[vfx] root resource walk failed', error);
   }
   try {
     if (typeof root.removeFromParent === 'function') root.removeFromParent();
     else if (root.parent && typeof root.parent.remove === 'function') root.parent.remove(root);
   } catch (error) {
-    console.error('[vfx] root detach failed', error);
+    dedupError('vfx.root-detach', '[vfx] root detach failed', error);
   }
   return true;
 }

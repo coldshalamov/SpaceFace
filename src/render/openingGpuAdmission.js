@@ -19,6 +19,7 @@ import {
   rehydrateDetachedTextures,
 } from './packageCpuDetach.js';
 import { collectStartupTextures, collectStartupTexturesSteps } from './startupGpuResidency.js';
+import { dedupWarn } from '../core/warnDedup.js';
 
 /**
  * A package texture whose CPU mirror was released after its proven upload still reaches three's
@@ -53,11 +54,11 @@ async function reattachDetachedAdmissionTextures(subjects, renderer, yieldToMain
   try {
     receipt = await rehydrateDetachedTextures(pending, { yieldToMain });
   } catch (error) {
-    console.warn('[render] admission texture reattach failed', error);
+    dedupWarn('gpu-admission.reattach', '[render] admission texture reattach failed', error);
     return;
   }
   if (receipt && Array.isArray(receipt.errors) && receipt.errors.length > 0) {
-    console.warn('[render] admission texture reattach errors', JSON.stringify(receipt.errors));
+    dedupWarn('gpu-admission.reattach-errors', '[render] admission texture reattach errors', JSON.stringify(receipt.errors));
   }
 }
 

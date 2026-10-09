@@ -4443,7 +4443,7 @@ function failAuthoredPlaceAdmission(
     } else {
       publish();
     }
-    if (error) console.warn('[partsLibrary] authored geology unavailable; retaining the matching procedural asteroid', error);
+    if (error) dedupWarn('partsLibrary.authored-geology-unavailable', '[partsLibrary] authored geology unavailable; retaining the matching procedural asteroid', error);
     return false;
   }
 
@@ -4452,7 +4452,7 @@ function failAuthoredPlaceAdmission(
     ? 'none-pipeline-failed'
     : (reason.includes('build') ? 'none-build-failed' : 'none-load-failed');
   setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.unavailable);
-  if (error) console.warn('[partsLibrary] authored place admission failed; no substitute visual published', error);
+  if (error) dedupWarn('partsLibrary.authored-place-admission', '[partsLibrary] authored place admission failed; no substitute visual published', error);
   return false;
 }
 
@@ -9218,12 +9218,7 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
     // A disposed preview rejects its in-flight compile/upload on teardown — the ordinary
     // hover-away case, not a composition defect. Keep the breadcrumb off the warning channel
     // so release evidence only counts real admission failures.
-    const log = (previewTeardownOnly || ownerInactiveOnly) ? console.info : console.warn;
-    log.call(console, previewTeardownOnly
-      ? '[partsLibrary] authored preview admission released by disposal'
-      : ownerInactiveOnly
-        ? '[partsLibrary] authored admission aborted; owner left before publish'
-        : '[partsLibrary] authored composition failed; no substitute visual published', {
+    const admissionFailureDetail = {
       entity: entity && entity.id,
       // Selector fields decide which whole-ship map the entity needed — without them a
       // "no required packaged whole-ship selection" warning cannot name the missing row.
@@ -9236,7 +9231,17 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
       causes: error && Array.isArray(error.errors)
         ? error.errors.map((cause) => String(cause && (cause.message || cause.reason || cause))).slice(0, 8)
         : undefined,
-    });
+    };
+    if (previewTeardownOnly || ownerInactiveOnly) {
+      console.info(previewTeardownOnly
+        ? '[partsLibrary] authored preview admission released by disposal'
+        : '[partsLibrary] authored admission aborted; owner left before publish',
+      admissionFailureDetail);
+    } else {
+      dedupWarn('partsLibrary.authored-composition',
+        '[partsLibrary] authored composition failed; no substitute visual published',
+        admissionFailureDetail);
+    }
     if (cleanupErrors.length) {
       throw new AggregateError([error, ...cleanupErrors], 'Authored composition failure cleanup failed', {
         cause: error,
@@ -9460,7 +9465,10 @@ const RETAINED_DISPOSE_STARVE_DRAINS = 8;
 function scheduleRetainedDisposeDrain() {
   if (retainedDisposeDrainScheduled) return;
   retainedDisposeDrainScheduled = true;
-  setTimeout(() => {
+  // Dispatch at bounded background priority: a setTimeout(0) arm lands the whole
+  // teardown drive inside the timer task that races the present; the 48 ms bound
+  // keeps the drain alive when the main thread never idles.
+  postTaskAtBackgroundPriorityBounded(() => {
     retainedDisposeDrainScheduled = false;
     retainedDisposeDrainSeq += 1;
     const started = monotonicNow();
@@ -9530,7 +9538,7 @@ function scheduleRetainedDisposeDrain() {
     notePacedFrameSpend(drainElapsed);
     if (forcedRan) noteForcedFrameSpend(drainElapsed);
     if (retainedDisposeQueue.length) scheduleRetainedDisposeDrain();
-  }, 0);
+  });
 }
 
 // Any detached subtree whose teardown would hitch a presented beat may ride the
@@ -14741,8 +14749,11 @@ function drivePoolAdmissionIfUnclaimed(admission, options) {
   }).catch((error) => {
     // A mid-preparation cancellation is the owner-gone race, not a defect — keep it off the
     // warning channel the same way the boundary path classifies 'owner became inactive'.
-    const log = admission && admission.cancelled === true ? console.info : console.warn;
-    try { log.call(console, '[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
+    if (admission && admission.cancelled === true) {
+      try { console.info('[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
+    } else {
+      try { dedupWarn('partsLibrary.pooled-chunk-admission', '[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
+    }
   });
 }
 

@@ -23,6 +23,7 @@ import { resolveGamepadBindings } from '../systems/gamepad.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveDockDeny } from './dockDenyBanner.js';
+import { dedupError } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
@@ -270,7 +271,7 @@ export function createUiInput(ctx, screenManager) {
         );
         if (!lockedNow && def && typeof def.onEscape === 'function') {
           try { if (def.onEscape(ev, ctx) === true) return; }
-          catch (e) { console.error('[uiInput] screen onEscape error:', e); }
+          catch (e) { dedupError('uiInput.screen-escape', '[uiInput] screen onEscape error:', e); }
         }
         closeActiveModal(def);
         return;
@@ -298,7 +299,7 @@ export function createUiInput(ctx, screenManager) {
       }
       if (def && typeof def.onKey === 'function') {
         try { if (def.onKey(ev, ctx) === true) { ev.preventDefault(); return; } }
-        catch (e) { console.error('[uiInput] screen onKey error:', e); }
+        catch (e) { dedupError('uiInput.screen-key', '[uiInput] screen onKey error:', e); }
       }
       // PQ-183.02: one key finds anything, from anywhere — over a modal screen the palette mounts
       // inside that screen so the dossier still has a host. Runs after def.onKey so a screen that
@@ -965,7 +966,7 @@ export function createUiInput(ctx, screenManager) {
       _nav.holdT = 0;
       _nav.repeatT = 0;
       for (const name of presses) {
-        try { captureHandler(name); } catch (e) { console.error('[uiInput] pad capture error:', e); }
+        try { captureHandler(name); } catch (e) { dedupError('uiInput.pad-capture', '[uiInput] pad capture error:', e); }
       }
       return;
     }
@@ -1072,7 +1073,7 @@ export function createUiInput(ctx, screenManager) {
           const heldFor = down ? prev.heldFor + dt : 0;
           const st = { held: down, pressed: down && !prev.held, released: !down && prev.held, heldFor };
           if (st.held || st.released) {
-            try { def.onPadButton(name, st, ctx); } catch (e) { console.error('[uiInput] onPadButton error:', e); }
+            try { def.onPadButton(name, st, ctx); } catch (e) { dedupError('uiInput.pad-button', '[uiInput] onPadButton error:', e); }
           }
           prev.held = down;
           prev.heldFor = heldFor;
