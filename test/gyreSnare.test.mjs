@@ -1408,6 +1408,29 @@ test('basinSpots ride through LAUNCH so the pull glows collapse on the windup', 
   t.cleanup();
 });
 
+// -- the uneatable arrival has a quiet voice on its own edge --
+test('a too-heavy body entering the net ticks once — hushed descending variant', async () => {
+  const t = await bootPhysics();
+  const heavies = () => t.events.filter((e) =>
+    e.name === 'audio:cue' && e.p.id === 'gyre_snare_catch' && e.p.rate === 0.72);
+  rock(t.sim, T.mawDist + 45, 10, T.maxClumpMass + 1, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.tooHeavyCount, 1);
+  assert.equal(heavies().length, 1, 'the 0→1 too-heavy edge speaks once');
+  // A second uneatable arrival keeps the latch shut — same rhythm as the catch.
+  rock(t.sim, T.mawDist + 50, -20, T.maxClumpMass + 1, 4);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.tooHeavyCount, 2);
+  assert.equal(heavies().length, 1, 'the latch holds — no per-body ratchet');
+  release(t);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(heavies().length, 2, 'a fresh net re-arms the edge');
+  release(t);
+  t.cleanup();
+});
+
 // -- the re-tick positions where the lane grew --
 test('the appetite re-tick speaks at the maw in BEAM and at the clump seat in HOLD', async () => {
   const t = await bootPhysics();

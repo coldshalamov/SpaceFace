@@ -176,6 +176,9 @@ void main() {
 const SPIRAL_FRAG = /* glsl */`
 uniform vec3 uCol;
 uniform float uFade;    // close-ramp gate — motes die WITH the glass, not past it
+uniform float uCalm;    // reduced-motion folds the gulp's hot window the same way
+                        // the glint (mix(0.3,1.0)) and bands (mix(0.25,...)) fold:
+                        // a frozen _moteT would otherwise park rim motes at ~3x bright
 varying float vFade;
 varying float vGulp;
 void main() {
@@ -183,7 +186,7 @@ void main() {
   float d = dot(c, c);
   if (d > 1.0) discard;
   // Gulp = brighten into the swallow (peak ~3x near the rim) then cut dead at t→1.
-  float a = vFade * (1.0 + 2.4 * vGulp) * (1.0 - smoothstep(0.88, 1.0, vGulp));
+  float a = vFade * (1.0 + 2.4 * vGulp * mix(0.3, 1.0, uCalm)) * (1.0 - smoothstep(0.88, 1.0, vGulp));
   gl_FragColor = vec4(uCol, a * (1.0 - d) * 0.8 * uFade);
 }
 `;
@@ -350,7 +353,7 @@ export class GyreSnarePresentation {
       vertexShader: SPIRAL_VERT, fragmentShader: SPIRAL_FRAG,
       uniforms: {
         uTime: { value: 0 }, uLen: { value: 1 }, uRad: { value: 1 }, uFade: { value: 1 },
-        uAim: { value: new THREE.Vector3() }, uSwirl: { value: 1 },
+        uAim: { value: new THREE.Vector3() }, uSwirl: { value: 1 }, uCalm: { value: 1 },
         uSize: { value: 3.4 }, uCol: { value: new THREE.Color(glass) },
       },
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
@@ -1040,6 +1043,7 @@ export class GyreSnarePresentation {
       // flashCalm rides here too — the mote gulp can brighten ~3.4x at the rim,
       // the vocabulary's third-brightest flash; reduced-flash can't skip it.
       this._spiralMat.uniforms.uFade.value = spent * fuseDim * flashCalm;
+      this._spiralMat.uniforms.uCalm.value = calm;
       // The motes converge INTO the rim the warn wash targets — a funnel feeding
       // cool-white sparks into an amber mouth contradicts the tear read. Warm them
       // with the same decayed strain (lighter weight than the rim — moving motes
@@ -1058,7 +1062,13 @@ export class GyreSnarePresentation {
       const windFade = 1 - windup;
       if (phase === 'beaming' || phase === 'holding'
         || (phase === 'launching' && windFade > 0.02)) {
-        this._basinHalo.position.set(mL.x, 0.42, mL.z);
+        // During the coil the ring anchors on the DRAWN mouth — the glass pins to
+        // the frozen launchDir frame (dx/dz were rewritten to it above) while mL
+        // is the live maw: a mid-coil yaw would slide the fading pull edge tens
+        // of wu off the collapsing rim it's collapsing with.
+        const bx = phase === 'launching' ? nL.x + dx * (drawLen - coilBack) : mL.x;
+        const bz = phase === 'launching' ? nL.z + dz * (drawLen - coilBack) : mL.z;
+        this._basinHalo.position.set(bx, 0.42, bz);
         this._basinHalo.scale.setScalar(finite(GYRE_SNARE.basinRadius, 86)
           * (1 + (phase === 'beaming' ? 0.035 : 0.02) * Math.sin(this.time * 1.7) * calm));
         const liveA = phase === 'beaming' ? 0.06 * wakeEase : 0.03;
@@ -1348,8 +1358,10 @@ export class GyreSnarePresentation {
       // Loose zero-G also drifts UP: a slow ±0.3 wu bob seeded on the clump's orbit
       // phase breaks the rigid-hover look — lumps bob internally already; the ball
       // itself was the only rigid body in the composition. calm-gated like the bob.
+      // HOLD-only: a thrown bowling ball flies the streak/rumble/frozen-heading
+      // language — a gentle vertical bob through its ballistic arc reads wrong.
       this._clump.position.set(
-        p.x, 0.6 + Math.sin(this.time * 0.7 + finite(mirror.orbitSeed)) * 0.3 * calm, p.z);
+        p.x, 0.6 + (phase === 'holding' ? Math.sin(this.time * 0.7 + finite(mirror.orbitSeed)) * 0.3 * calm : 0), p.z);
       // Feed squash-pop: each absorb compresses the clump ~12% then SPRINGS back —
       // sin(π·kick) peaks mid-decay so the tail rebounds ~+4% oversize before
       // settling: a snap, not a monotone squash. (Also clears cancelled ramp shrink.)
@@ -1537,8 +1549,13 @@ export class GyreSnarePresentation {
       // The ARMED read reaches the rubble too — the thrown ball's contents
       // flash with its shell for the same ~0.7 s launchKick window (lumpGlow
       // is hold-gated, so without this floor a flying katamari's chunks sat at
-      // the cold baseline while the veil surged rim-hot around them).
-      for (const k in this._lumpMats) this._lumpMats[k].emissiveIntensity = Math.max(lumpGlow, armed * 0.4);
+      // the cold baseline while the veil surged rim-hot around them). HOLD
+      // suppresses it: the shared pool also dresses a freshly re-snagged new
+      // core's lumps — the armed read belongs to the flying payload, not the
+      // new catch (the secondary overlay rides the same pool and accepts the
+      // residual: under a fresh hold its armed flash yields to the new core).
+      const lumpArmed = phase === 'holding' ? 0 : armed * 0.4;
+      for (const k in this._lumpMats) this._lumpMats[k].emissiveIntensity = Math.max(lumpGlow, lumpArmed);
       const members = mirror.members;
       const want = Array.isArray(members) ? Math.min(members.length, MAX_LUMPS) : 0;
       let have = 0;

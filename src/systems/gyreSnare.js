@@ -148,6 +148,7 @@ function freshRuntime() {
     strainCueNextTick: 0,    // the sustain retrigger — a held excursion keeps a voice
     fuseCueLatched: false,   // the fuse-low warning fires once per hold
     basinCatchLatched: false, // the first basin catch ticks once per empty->net edge
+    tooHeavyLatched: false,   // the first UNEATABLE net fill ticks once too — sibling edge
     catchTickPeak: 0,         // escalation ratchet — quieter count-graded ticks fire on each new shown +N peak
     prevBasinN: 0,            // last-published basin count — the re-tick's position follows whichever lane grew
     prevSuckN: 0,             // same for the annulus half
@@ -293,6 +294,7 @@ export const gyreSnare = {
     rt.fullCueLatched = false;
     rt.fuseCueLatched = false;
     rt.basinCatchLatched = false;
+    rt.tooHeavyLatched = false;
     rt.catchTickPeak = 0;   // the escalation ratchet dies with the beam ledger
     rt.tornTrack = null; // any new drop ends a previous torn body's follow
     // dropped = a live beam/hold released without launch; coreId is null when the beam
@@ -1579,6 +1581,7 @@ export const gyreSnare = {
     rt.strainCueLatched = false;
     rt.fullCueLatched = false;
     rt.basinCatchLatched = false;
+    rt.tooHeavyLatched = false;
     rt.catchTickPeak = 0;         // drop/finishLaunch reset symmetry — the ratchet
     // dies with the funnel: _publish's latch clear covers non-BEAM ticks anyway
     rt.launchedId = null;
@@ -1997,6 +2000,20 @@ export const gyreSnare = {
         // buzz the pad on every arrival.
         this.bus.emit(GYRE_EVENTS.caught, { id: player.id, tick: state.tick });
       } else if (!caught) rt.basinCatchLatched = false;
+      // "It can't eat that": a too-heavy body crossing into the net was the one
+      // arrival class with no voice — the catch tick, +N ratchet, absorb gulp,
+      // snag bite and deny edges all narrate but an uneatable rock entering the
+      // funnel was eyes-only (TOO HEAVY pill + warm class). A hushed descending
+      // variant of the catch tick on the 0->1 edge closes the why-won't-it-snag
+      // channel — latch symmetry with the catch (re-arms when the net empties).
+      const heavy = (rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && rt.tooHeavyCount > 0;
+      if (heavy && !rt.tooHeavyLatched) {
+        rt.tooHeavyLatched = true;
+        this.bus.emit('audio:cue', {
+          id: 'gyre_snare_catch', gain: 0.14, rate: 0.72,
+          position: { x: maw.x, z: maw.z },
+        });
+      } else if (!heavy) rt.tooHeavyLatched = false;
       // The appetite has a voice while it builds: the shown +N (basin fold +
       // annulus arrivals during HOLD) used to climb eyes-only. A quieter
       // count-graded re-tick on each new peak lets the funnel stack be heard
