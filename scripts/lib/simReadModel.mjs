@@ -28,6 +28,7 @@
 
 import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
 import { nowNs } from './simRealm.mjs';
+import { initializePresentationAdmission } from '../../src/core/presentationAdmission.js';
 import { ASTEROID_FIELD_CELL } from '../../src/world/asteroidField.js';
 import {
   timeToEnterRadiusSeconds,
@@ -96,7 +97,28 @@ export function applySpawnInfos(readModel, spawnInfos) {
     if (info.vitals && typeof info.vitals === 'object') {
       Object.assign(row, canonicalClone(info.vitals));
     }
-    readModel.entities.set(info.entityId, row);
+    // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
+    // object: the render realm holds entity refs across the hop (admission
+    // jobs capture admissionEntity at enqueue and stamp presentationAdmission
+    // onto it at commit). Replacing the object strands the live row while a
+    // dead twin collects the stamp — entity identity is the map slot, the way
+    // entityList swap semantics preserve row identity on the main lane.
+    const existing = readModel.entities.get(info.entityId);
+    if (existing && typeof existing === 'object') {
+      delete row.prevPos;
+      Object.assign(existing, row);
+      // A stamped admission verdict outranks the fresh spawn's 'pending' —
+      // presentationAdmission isn't a mirrored field, so the render realm
+      // owns whatever is already there once it exists.
+      if (existing.presentationAdmission == null) initializePresentationAdmission(existing);
+    } else {
+      // The row is the worker lane's spawnEntity product — same authored-
+      // presentation contract: admit-required rows start 'pending' so the
+      // render realm's admit path (boundaryLiveEntity resolves this same
+      // map) can stamp them 'ready' exactly as on the main lane.
+      initializePresentationAdmission(row);
+      readModel.entities.set(info.entityId, row);
+    }
   }
 }
 

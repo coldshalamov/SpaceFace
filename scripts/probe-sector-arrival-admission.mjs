@@ -126,9 +126,14 @@ const page = await context.newPage();
 // cannot stand in for it: the splash mounts only after the loading shell hands off, so an early
 // key lands before the input fence exists, gets swallowed, and the splash then holds the menu
 // until its own 18 s timer — the gate below waits on the mounted menu instead.
-await page.addInitScript(() => {
+const SIM_LANE_ARG = (() => {
+  const i = process.argv.indexOf('--sim-lane');
+  return i > 0 ? process.argv[i + 1] : null;
+})();
+await page.addInitScript((lane) => {
   try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
-});
+  if (lane) { try { localStorage.setItem('sf.simLane', lane); } catch (_) {} }
+}, SIM_LANE_ARG);
 const logs = [];
 page.on('console', (message) => {
   const text = message.text();

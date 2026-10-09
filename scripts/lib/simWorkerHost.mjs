@@ -726,7 +726,17 @@ export function createSimHost() {
       }
       return;
     }
-    host.pendingEvents.push({ t: type, p: projected.flat, lane: projected.lane });
+    host.pendingEvents.push({
+      t: type,
+      p: projected.flat,
+      lane: projected.lane,
+      // Emit-time sim context: the facade replays whole batches after applying
+      // the reply's domain updates, so listeners that branch on state.mode or
+      // world.enterSerial would otherwise read the batch's END state for an
+      // event minted mid-batch (a boot sector:enter replayed under 'flight').
+      m: host.state ? host.state.mode : undefined,
+      es: host.state && host.state.world ? host.state.world.enterSerial : undefined,
+    });
   }
 
   function installBridgeCapture(bus, captureAll) {

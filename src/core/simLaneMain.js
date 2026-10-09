@@ -593,7 +593,26 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
                   state.settings = canonicalClone(p.settings);
                 }
               }
-              bus.emit(ev.t, p);
+              // The worker stamps each envelope with the sim's mode/enterSerial
+              // at capture (emit) time. Replay sees the reply's END state
+              // otherwise: a batch applying domain updates first would hand a
+              // mid-batch emit the wrong mode — e.g. a boot sector:enter
+              // minted under 'loading' replaying under 'flight', which mints
+              // the heavy post-jump cook instead of the opening skip. Shim the
+              // emit-time values for the synchronous dispatch window.
+              const emitMode = typeof ev.m === 'string' ? ev.m : null;
+              const emitSerial = Number.isSafeInteger(ev.es) ? ev.es : null;
+              const prevMode = state.mode;
+              const world = state.world;
+              const prevSerial = world ? world.enterSerial : undefined;
+              if (emitMode != null) state.mode = emitMode;
+              if (emitSerial != null && world) world.enterSerial = emitSerial;
+              try {
+                bus.emit(ev.t, p);
+              } finally {
+                if (emitMode != null) state.mode = prevMode;
+                if (emitSerial != null && world) world.enterSerial = prevSerial;
+              }
             } catch (_) { boundaryErrorCount++; }
           }
         }
