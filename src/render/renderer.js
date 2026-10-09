@@ -18754,9 +18754,24 @@ export const render = {
       }
       this._publishAssetResidencyDiagnostics();
     });
+    // Sector-scoped prewarm collects ride the bySectorId bucket under the standard index
+    // guard — the request/coverage/stage predicates all filter on the canonical claim
+    // chain, so a bucket member set is verdict-identical (the coverage census keeps its
+    // per-member entities.get authority check; a Set cannot duplicate members, so the
+    // duplicate check is vacuous, never weaker). entityList remains the source while the
+    // index is unready. Same string-key assumption as the other bucket conversions.
+    const sectorPrewarmEligiblePool = (sectorId) => {
+      const index = state.entityIndex;
+      if (index && index.__spacefaceEntityIndexV1 === true
+          && index.ready === true && index.bySectorId instanceof Map
+          && sectorId != null) {
+        return index.bySectorId.get(sectorId) || [];
+      }
+      return state.entityList || [];
+    };
     const sectorPrewarmRequests = (sectorId) => {
       const player = state.entities && state.entities.get(state.playerId);
-      return authoredPrewarmRequestsForEntities(state.entityList, {
+      return authoredPrewarmRequestsForEntities(sectorPrewarmEligiblePool(sectorId), {
         sectorId,
         playerId: state.playerId,
         playerPos: player && player.pos,
@@ -18776,7 +18791,7 @@ export const render = {
       && entityHasOwnSectorPrewarmPlan(entity, record.sectorId, state.playerId);
     const sectorPrewarmCoverageOptions = (record) => ({
       entities: state.entities,
-      entityList: state.entityList,
+      entityList: sectorPrewarmEligiblePool(record && record.sectorId),
       meshes: this._meshes,
       sectorId: record.sectorId,
       playerId: state.playerId,
@@ -18872,7 +18887,7 @@ export const render = {
         })
         .catch(() => {});
     };
-    const stageSectorPrewarmBoundaries = (record, entities = state.entityList) => {
+    const stageSectorPrewarmBoundaries = (record, entities = sectorPrewarmEligiblePool(record && record.sectorId)) => {
       if (!record || record.active !== true || record.stageBoundaries === false) return record;
       if (!record.boundaryRecords) record.boundaryRecords = new Set();
       if (!record.liveBoundaryPromises) record.liveBoundaryPromises = new Map();
