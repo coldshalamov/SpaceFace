@@ -1214,6 +1214,30 @@ test('a belt-field rock inside the basin promotes into a live body the beam can 
   t.cleanup();
 });
 
+test('a belt-field rock inside the suck annulus promotes too — the halo never fakes reach', async () => {
+  const { insertAsteroidFieldRock } = await import('../src/world/asteroidField.js');
+  const t = await bootPhysics();
+  // A BIG clump: orbit radius + suck band both scale with it — the drawn
+  // appetite ring then sweeps ~120+ wu, well past the 86 wu basin.
+  const core = rock(t.sim, T.mawDist, 0, 60, 30);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'holding');
+  const suckR = t.sys._suckRadius(t.sys._rt);
+  assert.ok(suckR > 80, `the annulus should out-reach the basin on a big clump (got ${suckR})`);
+  // 100 wu past the maw — outside the 86 wu basin the pull lane promotes
+  // against, inside the orbit-swept annulus the halo draws around the core.
+  const rec = insertAsteroidFieldRock(t.state, { pos: { x: T.mawDist + 100, z: 0 }, radius: 5, mass: 4 });
+  let promoted = null;
+  for (let i = 0; i < 400 && !promoted; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+    const ent = t.state.entities.get(rec.id);
+    if (ent && ent.alive !== false) promoted = ent;
+  }
+  assert.ok(promoted, 'the annulus reifies gravel it can reach — not a halo-only promise');
+  t.cleanup();
+});
+
 
 // -- launched-ball immunity --
 test('a launched ball is pull/suck/snag-immune — it cannot be re-captured or re-absorbed', async () => {

@@ -1439,6 +1439,25 @@ export const gyreSnare = {
         }
       }
     }
+    // Belt gravel inside the annulus promotes too — the lane queried only live
+    // entities, so the drawn appetite ring (up to ~129 wu on a big orbit, past
+    // the 86 wu basin the pull lane promotes against) covered field rocks it
+    // could never pull or eat. Top-2 nearest per tick bounds body churn on a
+    // dense belt; a FULL clump stops reifying meals it can't merge.
+    if (rt.clumpMass < D.maxClumpMass) {
+      const rocks = queryAsteroidField(state, core.pos, suckR, this._fieldRocks);
+      if (rocks.length > 2) rocks.sort((a, b) =>
+        ((a.pos.x - core.pos.x) * (a.pos.x - core.pos.x) + (a.pos.z - core.pos.z) * (a.pos.z - core.pos.z))
+        - ((b.pos.x - core.pos.x) * (b.pos.x - core.pos.x) + (b.pos.z - core.pos.z) * (b.pos.z - core.pos.z)));
+      let promoted = 0;
+      for (let i = 0; i < rocks.length && promoted < 2; i++) {
+        const rec = rocks[i];
+        if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
+        promoteAsteroidFieldRock(state, rec.id, this.helpers, 'gyre_snare');
+        promoted++;
+      }
+      this._fieldRocks.length = 0;
+    }
   },
 
   _absorb(state, rt, core, e, dx, dz, dist) {

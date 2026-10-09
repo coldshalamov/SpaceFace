@@ -885,6 +885,11 @@ export class GyreSnarePresentation {
       this._secId = null; this._secGraveT = null; this._adoptT = 0;
       this._veilMat.opacity = 0; this._veilMat.color.copy(this._colGlass);
       this._veil.visible = false;
+      // uGulp.y is an absolute sim-clock stamp — a mid-beam restore rewinding
+      // simTime to before a gulp's start would replay the swallow band once at
+      // its leftover amplitude on the new clock. One write covers both shells
+      // (they share the uniform object).
+      this._coneMat.uniforms.uGulp.value.set(0, -1e4);
     }
     const sdt = Math.max(0, clock - this.time);  // sim-domain delta — every accumulator
     this.time = clock;                           // below rides the same clock as the sim,
