@@ -455,6 +455,10 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
   'world.scanPings', 'world.activeSector', 'world.records.byId',
   'world.vestaOreCache', 'world.pallasHiddenCache',
+  // Fold-authored ui.* fields the worker owns but main still reads: docked gates
+  // presentationFreeze/uiStage/doDock re-entry, and the soak probe reads the
+  // facade's ui.docked. Without these mirrors the fold write never reaches main.
+  'ui.docked', 'ui.dockedStationId', 'ui.objectSelection',
   // machineGate/machine-route standing for the main-side computeRoute facade
   // (routePlanner reads machineAccess + machineProtocol only).
   'world.alienEcology',
