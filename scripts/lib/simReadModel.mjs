@@ -459,6 +459,13 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // presentationFreeze/uiStage/doDock re-entry, and the soak probe reads the
   // facade's ui.docked. Without these mirrors the fold write never reaches main.
   'ui.docked', 'ui.dockedStationId', 'ui.objectSelection',
+  // Sim-authored the same way: acceptMission tracks state.ui.trackedMissionId
+  // and the HUD tracker, galaxy map and comms read it on the facade.
+  'ui.trackedMissionId',
+  // acceptMission also pushes missions.active — facade readers (Mission Log,
+  // HUD tracked panel, contracts Accepted section) need it inside the accept
+  // beat, not the whole-root missions leaf's next cold-leaf window.
+  'missions.active', 'missions.completed', 'missions.failed',
   // machineGate/machine-route standing for the main-side computeRoute facade
   // (routePlanner reads machineAccess + machineProtocol only).
   'world.alienEcology',
@@ -529,6 +536,9 @@ export const DOMAIN_CADENCE = Object.freeze({
   economy: 10, missions: 10, story: 10, factions: 30,
   sectorSim: 10, npcJobs: 30, factionPresence: 10, automation: 30,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
+  // The accept beat must reach the facade inside its own publish window, not the
+  // missions root cadence — Mission Log / HUD / contracts render off the mirror.
+  'missions.active': 1,
   'world.sectors': 10, 'world.discovery': 10, 'world.records': 60,
   'world.frontierRumors': 10, 'world.scanPings': 10, 'world.activeSector': 10,
   'world.vestaOreCache': 60, 'world.pallasHiddenCache': 60,
@@ -539,13 +549,17 @@ export const DOMAIN_CADENCE = Object.freeze({
 export const DOMAIN_PROBE_SWEEP_TICKS = 60;
 
 // Cadence keys name the mirrored root OR a dot-prefix of it — 'sectorSim' binds
-// 'sectorSim.field', 'world.records' binds 'world.records.byId'. Longest prefix wins.
+// 'sectorSim.field', 'world.records' binds 'world.records.byId'. Longest prefix
+// wins — a leaf entry may tighten OR relax the root it sits under.
 const DOMAIN_CADENCE_KEYS = Object.keys(DOMAIN_CADENCE);
 function domainCadenceFor(rootKey) {
   let ticks = 0;
+  let bestLen = -1;
   for (const key of DOMAIN_CADENCE_KEYS) {
+    if (key.length <= bestLen) continue;
     if (rootKey === key || rootKey.startsWith(`${key}.`)) {
-      if (DOMAIN_CADENCE[key] > ticks) ticks = DOMAIN_CADENCE[key];
+      bestLen = key.length;
+      ticks = DOMAIN_CADENCE[key];
     }
   }
   return ticks;

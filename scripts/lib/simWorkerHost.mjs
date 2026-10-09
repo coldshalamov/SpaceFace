@@ -969,7 +969,7 @@ export function createSimHost() {
         const m = registry.get('missions');
         if (!m) return { ok: false, reason: 'missions-system-unavailable' };
         const method = args && args.method;
-        const SIGNATURES = { postAndAcceptAuthoredOffer: ['offer'], acceptMission: ['missionId'] };
+        const SIGNATURES = { postAndAcceptAuthoredOffer: ['offer'], acceptMission: ['missionId'], postBoardOffer: ['offer'], listActive: [], boardSlots: ['stationId'] };
         const signature = method && SIGNATURES[method];
         if (!signature || typeof m[method] !== 'function') return { ok: false, reason: 'unknown-missions-method' };
         return { ok: true, result: m[method](...signature.map((key) => args[key])) };

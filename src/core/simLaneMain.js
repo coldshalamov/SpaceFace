@@ -233,6 +233,16 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     return p;
   }
 
+  // Domain roots whose landed mirror should also emit the facade-bus signal the
+  // UI renders on. A sim-side emit replays in the reply the event shipped on;
+  // the domain data it announces can trail by the differ's leaf cadence (the
+  // missions root signs on the 60-pass cold tier), so a render keyed on the
+  // replay alone can run before the rows exist. Re-emitting on mirror land
+  // closes that gap — these types are not on the forwarded surface, so nothing
+  // echoes back to the worker.
+  const DOMAIN_MIRROR_EMITS = Object.freeze({
+    missions: 'mission:updated',
+  });
   // Domain mirrors write straight into state roots — whole-root keys install the
   // root container once, then deep-assign in place; leaf-path keys graft onto
   // the live root object so main-owned siblings are untouched.
@@ -258,7 +268,21 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     for (const key of DOMAIN_MIRROR_KEYS) {
       if (key.indexOf('.') === -1 && state[key] === undefined) state[key] = {};
     }
-    for (const u of updates) applyDomainUpdate(u);
+    let touchedEmits = null;
+    for (const u of updates) {
+      applyDomainUpdate(u);
+      const root = u && Array.isArray(u.segs) && u.segs.length
+        ? String(u.segs[0]).split('.')[0] : null;
+      if (root && DOMAIN_MIRROR_EMITS[root]) {
+        (touchedEmits || (touchedEmits = new Set())).add(DOMAIN_MIRROR_EMITS[root]);
+      }
+    }
+    if (touchedEmits && bus && typeof bus.emit === 'function') {
+      for (const type of touchedEmits) {
+        try { bus.emit(type, { missionId: null, stationId: null }); }
+        catch (_) { /* listener faults stay caller-owned */ }
+      }
+    }
   }
 
   // ---- transport journal ---------------------------------------------------------
