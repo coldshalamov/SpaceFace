@@ -1207,7 +1207,9 @@ test('a dense belt feed rate-gates the absorb glass tick', async () => {
   rock(t.sim, T.mawDist, 0, 6, 4);
   hold(t);
   // Park several meals right against the core skin so absorbs land within a few ticks.
+  // The last two are wreck-class (>=10t) so the camera shake channel fires too.
   for (let i = 0; i < 4; i++) rock(t.sim, T.mawDist + 12 + i * 3, (i % 2 ? 8 : -8), 3, 2);
+  for (let i = 0; i < 2; i++) rock(t.sim, T.mawDist + 24 + i * 4, (i ? 10 : -10), 30, 5);
   for (let i = 0; i < 240; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   const absorbs = t.events.filter((e) => e.name === 'gyre:absorbed').length;
   const ticks = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_absorb').length;
@@ -1217,6 +1219,11 @@ test('a dense belt feed rate-gates the absorb glass tick', async () => {
   // while gyre:absorbed still fires per-meal for HUD honesty.
   const padTicks = t.events.filter((e) => e.name === 'gyre:absorbTick').length;
   assert.equal(padTicks, ticks, `haptic tick shares the audio gate (${padTicks} vs ${ticks})`);
+  // The camera shake rides it too — trauma ADDS and renders squared, so an ungated
+  // per-meal shake stacked ~4x the authored ceiling in a burst. Bounded by the
+  // same window, never exceeding it (a light meal can fire a gate with no shake).
+  const shakes = t.events.filter((e) => e.name === 'camera:shake').length;
+  assert.ok(shakes <= ticks, `shake shares the cue gate (${shakes} vs ${ticks})`);
   t.cleanup();
 });
 

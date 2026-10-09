@@ -1684,6 +1684,10 @@ export const gyreSnare = {
     rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
+    // The absorb ledger is per-tick too — _suckPass's reset stops the moment the
+    // coil starts, so a meal eaten on the launch tick would pin pub.absorbR at
+    // its tick-max through the whole ~11-tick windup + burst.
+    rt.absorbDir.x = 0; rt.absorbDir.z = 0; rt.absorbRadius = 0;
     // basinSpots deliberately rides through LAUNCH: the victims are still real
     // free bodies at their last-dragged spots, and the presentation fades the
     // pull glows on (1 - launchWindup01) — "the well collapsing into the throw".
@@ -1889,11 +1893,17 @@ export const gyreSnare = {
       if (rt.ballIds.length || rt.ballOverflow) {
         let n = 0;
         if (state.entities) for (const [id, e] of state.entities) {
+          if (!e || e.alive === false || !e.data || !e.data.gyreLaunched || rt.ballIds.indexOf(id) !== -1) continue;
           // despawnAt != null: an unwatched adoptee whose deadline a foreign owner
           // stripped is an immortal disarmed body, not a ball still flying to a grave —
           // it must not pin the tail forever (watched adoptees shed via _handBack).
-          if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.data.despawnAt != null
-            && rt.ballIds.indexOf(id) === -1) n++;
+          if (e.data.despawnAt != null) n++;
+          // And it's not just a miscount: an adopted unwatched body skipped by the
+          // recount would stay marked — pull/snag/suck-immune — until a boundary
+          // sweep happened to re-watch it. Hand it back: shed the mark + the lash's
+          // deadline stash so the adopter's body rejoins the field (parity with
+          // the watched-adoptee hand-back lane).
+          else this._handBack(e);
         }
         rt.ballOverflow = n;
       }
