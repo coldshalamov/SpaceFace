@@ -124,8 +124,13 @@ export function resolveSimLaneFlags(search) {
   } catch (_) { params = null; }
   // Stage-E default: the worker lane is the runtime; ?simLane=main is the
   // escape hatch back to the in-process sim. An unrecognized value warns and
-  // still takes the default.
-  const requested = params && params.get('simLane');
+  // still takes the default. Harnesses whose canonical root forbids query
+  // strings (release-soak browser/electron) select via localStorage
+  // 'sf.simLane' instead — the query param wins when both are present.
+  let requested = params && params.get('simLane');
+  if (requested == null && typeof localStorage !== 'undefined') {
+    try { requested = localStorage.getItem('sf.simLane'); } catch (_) { /* storage gated */ }
+  }
   const warnings = [];
   let lane;
   if (requested === SIM_LANE.MAIN) lane = SIM_LANE.MAIN;
@@ -233,11 +238,17 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   const domainHolder = new Map();
   function applyDomainUpdate(u) {
     if (!u || !Array.isArray(u.segs) || u.segs.length === 0) return;
-    const root = u.segs[0];
-    domainAppliedKeys[u.segs.join('.')] = (domainAppliedKeys[u.segs.join('.')] || 0) + 1;
+    // Top-level leaf keys ship as one dotted segment (['ui.docked'],
+    // ['world.currentSectorId']): graft them as the nested path they name so
+    // state.ui.docked/state.world.currentSectorId consumers see the value.
+    // Expanded-container updates already carry real per-segment paths.
+    const segs = u.segs.length === 1 && u.segs[0].indexOf('.') !== -1
+      ? u.segs[0].split('.') : u.segs;
+    const root = segs[0];
+    domainAppliedKeys[segs.join('.')] = (domainAppliedKeys[segs.join('.')] || 0) + 1;
     domainHolder.clear();
     domainHolder.set(root, state[root]);
-    applyDomainPathUpdate(domainHolder, u, domainTouched);
+    applyDomainPathUpdate(domainHolder, { ...u, segs }, domainTouched);
     state[root] = domainHolder.get(root);
   }
   function applyDomainUpdates(updates) {
