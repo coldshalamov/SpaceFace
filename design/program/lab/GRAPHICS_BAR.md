@@ -152,15 +152,37 @@ the LODs render correctly.
 ### Static audit, before -> after (visible primitives with a defect)
 | defect | before | after |
 |---|---|---|
-| any defect | 1760 | see final numbers below |
+| any defect | 1760 | **160** |
 | degenerate-tris | 930 | 3 |
 | flipped-normals | 462 | 2 |
 | faceted-curve | 470 | 90 (about 33 are intended geology; most of the rest are tiny emissive nav-light spheres) |
 | uv-collapsed-textured | 200 | 8 (wreck-cathedral scatter, kept) |
 | textured-without-uv | 26 | 0 |
-| uv-stretch | 42 | 33 |
+| uv-stretch | 42 | 57 (the 24 new are the ore container's box-UV ribs, mildly stretched where one vertex serves two faces. That still beats a single texel.) |
+
+Coincident cross-material faces (looser centroid+facing audit, `.gb/zfight`): 2,442 in 52 models -> 954 in 46.
+The remainder are near-twins with a different triangulation, which a corner-exact fix can't safely pick apart.
 
 Not changed, deliberately:
 - **`Material_Accent` emissive trim** on kitbash parts (fins, greebles, weapons, hull accents). This is the parts library's accent-glow convention. Runtime role mapping (#237) governs its intensity.
 - **Glass emissive on `cockpit_dome` and `cockpit_recessed`.** Same convention.
 - **LOD material drops.** kestrel LOD1/2 drop the ivory panels and ironback LOD2 its brushed metal. The geometry was decimated away rather than merged, so parity would mean adding triangles back to distance LODs. Logged, not fixed.
+
+## 4. VFX pass: frames and verdicts
+Frames come from `scripts/capture-combat-vfx-acceptance.mjs` at play size (1440x900) on this box's software GL.
+`SF_ALLOW_SOFTWARE_GL=1` is the new frames-only switch; timing claims are void. There are 68 frames and 1 route video.
+Sheet: `/workspace/look-unify/bar/vfx_frames.png` (contact-zone crops of every family/phase plus the destruction and density frames).
+
+| family | verdict | evidence / note |
+|---|---|---|
+| muzzle flashes | pass | Directional, palette-correct per family. Kinetic muzzle frame at 16 ms is empty in every run (capture phase, not render). |
+| projectile trails | pass | Rail reads as the Mach-tracer dash the contract asks for (`vfx-mach-tracers`), plasma as a connected wake, missile as a propelled puff. No bead chains. |
+| impacts (hull) | pass | Oriented spark cones on the contact normal, family-coloured. Small at play size but legible. |
+| shields | not verifiable here | The harness's "shield" material call has no target entity, so `_onProjectileHit` takes the hull branch and the frame matches the hull frame. Needs a target with `shield>0`. |
+| combat beams | not verifiable here | The capture freezes the sim. `PersistentCombatBeamPool` times a beam out after 0.14 s of *render* time, so on software GL (about 1 s frames, dt clamped to 0.1) the beam drains before the shot. In play the sim refreshes every tick. |
+| explosions / destruction | not verifiable here | Same freeze/clock interaction: dense-destruction frames show no burst. |
+| engine trails, smoke, tether, mining beam | no defect found in code audit | All VFX materials set `depthWrite:false` on additive/transparent passes. Procedural textures are mipmapped (fragment atlas 256², trail LUT). There's no z-fight or sorting hazard. |
+
+Outcome: no VFX code changed in this PR. The frames show no defect that a cheap profile tweak would fix. The three
+unverifiable families need a GPU capture, or a harness that advances the VFX clock with the frozen sim. Both are
+follow-ups, and neither belongs in `bloom.js` or `renderer.js` (#220).
