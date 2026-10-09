@@ -693,6 +693,17 @@ try {
           const p = st && st.entities && st.entities.get(st.playerId);
           return !!(st && st.mode === 'flight' && p && p.alive);
         }, null, { timeout: 120000 });
+        continueStage = 'sim-resume';
+        // mode flips ahead of the tick loop on the worker lane: the 'flight' mode
+        // descriptor lands, then the host's tick cadence re-arms a beat later. A key
+        // down+up landing entirely inside that gap is swallowed (held toggles with no
+        // tick sampling it) — wait for the tick counter itself to advance so the
+        // CONTROLS probe can never be swallowed by the resume window.
+        const tickAtFlight = await page.evaluate(() => window.SF.state.tick);
+        await page.waitForFunction((t0) => {
+          const st = window.SF.state;
+          return st && Number.isFinite(st.tick) && st.tick > t0;
+        }, tickAtFlight, { timeout: 30000 });
         await page.waitForTimeout(3000);
         phase = 'flight';
         loaded = true;

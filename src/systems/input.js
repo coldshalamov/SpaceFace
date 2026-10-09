@@ -1099,6 +1099,25 @@ export const input = {
           this.cancelWorldObjectGesture(typeof d.reason === 'string' ? d.reason : 'lane');
         }
         break;
+      case 'drillTick': {
+        // The drill screen's per-frame held-state — its clock is the screen's
+        // rAF, so frames ride the descriptor batch and apply in wire order.
+        const laneCtx = this._inputContext;
+        const drill = laneCtx && laneCtx.registry && typeof laneCtx.registry.get === 'function'
+          ? laneCtx.registry.get('drill') : null;
+        if (drill && typeof drill.tickInput === 'function') drill.tickInput(d.held, d.dt, d.opts);
+        break;
+      }
+      case 'drillCall': {
+        const laneCtx = this._inputContext;
+        const drill = laneCtx && laneCtx.registry && typeof laneCtx.registry.get === 'function'
+          ? laneCtx.registry.get('drill') : null;
+        if (!drill) break;
+        if (d.op === 'begin' && typeof drill.begin === 'function') drill.begin(d.asteroidId);
+        else if (d.op === 'pulseScan' && typeof drill.pulseScan === 'function') drill.pulseScan();
+        else if (d.op === 'end' && typeof drill.end === 'function') drill.end(d.opts);
+        break;
+      }
       case 'resize':
         if (this.touch && typeof this.touch.autoDetect === 'function') this.touch.autoDetect();
         break;

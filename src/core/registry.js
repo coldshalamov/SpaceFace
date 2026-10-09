@@ -139,7 +139,7 @@ import { ships } from '../systems/ships.js';
 import { crafting } from '../systems/crafting.js';
 import { heat } from '../systems/heat.js';
 import { traffic } from '../systems/traffic.js';
-import { drill } from '../systems/drill.js';
+import { drill, drillReadView } from '../systems/drill.js';
 import { intervention } from '../systems/intervention.js';
 import { claims, claimsReadView } from '../systems/claims.js';
 import { beacons } from '../systems/beacons.js';
@@ -1005,6 +1005,36 @@ export function createRegistry(ctx) {
           build: (bpId, stationId) => Promise.resolve(laneRpc('craftingBuild', { bpId, stationId }))
             .then((ack) => (ack && ack.ok !== false && ack.result && ack.result.ok === true)),
         };
+      case 'drill': {
+        // The drill clock is the screen's rAF, not a sim tick — per-frame
+        // held-state ships as ordered domEvent descriptors inside the tick
+        // batch (never rpc: a promise per frame would queue orders worse than
+        // a folded descriptor). Reads run over the mirror via the read view;
+        // drill:* emits bridge back to bus subscribers (bridgeAll).
+        const readView = drillReadView(st);
+        const drillCall = (op, payload) => laneDomEvent({ type: 'drillCall', op, ...(payload || {}) });
+        return {
+          name: 'drill',
+          bus: ctx.bus,
+          state: st,
+          tickInput: (held, dt, opts) => laneDomEvent({ type: 'drillTick', held, dt, opts }),
+          begin: (asteroidId) => { if (asteroidId) drillCall('begin', { asteroidId }); return !!asteroidId; },
+          pulseScan: () => {
+            // Synchronous answer off the mirror (≤1-tick stale): a stale
+            // cooldown edge ships a refused pulse the worker drops silently.
+            const d = st && st.drill;
+            const ready = !!(d && d.active && (!d.scan || (Number(d.scan.cooldown) || 0) <= 0));
+            if (ready) drillCall('pulseScan');
+            return ready;
+          },
+          end: (opts) => { drillCall('end', { opts }); return null; },
+          getDrillTier: () => readView.getDrillTier(),
+          getDrillDPS: () => readView.getDrillDPS(),
+          getTargetTelemetry: (col, row) => readView.getTargetTelemetry(col, row),
+          isHazardRevealed: (col, row) => readView.isHazardRevealed(col, row),
+          isTileSurveyed: (col, row) => readView.isTileSurveyed(col, row),
+        };
+      }
       case 'missions':
         return {
           name: 'missions',
