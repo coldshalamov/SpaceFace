@@ -53,12 +53,14 @@ test('the results plate offers Take it to the belt and bridges through game:new'
   const { buttons, emitted } = mountResults(BENCH_RESULT);
   const belt = buttons.find((b) => b.textContent === 'Take it to the belt');
   assert.ok(belt, 'the demo results plate carries the belt bridge');
+  const mountEmits = emitted.length; // mount may warm-lead an embark speculation
   belt.click();
-  const events = emitted.map((e) => e.event);
+  const clicks = emitted.slice(mountEmits);
+  const events = clicks.map((e) => e.event);
   assert.deepEqual(events, ['game:over:dismissed', 'game:exitToMenu', 'ui:closeAll', 'game:new']);
   // The ordinary New Game route — the same payload shape the after-action screen emits.
-  assert.equal(emitted[3].payload.name, null);
-  assert.ok(emitted[3].payload.difficulty);
+  assert.equal(clicks[3].payload.name, null);
+  assert.ok(clicks[3].payload.difficulty);
 });
 
 test('the end card fires exactly once per save on a fitted undock', () => {

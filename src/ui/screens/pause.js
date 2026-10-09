@@ -650,6 +650,44 @@ export function capturePhotoPng(source, opts = {}) {
   };
 }
 
+// Async twin of capturePhotoPng for click paths: canvas.toBlob moves the PNG readback
+// + encode off the calling task (toDataURL pays both synchronously), then a FileReader
+// makes the same data URL stampSlotCard expects. Falls back to the sync capture where
+// toBlob/FileReader are unavailable (non-DOM test hosts).
+export function capturePhotoPngAsync(source, opts = {}) {
+  const kind = opts.kind || PHOTO_STORE_KIND;
+  if (!source || typeof source.toBlob !== 'function' || typeof FileReader !== 'function') {
+    return Promise.resolve(capturePhotoPng(source, opts));
+  }
+  const filename = photoCaptureFilename(kind);
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (result) => { if (!settled) { settled = true; resolve(result); } };
+    try {
+      source.toBlob((blob) => {
+        if (!blob) {
+          done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename });
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = typeof reader.result === 'string' ? reader.result : null;
+          if (!dataUrl || dataUrl.indexOf('data:image/png') !== 0) {
+            done({ ok: false, reason: 'not-png', mime: 'image/png', filename });
+            return;
+          }
+          done({ ok: true, mime: 'image/png', dataUrl, filename, kind });
+        };
+        reader.onerror = () => done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename });
+        try { reader.readAsDataURL(blob); }
+        catch { done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename }); }
+      }, 'image/png');
+    } catch {
+      done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename });
+    }
+  });
+}
+
 export function writePhotoCapture(capture, host = globalThis) {
   if (!capture || capture.ok === false || !capture.dataUrl) {
     return { ok: false, reason: (capture && capture.reason) || 'no-image' };

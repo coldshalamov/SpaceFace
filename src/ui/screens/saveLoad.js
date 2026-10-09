@@ -29,7 +29,7 @@ import { createSaveFilmstrip } from '../orrery/saveFilmstrip.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { hullPosterUrl } from '../hullPosters.js';
-import { capturePhotoPng } from './pause.js';
+import { capturePhotoPngAsync } from './pause.js';
 import {
   backupKeptLine,
   importDestination,
@@ -1396,7 +1396,9 @@ export const saveLoadScreen = {
       let thumbnailSource;
       if (!presenting && typeof document !== 'undefined' && typeof document.querySelector === 'function') {
         const canvas = document.querySelector('canvas');
-        const shot = capturePhotoPng(canvas);
+        // toBlob twin — the PNG readback+encode rides the browser's async path
+        // instead of toDataURL's synchronous block on this click task.
+        const shot = await capturePhotoPngAsync(canvas);
         if (shot && shot.ok) {
           thumbnail = shot.dataUrl;
           thumbnailSource = canvas;
@@ -1445,14 +1447,17 @@ export const saveLoadScreen = {
     }
   },
 
-  _export(ctx) {
+  async _export(ctx) {
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     const slots = readSlots(ctx);
     const slot = exportSlotChoice(ctx, slots);
     let blobText = null;
     if (!slot) { ctx.bus.emit('toast', { text: 'Nothing to export', kind: 'warn', ttl: 2500 }); return; }
     if (refs) refs.selected = slot;
-    if (sys && typeof sys.exportSlot === 'function') {
+    if (sys && typeof sys.exportSlotAsync === 'function') {
+      try { blobText = await sys.exportSlotAsync(slot); } catch (e) { blobText = null; }
+      if (blobText) { this._render(ctx); return; }
+    } else if (sys && typeof sys.exportSlot === 'function') {
       try { blobText = sys.exportSlot(slot); } catch (e) { blobText = null; }
       if (blobText) { this._render(ctx); return; }
     }

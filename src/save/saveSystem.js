@@ -291,6 +291,7 @@ export const save = {
     this._autosaveGeneration = 0;      // invalidates stale worker/task completions
     this._runEpoch = 0;                // invalidates every stage when a new run starts
     this._activeAutosaveJob = null;    // terminal receipt owner before the transaction starts
+    this._activePacedSave = null;      // in-flight saveAsync job; a new paced write supersedes it
     this._activeAutosaveTransaction = null; // cleanup owner; survives run/generation invalidation
     this._activeSaveWorkers = new Set();
     this._saveWorkerRequestId = 0;
@@ -323,7 +324,11 @@ export const save = {
         });
         return false;
       }
-      return this.save((p && p.slot) || 'quick', {
+      // Paced twin: while the sim sits at a frozen boundary (pause/dock/stacked
+      // screen — where this emit fires) the serialize→write chain runs across
+      // scheduled hops instead of one brick inside this emit. Live flight falls
+      // back to the documented one-task coherent capture inside saveAsync.
+      return this.saveAsync((p && p.slot) || 'quick', {
         reason: 'manual',
         label: p && p.label,
         thumbnail: p && p.thumbnail,
@@ -463,7 +468,7 @@ export const save = {
     // to stop playing. This listener runs BEFORE main.js flips state.mode to 'menu' (systems
     // register during init, main's handler is installed after), and it writes synchronously
     // through save(), so the bytes are durable before the screen changes.
-    bus.on('game:exitToMenu', () => this.requestExitAutosave());
+    bus.on('game:exitToMenu', () => this.requestExitAutosave({ paced: true }));
     // PRO-06, second route: closing the tab or quitting the window is the same data loss by a
     // different door. main.js's beforeunload tears the runtime down and writes nothing, so a player
     // who alt-tabs out and closes the window loses the session exactly as quitting to the menu
@@ -1411,6 +1416,207 @@ export const save = {
     }
   },
 
+  /**
+   * Paced twin of save() for the emit-driven writes (game:save, exit-to-menu): the same
+   * guards, receipts, boundary markers and durable write, but the chain runs across
+   * _scheduleAutosaveWork hops instead of as one multi-hundred-ms task inside the emit.
+   *
+   * Only legal while `_frozenTickBoundary()` holds — pause/dock/stacked surfaces — where
+   * `_serializeDataFrozenAsync` can slice the O(world) capture coherently (an unfreeze
+   * retakes atomically). A live-flight save takes the documented one-task coherent
+   * capture on the sync lane, so this defers to save() outright when unfrozen.
+   *
+   * Overlapping paced writes supersede: a new job marks the in-flight one, which aborts
+   * at its next hop with a 'superseded' receipt (a cancellation — the slot keeps its
+   * previous generation and the newer snapshot still lands).
+   */
+  saveAsync(slot, options = {}) {
+    if (this._campaignSaveSuppressed()) return Promise.resolve(false);
+    slot = slot || 'quick';
+    const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
+    const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
+    const started = nowMs();
+    if (this._restoring) {
+      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'restoring' });
+      this._recordSaveTiming(timing);
+      this._emitSaveTimingError(timing);
+      return Promise.resolve(false);
+    }
+    if (!autosave && this._autosavePending) this._autosavePending = null;
+    if (!this._hasPlayerEntity()) {
+      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
+      this._recordSaveTiming(timing);
+      this._emitSaveTimingError(timing);
+      return Promise.resolve(false);
+    }
+    // Live sim: the chunked walk can't stay coherent across yields, so the documented
+    // one-task coherent capture still owns this lane.
+    if (!this._frozenTickBoundary()) return Promise.resolve(this.save(slot, options));
+
+    const job = { slot, reason, autosave, started, superseded: false, runEpoch: this._runEpoch };
+    if (this._activePacedSave) this._activePacedSave.superseded = true;
+    this._activePacedSave = job;
+    this.bus.emit('save:started', { slot, reason, autosave });
+    this._noteWritePending(slot, reason, autosave);
+    beginFocusLossSaveWrite(this.state);
+    const snapshotBoundary = this._captureSaveSnapshotBoundary();
+    const chain = this._runPacedSaveChain(job, options, snapshotBoundary);
+    // Exposed so callers/tests that need the write's settlement can await it —
+    // the emit-driven routes deliberately ignore it (the receipts carry the outcome).
+    job.promise = chain;
+    return chain;
+  },
+
+  async _runPacedSaveChain(job, options, snapshotBoundary) {
+    const { slot, reason, autosave, started } = job;
+    // The serialized realm is captured once — init()/run teardowns rebind this.state
+    // and this.bus, and the chain must keep reading the state it snapshotted.
+    const state = this.state;
+    const samples = [];
+    const hop = () => new Promise((resolve) => { this._scheduleAutosaveWork(resolve); });
+    const abortReason = () => (
+      job.superseded ? 'superseded'
+        : (this._restoring ? 'restoring'
+        : (job.runEpoch !== this._runEpoch ? 'stale' : null))
+    );
+    const fail = (failure, write = null, extra = {}) => {
+      // A stale-epoch abort owes no receipt: the realm that heard save:started is
+      // already torn down — the new session must not inherit a save:error it never made.
+      if (failure === 'stale') return false;
+      const timing = this._saveTiming({
+        slot, reason, autosave, started, ok: false, failure,
+        blockingSamples: samples.length ? samples : null,
+        ...extra,
+      });
+      this._publishSaveResult(slot, null, write || { ok: false, reason: failure }, timing);
+      // The superseding job already re-emitted save:started/_noteWritePending — the
+      // aborted chain's terminal receipt must not leave the durable pending row cleared.
+      if (failure === 'superseded' && this._activePacedSave && this._activePacedSave !== job) {
+        const active = this._activePacedSave;
+        this._noteWritePending(active.slot, active.reason, active.autosave);
+      }
+      return false;
+    };
+    try {
+      // Serialize — sliced while the frozen boundary holds; an unfreeze retakes
+      // atomically inside _serializeDataFrozenAsync before it can mix ticks.
+      let t = nowMs();
+      let data;
+      try {
+        data = await this._serializeDataFrozenAsync();
+      } catch (err) {
+        // A torn-down realm fails the same way a corrupt one does — stale wins.
+        const rr = abortReason();
+        if (rr) return fail(rr);
+        console.error('[save] serialize failed', err);
+        return fail('serialize_failed');
+      }
+      let r = abortReason();
+      if (r) return fail(r);
+      samples.push({ phase: 'serialize', ms: nowMs() - t });
+      const serializeMs = nowMs() - t;
+
+      // Envelope head — mirror serialize(): the data payload needs a stringify+hash
+      // pass for the checksum; the card stamp reads the index prior.
+      t = nowMs();
+      let envelope;
+      try {
+        const dataJson = safeStringify(data);
+        envelope = {
+          fmt: FMT,
+          version: CURRENT_VERSION,
+          savedAt: new Date().toISOString(),
+          playtimeS: Math.floor(state.meta.playtimeS || 0),
+          slot,
+          checksum: fnv1a(dataJson),
+          data,
+        };
+        const prior = this._readIndex()[slot] || {};
+        stampSlotCard(envelope, options, prior);
+      } catch (err) {
+        const rr = abortReason();
+        if (rr) return fail(rr);
+        console.error('[save] serialize failed', err);
+        return fail('serialize_failed');
+      }
+      samples.push({ phase: 'envelope', ms: nowMs() - t });
+
+      await hop();
+      r = abortReason();
+      if (r) return fail(r);
+
+      // Preflight bound-walk + envelope stringify — one bounded task (a JSON.stringify
+      // cannot slice further), exact same verdict/reasons as _writeSlot's json lane.
+      t = nowMs();
+      const bound = preflightSaveImport(envelope);
+      if (!bound.ok) {
+        return fail(bound.reason, { ok: false, reason: bound.reason, limit: bound.limit, actual: bound.actual, bytes: 0 });
+      }
+      let json = null;
+      try { json = JSON.stringify(envelope); }
+      catch (err) { return fail('stringify_failed', { ok: false, reason: 'stringify_failed', bytes: 0 }); }
+      if (json.length > SAVE_WRITE_MAX_BYTES) {
+        return fail('save_size_limit', { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: json.length, bytes: 0 });
+      }
+      samples.push({ phase: 'stringify', ms: nowMs() - t });
+      const stringifyMs = nowMs() - t;
+
+      await hop();
+      r = abortReason();
+      if (r) return fail(r);
+
+      // Previous generation — read + paced prepare, so _writeSlot's rotation consults
+      // caller-supplied verdicts and pays no whole-ledger sync prepare.
+      t = nowMs();
+      let previousRaw = null;
+      let previousPrepared = null;
+      try { previousRaw = localStorage.getItem(LS_PREFIX + slot); }
+      catch (err) { return fail('read_failed', { ok: false, reason: 'read_failed', bytes: json.length }); }
+      if (previousRaw) {
+        previousPrepared = this._cachedPreparedEnvelope(previousRaw)
+          || await this._prepareEnvelopeStringAsync(previousRaw).catch(() => null);
+        if (previousPrepared) this._rememberPreparedEnvelope(previousRaw, previousPrepared);
+      }
+      r = abortReason();
+      if (r) return fail(r);
+      samples.push({ phase: 'verify-previous', ms: nowMs() - t });
+
+      await hop();
+      r = abortReason();
+      if (r) return fail(r);
+
+      // Storage leg — atomic platform I/O: rotate, setItem ladder, read-back verify, index.
+      t = nowMs();
+      const write = this._writeSlot(slot, envelope, { json, previousRaw, previousPrepared });
+      const writeMs = nowMs() - t;
+      samples.push({ phase: 'write', ms: writeMs });
+
+      const timing = this._saveTiming({
+        slot,
+        reason,
+        autosave,
+        started,
+        serializeMs,
+        writeMs,
+        stringifyMs: write.stringifyMs || stringifyMs,
+        storageMs: write.storageMs,
+        indexMs: write.indexMs,
+        bytes: write.bytes,
+        ok: !!write.ok,
+        failure: write.reason && write.verifyReason
+          ? `${write.reason}:${write.verifyReason}${Number.isFinite(write.verifyActual) ? `(${write.verifyActual}>${write.verifyLimit})` : ''}`
+          : write.reason || null,
+        blockingSamples: samples,
+      });
+      const ok = this._publishSaveResult(slot, envelope, write, timing);
+      if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
+      return ok;
+    } finally {
+      endFocusLossSaveWrite(state);
+      if (this._activePacedSave === job) this._activePacedSave = null;
+    }
+  },
+
   _writeSlot(slot, envelope, options = {}) {
     if (typeof localStorage === 'undefined') {
       return { ok: false, reason: 'no_storage', bytes: 0, stringifyMs: 0, storageMs: 0, indexMs: 0 };
@@ -1766,7 +1972,7 @@ export const save = {
   // handler sees the settled result rather than a stale pending row.
   _emitSaveTimingError(timing) {
     this._noteWriteOutcome(timing && timing.slot, timing);
-    this.bus.emit('save:error', timing);
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('save:error', timing);
   },
 
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
@@ -2452,9 +2658,13 @@ export const save = {
    * is in when they pick "back to main menu" from the pause screen (mode 'paused'). Routing the
    * exit through it would have reproduced the bug it is meant to fix.
    *
-   * So this writes synchronously via save(), which is the same verified write the manual-save
-   * button uses: serialize → stringify → write → read-back verify, with the previous generation
-   * kept as the recovery copy. The player's last minute is durable before the menu paints.
+   * So this writes via the same verified path the manual-save button uses: serialize →
+   * stringify → write → read-back verify, with the previous generation kept as the
+   * recovery copy. The in-app exit emit passes `paced: true` — the frozen pause boundary
+   * lets saveAsync slice the chain across scheduled hops so the menu transition paints
+   * between legs; the unload flush (`pagehide`/`beforeunload`) deliberately stays
+   * synchronous because a paced chain may never run its hops before the process dies.
+   * The player's last minute is durable before the menu paints either way.
    *
    * Gates, each of which is a real state this can be called from:
    *  - an arena run is ephemeral by contract (PQ-133 ruling 2) and must never reach a campaign slot;
@@ -2462,7 +2672,7 @@ export const save = {
    *  - dead or mid-jump the live world is not a truthful snapshot of a moment worth keeping —
    *    requestAutosave already refuses both, and this must not be the loophole that doesn't.
    */
-  requestExitAutosave() {
+  requestExitAutosave(options = {}) {
     if (this._campaignSaveSuppressed()) return false;
     if (this._restoring) return false;
     const state = this.state;
@@ -2478,7 +2688,9 @@ export const save = {
     // callback carries the stale token and becomes a no-op, same as the manual-save supersede.
     if (this._autosavePending) this._autosavePending = null;
 
-    return this.save(AUTOSAVE_SLOT, { reason: 'exit_to_menu' });
+    return options.paced === true
+      ? this.saveAsync(AUTOSAVE_SLOT, { reason: 'exit_to_menu' })
+      : this.save(AUTOSAVE_SLOT, { reason: 'exit_to_menu' });
   },
 
   /** Debounced autosave to slot 'auto'. Never mid-jump, never while restoring / dead / not flying. */
@@ -2957,6 +3169,7 @@ export const save = {
     this._cancelCeresEntityReferenceRestore();
     this._cancelCeresAttachmentRestore();
     this._cancelActiveAutosave('superseded');
+    if (this._activePacedSave) this._activePacedSave.superseded = true;
     const current = Number.isSafeInteger(this._runEpoch) ? this._runEpoch : 0;
     this._runEpoch = current + 1;
     this._autosaveGeneration = (Number.isSafeInteger(this._autosaveGeneration)
@@ -6304,11 +6517,13 @@ export const save = {
     slot = slot || this.state.save.currentSlot || 'quick';
     let json = null;
     try { json = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; } catch (e) {}
-    const primary = this._prepareEnvelopeString(json);
+    // Proven-envelope FIFO consult first: generations this process already wrote
+    // or verified answer O(1); a miss pays the whole-ledger prepare as before.
+    const primary = this._cachedPreparedEnvelope(json) || this._prepareEnvelopeString(json);
     if (!primary.ok) {
       let recovery = null;
       try { recovery = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; } catch (e) {}
-      const preparedRecovery = this._prepareEnvelopeString(recovery);
+      const preparedRecovery = this._cachedPreparedEnvelope(recovery) || this._prepareEnvelopeString(recovery);
       if (preparedRecovery.ok) {
         json = recovery;
         this.bus.emit('save:exportRecovery', {
@@ -6321,6 +6536,37 @@ export const save = {
         json = null;
       }
     }
+    return this._finishExportJson(json, slot);
+  },
+
+  /** Async twin of exportSlot for the UI path: memo consult first, paced prepare on miss. */
+  async exportSlotAsync(slot) {
+    slot = slot || this.state.save.currentSlot || 'quick';
+    let json = null;
+    try { json = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; } catch (e) {}
+    const primary = this._cachedPreparedEnvelope(json)
+      || await this._prepareEnvelopeStringAsync(json).catch(() => ({ ok: false, reason: 'load_failed' }));
+    if (!primary.ok) {
+      let recovery = null;
+      try { recovery = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; } catch (e) {}
+      const preparedRecovery = this._cachedPreparedEnvelope(recovery)
+        || await this._prepareEnvelopeStringAsync(recovery).catch(() => ({ ok: false, reason: 'load_failed' }));
+      if (preparedRecovery && preparedRecovery.ok) {
+        json = recovery;
+        this.bus.emit('save:exportRecovery', {
+          slot,
+          source: 'previous_generation',
+          failedReason: primary && primary.reason,
+          recoveredSavedAt: preparedRecovery.env.savedAt || null,
+        });
+      } else {
+        json = null;
+      }
+    }
+    return this._finishExportJson(json, slot);
+  },
+
+  _finishExportJson(json, slot) {
     if (!json) { try { json = JSON.stringify(this.serialize(slot)); } catch (e) { json = null; } }
     if (!json) { this.bus.emit('save:error', { slot, reason: 'export_failed' }); return null; }
     // FB-104 — the file is the transport for a machine move, so the profile side bags ride
