@@ -422,15 +422,21 @@ export const gyreSnare = {
         const pub = this._ensurePub(st);
         pub.corePos.x = torn.pos.x; pub.corePos.z = torn.pos.z;
       }
-    } else if (!wasOff && reason === 'released' && emitId != null) {
-      // A polite release earns no whip — but the freed clump still drifts off on
-      // its last orbit velocity, so the rubble follows its live track for the
-      // same ~0.5 s window ('the lash let the ball go') instead of deflating at
-      // the maw while the real body plainly floats away. No snap, no tear dir.
+    } else if (!wasOff && !boundary && emitId != null) {
+      // Every OTHER non-boundary free of a live clump — player_docked, not_flight,
+      // player_lost, cap_dry, core_adopted, and the harness's own released call —
+      // earns the same ~0.5 s follow: the rubble rides the freed body's drift
+      // ('the lash let the ball go') instead of deflating at the maw while the
+      // real body plainly floats away. No snap, no whip dir — those are the
+      // tear's own. The alive-gate rejects gone cores ('core_lost' never follows).
       const st = this.state;
       const torn = st && st.entities ? st.entities.get(emitId) : null;
       if (torn && torn.alive !== false && torn.pos) {
         rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S), dir: null };
+        // Same-tick bloom freshness, like the tear lane: last tick's published
+        // spot is stale by up to a step of the freed body's drift.
+        const pub = this._ensurePub(st);
+        pub.corePos.x = torn.pos.x; pub.corePos.z = torn.pos.z;
       }
     }
     if (this.bus && !wasOff) {
@@ -1702,7 +1708,7 @@ export const gyreSnare = {
     // adoption hand-back can restore them — symmetric with the drop contract; a boundary
     // sweep drops them as old-timeline residue.
     core.data.gyreLaunched = true;
-    core.data.despawnAt = (Number.isFinite(state.simTime) ? state.simTime : 0) + D.ballTtlS;
+    core.data.despawnAt = (Number.isFinite(state.simTime) ? state.simTime : state.tick / 60) + D.ballTtlS;
     recordImpulseProvenance(core, {
       actorId: state.playerId,
       weaponId: WEAPON_ID,

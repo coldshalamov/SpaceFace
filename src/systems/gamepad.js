@@ -835,8 +835,8 @@ export function createGamepad(ctx) {
   let pulseGapTicks = 0;
   let pulseSpec = null;
   // `gp` is declared below; listeners can only fire after createGamepad returns it.
-  const startPulse = (spec, event) => {
-    if (!spec || pulseGapTicks > 0) return false; // ≤ one pulse per ~80 ms, by sim ticks
+  const startPulse = (spec, event, force) => {
+    if (!spec || (!force && pulseGapTicks > 0)) return false; // ≤ one pulse per ~80 ms, by sim ticks
     pulseSpec = { strong: spec.strong, weak: spec.weak };
     pulseTicks = Math.max(1, Math.round((Number(spec.ms) || 60) * 60 / 1000));
     pulseGapTicks = HAPTIC_PULSE_MIN_GAP_TICKS;
@@ -896,7 +896,12 @@ export function createGamepad(ctx) {
       // file (this layer intentionally carries no data imports).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
       const base = HAPTIC_VERB_PULSES['gyre:thrown'];
-      startPulse({ strong: base.strong - 0.35 + 0.35 * t, weak: base.weak - 0.2 + 0.2 * t, ms: base.ms + 60 * t }, 'gyre:thrown');
+      // Priority beat: the per-tick windup emits re-arm the 5-tick min-gap on
+      // every coil, so a launch landing inside the window swallowed the throw —
+      // the biggest beat in the pad vocabulary eaten on every real launch.
+      // Forced admission replaces the in-flight windup pulse like the audio
+      // twin's own layer cut (same class as gyre:launched's gap fix).
+      startPulse({ strong: base.strong - 0.35 + 0.35 * t, weak: base.weak - 0.2 + 0.2 * t, ms: base.ms + 60 * t }, 'gyre:thrown', true);
     });
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
     bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));

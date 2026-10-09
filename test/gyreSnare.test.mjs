@@ -3476,7 +3476,22 @@ test('a strain break publishes the torn core\'s last ~0.5 s — the close flies 
     'tornPos tracks the released body\'s live pos');
   for (let i = 0; i < 40; i++) t2.sim.step();
   assert.equal(t2.state.gyreSnare.tornId, null, 'the released follow also releases after ~0.5 s');
-  t.cleanup(); t2.cleanup();
+  // The production path: mode-flip mid-hold drops 'not_flight' internally —
+  // the widened lane covers every non-boundary free of a live clump, not just
+  // the harness's released call (BEAM releases carry no core to follow).
+  const t3 = await bootPhysics();
+  const body3 = rock(t3.sim, T.mawDist, 0, 6, 4);
+  hold(t3);
+  for (let i = 0; i < 8; i++) { t3.state.input.actions.gyreSnare = true; t3.sim.step(); }
+  assert.equal(t3.sys._rt.phase, 'holding');
+  t3.state.mode = 'docked';
+  t3.state.input.actions.gyreSnare = false; t3.sim.step();
+  assert.equal(t3.state.gyreSnare.tornId, body3.id,
+    'a production mid-hold close publishes the freed core\'s track');
+  assert.equal(t3.state.gyreSnare.dropReason, 'not_flight');
+  assert.ok(Math.hypot(t3.state.gyreSnare.tornDir.x, t3.state.gyreSnare.tornDir.z) < 1e-9,
+    'a polite production close carries no whip direction');
+  t.cleanup(); t2.cleanup(); t3.cleanup();
 });
 
 test('a fieldResponseMult-0 body shrugs the basin coupling off entirely', () => {

@@ -333,6 +333,17 @@ test('gyre vocabulary routes through the pulse table — torn/dropped/droppedEmp
   assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, tb.strong - 0.35, 'pebble throw cracks lighter');
   assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, tb.weak - 0.2, 'pebble throw weak channel');
 
+  // The throw is a priority beat: the per-tick windup emits re-arm the 5-tick
+  // gap on every coil, so a launch inside the window must still land — it
+  // replaces the in-flight windup pulse, not queue behind it.
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:windup', { mass: 2400 });
+  step(gp, state); // windup lands, gap now armed
+  bus.emit('gyre:thrown', { mass: 2400 });
+  step(gp, state);
+  assert.equal(gp._lastVerbPulse, 'gyre:thrown', 'the throw owns a pulse inside the windup gap');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, tb.strong, 'capped throw at full crack');
+
   // Boundary/quiet drops are context resets — silence, and the live pulse is untouched.
   const last = gp._lastVerbPulse;
   bus.emit('gyre:dropped', { quiet: true, coreId: 7 });
