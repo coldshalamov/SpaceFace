@@ -734,6 +734,28 @@ test('a key release behind a live modal defers the bowl to the first visible tic
   t.cleanup();
 });
 
+test('a body parked on snagRadius cannot core behind a live modal', async () => {
+  const t = await bootPhysics();
+  t.state.input.actions.gyreSnare = true;
+  for (let i = 0; i < 15; i++) t.sim.step(); // wake saturates past the 0.7 coring gate
+  assert.equal(t.sys._rt.phase, 'beaming');
+  // input.blocked: the sim still ticks (screenStack suspends wholesale). The
+  // coring edge is a visible commit — gyreCore mark + lifetime stash + snag
+  // cue + shake — so it defers exactly like the absorb merge does: the parked
+  // body keeps being dragged and cores on the first visible tick instead of
+  // half-committing blind behind the screen.
+  t.state.input.blocked = true;
+  const prey = rock(t.sim, T.mawDist, 0, 6, 3);
+  for (let i = 0; i < 15; i++) t.sim.step();
+  assert.equal(t.sys._rt.phase, 'beaming', 'no core behind the modal — only reversible pull lanes run');
+  assert.equal(prey.data.gyreCore, undefined, 'no gyreCore mark committed blind');
+  assert.ok(!t.events.some((e) => e.name === 'gyre:snagged'), 'no snag beat behind the screen');
+  t.state.input.blocked = false;
+  for (let i = 0; i < 15 && t.sys._rt.phase !== 'holding'; i++) t.sim.step();
+  assert.equal(t.sys._rt.phase, 'holding', 'the parked body cores on the first visible tick');
+  t.cleanup();
+});
+
 test('a verb press wholly inside a live modal never wakes the beam — it opens on the first visible tick', async () => {
   const t = await bootPhysics();
   rock(t.sim, T.mawDist, 0, 30, 6);

@@ -460,6 +460,8 @@ test('a pad-held gyre chord survives a screen opening — acts.gyreSnare stays l
     host.update(1 / 60, state);
     assert.equal(state.input.actions.gyreSnare, true,
       'a screen preserves the pad-held chord — zeroing would bowl the clump mid-modal');
+    assert.equal(host._holdToggleEdges.gyreSnare, true,
+      'the still-held pad chord pins the toggle edge — same live-sample rule as the key');
 
     state.ui.screenStack.pop();
     host.update(1 / 60, state);

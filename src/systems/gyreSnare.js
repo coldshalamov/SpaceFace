@@ -2525,7 +2525,11 @@ export const gyreSnare = {
       rt.towCount = 0;
       rt.tooHeavyCount = 0;
       this._pullPass(dt, state, player, maw, nose);
-      this._trySnag(state, maw);
+      // The coring edge is a visible commit — gyreCore mark + lifetime stash +
+      // snag cue + shake — so it defers under a live modal like the absorb
+      // merge does: a body parked on snagRadius keeps being dragged and cores
+      // on the first visible tick instead of half-committing behind the screen.
+      if (!this._modalHeld(state)) this._trySnag(state, maw);
     } else if (rt.phase === PHASE.HOLD) {
       this._holdPass(dt, state, player, maw, nose);
     }
