@@ -2624,6 +2624,6 @@ Wave 127 saturation streaks: lod CLOSED, popin 0/3, boot 0/3, hitches 2/3.
 
 Streak 2/3 — a clean wave closes the lane.
 
-## Regression watch — `pq146-save-roundtrip` open
+## Regression watch — `pq146-save-roundtrip` adjudicated: NOT a campaign regression
 
-"a save after the first payoff keeps the amendment window: the wingman collision amends the saved incident and a replay pays nothing" — green on clean master, red at `165636c35` with or without W128 edits → landed in W120–W127 on this branch (save-path suspects: W121 chunked restore twins, W124/W126 shared-store changes). Bisect running; not a W128 gate since HEAD carries it already, but it is a real campaign regression — will pin the commit and either fix here or hand to the skeptic lane.
+Bisected W120–W127: merge base `e261ae275` is itself bad — the failure predates the branch. The fix lives on master as `0b5608be1 fix(save): retain combat state for pending stunt bodies`, landed after this branch diverged. pq146 goes green on merge; no action needed here. Full sweep adjudication for W128: pq136/cargo-capsule/save-growth-dock canon on clean master, retail-gltfloader a parallel-run flake (green solo both branches), pq146 = upstream-fix-pending.
