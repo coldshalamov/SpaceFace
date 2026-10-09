@@ -2449,7 +2449,7 @@ Saturation: lod + hitches `saturated: true` (2 of 6 lanes this wave; streak 1/3 
 
 ### in-flight-hitches — `saturated: false` (F1+F3 landed `a7151dcaf`)
 
-### s1-spike mining — auditing (`de15ce60`)
+### s1-spike mining — report landed (`279fcb99f`, VERDICT: proceed-with-changes)
 
 - **hitches F1 (S-M, MECHANISM_VERIFIED) — the self-owned audio rAF tick ran ~25 subsystem calls inside the presented frame's rAF task**: the last unbudgeted per-frame work in a presented frame; the body now dispatches through postTaskAtBackgroundPriorityBounded while the rAF tick keeps only the guard + re-arm. audio-lifecycle seam modernized to the async contract (same assertions after a macrotask flush).
 - **hitches F3 (S, MECHANISM_VERIFIED) — stormWarn kept the flat 1s heartbeat its laneWarn/warnDedup siblings shed**: ported the sibling contract verbatim — 1s→30s backing-off heartbeat + 60s quiet-gap heal (was ~N warns/s forever, no heal path).
@@ -2459,4 +2459,15 @@ Saturation: lod + hitches `saturated: true` (2 of 6 lanes this wave; streak 1/3 
 
 ### s1-spike mining — auditing (`de15ce60`)
 
+- **s1-spike checklist**: merge-behind-flag today is adoption-ready (dormant without `?simLane`); default flip needs (i) cargo:jettison rpc fix + facade-miss gate (52 render-only + 8 intent folds + 5 dead classified acceptable, 1 dead-feature blocker) and (ii) wire envelopes on SAB (measured: p95 0.85ms is platform wake latency — Atomics hop p95 0.099ms → predicted transport ~0.15ms < 0.5ms gate). Conflict map: 172 overlap / 22 real conflicts — tier-1 partsLibrary 13, saveSystem 3, main 5, renderer 7, world 4, asteroidField 4; index.html+modelTruthCensus regenerate. Electron: SAB unblocked (gameServer COOP+COEP), ?simLane needs ~10-line URL hook. Stages A-E ≈4-5.5 sessions. Stage A rebase started — every wave touching tier-1 files widens the conflict surface.
+
 Saturation: 1 of 4 reporting lanes (streak 2/3 by wave verdict).
+
+## Wave 123 (in progress — HEAD b16d2730a)
+
+- **lod-in-frame**: saturated → **LANE CLOSED** (3rd consecutive; first lane to close under the evidence contract). W122 machinery verified in code end-to-end; the shadow-map whole-scene walk residual was already covered by _shadowCasterRegistry (vendored, since 713dc74ed). Sole material B1 residual: vendored-three projectObject render-list construction — O(mounted-nodes) per render pass, 1× native+bloom / 2× graph+AO per frame; flat renderable-leaf registry lever sketched (same shape as _shadowCasterRegistry; effort L, impact M, risk M-H — deferred as vendor-patch territory, hardware-unverified benefit).
+- **popin-admission**: auditing (92bf99c2)
+- **boot-loading / in-flight-hitches**: queued on SWE-2 cap
+
+Wave 123 saturation streaks: lod CLOSED (3/3).
+

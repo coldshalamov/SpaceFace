@@ -58,11 +58,11 @@
   ]
  },
  "worstRemainingBottlenecks": {
-  "asOf": "wave 122",
+  "asOf": "wave 122 + s1 checklist",
   "ranked": [
+   "s1-sim-worker-spike Stage A rebase in progress — 22 conflicts measured via merge-tree (tier1: partsLibrary 13 / saveSystem 3 / main 5 / renderer 7 / world 4 / asteroidField 4), dormant-behind-flag merge",
    "owner-hardware verification gap — every optimization since wave 1 is MECHANISM_VERIFIED; real-GPU frame-time benefit unmeasured on this box",
-   "s1-sim-worker-spike adoption — SHIP-proven golden bit-identical; adoption checklist mining lane this wave (postMessage p95, Electron ?simLane, ~67 unforwarded event types)",
-   "presentation floor — B1/B3/B6/B7 from the W121 blind global remain scoped-not-implemented (whole-scene traversals, sim-atomic bursts, unbudgeted audio rAF, physics FFI spans)",
+   "presentation floor — B1/B3/B7 from W121 blind global remain scoped-not-implemented (whole-scene traversals, sim-atomic bursts incl. econTick 3.9ms-p95 measured, physics FFI spans)",
    "first-frame shader link set (draw-time misses) — 36 on owner hardware at campaign start; cloud box cannot re-measure"
   ]
  },
@@ -246,7 +246,7 @@
   },
   {
    "wave": 122,
-   "head": "a7151dcaf",
+   "head": "b16d2730a",
    "lanes": {
     "lod-in-frame": {
      "saturated": true,
@@ -284,14 +284,34 @@
     },
     "s1-spike-mining": {
      "saturated": null,
-     "findings": null,
-     "landed": null,
+     "findings": 7,
+     "landed": 0,
      "commits": [],
-     "headline": "auditing (de15ce60)"
+     "headline": "VERDICT proceed-with-changes (~4-5.5 sessions): 22 real conflicts/172 overlap (partsLibrary 13 hunks tier-1); cargo:jettison dead-feature blocker under ?simLane (~30-line rpc); 67 unforwarded classified (52 render-only + 8 intent folds + 5 dead + 1 blocker); p95 0.85ms = wake latency not clone size — SAB Atomics envelope predicted ~0.15ms; Electron SAB already unblocked via COOP/COEP headers, needs ~10-line ?simLane URL hook; staged plan A merge-behind-flag → B dead-feature sweep → C SAB envelopes → D Electron → E default flip"
     }
    },
    "evidence": "all CPU-scope mechanism verification on this box; GPU/frame-time benefit hardware-unverified per environment declaration",
    "verdict": "kept"
+  },
+  {
+   "wave": 123,
+   "head": "b16d2730a",
+   "lanes": {
+    "lod-in-frame": {
+     "saturated": true,
+     "streak": 3,
+     "findings": 1,
+     "landed": 0,
+     "commits": [],
+     "headline": "LANE CLOSED — 3rd consecutive saturated. All W122 machinery verified in code; shadow-map walk residual removed (covered by _shadowCasterRegistry since 713dc74ed). Sole material B1 residual: vendored-three projectObject render-list walk (O(mounted-nodes) × 1-2 passes/frame, hardware-unverified); flat renderable-leaf registry lever sketched (effort L, impact M, risk M-H — vendor-patch)."
+    }
+   },
+   "verdicts": [
+    "lod-in-frame: LANE CLOSED (3rd consecutive saturated)"
+   ]
   }
- ]
+ ],
+ "laneStatus": {
+  "lod-in-frame": "closed@w123 (3 consecutive saturated)"
+ }
 }
