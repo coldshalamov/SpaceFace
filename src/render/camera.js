@@ -1616,6 +1616,12 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       this.pushZoom(DEATH_CAM_PUSH_ZOOM, DEATH_CAM_HOLD_S);
     },
     isDeathCam() { return _deathCam; },
+    // PQ-159.02: the death cam belongs to one death. A new life ends it so the next flight frames normally.
+    endDeathCam() {
+      if (!_deathCam) return;
+      _deathCam = false;
+      _holdT = 0;
+    },
     // FR-5: ease the camera back to a player-centered pose over durS after a boost-release or a
     // tether slingshot, instead of letting the sudden velocity change snap the lookahead. Respects
     // motionReduce (shortened). Cruise-drop settle stays owned by its own spec2/02 §1 path.
