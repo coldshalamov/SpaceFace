@@ -481,6 +481,37 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     pruneLines(now);
   }
 
+  function dismissLine(key, fallbackName = '') {
+    let name = fallbackName;
+    // Opposite statuses consume each other. Clear onset memory even after their
+    // transient line faded, so a fresh application remains audible.
+    for (const statusId of heardStatuses.keys()) {
+      const line = statusPayoffLine(statusId);
+      if (line?.key !== key) continue;
+      name = line.name;
+      heardStatuses.delete(statusId);
+    }
+    const entry = key != null ? lineNodes.get(key) : null;
+    if (entry) {
+      name = entry.name && entry.name.textContent || name;
+      if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
+      lineNodes.delete(key);
+    }
+    // The live region still has the sentence speak() wrote. Dropping the line
+    // without rewriting it leaves a screen reader on a status the hull no longer wears.
+    if (!name || !spoken || spoken.indexOf(name.toLowerCase()) < 0) return;
+    const bits = [];
+    for (const left of lineNodes.values()) {
+      const n = left.name && left.name.textContent || '';
+      const p = left.pts && left.pts.textContent || '';
+      const bit = `${n} ${p}`.trim();
+      if (bit) bits.push(bit);
+    }
+    const next = bits.join(' ');
+    spoken = next.toLowerCase();
+    sr.textContent = next;
+  }
+
   function onTrick(trick) {
     if (destroyed) return;
     const st = getState();
@@ -727,17 +758,28 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       if (destroyed) return;
       const st = getState();
       if (!calloutScope(st) || !payload || payload.targetId !== st.playerId) return;
+      const line = statusPayoffLine(payload.statusId);
+      if (!line) return;
+      if (line.clears) {
+        for (let i = 0; i < line.clears.length; i++) dismissLine(line.clears[i]);
+      }
+      const rawStacks = Number(payload.stacks);
+      const stacks = Number.isFinite(rawStacks) ? Math.max(1, Math.floor(rawStacks)) : 1;
       const previous = heardStatuses.get(payload.statusId);
       const tick = Number(st.tick) || 0;
-      heardStatuses.set(payload.statusId, { stacks: payload.stacks || 1,
+      heardStatuses.set(payload.statusId, { stacks,
         expiresTick: Number.isFinite(payload.expiresTick) ? payload.expiresTick : tick + 60 });
       // A refreshed field status is still the same condition. Speak onset and
       // increased severity; never hammer the reading floor once per damage tick.
-      if (previous && previous.expiresTick > tick && previous.stacks >= (payload.stacks || 1)) return;
-      speak(statusPayoffLine(payload.statusId));
+      if (previous && previous.expiresTick > tick && previous.stacks >= stacks) return;
+      const detail = stacks > 1 ? `${line.detail} ×${stacks}` : line.detail;
+      speak(detail === line.detail ? line : { key: line.key, name: line.name, detail });
     }));
     unsubs.push(bus.on('combat:statusExpired', (payload) => {
-      if (payload?.targetId === getState()?.playerId) heardStatuses.delete(payload.statusId);
+      if (destroyed || !payload || payload.targetId !== getState()?.playerId) return;
+      heardStatuses.delete(payload.statusId);
+      const line = statusPayoffLine(payload.statusId);
+      if (line) dismissLine(line.key, line.name);
     }));
     for (const event of ['game:newGame', 'save:loaded']) unsubs.push(bus.on(event, () => {
       heardStatuses.clear();

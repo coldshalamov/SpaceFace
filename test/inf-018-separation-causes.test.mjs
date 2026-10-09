@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createBus } from '../src/core/eventBus.js';
-import { presentationOrchestrator, tetherBreakCueForReason } from '../src/systems/presentationOrchestrator.js';
+import { presentationOrchestrator, tetherBreakCueForReason, tetherBreakCueSourceId } from '../src/systems/presentationOrchestrator.js';
 import { presentationAdapters, PRESENTATION_AUDIO_CUE_BY_ID } from '../src/systems/presentationAdapters.js';
 import { PRESENTATION_RECIPES } from '../src/presentation/cueRecipes.js';
 
@@ -22,8 +22,11 @@ test('INF-018: break reasons route to distinct cause cues', () => {
   for (const reason of ['target_lost', 'controller_lost', 'endpoint_lost']) {
     assert.equal(tetherBreakCueForReason(reason), 'tether.break.endpoint', reason);
   }
-  for (const reason of ['line_broken', 'sector_changed', 'physics_break', 'owner_disabled', 'pilot', null, undefined]) {
+  for (const reason of ['line_broken', 'physics_break', 'owner_disabled', null, undefined]) {
     assert.equal(tetherBreakCueForReason(reason), 'tether.break', String(reason));
+  }
+  for (const reason of ['sector_changed', 'sector_exit', 'flight_exit', 'controller_unavailable', 'accepted', 'pilot', 'tether_cut']) {
+    assert.equal(tetherBreakCueForReason(reason), null, String(reason));
   }
 });
 
@@ -68,10 +71,49 @@ test('INF-018: one separation emits one distinguishable alert per cause', () => 
     assert.equal(new Set(Object.values(seen)).size, 4, 'all four causes read differently');
 
     h.state.tick += 11;
-    const quiet = alerts.length;
-    h.bus.emit('tether:broken', { actorId: 1, targetId: 2, attachmentId: 'att_test', reason: 'tether_cut', tension: 5 });
+    const quietHandoff = alerts.length;
+    h.bus.emit('tether:broken', { actorId: 1, ownerId: 1, targetId: 2, attachmentId: 'att_cut', reason: 'tether_cut', tension: 5 });
+    h.bus.emit('tether:broken', { actorId: 1, ownerId: 1, targetId: 2, attachmentId: 'att_hand', reason: 'accepted', tension: 5 });
+    h.bus.emit('tether:broken', { actorId: 1, ownerId: 1, targetId: 2, attachmentId: 'att_bound', reason: 'sector_changed', tension: 5 });
     h.bus.flush();
-    assert.equal(alerts.length, quiet, 'a voluntary cut stays on the release tiers, not the break cue');
+    assert.equal(alerts.length, quietHandoff, 'a handoff or a sector drop is not MASSLINE BROKEN');
+
+    h.state.tick += 11;
+    const beforeSever = alerts.length;
+    h.bus.emit('tether:broken', {
+      actorId: 2, ownerId: 1, targetId: 9, attachmentId: 'att_player', reason: 'monofilament_sweep', tension: 5,
+    });
+    h.bus.flush();
+    assert.equal(alerts.length, beforeSever + 1, 'a hostile cut of the player line still banners');
+    assert.equal(alerts[alerts.length - 1].text, 'LINE SEVERED');
+    assert.equal(tetherBreakCueSourceId(h.state, {
+      actorId: 2, ownerId: 1, targetId: 9, reason: 'monofilament_sweep',
+    }), 1);
+
+    h.state.tick += 11;
+    const beforeNpc = alerts.length;
+    h.bus.emit('tether:broken', {
+      actorId: 1, ownerId: 2, targetId: 9, attachmentId: 'att_npc', reason: 'monofilament_sweep', tension: 5,
+    });
+    h.bus.flush();
+    const npcCue = alerts.slice(beforeNpc).find((a) => a.text === 'LINE SEVERED');
+    assert.equal(tetherBreakCueSourceId(h.state, {
+      actorId: 1, ownerId: 2, targetId: 9, reason: 'monofilament_sweep',
+    }), 2, 'cutting an NPC line does not make the player the source');
+    if (npcCue) assert.notEqual(npcCue.sourceId, 1);
+
+    h.state.tick += 11;
+    const beforeGrade = alerts.length;
+    h.bus.emit('tether:releaseRated', {
+      targetId: 9, sourceId: 1, classification: 'clean', technique: 'swing', deliberate: false,
+    });
+    h.bus.flush();
+    assert.equal(alerts.length, beforeGrade, 'a snap rating must not banner CLEAN CUT');
+    h.bus.emit('tether:releaseRated', {
+      targetId: 9, sourceId: 1, classification: 'clean', technique: 'swing', deliberate: true,
+    });
+    h.bus.flush();
+    assert.equal(alerts[alerts.length - 1].text, 'CLEAN CUT');
 
     const captionTexts = captions.map((c) => c.text);
     assert.ok(captionTexts.some((t) => /overload/i.test(t)), 'overload caption speaks');

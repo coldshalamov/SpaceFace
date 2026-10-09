@@ -1,4 +1,5 @@
-// SFQ-B033 â€” primed, pinned, gooed, tumbling, and burning say their payoff.
+// SFQ-B033 — primed, pinned, gooed, and burning say their payoff.
+// The player hull never keeps a tumble, so that status stays quiet.
 // The combinations already resolve in the status service; this is the glass.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -63,7 +64,7 @@ test('the catalog sentences name the payoff and stay quiet for an unknown status
   assert.equal(statusPayoffLine('status_pinned').name, 'PINNED');
   assert.equal(statusPayoffLine('status_pinned').detail, 'HEAVIER');
   assert.equal(statusPayoffLine('status_goo').name, 'GOOED');
-  assert.equal(statusPayoffLine('status_tumbling').detail, 'NO HELM');
+  assert.equal(statusPayoffLine('status_tumbling'), null);
   assert.equal(statusPayoffLine('status_burning').name, 'BURNING');
   assert.equal(statusPayoffLine('status_scrambled').detail, 'SENSORS + LOCK OFFLINE');
   assert.equal(statusPayoffLine('status_unmoored').name, 'UNMOORED');
@@ -86,10 +87,27 @@ test('the player hull hears the status; an NPC hull stays quiet', () => {
     const text = calloutTextFor(callout.root);
     assert.match(text, /SCRAMBLED/);
     assert.match(text, /SENSORS \+ LOCK OFFLINE/);
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_unmoored', stacks: 1 });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /UNMOORED/);
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_pinned', stacks: 1 });
+    callout.update(0);
+    const pinned = calloutTextFor(callout.root);
+    assert.match(pinned, /PINNED/);
+    assert.match(pinned, /HEAVIER/);
+    assert.doesNotMatch(pinned, /UNMOORED/, 'pinned cancels the unmoored line the way the status does');
     bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_burning', stacks: 2 });
     callout.update(0);
     assert.match(calloutTextFor(callout.root), /BURNING/);
     assert.match(calloutTextFor(callout.root), /HULL TAKING HEAT/);
+    assert.match(calloutTextFor(callout.root), /×2/);
+    bus.emit('combat:statusExpired', { targetId: 2, statusId: 'status_burning' });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /BURNING/, 'another hull expiring does not clear the player');
+    bus.emit('combat:statusExpired', { targetId: 1, statusId: 'status_burning' });
+    callout.update(0);
+    assert.doesNotMatch(calloutTextFor(callout.root), /BURNING/);
+    assert.match(calloutTextFor(callout.root), /SCRAMBLED/);
   } finally { callout.destroy(); }
 });
 
@@ -123,5 +141,47 @@ test('status refresh does not repeat onset; expiry and a new run re-arm it', () 
     bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_scrambled', stacks: 1, expiresTick: 110 });
     callout.update(0);
     assert.match(calloutTextFor(callout.root), /SCRAMBLED/);
+  } finally { callout.destroy(); }
+});
+
+
+test('opposite status cancellation re-arms onset even after the old line faded', () => {
+  const { bus, callout, state } = mount(1);
+  state.tick = 10;
+  try {
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_unmoored', stacks: 1, expiresTick: 100 });
+    callout.update(10000);
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_pinned', stacks: 1, expiresTick: 100 });
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_unmoored', stacks: 1, expiresTick: 100 });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /UNMOORED/);
+    assert.doesNotMatch(calloutTextFor(callout.root), /PINNED/);
+  } finally { callout.destroy(); }
+});
+
+test('status expiry clears the line and live region while a menu hides callouts', () => {
+  const { bus, callout, state } = mount(1);
+  try {
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_goo', stacks: 1, expiresTick: 100 });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /GOOED/);
+    state.mode = 'menu';
+    bus.emit('combat:statusExpired', { targetId: 1, statusId: 'status_goo' });
+    assert.doesNotMatch(calloutTextFor(callout.root), /GOOED/);
+    state.mode = 'flight';
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_goo', stacks: 1, expiresTick: 100 });
+    callout.update(0);
+    assert.match(calloutTextFor(callout.root), /GOOED/);
+  } finally { callout.destroy(); }
+});
+
+test('status expiry clears stale accessible text after its visual line faded', () => {
+  const { bus, callout } = mount(1);
+  try {
+    bus.emit('combat:statusApplied', { targetId: 1, statusId: 'status_burning', stacks: 1, expiresTick: 100 });
+    callout.update(10000);
+    assert.equal(callout.root.hidden, true, 'the transient visual line has faded');
+    bus.emit('combat:statusExpired', { targetId: 1, statusId: 'status_burning' });
+    assert.equal(calloutTextFor(callout.root), '', 'a finished condition cannot remain in the live region');
   } finally { callout.destroy(); }
 });

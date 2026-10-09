@@ -106,14 +106,14 @@ export const presentationOrchestrator = {
         // tetherGameplay publishes the semantic ordinary-release pair. Treating `tether_cut` as a
         // failure here made a normal pilot release fire the full break camera/audio/UI/VFX recipe
         // before the release recoil. Other reasons remain genuine line failures or authored cuts.
-        if (payload && payload.reason === 'tether_cut') return false;
-        // INF-018: one disappearing rope for every cause was the bug. Overload, externally
-        // severed lines, and vanished endpoints each get their own restrained cue; voluntary
-        // releases stay suppressed here because the releaseRated tiers own that moment.
+        // Voluntary cuts and boundary drops are not snaps. tether_cut is the pilot's
+        // release; accepted is a receiver taking the load; the rest is leaving the
+        // line behind (dock, flight exit, sector). They must not banner MASSLINE BROKEN.
         const cueId = tetherBreakCueForReason(payload && payload.reason);
+        if (!cueId) return false;
         return this._emitCue(cueId, payload || {}, {
           sourceEvent: 'tether:broken',
-          sourceId: payload && payload.actorId,
+          sourceId: tetherBreakCueSourceId(this.state, payload),
           targetId: payload && payload.targetId,
           material: 'massline',
           magnitude: Math.max(1, Number(payload && payload.tension) || 0, Number(payload && payload.impulse) || 0),
@@ -1447,7 +1447,10 @@ export const presentationOrchestrator = {
   },
 
   _onReleaseRated(payload) {
-    const cueId = RELEASE_CUE_BY_CLASSIFICATION[payload && payload.classification];
+    // A snap and a lost target also emit a rating, with deliberate false. Those are
+    // failures. Only a cut the pilot chose wears CLEAN CUT / RAZOR CUT.
+    if (!payload || payload.deliberate !== true) return;
+    const cueId = RELEASE_CUE_BY_CLASSIFICATION[payload.classification];
     // "messy" maps to undefined → no recipe → _emitCue suppresses via missing_recipe, so messy
     // releases get no premium feedback, exactly as Prompt 03 requires.
     if (!cueId) return;
@@ -1752,12 +1755,12 @@ const RELEASE_CUE_BY_CLASSIFICATION = Object.freeze({
   razor: 'tether.release.razor',
 });
 
-// INF-018 — break-reason → presentation cue. Voluntary releases (`tether_cut`) stay
-// suppressed at the call site because the releaseRated tiers own that moment; everything here
-// is an involuntary separation. Overload is the line failing under its own load; severed is an
-// external action interposed across it (hostile blade or specialist cut — the obstruction
-// case); endpoint is the far end ceasing to exist (destroyed, despawned, or sector-changed).
-// Anything unlisted keeps the generic break cue rather than going silent.
+// INF-018 — break-reason → presentation cue. A chosen cut, a handoff, and leaving
+// the line behind (dock, flight exit, sector) stay quiet: releaseRated owns the
+// deliberate cut, and a boundary is not a snap. Overload is the line failing under
+// its own load; severed is an external action interposed across it (hostile blade or
+// specialist cut); endpoint is the far end ceasing to exist. Anything else unlisted
+// keeps the generic break cue rather than going silent.
 export const TETHER_BREAK_OVERLOAD_REASONS = Object.freeze(new Set([
   'threshold', 'overload', 'sustained-overload', 'catastrophic-overload', 'snap', 'integrity-failure',
 ]));
@@ -1767,11 +1770,31 @@ export const TETHER_BREAK_SEVERED_REASONS = Object.freeze(new Set([
 export const TETHER_BREAK_ENDPOINT_REASONS = Object.freeze(new Set([
   'target_lost', 'controller_lost', 'endpoint_lost',
 ]));
+// Not snaps: a chosen cut, a receiver taking the load, or the line left behind.
+export const TETHER_BREAK_QUIET_REASONS = Object.freeze(new Set([
+  'tether_cut', 'accepted', 'pilot', 'controller_attachment_limit',
+  'controller_unavailable', 'flight_exit',
+  'sector_exit', 'sector_enter', 'sector_changed',
+]));
 export function tetherBreakCueForReason(reason) {
+  if (TETHER_BREAK_QUIET_REASONS.has(reason)) return null;
   if (TETHER_BREAK_OVERLOAD_REASONS.has(reason)) return 'tether.break.overload';
   if (TETHER_BREAK_SEVERED_REASONS.has(reason)) return 'tether.break.severed';
   if (TETHER_BREAK_ENDPOINT_REASONS.has(reason)) return 'tether.break.endpoint';
   return 'tether.break';
+}
+
+/** Who the break cue is about. A sever's actorId is the cutter, not the line. */
+export function tetherBreakCueSourceId(state, payload) {
+  const pid = state && state.playerId;
+  const sever = !!(payload && TETHER_BREAK_SEVERED_REASONS.has(payload.reason));
+  if (payload && pid != null && (
+    payload.ownerId === pid || payload.controllerId === pid || payload.targetId === pid
+  )) return pid;
+  if (sever && payload && (payload.ownerId != null || payload.controllerId != null)) {
+    return payload.ownerId != null ? payload.ownerId : payload.controllerId;
+  }
+  return payload && payload.actorId;
 }
 
 // SF-023 — the committed-blade read is its own cue: the banner/marker voice names an inbound
