@@ -904,6 +904,88 @@ export function createSimHost() {
         if (!c || typeof c.jettison !== 'function') throw new Error('cargo-system-unavailable');
         return c.jettison((args && args.commodityId) || null, (args && args.qty) || 1);
       }],
+      // Every mutating claims call the main-side screens make — the facade's
+      // read names stay mirrored; these run on the real system one rpc hop
+      // away. 'claim' also ships the new body row so claimOrOpenBase can open
+      // the Base screen without a mirror wait.
+      ['claimsCall', (args) => {
+        const c = registry.get('claims');
+        if (!c) return { ok: false, reason: 'claims-system-unavailable' };
+        const method = args && args.method;
+        const SIGNATURES = {
+          claim: ['poi'],
+          buildModule: ['bodyId', 'modId'],
+          specialize: ['bodyId', 'specId'],
+          deliverToClaim: ['bodyId', 'goodId', 'qty'],
+          collectFromClaim: ['bodyId'],
+          teleportFrom: ['bodyId'],
+        };
+        const signature = method && SIGNATURES[method];
+        if (!signature || typeof c[method] !== 'function') return { ok: false, reason: 'unknown-claims-method' };
+        const result = c[method](...signature.map((key) => args[key]));
+        if (method === 'claim' && result === true) {
+          const poi = args.poi || null;
+          const body = ((state.claims && state.claims.bodies) || []).find((b) => b && b.poiId === (poi && poi.id)) || null;
+          return { ok: true, result: true, body };
+        }
+        return { ok: result !== false, result };
+      }],
+      // Fabricate-button commit — crafting.build stays the single writer; the
+      // screen awaits the ack before the accept cue + hold-complete landing.
+      ['craftingBuild', (args) => {
+        const c = registry.get('crafting');
+        if (!c || typeof c.build !== 'function') return { ok: false, reason: 'crafting-system-unavailable' };
+        return { ok: c.build((args && args.bpId) || null, (args && args.stationId) || null) === true };
+      }],
+      // Generic method passthroughs for facade coverage — the main side's
+      // capability checks see the method names; the lane's folded ops (like
+      // racingArm) call the same methods inside one directive window.
+      ['missionsCall', (args) => {
+        const m = registry.get('missions');
+        if (!m) return { ok: false, reason: 'missions-system-unavailable' };
+        const method = args && args.method;
+        const SIGNATURES = { postAndAcceptAuthoredOffer: ['offer'] };
+        const signature = method && SIGNATURES[method];
+        if (!signature || typeof m[method] !== 'function') return { ok: false, reason: 'unknown-missions-method' };
+        return { ok: true, result: m[method](...signature.map((key) => args[key])) };
+      }],
+      ['worldCall', (args) => {
+        const w = registry.get('world');
+        if (!w) return { ok: false, reason: 'world-system-unavailable' };
+        const method = args && args.method;
+        const SIGNATURES = { enterSector: ['sectorId'], relocatePlayerInSector: ['pose', 'opts'] };
+        const signature = method && SIGNATURES[method];
+        if (!signature || typeof w[method] !== 'function') return { ok: false, reason: 'unknown-world-method' };
+        return { ok: true, result: w[method](...signature.map((key) => args[key])) };
+      }],
+      // Circuit arm — post + accept + sector jump + grid relocation run as ONE
+      // sim-side operation so a failed arm can't split across ticks. A grid
+      // refusal rolls back via mission:abandon, same owner as the main path.
+      ['racingArm', (args) => {
+        const missions = registry.get('missions');
+        const world = registry.get('world');
+        if (!missions || typeof missions.postAndAcceptAuthoredOffer !== 'function') return { ok: false, reason: 'no_missions' };
+        if (!world || typeof world.relocatePlayerInSector !== 'function') return { ok: false, reason: 'no_relocation' };
+        const result = missions.postAndAcceptAuthoredOffer((args && args.offer) || null);
+        if (!result || result.ok !== true || result.reused) {
+          return { ok: result && result.ok === false ? false : !!(result && result.ok), reused: !!(result && result.reused), missionId: result && result.missionId, result: result || null };
+        }
+        const sectorId = args && args.sectorId;
+        const here = state.world && state.world.currentSectorId;
+        try {
+          if (sectorId && here !== sectorId && typeof world.enterSector === 'function') world.enterSector(sectorId);
+          const start = args && args.start;
+          if (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false) {
+            throw new Error('grid relocation refused');
+          }
+        } catch (error) {
+          if (host.bus && typeof host.bus.emit === 'function') {
+            try { host.bus.emit('mission:abandon', { missionId: result.missionId }); } catch (_) {}
+          }
+          return { ok: false, reason: 'grid_failed', missionId: result.missionId };
+        }
+        return { ok: true, missionId: result.missionId, result };
+      }],
       // Import an exported envelope JSON into a slot — the lane-twin of
       // saveSystem.importString (main-side importFile reads the File, then
       // routes the envelope here so the worker's save system loads it).

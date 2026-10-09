@@ -638,13 +638,18 @@ export const ui = {
     const offRacingNew = this.bus.on('game:new', (opts) => noteRacingNewGame(opts));
     const offRacingArm = this.bus.on('game:started', () => {
       const result = completeRacingLaunch(this.ctx);
-      if (result && result.ok !== true) {
-        // Later game:started listeners close the launch screens. Reopen the menu after
-        // that synchronous fan-out, unless another public transition already took over.
-        queueMicrotask(() => {
-          if (this.state.mode === 'menu') this._showMainMenuWhenReady?.();
-        });
-      }
+      // Worker lane resolves the arm on the rpc ack — same menu-reopen rule applies there.
+      const reopenMenuOnFailure = (resolved) => {
+        if (resolved && resolved.ok !== true) {
+          // Later game:started listeners close the launch screens. Reopen the menu after
+          // that synchronous fan-out, unless another public transition already took over.
+          queueMicrotask(() => {
+            if (this.state.mode === 'menu') this._showMainMenuWhenReady?.();
+          });
+        }
+      };
+      if (result && typeof result.then === 'function') result.then(reopenMenuOnFailure);
+      else reopenMenuOnFailure(result);
     });
     this._racingArmOff = () => {
       if (typeof offRacingNew === 'function') offRacingNew();

@@ -447,6 +447,10 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'drill.scan', 'drill.active', 'drill.tilesCleared', 'drill.field',
   'drill.asteroidId',
   'save.slots', 'save.currentSlot',
+  // Stage-E facade coverage: the claims facade's read view needs the whole root
+  // (galaxyMap reads state.claims.stationGrowth directly, not just bodies), and
+  // the industry screen reads state.crafting.queues.
+  'claims', 'crafting',
   'world.currentSectorId', 'world.sectors', 'world.discovery',
   'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
   'world.scanPings', 'world.activeSector', 'world.records.byId',

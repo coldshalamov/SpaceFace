@@ -141,7 +141,7 @@ import { heat } from '../systems/heat.js';
 import { traffic } from '../systems/traffic.js';
 import { drill } from '../systems/drill.js';
 import { intervention } from '../systems/intervention.js';
-import { claims } from '../systems/claims.js';
+import { claims, claimsReadView } from '../systems/claims.js';
 import { beacons } from '../systems/beacons.js';
 import { onboarding } from '../systems/onboarding.js';
 // WORLD OVERHAUL / REVAMP 2.1 — Wave 1 systems (see design/revamp/REVAMP_MASTER.md).
@@ -971,6 +971,50 @@ export function createRegistry(ctx) {
             laneRpc('cargoJettison', { commodityId, qty: qty || 1 })
           ).then((ack) => (ack && ack.ok !== false ? (ack.result || 0) : 0)),
         };
+      case 'claims': {
+        // Read names run the real implementations over the domain mirror via
+        // a prototype view; mutating calls ride the claimsCall rpc (fire-and-
+        // forget for the un-awaited sites, awaited at the confirm seams).
+        const readView = claimsReadView(st);
+        const call = (method, args) => Promise.resolve(laneRpc('claimsCall', { method, ...(args || {}) }))
+          .then((ack) => (ack && ack.ok !== false && ack.result !== null && ack.result !== undefined
+            ? ack.result.result : null));
+        return {
+          name: 'claims',
+          isClaimed: (poiId) => readView.isClaimed(poiId),
+          list: () => readView.list(),
+          ledger: (bodyId) => readView.ledger(bodyId),
+          _stationName: (stationId) => readView._stationName(stationId),
+          // 'claim' resolves to the new body row (the rpc ships it back) so the
+          // caller opens the Base screen without waiting on a mirror tick.
+          claim: (poiDef) => Promise.resolve(laneRpc('claimsCall', { method: 'claim', poi: poiDef }))
+            .then((ack) => (ack && ack.ok !== false && ack.result && ack.result.ok === true
+              ? (ack.result.body || null) : null)),
+          buildModule: (bodyId, modId) => call('buildModule', { bodyId, modId }),
+          specialize: (bodyId, specId) => call('specialize', { bodyId, specId }),
+          deliverToClaim: (bodyId, goodId, qty) => call('deliverToClaim', { bodyId, goodId, qty }),
+          collectFromClaim: (bodyId) => call('collectFromClaim', { bodyId }),
+          teleportFrom: (bodyId) => call('teleportFrom', { bodyId }),
+        };
+      }
+      case 'crafting':
+        return {
+          name: 'crafting',
+          // Async hop: the real build() commits worker-side; the fabricate
+          // hold's accept cue + landing await the ack.
+          build: (bpId, stationId) => Promise.resolve(laneRpc('craftingBuild', { bpId, stationId }))
+            .then((ack) => (ack && ack.ok !== false && ack.result && ack.result.ok === true)),
+        };
+      case 'missions':
+        return {
+          name: 'missions',
+          // armRacingContract folds the whole circuit arm into the racingArm
+          // rpc on the lane; this keeps the capability surface honest.
+          postAndAcceptAuthoredOffer: (offer) =>
+            Promise.resolve(laneRpc('missionsCall', { method: 'postAndAcceptAuthoredOffer', offer }))
+              .then((ack) => (ack && ack.ok !== false && ack.result !== null && ack.result !== undefined
+                ? ack.result.result : null)),
+        };
       case 'world':
         return {
           name: 'world',
@@ -985,6 +1029,11 @@ export function createRegistry(ctx) {
               return g.status === 'closed' ? 'closed' : 'open';
             },
           }),
+          // Mutating seam — racingLaunch folds these into the racingArm rpc;
+          // proof/lab paths tolerate the async hop (fire-and-forget).
+          enterSector: (sectorId) => laneRpc('worldCall', { method: 'enterSector', sectorId }),
+          relocatePlayerInSector: (pose, opts) =>
+            laneRpc('worldCall', { method: 'relocatePlayerInSector', pose, opts }),
         };
       default:
         _noteLaneFacadeMiss(name);

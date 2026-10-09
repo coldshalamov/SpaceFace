@@ -4,6 +4,7 @@
 
 import { activeRaceMission } from '../systems/racingSteer.js';
 import { raceLevelById, racingOfferFor, racingSeedFor, startLineFor } from '../data/raceLevels.js';
+import { laneCommandSink, laneRpc } from '../core/simLaneCommands.js';
 
 let pending = null;
 
@@ -36,14 +37,19 @@ export function completeRacingLaunch(ctx) {
   let result;
   try { result = armRacingContract(ctx, row.contractId, { allowEnterSector: true }); }
   catch (error) { result = { ok: false, reason: 'arm_exception', error: String(error?.message || error) }; }
-  if (result?.ok === true && !result.reused) return result;
-  // Exit while the save owner still quarantines this temporary state. Exit autosave must
-  // never write a failed circuit's starter hull over a campaign. The following receipt
-  // invalidates pending capture work, but only New Game/Continue may release quarantine.
-  ctx?.bus?.emit?.('game:exitToMenu', { source: 'racing-launch-failed' });
-  ctx?.bus?.emit?.('race:launchFailed', { contractId: row.contractId, reason: result?.reason || 'accept_failed' });
-  ctx?.bus?.emit?.('toast', { text: 'Circuit launch failed. Returned to the menu; campaign saves are unchanged.', kind: 'warn', ttl: 5 });
-  return result || { ok: false, reason: 'accept_failed' };
+  const finish = (resolved) => {
+    if (resolved?.ok === true && !resolved.reused) return resolved;
+    // Exit while the save owner still quarantines this temporary state. Exit autosave must
+    // never write a failed circuit's starter hull over a campaign. The following receipt
+    // invalidates pending capture work, but only New Game/Continue may release quarantine.
+    ctx?.bus?.emit?.('game:exitToMenu', { source: 'racing-launch-failed' });
+    ctx?.bus?.emit?.('race:launchFailed', { contractId: row.contractId, reason: resolved?.reason || 'accept_failed' });
+    ctx?.bus?.emit?.('toast', { text: 'Circuit launch failed. Returned to the menu; campaign saves are unchanged.', kind: 'warn', ttl: 5 });
+    return resolved || { ok: false, reason: 'accept_failed' };
+  };
+  // Worker lane: the arm resolves on the rpc ack — the same failure tail runs there.
+  if (result && typeof result.then === 'function') return result.then(finish);
+  return finish(result);
 }
 
 export function armRacingContract(ctx, contractId, options = {}) {
@@ -108,6 +114,14 @@ export function armRacingContract(ctx, contractId, options = {}) {
   if (Number(offer.params.gridHoldS) > 0 && !Number.isFinite(offer.params.gridUntilSimS)) {
     offer.params.gridUntilSimS = now + Number(offer.params.gridHoldS);
   }
+  const start = startLineFor(offer.params);
+  if (typeof laneCommandSink === 'function' && laneCommandSink()) {
+    // Worker lane: the whole arm — post+accept, the sector hop, and the grid
+    // relocation — is one sim-side rpc, so a mid-chain refusal can't split
+    // across ticks (and its rollback emits on the sim bus).
+    return laneRpc('racingArm', { offer, sectorId: level.sectorId, start })
+      .then((ack) => finishArmReply(ack && ack.result, offer, contractId, bus, toast));
+  }
   const result = missions.postAndAcceptAuthoredOffer(offer);
   if (!result || result.ok !== true || result.reused) {
     toast(result && result.reused
@@ -117,7 +131,6 @@ export function armRacingContract(ctx, contractId, options = {}) {
   }
   try {
     if (here !== level.sectorId) world.enterSector(level.sectorId);
-    const start = startLineFor(offer.params);
     if (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false) {
       throw new Error('Grid relocation refused');
     }
@@ -130,4 +143,23 @@ export function armRacingContract(ctx, contractId, options = {}) {
   bus?.emit?.('race:armed', { missionId: result.missionId, contractId });
   toast(offer.summary || offer.title, 'info');
   return result;
+}
+
+/** Map a racingArm rpc reply onto the main path's result/emit contract. */
+function finishArmReply(arm, offer, contractId, bus, toast) {
+  const post = arm && arm.result;
+  if (!arm || arm.ok !== true || (post && post.reused === true)) {
+    if (arm && arm.reason === 'grid_failed') {
+      // the rpc already rolled the post back sim-side via mission:abandon
+      toast('The circuit could not open its starting grid. No active race was left behind.');
+      return { ok: false, reason: 'grid_failed' };
+    }
+    toast(post && post.reused === true
+      ? 'That circuit is already on the book.'
+      : 'The circuit did not take.');
+    return post && post.ok === false ? post : { ok: false, reason: 'accept_failed', result: post ?? arm };
+  }
+  bus?.emit?.('race:armed', { missionId: arm.missionId, contractId });
+  toast(offer.summary || offer.title, 'info');
+  return post || { ok: true, missionId: arm.missionId };
 }

@@ -722,7 +722,15 @@ export function createUiInput(ctx, screenManager) {
       return openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id));
     }
     // claim it (the system validates credits + emits feedback)
-    if (claimsSys.claim(poiDef)) {
+    const claimed = claimsSys.claim(poiDef);
+    if (claimed && typeof claimed.then === 'function') {
+      // Worker lane: the rpc resolves to the new body row (or null on refusal).
+      claimed.then((body) => {
+        if (body) openClaimedBase(body, { audio: false });
+      });
+      return true;
+    }
+    if (claimed) {
       return openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id), { audio: false });
     }
     return true;
