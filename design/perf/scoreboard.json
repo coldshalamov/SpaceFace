@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "updated": "2026-10-09T03:14:50.082Z",
+ "updated": "2026-10-09",
  "purpose": "Machine-readable cumulative scoreboard for the magic-frame hill-climb campaign. Every accepted wave records evidence level, integrity gates, and measurement status. Durable narrative log lives in PR194-WAVE-LOG.md; this file is the diff-friendly ledger.",
  "evidenceLevels": {
   "MECHANISM_VERIFIED": "A real inefficiency exists and the change removes it (code-level proof + tests).",
@@ -58,11 +58,11 @@
   ]
  },
  "worstRemainingBottlenecks": {
-  "asOf": "wave 120",
+  "asOf": "wave 122",
   "ranked": [
    "owner-hardware verification gap — every optimization since wave 1 is MECHANISM_VERIFIED; real-GPU frame-time benefit unmeasured on this box",
-   "residency governor census family — still O(assets x owners x resources + pending) total per sector:exit drain, now paced but not reduced",
-   "dedup'd warn storms are bounded (8 verbatim + heartbeat) but still mint suppressed-count heartbeats per second during persistent fault windows",
+   "s1-sim-worker-spike adoption — SHIP-proven golden bit-identical; adoption checklist mining lane this wave (postMessage p95, Electron ?simLane, ~67 unforwarded event types)",
+   "presentation floor — B1/B3/B6/B7 from the W121 blind global remain scoped-not-implemented (whole-scene traversals, sim-atomic bursts, unbudgeted audio rAF, physics FFI spans)",
    "first-frame shader link set (draw-time misses) — 36 on owner hardware at campaign start; cloud box cannot re-measure"
   ]
  },
@@ -242,6 +242,53 @@
     },
     "focusedTests": "fb-export-bundles-medals 6/0, save-rejected-candidate 7/7, save-import-bounds 8/8, pr-instrument-integrity 8/8, event-bus-contract 34/0, recovery-encounter 12/12, save-arbitration 7/7, save-envelope-fidelity 2/2, save-restore-atomicity 5/5, save-shared-continuation 4/4, ~60 recovery/ace/wreck suites green; residual reds canon (incl. new: save-growth-dock-trade-flat parityArmSlope identical on clean master) | final batch: asset-residency-{accounting,detached-owners} green, refcounts browser test = canon 120s env-timeout on clean master too, sector-arrival-publish-release 10/0, world-residency 17/0, startup-geometry 24/0, decode-runway 19/0, authored-upgrade-queue-lifecycle 1/1 canon, sg02-native-rebuild-lifetime 10/0, save suites green; golden 0b33dde re-verified post-edit"
    },
+   "verdict": "kept"
+  },
+  {
+   "wave": 122,
+   "head": "728302fe5",
+   "lanes": {
+    "lod-in-frame": {
+     "saturated": true,
+     "findings": 0,
+     "landed": 0,
+     "commits": [],
+     "headline": "2nd consecutive saturated report — W121 remediations re-verified clean at c3d84934c; residual scope is vendored-three render-list fan-out + mounted-node diet, bounded (streak 2/3)"
+    },
+    "popin-admission": {
+     "saturated": false,
+     "findings": 6,
+     "landed": 6,
+     "commits": [
+      "007e8d976"
+     ],
+     "headline": "deferred warm mint into fused exit leg (0.80-4.47ms probe at K=500), governorEntry per-entry row memos (ownersVersion-keyed), fused cache-owner sweep walk, class byte ledgers O(1) soft-budget early-out, paced warmCoverage mint, diagnostics row memos"
+    },
+    "boot-loading": {
+     "saturated": false,
+     "findings": 2,
+     "landed": 2,
+     "commits": [
+      "728302fe5"
+     ],
+     "headline": "plain-text import prepare routed through sliced async lane (O(1) sync rejects preserved — last unpaced O(save-size) click brick); autosave fallback whole-ledger prepares await async lanes w/ liveness re-checks + prepared-envelope FIFO memo; verify-before-index ordering unchanged"
+    },
+    "in-flight-hitches": {
+     "saturated": null,
+     "findings": null,
+     "landed": null,
+     "commits": [],
+     "headline": "auditing (2fbabc0c)"
+    },
+    "s1-spike-mining": {
+     "saturated": null,
+     "findings": null,
+     "landed": null,
+     "commits": [],
+     "headline": "queued on SWE-2 cap"
+    }
+   },
+   "evidence": "all CPU-scope mechanism verification on this box; GPU/frame-time benefit hardware-unverified per environment declaration",
    "verdict": "kept"
   }
  ]

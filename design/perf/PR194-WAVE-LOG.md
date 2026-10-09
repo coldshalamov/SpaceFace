@@ -2423,3 +2423,32 @@ Campaign-contract change this wave (owner directive): three-level evidence label
 - Skeptic's verified-clean list (byte ledgers, activePendingKeys, sectorOwnerIndex, Steps twins fidelity, emit slicing, import lane, post-present dispatch, warn heartbeats, no subtraction) stands as the W121 subtraction-audit record.
 
 Saturation: lod + hitches `saturated: true` (2 of 6 lanes this wave; streak 1/3 by wave verdict). Global declares the campaign NOT saturated — three open fronts: S1 sim-worker adoption, presentation floor (B1/B3/B6/B7), sector-transition volume. W122 spawns on `1262d91fe`.
+
+## Wave 122 (HEAD `728302fe5`) — paced import prepare + autosave fallback verifies, deferred warm mint, governor-row memos, class ledgers
+
+### lod-in-frame — `saturated: true` (2nd consecutive; streak 2/3 by wave verdict)
+
+- W121's claim verified at `c3d84934c`: every W121 remediated item re-verified clean, the stand-in machinery intact and layered, no unwitnessed admission path exists. B1 enumeration: every per-present O(scene) walk is either covered by epoch/memo machinery or vendored-three render-list construction whose remaining headroom is mounted-node diet + pass-count — bounded, not a magic-frame defect. No new material finding rises to fix level.
+
+### popin-admission — `saturated: false` (F1-F6 landed `007e8d976`)
+
+- **popin F1 (M, MECHANISM_VERIFIED + CPU-measured) — warm-mint was the last synchronous sector-scale leg inside `sector:exit`**: `prepareSectorExit`'s O(prev-sector) release + K-retain loop (0.80–4.47 ms at K=500 probe) folded into leg 0 of the fused `_sectorExitCleanupIter`, strictly before the cache sweeps (ordering invariant preserved); `rotateSector` shares the stepped twin; the save/restore `includePlayer` path keeps the sync twin inside the veil.
+- **popin F2 (M, MECHANISM_VERIFIED) — `governorEntry` census minted O(assets) rows every `enforceBudget` even under-budget**: option (i) landed — per-entry row memo keyed on a new `entry.ownersVersion` bumped inside the `noteOwnerMembershipIndexed/Unindexed` funnel + pending-version + `visibilityWriteSeq` + kind; unchanged entries reuse the frozen row.
+- **popin F3 (M, MECHANISM_VERIFIED) — cache-owner sweep allocated 2 arrays per asset per pass**: `[...entry.owners]` + filter materialization replaced with a single fused walk.
+- **popin F4 (M, MECHANISM_VERIFIED) — soft-budget census early-out**: class byte ledgers give the under-budget check an O(1) answer; the census only runs when the byte ceiling is actually crossed.
+- **popin F5 (M, MECHANISM_VERIFIED) — first post-exit live retain paid the warmCoverage mint inside a random frame**: the coverage mint now runs inside the paced exit legs instead of the first live consult.
+- **popin F6 (L-M, MECHANISM_VERIFIED) — `diagnostics()` minted O(assets×owners) rows + O(A log A) sort per epoch**: row memos + incremental sort keys.
+- Golden `0b33dde` bit-identical; focused residency/enforce suites green.
+
+### boot-loading — `saturated: false` (F1+F2 landed `728302fe5`)
+
+- **boot F1 (H, MECHANISM_VERIFIED — frame relief real but unmeasurable headless) — plain-text import ran the full O(save-size) prepare atomically on the click**: `loadEnvelopeFromString` keeps its O(1) sync rejects (`no_save`/`parse_failed`/`import_too_large` — all answered pre-parse) but routes everything else through `_loadEnvelopeFromStringAsync`'s sliced lane (worker `restore_prepare` → yielded fallback), closing the lane's last unpaced brick — the gzip leg and slot loads already took this route.
+- **boot F2 (M-H, MECHANISM_VERIFIED) — every autosave fallback lane re-prepared whole ledgers atomically**: `_commitAutosaveSnapshot`, the legacy-version inner lane, `_autosaveValidatePreviousSync`, and `_autosaveValidateReadbackSync` now `await _prepareEnvelopeStringAsync` with liveness re-checks on resume; verify-before-index ordering unchanged — the yielded prepare emits the identical authoritative result (extended, not forked). A prepared-envelope memo (FIFO-8, ok-only) lets the verify→write→readback chain reuse each prepare instead of re-walking the ledger.
+- Support edits: `_restorePreparedEnvelopeAsync` honors `_restore`/`_restoreAsync` test stubs via the canonical-seam pattern; scheduled-callback harnesses gained a macrotask pump (`drain`/`step`/`drainScheduled` — continuations re-arm on `setTimeout(0)` and a sync drive can't observe them); `fb-save-write-bound-gzip`'s `waitFor` turn limit 500→5000 — pre-existing flake reproduced on clean HEAD (the worker's stream decode occasionally needs more than 500 immediate turns).
+- Golden `0b33dde` bit-identical; 123 focused save tests green.
+
+### in-flight-hitches — auditing (`2fbabc0c`)
+
+### s1-spike mining — queued on SWE-2 cap
+
+Saturation: 1 of 4 reporting lanes (streak 2/3 by wave verdict).
